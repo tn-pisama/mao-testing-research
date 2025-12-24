@@ -2,7 +2,61 @@
 
 **Duration:** 10 days (40-60 hours total)
 **Prerequisites:** Python, basic LLM understanding
-**Outcome:** Production-ready LangGraph expertise
+**Outcome:** Production-ready LangGraph expertise (v1.0.5, December 2025)
+
+---
+
+## What's New in LangGraph 2025
+
+```
+┌─────────────────────────────────────────────────────────────────────────────┐
+│                    LANGGRAPH 2025 NEW FEATURES                               │
+├─────────────────────────────────────────────────────────────────────────────┤
+│                                                                              │
+│  COMMAND (Dynamic Flow Control)                                             │
+│  ─────────────────────────────                                               │
+│  • Nodes can dynamically decide which node to execute next                  │
+│  • Enables edgeless agent flows                                              │
+│  • More flexible than conditional edges for complex routing                 │
+│                                                                              │
+│  DEFERRED NODES                                                              │
+│  ─────────────                                                               │
+│  • Execution postponed until all upstream paths complete                    │
+│  • Essential for map-reduce patterns                                        │
+│  • Automatic synchronization point                                          │
+│                                                                              │
+│  NODE CACHING                                                                │
+│  ────────────                                                                │
+│  • Cache results of individual nodes                                        │
+│  • Reduces redundant computation                                            │
+│  • Speeds up development cycles                                             │
+│                                                                              │
+│  SEMANTIC MEMORY SEARCH                                                      │
+│  ─────────────────────                                                       │
+│  • Find relevant memories based on meaning, not exact matches               │
+│  • Long-term memory for agents                                              │
+│  • Vector similarity under the hood                                         │
+│                                                                              │
+│  IMPROVED GRAPH CONSTRUCTION                                                 │
+│  ──────────────────────────                                                  │
+│  • .addNode({node1, node2, ...}) - batch add nodes                          │
+│  • .addSequence({node1, node2, ...}) - linear pipelines simplified          │
+│  • Reduced boilerplate for common patterns                                  │
+│                                                                              │
+│  LANGGRAPH PLATFORM (GA)                                                     │
+│  ───────────────────────                                                     │
+│  • Production deployment service                                            │
+│  • Open Agent Platform (no-code builder)                                    │
+│  • Trusted by Klarna, Replit, Elastic                                       │
+│                                                                              │
+│  TYPE-SAFE STREAMING (JS v0.3)                                              │
+│  ────────────────────────────                                                │
+│  • Fully type-safe .stream() method                                         │
+│  • Eliminates unsafe casts                                                  │
+│  • Returns typed state updates                                              │
+│                                                                              │
+└─────────────────────────────────────────────────────────────────────────────┘
+```
 
 ---
 
@@ -14,7 +68,7 @@
 - State update semantics
 - Basic graph construction and compilation
 - Invocation methods (invoke, stream, async)
-- **Exercises:** 3 progressively complex graphs
+- **Reading:** Deep dive document (1000+ lines)
 
 ### Day 2: State Schemas and Reducers ✅
 - State design principles
@@ -23,16 +77,16 @@
 - Pydantic validation
 - State serialization
 - Memory management (bounded lists, token-aware)
-- **Exercises:** Design state for code review, custom dedup reducer
+- **Reading:** Day 2 deep dive
 
 ### Day 3: Conditional Edges and Routing
 - Simple conditional edges
 - Multi-path routing
 - Router function patterns
 - State-dependent routing
-- Dynamic edge creation
+- **NEW: Command for dynamic routing** (2025 feature)
 - Routing with fallbacks
-- **Exercises:** Intent classifier, approval workflow, retry router
+- **Comparison:** Conditional edges vs Command
 
 ### Day 4: Checkpointing Deep Dive
 - MemorySaver internals
@@ -42,25 +96,27 @@
 - Checkpoint inspection and manipulation
 - Time-travel debugging
 - Thread management
-- **Exercises:** Implement Redis checkpointer, debug via checkpoint
+- **NEW: Checkpoint caching strategies** (2025)
 
 ### Day 5: Human-in-the-Loop Patterns
+- **NEW: Interrupt feature** (simplified HITL in 2025)
 - interrupt_before and interrupt_after
 - Approval gates
 - Human feedback injection
 - Multi-step human review
 - Timeout handling for human input
 - Graceful degradation without human
-- **Exercises:** 3-stage approval, feedback loop, timeout fallback
+- **Reading:** LangChain HITL blog post (updated)
 
 ### Day 6: Streaming Architectures
 - Node-level streaming
 - Token-level streaming from LLMs
+- **NEW: Type-safe streaming** (LangGraph JS v0.3)
 - Stream modes (values, updates, debug)
+- **NEW: Interrupts in invoke() and values mode**
 - Async streaming patterns
 - Backpressure handling
 - Stream transformation
-- **Exercises:** Live dashboard, incremental output, progress tracking
 
 ### Day 7: Subgraphs and Composition
 - Subgraph definition and compilation
@@ -69,27 +125,37 @@
 - Reusable graph components
 - Dynamic subgraph selection
 - Cross-graph communication
-- **Exercises:** Nested research system, pluggable tool graph
+- **NEW: addSequence() for simple pipelines**
 
-### Day 8: Error Handling and Recovery
-- Node-level error handling
-- Graph-level error policies
-- Retry strategies
-- Circuit breaker pattern
-- Graceful degradation
-- Error state propagation
-- Recovery from checkpoints
-- **Exercises:** Fault-tolerant pipeline, retry with backoff
+### Day 8: Advanced Features (NEW 2025)
+- **Command: Dynamic edgeless flows**
+  - When to use vs conditional edges
+  - Implementation patterns
+  - Error handling in dynamic flows
+- **Deferred Nodes**
+  - Synchronization patterns
+  - Map-reduce with deferred nodes
+  - Fan-out/fan-in architectures
+- **Node Caching**
+  - Cache configuration
+  - Invalidation strategies
+  - Development vs production caching
 
-### Day 9: Performance Optimization
-- Profiling graph execution
-- Async node optimization
-- Parallel node execution
-- Caching strategies
-- Lazy evaluation
-- Resource pooling (LLM clients)
-- Memory optimization
-- **Exercises:** Profile and optimize, parallel tool calls
+### Day 9: Memory and Semantic Search (NEW 2025)
+- **Long-term memory architecture**
+  - Memory storage backends
+  - Memory retrieval patterns
+- **Semantic search for memories**
+  - Vector embeddings
+  - Similarity thresholds
+  - Relevance filtering
+- **Memory in multi-agent systems**
+  - Shared vs agent-specific memory
+  - Memory handoff between agents
+- **Performance optimization**
+  - Caching strategies
+  - Lazy evaluation
+  - Resource pooling
 
 ### Day 10: Production Deployment
 - Configuration management
@@ -98,7 +164,8 @@
 - Rate limiting
 - Cost tracking
 - A/B testing graphs
-- Deployment patterns (serverless, containers)
+- **NEW: LangGraph Platform deployment**
+- **NEW: Open Agent Platform overview**
 - **Projects:** Deploy research agent to production
 
 ---
@@ -116,31 +183,23 @@ Build a research agent that:
 ### Project 2: Code Review Bot (Days 5-7)
 Build a code review system with:
 - Multi-agent analysis (security, style, performance)
-- Human approval gates
-- Streaming progress updates
+- Human approval gates using new Interrupt feature
+- Streaming progress updates (type-safe)
 - Reusable subgraphs for different languages
 
-### Project 3: Production Chatbot (Days 8-10)
-Build a production-ready chatbot with:
+### Project 3: Memory-Enhanced Chatbot (Days 8-9) - NEW
+Build a chatbot with:
+- Long-term semantic memory
+- Cached responses for common queries
+- Deferred summary generation
+- Dynamic routing via Command
+
+### Project 4: Production Deployment (Day 10)
+Build a production-ready system with:
 - Fault tolerance and retry
-- Performance optimization
+- Performance optimization with node caching
 - Full observability
-- Deployment configuration
-
----
-
-## Assessment Criteria
-
-Each day includes self-assessment:
-
-| Level | Criteria |
-|-------|----------|
-| **Aware** | Can explain the concept |
-| **Familiar** | Can use with documentation |
-| **Proficient** | Can use without documentation |
-| **Expert** | Can teach and troubleshoot |
-
-Target: **Proficient** on all topics, **Expert** on core patterns
+- LangGraph Platform deployment
 
 ---
 
@@ -150,11 +209,44 @@ Target: **Proficient** on all topics, **Expert** on core patterns
 - LangGraph Concepts: https://langchain-ai.github.io/langgraph/concepts/
 - API Reference: https://langchain-ai.github.io/langgraph/reference/
 - How-To Guides: https://langchain-ai.github.io/langgraph/how-tos/
+- **NEW: LangGraph Platform docs**
 
 ### Code Examples
 - Official Examples: https://github.com/langchain-ai/langgraph/tree/main/examples
 - LangGraph Templates: https://github.com/langchain-ai/langgraph/tree/main/libs/langgraph/langgraph/templates
 
-### Blog Posts
+### Blog Posts & Announcements
 - Multi-Agent Workflows: https://blog.langchain.com/langgraph-multi-agent-workflows/
 - Human-in-the-Loop: https://blog.langchain.com/human-in-the-loop-with-langgraph/
+- **NEW: Release Week Recap (June 2025)**
+- **NEW: Interrupt 2025 Conference announcements**
+
+### Academic Context
+- "Multi-Agent Collaboration Mechanisms: A Survey of LLMs" (Jan 2025)
+  - 5-dimension extensible framework for understanding MAS
+  - https://arxiv.org/html/2501.06322v1
+- "LLM-Based Multi-Agent Systems for Software Engineering" (ACM TOSEM)
+  - 41 primary studies systematic review
+  - https://dl.acm.org/doi/10.1145/3712003
+
+---
+
+## Assessment Criteria
+
+| Level | Criteria |
+|-------|----------|
+| **Aware** | Can explain the concept |
+| **Familiar** | Can use with documentation |
+| **Proficient** | Can use without documentation |
+| **Expert** | Can teach and troubleshoot |
+
+Target: **Proficient** on all topics, **Expert** on core patterns + 2025 features
+
+---
+
+## Version History
+
+| Date | LangGraph Version | Curriculum Update |
+|------|------------------|-------------------|
+| Initial | v0.x | Original curriculum |
+| Dec 2025 | v1.0.5 | Added Command, Deferred Nodes, Caching, Semantic Memory |
