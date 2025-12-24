@@ -1,21 +1,21 @@
 'use client'
 
-import { useCallback, useMemo } from 'react'
-import ReactFlow, {
-  Node,
-  Edge,
-  Position,
-  MarkerType,
-  Background,
-  Controls,
-  MiniMap,
-  useNodesState,
-  useEdgesState,
-} from 'reactflow'
-import 'reactflow/dist/style.css'
+import { useMemo } from 'react'
+import dynamic from 'next/dynamic'
+import { Node, Edge, MarkerType } from 'reactflow'
 import { AgentInfo } from './AgentCard'
-import { AgentNode } from './AgentNode'
-import { MessageNode } from './MessageNode'
+
+const ReactFlowWrapper = dynamic(
+  () => import('./ReactFlowWrapper'),
+  { 
+    ssr: false,
+    loading: () => (
+      <div className="h-[600px] bg-slate-900 rounded-xl border border-slate-700 flex items-center justify-center">
+        <div className="text-slate-400">Loading orchestration view...</div>
+      </div>
+    )
+  }
+)
 
 interface OrchestrationMessage {
   id: string
@@ -33,18 +33,13 @@ interface AgentOrchestrationViewProps {
   onAgentClick?: (agentId: string) => void
 }
 
-const nodeTypes = {
-  agent: AgentNode,
-  message: MessageNode,
-}
-
 export function AgentOrchestrationView({
   agents,
   messages,
   activeAgentId,
   onAgentClick,
 }: AgentOrchestrationViewProps) {
-  const { nodes: initialNodes, edges: initialEdges } = useMemo(() => {
+  const { nodes, edges } = useMemo(() => {
     const angleStep = (2 * Math.PI) / agents.length
     const radius = 250
     const centerX = 400
@@ -103,34 +98,5 @@ export function AgentOrchestrationView({
     return { nodes: agentNodes, edges: messageEdges }
   }, [agents, messages, activeAgentId, onAgentClick])
 
-  const [nodes, setNodes, onNodesChange] = useNodesState(initialNodes)
-  const [edges, setEdges, onEdgesChange] = useEdgesState(initialEdges)
-
-  return (
-    <div className="h-[600px] bg-slate-900 rounded-xl border border-slate-700 overflow-hidden">
-      <ReactFlow
-        nodes={nodes}
-        edges={edges}
-        onNodesChange={onNodesChange}
-        onEdgesChange={onEdgesChange}
-        nodeTypes={nodeTypes}
-        fitView
-        minZoom={0.5}
-        maxZoom={1.5}
-        defaultViewport={{ x: 0, y: 0, zoom: 0.8 }}
-      >
-        <Background color="#334155" gap={20} size={1} />
-        <Controls className="bg-slate-800 border-slate-700 text-white" />
-        <MiniMap
-          nodeColor={(node) => {
-            if (node.data?.agent?.status === 'running') return '#22c55e'
-            if (node.data?.agent?.status === 'failed') return '#ef4444'
-            return '#64748b'
-          }}
-          maskColor="rgba(15, 23, 42, 0.8)"
-          className="bg-slate-800 border-slate-700"
-        />
-      </ReactFlow>
-    </div>
-  )
+  return <ReactFlowWrapper initialNodes={nodes} initialEdges={edges} />
 }
