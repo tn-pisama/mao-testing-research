@@ -1,6 +1,6 @@
 'use client'
 
-import { useState, useMemo } from 'react'
+import { useState, useEffect, useMemo } from 'react'
 import { Layout } from '@/components/common/Layout'
 import { formatDistanceToNow } from 'date-fns'
 import { clsx } from 'clsx'
@@ -22,6 +22,7 @@ import {
 } from 'lucide-react'
 import Link from 'next/link'
 import { generateDemoDetections, generateDemoLoopAnalytics } from '@/lib/demo-data'
+import type { Detection } from '@/lib/api'
 
 type DetectionType = 'all' | 'infinite_loop' | 'state_corruption' | 'persona_drift' | 'coordination_deadlock'
 type Severity = 'all' | 'low' | 'medium' | 'high' | 'critical'
@@ -45,9 +46,13 @@ export default function DetectionsPage() {
   const [severityFilter, setSeverityFilter] = useState<Severity>('all')
   const [searchQuery, setSearchQuery] = useState('')
   const [showValidated, setShowValidated] = useState(true)
+  const [isLoaded, setIsLoaded] = useState(false)
+  const [detections, setDetections] = useState<Detection[]>([])
 
-  const detections = useMemo(() => generateDemoDetections(25), [])
-  const analytics = useMemo(() => generateDemoLoopAnalytics(), [])
+  useEffect(() => {
+    setDetections(generateDemoDetections(25))
+    setIsLoaded(true)
+  }, [])
 
   const filteredDetections = useMemo(() => {
     return detections.filter((d) => {
@@ -69,6 +74,22 @@ export default function DetectionsPage() {
       coordination_deadlock: detections.filter(d => d.detection_type === 'coordination_deadlock').length,
     }
   }), [detections])
+
+  if (!isLoaded) {
+    return (
+      <Layout>
+        <div className="p-6">
+          <div className="animate-pulse space-y-6">
+            <div className="h-8 w-48 bg-slate-700 rounded" />
+            <div className="grid grid-cols-4 gap-4">
+              {[1,2,3,4].map(i => <div key={i} className="h-20 bg-slate-700 rounded-xl" />)}
+            </div>
+            <div className="h-96 bg-slate-700 rounded-xl" />
+          </div>
+        </div>
+      </Layout>
+    )
+  }
 
   return (
     <Layout>

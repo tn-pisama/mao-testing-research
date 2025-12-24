@@ -29,42 +29,74 @@ interface UseDemoModeOptions {
   simulationInterval?: number
 }
 
+const emptyState: DemoState = {
+  agents: [],
+  messages: [],
+  activityEvents: [],
+  traces: [],
+  detections: [],
+  loopAnalytics: {
+    total_loops_detected: 0,
+    loops_by_method: {},
+    avg_loop_length: 0,
+    top_agents_in_loops: [],
+    time_series: [],
+  },
+  costAnalytics: {
+    total_cost_cents: 0,
+    total_tokens: 0,
+    cost_by_framework: {},
+    cost_by_day: [],
+    top_expensive_traces: [],
+  },
+  agentMetrics: {
+    totalAgents: 0,
+    activeAgents: 0,
+    totalTokens: 0,
+    avgLatencyMs: 0,
+    totalCostCents: 0,
+    errorRate: 0,
+    loopsDetected: 0,
+    avgStepsPerTrace: 0,
+  },
+}
+
+function createInitialState(): DemoState {
+  const agents = generateDemoAgents(6)
+  return {
+    agents,
+    messages: generateDemoMessages(agents, 8),
+    activityEvents: generateDemoActivityEvents(agents, 15),
+    traces: generateDemoTraces(10),
+    detections: generateDemoDetections(8),
+    loopAnalytics: generateDemoLoopAnalytics(),
+    costAnalytics: generateDemoCostAnalytics(),
+    agentMetrics: generateDemoAgentMetrics(),
+  }
+}
+
 export function useDemoMode(options: UseDemoModeOptions = {}) {
   const { autoSimulate = false, simulationInterval = 2000 } = options
   const [isDemo, setIsDemo] = useState(true)
   const [isSimulating, setIsSimulating] = useState(autoSimulate)
+  const [isLoaded, setIsLoaded] = useState(false)
   const intervalRef = useRef<NodeJS.Timeout | null>(null)
 
-  const [demoState, setDemoState] = useState<DemoState>(() => {
-    const agents = generateDemoAgents(6)
-    return {
-      agents,
-      messages: generateDemoMessages(agents, 8),
-      activityEvents: generateDemoActivityEvents(agents, 15),
-      traces: generateDemoTraces(10),
-      detections: generateDemoDetections(8),
-      loopAnalytics: generateDemoLoopAnalytics(),
-      costAnalytics: generateDemoCostAnalytics(),
-      agentMetrics: generateDemoAgentMetrics(),
-    }
-  })
+  const [demoState, setDemoState] = useState<DemoState>(emptyState)
+
+  useEffect(() => {
+    setDemoState(createInitialState())
+    setIsLoaded(true)
+  }, [])
 
   const refreshData = useCallback(() => {
-    const agents = generateDemoAgents(6)
-    setDemoState({
-      agents,
-      messages: generateDemoMessages(agents, 8),
-      activityEvents: generateDemoActivityEvents(agents, 15),
-      traces: generateDemoTraces(10),
-      detections: generateDemoDetections(8),
-      loopAnalytics: generateDemoLoopAnalytics(),
-      costAnalytics: generateDemoCostAnalytics(),
-      agentMetrics: generateDemoAgentMetrics(),
-    })
+    setDemoState(createInitialState())
   }, [])
 
   const simulateActivity = useCallback(() => {
     setDemoState((prev) => {
+      if (prev.agents.length === 0) return prev
+      
       const agents = prev.agents.map((agent) => {
         if (Math.random() > 0.7) {
           const statuses: AgentInfo['status'][] = ['idle', 'running', 'completed', 'waiting']
@@ -79,10 +111,11 @@ export function useDemoMode(options: UseDemoModeOptions = {}) {
         return agent
       })
 
+      const randomAgent = agents[Math.floor(Math.random() * agents.length)]
       const newEvent: ActivityEvent = {
         id: Math.random().toString(36).substring(2),
-        agentId: agents[Math.floor(Math.random() * agents.length)].id,
-        agentName: agents[Math.floor(Math.random() * agents.length)].name,
+        agentId: randomAgent.id,
+        agentName: randomAgent.name,
         type: ['started', 'completed', 'message_sent', 'thinking', 'tool_call'][
           Math.floor(Math.random() * 5)
         ] as ActivityEvent['type'],
@@ -122,7 +155,7 @@ export function useDemoMode(options: UseDemoModeOptions = {}) {
   }, [])
 
   useEffect(() => {
-    if (isSimulating) {
+    if (isSimulating && isLoaded) {
       intervalRef.current = setInterval(simulateActivity, simulationInterval)
     } else if (intervalRef.current) {
       clearInterval(intervalRef.current)
@@ -134,12 +167,13 @@ export function useDemoMode(options: UseDemoModeOptions = {}) {
         clearInterval(intervalRef.current)
       }
     }
-  }, [isSimulating, simulationInterval, simulateActivity])
+  }, [isSimulating, isLoaded, simulationInterval, simulateActivity])
 
   return {
     isDemo,
     setIsDemo,
     isSimulating,
+    isLoaded,
     startSimulation,
     stopSimulation,
     toggleSimulation,
