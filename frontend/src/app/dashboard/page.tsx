@@ -41,7 +41,7 @@ export default function DashboardPage() {
 
         <div className="grid lg:grid-cols-2 gap-6">
           <RecentDetectionsCard 
-            detections={detections?.detections || []} 
+            detections={detections || []} 
             isLoading={detectionsLoading} 
           />
           <TraceStatusCard 
