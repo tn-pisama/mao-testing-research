@@ -10,7 +10,8 @@ import {
   Menu,
   X,
   Bot,
-  PlayCircle
+  PlayCircle,
+  BookOpen
 } from 'lucide-react'
 import { useUIStore } from '@/stores/uiStore'
 import { clsx } from 'clsx'
@@ -21,6 +22,7 @@ const navItems = [
   { href: '/traces', label: 'Traces', icon: Workflow },
   { href: '/detections', label: 'Detections', icon: AlertTriangle },
   { href: '/demo', label: 'Demo', icon: PlayCircle, badge: 'New' },
+  { href: '/docs', label: 'Docs', icon: BookOpen },
   { href: '/settings', label: 'Settings', icon: Settings },
 ]
 
