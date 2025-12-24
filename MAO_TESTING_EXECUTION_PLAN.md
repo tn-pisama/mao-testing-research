@@ -1969,6 +1969,260 @@ class PerformanceMonitor:
 
 ---
 
+---
+
+# PART 6: MVP & DESIGN PARTNER ACQUISITION
+
+## 6.1 MVP Scope (4 Weeks)
+
+### Constraints
+- **Single Framework**: LangGraph only
+- **Single Database**: PostgreSQL + pgvector
+- **Single Detection**: Loop detection + state corruption
+
+### Week-by-Week Build
+
+| Week | Deliverable | Effort |
+|------|-------------|--------|
+| 1-2 | OTEL collector endpoint, state storage, tenant auth | 10 days |
+| 3 | Multi-level loop detection, schema validation, local embeddings | 5 days |
+| 4 | CLI trace viewer, failure reports, basic web dashboard | 5 days |
+
+### MVP Feature Set
+
+| Feature | In MVP | Post-MVP |
+|---------|--------|----------|
+| Trace ingestion (OTEL) | ✅ | |
+| Loop detection | ✅ | |
+| State corruption detection | ✅ | |
+| CLI viewer (`mao inspect`) | ✅ | |
+| Basic web dashboard | ✅ | |
+| Cost attribution | ✅ | |
+| Persona drift detection | | ✅ |
+| Coordination analysis | | ✅ |
+| Chaos testing | | ✅ |
+| Deterministic replay | | ✅ |
+| CrewAI/AutoGen support | | ✅ |
+
+---
+
+## 6.2 Demo Strategy
+
+### Principle: Live Failure, Live Detection
+
+**No mock/simulated data.** All demos use real LangGraph execution with intentionally buggy agents.
+
+| Approach | Mock Data? | Real Execution? | Valid? |
+|----------|------------|-----------------|--------|
+| Fake JSON traces | Yes | No | ❌ |
+| Live buggy agent | No | Yes | ✅ |
+| Pre-recorded real run | No | Yes | ✅ |
+| Partner production trace | No | Yes | ✅ |
+
+### Demo Agent: Research Workflow
+
+```
+User Query → Researcher → Analyst → Writer → Report
+```
+
+**Intentional Bug**: Analyst asks Researcher for "more detail" indefinitely (infinite loop)
+
+When executed:
+- Real LLM calls (~$0.50 per demo)
+- Real infinite loop occurs
+- Real trace captured
+- Real detection triggers
+
+### Demo Script (30 Minutes)
+
+| Segment | Duration | Content |
+|---------|----------|---------|
+| **Hook** | 2 min | "Your agent burned $500 in an infinite loop. We detect that in 3 seconds." |
+| **Live Demo** | 15 min | Run buggy agent → loop detected → show trace → show cost |
+| **Case Study** | 5 min | Synthetic example of caught PII leak |
+| **Partner Ask** | 8 min | Share 10 traces under NDA, weekly feedback, free beta access |
+
+### Demo Artifacts
+
+| Artifact | Purpose | Effort |
+|----------|---------|--------|
+| `demo-agent/` | Real LangGraph code with real bug | 2 days |
+| `failure-injectors/` | Scripts to trigger loop, corruption | 1 day |
+| Dashboard mockup | Show vision beyond CLI | 2 days |
+| One-pager PDF | Leave-behind for prospects | 1 day |
+| 3-min video | Async demo for outreach | 2 days |
+
+---
+
+## 6.3 Golden Data Population
+
+### No Mock Data Policy
+
+Per project rules:
+- ❌ No synthetic/simulated failure traces
+- ✅ Real MAST dataset traces
+- ✅ Real LangGraph execution (even with intentional bugs)
+- ✅ Real GitHub reproduction cases
+- ✅ Real partner production traces
+
+### Data Sources (Priority Order)
+
+#### Source 1: MAST Dataset (Day 1)
+```bash
+pip install agentdash
+```
+- 1,600+ annotated failure traces
+- 14 failure categories with ground truth labels
+- Covers loops, coordination failures, task derailment
+
+#### Source 2: Self-Induced Failures (Week 1-2)
+Build 3-5 intentionally buggy LangGraph workflows:
+
+| Failure Type | Induction Method | Expected Traces |
+|--------------|------------------|-----------------|
+| Infinite loop | Agent A asks B, B asks A | 20 |
+| State corruption | Wrong field type in handoff | 20 |
+| Role usurpation | Agent claims different identity | 15 |
+| Coordination failure | Agent ignores predecessor output | 15 |
+| Cost explosion | Unbounded retry loop | 10 |
+
+#### Source 3: GitHub Mining (Week 2-3)
+Scrape issues from:
+- `langchain-ai/langgraph` (bug label)
+- `joaomdmoura/crewAI` (reported failures)
+- `microsoft/autogen` (error reports)
+
+Extract reproduction steps → run → capture traces
+
+#### Source 4: Design Partner Traces (Week 6+)
+- Manual annotation sessions with partners
+- Partner labels "this was a real failure"
+- Feedback loop: detection → validation → improve
+
+### Golden Data Schema
+
+```json
+{
+  "trace_id": "uuid",
+  "source": "mast | self-induced | github | partner",
+  "failure_type": "loop | corruption | usurpation | coordination | none",
+  "failure_confirmed": true,
+  "annotated_by": "string",
+  "annotation_date": "timestamp",
+  "detection_result": {
+    "detected": true,
+    "method": "structural | hash | clustering | llm",
+    "confidence": 0.95
+  },
+  "false_positive": false,
+  "false_negative": false
+}
+```
+
+### Population Timeline
+
+| Week | Source | New Traces | Cumulative |
+|------|--------|------------|------------|
+| 1 | MAST dataset | 200 | 200 |
+| 1-2 | Self-induced | 100 | 300 |
+| 2-3 | GitHub mining | 50 | 350 |
+| 4 | Threshold tuning | 50 | 400 |
+| 6-8 | Design partners | 100+ | 500+ |
+
+### Validation Targets
+
+| Metric | Target |
+|--------|--------|
+| Precision | >90% (few false positives) |
+| Recall | >80% (catch most failures) |
+| Golden dataset size | 500+ traces |
+
+---
+
+## 6.4 Design Partner Acquisition
+
+### Target Profile
+
+| Criteria | Requirement |
+|----------|-------------|
+| Framework | LangGraph in production (not POC) |
+| Complexity | 3+ agents in workflow |
+| Experience | Has had production failures |
+| Team size | 10-50 engineers |
+| Stage | Series A-C |
+
+### Outreach Funnel
+
+```
+50 companies contacted
+        ↓
+15 discovery meetings
+        ↓
+5 design partners signed
+        ↓
+100+ traces collected
+```
+
+### Channels
+
+| Channel | Approach | Expected Response |
+|---------|----------|-------------------|
+| LangChain Discord/Slack | Post in #showcase, engage | 5-10 leads |
+| LinkedIn | DM VP Eng at AI-native startups | 10-15 leads |
+| Twitter/X | Engage with LangGraph content | 5 leads |
+| Warm intros | Investors, advisors | 5-10 leads |
+
+### Outreach Template
+
+> Subject: Design partner for multi-agent failure detection
+>
+> We're building failure detection for multi-agent LLM systems. Looking for 5 design partners running LangGraph in production who've experienced coordination failures.
+>
+> What you get:
+> - Free tool access through beta
+> - Direct input on product roadmap
+> - Weekly 30-min feedback calls
+>
+> What we need:
+> - Share 10 failed traces under NDA
+> - 30 minutes/week for feedback
+>
+> 30-min call?
+
+### Success Metrics (Week 8)
+
+| Metric | Target |
+|--------|--------|
+| Design partners signed | 5 |
+| Traces collected | 100+ |
+| Real failures detected | 10+ |
+| "This is exactly what we need" | 3+ partners |
+
+---
+
+## 6.5 MVP Budget
+
+| Item | Cost |
+|------|------|
+| Cloud infrastructure (8 weeks) | $500 |
+| Domain + hosting | $100 |
+| Demo video production | $200 |
+| Outreach tools (Apollo, etc.) | $300 |
+| LLM costs for demos | $100 |
+| **Total** | **$1,200** |
+
+---
+
+## 6.6 Kill Criteria (MVP Phase)
+
+Stop if by Week 8:
+- < 3 design partners signed
+- Partners refuse to share traces
+- "Interesting but not a priority" feedback
+- Technical blocker in OTEL instrumentation
+
+---
+
 ## 5.3 Appendix: Key Resources
 
 ### Academic Papers
