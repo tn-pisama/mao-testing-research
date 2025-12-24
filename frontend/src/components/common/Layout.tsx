@@ -8,15 +8,19 @@ import {
   AlertTriangle, 
   Settings,
   Menu,
-  X 
+  X,
+  Bot,
+  PlayCircle
 } from 'lucide-react'
 import { useUIStore } from '@/stores/uiStore'
 import { clsx } from 'clsx'
 
 const navItems = [
   { href: '/dashboard', label: 'Dashboard', icon: LayoutDashboard },
+  { href: '/agents', label: 'Agents', icon: Bot, badge: 'Live' },
   { href: '/traces', label: 'Traces', icon: Workflow },
   { href: '/detections', label: 'Detections', icon: AlertTriangle },
+  { href: '/demo', label: 'Demo', icon: PlayCircle, badge: 'New' },
   { href: '/settings', label: 'Settings', icon: Settings },
 ]
 
@@ -51,14 +55,28 @@ export function Layout({ children }: { children: React.ReactNode }) {
                 key={item.href}
                 href={item.href}
                 className={clsx(
-                  'flex items-center gap-3 px-3 py-2 rounded-lg transition-colors mb-1',
+                  'flex items-center gap-3 px-3 py-2 rounded-lg transition-all duration-200 mb-1 group',
                   isActive
-                    ? 'bg-primary-600 text-white'
+                    ? 'bg-primary-600 text-white shadow-lg shadow-primary-500/20'
                     : 'text-slate-400 hover:bg-slate-700 hover:text-white'
                 )}
               >
-                <item.icon size={20} />
-                {!sidebarCollapsed && <span>{item.label}</span>}
+                <item.icon size={20} className={clsx(isActive && 'animate-pulse-subtle')} />
+                {!sidebarCollapsed && (
+                  <span className="flex-1 flex items-center justify-between">
+                    <span>{item.label}</span>
+                    {item.badge && (
+                      <span className={clsx(
+                        'px-1.5 py-0.5 text-[10px] font-medium rounded-full',
+                        item.badge === 'Live' 
+                          ? 'bg-emerald-500/20 text-emerald-400' 
+                          : 'bg-purple-500/20 text-purple-400'
+                      )}>
+                        {item.badge}
+                      </span>
+                    )}
+                  </span>
+                )}
               </Link>
             )
           })}
