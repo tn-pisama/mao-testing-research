@@ -1,8 +1,14 @@
 """Tests for CLI commands."""
 
+import sys
 import pytest
 from click.testing import CliRunner
 from unittest.mock import AsyncMock, patch, MagicMock
+
+if sys.version_info >= (3, 14):
+    import certifi
+    if not hasattr(certifi, 'where'):
+        certifi.where = lambda: "/etc/ssl/certs/ca-certificates.crt"
 
 from mao.cli.main import cli
 

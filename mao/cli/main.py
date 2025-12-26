@@ -80,6 +80,10 @@ def debug(ctx, trace_id: Optional[str], last: Optional[int], since: Optional[str
     """
     config = ctx.obj["config"]
     
+    if not trace_id and not last:
+        print_error("Specify a trace ID or use --last N")
+        sys.exit(2)
+    
     async def _debug():
         async with create_client(config.endpoint, config.get_api_key(), config.tenant_id) as client:
             if trace_id:
@@ -115,10 +119,6 @@ def debug(ctx, trace_id: Optional[str], last: Optional[int], since: Optional[str
                         issues_found += 1
                 
                 return 1 if issues_found else 0
-            
-            else:
-                print_error("Specify a trace ID or use --last N")
-                return 2
     
     try:
         exit_code = run_async(_debug())

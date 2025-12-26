@@ -15,6 +15,7 @@ mao_testing/integrations/__init__.py
 mao_testing/integrations/autogen.py
 mao_testing/integrations/crewai.py
 mao_testing/integrations/langgraph.py
+mao_testing/integrations/n8n.py
 tests/test_config.py
 tests/test_integration.py
 tests/test_integrations.py

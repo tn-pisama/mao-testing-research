@@ -1,13 +1,34 @@
 import pytest
 import pytest_asyncio
+from unittest.mock import MagicMock, AsyncMock
+from uuid import uuid4
+from datetime import datetime
 from httpx import AsyncClient, ASGITransport
 from app.main import app
+from app.storage.database import get_db
 
 
 @pytest_asyncio.fixture
 async def client():
     async with AsyncClient(transport=ASGITransport(app=app), base_url="http://test") as ac:
         yield ac
+
+
+@pytest_asyncio.fixture
+async def mock_db_client():
+    mock_db = MagicMock()
+    mock_db.add = MagicMock()
+    mock_db.commit = AsyncMock()
+    mock_db.refresh = AsyncMock()
+    mock_db.execute = AsyncMock()
+    
+    async def override_get_db():
+        yield mock_db
+    
+    app.dependency_overrides[get_db] = override_get_db
+    async with AsyncClient(transport=ASGITransport(app=app), base_url="http://test") as ac:
+        yield ac, mock_db
+    app.dependency_overrides.clear()
 
 
 @pytest.mark.asyncio
@@ -27,9 +48,21 @@ async def test_root_endpoint(client):
     assert data["name"] == "MAO Testing Platform"
 
 
-@pytest.mark.skip(reason="Requires database - run as integration test")
-async def test_create_tenant(client):
+@pytest.mark.asyncio
+async def test_create_tenant(mock_db_client):
+    client, mock_db = mock_db_client
+    
+    mock_tenant_id = uuid4()
+    mock_created_at = datetime.utcnow()
+    
+    def set_tenant_attrs(tenant):
+        tenant.id = mock_tenant_id
+        tenant.created_at = mock_created_at
+    
+    mock_db.refresh = AsyncMock(side_effect=set_tenant_attrs)
+    
     response = await client.post("/api/v1/auth/tenants", json={"name": "Test Tenant"})
+    
     assert response.status_code == 201
     data = response.json()
     assert "id" in data
