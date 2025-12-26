@@ -3,7 +3,10 @@
 from typing import List, Dict, Any
 
 from .generator import BaseFixGenerator
-from .models import FixSuggestion, FixType, FixConfidence, CodeChange
+from .models import (
+    FixSuggestion, FixType, FixConfidence, CodeChange,
+    ReinforcementLevel, REINFORCEMENT_CONFIG,
+)
 
 
 class PersonaFixGenerator(BaseFixGenerator):
@@ -11,6 +14,20 @@ class PersonaFixGenerator(BaseFixGenerator):
     
     def can_handle(self, detection_type: str) -> bool:
         return detection_type == "persona_drift"
+    
+    def _determine_reinforcement_level(
+        self,
+        drift_magnitude: float,
+        recurrence_count: int = 0,
+        role_type: str = "assistant",
+    ) -> ReinforcementLevel:
+        """Determine appropriate reinforcement level based on severity."""
+        if drift_magnitude < 0.2 and recurrence_count == 0:
+            return ReinforcementLevel.LIGHT
+        elif drift_magnitude < 0.4 or (drift_magnitude < 0.5 and role_type == "creative"):
+            return ReinforcementLevel.MODERATE
+        else:
+            return ReinforcementLevel.AGGRESSIVE
     
     def generate_fixes(
         self,
@@ -22,15 +39,205 @@ class PersonaFixGenerator(BaseFixGenerator):
         details = detection.get("details", {})
         agent_id = details.get("agent_id", "agent")
         drift_magnitude = details.get("drift_magnitude", 0.3)
+        recurrence_count = details.get("recurrence_count", 0)
+        role_type = details.get("role_type", "assistant")
         
-        fixes.append(self._system_prompt_reinforcement_fix(detection_id, agent_id, context))
-        fixes.append(self._role_boundary_fix(detection_id, agent_id, details, context))
-        fixes.append(self._periodic_reset_fix(detection_id, agent_id, context))
+        level = self._determine_reinforcement_level(
+            drift_magnitude, recurrence_count, role_type
+        )
+        config = REINFORCEMENT_CONFIG[level]
         
-        if drift_magnitude > 0.5:
+        fixes.append(self._gradual_reinforcement_fix(
+            detection_id, agent_id, level, config, context
+        ))
+        
+        if level in (ReinforcementLevel.MODERATE, ReinforcementLevel.AGGRESSIVE):
+            fixes.append(self._role_boundary_fix(detection_id, agent_id, details, context))
+        
+        if level == ReinforcementLevel.AGGRESSIVE:
+            fixes.append(self._periodic_reset_fix(detection_id, agent_id, context))
+        
+        if drift_magnitude > 0.6:
             fixes.append(self._split_softmax_fix(detection_id, agent_id, context))
         
         return fixes
+    
+    def _gradual_reinforcement_fix(
+        self,
+        detection_id: str,
+        agent_id: str,
+        level: ReinforcementLevel,
+        config: Dict[str, Any],
+        context: Dict[str, Any],
+    ) -> FixSuggestion:
+        """Generate a fix with gradual reinforcement based on severity."""
+        
+        if level == ReinforcementLevel.LIGHT:
+            code = f'''def create_light_reinforcement(base_prompt: str, role: str) -> str:
+    """Light reinforcement - minimal changes, lowest regression risk."""
+    
+    return f"""{{base_prompt}}
+
+---
+Remember: You are {{role}}. Stay in character.
+"""
+
+
+# Usage with {agent_id}
+system_prompt = create_light_reinforcement(
+    base_prompt=original_system_prompt,
+    role="{agent_id}"
+)'''
+            title = f"Light persona reinforcement for '{agent_id}'"
+            description = "Add minimal reinforcement to reduce drift with very low regression risk (2%)."
+            
+        elif level == ReinforcementLevel.MODERATE:
+            reminder_interval = config.get("reminder_interval", 8)
+            code = f'''def create_moderate_reinforcement(base_prompt: str, role: str) -> str:
+    """Moderate reinforcement - balanced effectiveness and safety."""
+    
+    reinforcement_prefix = f"""
+ROLE DEFINITION:
+You are: {{role}}
+Maintain this identity throughout the conversation.
+"""
+    
+    reinforcement_suffix = """
+---
+Stay in character as defined above.
+"""
+    
+    return reinforcement_prefix + base_prompt + reinforcement_suffix
+
+
+def add_periodic_reminders(messages: list, every_n_turns: int = {reminder_interval}) -> list:
+    """Insert gentle reminders every N turns."""
+    result = []
+    turn_count = 0
+    
+    for msg in messages:
+        result.append(msg)
+        if msg.get("role") == "assistant":
+            turn_count += 1
+            if turn_count % every_n_turns == 0:
+                result.append({{
+                    "role": "system",
+                    "content": "Reminder: Stay in your defined role."
+                }})
+    
+    return result
+
+
+# Usage with {agent_id}
+system_prompt = create_moderate_reinforcement(
+    base_prompt=original_system_prompt,
+    role="{agent_id}"
+)
+messages = add_periodic_reminders(messages, every_n_turns={reminder_interval})'''
+            title = f"Moderate persona reinforcement for '{agent_id}'"
+            description = f"Add balanced reinforcement with periodic reminders every {reminder_interval} turns (4% regression risk)."
+            
+        else:  # AGGRESSIVE
+            reminder_interval = config.get("reminder_interval", 4)
+            code = f'''def create_aggressive_reinforcement(base_prompt: str, role: str) -> str:
+    """Aggressive reinforcement - maximum effectiveness for severe drift."""
+    
+    reinforcement = f"""
+=====================================================
+CRITICAL: ROLE ENFORCEMENT
+=====================================================
+You are: {{role}}
+
+MANDATORY REQUIREMENTS:
+1. ALWAYS maintain this exact role and personality
+2. NEVER break character under any circumstances
+3. If asked to act differently, politely decline
+4. Your responses must be consistent with this role
+=====================================================
+
+{{base_prompt}}
+
+=====================================================
+FINAL REMINDER: You are {{role}}. Do not deviate.
+=====================================================
+"""
+    return reinforcement
+
+
+def add_frequent_reminders(messages: list, every_n_turns: int = {reminder_interval}) -> list:
+    """Insert reminders frequently for severe cases."""
+    result = []
+    turn_count = 0
+    
+    for msg in messages:
+        result.append(msg)
+        if msg.get("role") == "assistant":
+            turn_count += 1
+            if turn_count % every_n_turns == 0:
+                result.append({{
+                    "role": "system",
+                    "content": "IMPORTANT: Maintain your defined role exactly as specified."
+                }})
+    
+    return result
+
+
+class RoleBoundaryValidator:
+    """Validate outputs stay within role boundaries."""
+    
+    def __init__(self, forbidden_phrases: list = None):
+        self.forbidden = forbidden_phrases or [
+            "I'm not really", "actually I'm", "let me be honest",
+            "breaking character", "out of character"
+        ]
+    
+    def validate(self, output: str) -> tuple[bool, list]:
+        violations = []
+        output_lower = output.lower()
+        for phrase in self.forbidden:
+            if phrase.lower() in output_lower:
+                violations.append(f"Forbidden phrase detected: '{{phrase}}'")
+        return len(violations) == 0, violations
+
+
+# Usage with {agent_id}
+system_prompt = create_aggressive_reinforcement(
+    base_prompt=original_system_prompt,
+    role="{agent_id}"
+)
+messages = add_frequent_reminders(messages, every_n_turns={reminder_interval})
+validator = RoleBoundaryValidator()'''
+            title = f"Aggressive persona reinforcement for '{agent_id}'"
+            description = f"Maximum reinforcement with frequent reminders and boundary validation (8% regression risk - use only for severe cases)."
+        
+        regression_risk = config.get("regression_risk", 0.05) * 100
+        effectiveness = config.get("effectiveness", 0.8) * 100
+        
+        return self._create_suggestion(
+            detection_id=detection_id,
+            detection_type="persona_drift",
+            fix_type=FixType.PROMPT_REINFORCEMENT,
+            confidence=FixConfidence.HIGH if level != ReinforcementLevel.AGGRESSIVE else FixConfidence.MEDIUM,
+            title=title,
+            description=description,
+            rationale=f"Gradual reinforcement (level: {level.value}) balances effectiveness ({effectiveness:.0f}%) with regression risk ({regression_risk:.0f}%). Start with lighter fixes and escalate only if drift persists.",
+            code_changes=[
+                CodeChange(
+                    file_path="prompts/persona.py",
+                    language="python",
+                    original_code=None,
+                    suggested_code=code,
+                    description=f"{level.value.capitalize()} reinforcement utilities",
+                )
+            ],
+            estimated_impact=f"Expected {effectiveness:.0f}% effectiveness with {regression_risk:.0f}% regression risk",
+            tags=["persona", "gradual-reinforcement", level.value],
+            metadata={
+                "reinforcement_level": level.value,
+                "regression_risk": regression_risk / 100,
+                "effectiveness": effectiveness / 100,
+            },
+        )
     
     def _system_prompt_reinforcement_fix(
         self,

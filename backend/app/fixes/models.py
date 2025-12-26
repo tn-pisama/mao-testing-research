@@ -26,6 +26,39 @@ class FixConfidence(Enum):
     LOW = "low"
 
 
+class ReinforcementLevel(Enum):
+    LIGHT = "light"
+    MODERATE = "moderate"
+    AGGRESSIVE = "aggressive"
+
+
+REINFORCEMENT_CONFIG = {
+    ReinforcementLevel.LIGHT: {
+        "prompt_additions": 1,
+        "periodic_reminders": False,
+        "boundary_enforcement": False,
+        "regression_risk": 0.02,
+        "effectiveness": 0.65,
+    },
+    ReinforcementLevel.MODERATE: {
+        "prompt_additions": 2,
+        "periodic_reminders": True,
+        "reminder_interval": 8,
+        "boundary_enforcement": False,
+        "regression_risk": 0.04,
+        "effectiveness": 0.80,
+    },
+    ReinforcementLevel.AGGRESSIVE: {
+        "prompt_additions": 3,
+        "periodic_reminders": True,
+        "reminder_interval": 4,
+        "boundary_enforcement": True,
+        "regression_risk": 0.08,
+        "effectiveness": 0.92,
+    },
+}
+
+
 @dataclass
 class CodeChange:
     """A single code change within a fix suggestion."""
