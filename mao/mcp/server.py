@@ -12,7 +12,7 @@ Security notes:
 import asyncio
 import json
 import logging
-from datetime import datetime
+from datetime import datetime, timezone
 from typing import Optional, Dict, Any, List
 from pathlib import Path
 
@@ -32,7 +32,7 @@ class RateLimiter:
     
     async def acquire(self) -> bool:
         """Acquire rate limit token."""
-        now = datetime.utcnow()
+        now = datetime.now(timezone.utc)
         
         self.requests = [
             r for r in self.requests
@@ -55,7 +55,7 @@ class AuditLogger:
     def log(self, action: str, data: Dict[str, Any]) -> None:
         """Log an action."""
         entry = {
-            "timestamp": datetime.utcnow().isoformat(),
+            "timestamp": datetime.now(timezone.utc).isoformat(),
             "action": action,
             "data": data,
         }

@@ -26,9 +26,8 @@ class MAOClient:
             max_connections=100,
         )
         timeout_config = httpx.Timeout(
+            timeout,
             connect=5.0,
-            read=timeout,
-            write=10.0,
         )
         
         self._client = httpx.AsyncClient(

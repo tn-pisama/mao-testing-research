@@ -195,12 +195,12 @@ print(f"Synced {len(results)} executions")`}
               <tr>
                 <td className="px-4 py-3 text-white">Rate Limit</td>
                 <td className="px-4 py-3 text-slate-400">AI provider rate limit exceeded</td>
-                <td className="px-4 py-3 text-slate-400">Error message contains "rate limit"</td>
+                <td className="px-4 py-3 text-slate-400">Error message contains &quot;rate limit&quot;</td>
               </tr>
               <tr>
                 <td className="px-4 py-3 text-white">Token Overflow</td>
                 <td className="px-4 py-3 text-slate-400">Token limit exceeded on LLM call</td>
-                <td className="px-4 py-3 text-slate-400">Error contains "token" + "limit"</td>
+                <td className="px-4 py-3 text-slate-400">Error contains &quot;token&quot; + &quot;limit&quot;</td>
               </tr>
               <tr>
                 <td className="px-4 py-3 text-white">Parse Error</td>
@@ -265,7 +265,7 @@ print(f"Synced {len(results)} executions")`}
       <section className="mb-10">
         <h2 className="text-xl font-bold text-white mb-4">Example Workflow</h2>
         <p className="text-slate-300 mb-4">
-          Here's a complete example of an n8n workflow with MAO Testing integration:
+          Here&apos;s a complete example of an n8n workflow with MAO Testing integration:
         </p>
 
         <div className="rounded-xl bg-slate-800/50 border border-slate-700 p-6">

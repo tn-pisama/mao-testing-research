@@ -185,7 +185,7 @@ function verifyWebhook(req, secret) {
               </li>
               <li className="flex items-start gap-2 text-slate-300">
                 <span className="flex-shrink-0 w-6 h-6 rounded-full bg-primary-600/30 text-primary-400 text-xs flex items-center justify-center font-medium">2</span>
-                Click "Add Webhook"
+                Click &quot;Add Webhook&quot;
               </li>
               <li className="flex items-start gap-2 text-slate-300">
                 <span className="flex-shrink-0 w-6 h-6 rounded-full bg-primary-600/30 text-primary-400 text-xs flex items-center justify-center font-medium">3</span>
@@ -286,7 +286,7 @@ def handle_webhook(payload):
       <section className="mb-10">
         <h2 className="text-xl font-bold text-white mb-4">Retry Policy</h2>
         <p className="text-slate-300 mb-4">
-          If your endpoint returns a non-2xx status code, we'll retry the delivery:
+          If your endpoint returns a non-2xx status code, we&apos;ll retry the delivery:
         </p>
 
         <div className="rounded-lg bg-slate-800/50 border border-slate-700 p-4">
