@@ -25,7 +25,7 @@ async def get_loop_analytics(
     result = await db.execute(
         select(Detection).where(
             Detection.tenant_id == UUID(tenant_id),
-            Detection.detection_type == "loop",
+            Detection.detection_type == "infinite_loop",
             Detection.created_at >= start_date,
         )
     )

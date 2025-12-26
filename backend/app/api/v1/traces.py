@@ -278,7 +278,7 @@ async def analyze_trace(
             tenant_id=UUID(tenant_id),
             trace_id=trace_id,
             state_id=states[-1].id if states else None,
-            detection_type="loop",
+            detection_type="infinite_loop",
             confidence=int(loop_result.confidence * 100),
             method=loop_result.method,
             details={
@@ -288,7 +288,7 @@ async def analyze_trace(
         )
         db.add(detection)
         detections.append({
-            "type": "loop",
+            "type": "infinite_loop",
             "confidence": loop_result.confidence,
             "method": loop_result.method,
         })

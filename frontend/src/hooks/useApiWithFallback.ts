@@ -10,8 +10,6 @@ import {
 } from '@/lib/demo-data'
 import type { LoopAnalytics, CostAnalytics, Detection, Trace } from '@/lib/api'
 
-const DEMO_MODE_KEY = 'mao_demo_mode'
-const DEMO_TENANT_ID = 'demo'
 const DEMO_API_KEY = 'mao_demo_key_12345'
 
 export function useApiWithFallback() {
@@ -54,22 +52,40 @@ export function useApiWithFallback() {
     setIsDemoMode(true)
   }, [])
 
-  const initializeAuth = useCallback(() => {
-    if (typeof window !== 'undefined') {
-      const hasToken = localStorage.getItem('token')
-      if (!hasToken) {
-        localStorage.setItem('tenantId', DEMO_TENANT_ID)
-        localStorage.setItem('token', DEMO_API_KEY)
-      }
+  const initializeAuth = useCallback(async (): Promise<boolean> => {
+    if (typeof window === 'undefined') return false
+    
+    const existingToken = localStorage.getItem('token')
+    if (existingToken && existingToken.startsWith('eyJ')) {
+      return true
     }
+    
+    try {
+      const response = await api.login(DEMO_API_KEY)
+      if (response.access_token) {
+        localStorage.setItem('token', response.access_token)
+        const payload = JSON.parse(atob(response.access_token.split('.')[1]))
+        if (payload.tenant_id) {
+          localStorage.setItem('tenantId', payload.tenant_id)
+        }
+        return true
+      }
+    } catch (err) {
+      console.warn('Auth failed, will use demo mode:', err)
+    }
+    return false
   }, [])
 
   const refresh = useCallback(async () => {
     setIsLoading(true)
-    initializeAuth()
     
-    const success = await loadRealData()
-    if (!success) {
+    const authSuccess = await initializeAuth()
+    if (authSuccess) {
+      const dataSuccess = await loadRealData()
+      if (!dataSuccess) {
+        loadDemoData()
+      }
+    } else {
       loadDemoData()
     }
     
