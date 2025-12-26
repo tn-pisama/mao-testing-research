@@ -1,6 +1,6 @@
-# MAO Testing - LangGraph Demo Agent
+# MAO Testing - Multi-Agent Demo Agents
 
-Multi-agent workflow demos showcasing MAO's detection capabilities.
+Multi-agent workflow demos showcasing MAO's detection capabilities using **LangGraph** and **CrewAI**.
 
 ## Quick Start
 
@@ -18,11 +18,15 @@ pip install -e ../sdk  # Install MAO SDK
 # Set API key
 export OPENAI_API_KEY=your-key-here
 
-# Run normal workflow
+# Run LangGraph demo
 python langgraph_demo.py --mode normal
 
+# Run CrewAI demo
+python crewai_demo.py --mode normal
+
 # Run with MAO tracing
-python langgraph_demo.py --mode normal --trace
+python langgraph_demo.py --mode all --trace
+python crewai_demo.py --mode all --trace
 ```
 
 ## Demo Modes
@@ -110,7 +114,7 @@ python langgraph_demo.py --mode all --trace --endpoint http://localhost:8000
 
 ## Integration with MAO SDK
 
-The demo uses `LangGraphTracer` for automatic instrumentation:
+### LangGraph Integration
 
 ```python
 from mao_testing.integrations.langgraph import LangGraphTracer
@@ -127,3 +131,65 @@ workflow = tracer.instrument(workflow)  # Auto-traces all nodes
 result = workflow.compile().invoke(initial_state)
 tracer.flush()  # Send traces to MAO backend
 ```
+
+### CrewAI Integration
+
+```python
+from mao_testing.integrations.crewai import CrewAITracer
+
+tracer = CrewAITracer(
+    api_key="your-mao-key",
+    endpoint="http://localhost:8000",
+    environment="demo",
+)
+
+crew = Crew(agents=[researcher, analyst, writer], tasks=[...])
+crew = tracer.instrument(crew)  # Auto-traces all agents
+
+result = crew.kickoff()
+tracer.flush()  # Send traces to MAO backend
+```
+
+---
+
+## CrewAI Demo
+
+### Crew Architecture
+
+```
+┌──────────────────┐     ┌──────────────────┐     ┌──────────────────┐
+│ Senior Researcher│────▶│ Research Analyst │────▶│ Technical Writer │
+│   (research)     │     │   (analyze)      │     │   (write)        │
+└──────────────────┘     └──────────────────┘     └──────────────────┘
+                               │
+                        [loop mode: 🔄]
+                        [corruption: 💀]
+                                               [drift mode: 🎭]
+```
+
+### CrewAI Examples
+
+```bash
+# Normal execution
+python crewai_demo.py --mode normal
+
+# Infinite loop (analyst keeps requesting more research)
+python crewai_demo.py --mode loop
+
+# State corruption (corrupted tool injects garbage)
+python crewai_demo.py --mode corruption
+
+# Persona drift (writer becomes unprofessional blogger)
+python crewai_demo.py --mode drift
+
+# Run all with tracing
+python crewai_demo.py --mode all --trace
+```
+
+### CrewAI Failure Modes
+
+| Mode | Agent Affected | Bug Description |
+|------|---------------|-----------------|
+| `loop` | Analyst | Uses `InfiniteLoopTool` that always requests more research |
+| `corruption` | Analyst | Uses `CorruptedTool` that injects error messages |
+| `drift` | Writer | Becomes "Unprofessional Blogger" with casual persona |
