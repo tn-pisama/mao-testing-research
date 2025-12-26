@@ -236,3 +236,33 @@ class ImportError(Base):
     __table_args__ = (
         Index("idx_import_errors_job", "import_job_id"),
     )
+
+
+class WebhookNonce(Base):
+    __tablename__ = "webhook_nonces"
+    
+    id = Column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
+    nonce = Column(String(64), unique=True, nullable=False)
+    timestamp = Column(Integer, nullable=False)
+    created_at = Column(DateTime(timezone=True), server_default=func.now())
+    
+    __table_args__ = (
+        Index("idx_webhook_nonces_nonce", "nonce"),
+        Index("idx_webhook_nonces_created", "created_at"),
+    )
+
+
+class N8nWorkflow(Base):
+    __tablename__ = "n8n_workflows"
+    
+    id = Column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
+    tenant_id = Column(UUID(as_uuid=True), ForeignKey("tenants.id"), nullable=False)
+    workflow_id = Column(String(255), nullable=False)
+    workflow_name = Column(String(255), nullable=True)
+    webhook_secret = Column(String(255), nullable=True)
+    registered_at = Column(DateTime(timezone=True), server_default=func.now())
+    
+    __table_args__ = (
+        UniqueConstraint("tenant_id", "workflow_id", name="uq_n8n_workflow_tenant"),
+        Index("idx_n8n_workflows_tenant", "tenant_id"),
+    )
