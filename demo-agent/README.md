@@ -1,6 +1,15 @@
 # MAO Testing - Multi-Agent Demo Agents
 
-Multi-agent workflow demos showcasing MAO's detection capabilities using **LangGraph** and **CrewAI**.
+Multi-agent workflow demos showcasing MAO's detection and **self-healing** capabilities using **LangGraph**, **CrewAI**, and **n8n**.
+
+## Requirements
+
+| Framework | Python Version | Notes |
+|-----------|---------------|-------|
+| LangGraph | 3.10+ | Works with 3.14 |
+| CrewAI | 3.10 - 3.13 | **Does NOT work with Python 3.14** |
+| n8n | 3.10+ | Simulator only (no n8n instance needed) |
+| Self-Healing | 3.10+ | Backend required for full validation |
 
 ## Quick Start
 
@@ -193,6 +202,58 @@ python crewai_demo.py --mode all --trace
 | `loop` | Analyst | Uses `InfiniteLoopTool` that always requests more research |
 | `corruption` | Analyst | Uses `CorruptedTool` that injects error messages |
 | `drift` | Writer | Becomes "Unprofessional Blogger" with casual persona |
+
+---
+
+## Self-Healing Demo
+
+Demonstrates the complete self-healing pipeline: **Detect → Analyze → Fix → Validate**.
+
+### Self-Healing Examples
+
+```bash
+# View fix suggestions (no auto-apply)
+python self_healing_demo.py --mode loop
+python self_healing_demo.py --mode corruption
+python self_healing_demo.py --mode drift
+
+# Auto-apply and validate fixes
+python self_healing_demo.py --mode all --auto-apply
+
+# Output as JSON
+python self_healing_demo.py --mode loop --auto-apply --json
+```
+
+### Self-Healing Pipeline
+
+```
+Detection          Analyzer           Fix Generator       Applicator         Validator
+    │                  │                    │                  │                 │
+    ▼                  ▼                    ▼                  ▼                 ▼
+┌─────────┐     ┌────────────┐      ┌─────────────┐    ┌───────────┐    ┌───────────┐
+│ Loop    │────▶│ Root Cause │─────▶│ retry_limit │───▶│ Apply to  │───▶│ Validate  │
+│ Detected│     │ Diagnosis  │      │ circuit_brk │    │ Workflow  │    │ Fix Works │
+└─────────┘     └────────────┘      │ backoff     │    └───────────┘    └───────────┘
+                                    └─────────────┘
+```
+
+### Fix Types by Failure Category
+
+| Category | Fix Types Applied |
+|----------|-------------------|
+| Infinite Loop | `retry_limit`, `circuit_breaker`, `exponential_backoff` |
+| State Corruption | `state_validation`, `schema_enforcement`, `checkpoint_recovery` |
+| Persona Drift | `prompt_reinforcement`, `role_boundary`, `periodic_reset` |
+
+### Validation Checks
+
+| Validator | What It Checks |
+|-----------|---------------|
+| `configuration_validation` | Valid nodes, settings, connections structure |
+| `loop_prevention_validation` | max_iterations, circuit breaker, backoff enabled |
+| `state_integrity_validation` | state_validation, schema enforcement, checkpointing |
+| `persona_consistency_validation` | persona_enforcement, role boundaries, prompt reinforcement |
+| `regression_validation` | Original nodes/connections preserved |
 
 ---
 

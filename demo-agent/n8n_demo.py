@@ -27,7 +27,7 @@ import secrets
 import time
 import hmac
 import hashlib
-from datetime import datetime, timedelta
+from datetime import datetime, timedelta, timezone
 from typing import Optional, Dict, Any, List
 from dataclasses import dataclass, asdict
 
@@ -105,7 +105,7 @@ def generate_workflow_id() -> str:
 
 def create_normal_execution(query: str) -> N8nExecution:
     """Create a normal, successful workflow execution."""
-    started_at = datetime.utcnow()
+    started_at = datetime.now(timezone.utc)
     
     nodes = [
         N8nNode(
@@ -159,7 +159,7 @@ def create_normal_execution(query: str) -> N8nExecution:
 
 def create_loop_execution(query: str) -> N8nExecution:
     """Create a workflow execution that exhibits infinite loop behavior."""
-    started_at = datetime.utcnow()
+    started_at = datetime.now(timezone.utc)
     
     nodes = [
         N8nNode(
@@ -210,7 +210,7 @@ def create_loop_execution(query: str) -> N8nExecution:
 
 def create_corruption_execution(query: str) -> N8nExecution:
     """Create a workflow execution with state corruption."""
-    started_at = datetime.utcnow()
+    started_at = datetime.now(timezone.utc)
     
     nodes = [
         N8nNode(
@@ -267,7 +267,7 @@ def create_corruption_execution(query: str) -> N8nExecution:
 
 def create_drift_execution(query: str) -> N8nExecution:
     """Create a workflow execution with output drift/inconsistency."""
-    started_at = datetime.utcnow()
+    started_at = datetime.now(timezone.utc)
     
     nodes = [
         N8nNode(
