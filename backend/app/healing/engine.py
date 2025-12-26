@@ -112,6 +112,7 @@ class SelfHealingEngine:
                 result.status = HealingStatus.PENDING
                 result.metadata["requires_approval"] = True
                 result.completed_at = datetime.now(timezone.utc)
+                self._healing_history.append(result)
                 return result
             
             result.status = HealingStatus.APPLYING_FIX
