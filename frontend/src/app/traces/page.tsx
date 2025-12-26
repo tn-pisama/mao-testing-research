@@ -1,22 +1,21 @@
 'use client'
 
-import { useState, useEffect, useMemo } from 'react'
+import { useState, useMemo } from 'react'
+import { Wifi, WifiOff } from 'lucide-react'
 import { Layout } from '@/components/common/Layout'
 import { TraceList } from '@/components/traces/TraceList'
 import { TraceSearch } from '@/components/traces/TraceSearch'
-import { generateDemoTraces } from '@/lib/demo-data'
-import type { Trace } from '@/lib/api'
+import { useTraces } from '@/hooks/useApiWithFallback'
 
 export default function TracesPage() {
   const [page, setPage] = useState(1)
   const [statusFilter, setStatusFilter] = useState<string | undefined>()
-  const [isLoading, setIsLoading] = useState(true)
-  const [allTraces, setAllTraces] = useState<Trace[]>([])
-
-  useEffect(() => {
-    setAllTraces(generateDemoTraces(50))
-    setIsLoading(false)
-  }, [])
+  
+  const { traces: allTraces, total, isLoading, isDemoMode } = useTraces({
+    page,
+    perPage: 50,
+    status: statusFilter,
+  })
 
   const filteredTraces = useMemo(() => {
     if (!statusFilter) return allTraces
@@ -47,7 +46,21 @@ export default function TracesPage() {
     <Layout>
       <div className="p-6">
         <div className="flex justify-between items-center mb-6">
-          <h1 className="text-2xl font-bold text-white">Traces</h1>
+          <div className="flex items-center gap-3">
+            <h1 className="text-2xl font-bold text-white">Traces</h1>
+            {isDemoMode && (
+              <span className="flex items-center gap-1.5 px-2 py-1 text-xs font-medium rounded-full bg-amber-500/20 text-amber-400 border border-amber-500/30">
+                <WifiOff size={12} />
+                Demo Mode
+              </span>
+            )}
+            {!isDemoMode && (
+              <span className="flex items-center gap-1.5 px-2 py-1 text-xs font-medium rounded-full bg-green-500/20 text-green-400 border border-green-500/30">
+                <Wifi size={12} />
+                Live
+              </span>
+            )}
+          </div>
           <TraceSearch 
             statusFilter={statusFilter} 
             onStatusChange={setStatusFilter} 

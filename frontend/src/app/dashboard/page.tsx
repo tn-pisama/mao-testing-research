@@ -1,7 +1,7 @@
 'use client'
 
-import { useState, useEffect } from 'react'
-import { Upload } from 'lucide-react'
+import { useState } from 'react'
+import { Upload, Wifi, WifiOff } from 'lucide-react'
 import { Layout } from '@/components/common/Layout'
 import { LoopAnalyticsCard } from '@/components/detection/LoopAnalyticsCard'
 import { CostAnalyticsCard } from '@/components/detection/CostAnalyticsCard'
@@ -9,29 +9,19 @@ import { RecentDetectionsCard } from '@/components/detection/RecentDetectionsCar
 import { TraceStatusCard } from '@/components/traces/TraceStatusCard'
 import { Button } from '@/components/ui/Button'
 import { ImportModal } from '@/components/import'
-import {
-  generateDemoLoopAnalytics,
-  generateDemoCostAnalytics,
-  generateDemoDetections,
-  generateDemoTraces,
-} from '@/lib/demo-data'
-import type { LoopAnalytics, CostAnalytics, Detection, Trace } from '@/lib/api'
+import { useApiWithFallback } from '@/hooks/useApiWithFallback'
 
 export default function DashboardPage() {
-  const [isLoading, setIsLoading] = useState(true)
-  const [loopAnalytics, setLoopAnalytics] = useState<LoopAnalytics | undefined>()
-  const [costAnalytics, setCostAnalytics] = useState<CostAnalytics | undefined>()
-  const [detections, setDetections] = useState<Detection[]>([])
-  const [traces, setTraces] = useState<Trace[]>([])
+  const {
+    isLoading,
+    isDemoMode,
+    loopAnalytics,
+    costAnalytics,
+    detections,
+    traces,
+    refresh,
+  } = useApiWithFallback()
   const [showImportModal, setShowImportModal] = useState(false)
-
-  useEffect(() => {
-    setLoopAnalytics(generateDemoLoopAnalytics())
-    setCostAnalytics(generateDemoCostAnalytics())
-    setDetections(generateDemoDetections(5))
-    setTraces(generateDemoTraces(5))
-    setIsLoading(false)
-  }, [])
 
   if (isLoading) {
     return (
@@ -55,13 +45,36 @@ export default function DashboardPage() {
     <Layout>
       <div className="p-6">
         <div className="flex items-center justify-between mb-6">
-          <h1 className="text-2xl font-bold text-white">Dashboard</h1>
-          <Button
-            onClick={() => setShowImportModal(true)}
-            leftIcon={<Upload size={16} />}
-          >
-            Import Historical Data
-          </Button>
+          <div className="flex items-center gap-3">
+            <h1 className="text-2xl font-bold text-white">Dashboard</h1>
+            {isDemoMode && (
+              <span className="flex items-center gap-1.5 px-2 py-1 text-xs font-medium rounded-full bg-amber-500/20 text-amber-400 border border-amber-500/30">
+                <WifiOff size={12} />
+                Demo Mode
+              </span>
+            )}
+            {!isDemoMode && (
+              <span className="flex items-center gap-1.5 px-2 py-1 text-xs font-medium rounded-full bg-green-500/20 text-green-400 border border-green-500/30">
+                <Wifi size={12} />
+                Live
+              </span>
+            )}
+          </div>
+          <div className="flex items-center gap-2">
+            <Button
+              onClick={refresh}
+              variant="secondary"
+              size="sm"
+            >
+              Refresh
+            </Button>
+            <Button
+              onClick={() => setShowImportModal(true)}
+              leftIcon={<Upload size={16} />}
+            >
+              Import Historical Data
+            </Button>
+          </div>
         </div>
         
         <div className="grid lg:grid-cols-2 gap-6 mb-6">
