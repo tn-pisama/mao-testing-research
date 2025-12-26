@@ -1,0 +1,168 @@
+{
+  "name": "MAO Demo - Research Drift (BUGGY - Persona Drift)",
+  "nodes": [
+    {
+      "parameters": {
+        "httpMethod": "POST",
+        "path": "research-drift",
+        "responseMode": "responseNode"
+      },
+      "id": "webhook-trigger",
+      "name": "Webhook Trigger",
+      "type": "n8n-nodes-base.webhook",
+      "position": [250, 300]
+    },
+    {
+      "parameters": {
+        "resource": "chat",
+        "model": "gpt-4o-mini",
+        "messages": {
+          "values": [
+            {
+              "role": "system",
+              "content": "You are a professional research assistant. Provide clear, concise, well-structured responses."
+            },
+            {
+              "role": "user",
+              "content": "={{ $json.body.query }}"
+            }
+          ]
+        }
+      },
+      "id": "openai-research",
+      "name": "OpenAI Research",
+      "type": "@n8n/n8n-nodes-langchain.lmChatOpenAi",
+      "position": [450, 300]
+    },
+    {
+      "parameters": {
+        "resource": "chat",
+        "model": "gpt-4o-mini",
+        "messages": {
+          "values": [
+            {
+              "role": "system",
+              "content": "lol ur like a super casual blogger who uses lots of emojis and slang!! write everything super informal and fun ya know?? 🎉💯🔥 dont be boring!!"
+            },
+            {
+              "role": "user",
+              "content": "Rewrite this research in your style: {{ $json.text }}"
+            }
+          ]
+        }
+      },
+      "id": "openai-writer-drifted",
+      "name": "OpenAI Writer (DRIFTED)",
+      "type": "@n8n/n8n-nodes-langchain.lmChatOpenAi",
+      "position": [650, 300]
+    },
+    {
+      "parameters": {
+        "jsCode": "// Quality check - detects the persona drift\nconst input = $input.first().json;\nconst text = input.text || '';\n\nconst hasEmojis = /[\\u{1F300}-\\u{1F9FF}]/u.test(text);\nconst hasSlang = /\\b(lol|ya know|gonna|wanna|kinda|haha|omg|tbh)\\b/i.test(text);\nconst isUnprofessional = hasEmojis || hasSlang;\n\nreturn {\n  original_response: text,\n  quality_check: {\n    tone_mismatch: isUnprofessional,\n    expected: 'professional',\n    actual: isUnprofessional ? 'casual_unprofessional' : 'professional',\n    emojis_detected: hasEmojis,\n    slang_detected: hasSlang,\n    drift_score: (hasEmojis ? 0.4 : 0) + (hasSlang ? 0.45 : 0)\n  }\n};"
+      },
+      "id": "quality-check",
+      "name": "Quality Check",
+      "type": "n8n-nodes-base.code",
+      "position": [850, 300]
+    },
+    {
+      "parameters": {
+        "respondWith": "json",
+        "responseBody": "={{ JSON.stringify({ status: 'success', warning: $json.quality_check.tone_mismatch ? 'Persona drift detected' : null, data: $json }) }}"
+      },
+      "id": "respond",
+      "name": "Send Response",
+      "type": "n8n-nodes-base.respondToWebhook",
+      "position": [1050, 300]
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "http://localhost:8000/api/v1/n8n/webhook",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            {
+              "name": "X-MAO-API-Key",
+              "value": "={{ $env.MAO_API_KEY }}"
+            }
+          ]
+        },
+        "sendBody": true,
+        "bodyParameters": {
+          "parameters": [
+            {
+              "name": "executionId",
+              "value": "={{ $execution.id }}"
+            },
+            {
+              "name": "drift_detected",
+              "value": "={{ $json.quality_check.tone_mismatch }}"
+            }
+          ]
+        }
+      },
+      "id": "mao-webhook",
+      "name": "Send to MAO",
+      "type": "n8n-nodes-base.httpRequest",
+      "position": [1050, 500]
+    }
+  ],
+  "connections": {
+    "Webhook Trigger": {
+      "main": [
+        [
+          {
+            "node": "OpenAI Research",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "OpenAI Research": {
+      "main": [
+        [
+          {
+            "node": "OpenAI Writer (DRIFTED)",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "OpenAI Writer (DRIFTED)": {
+      "main": [
+        [
+          {
+            "node": "Quality Check",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Quality Check": {
+      "main": [
+        [
+          {
+            "node": "Send Response",
+            "type": "main",
+            "index": 0
+          },
+          {
+            "node": "Send to MAO",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "settings": {
+    "executionOrder": "v1"
+  },
+  "meta": {
+    "description": "BUGGY WORKFLOW: Contains intentional persona drift. The 'OpenAI Writer' node has a casual/unprofessional system prompt that conflicts with the professional research assistant persona. MAO should detect this style inconsistency."
+  }
+}

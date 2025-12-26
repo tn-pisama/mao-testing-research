@@ -1,0 +1,154 @@
+{
+  "name": "MAO Demo - Research Assistant (Normal)",
+  "nodes": [
+    {
+      "parameters": {
+        "httpMethod": "POST",
+        "path": "research",
+        "responseMode": "responseNode"
+      },
+      "id": "webhook-trigger",
+      "name": "Webhook Trigger",
+      "type": "n8n-nodes-base.webhook",
+      "position": [250, 300],
+      "webhookId": "mao-research-demo"
+    },
+    {
+      "parameters": {
+        "resource": "chat",
+        "model": "gpt-4o-mini",
+        "messages": {
+          "values": [
+            {
+              "role": "system",
+              "content": "You are a professional research assistant. Provide clear, concise, well-structured responses."
+            },
+            {
+              "role": "user",
+              "content": "={{ $json.body.query }}"
+            }
+          ]
+        },
+        "options": {
+          "temperature": 0.7,
+          "maxTokens": 500
+        }
+      },
+      "id": "openai-research",
+      "name": "OpenAI Research",
+      "type": "@n8n/n8n-nodes-langchain.lmChatOpenAi",
+      "position": [500, 300],
+      "credentials": {
+        "openAiApi": {
+          "id": "1",
+          "name": "OpenAI API"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "jsCode": "// Process the AI response\nconst response = $input.first().json;\n\nreturn {\n  processed: true,\n  summary: response.text.substring(0, 200),\n  word_count: response.text.split(' ').length,\n  quality_score: 0.95,\n  timestamp: new Date().toISOString()\n};"
+      },
+      "id": "processor",
+      "name": "Data Processor",
+      "type": "n8n-nodes-base.code",
+      "position": [750, 300]
+    },
+    {
+      "parameters": {
+        "respondWith": "json",
+        "responseBody": "={{ JSON.stringify({ status: 'success', data: $json }) }}"
+      },
+      "id": "respond",
+      "name": "Send Response",
+      "type": "n8n-nodes-base.respondToWebhook",
+      "position": [1000, 300]
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "http://localhost:8000/api/v1/n8n/webhook",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            {
+              "name": "X-MAO-API-Key",
+              "value": "={{ $env.MAO_API_KEY }}"
+            }
+          ]
+        },
+        "sendBody": true,
+        "bodyParameters": {
+          "parameters": [
+            {
+              "name": "executionId",
+              "value": "={{ $execution.id }}"
+            },
+            {
+              "name": "workflowId",
+              "value": "={{ $workflow.id }}"
+            },
+            {
+              "name": "workflowName",
+              "value": "={{ $workflow.name }}"
+            },
+            {
+              "name": "status",
+              "value": "success"
+            }
+          ]
+        }
+      },
+      "id": "mao-webhook",
+      "name": "Send to MAO",
+      "type": "n8n-nodes-base.httpRequest",
+      "position": [1000, 500]
+    }
+  ],
+  "connections": {
+    "Webhook Trigger": {
+      "main": [
+        [
+          {
+            "node": "OpenAI Research",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "OpenAI Research": {
+      "main": [
+        [
+          {
+            "node": "Data Processor",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Data Processor": {
+      "main": [
+        [
+          {
+            "node": "Send Response",
+            "type": "main",
+            "index": 0
+          },
+          {
+            "node": "Send to MAO",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "settings": {
+    "executionOrder": "v1"
+  },
+  "meta": {
+    "description": "A normal research workflow that demonstrates MAO integration. Sends execution data to MAO for observability."
+  }
+}

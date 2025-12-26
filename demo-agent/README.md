@@ -193,3 +193,104 @@ python crewai_demo.py --mode all --trace
 | `loop` | Analyst | Uses `InfiniteLoopTool` that always requests more research |
 | `corruption` | Analyst | Uses `CorruptedTool` that injects error messages |
 | `drift` | Writer | Becomes "Unprofessional Blogger" with casual persona |
+
+---
+
+## n8n Demo
+
+Simulates n8n workflow executions for MAO integration testing. Can be run standalone (no n8n instance required) or with importable workflow JSON files.
+
+### n8n Architecture
+
+```
+┌─────────────────┐     ┌──────────────────┐     ┌─────────────────┐
+│ Webhook Trigger │────▶│  OpenAI Research │────▶│ Data Processor  │
+└─────────────────┘     └──────────────────┘     └────────┬────────┘
+                                                          │
+                              ┌────────────────┐          │
+                              │  Send to MAO   │◀─────────┤
+                              └────────────────┘          │
+                              ┌────────────────┐          │
+                              │ Send Response  │◀─────────┘
+                              └────────────────┘
+```
+
+### n8n Examples
+
+```bash
+# Run without n8n (simulated payloads)
+python n8n_demo.py --mode normal
+python n8n_demo.py --mode loop
+python n8n_demo.py --mode corruption
+python n8n_demo.py --mode drift
+python n8n_demo.py --mode all
+
+# Send to MAO backend
+python n8n_demo.py --mode all --send --endpoint http://localhost:8000
+
+# Custom query
+python n8n_demo.py --mode normal --query "Explain quantum computing"
+```
+
+### n8n Workflow JSON Files
+
+Import these into your n8n instance to run real workflows:
+
+| File | Description |
+|------|-------------|
+| `n8n-workflows/research-assistant-normal.json` | Normal workflow with MAO webhook |
+| `n8n-workflows/research-loop-buggy.json` | Infinite loop (always needs more research) |
+| `n8n-workflows/research-corruption.json` | State corruption (destroys AI response) |
+| `n8n-workflows/research-drift.json` | Persona drift (casual output from professional prompt) |
+
+### n8n Failure Modes
+
+| Mode | Node Affected | Bug Description |
+|------|--------------|-----------------|
+| `loop` | Check Completion | Always returns `needs_more_research: true` |
+| `corruption` | Corrupted Processor | Destroys original data, returns error objects |
+| `drift` | OpenAI Writer | System prompt conflicts with professional persona |
+
+### n8n Integration with MAO SDK
+
+```python
+from mao_testing.integrations.n8n import N8nTracer
+
+tracer = N8nTracer(
+    n8n_url="http://localhost:5678",
+    n8n_api_key="your-n8n-key",
+    webhook_secret="optional-hmac-secret",
+)
+
+# Poll n8n for executions and send to MAO
+results = await tracer.sync_executions(
+    since=datetime.utcnow() - timedelta(hours=1),
+    mao_endpoint="http://localhost:8000",
+    mao_api_key="your-mao-key",
+)
+```
+
+### n8n Webhook Payload Format
+
+```json
+{
+  "executionId": "exec-abc123",
+  "workflowId": "wf-xyz789",
+  "workflowName": "Research Assistant",
+  "mode": "webhook",
+  "startedAt": "2024-01-15T10:00:00Z",
+  "finishedAt": "2024-01-15T10:00:05Z",
+  "status": "success",
+  "data": {
+    "resultData": {
+      "runData": {
+        "NodeName": [{
+          "executionTime": 2500,
+          "source": [{"type": "n8n-nodes-base.openAi"}],
+          "data": {"main": [[{"response": "..."}]]}
+        }]
+      }
+    }
+  }
+}
+```

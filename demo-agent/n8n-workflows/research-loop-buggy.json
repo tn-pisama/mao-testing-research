@@ -1,0 +1,148 @@
+{
+  "name": "MAO Demo - Research Loop (BUGGY - Infinite Loop)",
+  "nodes": [
+    {
+      "parameters": {
+        "httpMethod": "POST",
+        "path": "research-loop",
+        "responseMode": "responseNode"
+      },
+      "id": "webhook-trigger",
+      "name": "Webhook Trigger",
+      "type": "n8n-nodes-base.webhook",
+      "position": [250, 300]
+    },
+    {
+      "parameters": {
+        "jsCode": "// Initialize or increment iteration counter\nconst iteration = ($input.first().json.iteration || 0) + 1;\nconst query = $input.first().json.body?.query || $input.first().json.query || 'default query';\n\nreturn {\n  iteration: iteration,\n  query: query,\n  needs_more_research: true  // BUG: Always true, causes infinite loop\n};"
+      },
+      "id": "init-loop",
+      "name": "Initialize Loop",
+      "type": "n8n-nodes-base.code",
+      "position": [450, 300]
+    },
+    {
+      "parameters": {
+        "resource": "chat",
+        "model": "gpt-4o-mini",
+        "messages": {
+          "values": [
+            {
+              "role": "user",
+              "content": "Research iteration {{ $json.iteration }}: {{ $json.query }}"
+            }
+          ]
+        }
+      },
+      "id": "openai-research",
+      "name": "OpenAI Research",
+      "type": "@n8n/n8n-nodes-langchain.lmChatOpenAi",
+      "position": [650, 300]
+    },
+    {
+      "parameters": {
+        "jsCode": "// BUG: This always returns needs_more_research = true\n// This causes an infinite loop!\nconst response = $input.first().json;\n\nreturn {\n  ...response,\n  analysis: 'Research incomplete, need more data',\n  needs_more_research: true,  // INTENTIONAL BUG\n  iteration: ($json.iteration || 0)\n};"
+      },
+      "id": "analyzer",
+      "name": "Analyze (BUGGY)",
+      "type": "n8n-nodes-base.code",
+      "position": [850, 300]
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "boolean": [
+            {
+              "value1": "={{ $json.needs_more_research }}",
+              "value2": true
+            }
+          ]
+        }
+      },
+      "id": "check-loop",
+      "name": "Need More Research?",
+      "type": "n8n-nodes-base.if",
+      "position": [1050, 300]
+    },
+    {
+      "parameters": {
+        "respondWith": "json",
+        "responseBody": "={{ JSON.stringify({ status: 'success', iterations: $json.iteration }) }}"
+      },
+      "id": "respond",
+      "name": "Send Response",
+      "type": "n8n-nodes-base.respondToWebhook",
+      "position": [1250, 400]
+    }
+  ],
+  "connections": {
+    "Webhook Trigger": {
+      "main": [
+        [
+          {
+            "node": "Initialize Loop",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Initialize Loop": {
+      "main": [
+        [
+          {
+            "node": "OpenAI Research",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "OpenAI Research": {
+      "main": [
+        [
+          {
+            "node": "Analyze (BUGGY)",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Analyze (BUGGY)": {
+      "main": [
+        [
+          {
+            "node": "Need More Research?",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Need More Research?": {
+      "main": [
+        [
+          {
+            "node": "Initialize Loop",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Send Response",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "settings": {
+    "executionOrder": "v1"
+  },
+  "meta": {
+    "description": "BUGGY WORKFLOW: Contains an intentional infinite loop. The analyzer always returns needs_more_research=true, causing the workflow to loop forever. MAO should detect this pattern."
+  }
+}
