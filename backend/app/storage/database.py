@@ -1,12 +1,17 @@
 from sqlalchemy.ext.asyncio import create_async_engine, AsyncSession, async_sessionmaker
-from sqlalchemy.pool import NullPool
+from sqlalchemy import text
 from app.config import get_settings
+import re
 
 settings = get_settings()
 
 engine = create_async_engine(
     settings.database_url,
-    poolclass=NullPool,
+    pool_size=10,
+    max_overflow=20,
+    pool_timeout=30,
+    pool_recycle=3600,
+    pool_pre_ping=True,
     echo=settings.debug,
 )
 
@@ -25,5 +30,10 @@ async def get_db() -> AsyncSession:
             await session.close()
 
 
+UUID_PATTERN = re.compile(r'^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$', re.IGNORECASE)
+
+
 async def set_tenant_context(session: AsyncSession, tenant_id: str):
-    await session.execute(f"SET app.current_tenant = '{tenant_id}'")
+    if not tenant_id or not UUID_PATTERN.match(tenant_id):
+        raise ValueError(f"Invalid tenant_id format: {tenant_id}")
+    await session.execute(text("SET app.current_tenant = :tenant_id"), {"tenant_id": tenant_id})

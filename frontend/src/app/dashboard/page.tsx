@@ -84,9 +84,7 @@ export default function DashboardPage() {
       <ImportModal
         isOpen={showImportModal}
         onClose={() => setShowImportModal(false)}
-        onImportComplete={(jobId) => {
-          console.log('Import completed:', jobId)
-        }}
+        onImportComplete={() => {}}
       />
     </Layout>
   )

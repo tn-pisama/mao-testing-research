@@ -35,8 +35,16 @@ class Settings(BaseSettings):
     @field_validator('jwt_secret')
     @classmethod
     def validate_jwt_secret(cls, v):
-        if v == "change-me-in-production":
-            raise ValueError("JWT_SECRET must be changed from default value")
+        weak_patterns = [
+            "change-me", "changeme", "secret", "password", "test", "dev", "demo",
+            "123456", "qwerty", "admin", "default", "example"
+        ]
+        v_lower = v.lower()
+        for pattern in weak_patterns:
+            if pattern in v_lower:
+                raise ValueError(f"JWT_SECRET contains weak pattern '{pattern}'. Use a secure random secret.")
+        if len(set(v)) < 8:
+            raise ValueError("JWT_SECRET has insufficient entropy. Use a more random value.")
         return v
     
     class Config:

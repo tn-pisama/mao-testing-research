@@ -1,8 +1,12 @@
 import time
+import logging
 from typing import Optional
 from fastapi import HTTPException, Request, status
 from redis import asyncio as aioredis
+from redis.exceptions import RedisError
 from app.config import get_settings
+
+logger = logging.getLogger(__name__)
 
 settings = get_settings()
 
@@ -21,24 +25,32 @@ class RateLimiter:
             await self._redis.close()
     
     async def check_rate_limit(self, key: str, limit: int = None, window: int = None) -> bool:
-        await self.connect()
+        try:
+            await self.connect()
+        except RedisError as e:
+            logger.error(f"Redis connection failed, failing closed: {e}")
+            return False
         
         limit = limit or settings.rate_limit_requests
         window = window or settings.rate_limit_window_seconds
         
-        current_time = int(time.time())
-        window_start = current_time - window
-        
-        pipe = self._redis.pipeline()
-        pipe.zremrangebyscore(key, 0, window_start)
-        pipe.zadd(key, {str(current_time): current_time})
-        pipe.zcard(key)
-        pipe.expire(key, window)
-        
-        results = await pipe.execute()
-        request_count = results[2]
-        
-        return request_count <= limit
+        try:
+            current_time = int(time.time())
+            window_start = current_time - window
+            
+            pipe = self._redis.pipeline()
+            pipe.zremrangebyscore(key, 0, window_start)
+            pipe.zadd(key, {str(current_time): current_time})
+            pipe.zcard(key)
+            pipe.expire(key, window)
+            
+            results = await pipe.execute()
+            request_count = results[2]
+            
+            return request_count <= limit
+        except RedisError as e:
+            logger.error(f"Redis operation failed, failing closed: {e}")
+            return False
     
     async def get_remaining(self, key: str, limit: int = None) -> int:
         await self.connect()

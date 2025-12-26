@@ -1,6 +1,7 @@
 from fastapi import APIRouter, Depends, HTTPException, status, Query
 from sqlalchemy.ext.asyncio import AsyncSession
-from sqlalchemy import select, func
+from sqlalchemy import select, func, case
+from sqlalchemy.orm import selectinload
 from typing import List
 from uuid import UUID
 
@@ -126,16 +127,27 @@ async def list_traces(
     result = await db.execute(query)
     traces = result.scalars().all()
     
-    trace_responses = []
-    for trace in traces:
-        state_count = await db.execute(
-            select(func.count()).where(State.trace_id == trace.id)
-        )
-        detection_count = await db.execute(
-            select(func.count()).where(Detection.trace_id == trace.id)
-        )
-        
-        trace_responses.append(TraceResponse(
+    if not traces:
+        return TraceListResponse(traces=[], total=total, page=page, per_page=per_page)
+    
+    trace_ids = [t.id for t in traces]
+    
+    state_counts_result = await db.execute(
+        select(State.trace_id, func.count().label('count'))
+        .where(State.trace_id.in_(trace_ids))
+        .group_by(State.trace_id)
+    )
+    state_counts = {row[0]: row[1] for row in state_counts_result.all()}
+    
+    detection_counts_result = await db.execute(
+        select(Detection.trace_id, func.count().label('count'))
+        .where(Detection.trace_id.in_(trace_ids))
+        .group_by(Detection.trace_id)
+    )
+    detection_counts = {row[0]: row[1] for row in detection_counts_result.all()}
+    
+    trace_responses = [
+        TraceResponse(
             id=trace.id,
             session_id=trace.session_id,
             framework=trace.framework,
@@ -144,9 +156,11 @@ async def list_traces(
             total_cost_cents=trace.total_cost_cents,
             created_at=trace.created_at,
             completed_at=trace.completed_at,
-            state_count=state_count.scalar(),
-            detection_count=detection_count.scalar(),
-        ))
+            state_count=state_counts.get(trace.id, 0),
+            detection_count=detection_counts.get(trace.id, 0),
+        )
+        for trace in traces
+    ]
     
     return TraceListResponse(
         traces=trace_responses,
