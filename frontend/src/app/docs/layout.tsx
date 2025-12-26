@@ -13,6 +13,10 @@ import {
   Code,
   ChevronRight,
   Search,
+  Package,
+  Terminal,
+  Boxes,
+  Webhook,
 } from 'lucide-react'
 
 const docsNav = [
@@ -31,10 +35,19 @@ const docsNav = [
     ],
   },
   {
-    title: 'Integration',
+    title: 'SDK & Integration',
     items: [
       { href: '/docs/integration', label: 'Setup Guide', icon: Plug },
-      { href: '/docs/api-reference', label: 'API Reference', icon: Code },
+      { href: '/docs/sdk', label: 'Python SDK', icon: Package },
+      { href: '/docs/cli', label: 'CLI Reference', icon: Terminal },
+      { href: '/docs/n8n', label: 'n8n Integration', icon: Boxes },
+    ],
+  },
+  {
+    title: 'Reference',
+    items: [
+      { href: '/docs/api-reference', label: 'REST API', icon: Code },
+      { href: '/docs/webhooks', label: 'Webhooks', icon: Webhook },
     ],
   },
 ]
