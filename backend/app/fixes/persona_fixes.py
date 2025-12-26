@@ -57,7 +57,7 @@ class PersonaFixGenerator(BaseFixGenerator):
         if level == ReinforcementLevel.AGGRESSIVE:
             fixes.append(self._periodic_reset_fix(detection_id, agent_id, context))
         
-        if drift_magnitude > 0.6:
+        if drift_magnitude >= 0.6:
             fixes.append(self._split_softmax_fix(detection_id, agent_id, context))
         
         return fixes

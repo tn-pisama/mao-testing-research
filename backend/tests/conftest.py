@@ -1,6 +1,11 @@
+import os
+os.environ["TESTING"] = "1"
+os.environ.setdefault("JWT_SECRET", "xK9mPqL2vN7wR4tY8uJ3hB6gF5dC0aZS")
+os.environ.setdefault("DATABASE_URL", "postgresql+asyncpg://mao:mao@localhost:5432/mao")
+os.environ.setdefault("REDIS_URL", "redis://localhost:6379")
+
 import pytest
 import asyncio
-import os
 import re
 from typing import Any, Dict
 

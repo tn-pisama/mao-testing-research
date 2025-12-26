@@ -69,11 +69,12 @@ def validate_n8n_url(url: str) -> str:
     
     try:
         ip = ip_address(hostname)
+    except ValueError:
+        pass
+    else:
         if isinstance(ip, (IPv4Address, IPv6Address)):
             if ip.is_private or ip.is_loopback or ip.is_reserved or ip.is_link_local:
                 raise ValueError("Private/internal IPs not allowed")
-    except ValueError:
-        pass
     
     port = parsed.port or (443 if parsed.scheme == "https" else 80)
     if port in BLOCKED_PORTS:

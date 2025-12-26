@@ -87,17 +87,11 @@ class TestGetOrCreateUser:
             "name": "Test User"
         }
         
-        with patch("app.core.dependencies.User") as MockUser:
-            mock_user = MagicMock()
-            mock_user.id = "user-uuid"
-            mock_user.tenant_id = None
-            mock_user.email = "test@example.com"
-            MockUser.return_value = mock_user
-            
-            user = await get_or_create_user(mock_db, claims)
-            
-            mock_db.add.assert_called_once()
-            mock_db.commit.assert_called_once()
+        user = await get_or_create_user(mock_db, claims)
+        
+        mock_db.add.assert_called_once()
+        mock_db.commit.assert_called_once()
+        assert user is not None
 
     @pytest.mark.asyncio
     async def test_returns_existing_user(self):
