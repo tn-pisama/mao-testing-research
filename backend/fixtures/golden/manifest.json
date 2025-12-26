@@ -1,12 +1,12 @@
 {
-  "generated_at": "2025-12-26T01:32:21.560139",
-  "total_traces": 50,
+  "generated_at": "2025-12-26T01:38:34.376986",
+  "total_traces": 420,
   "by_detection_type": {
-    "infinite_loop": 10,
-    "state_corruption": 10,
-    "coordination_deadlock": 11,
-    "persona_drift": 10,
-    "healthy": 9
+    "infinite_loop": 84,
+    "healthy": 81,
+    "coordination_deadlock": 85,
+    "persona_drift": 85,
+    "state_corruption": 85
   },
   "seed": 42
 }
