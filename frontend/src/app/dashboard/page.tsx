@@ -1,11 +1,14 @@
 'use client'
 
 import { useState, useEffect } from 'react'
+import { Upload } from 'lucide-react'
 import { Layout } from '@/components/common/Layout'
 import { LoopAnalyticsCard } from '@/components/detection/LoopAnalyticsCard'
 import { CostAnalyticsCard } from '@/components/detection/CostAnalyticsCard'
 import { RecentDetectionsCard } from '@/components/detection/RecentDetectionsCard'
 import { TraceStatusCard } from '@/components/traces/TraceStatusCard'
+import { Button } from '@/components/ui/Button'
+import { ImportModal } from '@/components/import'
 import {
   generateDemoLoopAnalytics,
   generateDemoCostAnalytics,
@@ -20,6 +23,7 @@ export default function DashboardPage() {
   const [costAnalytics, setCostAnalytics] = useState<CostAnalytics | undefined>()
   const [detections, setDetections] = useState<Detection[]>([])
   const [traces, setTraces] = useState<Trace[]>([])
+  const [showImportModal, setShowImportModal] = useState(false)
 
   useEffect(() => {
     setLoopAnalytics(generateDemoLoopAnalytics())
@@ -50,7 +54,15 @@ export default function DashboardPage() {
   return (
     <Layout>
       <div className="p-6">
-        <h1 className="text-2xl font-bold text-white mb-6">Dashboard</h1>
+        <div className="flex items-center justify-between mb-6">
+          <h1 className="text-2xl font-bold text-white">Dashboard</h1>
+          <Button
+            onClick={() => setShowImportModal(true)}
+            leftIcon={<Upload size={16} />}
+          >
+            Import Historical Data
+          </Button>
+        </div>
         
         <div className="grid lg:grid-cols-2 gap-6 mb-6">
           <LoopAnalyticsCard data={loopAnalytics} isLoading={false} />
@@ -68,6 +80,14 @@ export default function DashboardPage() {
           />
         </div>
       </div>
+
+      <ImportModal
+        isOpen={showImportModal}
+        onClose={() => setShowImportModal(false)}
+        onImportComplete={(jobId) => {
+          console.log('Import completed:', jobId)
+        }}
+      />
     </Layout>
   )
 }

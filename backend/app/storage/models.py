@@ -124,3 +124,49 @@ class GoldenTrace(Base):
     annotation_date = Column(DateTime(timezone=True), nullable=True)
     notes = Column(Text, nullable=True)
     created_at = Column(DateTime(timezone=True), server_default=func.now())
+
+
+class ImportJob(Base):
+    __tablename__ = "import_jobs"
+    
+    id = Column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
+    tenant_id = Column(UUID(as_uuid=True), ForeignKey("tenants.id"), nullable=False)
+    status = Column(String(20), nullable=False, default="pending")
+    format = Column(String(50), nullable=True)
+    file_name = Column(String(255), nullable=False)
+    file_size_bytes = Column(Integer, nullable=False)
+    file_hash = Column(String(64), nullable=False)
+    records_total = Column(Integer, default=0)
+    records_processed = Column(Integer, default=0)
+    records_failed = Column(Integer, default=0)
+    traces_created = Column(Integer, default=0)
+    detections_found = Column(Integer, default=0)
+    error_message = Column(Text, nullable=True)
+    created_at = Column(DateTime(timezone=True), server_default=func.now())
+    started_at = Column(DateTime(timezone=True), nullable=True)
+    completed_at = Column(DateTime(timezone=True), nullable=True)
+    
+    errors = relationship("ImportError", back_populates="import_job", cascade="all, delete-orphan")
+    
+    __table_args__ = (
+        Index("idx_import_jobs_tenant", "tenant_id"),
+        Index("idx_import_jobs_status", "status"),
+        UniqueConstraint("tenant_id", "file_hash", name="uq_import_jobs_file_hash"),
+    )
+
+
+class ImportError(Base):
+    __tablename__ = "import_errors"
+    
+    id = Column(Integer, primary_key=True, autoincrement=True)
+    import_job_id = Column(UUID(as_uuid=True), ForeignKey("import_jobs.id", ondelete="CASCADE"), nullable=False)
+    record_index = Column(Integer, nullable=False)
+    error_message = Column(Text, nullable=False)
+    raw_record = Column(JSONB, nullable=True)
+    created_at = Column(DateTime(timezone=True), server_default=func.now())
+    
+    import_job = relationship("ImportJob", back_populates="errors")
+    
+    __table_args__ = (
+        Index("idx_import_errors_job", "import_job_id"),
+    )
