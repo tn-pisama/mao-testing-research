@@ -16,6 +16,8 @@ sentence-transformers==2.3.1
 scikit-learn==1.4.0
 numpy==1.26.3
 httpx==0.26.0
+svix==1.17.0
+pybreaker==1.2.0
 pytest==7.4.4
 pytest-asyncio==0.23.3
 pytest-cov==4.1.0

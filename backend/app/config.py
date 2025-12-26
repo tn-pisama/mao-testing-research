@@ -1,4 +1,5 @@
 from pydantic_settings import BaseSettings
+from pydantic import Field, field_validator
 from functools import lru_cache
 
 
@@ -9,12 +10,20 @@ class Settings(BaseSettings):
     database_url: str = "postgresql+asyncpg://mao:mao@localhost:5432/mao"
     redis_url: str = "redis://localhost:6379"
     
-    jwt_secret: str = "change-me-in-production"
+    jwt_secret: str = Field(..., min_length=32, description="JWT signing secret (required)")
     jwt_algorithm: str = "HS256"
     jwt_expiration_hours: int = 24
     
+    clerk_publishable_key: str = ""
+    clerk_secret_key: str = ""
+    clerk_webhook_secret: str = ""
+    clerk_jwt_issuer: str = ""
+    jwks_cache_ttl_seconds: int = 3600
+    
     rate_limit_requests: int = 100
     rate_limit_window_seconds: int = 60
+    auth_rate_limit_requests: int = 10
+    auth_rate_limit_window_seconds: int = 60
     
     embedding_model: str = "all-MiniLM-L6-v2"
     loop_detection_window: int = 7
@@ -22,6 +31,13 @@ class Settings(BaseSettings):
     semantic_threshold: float = 0.85
     
     otel_service_name: str = "mao-platform"
+    
+    @field_validator('jwt_secret')
+    @classmethod
+    def validate_jwt_secret(cls, v):
+        if v == "change-me-in-production":
+            raise ValueError("JWT_SECRET must be changed from default value")
+        return v
     
     class Config:
         env_file = ".env"

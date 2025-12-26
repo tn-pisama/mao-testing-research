@@ -4,7 +4,7 @@ from fastapi.middleware.cors import CORSMiddleware
 from opentelemetry.instrumentation.fastapi import FastAPIInstrumentor
 
 from app.config import get_settings
-from app.api.v1 import traces, detections, auth, analytics, health, import_jobs
+from app.api.v1 import traces, detections, auth, analytics, health, import_jobs, webhooks
 from app.core.rate_limit import rate_limiter
 
 settings = get_settings()
@@ -24,10 +24,13 @@ app = FastAPI(
 
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["http://localhost:3000", "https://*.mao-testing.com"],
+    allow_origins=[
+        "http://localhost:3000",
+        "https://dashboard.mao-testing.com",
+    ],
     allow_credentials=True,
-    allow_methods=["*"],
-    allow_headers=["*"],
+    allow_methods=["GET", "POST", "PUT", "DELETE", "OPTIONS"],
+    allow_headers=["Authorization", "Content-Type", "X-Requested-With"],
 )
 
 app.include_router(auth.router, prefix="/api/v1")
@@ -36,6 +39,7 @@ app.include_router(detections.router, prefix="/api/v1/tenants/{tenant_id}")
 app.include_router(analytics.router, prefix="/api/v1/tenants/{tenant_id}")
 app.include_router(import_jobs.router, prefix="/api/v1")
 app.include_router(health.router, prefix="/api/v1")
+app.include_router(webhooks.router, prefix="/api/v1")
 
 FastAPIInstrumentor.instrument_app(app)
 

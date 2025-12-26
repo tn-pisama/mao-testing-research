@@ -13,12 +13,78 @@ class Tenant(Base):
     
     id = Column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
     name = Column(String(255), nullable=False)
-    api_key_hash = Column(String(64), nullable=False)
+    api_key_hash = Column(String(255), nullable=False)
+    clerk_org_id = Column(String(255), nullable=True, unique=True)
     settings = Column(JSONB, default=dict)
     created_at = Column(DateTime(timezone=True), server_default=func.now())
     
     traces = relationship("Trace", back_populates="tenant")
     detections = relationship("Detection", back_populates="tenant")
+    users = relationship("User", back_populates="tenant")
+    api_keys = relationship("ApiKey", back_populates="tenant")
+    
+    __table_args__ = (
+        Index("idx_tenants_clerk_org", "clerk_org_id"),
+    )
+
+
+class User(Base):
+    __tablename__ = "users"
+    
+    id = Column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
+    clerk_user_id = Column(String(255), unique=True, nullable=False)
+    tenant_id = Column(UUID(as_uuid=True), ForeignKey("tenants.id"), nullable=True)
+    email = Column(String(255), nullable=False)
+    name = Column(String(255), nullable=True)
+    role = Column(String(50), default="member")
+    created_at = Column(DateTime(timezone=True), server_default=func.now())
+    updated_at = Column(DateTime(timezone=True), server_default=func.now(), onupdate=func.now())
+    
+    tenant = relationship("Tenant", back_populates="users")
+    
+    __table_args__ = (
+        Index("idx_users_clerk_id", "clerk_user_id"),
+        Index("idx_users_tenant", "tenant_id"),
+    )
+
+
+class ApiKey(Base):
+    __tablename__ = "api_keys"
+    
+    id = Column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
+    tenant_id = Column(UUID(as_uuid=True), ForeignKey("tenants.id"), nullable=False)
+    created_by = Column(UUID(as_uuid=True), ForeignKey("users.id"), nullable=True)
+    name = Column(String(255), nullable=False)
+    key_hash = Column(String(255), nullable=False)
+    key_prefix = Column(String(12), nullable=False)
+    revoked_at = Column(DateTime(timezone=True), nullable=True)
+    created_at = Column(DateTime(timezone=True), server_default=func.now())
+    
+    tenant = relationship("Tenant", back_populates="api_keys")
+    
+    __table_args__ = (
+        Index("idx_api_keys_tenant", "tenant_id"),
+        Index("idx_api_keys_prefix", "key_prefix"),
+    )
+
+
+class AuthAudit(Base):
+    __tablename__ = "auth_audit"
+    
+    id = Column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
+    tenant_id = Column(UUID(as_uuid=True), ForeignKey("tenants.id"), nullable=True)
+    user_id = Column(UUID(as_uuid=True), ForeignKey("users.id"), nullable=True)
+    action = Column(String(100), nullable=False)
+    ip_address = Column(String(45), nullable=True)
+    user_agent = Column(Text, nullable=True)
+    success = Column(Boolean, nullable=False)
+    error_code = Column(String(50), nullable=True)
+    created_at = Column(DateTime(timezone=True), server_default=func.now())
+    
+    __table_args__ = (
+        Index("idx_auth_audit_tenant", "tenant_id"),
+        Index("idx_auth_audit_created", "created_at"),
+    )
 
 
 class Trace(Base):
