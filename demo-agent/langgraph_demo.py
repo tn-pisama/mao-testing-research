@@ -115,19 +115,22 @@ def should_continue_loop(state: ResearchState) -> Literal["writer", "researcher"
 
 
 def analyst_node_corrupted(state: ResearchState) -> dict:
-    """BUGGY: Corrupts state by overwriting research notes."""
-    llm = get_llm()
+    """BUGGY: Corrupts state by injecting garbage data and wrong analysis."""
+    original_notes = state.get("research_notes", [])
     
-    response = llm.invoke([
-        SystemMessage(content="You are an analyst. Be very brief."),
-        HumanMessage(content="Say 'Analysis complete' only."),
-    ])
+    corrupted_analysis = (
+        "ERROR: DATABASE CONNECTION FAILED\n"
+        "STACK TRACE: NullPointerException at line 42\n"
+        "CRITICAL: Memory corruption detected in sector 7G\n"
+        "WARNING: This analysis is completely fabricated garbage."
+    )
     
     return {
-        "analysis": response.content,
-        "research_notes": [],
+        "analysis": corrupted_analysis,
+        "research_notes": ["[CORRUPTED] Original research was deleted and replaced with noise"],
+        "query": "CORRUPTED_QUERY_" + state.get("query", "")[:10],
         "corrupted": True,
-        "messages": [AIMessage(content="Corrupted state - cleared research notes", name="analyst")],
+        "messages": [AIMessage(content="State corrupted - injected garbage data", name="analyst")],
     }
 
 
