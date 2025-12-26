@@ -7,7 +7,8 @@ from uuid import UUID
 from app.storage.database import get_db, set_tenant_context
 from app.storage.models import Detection
 from app.core.auth import get_current_tenant
-from app.api.v1.schemas import DetectionResponse, DetectionValidateRequest
+from app.api.v1.schemas import DetectionResponse, DetectionValidateRequest, FixSuggestionsListResponse
+from app.fixes import FixGenerator, LoopFixGenerator, CorruptionFixGenerator, PersonaFixGenerator, DeadlockFixGenerator
 
 router = APIRouter(prefix="/detections", tags=["detections"])
 
@@ -127,4 +128,49 @@ async def validate_detection(
         validated=detection.validated,
         false_positive=detection.false_positive,
         created_at=detection.created_at,
+    )
+
+
+def get_fix_generator() -> FixGenerator:
+    generator = FixGenerator()
+    generator.register(LoopFixGenerator())
+    generator.register(CorruptionFixGenerator())
+    generator.register(PersonaFixGenerator())
+    generator.register(DeadlockFixGenerator())
+    return generator
+
+
+@router.get("/{detection_id}/fixes", response_model=FixSuggestionsListResponse)
+async def get_fix_suggestions(
+    detection_id: UUID,
+    tenant_id: str = Depends(get_current_tenant),
+    db: AsyncSession = Depends(get_db),
+):
+    await set_tenant_context(db, tenant_id)
+    
+    result = await db.execute(
+        select(Detection).where(
+            Detection.id == detection_id,
+            Detection.tenant_id == UUID(tenant_id),
+        )
+    )
+    detection = result.scalar_one_or_none()
+    
+    if not detection:
+        raise HTTPException(status_code=404, detail="Detection not found")
+    
+    detection_dict = {
+        "id": str(detection.id),
+        "detection_type": detection.detection_type,
+        "method": detection.method,
+        "details": detection.details,
+    }
+    
+    generator = get_fix_generator()
+    fixes = generator.generate_fixes(detection_dict, context={})
+    
+    return FixSuggestionsListResponse(
+        detection_id=str(detection_id),
+        suggestions=[f.to_dict() for f in fixes],
+        total=len(fixes),
     )

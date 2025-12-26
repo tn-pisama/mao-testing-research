@@ -131,3 +131,37 @@ class HealthResponse(BaseModel):
     database: str
     redis: str
     version: str
+
+
+class CodeChangeResponse(BaseModel):
+    file_path: str
+    language: str
+    original_code: Optional[str]
+    suggested_code: str
+    start_line: Optional[int]
+    end_line: Optional[int]
+    description: str
+    diff: str
+
+
+class FixSuggestionResponse(BaseModel):
+    id: str
+    detection_id: str
+    detection_type: str
+    fix_type: str
+    confidence: str
+    title: str
+    description: str
+    rationale: str
+    code_changes: List[CodeChangeResponse]
+    estimated_impact: str
+    breaking_changes: bool
+    requires_testing: bool
+    tags: List[str]
+    metadata: Dict[str, Any]
+
+
+class FixSuggestionsListResponse(BaseModel):
+    detection_id: str
+    suggestions: List[FixSuggestionResponse]
+    total: int
