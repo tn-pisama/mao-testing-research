@@ -8,6 +8,10 @@ RUN apt-get update && apt-get install -y \
     && rm -rf /var/lib/apt/lists/*
 
 COPY requirements-prod.txt ./requirements.txt
+
+# Install CPU-only PyTorch first (much smaller than GPU version)
+RUN pip install --no-cache-dir torch --index-url https://download.pytorch.org/whl/cpu
+RUN pip install --no-cache-dir sentence-transformers==2.3.1
 RUN pip install --no-cache-dir -r requirements.txt
 
 COPY . .
