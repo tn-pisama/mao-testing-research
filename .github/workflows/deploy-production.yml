@@ -1,0 +1,204 @@
+name: Deploy to Production
+
+on:
+  workflow_dispatch:
+    inputs:
+      confirm:
+        description: 'Type "deploy-prod" to confirm production deployment'
+        required: true
+        type: string
+
+env:
+  AWS_REGION: us-east-1
+  ECR_REGISTRY: ${{ secrets.AWS_ACCOUNT_ID }}.dkr.ecr.us-east-1.amazonaws.com
+  ECS_CLUSTER: mao-production
+
+jobs:
+  validate:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Validate confirmation
+        if: ${{ github.event.inputs.confirm != 'deploy-prod' }}
+        run: |
+          echo "❌ Deployment cancelled. You must type 'deploy-prod' to confirm."
+          exit 1
+      
+      - name: Confirm deployment
+        run: echo "✅ Production deployment confirmed"
+
+  verify-staging:
+    needs: validate
+    runs-on: ubuntu-latest
+    
+    steps:
+      - name: Check staging health
+        run: |
+          response=$(curl -s -o /dev/null -w "%{http_code}" https://api-staging.mao-testing.com/api/v1/health)
+          if [ "$response" != "200" ]; then
+            echo "❌ Staging is not healthy (HTTP $response). Fix staging before deploying to production."
+            exit 1
+          fi
+          echo "✅ Staging health check passed"
+      
+      - name: Verify staging was deployed recently
+        run: |
+          echo "⚠️ Manual verification: Ensure staging has been tested with latest changes"
+
+  deploy-backend:
+    needs: verify-staging
+    runs-on: ubuntu-latest
+    environment: production
+    
+    steps:
+      - uses: actions/checkout@v4
+      
+      - name: Configure AWS credentials
+        uses: aws-actions/configure-aws-credentials@v4
+        with:
+          aws-access-key-id: ${{ secrets.AWS_ACCESS_KEY_ID }}
+          aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
+          aws-region: ${{ env.AWS_REGION }}
+      
+      - name: Login to Amazon ECR
+        id: login-ecr
+        uses: aws-actions/amazon-ecr-login@v2
+      
+      - name: Promote staging image to production
+        run: |
+          # Pull staging-latest and retag as production
+          docker pull $ECR_REGISTRY/mao-backend:staging-latest
+          docker tag $ECR_REGISTRY/mao-backend:staging-latest $ECR_REGISTRY/mao-backend:prod-${{ github.sha }}
+          docker tag $ECR_REGISTRY/mao-backend:staging-latest $ECR_REGISTRY/mao-backend:prod-latest
+          docker push $ECR_REGISTRY/mao-backend:prod-${{ github.sha }}
+          docker push $ECR_REGISTRY/mao-backend:prod-latest
+      
+      - name: Create deployment record
+        run: |
+          echo "Deployment: prod-${{ github.sha }}" >> deployment.txt
+          echo "Time: $(date -u)" >> deployment.txt
+          echo "Triggered by: ${{ github.actor }}" >> deployment.txt
+      
+      - name: Deploy to ECS (Blue/Green)
+        run: |
+          aws ecs update-service \
+            --cluster $ECS_CLUSTER \
+            --service mao-backend-prod \
+            --force-new-deployment
+      
+      - name: Wait for deployment
+        run: |
+          aws ecs wait services-stable \
+            --cluster $ECS_CLUSTER \
+            --services mao-backend-prod
+      
+      - name: Verify deployment health
+        run: |
+          sleep 30
+          response=$(curl -s -o /dev/null -w "%{http_code}" https://api.mao-testing.com/api/v1/health)
+          if [ "$response" != "200" ]; then
+            echo "❌ Production health check failed! Consider rollback."
+            exit 1
+          fi
+          echo "✅ Production backend healthy"
+
+  deploy-frontend:
+    needs: verify-staging
+    runs-on: ubuntu-latest
+    environment: production
+    
+    steps:
+      - uses: actions/checkout@v4
+      
+      - name: Set up Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+          cache: 'npm'
+          cache-dependency-path: frontend/package-lock.json
+      
+      - name: Install dependencies
+        run: |
+          cd frontend
+          npm ci
+      
+      - name: Build for production
+        env:
+          NEXT_PUBLIC_API_URL: https://api.mao-testing.com/api/v1
+          NEXT_PUBLIC_ENVIRONMENT: production
+          NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY: ${{ secrets.CLERK_PUBLISHABLE_KEY }}
+        run: |
+          cd frontend
+          npm run build
+      
+      - name: Deploy to Vercel Production
+        uses: amondnet/vercel-action@v25
+        with:
+          vercel-token: ${{ secrets.VERCEL_TOKEN }}
+          vercel-org-id: ${{ secrets.VERCEL_ORG_ID }}
+          vercel-project-id: ${{ secrets.VERCEL_PROJECT_ID }}
+          vercel-args: '--prod'
+          working-directory: ./frontend
+          alias-domains: |
+            app.mao-testing.com
+            mao-testing.com
+
+  notify:
+    needs: [deploy-backend, deploy-frontend]
+    runs-on: ubuntu-latest
+    if: always()
+    
+    steps:
+      - name: Notify Slack on success
+        if: ${{ needs.deploy-backend.result == 'success' && needs.deploy-frontend.result == 'success' }}
+        uses: slackapi/slack-github-action@v1
+        with:
+          payload: |
+            {
+              "text": "🚀 Production deployment successful",
+              "blocks": [
+                {
+                  "type": "section",
+                  "text": {
+                    "type": "mrkdwn",
+                    "text": "🚀 *Production Deployment Successful*\n• Backend: ✅\n• Frontend: ✅\n• Deployed by: ${{ github.actor }}\n<https://app.mao-testing.com|View Production>"
+                  }
+                }
+              ]
+            }
+        env:
+          SLACK_WEBHOOK_URL: ${{ secrets.SLACK_WEBHOOK_URL }}
+      
+      - name: Notify Slack on failure
+        if: ${{ needs.deploy-backend.result == 'failure' || needs.deploy-frontend.result == 'failure' }}
+        uses: slackapi/slack-github-action@v1
+        with:
+          payload: |
+            {
+              "text": "🔥 PRODUCTION DEPLOYMENT FAILED",
+              "blocks": [
+                {
+                  "type": "section",
+                  "text": {
+                    "type": "mrkdwn",
+                    "text": "🔥 *PRODUCTION DEPLOYMENT FAILED*\n• Triggered by: ${{ github.actor }}\n• Action required: Check logs and consider rollback\n<${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}|View Logs>"
+                  }
+                }
+              ]
+            }
+        env:
+          SLACK_WEBHOOK_URL: ${{ secrets.SLACK_WEBHOOK_URL }}
+      
+      - name: Create GitHub Release
+        if: ${{ needs.deploy-backend.result == 'success' && needs.deploy-frontend.result == 'success' }}
+        uses: actions/create-release@v1
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        with:
+          tag_name: prod-${{ github.sha }}
+          release_name: Production Release ${{ github.sha }}
+          body: |
+            Production deployment triggered by @${{ github.actor }}
+            
+            Commit: ${{ github.sha }}
+          draft: false
+          prerelease: false
