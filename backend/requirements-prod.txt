@@ -17,3 +17,4 @@ svix==1.17.0
 pybreaker==1.2.0
 scikit-learn==1.4.0
 numpy==1.26.3
+pgvector==0.2.4
