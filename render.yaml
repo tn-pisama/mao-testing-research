@@ -1,0 +1,28 @@
+services:
+  - type: web
+    name: mao-api
+    runtime: python
+    rootDir: backend
+    buildCommand: pip install -r requirements-prod.txt
+    startCommand: uvicorn app.main:app --host 0.0.0.0 --port $PORT
+    envVars:
+      - key: DATABASE_URL
+        fromDatabase:
+          name: mao-db
+          property: connectionString
+      - key: JWT_SECRET
+        generateValue: true
+      - key: ENVIRONMENT
+        value: production
+      - key: CLERK_PUBLISHABLE_KEY
+        value: pk_test_YW11c2luZy1jcmF3ZGFkLTQxLmNsZXJrLmFjY291bnRzLmRldiQ
+      - key: CLERK_SECRET_KEY
+        sync: false
+      - key: CORS_ORIGINS
+        value: https://mao-testing-tuomo-nikulainens-projects.vercel.app
+
+databases:
+  - name: mao-db
+    plan: free
+    databaseName: mao
+    user: mao
