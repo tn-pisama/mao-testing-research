@@ -10,7 +10,7 @@ from app.detection import (
     overflow_detector,
     cost_calculator,
 )
-from app.core.dependencies import get_current_tenant
+from app.core.auth import get_current_tenant
 
 router = APIRouter(prefix="/security", tags=["security"])
 

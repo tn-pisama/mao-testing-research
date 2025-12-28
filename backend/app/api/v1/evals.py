@@ -13,7 +13,7 @@ from app.evals.metrics import (
     safety_score,
     factuality_score,
 )
-from app.core.dependencies import get_current_tenant
+from app.core.auth import get_current_tenant
 
 router = APIRouter(prefix="/evals", tags=["evals"])
 
