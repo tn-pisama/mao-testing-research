@@ -1,6 +1,6 @@
 """Evaluation framework for LLM outputs."""
 
-from .scorer import EvalScorer, EvalResult, EvalType
+from .scorer import EvalScorer, EvalResult, EvalType, EvalConfig
 from .llm_judge import LLMJudge, JudgmentResult
 from .metrics import (
     relevance_score,
@@ -13,6 +13,7 @@ __all__ = [
     "EvalScorer",
     "EvalResult", 
     "EvalType",
+    "EvalConfig",
     "LLMJudge",
     "JudgmentResult",
     "relevance_score",
