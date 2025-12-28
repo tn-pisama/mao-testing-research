@@ -40,14 +40,16 @@ app.add_middleware(
     CORSMiddleware,
     allow_origins=cors_origins,
     allow_credentials=True,
-    allow_methods=["GET", "POST", "PUT", "DELETE"],
-    allow_headers=["Authorization", "Content-Type", "X-Requested-With", "X-MAO-API-Key", "X-MAO-Signature", "X-MAO-Timestamp", "X-MAO-Nonce"],
+    allow_methods=["GET", "POST", "PUT", "DELETE", "OPTIONS"],
+    allow_headers=["Authorization", "Content-Type", "Accept", "Accept-Language", "Content-Language", "X-Requested-With", "X-MAO-API-Key", "X-MAO-Signature", "X-MAO-Timestamp", "X-MAO-Nonce"],
     max_age=3600,
 )
 
 
 @app.middleware("http")
 async def rate_limit_middleware(request: Request, call_next):
+    if request.method == "OPTIONS":
+        return await call_next(request)
     if request.url.path in ["/health", "/api/v1/health", "/"]:
         return await call_next(request)
     
