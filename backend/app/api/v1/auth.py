@@ -2,7 +2,7 @@ from typing import List
 from uuid import UUID
 from datetime import datetime
 
-from fastapi import APIRouter, Depends, HTTPException, status
+from fastapi import APIRouter, Depends, HTTPException, status, Request
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy import select
 import secrets
@@ -11,12 +11,16 @@ from app.storage.database import get_db
 from app.storage.models import Tenant, ApiKey, User
 from app.core.auth import hash_api_key, verify_api_key, create_access_token
 from app.core.dependencies import AuthContext, get_current_user_or_tenant
+from app.core.rate_limit import rate_limiter
 from app.api.v1.schemas import (
     TenantCreate, TenantResponse, TokenRequest, TokenResponse,
     ApiKeyCreateRequest, ApiKeyResponse, ApiKeyCreateResponse, UserResponse
 )
 
 router = APIRouter(prefix="/auth", tags=["auth"])
+
+AUTH_RATE_LIMIT = 10
+AUTH_RATE_WINDOW = 60
 
 
 @router.post("/tenants", response_model=TenantResponse, status_code=status.HTTP_201_CREATED)
@@ -47,8 +51,17 @@ async def create_tenant(
 @router.post("/token", response_model=TokenResponse)
 async def get_token(
     request: TokenRequest,
+    http_request: Request,
     db: AsyncSession = Depends(get_db),
 ):
+    client_ip = http_request.client.host if http_request.client else "unknown"
+    rate_key = f"auth_rate_limit:{client_ip}"
+    allowed = await rate_limiter.check_rate_limit(rate_key, AUTH_RATE_LIMIT, AUTH_RATE_WINDOW)
+    if not allowed:
+        raise HTTPException(
+            status_code=status.HTTP_429_TOO_MANY_REQUESTS,
+            detail="Too many authentication attempts. Please try again later."
+        )
     key_prefix = request.api_key[:12] if len(request.api_key) >= 12 else ""
     
     result = await db.execute(

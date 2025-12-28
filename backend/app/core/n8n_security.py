@@ -9,7 +9,7 @@ from fastapi import HTTPException
 
 BLOCKED_HOSTS = {"localhost", "127.0.0.1", "0.0.0.0", "::1", "metadata.google.internal"}
 BLOCKED_PORTS = {22, 25, 445, 3306, 5432, 6379, 27017}
-TIMESTAMP_TOLERANCE_SECONDS = 300
+TIMESTAMP_TOLERANCE_SECONDS = 30
 
 SENSITIVE_PATTERNS = [
     re.compile(r'\b[A-Za-z0-9._%+-]+@[A-Za-z0-9.-]+\.[A-Z|a-z]{2,}\b'),

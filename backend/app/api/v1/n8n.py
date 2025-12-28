@@ -70,17 +70,36 @@ async def receive_n8n_webhook(
     x_mao_nonce: Optional[str] = Header(None, alias="X-MAO-Nonce"),
     db: AsyncSession = Depends(get_db),
 ):
+    from app.core.auth import verify_api_key
+    
+    if not x_mao_api_key.startswith("mao_"):
+        raise HTTPException(status_code=401, detail="Invalid API key format")
+    
+    key_prefix = x_mao_api_key[:12]
+    
+    from app.storage.models import ApiKey
     result = await db.execute(
-        select(Tenant).where(Tenant.api_key_hash == x_mao_api_key)
+        select(ApiKey).where(
+            ApiKey.key_prefix == key_prefix,
+            ApiKey.revoked_at.is_(None)
+        )
     )
-    tenant = result.scalar_one_or_none()
-    if not tenant:
-        from app.core.auth import hash_api_key
-        hashed = hash_api_key(x_mao_api_key)
+    api_key_record = result.scalar_one_or_none()
+    
+    tenant = None
+    if api_key_record and verify_api_key(x_mao_api_key, api_key_record.key_hash):
         result = await db.execute(
-            select(Tenant).where(Tenant.api_key_hash == hashed)
+            select(Tenant).where(Tenant.id == api_key_record.tenant_id)
         )
         tenant = result.scalar_one_or_none()
+    
+    if not tenant:
+        result = await db.execute(select(Tenant))
+        tenants = result.scalars().all()
+        for t in tenants:
+            if verify_api_key(x_mao_api_key, t.api_key_hash):
+                tenant = t
+                break
     
     if not tenant:
         raise HTTPException(status_code=401, detail="Invalid API key")

@@ -1,83 +1,71 @@
-import Link from 'next/link'
-import { 
-  Activity, 
-  AlertTriangle, 
-  BarChart3, 
-  Workflow,
-  ArrowRight 
-} from 'lucide-react'
+import { SignIn } from '@clerk/nextjs'
+import { auth } from '@clerk/nextjs/server'
+import { redirect } from 'next/navigation'
 
-export default function Home() {
+export default async function Home() {
+  const { userId } = await auth()
+  
+  if (userId) {
+    redirect('/dashboard')
+  }
+
   return (
-    <main className="min-h-screen bg-gradient-to-b from-slate-900 to-slate-800">
-      <div className="container mx-auto px-4 py-16">
-        <div className="text-center mb-16">
-          <h1 className="text-5xl font-bold text-white mb-4">
-            MAO Testing Platform
-          </h1>
-          <p className="text-xl text-slate-300 max-w-2xl mx-auto">
-            Detect infinite loops, state corruption, persona drift, and 
-            coordination failures in your multi-agent LLM systems.
-          </p>
-        </div>
-
-        <div className="grid md:grid-cols-2 lg:grid-cols-4 gap-6 mb-16">
-          <FeatureCard
-            icon={<Workflow className="w-8 h-8" />}
-            title="Trace Analysis"
-            description="Real-time OTEL trace ingestion with automatic failure detection"
-          />
-          <FeatureCard
-            icon={<AlertTriangle className="w-8 h-8" />}
-            title="Loop Detection"
-            description="Multi-level detection: structural, hash, semantic clustering"
-          />
-          <FeatureCard
-            icon={<Activity className="w-8 h-8" />}
-            title="State Monitoring"
-            description="Semantic corruption detection and cross-field validation"
-          />
-          <FeatureCard
-            icon={<BarChart3 className="w-8 h-8" />}
-            title="Cost Analytics"
-            description="Track token usage and identify expensive failure patterns"
-          />
-        </div>
-
-        <div className="flex justify-center gap-4">
-          <Link
-            href="/dashboard"
-            className="inline-flex items-center gap-2 bg-primary-600 hover:bg-primary-700 text-white font-semibold px-6 py-3 rounded-lg transition-colors"
-          >
-            Open Dashboard
-            <ArrowRight className="w-5 h-5" />
-          </Link>
-          <Link
-            href="/traces"
-            className="inline-flex items-center gap-2 bg-slate-700 hover:bg-slate-600 text-white font-semibold px-6 py-3 rounded-lg transition-colors"
-          >
-            View Traces
-          </Link>
+    <main className="min-h-screen bg-slate-900">
+      <div className="max-w-7xl mx-auto px-4 py-16 sm:px-6 lg:px-8">
+        <div className="grid lg:grid-cols-2 gap-16 items-center">
+          <div>
+            <h1 className="text-4xl sm:text-5xl font-bold text-white mb-6">
+              Catch AI Agent Failures
+              <span className="text-blue-500"> Before They Cost You</span>
+            </h1>
+            <p className="text-xl text-slate-300 mb-8">
+              MAO Testing Platform automatically detects infinite loops, state corruption, 
+              persona drift, and coordination failures in your LLM agent systems.
+            </p>
+            <div className="space-y-4 mb-8">
+              <div className="flex items-start gap-3">
+                <div className="w-6 h-6 rounded-full bg-blue-600 flex items-center justify-center flex-shrink-0 mt-0.5">
+                  <svg className="w-4 h-4 text-white" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
+                  </svg>
+                </div>
+                <div>
+                  <h3 className="text-white font-medium">Real-time Detection</h3>
+                  <p className="text-slate-400 text-sm">Catch loops, drift, and corruption as they happen</p>
+                </div>
+              </div>
+              <div className="flex items-start gap-3">
+                <div className="w-6 h-6 rounded-full bg-blue-600 flex items-center justify-center flex-shrink-0 mt-0.5">
+                  <svg className="w-4 h-4 text-white" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
+                  </svg>
+                </div>
+                <div>
+                  <h3 className="text-white font-medium">Multi-Framework Support</h3>
+                  <p className="text-slate-400 text-sm">LangGraph, CrewAI, AutoGen, n8n, and more</p>
+                </div>
+              </div>
+              <div className="flex items-start gap-3">
+                <div className="w-6 h-6 rounded-full bg-blue-600 flex items-center justify-center flex-shrink-0 mt-0.5">
+                  <svg className="w-4 h-4 text-white" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
+                  </svg>
+                </div>
+                <div>
+                  <h3 className="text-white font-medium">AI-Powered Fixes</h3>
+                  <p className="text-slate-400 text-sm">Get actionable fix suggestions for every detection</p>
+                </div>
+              </div>
+            </div>
+            <div className="flex items-center gap-4 text-sm text-slate-400">
+              <span>Trusted by teams building production AI agents</span>
+            </div>
+          </div>
+          <div className="flex justify-center lg:justify-end">
+            <SignIn afterSignInUrl="/dashboard" />
+          </div>
         </div>
       </div>
     </main>
-  )
-}
-
-function FeatureCard({
-  icon,
-  title,
-  description,
-}: {
-  icon: React.ReactNode
-  title: string
-  description: string
-}) {
-  return (
-    <div className="bg-slate-800/50 border border-slate-700 rounded-xl p-6 hover:border-primary-500/50 transition-colors">
-      <div className="text-primary-400 mb-4">{icon}</div>
-      <h3 className="text-lg font-semibold text-white mb-2">{title}</h3>
-      <p className="text-slate-400 text-sm">{description}</p>
-    </div>
   )
 }

@@ -4,11 +4,12 @@ interface FetchOptions {
   method?: string
   body?: any
   headers?: Record<string, string>
+  token?: string | null
+  tenantId?: string | null
 }
 
 async function fetchApi<T>(endpoint: string, options: FetchOptions = {}): Promise<T> {
-  const token = typeof window !== 'undefined' ? localStorage.getItem('token') : null
-  const tenantId = typeof window !== 'undefined' ? localStorage.getItem('tenantId') : null
+  const { token, tenantId } = options
   
   const headers: Record<string, string> = {
     'Content-Type': 'application/json',
@@ -26,6 +27,7 @@ async function fetchApi<T>(endpoint: string, options: FetchOptions = {}): Promis
   const response = await fetch(url, {
     method: options.method || 'GET',
     headers,
+    credentials: 'include',
     body: options.body ? JSON.stringify(options.body) : undefined,
   })
 
@@ -94,58 +96,59 @@ export interface CostAnalytics {
   }>
 }
 
-export const api = {
-  async getTraces(params: { page?: number; perPage?: number; status?: string }) {
-    const query = new URLSearchParams()
-    if (params.page) query.set('page', String(params.page))
-    if (params.perPage) query.set('per_page', String(params.perPage))
-    if (params.status) query.set('status_filter', params.status)
-    
-    return fetchApi<{ traces: Trace[]; total: number; page: number; per_page: number }>(
-      `/tenants/{tenant_id}/traces?${query}`
-    )
-  },
+export function createApiClient(token?: string | null, tenantId?: string | null) {
+  const opts = { token, tenantId }
+  
+  return {
+    async getTraces(params: { page?: number; perPage?: number; status?: string }) {
+      const query = new URLSearchParams()
+      if (params.page) query.set('page', String(params.page))
+      if (params.perPage) query.set('per_page', String(params.perPage))
+      if (params.status) query.set('status_filter', params.status)
+      
+      return fetchApi<{ traces: Trace[]; total: number; page: number; per_page: number }>(
+        `/tenants/{tenant_id}/traces?${query}`,
+        opts
+      )
+    },
 
-  async getTrace(id: string) {
-    return fetchApi<Trace>(`/tenants/{tenant_id}/traces/${id}`)
-  },
+    async getTrace(id: string) {
+      return fetchApi<Trace>(`/tenants/{tenant_id}/traces/${id}`, opts)
+    },
 
-  async getTraceStates(traceId: string) {
-    return fetchApi<State[]>(`/tenants/{tenant_id}/traces/${traceId}/states`)
-  },
+    async getTraceStates(traceId: string) {
+      return fetchApi<State[]>(`/tenants/{tenant_id}/traces/${traceId}/states`, opts)
+    },
 
-  async analyzeTrace(traceId: string) {
-    return fetchApi(`/tenants/{tenant_id}/traces/${traceId}/analyze`, { method: 'POST' })
-  },
+    async analyzeTrace(traceId: string) {
+      return fetchApi(`/tenants/{tenant_id}/traces/${traceId}/analyze`, { ...opts, method: 'POST' })
+    },
 
-  async getDetections(params: { page?: number; perPage?: number; traceId?: string; type?: string }) {
-    const query = new URLSearchParams()
-    if (params.page) query.set('page', String(params.page))
-    if (params.perPage) query.set('per_page', String(params.perPage))
-    if (params.type) query.set('detection_type', params.type)
-    
-    return fetchApi<Detection[]>(`/tenants/{tenant_id}/detections?${query}`)
-  },
+    async getDetections(params: { page?: number; perPage?: number; traceId?: string; type?: string }) {
+      const query = new URLSearchParams()
+      if (params.page) query.set('page', String(params.page))
+      if (params.perPage) query.set('per_page', String(params.perPage))
+      if (params.type) query.set('detection_type', params.type)
+      
+      return fetchApi<Detection[]>(`/tenants/{tenant_id}/detections?${query}`, opts)
+    },
 
-  async validateDetection(id: string, falsePositive: boolean, notes?: string) {
-    return fetchApi<Detection>(`/tenants/{tenant_id}/detections/${id}/validate`, {
-      method: 'POST',
-      body: { false_positive: falsePositive, notes },
-    })
-  },
+    async validateDetection(id: string, falsePositive: boolean, notes?: string) {
+      return fetchApi<Detection>(`/tenants/{tenant_id}/detections/${id}/validate`, {
+        ...opts,
+        method: 'POST',
+        body: { false_positive: falsePositive, notes },
+      })
+    },
 
-  async getLoopAnalytics(days: number = 30) {
-    return fetchApi<LoopAnalytics>(`/tenants/{tenant_id}/analytics/loops?days=${days}`)
-  },
+    async getLoopAnalytics(days: number = 30) {
+      return fetchApi<LoopAnalytics>(`/tenants/{tenant_id}/analytics/loops?days=${days}`, opts)
+    },
 
-  async getCostAnalytics(days: number = 30) {
-    return fetchApi<CostAnalytics>(`/tenants/{tenant_id}/analytics/cost?days=${days}`)
-  },
-
-  async login(apiKey: string) {
-    return fetchApi<{ access_token: string }>('/auth/token', {
-      method: 'POST',
-      body: { api_key: apiKey },
-    })
-  },
+    async getCostAnalytics(days: number = 30) {
+      return fetchApi<CostAnalytics>(`/tenants/{tenant_id}/analytics/cost?days=${days}`, opts)
+    },
+  }
 }
+
+export const api = createApiClient()
