@@ -15,8 +15,14 @@ services:
       - key: ENVIRONMENT
         value: production
       - key: CLERK_PUBLISHABLE_KEY
-        value: pk_test_YW11c2luZy1jcmF3ZGFkLTQxLmNsZXJrLmFjY291bnRzLmRldiQ
+        sync: false
       - key: CLERK_SECRET_KEY
+        sync: false
+      - key: CLERK_WEBHOOK_SECRET
+        sync: false
+      - key: CLERK_JWT_ISSUER
+        sync: false
+      - key: REDIS_URL
         sync: false
       - key: CORS_ORIGINS
         value: https://mao-testing-tuomo-nikulainens-projects.vercel.app
