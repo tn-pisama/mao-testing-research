@@ -15,7 +15,9 @@ opentelemetry-instrumentation-fastapi==0.43b0
 sentence-transformers==2.3.1
 scikit-learn==1.4.0
 numpy==1.26.3
+pgvector==0.2.4
 httpx==0.26.0
+tiktoken==0.5.2
 svix==1.17.0
 pybreaker==1.2.0
 pytest==7.4.4
