@@ -47,6 +47,25 @@ app.add_middleware(
 
 
 @app.middleware("http")
+async def rate_limit_middleware(request: Request, call_next):
+    if request.url.path in ["/health", "/api/v1/health", "/"]:
+        return await call_next(request)
+    
+    client_ip = request.client.host if request.client else "unknown"
+    key = f"rate_limit:ip:{client_ip}"
+    
+    allowed = await rate_limiter.check_rate_limit(key, limit=100, window=60)
+    if not allowed:
+        return JSONResponse(
+            status_code=429,
+            content={"detail": "Too many requests"},
+            headers={"Retry-After": "60"}
+        )
+    
+    return await call_next(request)
+
+
+@app.middleware("http")
 async def add_security_headers(request: Request, call_next):
     response = await call_next(request)
     response.headers["X-Content-Type-Options"] = "nosniff"
@@ -75,3 +94,8 @@ FastAPIInstrumentor.instrument_app(app)
 @app.get("/")
 async def root():
     return {"name": settings.app_name, "version": "0.1.0"}
+
+
+@app.get("/health")
+async def root_health():
+    return {"status": "healthy"}
