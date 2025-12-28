@@ -11,7 +11,7 @@ export default async function Home() {
 
   return (
     <main className="min-h-screen bg-slate-900 flex items-center justify-center">
-      <SignIn afterSignInUrl="/dashboard" />
+      <SignIn fallbackRedirectUrl="/dashboard" />
     </main>
   )
 }
