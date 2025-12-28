@@ -56,12 +56,17 @@ async def rate_limit_middleware(request: Request, call_next):
     client_ip = request.client.host if request.client else "unknown"
     key = f"rate_limit:ip:{client_ip}"
     
-    allowed = await rate_limiter.check_rate_limit(key, limit=100, window=60)
+    allowed = await rate_limiter.check_rate_limit(key, limit=1000, window=60)
     if not allowed:
+        origin = request.headers.get("origin", "")
+        headers = {"Retry-After": "60"}
+        if origin in cors_origins:
+            headers["Access-Control-Allow-Origin"] = origin
+            headers["Access-Control-Allow-Credentials"] = "true"
         return JSONResponse(
             status_code=429,
             content={"detail": "Too many requests"},
-            headers={"Retry-After": "60"}
+            headers=headers
         )
     
     return await call_next(request)
