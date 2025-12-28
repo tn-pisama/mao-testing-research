@@ -39,12 +39,18 @@ class Schema:
 
 class SemanticCorruptionDetector:
     def __init__(self, velocity_config: Optional[VelocityConfig] = None):
+        import re
+        email_pattern = re.compile(r'^[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}$')
+        url_pattern = re.compile(r'^https?://[a-zA-Z0-9][-a-zA-Z0-9]*(\.[a-zA-Z0-9][-a-zA-Z0-9]*)+(/.*)?$')
+        
         self.domain_validators: Dict[str, Callable] = {
             "age": lambda v: isinstance(v, (int, float)) and 0 <= v <= 150,
             "price": lambda v: isinstance(v, (int, float)) and v >= 0,
             "percentage": lambda v: isinstance(v, (int, float)) and 0 <= v <= 100,
-            "email": lambda v: isinstance(v, str) and "@" in v and "." in v,
-            "url": lambda v: isinstance(v, str) and (v.startswith("http://") or v.startswith("https://")),
+            "email": lambda v: isinstance(v, str) and bool(email_pattern.match(v)),
+            "url": lambda v: isinstance(v, str) and bool(url_pattern.match(v)),
+            "phone": lambda v: isinstance(v, str) and len(re.sub(r'\D', '', v)) >= 10,
+            "uuid": lambda v: isinstance(v, str) and len(v) == 36 and v.count('-') == 4,
         }
         self.known_ids: set = set()
         self.velocity_config = velocity_config or VelocityConfig()

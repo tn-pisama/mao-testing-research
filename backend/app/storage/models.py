@@ -108,6 +108,8 @@ class Trace(Base):
     __table_args__ = (
         Index("idx_traces_tenant", "tenant_id"),
         Index("idx_traces_session", "session_id"),
+        Index("idx_traces_tenant_created", "tenant_id", "created_at"),
+        Index("idx_traces_tenant_status", "tenant_id", "status"),
     )
 
 
@@ -135,6 +137,8 @@ class State(Base):
         UniqueConstraint("trace_id", "sequence_num"),
         Index("idx_states_trace", "trace_id"),
         Index("idx_states_tenant", "tenant_id"),
+        Index("idx_states_agent", "agent_id"),
+        Index("idx_states_created", "created_at"),
     )
 
 
@@ -175,6 +179,9 @@ class Detection(Base):
     __table_args__ = (
         Index("idx_detections_tenant", "tenant_id"),
         Index("idx_detections_trace", "trace_id"),
+        Index("idx_detections_type", "detection_type"),
+        Index("idx_detections_tenant_created", "tenant_id", "created_at"),
+        Index("idx_detections_tenant_type", "tenant_id", "detection_type"),
     )
 
 

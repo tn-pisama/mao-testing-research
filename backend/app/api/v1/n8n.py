@@ -94,34 +94,30 @@ async def receive_n8n_webhook(
         tenant = result.scalar_one_or_none()
     
     if not tenant:
-        result = await db.execute(select(Tenant))
-        tenants = result.scalars().all()
-        for t in tenants:
-            if verify_api_key(x_mao_api_key, t.api_key_hash):
-                tenant = t
-                break
-    
-    if not tenant:
         raise HTTPException(status_code=401, detail="Invalid API key")
     
     tenant_id = str(tenant.id)
     await set_tenant_context(db, tenant_id)
     
-    if x_mao_signature and x_mao_timestamp:
-        workflow_result = await db.execute(
-            select(N8nWorkflow).where(
-                N8nWorkflow.tenant_id == tenant.id,
-                N8nWorkflow.workflow_id == payload.workflowId,
-            )
+    workflow_result = await db.execute(
+        select(N8nWorkflow).where(
+            N8nWorkflow.tenant_id == tenant.id,
+            N8nWorkflow.workflow_id == payload.workflowId,
         )
-        workflow = workflow_result.scalar_one_or_none()
+    )
+    workflow = workflow_result.scalar_one_or_none()
+    
+    if workflow and workflow.webhook_secret:
+        if not x_mao_signature or not x_mao_timestamp:
+            raise HTTPException(
+                status_code=401,
+                detail="Webhook signature required for registered workflows"
+            )
+        body = await request.body()
+        verify_webhook_signature(body, x_mao_signature, workflow.webhook_secret, x_mao_timestamp)
         
-        if workflow and workflow.webhook_secret:
-            body = await request.body()
-            verify_webhook_signature(body, x_mao_signature, workflow.webhook_secret, x_mao_timestamp)
-            
-            if x_mao_nonce:
-                await verify_nonce(x_mao_nonce, int(x_mao_timestamp), db)
+        if x_mao_nonce:
+            await verify_nonce(x_mao_nonce, int(x_mao_timestamp), db)
     
     execution = n8n_parser.parse_execution(payload.model_dump())
     states = n8n_parser.parse_to_states(execution, tenant_id)
