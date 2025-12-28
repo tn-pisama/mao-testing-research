@@ -1,7 +1,8 @@
 'use client'
 
 import { useState, useEffect, useCallback } from 'react'
-import { api } from '@/lib/api'
+import { useAuth } from '@clerk/nextjs'
+import { createApiClient } from '@/lib/api'
 import {
   generateDemoLoopAnalytics,
   generateDemoCostAnalytics,
@@ -10,9 +11,8 @@ import {
 } from '@/lib/demo-data'
 import type { LoopAnalytics, CostAnalytics, Detection, Trace } from '@/lib/api'
 
-const DEMO_API_KEY = 'mao_demo_key_12345'
-
 export function useApiWithFallback() {
+  const { getToken } = useAuth()
   const [isLoading, setIsLoading] = useState(true)
   const [isDemoMode, setIsDemoMode] = useState(true)
   const [error, setError] = useState<string | null>(null)
@@ -24,6 +24,9 @@ export function useApiWithFallback() {
 
   const loadRealData = useCallback(async () => {
     try {
+      const token = await getToken()
+      const api = createApiClient(token)
+      
       const [loops, cost, dets, trc] = await Promise.all([
         api.getLoopAnalytics(30),
         api.getCostAnalytics(30),
@@ -42,7 +45,7 @@ export function useApiWithFallback() {
       console.warn('API unavailable, falling back to demo mode:', err)
       return false
     }
-  }, [])
+  }, [getToken])
 
   const loadDemoData = useCallback(() => {
     setLoopAnalytics(generateDemoLoopAnalytics())
@@ -52,45 +55,16 @@ export function useApiWithFallback() {
     setIsDemoMode(true)
   }, [])
 
-  const initializeAuth = useCallback(async (): Promise<boolean> => {
-    if (typeof window === 'undefined') return false
-    
-    const existingToken = localStorage.getItem('token')
-    if (existingToken && existingToken.startsWith('eyJ')) {
-      return true
-    }
-    
-    try {
-      const response = await api.login(DEMO_API_KEY)
-      if (response.access_token) {
-        localStorage.setItem('token', response.access_token)
-        const payload = JSON.parse(atob(response.access_token.split('.')[1]))
-        if (payload.tenant_id) {
-          localStorage.setItem('tenantId', payload.tenant_id)
-        }
-        return true
-      }
-    } catch (err) {
-      console.warn('Auth failed, will use demo mode:', err)
-    }
-    return false
-  }, [])
-
   const refresh = useCallback(async () => {
     setIsLoading(true)
     
-    const authSuccess = await initializeAuth()
-    if (authSuccess) {
-      const dataSuccess = await loadRealData()
-      if (!dataSuccess) {
-        loadDemoData()
-      }
-    } else {
+    const dataSuccess = await loadRealData()
+    if (!dataSuccess) {
       loadDemoData()
     }
     
     setIsLoading(false)
-  }, [initializeAuth, loadRealData, loadDemoData])
+  }, [loadRealData, loadDemoData])
 
   useEffect(() => {
     refresh()
@@ -118,6 +92,7 @@ export function useApiWithFallback() {
 }
 
 export function useDetections(params?: { page?: number; perPage?: number; type?: string }) {
+  const { getToken } = useAuth()
   const [detections, setDetections] = useState<Detection[]>([])
   const [isLoading, setIsLoading] = useState(true)
   const [isDemoMode, setIsDemoMode] = useState(false)
@@ -126,6 +101,8 @@ export function useDetections(params?: { page?: number; perPage?: number; type?:
     async function load() {
       setIsLoading(true)
       try {
+        const token = await getToken()
+        const api = createApiClient(token)
         const data = await api.getDetections(params || {})
         setDetections(data)
         setIsDemoMode(false)
@@ -136,12 +113,13 @@ export function useDetections(params?: { page?: number; perPage?: number; type?:
       setIsLoading(false)
     }
     load()
-  }, [params?.page, params?.perPage, params?.type])
+  }, [getToken, params])
 
   return { detections, isLoading, isDemoMode }
 }
 
 export function useTraces(params?: { page?: number; perPage?: number; status?: string }) {
+  const { getToken } = useAuth()
   const [traces, setTraces] = useState<Trace[]>([])
   const [total, setTotal] = useState(0)
   const [isLoading, setIsLoading] = useState(true)
@@ -151,6 +129,8 @@ export function useTraces(params?: { page?: number; perPage?: number; status?: s
     async function load() {
       setIsLoading(true)
       try {
+        const token = await getToken()
+        const api = createApiClient(token)
         const data = await api.getTraces(params || {})
         setTraces(data.traces)
         setTotal(data.total)
@@ -164,7 +144,7 @@ export function useTraces(params?: { page?: number; perPage?: number; status?: s
       setIsLoading(false)
     }
     load()
-  }, [params?.page, params?.perPage, params?.status])
+  }, [getToken, params])
 
   return { traces, total, isLoading, isDemoMode }
 }
