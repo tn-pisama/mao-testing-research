@@ -28,8 +28,8 @@ class RateLimiter:
         try:
             await self.connect()
         except RedisError as e:
-            logger.error(f"Redis connection failed, failing closed: {e}")
-            return False
+            logger.warning(f"Redis connection failed, failing open: {e}")
+            return True
         
         limit = limit or settings.rate_limit_requests
         window = window or settings.rate_limit_window_seconds
@@ -49,8 +49,8 @@ class RateLimiter:
             
             return request_count <= limit
         except RedisError as e:
-            logger.error(f"Redis operation failed, failing closed: {e}")
-            return False
+            logger.warning(f"Redis operation failed, failing open: {e}")
+            return True
     
     async def get_remaining(self, key: str, limit: int = None) -> int:
         await self.connect()
