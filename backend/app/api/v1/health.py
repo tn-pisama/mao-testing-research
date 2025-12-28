@@ -27,7 +27,7 @@ async def health_check(db: AsyncSession = Depends(get_db)):
     except Exception:
         redis_status = "unhealthy"
     
-    overall = "healthy" if db_status == "healthy" and redis_status == "healthy" else "degraded"
+    overall = "healthy" if db_status == "healthy" else "degraded"
     
     return HealthResponse(
         status=overall,

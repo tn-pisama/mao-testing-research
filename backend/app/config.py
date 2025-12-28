@@ -31,6 +31,7 @@ class Settings(BaseSettings):
     semantic_threshold: float = 0.85
     
     otel_service_name: str = "mao-platform"
+    cors_origins: str = "http://localhost:3000,https://dashboard.mao-testing.com"
     
     @field_validator('jwt_secret')
     @classmethod

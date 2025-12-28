@@ -13,6 +13,7 @@ import {
   PlayCircle,
   BookOpen
 } from 'lucide-react'
+import { UserButton } from '@clerk/nextjs'
 import { useUIStore } from '@/stores/uiStore'
 import { clsx } from 'clsx'
 
@@ -40,7 +41,7 @@ export function Layout({ children }: { children: React.ReactNode }) {
       >
         <div className="p-4 flex items-center justify-between border-b border-slate-700">
           {!sidebarCollapsed && (
-            <span className="font-bold text-white">MAO Testing</span>
+            <UserButton afterSignOutUrl="/" />
           )}
           <button
             onClick={() => setSidebarCollapsed(!sidebarCollapsed)}
