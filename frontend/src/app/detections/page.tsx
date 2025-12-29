@@ -24,14 +24,20 @@ import Link from 'next/link'
 import { generateDemoDetections, generateDemoLoopAnalytics } from '@/lib/demo-data'
 import type { Detection } from '@/lib/api'
 
-type DetectionType = 'all' | 'infinite_loop' | 'state_corruption' | 'persona_drift' | 'coordination_deadlock'
+type DetectionType = 'all' | 'infinite_loop' | 'state_corruption' | 'persona_drift' | 'coordination_deadlock' | 'task_derailment' | 'context_neglect' | 'communication_breakdown' | 'specification_mismatch' | 'poor_decomposition' | 'flawed_workflow'
 type Severity = 'all' | 'low' | 'medium' | 'high' | 'critical'
 
-const detectionTypeConfig: Record<string, { label: string; color: string; icon: typeof AlertTriangle }> = {
-  infinite_loop: { label: 'Infinite Loop', color: 'text-red-400', icon: RefreshCw },
-  state_corruption: { label: 'State Corruption', color: 'text-orange-400', icon: AlertTriangle },
-  persona_drift: { label: 'Persona Drift', color: 'text-purple-400', icon: Activity },
-  coordination_deadlock: { label: 'Coordination Deadlock', color: 'text-amber-400', icon: Zap },
+const detectionTypeConfig: Record<string, { label: string; color: string; icon: typeof AlertTriangle; category: string }> = {
+  infinite_loop: { label: 'Infinite Loop', color: 'text-red-400', icon: RefreshCw, category: 'Inter-Agent' },
+  state_corruption: { label: 'State Corruption', color: 'text-orange-400', icon: AlertTriangle, category: 'System' },
+  persona_drift: { label: 'Persona Drift', color: 'text-purple-400', icon: Activity, category: 'Inter-Agent' },
+  coordination_deadlock: { label: 'Coordination Deadlock', color: 'text-amber-400', icon: Zap, category: 'Inter-Agent' },
+  task_derailment: { label: 'Task Derailment', color: 'text-pink-400', icon: TrendingUp, category: 'Inter-Agent' },
+  context_neglect: { label: 'Context Neglect', color: 'text-cyan-400', icon: Eye, category: 'Inter-Agent' },
+  communication_breakdown: { label: 'Communication Breakdown', color: 'text-rose-400', icon: AlertTriangle, category: 'Inter-Agent' },
+  specification_mismatch: { label: 'Spec Mismatch', color: 'text-blue-400', icon: Shield, category: 'System' },
+  poor_decomposition: { label: 'Poor Decomposition', color: 'text-indigo-400', icon: Activity, category: 'System' },
+  flawed_workflow: { label: 'Flawed Workflow', color: 'text-violet-400', icon: Zap, category: 'System' },
 }
 
 const severityConfig: Record<string, { label: string; color: string; bg: string }> = {
@@ -72,6 +78,12 @@ export default function DetectionsPage() {
       state_corruption: detections.filter(d => d.detection_type === 'state_corruption').length,
       persona_drift: detections.filter(d => d.detection_type === 'persona_drift').length,
       coordination_deadlock: detections.filter(d => d.detection_type === 'coordination_deadlock').length,
+      task_derailment: detections.filter(d => d.detection_type === 'task_derailment').length,
+      context_neglect: detections.filter(d => d.detection_type === 'context_neglect').length,
+      communication_breakdown: detections.filter(d => d.detection_type === 'communication_breakdown').length,
+      specification_mismatch: detections.filter(d => d.detection_type === 'specification_mismatch').length,
+      poor_decomposition: detections.filter(d => d.detection_type === 'poor_decomposition').length,
+      flawed_workflow: detections.filter(d => d.detection_type === 'flawed_workflow').length,
     }
   }), [detections])
 
@@ -155,10 +167,22 @@ export default function DetectionsPage() {
                     className="w-full px-3 py-2 rounded-lg bg-slate-900 border border-slate-700 text-white text-sm focus:outline-none focus:border-primary-500"
                   >
                     <option value="all">All Types</option>
-                    <option value="infinite_loop">Infinite Loop</option>
-                    <option value="state_corruption">State Corruption</option>
-                    <option value="persona_drift">Persona Drift</option>
-                    <option value="coordination_deadlock">Coordination Deadlock</option>
+                    <optgroup label="System Design">
+                      <option value="specification_mismatch">Spec Mismatch (F1)</option>
+                      <option value="poor_decomposition">Poor Decomposition (F2)</option>
+                      <option value="state_corruption">State Corruption (F3/F4)</option>
+                      <option value="flawed_workflow">Flawed Workflow (F5)</option>
+                    </optgroup>
+                    <optgroup label="Inter-Agent">
+                      <option value="task_derailment">Task Derailment (F6)</option>
+                      <option value="context_neglect">Context Neglect (F7)</option>
+                      <option value="infinite_loop">Infinite Loop (F8/F9)</option>
+                      <option value="communication_breakdown">Communication Breakdown (F10)</option>
+                      <option value="persona_drift">Persona Drift (F11)</option>
+                    </optgroup>
+                    <optgroup label="Coordination">
+                      <option value="coordination_deadlock">Deadlock (F12-F14)</option>
+                    </optgroup>
                   </select>
                 </div>
 

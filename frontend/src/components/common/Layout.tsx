@@ -11,7 +11,11 @@ import {
   X,
   Bot,
   PlayCircle,
-  BookOpen
+  BookOpen,
+  Zap,
+  RotateCcw,
+  GitBranch,
+  FlaskConical
 } from 'lucide-react'
 import { UserButton } from '@clerk/nextjs'
 import { useUIStore } from '@/stores/uiStore'
@@ -22,7 +26,11 @@ const navItems = [
   { href: '/agents', label: 'Agents', icon: Bot, badge: 'Live' },
   { href: '/traces', label: 'Traces', icon: Workflow },
   { href: '/detections', label: 'Detections', icon: AlertTriangle },
-  { href: '/demo', label: 'Demo', icon: PlayCircle, badge: 'New' },
+  { href: '/testing', label: 'Testing', icon: FlaskConical },
+  { href: '/chaos', label: 'Chaos', icon: Zap, badge: 'New' },
+  { href: '/replay', label: 'Replay', icon: RotateCcw },
+  { href: '/regression', label: 'Regression', icon: GitBranch },
+  { href: '/demo', label: 'Demo', icon: PlayCircle },
   { href: '/docs', label: 'Docs', icon: BookOpen },
   { href: '/settings', label: 'Settings', icon: Settings },
 ]

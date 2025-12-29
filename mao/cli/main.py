@@ -367,9 +367,12 @@ def ci_check(ctx, threshold: float, output_format: str):
         sys.exit(2)
 
 
+from .test import test
+
 cli.add_command(debug, name="d")
 cli.add_command(watch, name="w")
 cli.add_command(fix, name="f")
+cli.add_command(test)
 
 
 if __name__ == "__main__":
