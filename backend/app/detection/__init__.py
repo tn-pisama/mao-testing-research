@@ -14,6 +14,16 @@ from .communication import CommunicationBreakdownDetector, CommunicationBreakdow
 from .specification import SpecificationMismatchDetector, SpecificationMismatchResult, MismatchType
 from .decomposition import TaskDecompositionDetector, DecompositionResult, DecompositionIssue
 from .workflow import FlawedWorkflowDetector, WorkflowAnalysisResult, WorkflowIssue, WorkflowNode
+from .tiered import (
+    TieredDetector,
+    TieredResult,
+    TierConfig,
+    DetectionTier,
+    EscalationReason,
+    create_tiered_injection_detector,
+    create_tiered_hallucination_detector,
+    create_tiered_corruption_detector,
+)
 
 derailment_detector = TaskDerailmentDetector()
 context_neglect_detector = ContextNeglectDetector()
@@ -79,4 +89,13 @@ __all__ = [
     "WorkflowAnalysisResult",
     "WorkflowIssue",
     "WorkflowNode",
+    # Tiered detection with LLM-as-Judge
+    "TieredDetector",
+    "TieredResult",
+    "TierConfig",
+    "DetectionTier",
+    "EscalationReason",
+    "create_tiered_injection_detector",
+    "create_tiered_hallucination_detector",
+    "create_tiered_corruption_detector",
 ]
