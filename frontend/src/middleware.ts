@@ -11,13 +11,16 @@ const isProtectedRoute = createRouteMatcher([
   '/demo(.*)',
   '/review(.*)',
   '/testing(.*)',
+  '/docs(.*)',
+  '/chaos(.*)',
+  '/replay(.*)',
+  '/regression(.*)',
 ])
 
 const isPublicRoute = createRouteMatcher([
   '/',
   '/sign-in(.*)',
   '/sign-up(.*)',
-  '/docs(.*)',
 ])
 
 export default clerkMiddleware(async (auth, req) => {
