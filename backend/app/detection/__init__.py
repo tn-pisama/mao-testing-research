@@ -24,6 +24,38 @@ from .tiered import (
     create_tiered_hallucination_detector,
     create_tiered_corruption_detector,
 )
+from .tool_provision import (
+    tool_provision_detector,
+    ToolProvisionDetector,
+    ToolProvisionResult,
+    ToolProvisionIssue,
+    ProvisionSeverity,
+    ProvisionIssueType,
+)
+from .withholding import (
+    withholding_detector,
+    InformationWithholdingDetector,
+    WithholdingResult,
+    WithholdingIssue,
+    WithholdingSeverity,
+    WithholdingType,
+)
+from .quality_gate import (
+    quality_gate_detector,
+    QualityGateDetector,
+    QualityGateResult,
+    QualityGateIssue,
+    QualityGateSeverity,
+    QualityGateIssueType,
+)
+from .completion import (
+    completion_detector,
+    CompletionMisjudgmentDetector,
+    CompletionResult,
+    CompletionIssue,
+    CompletionSeverity,
+    CompletionIssueType,
+)
 
 derailment_detector = TaskDerailmentDetector()
 context_neglect_detector = ContextNeglectDetector()
@@ -98,4 +130,32 @@ __all__ = [
     "create_tiered_injection_detector",
     "create_tiered_hallucination_detector",
     "create_tiered_corruption_detector",
+    # MAST F4: Inadequate Tool Provision
+    "tool_provision_detector",
+    "ToolProvisionDetector",
+    "ToolProvisionResult",
+    "ToolProvisionIssue",
+    "ProvisionSeverity",
+    "ProvisionIssueType",
+    # MAST F8: Information Withholding
+    "withholding_detector",
+    "InformationWithholdingDetector",
+    "WithholdingResult",
+    "WithholdingIssue",
+    "WithholdingSeverity",
+    "WithholdingType",
+    # MAST F13: Quality Gate Bypass
+    "quality_gate_detector",
+    "QualityGateDetector",
+    "QualityGateResult",
+    "QualityGateIssue",
+    "QualityGateSeverity",
+    "QualityGateIssueType",
+    # MAST F14: Completion Misjudgment
+    "completion_detector",
+    "CompletionMisjudgmentDetector",
+    "CompletionResult",
+    "CompletionIssue",
+    "CompletionSeverity",
+    "CompletionIssueType",
 ]

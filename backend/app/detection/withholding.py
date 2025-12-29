@@ -1,0 +1,354 @@
+"""
+F8: Information Withholding Detection (MAST Taxonomy)
+======================================================
+
+Detects when an agent doesn't share critical information with peers.
+This occurs in inter-agent communication when:
+- Agent discovers important information but doesn't pass it on
+- Agent summarizes away critical details
+- Agent selectively omits negative findings
+- Agent's output is significantly less informative than its internal state
+"""
+
+import logging
+import re
+from dataclasses import dataclass, field
+from enum import Enum
+from typing import Optional, List, Dict, Any, Set
+
+logger = logging.getLogger(__name__)
+
+
+class WithholdingSeverity(str, Enum):
+    NONE = "none"
+    MINOR = "minor"
+    MODERATE = "moderate"
+    SEVERE = "severe"
+    CRITICAL = "critical"
+
+
+class WithholdingType(str, Enum):
+    CRITICAL_OMISSION = "critical_omission"
+    DETAIL_LOSS = "detail_loss"
+    NEGATIVE_SUPPRESSION = "negative_suppression"
+    SELECTIVE_REPORTING = "selective_reporting"
+    CONTEXT_STRIPPING = "context_stripping"
+
+
+@dataclass
+class WithholdingIssue:
+    issue_type: WithholdingType
+    withheld_info: str
+    severity: WithholdingSeverity
+    description: str
+
+
+@dataclass
+class WithholdingResult:
+    detected: bool
+    severity: WithholdingSeverity
+    confidence: float
+    issues: List[WithholdingIssue] = field(default_factory=list)
+    information_retention_ratio: float = 1.0
+    critical_items_found: int = 0
+    critical_items_reported: int = 0
+    explanation: str = ""
+    suggested_fix: Optional[str] = None
+
+
+class InformationWithholdingDetector:
+    """
+    Detects F8: Information Withholding - agent hides info from peers.
+
+    Compares agent's internal findings with what it communicates to
+    downstream agents or final output.
+    """
+
+    # Critical information patterns that should be passed on
+    CRITICAL_PATTERNS = [
+        (r'\b(error|failure|exception|bug|issue|problem)\b', "error_condition"),
+        (r'\b(warning|caution|alert|risk|danger)\b', "warning"),
+        (r'\b(critical|urgent|important|essential|crucial)\b', "priority_marker"),
+        (r'\b(security|vulnerability|exploit|breach)\b', "security_issue"),
+        (r'\b(deadline|due date|expires?|timeout)\b', "time_constraint"),
+        (r'\b(cost|price|fee|charge|expense)\s*[:=]?\s*\$?\d+', "financial_info"),
+        (r'\b(blocked|blocker|impediment|obstacle)\b', "blocker"),
+        (r'\b(deprecated|obsolete|outdated|legacy)\b', "deprecation"),
+        (r'\bnot\s+(?:working|functional|available|supported)\b', "unavailability"),
+        (r'\b(failed|unsuccessful|unable|cannot)\b', "failure_indicator"),
+    ]
+
+    # Patterns indicating negative findings
+    NEGATIVE_FINDING_PATTERNS = [
+        r'\b(no|not|none|neither|never)\s+\w+',
+        r'\b(missing|absent|lacking|without)\b',
+        r'\b(incorrect|wrong|invalid|bad)\b',
+        r'\b(rejected|denied|refused|declined)\b',
+        r'\b(insufficient|inadequate|incomplete)\b',
+    ]
+
+    # Patterns indicating summarization/reduction
+    SUMMARY_PATTERNS = [
+        r'\b(in summary|to summarize|in brief|briefly)\b',
+        r'\b(the main point|key takeaway|bottom line)\b',
+        r'\b(essentially|basically|simply put)\b',
+        r'\b(overall|in general|generally speaking)\b',
+    ]
+
+    def __init__(
+        self,
+        critical_retention_threshold: float = 0.8,
+        detail_retention_threshold: float = 0.6,
+    ):
+        self.critical_retention_threshold = critical_retention_threshold
+        self.detail_retention_threshold = detail_retention_threshold
+
+    def _extract_critical_items(self, text: str) -> List[tuple]:
+        """Extract critical information items from text."""
+        items = []
+
+        for pattern, item_type in self.CRITICAL_PATTERNS:
+            matches = re.finditer(pattern, text, re.IGNORECASE)
+            for match in matches:
+                # Get surrounding context (50 chars each side)
+                start = max(0, match.start() - 50)
+                end = min(len(text), match.end() + 50)
+                context = text[start:end].strip()
+                items.append((match.group(), item_type, context))
+
+        return items
+
+    def _extract_negative_findings(self, text: str) -> List[str]:
+        """Extract negative findings from text."""
+        findings = []
+
+        for pattern in self.NEGATIVE_FINDING_PATTERNS:
+            matches = re.finditer(pattern, text, re.IGNORECASE)
+            for match in matches:
+                start = max(0, match.start() - 30)
+                end = min(len(text), match.end() + 30)
+                context = text[start:end].strip()
+                findings.append(context)
+
+        return findings
+
+    def _calculate_information_density(self, text: str) -> float:
+        """Calculate information density of text."""
+        if not text:
+            return 0.0
+
+        words = text.split()
+        if not words:
+            return 0.0
+
+        # Count substantive words (not stopwords)
+        stopwords = {'the', 'a', 'an', 'is', 'are', 'was', 'were', 'be', 'been',
+                     'being', 'have', 'has', 'had', 'do', 'does', 'did', 'will',
+                     'would', 'could', 'should', 'may', 'might', 'must', 'shall',
+                     'can', 'to', 'of', 'in', 'for', 'on', 'with', 'at', 'by',
+                     'from', 'as', 'into', 'through', 'during', 'before', 'after',
+                     'above', 'below', 'between', 'under', 'again', 'further',
+                     'then', 'once', 'here', 'there', 'when', 'where', 'why',
+                     'how', 'all', 'each', 'few', 'more', 'most', 'other', 'some',
+                     'such', 'no', 'nor', 'not', 'only', 'own', 'same', 'so',
+                     'than', 'too', 'very', 'just', 'and', 'but', 'if', 'or',
+                     'because', 'until', 'while', 'this', 'that', 'these', 'those',
+                     'i', 'you', 'he', 'she', 'it', 'we', 'they', 'what', 'which'}
+
+        substantive = sum(1 for w in words if w.lower() not in stopwords and len(w) > 2)
+        return substantive / len(words)
+
+    def _extract_entities(self, text: str) -> Set[str]:
+        """Extract named entities and key terms."""
+        entities = set()
+
+        # Numbers with units
+        numbers = re.findall(r'\b\d+(?:\.\d+)?(?:\s*(?:%|dollars?|USD|EUR|GB|MB|KB|ms|seconds?|minutes?|hours?|days?))?', text)
+        entities.update(numbers)
+
+        # Capitalized terms (potential names/entities)
+        caps = re.findall(r'\b[A-Z][a-z]+(?:\s+[A-Z][a-z]+)*\b', text)
+        entities.update(caps)
+
+        # Technical terms
+        tech = re.findall(r'\b(?:API|URL|HTTP|JSON|XML|SQL|SDK|REST|OAuth|JWT|AWS|GCP|Azure)\b', text, re.IGNORECASE)
+        entities.update(e.upper() for e in tech)
+
+        # Quoted strings
+        quoted = re.findall(r'"([^"]+)"', text)
+        entities.update(quoted)
+
+        return entities
+
+    def _check_item_retention(
+        self,
+        internal_items: List[tuple],
+        output_text: str,
+    ) -> tuple[int, int, List[str]]:
+        """Check how many critical items are retained in output."""
+        found = len(internal_items)
+        retained = 0
+        missing = []
+
+        output_lower = output_text.lower()
+
+        for item, item_type, context in internal_items:
+            # Check if item or its context appears in output
+            item_found = item.lower() in output_lower
+            context_words = set(context.lower().split())
+            context_overlap = len(context_words & set(output_lower.split())) / max(len(context_words), 1)
+
+            if item_found or context_overlap > 0.5:
+                retained += 1
+            else:
+                missing.append(f"{item_type}: {item}")
+
+        return found, retained, missing
+
+    def detect(
+        self,
+        internal_state: str,
+        agent_output: str,
+        task_context: Optional[str] = None,
+        downstream_requirements: Optional[List[str]] = None,
+    ) -> WithholdingResult:
+        """
+        Detect information withholding.
+
+        Args:
+            internal_state: Agent's internal findings/state (e.g., tool results, reasoning)
+            agent_output: What the agent actually communicated
+            task_context: The task the agent was performing
+            downstream_requirements: What downstream agents need
+
+        Returns:
+            WithholdingResult with detection outcome
+        """
+        issues = []
+
+        if not internal_state or not agent_output:
+            return WithholdingResult(
+                detected=False,
+                severity=WithholdingSeverity.NONE,
+                confidence=0.5,
+                explanation="Insufficient data for withholding detection",
+            )
+
+        # Extract critical items from internal state
+        internal_critical = self._extract_critical_items(internal_state)
+        found, retained, missing_critical = self._check_item_retention(internal_critical, agent_output)
+
+        # Check critical item retention
+        if found > 0:
+            retention_ratio = retained / found
+        else:
+            retention_ratio = 1.0
+
+        # Detect critical omissions
+        if retention_ratio < self.critical_retention_threshold and missing_critical:
+            for missed in missing_critical[:5]:  # Top 5 missing
+                issues.append(WithholdingIssue(
+                    issue_type=WithholdingType.CRITICAL_OMISSION,
+                    withheld_info=missed,
+                    severity=WithholdingSeverity.SEVERE,
+                    description=f"Critical information not passed on: {missed}",
+                ))
+
+        # Check for negative finding suppression
+        internal_negatives = self._extract_negative_findings(internal_state)
+        output_negatives = self._extract_negative_findings(agent_output)
+
+        if len(internal_negatives) > len(output_negatives) + 2:
+            suppressed_count = len(internal_negatives) - len(output_negatives)
+            issues.append(WithholdingIssue(
+                issue_type=WithholdingType.NEGATIVE_SUPPRESSION,
+                withheld_info=f"{suppressed_count} negative findings",
+                severity=WithholdingSeverity.MODERATE,
+                description=f"Agent suppressed {suppressed_count} negative findings from output",
+            ))
+
+        # Check entity retention
+        internal_entities = self._extract_entities(internal_state)
+        output_entities = self._extract_entities(agent_output)
+
+        if internal_entities:
+            entity_retention = len(internal_entities & output_entities) / len(internal_entities)
+            if entity_retention < self.detail_retention_threshold:
+                lost_entities = internal_entities - output_entities
+                issues.append(WithholdingIssue(
+                    issue_type=WithholdingType.DETAIL_LOSS,
+                    withheld_info=f"{len(lost_entities)} entities/details",
+                    severity=WithholdingSeverity.MINOR,
+                    description=f"Lost {len(lost_entities)} specific details in output",
+                ))
+
+        # Check for over-summarization
+        internal_density = self._calculate_information_density(internal_state)
+        output_density = self._calculate_information_density(agent_output)
+
+        if internal_density > 0 and output_density < internal_density * 0.5:
+            if re.search(r'|'.join(p for p in self.SUMMARY_PATTERNS), agent_output, re.IGNORECASE):
+                issues.append(WithholdingIssue(
+                    issue_type=WithholdingType.CONTEXT_STRIPPING,
+                    withheld_info="excessive summarization",
+                    severity=WithholdingSeverity.MINOR,
+                    description="Output significantly less detailed than internal state",
+                ))
+
+        # Determine result
+        detected = len(issues) > 0
+
+        if not detected:
+            return WithholdingResult(
+                detected=False,
+                severity=WithholdingSeverity.NONE,
+                confidence=0.8,
+                information_retention_ratio=retention_ratio,
+                critical_items_found=found,
+                critical_items_reported=retained,
+                explanation="No information withholding detected",
+            )
+
+        # Calculate severity
+        if any(i.severity == WithholdingSeverity.CRITICAL for i in issues):
+            severity = WithholdingSeverity.CRITICAL
+        elif any(i.severity == WithholdingSeverity.SEVERE for i in issues):
+            severity = WithholdingSeverity.SEVERE
+        elif any(i.severity == WithholdingSeverity.MODERATE for i in issues):
+            severity = WithholdingSeverity.MODERATE
+        else:
+            severity = WithholdingSeverity.MINOR
+
+        # Calculate confidence
+        confidence = min(0.95, 0.6 + (len(issues) * 0.1))
+
+        # Build explanation
+        issue_types = set(i.issue_type.value for i in issues)
+        explanation = (
+            f"Detected {len(issues)} withholding issue(s): {', '.join(issue_types)}. "
+            f"Critical info retention: {retention_ratio:.1%}"
+        )
+
+        # Suggest fix
+        if any(i.issue_type == WithholdingType.CRITICAL_OMISSION for i in issues):
+            suggested_fix = "Ensure agent passes all critical findings to downstream agents"
+        elif any(i.issue_type == WithholdingType.NEGATIVE_SUPPRESSION for i in issues):
+            suggested_fix = "Configure agent to report negative findings, not just positive ones"
+        else:
+            suggested_fix = "Review agent's summarization settings to preserve more detail"
+
+        return WithholdingResult(
+            detected=True,
+            severity=severity,
+            confidence=confidence,
+            issues=issues,
+            information_retention_ratio=retention_ratio,
+            critical_items_found=found,
+            critical_items_reported=retained,
+            explanation=explanation,
+            suggested_fix=suggested_fix,
+        )
+
+
+# Singleton instance
+withholding_detector = InformationWithholdingDetector()
