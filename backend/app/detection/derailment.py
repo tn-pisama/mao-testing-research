@@ -37,6 +37,8 @@ class DerailmentResult:
     topic_drift_score: float
     explanation: str
     suggested_fix: Optional[str] = None
+    raw_score: Optional[float] = None
+    evidence: Optional[dict] = None
 
 
 class TaskDerailmentDetector:
@@ -52,11 +54,36 @@ class TaskDerailmentDetector:
         similarity_threshold: float = 0.3,
         drift_threshold: float = 0.5,
         min_output_length: int = 20,
+        confidence_scaling: float = 1.0,
     ):
         self.similarity_threshold = similarity_threshold
         self.drift_threshold = drift_threshold
         self.min_output_length = min_output_length
+        self.confidence_scaling = confidence_scaling
         self._embedder = None
+    
+    def _calibrate_confidence(
+        self,
+        similarity: float,
+        drift_score: float,
+        severity: DerailmentSeverity,
+        output_length: int,
+    ) -> float:
+        """Calibrate confidence based on evidence strength."""
+        severity_weight = {
+            DerailmentSeverity.NONE: 0.0,
+            DerailmentSeverity.MINOR: 0.6,
+            DerailmentSeverity.MODERATE: 0.75,
+            DerailmentSeverity.SEVERE: 0.9,
+        }.get(severity, 0.5)
+        
+        length_factor = min(1.0, output_length / 200)
+        signal_strength = (drift_score + (1 - similarity)) / 2
+        
+        base_confidence = severity_weight * 0.4 + signal_strength * 0.4 + length_factor * 0.2
+        calibrated = min(0.99, base_confidence * self.confidence_scaling)
+        
+        return round(calibrated, 4)
 
     def _get_embedder(self):
         if self._embedder is None:
@@ -154,6 +181,15 @@ class TaskDerailmentDetector:
         
         detected = similarity < self.similarity_threshold or drift_score > self.drift_threshold
         
+        raw_score = drift_score
+        evidence = {
+            "similarity": round(similarity, 4),
+            "drift_score": round(drift_score, 4),
+            "similarity_threshold": self.similarity_threshold,
+            "drift_threshold": self.drift_threshold,
+            "output_length": len(output),
+        }
+        
         if not detected:
             return DerailmentResult(
                 detected=False,
@@ -162,6 +198,8 @@ class TaskDerailmentDetector:
                 task_output_similarity=similarity,
                 topic_drift_score=drift_score,
                 explanation="Agent stayed on task",
+                raw_score=raw_score,
+                evidence=evidence,
             )
 
         if drift_score > 0.8 or similarity < 0.1:
@@ -171,7 +209,12 @@ class TaskDerailmentDetector:
         else:
             severity = DerailmentSeverity.MINOR
 
-        confidence = (drift_score + (1 - similarity)) / 2
+        confidence = self._calibrate_confidence(
+            similarity=similarity,
+            drift_score=drift_score,
+            severity=severity,
+            output_length=len(output),
+        )
 
         agent_prefix = f"Agent '{agent_name}'" if agent_name else "Agent"
         explanation = (
@@ -193,6 +236,8 @@ class TaskDerailmentDetector:
             topic_drift_score=drift_score,
             explanation=explanation,
             suggested_fix=suggested_fix,
+            raw_score=raw_score,
+            evidence=evidence,
         )
 
     def detect_from_trace(

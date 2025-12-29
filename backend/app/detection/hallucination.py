@@ -18,6 +18,8 @@ class HallucinationResult:
     evidence: List[str]
     grounding_score: float
     details: Dict[str, Any] = field(default_factory=dict)
+    raw_score: Optional[float] = None
+    calibration_info: Optional[Dict[str, Any]] = None
 
 
 @dataclass
@@ -27,9 +29,14 @@ class SourceDocument:
 
 
 class HallucinationDetector:
-    def __init__(self):
+    def __init__(
+        self,
+        grounding_threshold: Optional[float] = None,
+        confidence_scaling: float = 1.0,
+    ):
         self._embedder = None
-        self.grounding_threshold = 0.65
+        self.grounding_threshold = grounding_threshold or 0.65
+        self.confidence_scaling = confidence_scaling
         self.citation_pattern = re.compile(r'\[(\d+)\]|\(source:?\s*([^)]+)\)|\{\{cite:[^}]+\}\}', re.IGNORECASE)
         self.confidence_phrases = [
             "I'm not sure", "I don't know", "I cannot confirm",
@@ -46,6 +53,40 @@ class HallucinationDetector:
         if self._embedder is None:
             self._embedder = get_embedder()
         return self._embedder
+    
+    def _calibrate_confidence(
+        self,
+        grounding_score: float,
+        evidence_count: int,
+        has_sources: bool,
+        fabrication_score: float,
+    ) -> Tuple[float, Dict[str, Any]]:
+        """Calibrate confidence based on evidence quality."""
+        base_confidence = 0.5
+        
+        if has_sources:
+            base_confidence += 0.2
+        
+        evidence_factor = min(0.15, evidence_count * 0.03)
+        base_confidence += evidence_factor
+        
+        grounding_factor = (1 - grounding_score) * 0.15
+        base_confidence += grounding_factor
+        
+        fabrication_factor = (1 - fabrication_score) * 0.1
+        base_confidence += fabrication_factor
+        
+        calibrated = min(0.99, base_confidence * self.confidence_scaling)
+        
+        calibration_info = {
+            "base_confidence": round(base_confidence, 4),
+            "evidence_count": evidence_count,
+            "has_sources": has_sources,
+            "grounding_factor": round(grounding_factor, 4),
+            "fabrication_factor": round(fabrication_factor, 4),
+        }
+        
+        return round(calibrated, 4), calibration_info
     
     def detect_hallucination(
         self,
@@ -105,13 +146,23 @@ class HallucinationDetector:
             else:
                 hallucination_type = "general_hallucination"
         
+        raw_score = grounding_score
+        calibrated_confidence, calibration_info = self._calibrate_confidence(
+            grounding_score=grounding_score,
+            evidence_count=len(evidence),
+            has_sources=sources is not None and len(sources) > 0,
+            fabrication_score=fabrication_score,
+        )
+        
         return HallucinationResult(
             detected=detected,
-            confidence=1 - grounding_score if detected else grounding_score,
+            confidence=calibrated_confidence,
             hallucination_type=hallucination_type,
             evidence=evidence,
             grounding_score=grounding_score,
             details=details,
+            raw_score=raw_score,
+            calibration_info=calibration_info,
         )
     
     def _check_source_grounding(
