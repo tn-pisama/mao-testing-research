@@ -256,9 +256,10 @@ class TaskDecompositionDetector:
         confidence = min(len(issues) * 0.3, 0.95)
 
         issue_names = [i.value for i in issues]
+        unique_problematic = list(set(problematic))[:5]
         explanation = (
             f"Task decomposition has {len(issues)} issues: {', '.join(issue_names)}. "
-            f"Affected subtasks: {', '.join(set(problematic)[:5])}"
+            f"Affected subtasks: {', '.join(unique_problematic)}"
         )
 
         fixes = []
