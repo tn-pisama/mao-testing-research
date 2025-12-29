@@ -25,7 +25,9 @@ class Settings(BaseSettings):
     auth_rate_limit_requests: int = 10
     auth_rate_limit_window_seconds: int = 60
     
-    embedding_model: str = "all-MiniLM-L6-v2"
+    embedding_model: str = "intfloat/e5-large-v2"
+    embedding_dimensions: int = 1024
+    embedding_instruction_prefix: bool = True
     loop_detection_window: int = 7
     structural_threshold: float = 0.95
     semantic_threshold: float = 0.85

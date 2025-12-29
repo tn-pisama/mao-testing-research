@@ -3,9 +3,9 @@ import json
 from dataclasses import dataclass
 from typing import List, Optional
 import numpy as np
-from sentence_transformers import SentenceTransformer
 from sklearn.cluster import KMeans
 from app.config import get_settings
+from app.core.embeddings import get_embedder
 
 settings = get_settings()
 
@@ -38,7 +38,7 @@ class MultiLevelLoopDetector:
     @property
     def embedder(self):
         if self._embedder is None:
-            self._embedder = SentenceTransformer(settings.embedding_model)
+            self._embedder = get_embedder()
         return self._embedder
     
     def detect_loop(self, states: List[StateSnapshot]) -> LoopDetectionResult:
@@ -87,7 +87,7 @@ class MultiLevelLoopDetector:
             current_emb = embeddings[-1]
             similarities = []
             for i, emb in enumerate(embeddings[:-1]):
-                sim = np.dot(current_emb, emb) / (np.linalg.norm(current_emb) * np.linalg.norm(emb))
+                sim = self.embedder.similarity(current_emb, emb)
                 similarities.append((i, sim))
             
             high_sim_matches = [(i, sim) for i, sim in similarities if sim > self.semantic_threshold]

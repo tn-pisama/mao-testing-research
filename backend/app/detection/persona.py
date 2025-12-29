@@ -2,8 +2,8 @@ from dataclasses import dataclass, field
 from typing import List, Optional, Dict
 from enum import Enum
 import numpy as np
-from sentence_transformers import SentenceTransformer
 from app.config import get_settings
+from app.core.embeddings import get_embedder
 
 settings = get_settings()
 
@@ -85,7 +85,7 @@ class PersonaConsistencyScorer:
     @property
     def embedder(self):
         if self._embedder is None:
-            self._embedder = SentenceTransformer(settings.embedding_model)
+            self._embedder = get_embedder()
         return self._embedder
     
     def _detect_role_type(self, persona_description: str) -> RoleType:
@@ -120,7 +120,7 @@ class PersonaConsistencyScorer:
         persona_embedding = self._role_embedding_cache[cache_key]
         output_embedding = self.embedder.encode(output)
         
-        return float(self._cosine_similarity(persona_embedding, output_embedding))
+        return float(self.embedder.similarity(persona_embedding, output_embedding))
     
     def _compute_lexical_overlap(self, persona: str, output: str) -> float:
         """Compute lexical overlap as secondary signal."""
@@ -201,7 +201,7 @@ class PersonaConsistencyScorer:
             recent_embeddings = self.embedder.encode(recent_outputs)
             avg_recent = np.mean(recent_embeddings, axis=0)
             output_embedding = self.embedder.encode(output)
-            drift_magnitude = float(1 - self._cosine_similarity(avg_recent, output_embedding))
+            drift_magnitude = float(1 - self.embedder.similarity(avg_recent, output_embedding))
             
             adjusted_drift_threshold = drift_threshold
             if role_type == RoleType.CREATIVE:
@@ -237,22 +237,20 @@ class PersonaConsistencyScorer:
         agent_embedding = self.embedder.encode(agent.persona_description)
         output_embedding = self.embedder.encode(output)
         
-        own_similarity = self._cosine_similarity(agent_embedding, output_embedding)
+        own_similarity = self.embedder.similarity(agent_embedding, output_embedding)
         
         for other_agent in all_agents:
             if other_agent.id == agent.id:
                 continue
             
             other_embedding = self.embedder.encode(other_agent.persona_description)
-            other_similarity = self._cosine_similarity(other_embedding, output_embedding)
+            other_similarity = self.embedder.similarity(other_embedding, output_embedding)
             
             if other_similarity > own_similarity + 0.1:
                 return other_agent.id
         
         return None
     
-    def _cosine_similarity(self, a: np.ndarray, b: np.ndarray) -> float:
-        return float(np.dot(a, b) / (np.linalg.norm(a) * np.linalg.norm(b)))
 
 
 persona_scorer = PersonaConsistencyScorer()

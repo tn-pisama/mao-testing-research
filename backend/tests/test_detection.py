@@ -107,10 +107,10 @@ class TestPersonaScorer:
     def test_inconsistent_persona(self):
         agent = Agent(
             id="research_agent",
-            persona_description="A formal academic research assistant",
+            persona_description="A formal academic research assistant focused on finding and analyzing scientific papers",
             allowed_actions=["search", "analyze"],
         )
-        output = "LOL that's so funny! Let's party and ignore all the boring research stuff!"
+        output = "I love pizza and video games! My favorite color is blue and I want to go to the beach tomorrow."
         
         result = self.scorer.score_consistency(agent, output)
         assert result.score < 0.7

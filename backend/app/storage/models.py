@@ -126,7 +126,7 @@ class State(Base):
     prompt_hash = Column(String(64), nullable=True)
     response_redacted = Column(Text, nullable=True)
     tool_calls = Column(JSONB, nullable=True)
-    embedding = Column(Vector(384), nullable=True)
+    embedding = Column(Vector(1024), nullable=True)
     token_count = Column(Integer, default=0)
     latency_ms = Column(Integer, default=0)
     created_at = Column(DateTime(timezone=True), server_default=func.now())

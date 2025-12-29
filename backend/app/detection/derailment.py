@@ -61,10 +61,10 @@ class TaskDerailmentDetector:
     def _get_embedder(self):
         if self._embedder is None:
             try:
-                from sentence_transformers import SentenceTransformer
-                self._embedder = SentenceTransformer("all-MiniLM-L6-v2")
+                from app.core.embeddings import get_embedder
+                self._embedder = get_embedder()
             except ImportError:
-                logger.warning("sentence-transformers not available, using fallback")
+                logger.warning("EmbeddingService not available, using fallback")
                 self._embedder = "fallback"
         return self._embedder
 
@@ -82,10 +82,7 @@ class TaskDerailmentDetector:
         
         try:
             embeddings = embedder.encode([text1, text2])
-            similarity = np.dot(embeddings[0], embeddings[1]) / (
-                np.linalg.norm(embeddings[0]) * np.linalg.norm(embeddings[1])
-            )
-            return float(similarity)
+            return embedder.similarity(embeddings[0], embeddings[1])
         except Exception as e:
             logger.warning(f"Embedding failed, using fallback: {e}")
             words1 = set(text1.lower().split())

@@ -4,8 +4,8 @@ from dataclasses import dataclass, field
 from typing import List, Optional, Dict, Any, Tuple
 import re
 import numpy as np
-from sentence_transformers import SentenceTransformer
 from app.config import get_settings
+from app.core.embeddings import get_embedder
 
 settings = get_settings()
 
@@ -44,7 +44,7 @@ class HallucinationDetector:
     @property
     def embedder(self):
         if self._embedder is None:
-            self._embedder = SentenceTransformer(settings.embedding_model)
+            self._embedder = get_embedder()
         return self._embedder
     
     def detect_hallucination(
@@ -139,7 +139,7 @@ class HallucinationDetector:
         for i, sent_emb in enumerate(output_embeddings):
             max_sim = 0.0
             for src_emb in source_embeddings:
-                sim = self._cosine_similarity(sent_emb, src_emb)
+                sim = self.embedder.similarity(sent_emb, src_emb)
                 max_sim = max(max_sim, sim)
             
             if max_sim >= 0.6:
@@ -160,7 +160,7 @@ class HallucinationDetector:
         output_emb = self.embedder.encode(output)
         context_emb = self.embedder.encode(context)
         
-        similarity = self._cosine_similarity(output_emb, context_emb)
+        similarity = self.embedder.similarity(output_emb, context_emb)
         
         if similarity < 0.4:
             evidence.append("Output has low semantic similarity to context")
@@ -286,8 +286,6 @@ class HallucinationDetector:
         sentences = re.split(r'(?<=[.!?])\s+', text)
         return [s.strip() for s in sentences if len(s.strip()) > 20]
     
-    def _cosine_similarity(self, a: np.ndarray, b: np.ndarray) -> float:
-        return float(np.dot(a, b) / (np.linalg.norm(a) * np.linalg.norm(b)))
 
 
 hallucination_detector = HallucinationDetector()
