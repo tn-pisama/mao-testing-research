@@ -173,8 +173,12 @@ class CommunicationBreakdownDetector:
         sender_name: Optional[str] = None,
         receiver_name: Optional[str] = None,
     ) -> CommunicationBreakdownResult:
-        expected_format = self._detect_expected_format(sender_message)
-        format_ok, format_msg = self._check_format_compliance(expected_format, receiver_response)
+        if self.check_format:
+            expected_format = self._detect_expected_format(sender_message)
+            format_ok, format_msg = self._check_format_compliance(expected_format, receiver_response)
+        else:
+            expected_format = None
+            format_ok, format_msg = True, "Format check disabled"
         
         intent_alignment = self._compute_intent_alignment(
             sender_message, receiver_response, receiver_action

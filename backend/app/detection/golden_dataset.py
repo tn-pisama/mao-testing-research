@@ -491,6 +491,118 @@ COORDINATION_DETECTION_SAMPLES = [
 ]
 
 
+CONTEXT_DETECTION_SAMPLES = [
+    GoldenDatasetEntry(
+        id="context_001",
+        detection_type=DetectionType.CONTEXT,
+        input_data={
+            "context": "Budget is $500,000 for Project Alpha. Deadline is 2025-03-15. Contact: john@corp.com",
+            "output": "Project Alpha has a budget of $500,000 with a deadline of 2025-03-15. Contact john@corp.com for details.",
+        },
+        expected_detected=False,
+        expected_confidence_min=0.0,
+        expected_confidence_max=0.3,
+        description="Context properly utilized in output",
+        tags=["proper_use", "clear_negative"],
+    ),
+    GoldenDatasetEntry(
+        id="context_002",
+        detection_type=DetectionType.CONTEXT,
+        input_data={
+            "context": "Revenue was $1.5m with 25% growth. Key account: Acme Corp. Contact: sales@acme.com",
+            "output": "I love pizza and sunny days at the beach!",
+        },
+        expected_detected=True,
+        expected_confidence_min=0.7,
+        expected_confidence_max=0.99,
+        description="Complete context neglect - irrelevant output",
+        tags=["severe_neglect", "clear_positive"],
+    ),
+    GoldenDatasetEntry(
+        id="context_003",
+        detection_type=DetectionType.CONTEXT,
+        input_data={
+            "context": "John Smith has budget of $100,000 for marketing. Email: john@corp.com. Start date: 2024-01-15.",
+            "output": "John Smith will lead the project. Budget will be discussed later.",
+        },
+        expected_detected=True,
+        expected_confidence_min=0.3,
+        expected_confidence_max=0.7,
+        description="Partial context neglect - missing key details",
+        tags=["partial_neglect", "clear_positive"],
+    ),
+]
+
+
+COMMUNICATION_DETECTION_SAMPLES = [
+    GoldenDatasetEntry(
+        id="communication_001",
+        detection_type=DetectionType.COMMUNICATION,
+        input_data={
+            "sender_message": "Please return the user data in JSON format",
+            "receiver_response": '{"name": "John", "email": "john@example.com"}',
+        },
+        expected_detected=False,
+        expected_confidence_min=0.0,
+        expected_confidence_max=0.2,
+        description="Clear request with proper JSON response",
+        tags=["format_match", "clear_negative"],
+    ),
+    GoldenDatasetEntry(
+        id="communication_002",
+        detection_type=DetectionType.COMMUNICATION,
+        input_data={
+            "sender_message": "Please return the user data in JSON format",
+            "receiver_response": "The user is named John and his email is john@example.com.",
+        },
+        expected_detected=True,
+        expected_confidence_min=0.7,
+        expected_confidence_max=0.95,
+        description="Format mismatch - requested JSON but got prose",
+        tags=["format_mismatch", "clear_positive"],
+    ),
+    GoldenDatasetEntry(
+        id="communication_003",
+        detection_type=DetectionType.COMMUNICATION,
+        input_data={
+            "sender_message": "Calculate the total revenue for Q4 2024",
+            "receiver_response": "I love pizza and sunny days at the beach!",
+        },
+        expected_detected=True,
+        expected_confidence_min=0.8,
+        expected_confidence_max=0.99,
+        description="Complete intent mismatch - irrelevant response",
+        tags=["intent_mismatch", "clear_positive"],
+    ),
+    GoldenDatasetEntry(
+        id="communication_004",
+        detection_type=DetectionType.COMMUNICATION,
+        input_data={
+            "sender_message": "Search for hotels in Paris and return a list",
+            "receiver_response": "1. Hotel Le Marais - $150/night\n2. Hotel Saint-Germain - $200/night\n3. Boutique Hotel Montmartre - $180/night",
+        },
+        expected_detected=False,
+        expected_confidence_min=0.0,
+        expected_confidence_max=0.3,
+        description="Request fulfilled with proper list format",
+        tags=["format_match", "intent_match", "clear_negative"],
+    ),
+    GoldenDatasetEntry(
+        id="communication_005",
+        detection_type=DetectionType.COMMUNICATION,
+        input_data={
+            "sender_message": "It should be processed soon and maybe some of this and that could be done etc.",
+            "receiver_response": "Understood, I'll handle the processing.",
+        },
+        expected_detected=True,
+        expected_confidence_min=0.4,
+        expected_confidence_max=0.7,
+        description="Ambiguous language in sender message",
+        tags=["semantic_ambiguity", "clear_positive"],
+    ),
+]
+
+
 def create_default_golden_dataset() -> GoldenDataset:
     """Create a golden dataset with default samples."""
     dataset = GoldenDataset()
@@ -515,7 +627,13 @@ def create_default_golden_dataset() -> GoldenDataset:
     
     for sample in COORDINATION_DETECTION_SAMPLES:
         dataset.add_entry(sample)
-    
+
+    for sample in COMMUNICATION_DETECTION_SAMPLES:
+        dataset.add_entry(sample)
+
+    for sample in CONTEXT_DETECTION_SAMPLES:
+        dataset.add_entry(sample)
+
     return dataset
 
 

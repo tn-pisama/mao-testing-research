@@ -16,6 +16,10 @@ class DetectionType(Enum):
     OVERFLOW = "overflow"
     COORDINATION = "coordination"
     INJECTION = "injection"
+    COMMUNICATION = "communication"
+    CONTEXT = "context"
+    DECOMPOSITION = "decomposition"
+    WORKFLOW = "workflow"
 
 
 @dataclass
