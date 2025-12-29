@@ -284,9 +284,10 @@ class FlawedWorkflowDetector:
         confidence = min(len(issues) * 0.25, 0.95)
 
         issue_names = [i.value for i in issues]
+        unique_problematic = list(set(problematic))[:5]
         explanation = (
             f"Workflow has {len(issues)} structural issues: {', '.join(issue_names)}. "
-            f"Affected nodes: {', '.join(set(problematic)[:5])}"
+            f"Affected nodes: {', '.join(unique_problematic)}"
         )
 
         fixes = []
