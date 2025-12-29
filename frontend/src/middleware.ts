@@ -15,6 +15,7 @@ const isProtectedRoute = createRouteMatcher([
   '/chaos(.*)',
   '/replay(.*)',
   '/regression(.*)',
+  '/terms(.*)',
 ])
 
 const isPublicRoute = createRouteMatcher([
