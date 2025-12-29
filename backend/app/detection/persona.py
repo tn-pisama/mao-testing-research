@@ -73,13 +73,21 @@ class PersonaConsistencyResult:
     role_type: Optional[RoleType] = None
     confidence: float = 0.0
     factors: Dict[str, float] = field(default_factory=dict)
+    raw_score: Optional[float] = None
+    evidence: Optional[Dict] = None
 
 
 class PersonaConsistencyScorer:
-    def __init__(self):
+    def __init__(
+        self,
+        consistency_threshold: Optional[float] = None,
+        drift_threshold: Optional[float] = None,
+        confidence_scaling: float = 1.0,
+    ):
         self._embedder = None
-        self.default_consistency_threshold = 0.7
-        self.default_drift_threshold = 0.15
+        self.default_consistency_threshold = consistency_threshold or 0.7
+        self.default_drift_threshold = drift_threshold or 0.15
+        self.confidence_scaling = confidence_scaling
         self._role_embedding_cache: Dict[str, np.ndarray] = {}
     
     @property
@@ -87,6 +95,31 @@ class PersonaConsistencyScorer:
         if self._embedder is None:
             self._embedder = get_embedder()
         return self._embedder
+    
+    def _calibrate_confidence(
+        self,
+        semantic_sim: float,
+        lexical_overlap: float,
+        tone_score: float,
+        output_length: int,
+        drift_detected: bool = False,
+    ) -> float:
+        """Calibrate confidence based on evidence quality."""
+        length_factor = min(1.0, output_length / 500)
+        signal_count = sum([
+            semantic_sim > 0.5,
+            lexical_overlap > 0.3,
+            tone_score > 0.6,
+        ])
+        signal_factor = signal_count / 3
+        
+        base_confidence = 0.6 + (semantic_sim * 0.2) + (length_factor * 0.1) + (signal_factor * 0.1)
+        
+        if drift_detected:
+            base_confidence *= 0.85
+        
+        calibrated = min(0.99, base_confidence * self.confidence_scaling)
+        return round(calibrated, 4)
     
     def _detect_role_type(self, persona_description: str) -> RoleType:
         """Auto-detect role type from persona description."""
@@ -166,6 +199,8 @@ class PersonaConsistencyScorer:
         lexical_overlap = self._compute_lexical_overlap(agent.persona_description, output)
         tone_score = self._compute_tone_consistency(output)
         
+        raw_score = semantic_sim
+        
         weighted_score = (
             semantic_sim * 0.6 +
             lexical_overlap * 0.2 +
@@ -175,24 +210,11 @@ class PersonaConsistencyScorer:
         weighted_score = min(1.0, weighted_score)
         
         factors = {
-            "semantic_similarity": semantic_sim,
-            "lexical_overlap": lexical_overlap,
-            "tone_consistency": tone_score,
+            "semantic_similarity": round(semantic_sim, 4),
+            "lexical_overlap": round(lexical_overlap, 4),
+            "tone_consistency": round(tone_score, 4),
             "flexibility_bonus": flexibility_bonus,
         }
-        
-        confidence = 0.8 + (0.2 * min(1.0, len(output) / 500))
-        
-        if weighted_score > consistency_threshold:
-            return PersonaConsistencyResult(
-                consistent=True,
-                score=float(weighted_score),
-                method="multi_factor_scoring",
-                drift_detected=False,
-                role_type=role_type,
-                confidence=confidence,
-                factors=factors,
-            )
         
         drift_detected = False
         drift_magnitude = None
@@ -208,7 +230,34 @@ class PersonaConsistencyScorer:
                 adjusted_drift_threshold *= 1.3
             
             drift_detected = drift_magnitude > adjusted_drift_threshold
-            factors["drift_magnitude"] = drift_magnitude
+            factors["drift_magnitude"] = round(drift_magnitude, 4)
+        
+        confidence = self._calibrate_confidence(
+            semantic_sim=semantic_sim,
+            lexical_overlap=lexical_overlap,
+            tone_score=tone_score,
+            output_length=len(output),
+            drift_detected=drift_detected,
+        )
+        
+        evidence = {
+            "output_length": len(output),
+            "consistency_threshold": consistency_threshold,
+            "role_type": role_type.value if role_type else None,
+        }
+        
+        if weighted_score > consistency_threshold and not drift_detected:
+            return PersonaConsistencyResult(
+                consistent=True,
+                score=float(weighted_score),
+                method="multi_factor_scoring",
+                drift_detected=False,
+                role_type=role_type,
+                confidence=confidence,
+                factors=factors,
+                raw_score=raw_score,
+                evidence=evidence,
+            )
         
         issues = []
         if weighted_score < consistency_threshold:
@@ -226,6 +275,8 @@ class PersonaConsistencyScorer:
             role_type=role_type,
             confidence=confidence,
             factors=factors,
+            raw_score=raw_score,
+            evidence=evidence,
         )
     
     def detect_role_usurpation(

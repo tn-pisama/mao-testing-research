@@ -18,6 +18,8 @@ class LoopDetectionResult:
     cost: float
     loop_start_index: Optional[int] = None
     loop_length: Optional[int] = None
+    raw_score: Optional[float] = None
+    evidence: Optional[dict] = None
 
 
 @dataclass
@@ -29,17 +31,48 @@ class StateSnapshot:
 
 
 class MultiLevelLoopDetector:
-    def __init__(self):
+    def __init__(
+        self,
+        structural_threshold: Optional[float] = None,
+        semantic_threshold: Optional[float] = None,
+        window_size: Optional[int] = None,
+        min_matches_for_loop: int = 2,
+        confidence_scaling: float = 1.0,
+    ):
         self._embedder = None
-        self.structural_threshold = settings.structural_threshold
-        self.semantic_threshold = settings.semantic_threshold
-        self.window_size = settings.loop_detection_window
+        self.structural_threshold = structural_threshold or settings.structural_threshold
+        self.semantic_threshold = semantic_threshold or settings.semantic_threshold
+        self.window_size = window_size or settings.loop_detection_window
+        self.min_matches_for_loop = min_matches_for_loop
+        self.confidence_scaling = confidence_scaling
     
     @property
     def embedder(self):
         if self._embedder is None:
             self._embedder = get_embedder()
         return self._embedder
+    
+    def _calibrate_confidence(
+        self,
+        raw_score: float,
+        method: str,
+        evidence_strength: float,
+        loop_length: int,
+    ) -> float:
+        """Calibrate confidence based on evidence strength and detection method."""
+        base_confidence = {
+            "structural": 0.85,
+            "hash": 0.80,
+            "semantic": 0.70,
+        }.get(method, 0.5)
+        
+        length_factor = min(1.0, loop_length / 5)
+        evidence_factor = evidence_strength
+        
+        calibrated = base_confidence * 0.4 + raw_score * 0.3 + length_factor * 0.15 + evidence_factor * 0.15
+        calibrated = min(0.99, calibrated * self.confidence_scaling)
+        
+        return round(calibrated, 4)
     
     def detect_loop(self, states: List[StateSnapshot]) -> LoopDetectionResult:
         if len(states) < 3:
@@ -48,34 +81,68 @@ class MultiLevelLoopDetector:
         current = states[-1]
         window = states[-self.window_size:-1] if len(states) > self.window_size else states[:-1]
         
+        structural_matches = []
         for i, prev in enumerate(window):
             if self._structural_match(current, prev):
                 if not self._has_meaningful_progress(prev, current):
-                    loop_length = len(window) - i
-                    window_start = max(0, len(states) - self.window_size - 1)
-                    loop_start_index = window_start + i
-                    return LoopDetectionResult(
-                        detected=True,
-                        confidence=0.95,
-                        method="structural",
-                        cost=0.0,
-                        loop_start_index=loop_start_index,
-                        loop_length=loop_length,
-                    )
+                    structural_matches.append(i)
+        
+        if structural_matches:
+            first_match = structural_matches[0]
+            loop_length = len(window) - first_match
+            window_start = max(0, len(states) - self.window_size - 1)
+            loop_start_index = window_start + first_match
+            raw_score = len(structural_matches) / len(window)
+            evidence_strength = min(1.0, len(structural_matches) / 3)
+            
+            confidence = self._calibrate_confidence(
+                raw_score=raw_score,
+                method="structural",
+                evidence_strength=evidence_strength,
+                loop_length=loop_length,
+            )
+            
+            return LoopDetectionResult(
+                detected=True,
+                confidence=confidence,
+                method="structural",
+                cost=0.0,
+                loop_start_index=loop_start_index,
+                loop_length=loop_length,
+                raw_score=raw_score,
+                evidence={"structural_matches": len(structural_matches), "window_size": len(window)},
+            )
         
         current_hash = self._compute_state_hash(current)
+        hash_matches = []
         for i, prev in enumerate(window):
             prev_hash = self._compute_state_hash(prev)
             if current_hash == prev_hash:
-                loop_length = len(window) - i
-                return LoopDetectionResult(
-                    detected=True,
-                    confidence=0.90,
-                    method="hash",
-                    cost=0.0,
-                    loop_start_index=len(states) - 1 - loop_length,
-                    loop_length=loop_length,
-                )
+                hash_matches.append(i)
+        
+        if hash_matches:
+            first_match = hash_matches[0]
+            loop_length = len(window) - first_match
+            raw_score = len(hash_matches) / len(window)
+            evidence_strength = min(1.0, len(hash_matches) / 2)
+            
+            confidence = self._calibrate_confidence(
+                raw_score=raw_score,
+                method="hash",
+                evidence_strength=evidence_strength,
+                loop_length=loop_length,
+            )
+            
+            return LoopDetectionResult(
+                detected=True,
+                confidence=confidence,
+                method="hash",
+                cost=0.0,
+                loop_start_index=len(states) - 1 - loop_length,
+                loop_length=loop_length,
+                raw_score=raw_score,
+                evidence={"hash_matches": len(hash_matches), "window_size": len(window)},
+            )
         
         try:
             contents = [s.content for s in window] + [current.content]
@@ -92,19 +159,37 @@ class MultiLevelLoopDetector:
             
             high_sim_matches = [(i, sim) for i, sim in similarities if sim > self.semantic_threshold]
             
-            if len(high_sim_matches) >= 2:
+            if len(high_sim_matches) >= self.min_matches_for_loop:
                 first_match_idx = high_sim_matches[0][0]
                 avg_similarity = sum(s for _, s in high_sim_matches) / len(high_sim_matches)
+                max_similarity = max(s for _, s in high_sim_matches)
                 loop_length = len(window) - first_match_idx
                 window_start = max(0, len(states) - self.window_size - 1)
                 
+                raw_score = avg_similarity
+                evidence_strength = min(1.0, len(high_sim_matches) / 4)
+                
+                confidence = self._calibrate_confidence(
+                    raw_score=raw_score,
+                    method="semantic",
+                    evidence_strength=evidence_strength,
+                    loop_length=loop_length,
+                )
+                
                 return LoopDetectionResult(
                     detected=True,
-                    confidence=min(0.85, avg_similarity),
+                    confidence=confidence,
                     method="semantic",
                     cost=0.0,
                     loop_start_index=window_start + first_match_idx,
                     loop_length=loop_length,
+                    raw_score=raw_score,
+                    evidence={
+                        "semantic_matches": len(high_sim_matches),
+                        "avg_similarity": round(avg_similarity, 4),
+                        "max_similarity": round(max_similarity, 4),
+                        "threshold": self.semantic_threshold,
+                    },
                 )
         except Exception:
             pass

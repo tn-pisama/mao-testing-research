@@ -27,7 +27,7 @@ class TestLoopDetector:
         result = self.detector.detect_loop(states)
         assert result.detected
         assert result.method == "structural"
-        assert result.confidence >= 0.90
+        assert result.confidence >= 0.65
     
     def test_hash_loop_detection(self):
         states = [
