@@ -200,8 +200,9 @@ class TestEmbeddingServiceIntegration:
     
     @pytest.mark.slow
     def test_real_batch_encoding(self):
-        from app.core.embeddings import get_embedder
+        from app.core.embeddings import get_embedder, EmbeddingService
         
+        EmbeddingService.reset()
         embedder = get_embedder()
         texts = [
             "First sentence",

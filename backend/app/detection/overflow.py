@@ -1,7 +1,7 @@
 """Context window overflow detection."""
 
 from dataclasses import dataclass, field
-from typing import List, Optional, Dict, Any
+from typing import List, Optional, Dict, Any, Tuple
 from enum import Enum
 import tiktoken
 
@@ -25,6 +25,10 @@ class OverflowResult:
     estimated_overflow_in: Optional[int]
     warnings: List[str]
     details: Dict[str, Any] = field(default_factory=dict)
+    detected: bool = False
+    confidence: float = 0.0
+    raw_score: Optional[float] = None
+    calibration_info: Optional[Dict[str, Any]] = None
 
 
 @dataclass
@@ -37,11 +41,18 @@ class TokenBreakdown:
 
 
 class ContextOverflowDetector:
-    def __init__(self):
+    def __init__(
+        self,
+        warning_threshold: float = 0.70,
+        critical_threshold: float = 0.85,
+        overflow_threshold: float = 0.95,
+        confidence_scaling: float = 1.0,
+    ):
         self._tokenizers: Dict[str, tiktoken.Encoding] = {}
-        self.warning_threshold = 0.70
-        self.critical_threshold = 0.85
-        self.overflow_threshold = 0.95
+        self.warning_threshold = warning_threshold
+        self.critical_threshold = critical_threshold
+        self.overflow_threshold = overflow_threshold
+        self.confidence_scaling = confidence_scaling
     
     def _get_tokenizer(self, model: str) -> tiktoken.Encoding:
         try:
@@ -167,6 +178,15 @@ class ContextOverflowDetector:
         details["expected_output"] = expected_output_tokens
         details["model"] = model
         
+        detected = severity in (OverflowSeverity.WARNING, OverflowSeverity.CRITICAL, OverflowSeverity.OVERFLOW)
+        raw_score = usage_percent
+        confidence, calibration_info = self._calibrate_confidence(
+            usage_percent=usage_percent,
+            severity=severity,
+            warning_count=len(warnings),
+            estimated_overflow_in=estimated_overflow_in,
+        )
+        
         return OverflowResult(
             severity=severity,
             current_tokens=current_tokens,
@@ -176,7 +196,60 @@ class ContextOverflowDetector:
             estimated_overflow_in=estimated_overflow_in,
             warnings=warnings,
             details=details,
+            detected=detected,
+            confidence=confidence,
+            raw_score=raw_score,
+            calibration_info=calibration_info,
         )
+    
+    def _calibrate_confidence(
+        self,
+        usage_percent: float,
+        severity: OverflowSeverity,
+        warning_count: int,
+        estimated_overflow_in: Optional[int],
+    ) -> Tuple[float, Dict[str, Any]]:
+        """Calibrate confidence based on usage metrics and severity."""
+        severity_weight = {
+            OverflowSeverity.SAFE: 0.0,
+            OverflowSeverity.WARNING: 0.6,
+            OverflowSeverity.CRITICAL: 0.8,
+            OverflowSeverity.OVERFLOW: 0.95,
+        }.get(severity, 0.5)
+        
+        usage_factor = min(1.0, usage_percent)
+        
+        warning_factor = min(0.15, warning_count * 0.05)
+        
+        overflow_urgency = 0.0
+        if estimated_overflow_in is not None:
+            if estimated_overflow_in <= 2:
+                overflow_urgency = 0.2
+            elif estimated_overflow_in <= 5:
+                overflow_urgency = 0.1
+            elif estimated_overflow_in <= 10:
+                overflow_urgency = 0.05
+        
+        base_confidence = (
+            severity_weight * 0.40 +
+            usage_factor * 0.30 +
+            warning_factor +
+            overflow_urgency
+        )
+        
+        calibrated = min(0.99, base_confidence * self.confidence_scaling)
+        
+        calibration_info = {
+            "usage_percent": round(usage_percent, 4),
+            "severity_weight": severity_weight,
+            "warning_count": warning_count,
+            "warning_factor": round(warning_factor, 4),
+            "overflow_urgency": overflow_urgency,
+            "estimated_overflow_in": estimated_overflow_in,
+            "confidence_scaling": self.confidence_scaling,
+        }
+        
+        return round(calibrated, 4), calibration_info
     
     def detect_memory_leak(
         self,

@@ -18,6 +18,8 @@ class InjectionResult:
     severity: str
     matched_patterns: List[str]
     details: Dict[str, Any] = field(default_factory=dict)
+    raw_score: Optional[float] = None
+    calibration_info: Optional[Dict[str, Any]] = None
 
 
 INJECTION_PATTERNS = [
@@ -86,11 +88,17 @@ BENIGN_CONTEXTS = [
 
 
 class InjectionDetector:
-    def __init__(self):
+    def __init__(
+        self,
+        pattern_threshold: float = 0.7,
+        semantic_threshold: float = 0.75,
+        confidence_scaling: float = 1.0,
+    ):
         self._embedder = None
         self._jailbreak_embeddings = None
-        self.pattern_threshold = 0.7
-        self.semantic_threshold = 0.75
+        self.pattern_threshold = pattern_threshold
+        self.semantic_threshold = semantic_threshold
+        self.confidence_scaling = confidence_scaling
     
     @property
     def embedder(self):
@@ -159,11 +167,20 @@ class InjectionDetector:
             detected = False
             max_severity = "info"
         
-        confidence = self._calculate_confidence(
+        raw_score = self._calculate_raw_score(
             len(matched_patterns),
             jailbreak_score,
             semantic_score,
             structure_score,
+        )
+        
+        confidence, calibration_info = self._calibrate_confidence(
+            raw_score=raw_score,
+            pattern_count=len(matched_patterns),
+            jailbreak_score=jailbreak_score,
+            semantic_score=semantic_score,
+            severity=max_severity,
+            is_benign=is_benign,
         )
         
         primary_attack = None
@@ -184,6 +201,8 @@ class InjectionDetector:
             severity=max_severity,
             matched_patterns=matched_patterns,
             details=details,
+            raw_score=raw_score,
+            calibration_info=calibration_info,
         )
     
     def _severity_rank(self, severity: str) -> int:
@@ -251,7 +270,7 @@ class InjectionDetector:
     def _check_benign_context(self, text: str) -> bool:
         return any(context in text for context in BENIGN_CONTEXTS)
     
-    def _calculate_confidence(
+    def _calculate_raw_score(
         self,
         pattern_count: int,
         jailbreak_score: float,
@@ -261,14 +280,58 @@ class InjectionDetector:
         if pattern_count == 0 and jailbreak_score < 0.3 and semantic_score < 0.5:
             return 0.0
         
-        confidence = (
+        score = (
             min(pattern_count * 0.2, 0.4) +
             jailbreak_score * 0.3 +
             semantic_score * 0.2 +
             structure_score * 0.1
         )
         
-        return min(1.0, confidence)
+        return min(1.0, score)
+    
+    def _calibrate_confidence(
+        self,
+        raw_score: float,
+        pattern_count: int,
+        jailbreak_score: float,
+        semantic_score: float,
+        severity: str,
+        is_benign: bool,
+    ) -> Tuple[float, Dict[str, Any]]:
+        """Calibrate confidence based on evidence quality and attack severity."""
+        severity_weight = {
+            "info": 0.0,
+            "low": 0.5,
+            "medium": 0.65,
+            "high": 0.8,
+            "critical": 0.9,
+        }.get(severity, 0.5)
+        
+        evidence_count = pattern_count + (1 if jailbreak_score > 0.5 else 0) + (1 if semantic_score > 0.5 else 0)
+        evidence_factor = min(1.0, evidence_count / 4)
+        
+        base_confidence = (
+            severity_weight * 0.35 +
+            raw_score * 0.35 +
+            evidence_factor * 0.20 +
+            (jailbreak_score * 0.10 if jailbreak_score > 0.5 else 0)
+        )
+        
+        if is_benign:
+            base_confidence *= 0.3
+        
+        calibrated = min(0.99, base_confidence * self.confidence_scaling)
+        
+        calibration_info = {
+            "raw_score": round(raw_score, 4),
+            "severity_weight": severity_weight,
+            "evidence_count": evidence_count,
+            "evidence_factor": round(evidence_factor, 4),
+            "is_benign": is_benign,
+            "confidence_scaling": self.confidence_scaling,
+        }
+        
+        return round(calibrated, 4), calibration_info
     
     def _cosine_similarity(self, a: np.ndarray, b: np.ndarray) -> float:
         return float(np.dot(a, b) / (np.linalg.norm(a) * np.linalg.norm(b)))

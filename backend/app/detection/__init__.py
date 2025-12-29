@@ -1,9 +1,9 @@
 """Detection algorithms for MAO Testing Platform."""
 
 from .loop import loop_detector, MultiLevelLoopDetector, LoopDetectionResult, StateSnapshot
-from .corruption import corruption_detector, SemanticCorruptionDetector, CorruptionIssue
+from .corruption import corruption_detector, SemanticCorruptionDetector, CorruptionIssue, CorruptionResult
 from .persona import persona_scorer, PersonaConsistencyScorer, PersonaConsistencyResult, Agent
-from .coordination import coordination_analyzer, CoordinationAnalyzer, CoordinationIssue
+from .coordination import coordination_analyzer, CoordinationAnalyzer, CoordinationIssue, CoordinationAnalysisResult, Message
 from .cost import cost_calculator, CostCalculator, CostResult, LLM_PRICING_2025
 from .hallucination import hallucination_detector, HallucinationDetector, HallucinationResult
 from .injection import injection_detector, InjectionDetector, InjectionResult
@@ -30,6 +30,7 @@ __all__ = [
     "corruption_detector",
     "SemanticCorruptionDetector",
     "CorruptionIssue",
+    "CorruptionResult",
     "persona_scorer",
     "PersonaConsistencyScorer",
     "PersonaConsistencyResult",
@@ -37,6 +38,8 @@ __all__ = [
     "coordination_analyzer",
     "CoordinationAnalyzer",
     "CoordinationIssue",
+    "CoordinationAnalysisResult",
+    "Message",
     "cost_calculator",
     "CostCalculator",
     "CostResult",

@@ -1,5 +1,5 @@
-from dataclasses import dataclass
-from typing import List, Dict, Optional, Set
+from dataclasses import dataclass, field
+from typing import List, Dict, Optional, Set, Tuple, Any
 from collections import defaultdict
 
 
@@ -25,12 +25,18 @@ class CoordinationAnalysisResult:
     healthy: bool
     issues: List[CoordinationIssue]
     metrics: Dict[str, float]
+    detected: bool = False
+    confidence: float = 0.0
+    issue_count: int = 0
+    raw_score: Optional[float] = None
+    calibration_info: Optional[Dict[str, Any]] = None
 
 
 class CoordinationAnalyzer:
-    def __init__(self):
+    def __init__(self, confidence_scaling: float = 1.0):
         self.message_timeout_seconds = 30.0
         self.max_back_forth_count = 5
+        self.confidence_scaling = confidence_scaling
     
     def analyze_coordination(
         self,
@@ -51,6 +57,133 @@ class CoordinationAnalyzer:
             issues=issues,
             metrics=metrics,
         )
+    
+    def analyze_coordination_with_confidence(
+        self,
+        messages: List[Message],
+        agent_ids: List[str],
+    ) -> CoordinationAnalysisResult:
+        issues = []
+        
+        issues.extend(self._detect_ignored_messages(messages))
+        issues.extend(self._detect_information_withholding(messages, agent_ids))
+        issues.extend(self._detect_excessive_back_forth(messages))
+        issues.extend(self._detect_circular_delegation(messages))
+        
+        metrics = self._compute_metrics(messages, agent_ids)
+        
+        max_severity = "low"
+        severity_counts = {"low": 0, "medium": 0, "high": 0, "critical": 0}
+        
+        for issue in issues:
+            sev = issue.severity
+            if sev in severity_counts:
+                severity_counts[sev] += 1
+            if self._severity_rank(sev) > self._severity_rank(max_severity):
+                max_severity = sev
+        
+        raw_score = self._calculate_raw_score(issues, severity_counts, metrics)
+        confidence, calibration_info = self._calibrate_confidence(
+            issues=issues,
+            severity_counts=severity_counts,
+            max_severity=max_severity,
+            metrics=metrics,
+            raw_score=raw_score,
+        )
+        
+        healthy = len([i for i in issues if i.severity in ["high", "critical"]]) == 0
+        
+        return CoordinationAnalysisResult(
+            healthy=healthy,
+            issues=issues,
+            metrics=metrics,
+            detected=len(issues) > 0,
+            confidence=confidence,
+            issue_count=len(issues),
+            raw_score=raw_score,
+            calibration_info=calibration_info,
+        )
+    
+    def _severity_rank(self, severity: str) -> int:
+        ranks = {"low": 0, "medium": 1, "high": 2, "critical": 3}
+        return ranks.get(severity, 0)
+    
+    def _calculate_raw_score(
+        self,
+        issues: List[CoordinationIssue],
+        severity_counts: Dict[str, int],
+        metrics: Dict[str, float],
+    ) -> float:
+        if not issues:
+            return 0.0
+        
+        issue_score = (
+            severity_counts.get("low", 0) * 0.1 +
+            severity_counts.get("medium", 0) * 0.25 +
+            severity_counts.get("high", 0) * 0.4 +
+            severity_counts.get("critical", 0) * 0.6
+        )
+        
+        ack_rate = metrics.get("acknowledgment_rate", 1.0)
+        health_penalty = (1.0 - ack_rate) * 0.2
+        
+        return min(1.0, issue_score + health_penalty)
+    
+    def _calibrate_confidence(
+        self,
+        issues: List[CoordinationIssue],
+        severity_counts: Dict[str, int],
+        max_severity: str,
+        metrics: Dict[str, float],
+        raw_score: float,
+    ) -> Tuple[float, Dict[str, Any]]:
+        if not issues:
+            return 0.0, {
+                "issue_count": 0,
+                "severity_counts": severity_counts,
+                "max_severity": "none",
+                "raw_score": 0.0,
+                "confidence_scaling": self.confidence_scaling,
+            }
+        
+        severity_weight = {
+            "low": 0.4,
+            "medium": 0.6,
+            "high": 0.8,
+            "critical": 0.95,
+        }.get(max_severity, 0.5)
+        
+        issue_types = set(i.issue_type for i in issues)
+        diversity_factor = min(1.0, len(issue_types) / 4)
+        
+        issue_factor = min(0.25, len(issues) * 0.05)
+        
+        ack_rate = metrics.get("acknowledgment_rate", 1.0)
+        health_factor = (1.0 - ack_rate) * 0.1
+        
+        base_confidence = (
+            severity_weight * 0.40 +
+            raw_score * 0.25 +
+            diversity_factor * 0.15 +
+            issue_factor +
+            health_factor
+        )
+        
+        calibrated = min(0.99, base_confidence * self.confidence_scaling)
+        
+        calibration_info = {
+            "issue_count": len(issues),
+            "severity_counts": severity_counts,
+            "max_severity": max_severity,
+            "severity_weight": severity_weight,
+            "diversity_factor": round(diversity_factor, 4),
+            "issue_types": list(issue_types),
+            "acknowledgment_rate": ack_rate,
+            "raw_score": round(raw_score, 4),
+            "confidence_scaling": self.confidence_scaling,
+        }
+        
+        return round(calibrated, 4), calibration_info
     
     def _detect_ignored_messages(self, messages: List[Message]) -> List[CoordinationIssue]:
         issues = []

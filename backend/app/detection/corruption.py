@@ -1,5 +1,5 @@
 from dataclasses import dataclass, field
-from typing import List, Dict, Any, Callable, Optional
+from typing import List, Dict, Any, Callable, Optional, Tuple
 from datetime import datetime, timedelta
 from collections import deque
 
@@ -10,6 +10,17 @@ class CorruptionIssue:
     field: Optional[str]
     message: str
     severity: str
+
+
+@dataclass
+class CorruptionResult:
+    detected: bool
+    confidence: float
+    issues: List[CorruptionIssue]
+    issue_count: int
+    max_severity: str
+    raw_score: Optional[float] = None
+    calibration_info: Optional[Dict[str, Any]] = None
 
 
 @dataclass
@@ -38,7 +49,11 @@ class Schema:
 
 
 class SemanticCorruptionDetector:
-    def __init__(self, velocity_config: Optional[VelocityConfig] = None):
+    def __init__(
+        self,
+        velocity_config: Optional[VelocityConfig] = None,
+        confidence_scaling: float = 1.0,
+    ):
         import re
         email_pattern = re.compile(r'^[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}$')
         url_pattern = re.compile(r'^https?://[a-zA-Z0-9][-a-zA-Z0-9]*(\.[a-zA-Z0-9][-a-zA-Z0-9]*)+(/.*)?$')
@@ -56,6 +71,7 @@ class SemanticCorruptionDetector:
         self.velocity_config = velocity_config or VelocityConfig()
         self._change_history: Dict[str, deque] = {}
         self._field_velocities: Dict[str, float] = {}
+        self.confidence_scaling = confidence_scaling
     
     def _is_high_velocity_field(self, field_name: str) -> bool:
         """Check if a field is expected to change rapidly."""
@@ -122,6 +138,113 @@ class SemanticCorruptionDetector:
         filtered_issues = self._apply_velocity_filtering(issues, current_state)
         
         return filtered_issues
+    
+    def detect_corruption_with_confidence(
+        self,
+        prev_state: StateSnapshot,
+        current_state: StateSnapshot,
+        schema: Optional[Schema] = None,
+    ) -> CorruptionResult:
+        issues = self.detect_corruption(prev_state, current_state, schema)
+        
+        max_severity = "low"
+        severity_counts = {"low": 0, "medium": 0, "high": 0, "critical": 0}
+        
+        for issue in issues:
+            sev = issue.severity
+            if sev in severity_counts:
+                severity_counts[sev] += 1
+            if self._severity_rank(sev) > self._severity_rank(max_severity):
+                max_severity = sev
+        
+        raw_score = self._calculate_raw_score(issues, severity_counts)
+        confidence, calibration_info = self._calibrate_confidence(
+            issues=issues,
+            severity_counts=severity_counts,
+            max_severity=max_severity,
+            raw_score=raw_score,
+        )
+        
+        return CorruptionResult(
+            detected=len(issues) > 0,
+            confidence=confidence,
+            issues=issues,
+            issue_count=len(issues),
+            max_severity=max_severity if issues else "none",
+            raw_score=raw_score,
+            calibration_info=calibration_info,
+        )
+    
+    def _severity_rank(self, severity: str) -> int:
+        ranks = {"low": 0, "medium": 1, "high": 2, "critical": 3}
+        return ranks.get(severity, 0)
+    
+    def _calculate_raw_score(
+        self,
+        issues: List[CorruptionIssue],
+        severity_counts: Dict[str, int],
+    ) -> float:
+        if not issues:
+            return 0.0
+        
+        score = (
+            severity_counts.get("low", 0) * 0.1 +
+            severity_counts.get("medium", 0) * 0.25 +
+            severity_counts.get("high", 0) * 0.4 +
+            severity_counts.get("critical", 0) * 0.6
+        )
+        
+        return min(1.0, score)
+    
+    def _calibrate_confidence(
+        self,
+        issues: List[CorruptionIssue],
+        severity_counts: Dict[str, int],
+        max_severity: str,
+        raw_score: float,
+    ) -> Tuple[float, Dict[str, Any]]:
+        if not issues:
+            return 0.0, {
+                "issue_count": 0,
+                "severity_counts": severity_counts,
+                "max_severity": "none",
+                "raw_score": 0.0,
+                "confidence_scaling": self.confidence_scaling,
+            }
+        
+        severity_weight = {
+            "low": 0.4,
+            "medium": 0.6,
+            "high": 0.8,
+            "critical": 0.95,
+        }.get(max_severity, 0.5)
+        
+        issue_types = set(i.issue_type for i in issues)
+        diversity_factor = min(1.0, len(issue_types) / 4)
+        
+        issue_factor = min(0.3, len(issues) * 0.05)
+        
+        base_confidence = (
+            severity_weight * 0.40 +
+            raw_score * 0.30 +
+            diversity_factor * 0.15 +
+            issue_factor
+        )
+        
+        calibrated = min(0.99, base_confidence * self.confidence_scaling)
+        
+        calibration_info = {
+            "issue_count": len(issues),
+            "severity_counts": severity_counts,
+            "max_severity": max_severity,
+            "severity_weight": severity_weight,
+            "diversity_factor": round(diversity_factor, 4),
+            "issue_types": list(issue_types),
+            "raw_score": round(raw_score, 4),
+            "confidence_scaling": self.confidence_scaling,
+        }
+        
+        return round(calibrated, 4), calibration_info
     
     def _apply_velocity_filtering(
         self,
