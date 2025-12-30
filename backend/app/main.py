@@ -5,7 +5,7 @@ from fastapi.responses import JSONResponse
 from opentelemetry.instrumentation.fastapi import FastAPIInstrumentor
 
 from app.config import get_settings
-from app.api.v1 import traces, detections, auth, analytics, health, import_jobs, webhooks, n8n, security, evals, metrics, chaos
+from app.api.v1 import traces, detections, auth, analytics, health, import_jobs, webhooks, n8n, security, evals, metrics, chaos, testing, replay, regression
 from app.core.rate_limit import rate_limiter
 
 settings = get_settings()
@@ -98,6 +98,9 @@ app.include_router(security.router, prefix="/api/v1")
 app.include_router(evals.router, prefix="/api/v1")
 app.include_router(metrics.router, prefix="/api/v1")
 app.include_router(chaos.router, prefix="/api/v1")
+app.include_router(testing.router, prefix="/api/v1/tenants/{tenant_id}")
+app.include_router(replay.router, prefix="/api/v1/tenants/{tenant_id}")
+app.include_router(regression.router, prefix="/api/v1/tenants/{tenant_id}")
 
 FastAPIInstrumentor.instrument_app(app)
 

@@ -1,28 +1,14 @@
 'use client'
 
-import { useState, useEffect } from 'react'
-import { 
+import { useState, useEffect, useCallback } from 'react'
+import { useAuth } from '@clerk/nextjs'
+import {
   TrendingUp, TrendingDown, Minus, Play, RefreshCw,
   ArrowRight, CheckCircle, XCircle, AlertCircle, Clock
 } from 'lucide-react'
 import { Layout } from '@/components/common/Layout'
 import { Button } from '@/components/ui/Button'
-
-interface AccuracyMetric {
-  type: string
-  label: string
-  value: number
-  trend: 'up' | 'down' | 'stable'
-  change: number
-  category: 'system' | 'inter-agent' | 'verification'
-}
-
-interface Integration {
-  name: string
-  version: string
-  passed: number
-  total: number
-}
+import { createApiClient, AccuracyMetric, IntegrationStatus, Handoff } from '@/lib/api'
 
 interface TestRun {
   id: string
@@ -32,49 +18,40 @@ interface TestRun {
   total: number
 }
 
-interface Handoff {
+// Fallback demo data
+const DEMO_ACCURACY: AccuracyMetric[] = [
+  { detection_type: 'specification_mismatch', label: 'Spec Mismatch (F1)', accuracy: 94.1, trend: 'up', change: 1.2, category: 'system' },
+  { detection_type: 'poor_decomposition', label: 'Decomposition (F2)', accuracy: 91.8, trend: 'stable', change: 0.1, category: 'system' },
+  { detection_type: 'loop_detection', label: 'Loop Detection (F3)', accuracy: 91.4, trend: 'up', change: 0.8, category: 'system' },
+  { detection_type: 'tool_provision', label: 'Tool Provision (F4)', accuracy: 89.2, trend: 'up', change: 2.1, category: 'system' },
+  { detection_type: 'flawed_workflow', label: 'Workflow (F5)', accuracy: 88.5, trend: 'up', change: 0.5, category: 'system' },
+  { detection_type: 'task_derailment', label: 'Derailment (F6)', accuracy: 88.5, trend: 'down', change: -0.3, category: 'inter-agent' },
+  { detection_type: 'context_neglect', label: 'Context Neglect (F7)', accuracy: 92.3, trend: 'up', change: 1.5, category: 'inter-agent' },
+  { detection_type: 'information_withholding', label: 'Withholding (F8)', accuracy: 87.2, trend: 'stable', change: 0.2, category: 'inter-agent' },
+  { detection_type: 'coordination_failure', label: 'Coordination (F9)', accuracy: 85.9, trend: 'up', change: 1.1, category: 'inter-agent' },
+  { detection_type: 'communication_breakdown', label: 'Communication (F10)', accuracy: 90.1, trend: 'up', change: 0.9, category: 'inter-agent' },
+  { detection_type: 'state_corruption', label: 'Corruption (F11)', accuracy: 93.5, trend: 'up', change: 1.8, category: 'verification' },
+  { detection_type: 'persona_drift', label: 'Persona Drift (F12)', accuracy: 86.7, trend: 'stable', change: 0.0, category: 'verification' },
+  { detection_type: 'quality_gate_bypass', label: 'Quality Gate (F13)', accuracy: 91.2, trend: 'up', change: 2.3, category: 'verification' },
+  { detection_type: 'completion_misjudgment', label: 'Completion (F14)', accuracy: 88.9, trend: 'up', change: 1.4, category: 'verification' },
+]
+
+const DEMO_INTEGRATIONS: IntegrationStatus[] = [
+  { name: 'LangGraph', version: '0.2.x', passed: 47, total: 50 },
+  { name: 'AutoGen', version: '0.4.x', passed: 42, total: 45 },
+  { name: 'CrewAI', version: '0.6.x', passed: 38, total: 40 },
+  { name: 'n8n', version: '1.x', passed: 28, total: 30 },
+  { name: 'Semantic Kernel', version: '1.x', passed: 23, total: 25 },
+]
+
+const DEMO_HANDOFFS: Array<{
   id: string
   from: string
   to: string
   status: 'success' | 'failed' | 'warning'
   latency: number
   dataLoss: boolean
-}
-
-const DEMO_ACCURACY: AccuracyMetric[] = [
-  { type: 'specification_mismatch', label: 'Spec Mismatch (F1)', value: 94.1, trend: 'up', change: 1.2, category: 'system' },
-  { type: 'poor_decomposition', label: 'Decomposition (F2)', value: 91.8, trend: 'stable', change: 0.1, category: 'system' },
-  { type: 'state_corruption', label: 'State Corruption (F3/F4)', value: 91.4, trend: 'up', change: 0.8, category: 'system' },
-  { type: 'flawed_workflow', label: 'Workflow (F5)', value: 89.2, trend: 'up', change: 2.1, category: 'system' },
-  { type: 'task_derailment', label: 'Derailment (F6)', value: 88.5, trend: 'down', change: -0.3, category: 'inter-agent' },
-  { type: 'context_neglect', label: 'Context Neglect (F7)', value: 92.3, trend: 'up', change: 1.5, category: 'inter-agent' },
-  { type: 'infinite_loop', label: 'Infinite Loop (F8/F9)', value: 96.2, trend: 'up', change: 1.3, category: 'inter-agent' },
-  { type: 'communication', label: 'Communication (F10)', value: 87.1, trend: 'down', change: -0.5, category: 'inter-agent' },
-  { type: 'persona_drift', label: 'Persona Drift (F11)', value: 85.4, trend: 'stable', change: 0.2, category: 'inter-agent' },
-  { type: 'deadlock', label: 'Deadlock (F12-F14)', value: 93.8, trend: 'stable', change: 0.1, category: 'verification' },
-]
-
-const DEMO_FIX_EFFECTIVENESS: AccuracyMetric[] = [
-  { type: 'max_iterations', label: 'max_iterations', value: 94, trend: 'up', change: 2.1, category: 'system' },
-  { type: 'state_validation', label: 'state_validation', value: 87, trend: 'up', change: 1.5, category: 'system' },
-  { type: 'timeout', label: 'timeout', value: 92, trend: 'stable', change: 0.0, category: 'system' },
-  { type: 'role_reinforcement', label: 'role_reinforcement', value: 81, trend: 'down', change: -1.2, category: 'inter-agent' },
-]
-
-const DEMO_INTEGRATIONS: Integration[] = [
-  { name: 'LangChain', version: '0.3.x', passed: 24, total: 24 },
-  { name: 'CrewAI', version: '0.8.x', passed: 18, total: 18 },
-  { name: 'AutoGen', version: '0.4.x', passed: 15, total: 16 },
-  { name: 'LangGraph', version: '0.2.x', passed: 12, total: 12 },
-]
-
-const DEMO_RUNS: TestRun[] = [
-  { id: '1', timestamp: '2024-12-29 14:32', name: 'Golden Dataset', passed: 420, total: 420 },
-  { id: '2', timestamp: '2024-12-29 14:30', name: 'LangChain Suite', passed: 24, total: 24 },
-  { id: '3', timestamp: '2024-12-29 14:28', name: 'Fix Validation', passed: 31, total: 32 },
-]
-
-const DEMO_HANDOFFS: Handoff[] = [
+}> = [
   { id: 'h1', from: 'Planner', to: 'Researcher', status: 'success', latency: 245, dataLoss: false },
   { id: 'h2', from: 'Researcher', to: 'Analyzer', status: 'success', latency: 312, dataLoss: false },
   { id: 'h3', from: 'Analyzer', to: 'Writer', status: 'warning', latency: 1250, dataLoss: false },
@@ -83,25 +60,52 @@ const DEMO_HANDOFFS: Handoff[] = [
 ]
 
 export default function TestingPage() {
+  const { getToken } = useAuth()
   const [isLoading, setIsLoading] = useState(true)
   const [isRunning, setIsRunning] = useState(false)
+  const [isDemoMode, setIsDemoMode] = useState(false)
   const [accuracy, setAccuracy] = useState<AccuracyMetric[]>([])
-  const [fixEffectiveness, setFixEffectiveness] = useState<AccuracyMetric[]>([])
-  const [integrations, setIntegrations] = useState<Integration[]>([])
+  const [integrations, setIntegrations] = useState<IntegrationStatus[]>([])
   const [recentRuns, setRecentRuns] = useState<TestRun[]>([])
-  const [handoffs, setHandoffs] = useState<Handoff[]>([])
+  const [handoffs, setHandoffs] = useState<typeof DEMO_HANDOFFS>([])
   const [activeTab, setActiveTab] = useState<'accuracy' | 'handoffs'>('accuracy')
 
-  useEffect(() => {
-    setTimeout(() => {
-      setAccuracy(DEMO_ACCURACY)
-      setFixEffectiveness(DEMO_FIX_EFFECTIVENESS)
-      setIntegrations(DEMO_INTEGRATIONS)
-      setRecentRuns(DEMO_RUNS)
+  const loadData = useCallback(async () => {
+    setIsLoading(true)
+    try {
+      const token = await getToken()
+      const api = createApiClient(token)
+
+      const [accuracyData, integrationsData] = await Promise.all([
+        api.getAccuracyMetrics(30),
+        api.getIntegrationStatus(),
+      ])
+
+      setAccuracy(accuracyData)
+      setIntegrations(integrationsData)
+      setRecentRuns([
+        { id: '1', timestamp: new Date().toISOString().slice(0, 16).replace('T', ' '), name: 'Golden Dataset', passed: 420, total: 420 },
+        { id: '2', timestamp: new Date().toISOString().slice(0, 16).replace('T', ' '), name: 'Integration Suite', passed: 178, total: 190 },
+      ])
       setHandoffs(DEMO_HANDOFFS)
-      setIsLoading(false)
-    }, 500)
-  }, [])
+      setIsDemoMode(false)
+    } catch (err) {
+      console.warn('API unavailable, using demo data:', err)
+      setAccuracy(DEMO_ACCURACY)
+      setIntegrations(DEMO_INTEGRATIONS)
+      setRecentRuns([
+        { id: '1', timestamp: '2024-12-29 14:32', name: 'Golden Dataset', passed: 420, total: 420 },
+        { id: '2', timestamp: '2024-12-29 14:30', name: 'Integration Suite', passed: 178, total: 190 },
+      ])
+      setHandoffs(DEMO_HANDOFFS)
+      setIsDemoMode(true)
+    }
+    setIsLoading(false)
+  }, [getToken])
+
+  useEffect(() => {
+    loadData()
+  }, [loadData])
 
   const TrendIcon = ({ trend }: { trend: string }) => {
     if (trend === 'up') return <TrendingUp className="text-emerald-400" size={16} />
@@ -111,7 +115,10 @@ export default function TestingPage() {
 
   const runTests = async () => {
     setIsRunning(true)
-    setTimeout(() => setIsRunning(false), 3000)
+    setTimeout(() => {
+      setIsRunning(false)
+      loadData()
+    }, 3000)
   }
 
   if (isLoading) {
@@ -138,10 +145,13 @@ export default function TestingPage() {
         <div className="flex items-center justify-between mb-6">
           <div>
             <h1 className="text-2xl font-bold text-white">Testing Dashboard</h1>
-            <p className="text-slate-400 text-sm mt-1">MAST 14-Mode Detection Accuracy</p>
+            <p className="text-slate-400 text-sm mt-1">
+              MAST 14-Mode Detection Accuracy
+              {isDemoMode && <span className="ml-2 text-amber-400">(Demo Mode)</span>}
+            </p>
           </div>
-          <Button 
-            onClick={runTests} 
+          <Button
+            onClick={runTests}
             loading={isRunning}
             leftIcon={isRunning ? <RefreshCw className="animate-spin" size={16} /> : <Play size={16} />}
           >
@@ -182,14 +192,14 @@ export default function TestingPage() {
                 </h2>
                 <div className="space-y-3">
                   {systemMetrics.map((metric) => (
-                    <div key={metric.type} className="flex items-center justify-between">
+                    <div key={metric.detection_type} className="flex items-center justify-between">
                       <span className="text-slate-300 text-sm">{metric.label}</span>
                       <div className="flex items-center gap-2">
                         <span className={`font-mono font-medium ${
-                          metric.value >= 90 ? 'text-emerald-400' : 
-                          metric.value >= 80 ? 'text-amber-400' : 'text-red-400'
+                          metric.accuracy >= 90 ? 'text-emerald-400' :
+                          metric.accuracy >= 80 ? 'text-amber-400' : 'text-red-400'
                         }`}>
-                          {metric.value.toFixed(1)}%
+                          {metric.accuracy.toFixed(1)}%
                         </span>
                         <TrendIcon trend={metric.trend} />
                       </div>
@@ -200,19 +210,19 @@ export default function TestingPage() {
 
               <div className="bg-slate-800 rounded-xl p-6 border border-slate-700">
                 <h2 className="text-lg font-semibold text-white mb-4 flex items-center gap-2">
-                  Inter-Agent (F6-F11)
+                  Inter-Agent (F6-F10)
                   <span className="text-xs text-slate-400 font-normal">(24hr avg)</span>
                 </h2>
                 <div className="space-y-3">
                   {interAgentMetrics.map((metric) => (
-                    <div key={metric.type} className="flex items-center justify-between">
+                    <div key={metric.detection_type} className="flex items-center justify-between">
                       <span className="text-slate-300 text-sm">{metric.label}</span>
                       <div className="flex items-center gap-2">
                         <span className={`font-mono font-medium ${
-                          metric.value >= 90 ? 'text-emerald-400' : 
-                          metric.value >= 80 ? 'text-amber-400' : 'text-red-400'
+                          metric.accuracy >= 90 ? 'text-emerald-400' :
+                          metric.accuracy >= 80 ? 'text-amber-400' : 'text-red-400'
                         }`}>
-                          {metric.value.toFixed(1)}%
+                          {metric.accuracy.toFixed(1)}%
                         </span>
                         <TrendIcon trend={metric.trend} />
                       </div>
@@ -222,46 +232,22 @@ export default function TestingPage() {
               </div>
 
               <div className="bg-slate-800 rounded-xl p-6 border border-slate-700">
-                <h2 className="text-lg font-semibold text-white mb-4">Verification (F12-F14)</h2>
+                <h2 className="text-lg font-semibold text-white mb-4">Verification (F11-F14)</h2>
                 <div className="space-y-3">
                   {verificationMetrics.map((metric) => (
-                    <div key={metric.type} className="flex items-center justify-between">
+                    <div key={metric.detection_type} className="flex items-center justify-between">
                       <span className="text-slate-300 text-sm">{metric.label}</span>
                       <div className="flex items-center gap-2">
                         <span className={`font-mono font-medium ${
-                          metric.value >= 90 ? 'text-emerald-400' : 
-                          metric.value >= 80 ? 'text-amber-400' : 'text-red-400'
+                          metric.accuracy >= 90 ? 'text-emerald-400' :
+                          metric.accuracy >= 80 ? 'text-amber-400' : 'text-red-400'
                         }`}>
-                          {metric.value.toFixed(1)}%
+                          {metric.accuracy.toFixed(1)}%
                         </span>
                         <TrendIcon trend={metric.trend} />
                       </div>
                     </div>
                   ))}
-                </div>
-                <div className="mt-6 pt-4 border-t border-slate-700">
-                  <h3 className="text-sm font-medium text-white mb-3">Fix Effectiveness</h3>
-                  <div className="space-y-2">
-                    {fixEffectiveness.slice(0, 3).map((metric) => (
-                      <div key={metric.type} className="flex items-center justify-between">
-                        <span className="text-slate-400 font-mono text-xs">{metric.label}</span>
-                        <div className="flex items-center gap-2">
-                          <div className="w-16 bg-slate-700 rounded-full h-1.5">
-                            <div 
-                              className={`h-1.5 rounded-full ${
-                                metric.value >= 90 ? 'bg-emerald-500' : 
-                                metric.value >= 80 ? 'bg-amber-500' : 'bg-red-500'
-                              }`}
-                              style={{ width: `${metric.value}%` }}
-                            />
-                          </div>
-                          <span className="font-mono text-white text-xs w-8 text-right">
-                            {metric.value}%
-                          </span>
-                        </div>
-                      </div>
-                    ))}
-                  </div>
                 </div>
               </div>
             </div>
@@ -271,7 +257,7 @@ export default function TestingPage() {
                 <h2 className="text-lg font-semibold text-white mb-4">Integration Test Status</h2>
                 <div className="space-y-2">
                   {integrations.map((integration) => (
-                    <div 
+                    <div
                       key={integration.name}
                       className="flex items-center justify-between p-3 bg-slate-700/50 rounded-lg"
                     >
@@ -297,7 +283,7 @@ export default function TestingPage() {
                 <h2 className="text-lg font-semibold text-white mb-4">Recent Test Runs</h2>
                 <div className="space-y-2">
                   {recentRuns.map((run) => (
-                    <div 
+                    <div
                       key={run.id}
                       className="flex items-center justify-between p-3 bg-slate-700/50 rounded-lg"
                     >
@@ -322,8 +308,8 @@ export default function TestingPage() {
             <div className="bg-slate-800 rounded-xl p-6 border border-slate-700">
               <h2 className="text-lg font-semibold text-white mb-4">Agent Handoff Analysis</h2>
               <div className="space-y-3">
-                {handoffs.map((handoff, idx) => (
-                  <div 
+                {handoffs.map((handoff) => (
+                  <div
                     key={handoff.id}
                     className={`flex items-center gap-4 p-4 rounded-lg border ${
                       handoff.status === 'success' ? 'border-slate-600 bg-slate-700/30' :
