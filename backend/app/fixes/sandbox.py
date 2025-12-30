@@ -257,12 +257,17 @@ if __name__ == "__main__":
         return await asyncio.gather(*tasks)
 
 
+class SecurityWarning(UserWarning):
+    """Warning for security-related concerns."""
+    pass
+
+
 class LocalFixValidator:
     """
     Fallback validator that runs fixes locally without Docker.
     Less secure but useful for development/testing.
     """
-    
+
     def __init__(self):
         import warnings
         warnings.warn(
