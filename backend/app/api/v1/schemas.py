@@ -193,3 +193,75 @@ class FixSuggestionsListResponse(BaseModel):
     detection_id: str
     suggestions: List[FixSuggestionResponse]
     total: int
+
+
+# Agent Forensics Diagnosis Schemas
+
+class DiagnoseRequest(BaseModel):
+    """Request to diagnose a pasted trace."""
+    content: str = Field(..., description="Raw trace content (JSON, JSONL, or structured text)")
+    format: str = Field(default="auto", description="Format hint: auto, langsmith, otel, raw")
+    include_fixes: bool = Field(default=True, description="Include suggested fixes in response")
+    run_all_detections: bool = Field(default=True, description="Run all detection modules")
+
+
+class DiagnoseDetectionResult(BaseModel):
+    """Single detection result in diagnosis."""
+    category: str
+    detected: bool
+    confidence: float
+    severity: str
+    title: str
+    description: str
+    evidence: List[Dict[str, Any]] = []
+    affected_spans: List[str] = []
+    suggested_fix: Optional[str] = None
+
+
+class DiagnoseAutoFixPreview(BaseModel):
+    """Preview of available auto-fix."""
+    description: str
+    confidence: float
+    action: str
+
+
+class DiagnoseResponse(BaseModel):
+    """Response from trace diagnosis endpoint."""
+    trace_id: str
+    analyzed_at: datetime
+
+    # Status
+    has_failures: bool
+    failure_count: int
+
+    # Primary issue
+    primary_failure: Optional[DiagnoseDetectionResult] = None
+
+    # All issues
+    all_detections: List[DiagnoseDetectionResult] = []
+
+    # Trace stats
+    total_spans: int
+    error_spans: int
+    total_tokens: int
+    duration_ms: int
+
+    # Root cause explanation
+    root_cause_explanation: Optional[str] = None
+
+    # Self-healing
+    self_healing_available: bool = False
+    auto_fix_preview: Optional[DiagnoseAutoFixPreview] = None
+
+    # Performance
+    detection_time_ms: int
+    detectors_run: List[str] = []
+
+
+class DiagnoseQuickCheckResponse(BaseModel):
+    """Quick check response - lightweight failure detection."""
+    has_failures: bool
+    failure_count: int
+    primary_category: Optional[str] = None
+    primary_severity: Optional[str] = None
+    message: str
