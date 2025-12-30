@@ -21,9 +21,7 @@ def validate_cors_origins(origins: list[str], allow_credentials: bool) -> list[s
 
 @asynccontextmanager
 async def lifespan(app: FastAPI):
-    from app.core.embeddings import get_embedder
-    embedder = get_embedder()
-    embedder.warmup()
+    # Embedding model is lazy-loaded on first use to speed up startup
     yield
     await rate_limiter.close()
 

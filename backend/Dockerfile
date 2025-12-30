@@ -6,7 +6,9 @@ RUN apt-get update && apt-get install -y \
     gcc \
     libpq-dev \
     && rm -rf /var/lib/apt/lists/* \
-    && groupadd -r mao && useradd -r -g mao mao
+    && groupadd -r mao && useradd -r -g mao mao \
+    && mkdir -p /home/mao/.cache/huggingface \
+    && chown -R mao:mao /home/mao
 
 COPY requirements-prod.txt ./requirements.txt
 

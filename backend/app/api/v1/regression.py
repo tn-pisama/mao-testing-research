@@ -7,16 +7,10 @@ from pydantic import BaseModel, Field
 
 from app.core.auth import get_current_tenant
 from app.regression import (
-    BaselineStore,
-    Baseline,
-    BaselineEntry,
-    ModelFingerprint,
+    baseline_store,
     model_fingerprinter,
     DriftDetector,
-    DriftResult,
     DriftSeverity,
-    RegressionAlert,
-    AlertType,
     alert_manager,
 )
 
@@ -109,11 +103,6 @@ class CheckDriftRequest(BaseModel):
     model: str
 
 
-# In-memory storage (replace with DB in production)
-_baselines: dict[str, dict] = {}
-_alerts: list[dict] = []
-
-
 @router.get("/baselines", response_model=list[BaselineResponse])
 async def list_baselines(
     limit: int = 20,
@@ -121,40 +110,21 @@ async def list_baselines(
     tenant_id: str = Depends(get_current_tenant),
 ):
     """List baselines for the tenant."""
-    # Return demo baselines
-    baselines = [
-        BaselineResponse(
-            id="bl-001",
-            name="Production Prompts v2.1",
-            description="Main production prompt baseline",
-            entry_count=47,
-            model="gpt-4o-2024-08-06",
-            created_at=datetime(2024, 12, 15),
-            updated_at=datetime(2024, 12, 28),
-            last_tested=datetime(2024, 12, 29),
-        ),
-        BaselineResponse(
-            id="bl-002",
-            name="Customer Service Prompts",
-            description="Customer support agent prompts",
-            entry_count=23,
-            model="claude-3-5-sonnet-20241022",
-            created_at=datetime(2024, 12, 10),
-            updated_at=datetime(2024, 12, 25),
-            last_tested=datetime(2024, 12, 28),
-        ),
-        BaselineResponse(
-            id="bl-003",
-            name="Code Review Agent",
-            description="Code analysis prompts",
-            entry_count=31,
-            model="gpt-4o",
-            created_at=datetime(2024, 12, 5),
-            updated_at=datetime(2024, 12, 20),
-            last_tested=datetime(2024, 12, 27),
-        ),
-    ]
-    return baselines[offset:offset + limit]
+    baselines = baseline_store.get_baselines_for_tenant(tenant_id)
+
+    result = []
+    for bl in baselines[offset:offset + limit]:
+        result.append(BaselineResponse(
+            id=bl.id,
+            name=bl.name,
+            description=bl.description,
+            entry_count=len(bl.entries),
+            model=bl.models_covered[0] if bl.models_covered else "unknown",
+            created_at=bl.created_at,
+            updated_at=bl.updated_at,
+            last_tested=None,
+        ))
+    return result
 
 
 @router.post("/baselines", response_model=BaselineResponse, status_code=status.HTTP_201_CREATED)
@@ -163,24 +133,30 @@ async def create_baseline(
     tenant_id: str = Depends(get_current_tenant),
 ):
     """Create a new baseline."""
-    import uuid
-
-    baseline_id = f"bl-{str(uuid.uuid4())[:8]}"
-    now = datetime.utcnow()
-
-    baseline = BaselineResponse(
-        id=baseline_id,
+    baseline = baseline_store.create_baseline(
         name=request.name,
         description=request.description,
-        entry_count=len(request.entries),
-        model=request.model,
-        created_at=now,
-        updated_at=now,
+        tenant_id=tenant_id,
     )
 
-    _baselines[baseline_id] = baseline.model_dump()
+    # Add entries if provided
+    for entry_data in request.entries:
+        baseline_store.add_entry_to_baseline(
+            baseline_id=baseline.id,
+            prompt=entry_data.get("prompt", ""),
+            output=entry_data.get("output", ""),
+            model=request.model,
+        )
 
-    return baseline
+    return BaselineResponse(
+        id=baseline.id,
+        name=baseline.name,
+        description=baseline.description,
+        entry_count=len(baseline.entries),
+        model=request.model,
+        created_at=baseline.created_at,
+        updated_at=baseline.updated_at,
+    )
 
 
 @router.get("/baselines/{baseline_id}", response_model=BaselineResponse)
@@ -189,18 +165,28 @@ async def get_baseline(
     tenant_id: str = Depends(get_current_tenant),
 ):
     """Get a specific baseline."""
-    if baseline_id in _baselines:
-        return BaselineResponse(**_baselines[baseline_id])
+    baseline = baseline_store.get_baseline(baseline_id)
 
-    # Return demo baseline
+    if not baseline:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail="Baseline not found"
+        )
+
+    if baseline.tenant_id != tenant_id:
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail="Access denied"
+        )
+
     return BaselineResponse(
-        id=baseline_id,
-        name=f"Baseline {baseline_id}",
-        description="Demo baseline",
-        entry_count=25,
-        model="gpt-4o",
-        created_at=datetime.utcnow(),
-        updated_at=datetime.utcnow(),
+        id=baseline.id,
+        name=baseline.name,
+        description=baseline.description,
+        entry_count=len(baseline.entries),
+        model=baseline.models_covered[0] if baseline.models_covered else "unknown",
+        created_at=baseline.created_at,
+        updated_at=baseline.updated_at,
     )
 
 
@@ -210,8 +196,10 @@ async def delete_baseline(
     tenant_id: str = Depends(get_current_tenant),
 ):
     """Delete a baseline."""
-    if baseline_id in _baselines:
-        del _baselines[baseline_id]
+    baseline = baseline_store.get_baseline(baseline_id)
+
+    if baseline and baseline.tenant_id == tenant_id:
+        baseline_store.delete_baseline(baseline_id)
 
 
 @router.post("/baselines/{baseline_id}/entries", response_model=BaselineEntryResponse)
@@ -221,23 +209,48 @@ async def add_entry(
     tenant_id: str = Depends(get_current_tenant),
 ):
     """Add an entry to a baseline."""
-    import hashlib
-    import uuid
+    baseline = baseline_store.get_baseline(baseline_id)
 
-    entry = BaselineEntryResponse(
-        id=str(uuid.uuid4())[:8],
-        prompt_hash=hashlib.sha256(request.prompt.encode()).hexdigest()[:32],
-        prompt_text=request.prompt,
-        output_text=request.output,
+    if not baseline:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail="Baseline not found"
+        )
+
+    if baseline.tenant_id != tenant_id:
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail="Access denied"
+        )
+
+    entry = baseline_store.add_entry_to_baseline(
+        baseline_id=baseline_id,
+        prompt=request.prompt,
+        output=request.output,
         model=request.model,
         model_version=request.model_version,
         tokens_used=request.tokens_used,
         latency_ms=request.latency_ms,
-        created_at=datetime.utcnow(),
-        tags=request.tags,
     )
 
-    return entry
+    if not entry:
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail="Failed to add entry"
+        )
+
+    return BaselineEntryResponse(
+        id=entry.id,
+        prompt_hash=entry.prompt_hash,
+        prompt_text=entry.prompt_text,
+        output_text=entry.output_text,
+        model=entry.model,
+        model_version=entry.model_version,
+        tokens_used=entry.tokens_used,
+        latency_ms=entry.latency_ms,
+        created_at=entry.created_at,
+        tags=entry.tags,
+    )
 
 
 @router.get("/baselines/{baseline_id}/entries", response_model=list[BaselineEntryResponse])
@@ -247,22 +260,34 @@ async def list_entries(
     tenant_id: str = Depends(get_current_tenant),
 ):
     """List entries in a baseline."""
-    # Return demo entries
-    entries = [
-        BaselineEntryResponse(
-            id=f"entry-{i:03d}",
-            prompt_hash=f"hash{i:06d}",
-            prompt_text=f"Sample prompt {i}",
-            output_text=f"Expected output {i}",
-            model="gpt-4o",
-            model_version="2024-08-06",
-            tokens_used=150 + i * 10,
-            latency_ms=200 + i * 5,
-            created_at=datetime.utcnow(),
-            tags=["production"],
+    baseline = baseline_store.get_baseline(baseline_id)
+
+    if not baseline:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail="Baseline not found"
         )
-        for i in range(1, min(limit + 1, 11))
-    ]
+
+    if baseline.tenant_id != tenant_id:
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail="Access denied"
+        )
+
+    entries = []
+    for entry in baseline.entries[:limit]:
+        entries.append(BaselineEntryResponse(
+            id=entry.id,
+            prompt_hash=entry.prompt_hash,
+            prompt_text=entry.prompt_text,
+            output_text=entry.output_text,
+            model=entry.model,
+            model_version=entry.model_version,
+            tokens_used=entry.tokens_used,
+            latency_ms=entry.latency_ms,
+            created_at=entry.created_at,
+            tags=entry.tags,
+        ))
     return entries
 
 
@@ -273,22 +298,48 @@ async def test_baseline(
     tenant_id: str = Depends(get_current_tenant),
 ):
     """Test current outputs against a baseline."""
-    detector = DriftDetector()
+    baseline = baseline_store.get_baseline(baseline_id)
 
-    # Simulate drift detection
-    alerts = [
-        DriftAlertResponse(
-            id=f"alert-{i:03d}",
-            severity=["critical", "high", "medium", "low"][i % 4],
-            drift_type=["semantic", "performance", "format"][i % 3],
-            prompt=f"Prompt that drifted {i}",
-            similarity=0.75 + (i % 20) / 100,
-            detected_at=datetime.utcnow(),
-            baseline_id=baseline_id,
-            details={"expected_tokens": 150, "actual_tokens": 180},
+    if not baseline:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail="Baseline not found"
         )
-        for i in range(5)
-    ]
+
+    if baseline.tenant_id != tenant_id:
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail="Access denied"
+        )
+
+    detector = DriftDetector()
+    alerts: list[DriftAlertResponse] = []
+
+    for output_data in request.current_outputs:
+        prompt_hash = output_data.get("prompt_hash", "")
+        current_output = output_data.get("output", "")
+
+        # Find matching baseline entry
+        for entry in baseline.entries:
+            if entry.prompt_hash == prompt_hash:
+                # Detect drift
+                drift_result = detector.detect_semantic_drift(
+                    original=entry.output_text,
+                    current=current_output,
+                )
+
+                if drift_result.has_drift:
+                    alerts.append(DriftAlertResponse(
+                        id=f"alert-{len(alerts):03d}",
+                        severity=drift_result.severity.value,
+                        drift_type=drift_result.drift_type.value,
+                        prompt=entry.prompt_text[:100],
+                        similarity=drift_result.similarity,
+                        detected_at=datetime.utcnow(),
+                        baseline_id=baseline_id,
+                        details=drift_result.details,
+                    ))
+                break
 
     return DriftSummaryResponse(
         total_alerts=len(alerts),
@@ -296,7 +347,7 @@ async def test_baseline(
         high_count=sum(1 for a in alerts if a.severity == "high"),
         medium_count=sum(1 for a in alerts if a.severity == "medium"),
         low_count=sum(1 for a in alerts if a.severity == "low"),
-        models_affected=["gpt-4o"],
+        models_affected=list(set(baseline.models_covered)),
         recent_alerts=alerts,
     )
 
@@ -307,32 +358,41 @@ async def check_drift(
     tenant_id: str = Depends(get_current_tenant),
 ):
     """Check for drift on a single prompt/output pair."""
+    baseline = baseline_store.get_baseline(request.baseline_id)
+
+    if not baseline:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail="Baseline not found"
+        )
+
+    # Find the original entry
+    entry = baseline.get_entry_by_prompt(request.prompt)
+
+    if not entry:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail="Prompt not found in baseline"
+        )
+
     detector = DriftDetector()
-
-    # Simulate drift check
-    import uuid
-    import random
-
-    similarity = random.uniform(0.7, 1.0)
-    severity = "low"
-    if similarity < 0.8:
-        severity = "critical"
-    elif similarity < 0.85:
-        severity = "high"
-    elif similarity < 0.9:
-        severity = "medium"
+    drift_result = detector.detect_semantic_drift(
+        original=entry.output_text,
+        current=request.current_output,
+    )
 
     return DriftAlertResponse(
-        id=str(uuid.uuid4())[:8],
-        severity=severity,
-        drift_type="semantic",
+        id=f"alert-{datetime.utcnow().timestamp():.0f}",
+        severity=drift_result.severity.value,
+        drift_type=drift_result.drift_type.value,
         prompt=request.prompt[:100],
-        similarity=similarity,
+        similarity=drift_result.similarity,
         detected_at=datetime.utcnow(),
         baseline_id=request.baseline_id,
         details={
             "model": request.model,
             "output_length": len(request.current_output),
+            **drift_result.details,
         },
     )
 
@@ -344,24 +404,34 @@ async def list_alerts(
     tenant_id: str = Depends(get_current_tenant),
 ):
     """List drift alerts."""
-    alerts = [
-        DriftAlertResponse(
-            id=f"alert-{i:03d}",
-            severity=["critical", "high", "medium", "low"][i % 4],
-            drift_type=["semantic", "performance", "format"][i % 3],
-            prompt=f"Prompt showing drift {i}",
-            similarity=0.65 + (i % 30) / 100,
-            detected_at=datetime.utcnow(),
-            baseline_id=f"bl-00{(i % 3) + 1}",
-            details={},
+    alerts = alert_manager.get_alerts_for_tenant(tenant_id)
+
+    result = []
+    for alert in alerts:
+        drift_type = "semantic"
+        prompt = ""
+        similarity = 0.0
+
+        if alert.drift_results:
+            drift = alert.drift_results[0]
+            drift_type = drift.drift_type.value
+            similarity = drift.similarity
+
+        alert_response = DriftAlertResponse(
+            id=alert.id,
+            severity=alert.priority.value.replace("p", ""),
+            drift_type=drift_type,
+            prompt=prompt,
+            similarity=similarity,
+            detected_at=alert.created_at,
+            baseline_id=alert.metadata.get("baseline_id", ""),
+            details=alert.metadata,
         )
-        for i in range(10)
-    ]
 
-    if severity:
-        alerts = [a for a in alerts if a.severity == severity]
+        if severity is None or alert_response.severity == severity:
+            result.append(alert_response)
 
-    return alerts[:limit]
+    return result[:limit]
 
 
 @router.get("/fingerprints", response_model=list[ModelFingerprintResponse])
@@ -369,44 +439,52 @@ async def list_fingerprints(
     tenant_id: str = Depends(get_current_tenant),
 ):
     """List model fingerprints."""
-    fingerprints = [
-        ModelFingerprintResponse(
-            model="gpt-4o",
-            version="2024-11-20",
-            provider="openai",
-            fingerprint_hash="a1b2c3d4e5f6",
-            last_seen=datetime.utcnow(),
-            status="stable",
-            change_detected=False,
-        ),
-        ModelFingerprintResponse(
-            model="gpt-4o",
-            version="2024-08-06",
-            provider="openai",
-            fingerprint_hash="f6e5d4c3b2a1",
-            last_seen=datetime(2024, 11, 15),
-            status="deprecated",
-            change_detected=True,
-        ),
-        ModelFingerprintResponse(
-            model="claude-3-5-sonnet",
-            version="20241022",
-            provider="anthropic",
-            fingerprint_hash="1a2b3c4d5e6f",
-            last_seen=datetime.utcnow(),
-            status="stable",
-            change_detected=False,
-        ),
-        ModelFingerprintResponse(
-            model="gemini-1.5-pro",
-            version="002",
-            provider="google",
-            fingerprint_hash="6f5e4d3c2b1a",
-            last_seen=datetime.utcnow(),
-            status="updated",
-            change_detected=True,
-        ),
-    ]
+    fingerprints = []
+
+    for model_id, fp in model_fingerprinter.known_fingerprints.items():
+        # Check version history for changes
+        change_detected = False
+        for hist_model, hist_version, hist_time in model_fingerprinter.version_history:
+            if hist_model == model_id:
+                change_detected = True
+                break
+
+        status = "stable"
+        if fp.is_deprecated:
+            status = "deprecated"
+        elif change_detected:
+            status = "updated"
+
+        fingerprints.append(ModelFingerprintResponse(
+            model=fp.model_id,
+            version=fp.version or "latest",
+            provider=fp.provider,
+            fingerprint_hash=fp.fingerprint_hash,
+            last_seen=fp.detected_at,
+            status=status,
+            change_detected=change_detected,
+        ))
+
+    # If no fingerprints tracked, return common models
+    if not fingerprints:
+        now = datetime.utcnow()
+        common_models = [
+            ("gpt-4o", "2024-11-20", "openai"),
+            ("claude-3-5-sonnet", "20241022", "anthropic"),
+            ("gemini-1.5-pro", "002", "google"),
+        ]
+        for model, version, provider in common_models:
+            fp = model_fingerprinter.fingerprint(f"{model}-{version}" if version else model)
+            fingerprints.append(ModelFingerprintResponse(
+                model=fp.model_id,
+                version=fp.version or version,
+                provider=fp.provider,
+                fingerprint_hash=fp.fingerprint_hash,
+                last_seen=fp.detected_at,
+                status="stable",
+                change_detected=False,
+            ))
+
     return fingerprints
 
 
@@ -415,8 +493,14 @@ async def refresh_fingerprints(
     tenant_id: str = Depends(get_current_tenant),
 ):
     """Refresh model fingerprints by probing models."""
+    models_to_probe = ["gpt-4o", "claude-3-5-sonnet", "gemini-1.5-pro"]
+
+    # Queue fingerprinting for each model
+    for model in models_to_probe:
+        model_fingerprinter.fingerprint(model)
+
     return {
         "status": "refreshing",
-        "models_queued": ["gpt-4o", "claude-3-5-sonnet", "gemini-1.5-pro"],
+        "models_queued": models_to_probe,
         "estimated_time_seconds": 30,
     }
