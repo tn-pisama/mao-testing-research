@@ -9,6 +9,7 @@ from typing import Dict, Type, Optional
 from .base import BaseImporter
 from .raw_json import RawJSONImporter
 from .langsmith import LangSmithImporter
+from .otel import OTELImporter
 
 
 # Registry of available importers
@@ -18,6 +19,9 @@ IMPORTERS: Dict[str, Type[BaseImporter]] = {
     "generic": RawJSONImporter,
     "langsmith": LangSmithImporter,
     "langchain": LangSmithImporter,
+    "otel": OTELImporter,
+    "opentelemetry": OTELImporter,
+    "otlp": OTELImporter,
 }
 
 
@@ -72,6 +76,7 @@ __all__ = [
     "BaseImporter",
     "RawJSONImporter",
     "LangSmithImporter",
+    "OTELImporter",
     "get_importer",
     "detect_format",
     "import_trace",

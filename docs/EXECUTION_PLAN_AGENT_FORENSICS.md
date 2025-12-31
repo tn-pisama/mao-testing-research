@@ -2,7 +2,7 @@
 
 **Branch**: `pivot/agent-forensics`
 **Date**: December 2025
-**Status**: In Progress
+**Status**: Completed
 
 ---
 
@@ -160,15 +160,15 @@ Add to diagnose response:
 ## Success Criteria
 
 ### Phase 1 Complete When:
-- [ ] Can paste raw JSON trace and get diagnosis
-- [ ] Diagnosis includes root cause with confidence
-- [ ] Suggested fixes are generated
-- [ ] Self-healing preview is shown (differentiator)
+- [x] Can paste raw JSON trace and get diagnosis
+- [x] Diagnosis includes root cause with confidence
+- [x] Suggested fixes are generated
+- [x] Self-healing preview is shown (differentiator)
 
 ### Phase 2 Complete When:
-- [ ] Frontend /diagnose page works end-to-end
-- [ ] Can visualize evidence chain
-- [ ] Can "Apply Fix" (preview only for MVP)
+- [x] Frontend /diagnose page works end-to-end
+- [x] Can visualize evidence chain
+- [x] Can "Apply Fix" (preview only for MVP)
 
 ---
 
