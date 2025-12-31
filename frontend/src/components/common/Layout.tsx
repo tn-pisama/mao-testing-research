@@ -2,10 +2,10 @@
 
 import Link from 'next/link'
 import { usePathname } from 'next/navigation'
-import { 
-  LayoutDashboard, 
-  Workflow, 
-  AlertTriangle, 
+import {
+  LayoutDashboard,
+  Workflow,
+  AlertTriangle,
   Settings,
   Menu,
   X,
@@ -15,7 +15,8 @@ import {
   Zap,
   RotateCcw,
   GitBranch,
-  FlaskConical
+  FlaskConical,
+  Search
 } from 'lucide-react'
 import { UserButton } from '@clerk/nextjs'
 import { useUIStore } from '@/stores/uiStore'
@@ -23,11 +24,12 @@ import { clsx } from 'clsx'
 
 const navItems = [
   { href: '/dashboard', label: 'Dashboard', icon: LayoutDashboard },
+  { href: '/diagnose', label: 'Diagnose', icon: Search, badge: 'New' },
   { href: '/agents', label: 'Agents', icon: Bot, badge: 'Live' },
   { href: '/traces', label: 'Traces', icon: Workflow },
   { href: '/detections', label: 'Detections', icon: AlertTriangle },
   { href: '/testing', label: 'Testing', icon: FlaskConical },
-  { href: '/chaos', label: 'Chaos', icon: Zap, badge: 'New' },
+  { href: '/chaos', label: 'Chaos', icon: Zap },
   { href: '/replay', label: 'Replay', icon: RotateCcw },
   { href: '/regression', label: 'Regression', icon: GitBranch },
   { href: '/demo', label: 'Demo', icon: PlayCircle },
