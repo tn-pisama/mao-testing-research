@@ -33,32 +33,74 @@ class TraceStorage:
     def _init_db(self) -> None:
         """Initialize SQLite database schema."""
         conn = sqlite3.connect(str(self.db_path))
-        conn.execute("""
-            CREATE TABLE IF NOT EXISTS traces (
-                id INTEGER PRIMARY KEY AUTOINCREMENT,
-                span_id TEXT UNIQUE,
-                trace_id TEXT,
-                parent_id TEXT,
-                session_id TEXT,
-                timestamp TEXT,
-                hook_type TEXT,
-                tool_name TEXT,
-                kind TEXT,
-                status TEXT,
-                tool_input TEXT,
-                tool_output TEXT,
-                attributes TEXT,
-                duration_ms INTEGER,
-                error TEXT,
-                working_dir TEXT,
-                created_at DATETIME DEFAULT CURRENT_TIMESTAMP
-            )
-        """)
-        conn.execute("CREATE INDEX IF NOT EXISTS idx_session ON traces(session_id)")
-        conn.execute("CREATE INDEX IF NOT EXISTS idx_trace ON traces(trace_id)")
-        conn.execute("CREATE INDEX IF NOT EXISTS idx_timestamp ON traces(timestamp)")
-        conn.execute("CREATE INDEX IF NOT EXISTS idx_tool ON traces(tool_name)")
-        conn.execute("CREATE INDEX IF NOT EXISTS idx_span ON traces(span_id)")
+
+        # Check if table exists with old schema
+        cursor = conn.execute(
+            "SELECT name FROM sqlite_master WHERE type='table' AND name='traces'"
+        )
+        table_exists = cursor.fetchone() is not None
+
+        if table_exists:
+            # Check if we need to migrate
+            cursor = conn.execute("PRAGMA table_info(traces)")
+            columns = {row[1] for row in cursor.fetchall()}
+
+            if "span_id" not in columns:
+                # Old schema - add new columns
+                try:
+                    conn.execute("ALTER TABLE traces ADD COLUMN span_id TEXT")
+                    conn.execute("ALTER TABLE traces ADD COLUMN trace_id TEXT")
+                    conn.execute("ALTER TABLE traces ADD COLUMN parent_id TEXT")
+                    conn.execute("ALTER TABLE traces ADD COLUMN kind TEXT")
+                    conn.execute("ALTER TABLE traces ADD COLUMN status TEXT")
+                    conn.execute("ALTER TABLE traces ADD COLUMN attributes TEXT")
+                    conn.execute("ALTER TABLE traces ADD COLUMN duration_ms INTEGER")
+                    conn.execute("ALTER TABLE traces ADD COLUMN error TEXT")
+                except sqlite3.OperationalError:
+                    pass  # Column already exists
+        else:
+            # Create new table with full schema
+            conn.execute("""
+                CREATE TABLE IF NOT EXISTS traces (
+                    id INTEGER PRIMARY KEY AUTOINCREMENT,
+                    span_id TEXT,
+                    trace_id TEXT,
+                    parent_id TEXT,
+                    session_id TEXT,
+                    timestamp TEXT,
+                    hook_type TEXT,
+                    tool_name TEXT,
+                    kind TEXT,
+                    status TEXT,
+                    tool_input TEXT,
+                    tool_output TEXT,
+                    attributes TEXT,
+                    duration_ms INTEGER,
+                    error TEXT,
+                    working_dir TEXT,
+                    created_at DATETIME DEFAULT CURRENT_TIMESTAMP
+                )
+            """)
+
+        # Create indexes (these are safe to run even if they exist)
+        try:
+            conn.execute("CREATE INDEX IF NOT EXISTS idx_session ON traces(session_id)")
+            conn.execute("CREATE INDEX IF NOT EXISTS idx_timestamp ON traces(timestamp)")
+            conn.execute("CREATE INDEX IF NOT EXISTS idx_tool ON traces(tool_name)")
+        except sqlite3.OperationalError:
+            pass
+
+        # Try to create new indexes (may fail on old data)
+        try:
+            cursor = conn.execute("PRAGMA table_info(traces)")
+            columns = {row[1] for row in cursor.fetchall()}
+            if "span_id" in columns:
+                conn.execute("CREATE INDEX IF NOT EXISTS idx_span ON traces(span_id)")
+            if "trace_id" in columns:
+                conn.execute("CREATE INDEX IF NOT EXISTS idx_trace ON traces(trace_id)")
+        except sqlite3.OperationalError:
+            pass
+
         conn.commit()
         conn.close()
 
@@ -253,7 +295,7 @@ class TraceStorage:
             input_data=input_data,
             output_data=output_data,
             events=[],
-            error=row["error"],
+            error_message=row["error"] if "error" in row.keys() else None,
         )
 
     def clear_session(self, session_id: str) -> int:

@@ -112,7 +112,7 @@ class TraceConverter:
             input_data=self._normalize_input(tool_name, tool_input),
             output_data=self._normalize_output(tool_output) if tool_output else None,
             events=[],
-            error=hook_data.get("error"),
+            error_message=hook_data.get("error"),
         )
 
     def _get_span_kind(self, tool_name: str) -> SpanKind:

@@ -42,6 +42,10 @@ class SpanKind(str, Enum):
     SYSTEM = "system"  # System-level operation
     HOOK = "hook"  # Hook execution
 
+    # Interaction spans
+    USER_INPUT = "user_input"  # User interaction/input
+    USER_OUTPUT = "user_output"  # Output to user
+
     def __str__(self) -> str:
         return self.value
 
@@ -50,6 +54,7 @@ class SpanStatus(str, Enum):
     """Status of a span."""
 
     UNSET = "unset"  # Not yet determined
+    IN_PROGRESS = "in_progress"  # Currently executing
     OK = "ok"  # Completed successfully
     ERROR = "error"  # Failed with error
     TIMEOUT = "timeout"  # Timed out
@@ -62,13 +67,7 @@ class SpanStatus(str, Enum):
     @property
     def is_terminal(self) -> bool:
         """Whether this status is terminal (span is complete)."""
-        return self in (
-            SpanStatus.OK,
-            SpanStatus.ERROR,
-            SpanStatus.TIMEOUT,
-            SpanStatus.CANCELLED,
-            SpanStatus.BLOCKED,
-        )
+        return self not in (SpanStatus.UNSET, SpanStatus.IN_PROGRESS)
 
     @property
     def is_success(self) -> bool:

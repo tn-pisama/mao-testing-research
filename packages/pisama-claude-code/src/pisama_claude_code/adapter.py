@@ -10,7 +10,7 @@ from datetime import datetime, timezone
 from pathlib import Path
 from typing import Any, Optional
 
-from pisama_core.adapters import PlatformAdapter, InjectionResult
+from pisama_core.adapters import PlatformAdapter, InjectionResult, InjectionMethod
 from pisama_core.injection import EnforcementLevel
 from pisama_core.traces import Platform, Span, SpanKind, SpanStatus
 
@@ -110,8 +110,8 @@ class ClaudeCodeAdapter(PlatformAdapter):
             print(message, file=sys.stderr)
             return InjectionResult(
                 success=True,
-                method="stderr_suggestion",
-                acknowledged=False,  # Can't know if agent saw it
+                method=InjectionMethod.STDERR,
+                message=message,
             )
 
         elif level == EnforcementLevel.DIRECT:
@@ -129,8 +129,8 @@ class ClaudeCodeAdapter(PlatformAdapter):
 
             return InjectionResult(
                 success=True,
-                method="stderr_direct+mcp",
-                acknowledged=False,
+                method=InjectionMethod.STDERR,
+                message=message,
             )
 
         elif level == EnforcementLevel.BLOCK:
@@ -150,8 +150,8 @@ class ClaudeCodeAdapter(PlatformAdapter):
 
             return InjectionResult(
                 success=True,
-                method="stderr_block+mcp",
-                acknowledged=False,
+                method=InjectionMethod.STDERR,
+                message=message,
                 blocked=True,
             )
 
@@ -165,14 +165,15 @@ class ClaudeCodeAdapter(PlatformAdapter):
 
             return InjectionResult(
                 success=True,
-                method="stderr_terminate",
-                acknowledged=False,
+                method=InjectionMethod.STDERR,
+                message=message,
                 blocked=True,
             )
 
         return InjectionResult(
             success=False,
-            method="unknown_level",
+            method=InjectionMethod.STDERR,
+            error="Unknown enforcement level",
         )
 
     def can_block(self) -> bool:
@@ -193,6 +194,27 @@ class ClaudeCodeAdapter(PlatformAdapter):
         # The actual exit happens after this returns
         # Caller should call sys.exit(1) after this
         return True
+
+    def get_supported_injection_methods(self) -> list[InjectionMethod]:
+        """Get supported injection methods for Claude Code.
+
+        Returns:
+            List of injection methods (stderr + resource/MCP)
+        """
+        return [InjectionMethod.STDERR, InjectionMethod.RESOURCE]
+
+    def get_state(self) -> dict[str, Any]:
+        """Get current platform state.
+
+        Returns:
+            State dict with session info and recent traces
+        """
+        recent = self.storage.get_tool_sequence(limit=10)
+        return {
+            "platform": "claude_code",
+            "recent_tools": recent,
+            "blocked_sessions": list(self._blocked_sessions),
+        }
 
     def get_recent_spans(self, limit: int = 10) -> list[Span]:
         """Get recent spans from storage.
