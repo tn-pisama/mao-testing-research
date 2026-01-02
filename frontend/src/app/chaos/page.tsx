@@ -1,14 +1,17 @@
 'use client'
 
-import { useState } from 'react'
-import { 
-  Zap, Play, Square, AlertTriangle, Clock, 
-  Target, Shield, Activity, RefreshCw 
+import { useState, useEffect, useCallback } from 'react'
+import { useAuth } from '@clerk/nextjs'
+import { useTenant } from '@/hooks/useTenant'
+import {
+  Zap, Play, Square, AlertTriangle, Clock,
+  Target, Shield, Activity, RefreshCw
 } from 'lucide-react'
 import { Layout } from '@/components/common/Layout'
 import { Button } from '@/components/ui/Button'
+import { createApiClient, ChaosSession as APIChaosSession, ChaosExperimentType } from '@/lib/api'
 
-interface ExperimentType {
+interface DisplayExperimentType {
   id: string
   name: string
   description: string
@@ -16,7 +19,7 @@ interface ExperimentType {
   severity: 'low' | 'medium' | 'high'
 }
 
-interface ChaosSession {
+interface DisplayChaosSession {
   id: string
   experiment: string
   status: 'running' | 'completed' | 'aborted'
@@ -25,90 +28,148 @@ interface ChaosSession {
   injections: number
 }
 
-const EXPERIMENT_TYPES: ExperimentType[] = [
-  { 
-    id: 'latency', 
-    name: 'Latency Injection', 
-    description: 'Add 1-5s delay to LLM responses',
-    icon: <Clock size={20} />,
-    severity: 'low'
-  },
-  { 
-    id: 'error', 
-    name: 'Error Injection', 
-    description: 'Simulate API failures and timeouts',
-    icon: <AlertTriangle size={20} />,
-    severity: 'medium'
-  },
-  { 
-    id: 'malformed', 
-    name: 'Malformed Output', 
-    description: 'Return truncated or corrupted responses',
-    icon: <Zap size={20} />,
-    severity: 'medium'
-  },
-  { 
-    id: 'tool_unavailable', 
-    name: 'Tool Unavailable', 
-    description: 'Simulate tool/function failures',
-    icon: <Target size={20} />,
-    severity: 'medium'
-  },
-  { 
-    id: 'uncooperative', 
-    name: 'Uncooperative Agent', 
-    description: 'Agent refuses tasks or gives irrelevant responses',
-    icon: <Shield size={20} />,
-    severity: 'high'
-  },
-  { 
-    id: 'context_truncation', 
-    name: 'Context Truncation', 
-    description: 'Simulate context window overflow',
-    icon: <Activity size={20} />,
-    severity: 'high'
-  },
-]
+function getExperimentIcon(type: string): React.ReactNode {
+  switch (type) {
+    case 'latency': return <Clock size={20} />
+    case 'error': return <AlertTriangle size={20} />
+    case 'malformed': return <Zap size={20} />
+    case 'tool_unavailable': return <Target size={20} />
+    case 'uncooperative': return <Shield size={20} />
+    case 'context_truncation': return <Activity size={20} />
+    default: return <Zap size={20} />
+  }
+}
 
-const RECENT_SESSIONS: ChaosSession[] = [
-  { 
-    id: 'cs-001', 
-    experiment: 'Latency Injection', 
-    status: 'completed', 
-    startedAt: '2024-12-29 10:30',
-    affectedAgents: 3,
-    injections: 47
-  },
-  { 
-    id: 'cs-002', 
-    experiment: 'Error Injection', 
-    status: 'completed', 
-    startedAt: '2024-12-29 09:15',
-    affectedAgents: 2,
-    injections: 23
-  },
-  { 
-    id: 'cs-003', 
-    experiment: 'Tool Unavailable', 
-    status: 'aborted', 
-    startedAt: '2024-12-28 16:45',
-    affectedAgents: 1,
-    injections: 8
-  },
-]
+function getExperimentSeverity(type: string): 'low' | 'medium' | 'high' {
+  if (['latency'].includes(type)) return 'low'
+  if (['error', 'malformed', 'tool_unavailable'].includes(type)) return 'medium'
+  return 'high'
+}
+
+function mapExperimentType(exp: ChaosExperimentType): DisplayExperimentType {
+  return {
+    id: exp.type,
+    name: exp.name,
+    description: exp.description,
+    icon: getExperimentIcon(exp.type),
+    severity: getExperimentSeverity(exp.type)
+  }
+}
+
+function mapChaosSession(session: APIChaosSession): DisplayChaosSession {
+  return {
+    id: session.id,
+    experiment: session.name,
+    status: session.status as 'running' | 'completed' | 'aborted',
+    startedAt: session.started_at ? new Date(session.started_at).toLocaleString() : new Date(session.created_at).toLocaleString(),
+    affectedAgents: 0, // Would come from session details
+    injections: session.experiment_count
+  }
+}
 
 export default function ChaosPage() {
+  const { getToken } = useAuth()
+  const { tenantId } = useTenant()
+  const [experimentTypes, setExperimentTypes] = useState<DisplayExperimentType[]>([])
+  const [sessions, setSessions] = useState<DisplayChaosSession[]>([])
   const [selectedExperiment, setSelectedExperiment] = useState<string | null>(null)
   const [isRunning, setIsRunning] = useState(false)
   const [targetPercentage, setTargetPercentage] = useState(10)
+  const [isLoading, setIsLoading] = useState(true)
+  const [activeSessionId, setActiveSessionId] = useState<string | null>(null)
 
-  const startExperiment = () => {
+  const loadData = useCallback(async () => {
+    setIsLoading(true)
+    try {
+      const token = await getToken()
+      const api = createApiClient(token, tenantId)
+
+      const [expTypesData, sessionsData] = await Promise.all([
+        api.getChaosExperimentTypes(),
+        api.listChaosSessions()
+      ])
+
+      setExperimentTypes(expTypesData.map(mapExperimentType))
+      setSessions(sessionsData.map(mapChaosSession))
+
+      // Check if any session is running
+      const runningSession = sessionsData.find(s => s.status === 'running')
+      if (runningSession) {
+        setIsRunning(true)
+        setActiveSessionId(runningSession.id)
+      }
+    } catch (err) {
+      console.warn('API unavailable, using fallback data:', err)
+      // Fallback to default experiment types
+      setExperimentTypes([
+        { id: 'latency', name: 'Latency Injection', description: 'Add 1-5s delay to LLM responses', icon: <Clock size={20} />, severity: 'low' },
+        { id: 'error', name: 'Error Injection', description: 'Simulate API failures and timeouts', icon: <AlertTriangle size={20} />, severity: 'medium' },
+        { id: 'malformed', name: 'Malformed Output', description: 'Return truncated or corrupted responses', icon: <Zap size={20} />, severity: 'medium' },
+        { id: 'tool_unavailable', name: 'Tool Unavailable', description: 'Simulate tool/function failures', icon: <Target size={20} />, severity: 'medium' },
+        { id: 'uncooperative', name: 'Uncooperative Agent', description: 'Agent refuses tasks or gives irrelevant responses', icon: <Shield size={20} />, severity: 'high' },
+        { id: 'context_truncation', name: 'Context Truncation', description: 'Simulate context window overflow', icon: <Activity size={20} />, severity: 'high' },
+      ])
+      setSessions([])
+    }
+    setIsLoading(false)
+  }, [getToken, tenantId])
+
+  useEffect(() => {
+    loadData()
+  }, [loadData])
+
+  const startExperiment = async () => {
     if (!selectedExperiment) return
     setIsRunning(true)
+
+    try {
+      const token = await getToken()
+      const api = createApiClient(token, tenantId)
+
+      const expType = experimentTypes.find(e => e.id === selectedExperiment)
+      const session = await api.createChaosSession(
+        `${expType?.name || 'Chaos'} - ${new Date().toLocaleString()}`,
+        [{
+          experiment_type: selectedExperiment,
+          name: expType?.name || 'Experiment',
+          probability: targetPercentage / 100
+        }],
+        { percentage: targetPercentage },
+        { auto_abort_on_cascade: true, max_blast_radius: 'tenant' }
+      )
+
+      await api.startChaosSession(session.id)
+      setActiveSessionId(session.id)
+
+      // Refresh sessions list
+      const sessionsData = await api.listChaosSessions()
+      setSessions(sessionsData.map(mapChaosSession))
+    } catch (err) {
+      console.error('Failed to start experiment:', err)
+      setIsRunning(false)
+    }
   }
 
-  const stopExperiment = () => {
+  const stopExperiment = async () => {
+    if (!activeSessionId) {
+      setIsRunning(false)
+      return
+    }
+
+    try {
+      const token = await getToken()
+      const api = createApiClient(token, tenantId)
+      await api.stopChaosSession(activeSessionId)
+
+      // Refresh sessions list
+      const sessionsData = await api.listChaosSessions()
+      setSessions(sessionsData.map(mapChaosSession))
+    } catch (err) {
+      console.error('Failed to stop experiment:', err)
+    }
+
     setIsRunning(false)
+    setActiveSessionId(null)
   }
 
   const severityColor = (severity: string) => {
@@ -154,7 +215,7 @@ export default function ChaosPage() {
             <div>
               <p className="text-amber-400 font-medium">Chaos Experiment Running</p>
               <p className="text-amber-400/70 text-sm">
-                {EXPERIMENT_TYPES.find(e => e.id === selectedExperiment)?.name} - 
+                {experimentTypes.find(e => e.id === selectedExperiment)?.name} -
                 Targeting {targetPercentage}% of traffic
               </p>
             </div>
@@ -165,8 +226,13 @@ export default function ChaosPage() {
           <div className="lg:col-span-2">
             <div className="bg-slate-800 rounded-xl p-6 border border-slate-700">
               <h2 className="text-lg font-semibold text-white mb-4">Experiment Types</h2>
+              {isLoading ? (
+                <div className="flex items-center justify-center py-8">
+                  <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-amber-400"></div>
+                </div>
+              ) : (
               <div className="grid md:grid-cols-2 gap-3">
-                {EXPERIMENT_TYPES.map((exp) => (
+                {experimentTypes.map((exp) => (
                   <button
                     key={exp.id}
                     onClick={() => setSelectedExperiment(exp.id)}
@@ -194,6 +260,7 @@ export default function ChaosPage() {
                   </button>
                 ))}
               </div>
+              )}
             </div>
           </div>
 
@@ -237,16 +304,16 @@ export default function ChaosPage() {
               <h2 className="text-lg font-semibold text-white mb-4">Statistics</h2>
               <div className="space-y-3">
                 <div className="flex justify-between">
-                  <span className="text-slate-400">Total Experiments</span>
-                  <span className="text-white font-mono">24</span>
+                  <span className="text-slate-400">Total Sessions</span>
+                  <span className="text-white font-mono">{sessions.length}</span>
                 </div>
                 <div className="flex justify-between">
-                  <span className="text-slate-400">Failures Discovered</span>
-                  <span className="text-amber-400 font-mono">12</span>
+                  <span className="text-slate-400">Completed</span>
+                  <span className="text-emerald-400 font-mono">{sessions.filter(s => s.status === 'completed').length}</span>
                 </div>
                 <div className="flex justify-between">
-                  <span className="text-slate-400">Avg Recovery Time</span>
-                  <span className="text-white font-mono">2.3s</span>
+                  <span className="text-slate-400">Aborted</span>
+                  <span className="text-red-400 font-mono">{sessions.filter(s => s.status === 'aborted').length}</span>
                 </div>
               </div>
             </div>
@@ -256,7 +323,9 @@ export default function ChaosPage() {
         <div className="bg-slate-800 rounded-xl p-6 border border-slate-700">
           <h2 className="text-lg font-semibold text-white mb-4">Recent Sessions</h2>
           <div className="space-y-2">
-            {RECENT_SESSIONS.map((session) => (
+            {sessions.length === 0 ? (
+              <p className="text-slate-500 text-center py-4">No chaos sessions yet</p>
+            ) : sessions.map((session) => (
               <div 
                 key={session.id}
                 className="flex items-center justify-between p-3 bg-slate-700/50 rounded-lg"
@@ -294,3 +363,4 @@ export default function ChaosPage() {
     </Layout>
   )
 }
+
