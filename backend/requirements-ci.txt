@@ -3,7 +3,7 @@
 
 # Install CPU-only torch FIRST to prevent CUDA download
 --extra-index-url https://download.pytorch.org/whl/cpu
-torch==2.1.0+cpu
+torch==2.2.0+cpu
 
 # Now install other requirements (sentence-transformers will use the already-installed torch)
 fastapi==0.109.0
