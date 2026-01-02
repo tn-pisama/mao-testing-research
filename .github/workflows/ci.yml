@@ -53,7 +53,7 @@ jobs:
         env:
           DATABASE_URL: postgresql+asyncpg://mao:mao@localhost:5432/mao
           REDIS_URL: redis://localhost:6379
-          JWT_SECRET: test-secret
+          JWT_SECRET: test-secret-for-ci-pipeline-only-do-not-use-in-production
         run: |
           cd backend
           pytest --cov=app tests/ -v
