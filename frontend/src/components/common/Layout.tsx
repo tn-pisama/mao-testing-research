@@ -45,10 +45,22 @@ export function Layout({ children }: { children: React.ReactNode }) {
     <div className="min-h-screen bg-slate-900 flex">
       <aside
         className={clsx(
-          'bg-slate-800 border-r border-slate-700 transition-all duration-300',
+          'bg-slate-800 border-r border-slate-700 transition-all duration-300 flex flex-col',
           sidebarCollapsed ? 'w-16' : 'w-64'
         )}
       >
+        {/* Logo */}
+        <div className="p-4 border-b border-slate-700">
+          <Link href="/dashboard" className="flex items-center gap-2">
+            {sidebarCollapsed ? (
+              <span className="text-xl font-black text-white tracking-tight">P</span>
+            ) : (
+              <span className="text-2xl font-black text-white tracking-tight">PISAMA</span>
+            )}
+          </Link>
+        </div>
+
+        {/* User & Toggle */}
         <div className="p-4 flex items-center justify-between border-b border-slate-700">
           {!sidebarCollapsed && (
             <UserButton afterSignOutUrl="/" />

@@ -49,7 +49,7 @@ export default function SettingsPage() {
           <div>
             <h1 className="text-2xl font-bold text-white mb-1">Settings</h1>
             <p className="text-sm text-slate-400">
-              Configure your MAO Testing Platform preferences
+              Configure your PISAMA preferences
             </p>
           </div>
           <button
@@ -134,7 +134,7 @@ export default function SettingsPage() {
 
             {activeTab === 'api' && (
               <div className="space-y-6">
-                <SettingsSection title="API Key" description="Use this key to authenticate with the MAO Testing API">
+                <SettingsSection title="API Key" description="Use this key to authenticate with the PISAMA API">
                   <div className="p-4 rounded-lg bg-slate-900 border border-slate-700">
                     <div className="flex items-center gap-3">
                       <div className="flex-1 font-mono text-sm text-slate-300">
@@ -266,12 +266,12 @@ export default function SettingsPage() {
                       <span className="text-sm font-medium text-white">Endpoint URL</span>
                     </div>
                     <code className="text-sm text-slate-300">
-                      https://api.mao-testing.com/v1/traces
+                      https://api.pisama.ai/v1/traces
                     </code>
                   </div>
                 </SettingsSection>
 
-                <SettingsSection title="Connected Frameworks" description="Frameworks sending data to MAO">
+                <SettingsSection title="Connected Frameworks" description="Frameworks sending data to PISAMA">
                   <div className="space-y-3">
                     <IntegrationCard
                       name="LangGraph"

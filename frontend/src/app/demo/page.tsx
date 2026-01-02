@@ -189,7 +189,7 @@ export default function DemoPage() {
               </div>
               <h3 className="text-xl font-semibold text-white mb-2">Ready to Demo</h3>
               <p className="text-slate-400 mb-6">
-                Select a scenario above and click Start Demo to see the MAO Testing Platform in action.
+                Select a scenario above and click Start Demo to see PISAMA in action.
                 Watch as agents execute, metrics update in real-time, and failures are detected.
               </p>
               <Button onClick={handleStartDemo} size="lg" leftIcon={<Play size={16} />}>

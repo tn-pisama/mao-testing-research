@@ -15,7 +15,7 @@ export default function DocsPage() {
   return (
     <div>
       <div className="mb-8">
-        <h1 className="text-4xl font-bold text-white mb-4">MAO Testing Platform</h1>
+        <h1 className="text-4xl font-bold text-white mb-4">PISAMA Agent Forensics</h1>
         <p className="text-xl text-slate-300">
           Comprehensive failure detection for multi-agent LLM systems. Detect infinite loops,
           state corruption, persona drift, and coordination failures before they impact production.
@@ -27,7 +27,7 @@ export default function DocsPage() {
           href="/docs/getting-started"
           icon={Rocket}
           title="Getting Started"
-          description="Set up MAO Testing in your agent system in under 5 minutes"
+          description="Set up PISAMA in your agent system in under 5 minutes"
         />
         <QuickStartCard
           href="/docs/integration"
@@ -38,10 +38,10 @@ export default function DocsPage() {
       </div>
 
       <section className="mb-12">
-        <h2 className="text-2xl font-bold text-white mb-4">What is MAO Testing?</h2>
+        <h2 className="text-2xl font-bold text-white mb-4">What is PISAMA?</h2>
         <p className="text-slate-300 mb-4">
-          Multi-Agent Orchestration (MAO) systems are powerful but prone to subtle failures that
-          traditional monitoring misses. MAO Testing Platform provides specialized detection for:
+          AI agent systems are powerful but prone to subtle failures that
+          traditional monitoring misses. PISAMA provides specialized forensics for:
         </p>
         
         <div className="grid md:grid-cols-2 gap-4 mt-6">
@@ -73,7 +73,7 @@ export default function DocsPage() {
         <div className="bg-slate-800/50 rounded-xl border border-slate-700 p-6">
           <ol className="space-y-4">
             <Step number={1} title="Instrument Your Agents">
-              Add our lightweight SDK or configure OTEL export to send trace data to MAO Testing.
+              Add our lightweight SDK or configure OTEL export to send trace data to PISAMA.
             </Step>
             <Step number={2} title="Automatic Analysis">
               Our detection engine analyzes traces in real-time using multiple detection algorithms.
@@ -101,7 +101,7 @@ export default function DocsPage() {
       <section className="bg-gradient-to-r from-primary-600/20 to-purple-600/20 rounded-xl border border-primary-500/30 p-6">
         <h2 className="text-xl font-bold text-white mb-2">Ready to get started?</h2>
         <p className="text-slate-300 mb-4">
-          Follow our quick start guide to integrate MAO Testing with your agent system.
+          Follow our quick start guide to integrate PISAMA with your agent system.
         </p>
         <Link
           href="/docs/getting-started"

@@ -7,8 +7,8 @@ import { Providers } from './providers'
 const inter = Inter({ subsets: ['latin'] })
 
 export const metadata: Metadata = {
-  title: 'MAO Testing Platform',
-  description: 'Catch AI agent failures before they cost you. Detect infinite loops, state corruption, persona drift, and coordination failures in your LLM agent systems.',
+  title: 'PISAMA - Agent Forensics',
+  description: 'Find out why your AI agent failed and how to fix it. Self-healing AI agent diagnostics with root cause analysis.',
 }
 
 const hasClerk = !!process.env.NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY
