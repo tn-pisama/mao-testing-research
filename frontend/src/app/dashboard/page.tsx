@@ -1,5 +1,7 @@
 'use client'
 
+export const dynamic = 'force-dynamic'
+
 import { useState } from 'react'
 import { Upload, Wifi, WifiOff } from 'lucide-react'
 import { Layout } from '@/components/common/Layout'

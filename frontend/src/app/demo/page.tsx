@@ -1,5 +1,7 @@
 'use client'
 
+export const dynamic = 'force-dynamic'
+
 import { useState, useEffect } from 'react'
 import { Layout } from '@/components/common/Layout'
 import { AgentCard, AgentOrchestrationView, AgentActivityFeed, AgentMetricsPanel } from '@/components/agents'

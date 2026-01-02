@@ -1,5 +1,7 @@
 'use client'
 
+export const dynamic = 'force-dynamic'
+
 import { useState, useEffect, useCallback } from 'react'
 import { CheckCircle2, XCircle, HelpCircle, SkipForward, Filter, ChevronLeft, ChevronRight } from 'lucide-react'
 import { Layout } from '@/components/common/Layout'

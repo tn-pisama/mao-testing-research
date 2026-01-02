@@ -2,6 +2,7 @@
 
 import Link from 'next/link'
 import { usePathname } from 'next/navigation'
+import dynamic from 'next/dynamic'
 import {
   LayoutDashboard,
   Workflow,
@@ -16,11 +17,26 @@ import {
   RotateCcw,
   GitBranch,
   FlaskConical,
-  Search
+  Search,
+  User
 } from 'lucide-react'
-import { UserButton } from '@clerk/nextjs'
 import { useUIStore } from '@/stores/uiStore'
 import { clsx } from 'clsx'
+
+const hasClerk = !!process.env.NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY
+
+// Dynamically import UserButton to avoid SSR issues when Clerk isn't configured
+const UserButton = dynamic(
+  () => import('@clerk/nextjs').then(mod => mod.UserButton),
+  {
+    ssr: false,
+    loading: () => (
+      <div className="w-8 h-8 rounded-full bg-slate-700 flex items-center justify-center">
+        <User size={16} className="text-slate-400" />
+      </div>
+    )
+  }
+)
 
 const navItems = [
   { href: '/dashboard', label: 'Dashboard', icon: LayoutDashboard },
@@ -63,7 +79,13 @@ export function Layout({ children }: { children: React.ReactNode }) {
         {/* User & Toggle */}
         <div className="p-4 flex items-center justify-between border-b border-slate-700">
           {!sidebarCollapsed && (
-            <UserButton afterSignOutUrl="/" />
+            hasClerk ? (
+              <UserButton afterSignOutUrl="/" />
+            ) : (
+              <div className="w-8 h-8 rounded-full bg-slate-700 flex items-center justify-center">
+                <User size={16} className="text-slate-400" />
+              </div>
+            )
           )}
           <button
             onClick={() => setSidebarCollapsed(!sidebarCollapsed)}
