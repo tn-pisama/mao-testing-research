@@ -1,7 +1,7 @@
 'use client'
 
 import { useState, useEffect, useCallback } from 'react'
-import { useAuth } from '@clerk/nextjs'
+import { useSafeAuth as useAuth } from '@/hooks/useSafeAuth'
 import { createApiClient } from '@/lib/api'
 import {
   generateDemoLoopAnalytics,

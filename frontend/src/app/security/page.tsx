@@ -3,7 +3,7 @@
 export const dynamic = 'force-dynamic'
 
 import { useState, useCallback } from 'react'
-import { useAuth } from '@clerk/nextjs'
+import { useSafeAuth as useAuth } from '@/hooks/useSafeAuth'
 import { useTenant } from '@/hooks/useTenant'
 import {
   Shield, AlertTriangle, CheckCircle, XCircle,

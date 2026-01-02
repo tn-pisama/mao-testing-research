@@ -97,8 +97,6 @@ jobs:
           npm run lint
       
       - name: Build
-        env:
-          NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY: pk_test_ci_build_placeholder_key
         run: |
           cd frontend
           npm run build

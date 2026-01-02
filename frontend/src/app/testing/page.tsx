@@ -3,7 +3,7 @@
 export const dynamic = 'force-dynamic'
 
 import { useState, useEffect, useCallback } from 'react'
-import { useAuth } from '@clerk/nextjs'
+import { useSafeAuth as useAuth } from '@/hooks/useSafeAuth'
 import {
   TrendingUp, TrendingDown, Minus, Play, RefreshCw,
   ArrowRight, CheckCircle, XCircle, AlertCircle, Clock
