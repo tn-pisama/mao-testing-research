@@ -2,6 +2,7 @@
 
 import { useState, useCallback } from 'react'
 import { useAuth } from '@clerk/nextjs'
+import { useTenant } from '@/hooks/useTenant'
 import { Layout } from '@/components/common/Layout'
 import { TracePasteInput } from '@/components/diagnose/TracePasteInput'
 import { DiagnosisResults } from '@/components/diagnose/DiagnosisResults'
@@ -66,6 +67,7 @@ const DEMO_RESULT: DiagnoseResult = {
 
 export default function DiagnosePage() {
   const { getToken } = useAuth()
+  const { tenantId } = useTenant()
   const [traceContent, setTraceContent] = useState('')
   const [format, setFormat] = useState('auto')
   const [isAnalyzing, setIsAnalyzing] = useState(false)
@@ -85,7 +87,7 @@ export default function DiagnosePage() {
 
     try {
       const token = await getToken()
-      const api = createApiClient(token, 'default')
+      const api = createApiClient(token, tenantId)
       const diagnosis = await api.diagnoseTrace(traceContent, format)
       setResult(diagnosis)
       setIsDemoMode(false)
@@ -97,7 +99,7 @@ export default function DiagnosePage() {
     } finally {
       setIsAnalyzing(false)
     }
-  }, [traceContent, format, getToken])
+  }, [traceContent, format, getToken, tenantId])
 
   const handleClear = useCallback(() => {
     setTraceContent('')

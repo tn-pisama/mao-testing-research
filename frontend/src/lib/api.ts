@@ -254,6 +254,172 @@ export interface DiagnoseQuickCheckResult {
   message: string
 }
 
+// Testing additional types
+export interface AssertionResult {
+  assertion_type: string
+  passed: boolean
+  message: string
+  details: Record<string, any>
+}
+
+export interface GeneratedTestSuite {
+  name: string
+  test_count: number
+  tests: Array<{
+    id: string
+    name: string
+    type: string
+    description: string
+  }>
+}
+
+// Chaos types
+export interface ChaosSession {
+  id: string
+  name: string
+  status: string
+  created_at: string
+  started_at?: string
+  completed_at?: string
+  experiment_count: number
+  target_description: string
+}
+
+export interface ChaosExperimentType {
+  type: string
+  name: string
+  description: string
+  params: string[]
+}
+
+export interface ChaosExperimentConfig {
+  experiment_type: string
+  name: string
+  probability?: number
+  min_delay_ms?: number
+  max_delay_ms?: number
+  error_codes?: number[]
+  target_tools?: string[]
+  target_agents?: string[]
+  failure_mode?: string
+  behaviors?: string[]
+  truncation_percent?: number
+}
+
+export interface ChaosTargetConfig {
+  target_type?: string
+  agent_names?: string[]
+  tool_names?: string[]
+  tenant_ids?: string[]
+  percentage?: number
+  exclude_production?: boolean
+}
+
+export interface ChaosSafetyConfig {
+  max_blast_radius?: string
+  max_affected_requests?: number
+  max_duration_seconds?: number
+  auto_abort_on_cascade?: boolean
+}
+
+// Evals types
+export interface EvalResult {
+  overall_score: number
+  passed: boolean
+  scores: Record<string, number>
+  results: Array<Record<string, any>>
+}
+
+export interface QuickEvalResult {
+  relevance: number
+  coherence: number
+  helpfulness: number
+  safety: number
+  overall: number
+}
+
+export interface LLMJudgeResult {
+  score: number
+  passed: boolean
+  reasoning: string
+  confidence: number
+  model_used: string
+  tokens_used: number
+}
+
+// N8n types
+export interface N8nWorkflow {
+  id: string
+  workflow_id: string
+  workflow_name?: string
+  webhook_url: string
+  registered_at: string
+}
+
+// Security types
+export interface InjectionCheckResult {
+  detected: boolean
+  confidence: number
+  attack_type?: string
+  severity: string
+  matched_patterns: string[]
+  details: Record<string, any>
+}
+
+export interface HallucinationCheckResult {
+  detected: boolean
+  confidence: number
+  hallucination_type?: string
+  grounding_score: number
+  evidence: string[]
+  details: Record<string, any>
+}
+
+export interface OverflowCheckResult {
+  severity: string
+  current_tokens: number
+  context_window: number
+  usage_percent: number
+  remaining_tokens: number
+  estimated_overflow_in?: number
+  warnings: string[]
+  suggestions: string[]
+  details: Record<string, any>
+}
+
+export interface CostCalculation {
+  input_tokens: number
+  output_tokens: number
+  total_tokens: number
+  input_cost_usd: number
+  output_cost_usd: number
+  total_cost_usd: number
+  total_cost_cents: number
+  model: string
+  provider: string
+}
+
+// Import Job types
+export interface ImportJob {
+  id: string
+  tenant_id: string
+  source_type: string
+  status: string
+  created_at: string
+  started_at?: string
+  completed_at?: string
+  error_message?: string
+  records_processed: number
+  records_failed: number
+}
+
+// Metrics types
+export interface MetricsExport {
+  format: string
+  data: string
+  timestamp: string
+}
+
 export function createApiClient(token?: string | null, tenantId?: string | null) {
   const opts = { token, tenantId }
   
@@ -418,6 +584,200 @@ export function createApiClient(token?: string | null, tenantId?: string | null)
         `/tenants/{tenant_id}/regression/fingerprints/refresh`,
         { ...opts, method: 'POST' }
       )
+    },
+
+    // Testing additional endpoints
+    async runAssertions(traceData: Record<string, any>) {
+      return fetchApi<AssertionResult[]>(`/tenants/{tenant_id}/testing/assertions`, {
+        ...opts,
+        method: 'POST',
+        body: { trace_data: traceData },
+      })
+    },
+
+    async generateTests(traceData: Record<string, any>, testTypes: string[] = ['handoff', 'context', 'sla']) {
+      return fetchApi<GeneratedTestSuite>(`/tenants/{tenant_id}/testing/generate`, {
+        ...opts,
+        method: 'POST',
+        body: { trace_data: traceData, test_types: testTypes },
+      })
+    },
+
+    // Chaos endpoints
+    async getChaosExperimentTypes() {
+      return fetchApi<ChaosExperimentType[]>(`/tenants/{tenant_id}/chaos/experiment-types`, opts)
+    },
+
+    async listChaosSessions() {
+      return fetchApi<ChaosSession[]>(`/tenants/{tenant_id}/chaos/sessions`, opts)
+    },
+
+    async getChaosSession(sessionId: string) {
+      return fetchApi<Record<string, any>>(`/tenants/{tenant_id}/chaos/sessions/${sessionId}`, opts)
+    },
+
+    async createChaosSession(
+      name: string,
+      experiments: ChaosExperimentConfig[],
+      target: ChaosTargetConfig,
+      safety?: ChaosSafetyConfig
+    ) {
+      return fetchApi<ChaosSession>(`/tenants/{tenant_id}/chaos/sessions`, {
+        ...opts,
+        method: 'POST',
+        body: { name, experiments, target, safety },
+      })
+    },
+
+    async startChaosSession(sessionId: string) {
+      return fetchApi<{ status: string; session_id: string }>(
+        `/tenants/{tenant_id}/chaos/sessions/${sessionId}/start`,
+        { ...opts, method: 'POST' }
+      )
+    },
+
+    async stopChaosSession(sessionId: string) {
+      return fetchApi<{ status: string; session_id: string }>(
+        `/tenants/{tenant_id}/chaos/sessions/${sessionId}/stop`,
+        { ...opts, method: 'POST' }
+      )
+    },
+
+    async abortChaosSession(sessionId: string, reason: string = 'Manual abort') {
+      return fetchApi<{ status: string; session_id: string; reason: string }>(
+        `/tenants/{tenant_id}/chaos/sessions/${sessionId}/abort?reason=${encodeURIComponent(reason)}`,
+        { ...opts, method: 'POST' }
+      )
+    },
+
+    // Evals endpoints
+    async evaluate(
+      output: string,
+      evalTypes: string[] = ['relevance', 'coherence', 'helpfulness', 'safety'],
+      context?: string,
+      expected?: string,
+      useLlmJudge: boolean = false,
+      threshold: number = 0.7
+    ) {
+      return fetchApi<EvalResult>(`/tenants/{tenant_id}/evals/evaluate`, {
+        ...opts,
+        method: 'POST',
+        body: { output, eval_types: evalTypes, context, expected, use_llm_judge: useLlmJudge, threshold },
+      })
+    },
+
+    async quickEval(output: string, context?: string) {
+      return fetchApi<QuickEvalResult>(`/tenants/{tenant_id}/evals/quick`, {
+        ...opts,
+        method: 'POST',
+        body: { output, context },
+      })
+    },
+
+    async llmJudgeEval(
+      output: string,
+      evalType: string = 'relevance',
+      model: string = 'gpt-4o-mini',
+      context?: string,
+      expected?: string
+    ) {
+      return fetchApi<LLMJudgeResult>(`/tenants/{tenant_id}/evals/llm-judge`, {
+        ...opts,
+        method: 'POST',
+        body: { output, eval_type: evalType, model, context, expected },
+      })
+    },
+
+    async getEvalTypes() {
+      return fetchApi<{ types: string[]; descriptions: Record<string, string> }>(
+        `/tenants/{tenant_id}/evals/types`,
+        opts
+      )
+    },
+
+    // N8n endpoints
+    async registerN8nWorkflow(workflowId: string, workflowName?: string) {
+      return fetchApi<N8nWorkflow>(`/tenants/{tenant_id}/n8n/workflows`, {
+        ...opts,
+        method: 'POST',
+        body: { workflow_id: workflowId, workflow_name: workflowName },
+      })
+    },
+
+    async listN8nWorkflows() {
+      return fetchApi<N8nWorkflow[]>(`/tenants/{tenant_id}/n8n/workflows`, opts)
+    },
+
+    // Security endpoints
+    async checkInjection(text: string, context?: string, isUserInput: boolean = true) {
+      return fetchApi<InjectionCheckResult>(`/tenants/{tenant_id}/security/injection/check`, {
+        ...opts,
+        method: 'POST',
+        body: { text, context, is_user_input: isUserInput },
+      })
+    },
+
+    async checkHallucination(
+      output: string,
+      sources?: string[],
+      context?: string,
+      toolResults?: Record<string, any>[]
+    ) {
+      return fetchApi<HallucinationCheckResult>(`/tenants/{tenant_id}/security/hallucination/check`, {
+        ...opts,
+        method: 'POST',
+        body: { output, sources, context, tool_results: toolResults },
+      })
+    },
+
+    async checkOverflow(
+      currentTokens: number,
+      model: string,
+      messages?: Record<string, any>[],
+      expectedOutputTokens: number = 4096
+    ) {
+      return fetchApi<OverflowCheckResult>(`/tenants/{tenant_id}/security/overflow/check`, {
+        ...opts,
+        method: 'POST',
+        body: { current_tokens: currentTokens, model, messages, expected_output_tokens: expectedOutputTokens },
+      })
+    },
+
+    async calculateCost(model: string, inputTokens: number, outputTokens: number) {
+      return fetchApi<CostCalculation>(`/tenants/{tenant_id}/security/cost/calculate`, {
+        ...opts,
+        method: 'POST',
+        body: { model, input_tokens: inputTokens, output_tokens: outputTokens },
+      })
+    },
+
+    async listSecurityModels() {
+      return fetchApi<Record<string, { input_per_1m: number; output_per_1m: number; context_window: number; provider: string }>>(
+        `/tenants/{tenant_id}/security/models`,
+        opts
+      )
+    },
+
+    // Import Jobs endpoints (placeholder - need to check actual backend routes)
+    async listImportJobs(limit: number = 20, offset: number = 0) {
+      return fetchApi<ImportJob[]>(`/tenants/{tenant_id}/import/jobs?limit=${limit}&offset=${offset}`, opts)
+    },
+
+    async getImportJob(jobId: string) {
+      return fetchApi<ImportJob>(`/tenants/{tenant_id}/import/jobs/${jobId}`, opts)
+    },
+
+    async createImportJob(sourceType: string, config: Record<string, any>) {
+      return fetchApi<ImportJob>(`/tenants/{tenant_id}/import/jobs`, {
+        ...opts,
+        method: 'POST',
+        body: { source_type: sourceType, config },
+      })
+    },
+
+    // Metrics endpoints
+    async exportMetrics(format: string = 'prometheus') {
+      return fetchApi<MetricsExport>(`/tenants/{tenant_id}/metrics/export?format=${format}`, opts)
     },
 
     // Agent Forensics Diagnose endpoints (no tenant required)

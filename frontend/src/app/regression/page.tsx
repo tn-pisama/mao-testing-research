@@ -2,6 +2,7 @@
 
 import { useState, useEffect, useCallback } from 'react'
 import { useAuth } from '@clerk/nextjs'
+import { useTenant } from '@/hooks/useTenant'
 import {
   GitBranch, TrendingDown, TrendingUp, AlertTriangle,
   CheckCircle, Clock, Database, RefreshCw, Plus
@@ -123,6 +124,7 @@ function mapFingerprint(f: ModelFingerprint): DisplayFingerprint {
 
 export default function RegressionPage() {
   const { getToken } = useAuth()
+  const { tenantId } = useTenant()
   const [baselines, setBaselines] = useState<DisplayBaseline[]>([])
   const [alerts, setAlerts] = useState<DisplayDriftAlert[]>([])
   const [fingerprints, setFingerprints] = useState<DisplayFingerprint[]>([])
@@ -135,7 +137,7 @@ export default function RegressionPage() {
     setIsLoading(true)
     try {
       const token = await getToken()
-      const api = createApiClient(token, 'default')
+      const api = createApiClient(token, tenantId)
 
       const [baselinesData, alertsData, fingerprintsData] = await Promise.all([
         api.getBaselines(20, 0),
@@ -155,7 +157,7 @@ export default function RegressionPage() {
       setIsDemoMode(true)
     }
     setIsLoading(false)
-  }, [getToken])
+  }, [getToken, tenantId])
 
   useEffect(() => {
     loadData()
@@ -167,7 +169,7 @@ export default function RegressionPage() {
 
     try {
       const token = await getToken()
-      const api = createApiClient(token, 'default')
+      const api = createApiClient(token, tenantId)
 
       // Run the regression test
       const result = await api.testBaseline(selectedBaseline, [])
@@ -187,7 +189,7 @@ export default function RegressionPage() {
   const refreshFingerprints = async () => {
     try {
       const token = await getToken()
-      const api = createApiClient(token, 'default')
+      const api = createApiClient(token, tenantId)
       await api.refreshFingerprints()
 
       // Reload fingerprints after refresh

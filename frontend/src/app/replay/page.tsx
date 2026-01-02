@@ -2,6 +2,7 @@
 
 import { useState, useEffect, useCallback } from 'react'
 import { useAuth } from '@clerk/nextjs'
+import { useTenant } from '@/hooks/useTenant'
 import {
   Play, Pause, SkipForward, RotateCcw,
   GitCompare, Download, Upload, Clock,
@@ -97,6 +98,7 @@ function mapDiffToResult(diff: ReplayDiff): ReplayResultDisplay {
 
 export default function ReplayPage() {
   const { getToken } = useAuth()
+  const { tenantId } = useTenant()
   const [bundles, setBundles] = useState<DisplayBundle[]>([])
   const [replayResults, setReplayResults] = useState<ReplayResultDisplay[]>([])
   const [selectedBundle, setSelectedBundle] = useState<string | null>(null)
@@ -111,7 +113,7 @@ export default function ReplayPage() {
     setIsLoading(true)
     try {
       const token = await getToken()
-      const api = createApiClient(token, 'default')
+      const api = createApiClient(token, tenantId)
       const bundlesData = await api.getReplayBundles(20, 0)
       setBundles(bundlesData.map(mapBundleToDisplay))
       setIsDemoMode(false)
@@ -121,7 +123,7 @@ export default function ReplayPage() {
       setIsDemoMode(true)
     }
     setIsLoading(false)
-  }, [getToken])
+  }, [getToken, tenantId])
 
   useEffect(() => {
     loadBundles()
@@ -133,7 +135,7 @@ export default function ReplayPage() {
 
     try {
       const token = await getToken()
-      const api = createApiClient(token, 'default')
+      const api = createApiClient(token, tenantId)
 
       // Start the replay
       await api.startReplay(selectedBundle, replayMode === 'full' ? 'deterministic' : replayMode)
