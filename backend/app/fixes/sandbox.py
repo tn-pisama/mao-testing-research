@@ -148,7 +148,7 @@ class SandboxedFixValidator:
                     cpu_quota=int(100000 * self.MAX_CPUS),
                     network_disabled=True,
                     read_only=True,
-                    tmpfs={"/tmp": "size=50M"},
+                    tmpfs={"/tmp": "size=50M"},  # nosec B108 - intentional tmpfs for sandbox
                     remove=True,
                     timeout=timeout,
                     user="sandbox",
@@ -297,7 +297,7 @@ class LocalFixValidator:
         
         try:
             fixed_code = original_code + f"\n# Fix applied: {fix.code_change}"
-            exec(compile(fixed_code, '<string>', 'exec'))
+            exec(compile(fixed_code, '<string>', 'exec'))  # nosec B102 - needed for fix validation
             
             signal.alarm(0)
             

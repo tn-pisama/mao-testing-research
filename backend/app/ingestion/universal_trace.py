@@ -124,7 +124,7 @@ class UniversalSpan:
             "tool_name": self.tool_name,
             "tool_args": self.tool_args,
         }, sort_keys=True, default=str)
-        return hashlib.md5(content.encode()).hexdigest()[:16]
+        return hashlib.md5(content.encode(), usedforsecurity=False).hexdigest()[:16]  # nosec B324
 
     def to_state_snapshot(self) -> "StateSnapshot":
         """Convert to StateSnapshot format for detection algorithms.

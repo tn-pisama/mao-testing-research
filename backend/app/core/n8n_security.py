@@ -7,7 +7,7 @@ from ipaddress import ip_address, IPv4Address, IPv6Address
 from typing import Optional
 from fastapi import HTTPException
 
-BLOCKED_HOSTS = {"localhost", "127.0.0.1", "0.0.0.0", "::1", "metadata.google.internal"}
+BLOCKED_HOSTS = {"localhost", "127.0.0.1", "0.0.0.0", "::1", "metadata.google.internal"}  # nosec B104 - blocking, not binding
 BLOCKED_PORTS = {22, 25, 445, 3306, 5432, 6379, 27017}
 TIMESTAMP_TOLERANCE_SECONDS = 30
 
