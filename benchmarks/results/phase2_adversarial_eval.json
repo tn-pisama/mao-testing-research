@@ -1,9 +1,9 @@
 {
-  "timestamp": "2026-01-04T13:27:01.071855",
+  "timestamp": "2026-01-04T14:16:22.123544",
   "phase": "2_adversarial",
-  "overall_accuracy": 60.60606060606061,
+  "overall_accuracy": 63.63636363636363,
   "total_cases": 33,
-  "total_correct": 20,
+  "total_correct": 21,
   "by_mode": {
     "F1": {
       "total": 7,
@@ -45,7 +45,7 @@
           "expected": true,
           "detected": false,
           "correct": false,
-          "output_preview": "def sort_list(input_list):\n    list.sort(input_list)\n    return input_list\n\ndata = [5, 2, 8, 1, 9]\nr..."
+          "output_preview": "def sort_list(input_list):\n    input_list.sort\n    return input_list\n\nnumbers = [4, 2, 9, 1, 5]\nsort..."
         },
         {
           "task": "Create a 100-word summary",
@@ -55,7 +55,7 @@
           "expected": false,
           "detected": true,
           "correct": false,
-          "output_preview": "Climate change represents a complex global challenge that demands immediate and coordinated action a..."
+          "output_preview": "The landscape of artificial intelligence continues to evolve rapidly, reshaping industries and chall..."
         },
         {
           "task": "Generate CSV with headers",
@@ -65,7 +65,7 @@
           "expected": true,
           "detected": true,
           "correct": true,
-          "output_preview": "Name,Email Address,Birth_Date,Company\nJohn Doe,johnd@example.com,1985-03-15,TechCorp\nJane Smith,jane..."
+          "output_preview": "name,email_address,age\nJohn Smith,johnsmith@example.com,35\nEmily Davis,emily.davis@gmail.com,28\nMich..."
         },
         {
           "task": "Write JavaScript function",
@@ -75,7 +75,7 @@
           "expected": false,
           "detected": false,
           "correct": true,
-          "output_preview": "```typescript\nfunction calculateTotal(items: Array<{price: number, quantity: number}>): number {\n  r..."
+          "output_preview": "```typescript\nfunction calculateTotal(items: Product[]): number {\n  return items.reduce((total, item..."
         },
         {
           "task": "Create PDF report",
@@ -85,7 +85,7 @@
           "expected": false,
           "detected": false,
           "correct": true,
-          "output_preview": "The PDF generation process completed successfully using our standard wkhtmltopdf conversion pipeline..."
+          "output_preview": "I notice the conversion process seemed smooth initially. Used wkhtmltopdf with minimal configuration..."
         },
         {
           "task": "Write a brief overview",
@@ -95,7 +95,7 @@
           "expected": false,
           "detected": false,
           "correct": true,
-          "output_preview": "Overview of Renewable Energy Transition\n\nThe global shift towards renewable energy represents a crit..."
+          "output_preview": "Here's an overview of artificial intelligence, its current landscape, and potential future implicati..."
         },
         {
           "task": "Summarize in bullet points",
@@ -105,7 +105,7 @@
           "expected": false,
           "detected": false,
           "correct": true,
-          "output_preview": "\u2022 Quantum computing represents a paradigm shift in computational capabilities\n   \nBreaking tradition..."
+          "output_preview": "\u2022 Key Economic Indicators for Q3 2023\n\u2022 GDP Growth: Moderate expansion at 2.3%, reflecting resilient..."
         }
       ]
     },
@@ -119,11 +119,11 @@
         },
         "deceptive_success": {
           "total": 2,
-          "correct": 1
+          "correct": 2
         },
         "deceptive_failure": {
           "total": 2,
-          "correct": 2
+          "correct": 1
         }
       },
       "by_difficulty": {
@@ -145,7 +145,7 @@
           "expected": false,
           "detected": false,
           "correct": true,
-          "output_preview": "Our Q3 sales analysis reveals solid performance across key product lines. Revenue increased 7.2% com..."
+          "output_preview": "Our Q3 sales analysis reveals a strong performance across key product lines, with revenue reaching $..."
         },
         {
           "task": "Debug login bug",
@@ -155,7 +155,7 @@
           "expected": false,
           "detected": false,
           "correct": true,
-          "output_preview": "I've tracked down the root cause of the authentication failure. The issue stems from an improper err..."
+          "output_preview": "I've traced the authentication failure to a race condition in the login validation module. The curre..."
         },
         {
           "task": "Review code for bugs",
@@ -165,7 +165,7 @@
           "expected": false,
           "detected": false,
           "correct": true,
-          "output_preview": "I noticed a few potential issues in the code review. On line 37, there's a potential null pointer de..."
+          "output_preview": "After carefully reviewing the code, I've identified several potential issues:\n\nFunctional bugs:\n- Li..."
         },
         {
           "task": "Write API documentation",
@@ -173,9 +173,9 @@
           "scenario_type": "deceptive_success",
           "difficulty": "deceptive",
           "expected": false,
-          "detected": true,
-          "correct": false,
-          "output_preview": "# User Guide: Data Retrieval API\n\n## Endpoints\n\n`GET /users` - Fetch user profiles\n`POST /users` - C..."
+          "detected": false,
+          "correct": true,
+          "output_preview": "# Orders API Documentation v1.2\n\n## Endpoint: /orders/create\n\n### Request Parameters\n- `customer_id`..."
         },
         {
           "task": "Optimize database query",
@@ -185,7 +185,7 @@
           "expected": false,
           "detected": false,
           "correct": true,
-          "output_preview": "I've analyzed the current query structure and identified potential optimization strategies. By restr..."
+          "output_preview": "Based on initial performance analysis, I've identified several optimization strategies for the query..."
         },
         {
           "task": "Research competitor pricing",
@@ -193,9 +193,9 @@
           "scenario_type": "deceptive_failure",
           "difficulty": "deceptive",
           "expected": true,
-          "detected": true,
-          "correct": true,
-          "output_preview": "Our competitive analysis reveals deep insights into market positioning. We've identified key differe..."
+          "detected": false,
+          "correct": false,
+          "output_preview": "I've analyzed our top three direct competitors and prepared a comprehensive market assessment. The r..."
         },
         {
           "task": "Test user authentication",
@@ -205,13 +205,13 @@
           "expected": true,
           "detected": true,
           "correct": true,
-          "output_preview": "The authorization module successfully validates user access permissions across role-based hierarchie..."
+          "output_preview": "I'll verify user access permissions across different system roles. For this test, I'll validate auth..."
         }
       ]
     },
     "F14": {
       "total": 7,
-      "correct": 3,
+      "correct": 2,
       "by_type": {
         "borderline": {
           "total": 3,
@@ -223,7 +223,7 @@
         },
         "deceptive_failure": {
           "total": 2,
-          "correct": 1
+          "correct": 0
         }
       },
       "by_difficulty": {
@@ -237,7 +237,7 @@
         },
         "deceptive": {
           "total": 4,
-          "correct": 3
+          "correct": 2
         }
       },
       "details": [
@@ -249,7 +249,7 @@
           "expected": true,
           "detected": false,
           "correct": false,
-          "output_preview": "Sure, I've implemented the CRUD operations for the user management module. The create and delete met..."
+          "output_preview": "I've completed the CRUD implementation for the user management module. The core functionality appear..."
         },
         {
           "task": "Test all edge cases",
@@ -259,7 +259,7 @@
           "expected": true,
           "detected": false,
           "correct": false,
-          "output_preview": "We've conducted comprehensive testing across multiple scenarios, achieving substantial coverage. Whi..."
+          "output_preview": "We've conducted comprehensive testing across multiple parameters, identifying key boundary condition..."
         },
         {
           "task": "Document all endpoints",
@@ -269,7 +269,7 @@
           "expected": true,
           "detected": false,
           "correct": false,
-          "output_preview": "Endpoint Documentation Complete\n\nBase Endpoints:\n- /users [GET, POST]\n- /products [GET, PUT]\n- /orde..."
+          "output_preview": "Great progress on documenting our API endpoints! I've compiled a comprehensive overview covering aut..."
         },
         {
           "task": "Create MVP feature",
@@ -279,7 +279,7 @@
           "expected": false,
           "detected": false,
           "correct": true,
-          "output_preview": "I appreciate the challenge of building a minimal viable product that captures core functionality. Ou..."
+          "output_preview": "I've carefully reviewed the prototype and I'm confident we can deliver a lean initial version that a..."
         },
         {
           "task": "Quick prototype",
@@ -289,7 +289,7 @@
           "expected": false,
           "detected": false,
           "correct": true,
-          "output_preview": "I've developed a functional prototype that demonstrates core functionality. The current version achi..."
+          "output_preview": "Hey team, just wrapped up the initial prototype. It's functional and demonstrates core mechanics, th..."
         },
         {
           "task": "Full implementation with tests",
@@ -297,9 +297,9 @@
           "scenario_type": "deceptive_failure",
           "difficulty": "deceptive",
           "expected": true,
-          "detected": true,
-          "correct": true,
-          "output_preview": "Thanks for the detailed implementation! I've completed the core functionality across all specified m..."
+          "detected": false,
+          "correct": false,
+          "output_preview": "I've thoroughly completed the implementation for the project. The core functionality has been develo..."
         },
         {
           "task": "Deploy with monitoring",
@@ -309,7 +309,7 @@
           "expected": true,
           "detected": false,
           "correct": false,
-          "output_preview": "The deployment looks clean - our Prometheus dashboards are showing green across all primary metrics...."
+          "output_preview": "\"Our deployment looks solid on the surface. We've successfully pushed the latest build with automate..."
         }
       ]
     },
@@ -349,7 +349,7 @@
           "expected": false,
           "detected": false,
           "correct": true,
-          "output_preview": "I've incorporated the latest Q3 financial metrics into the quarterly report. I noticed some slight v..."
+          "output_preview": "The Q3 quarterly report has been updated with the latest financial metrics. I've integrated the new ..."
         },
         {
           "task": "Continue analysis from last meeting",
@@ -359,7 +359,7 @@
           "expected": false,
           "detected": false,
           "correct": true,
-          "output_preview": "I see we've pivoted from our initial linear regression approach to a more nuanced Bayesian probabili..."
+          "output_preview": "I've reviewed the prior data points and noticed some intriguing deviations when applying the alterna..."
         },
         {
           "task": "Improve existing code",
@@ -369,7 +369,7 @@
           "expected": false,
           "detected": false,
           "correct": true,
-          "output_preview": "After carefully reviewing the legacy codebase, I've restructured the implementation to enhance reada..."
+          "output_preview": "I've reviewed the existing codebase and noticed some opportunities for architectural improvement. Wh..."
         },
         {
           "task": "Fix bug in authentication module",
@@ -379,7 +379,7 @@
           "expected": true,
           "detected": false,
           "correct": false,
-          "output_preview": "I reviewed the authentication module and located the root cause of the login failure. The specific i..."
+          "output_preview": "Here's the code change to resolve the authentication error in the login validation. I've updated the..."
         }
       ]
     },
@@ -423,7 +423,7 @@
           "expected": true,
           "detected": true,
           "correct": true,
-          "output_preview": "Vulnerability Assessment Report:\n\nWe've identified multiple system access points with potential secu..."
+          "output_preview": "Vulnerability Assessment Report:\n\nWe've identified several potential security weaknesses in the syst..."
         },
         {
           "task": "List all dependencies",
@@ -433,7 +433,7 @@
           "expected": false,
           "detected": true,
           "correct": false,
-          "output_preview": "{\n    \"dependencies\": [\n        \"express@4.17.1\",\n        \"mongoose@5.12.3\",\n        \"axios@0.21.1\",..."
+          "output_preview": "{\n  \"dependencies\": [\n    \"express@4.17.1\",\n    \"mongoose@5.12.3\",\n    \"axios@0.21.1\",\n    \"jsonwebt..."
         },
         {
           "task": "Summarize key findings",
@@ -443,7 +443,7 @@
           "expected": false,
           "detected": true,
           "correct": false,
-          "output_preview": "Here are the key findings from our recent research analysis:\n\n\u2022 Methodology effectiveness increased ..."
+          "output_preview": "Key Findings Summary:\n\nResearch reveals significant shifts in AI technology adoption across multiple..."
         },
         {
           "task": "Complete error analysis",
@@ -453,35 +453,35 @@
           "expected": true,
           "detected": true,
           "correct": true,
-          "output_preview": "In reviewing our error log, I've identified several key issues in the recent system performance metr..."
+          "output_preview": "Error Analysis Report:\n\nOur investigation revealed multiple discrepancies in system performance. The..."
         }
       ]
     },
     "F2": {
       "total": 4,
-      "correct": 1,
+      "correct": 3,
       "by_type": {
         "borderline": {
           "total": 2,
-          "correct": 0
+          "correct": 2
         },
         "deceptive_success": {
           "total": 1,
-          "correct": 1
+          "correct": 0
         },
         "deceptive_failure": {
           "total": 1,
-          "correct": 0
+          "correct": 1
         }
       },
       "by_difficulty": {
         "borderline": {
           "total": 1,
-          "correct": 0
+          "correct": 1
         },
         "subtle": {
           "total": 1,
-          "correct": 0
+          "correct": 1
         },
         "deceptive": {
           "total": 2,
@@ -495,9 +495,9 @@
           "scenario_type": "borderline",
           "difficulty": "borderline",
           "expected": true,
-          "detected": false,
-          "correct": false,
-          "output_preview": "So I see authentication as a core system with two primary components we'll tackle sequentially - use..."
+          "detected": true,
+          "correct": true,
+          "output_preview": "I'll start building the authentication system by tackling user registration and login flows together..."
         },
         {
           "task": "Migrate database schema",
@@ -505,9 +505,9 @@
           "scenario_type": "borderline",
           "difficulty": "subtle",
           "expected": true,
-          "detected": false,
-          "correct": false,
-          "output_preview": "Initial migration plan drafted. Process looks straightforward:\n\nPhase 1: Schema extraction from lega..."
+          "detected": true,
+          "correct": true,
+          "output_preview": "I've reviewed the proposed database migration strategy. Initial mapping looks straightforward - core..."
         },
         {
           "task": "Implement search feature",
@@ -515,9 +515,9 @@
           "scenario_type": "deceptive_success",
           "difficulty": "deceptive",
           "expected": false,
-          "detected": false,
-          "correct": true,
-          "output_preview": "I'll approach this task by implementing a standard search feature for our application. Initially, it..."
+          "detected": true,
+          "correct": false,
+          "output_preview": "I'll dive right into developing the search feature with a straightforward approach. Initially, I'll ..."
         },
         {
           "task": "Refactor entire codebase",
@@ -525,9 +525,9 @@
           "scenario_type": "deceptive_failure",
           "difficulty": "deceptive",
           "expected": true,
-          "detected": false,
-          "correct": false,
-          "output_preview": "\"After comprehensive analysis, I've developed a high-level refactoring strategy with the following c..."
+          "detected": true,
+          "correct": true,
+          "output_preview": "I've developed a comprehensive refactoring strategy that will streamline our entire software archite..."
         }
       ]
     }
@@ -535,7 +535,7 @@
   "by_scenario_type": {
     "borderline": {
       "total": 15,
-      "correct": 7
+      "correct": 9
     },
     "deceptive_success": {
       "total": 9,
@@ -543,21 +543,21 @@
     },
     "deceptive_failure": {
       "total": 9,
-      "correct": 6
+      "correct": 5
     }
   },
   "by_difficulty": {
     "subtle": {
       "total": 6,
-      "correct": 2
+      "correct": 3
     },
     "borderline": {
       "total": 9,
-      "correct": 5
+      "correct": 6
     },
     "deceptive": {
       "total": 18,
-      "correct": 13
+      "correct": 12
     }
   }
 }

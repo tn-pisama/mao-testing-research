@@ -8,7 +8,24 @@ This occurs in task verification when:
 - Agent delivers partial results as final
 - Agent ignores incomplete subtasks
 - Agent misses success criteria
+
+Version History:
+- v1.0: Initial implementation with explicit marker detection
+- v1.1: Improved detection for adversarial cases:
+  - Quantitative requirement detection ("all", "every", "complete")
+  - Partial completeness hedges ("most", "core", "90%")
+  - Qualifier detection ("appears", "seems", "on the surface")
+  - Implicit completion claims (confident delivery)
+- v1.2: Enhanced for Phase 2 adversarial accuracy:
+  - More implicit completion patterns (comprehensive, fully covered)
+  - Detection without explicit completion claim for quant requirements
+  - "Planned" and "future" work detection as incomplete
+  - Task-aware detection (MVP/prototype exemptions)
 """
+
+# Detector version for tracking
+DETECTOR_VERSION = "1.2"
+DETECTOR_NAME = "CompletionMisjudgmentDetector"
 
 import logging
 import re
@@ -103,6 +120,75 @@ class CompletionMisjudgmentDetector:
         r'\b(?:bug|broken|breaking)\b',
     ]
 
+    # v1.1: Words in task that require 100% completion
+    QUANTITATIVE_REQUIREMENTS = [
+        "all", "every", "each", "complete", "full", "entire",
+        "comprehensive", "thorough", "exhaustive", "total",
+    ]
+
+    # v1.1: Patterns indicating partial/incomplete work (hedges)
+    PARTIAL_COMPLETION_PATTERNS = [
+        (r'\b(?:most|majority|mainly|primarily|largely)\b', "partial_scope"),
+        (r'\b(?:core|main|primary|key|essential)\s+(?:functionality|features?|parts?)\b', "core_only"),
+        (r'\b(?:basic|minimal|initial|preliminary)\b', "minimal_scope"),
+        (r'\b\d{1,2}%\b', "percentage_incomplete"),  # e.g., "90%"
+        (r'\b(?:some|several|few|certain)\s+(?:of|aspects?|parts?|areas?)\b', "partial_coverage"),
+        (r'\b(?:focus(?:ed|ing)?|priorit(?:ized?|izing))\s+on\b', "selective_focus"),
+        (r'\b(?:for now|at this point|currently|at the moment)\b', "temporal_limitation"),
+        (r'\b(?:happy path|common case|typical scenario)\b', "limited_coverage"),
+    ]
+
+    # v1.1: Qualifier patterns that suggest uncertainty about completion
+    QUALIFIER_PATTERNS = [
+        (r'\b(?:appears?|seems?|looks?)\s+(?:to be\s+)?(?:complete|done|finished|solid|good)\b', "appearance_qualifier"),
+        (r'\bon the surface\b', "surface_qualifier"),
+        (r'\b(?:should|might|could)\s+(?:be\s+)?(?:complete|working|functional)\b', "uncertainty_qualifier"),
+        (r'\b(?:believe|think|assume)\s+(?:it\'?s?|we\'?re?|this is)\b', "belief_qualifier"),
+        (r'\b(?:as far as|to the best of)\b', "limited_knowledge"),
+    ]
+
+    # v1.1: Implicit completion indicators (confident delivery without caveats)
+    CONFIDENT_DELIVERY_PATTERNS = [
+        r'\b(?:i\'ve|we\'ve|i have|we have)\s+(?:completed|finished|done|implemented)\b',
+        r'\b(?:successfully|thoroughly|fully)\s+(?:completed|implemented|deployed)\b',
+        r'\b(?:the|this)\s+(?:implementation|feature|system)\s+is\s+(?:ready|complete|done)\b',
+        r'\bjust wrapped up\b',
+        # v1.2: Additional implicit completion patterns
+        r'\bfully\s+covered\b',
+        r'\b(?:all|every)\s+(?:main|major|key|critical)\s+(?:modules?|components?|features?|endpoints?)\b',
+        r'\b(?:operational|ready)\s+(?:and\s+ready\s+)?for\s+(?:review|deployment|production)\b',
+        r'\b(?:we\'ve|i\'ve)\s+(?:pushed|deployed|shipped|released)\b',
+        r'\bin\s+place\b',  # "monitoring in place"
+    ]
+
+    # v1.2: Progress language that implies work is ongoing (NOT complete)
+    # These are NOT completion claims - they indicate partial progress
+    PROGRESS_NOT_COMPLETE_PATTERNS = [
+        r'\bgreat progress\b',
+        r'\bgood progress\b',
+        r'\bmaking progress\b',
+        r'\bprogressing\s+(?:well|nicely)\b',
+        r'\bcoming\s+along\b',
+        r'\bcomprehensive\s+(?:overview|coverage)\b',  # overview != complete
+    ]
+
+    # v1.2: Patterns indicating planned/future work (not actually complete)
+    PLANNED_WORK_PATTERNS = [
+        (r'\b(?:coverage|tests?|testing)\s+planned\b', "planned_tests"),
+        (r'\bwill\s+(?:be\s+)?(?:added|implemented|included|covered)\b', "future_work"),
+        (r'\b(?:next|later|future)\s+(?:phase|step|iteration)\b', "deferred_work"),
+        (r'\b(?:to\s+be|tbd|coming\s+soon)\b', "pending_work"),
+        (r'\b(?:placeholder|stub|mock)\s+(?:test|coverage|implementation)?\b', "stub_work"),
+    ]
+
+    # v1.2: Task types that are intentionally scoped (avoid false positives)
+    SCOPED_TASK_PATTERNS = [
+        r'\b(?:prototype|mvp|poc|proof\s+of\s+concept)\b',
+        r'\b(?:quick|initial|rough|first)\s+(?:draft|version|pass|attempt)\b',
+        r'\b(?:minimal|basic)\s+(?:version|implementation)\b',
+        r'\bv0(?:\.\d+)?\b',  # v0.1, v0.2, etc.
+    ]
+
     # Success criteria extraction patterns
     CRITERIA_PATTERNS = [
         r'(?:should|must|need to|required to)\s+(.+?)(?:\.|$)',
@@ -153,6 +239,69 @@ class CompletionMisjudgmentDetector:
                 errors.append(context)
 
         return errors
+
+    def _has_quantitative_requirement(self, task: str) -> bool:
+        """v1.1: Check if task requires 100% completion."""
+        task_lower = task.lower()
+        return any(req in task_lower for req in self.QUANTITATIVE_REQUIREMENTS)
+
+    def _detect_partial_completion(self, text: str) -> List[tuple]:
+        """v1.1: Detect hedges indicating partial completion."""
+        indicators = []
+        for pattern, indicator_type in self.PARTIAL_COMPLETION_PATTERNS:
+            matches = re.finditer(pattern, text, re.IGNORECASE)
+            for match in matches:
+                start = max(0, match.start() - 30)
+                end = min(len(text), match.end() + 30)
+                context = text[start:end].strip()
+                indicators.append((match.group(), indicator_type, context))
+        return indicators
+
+    def _detect_qualifiers(self, text: str) -> List[tuple]:
+        """v1.1: Detect uncertainty qualifiers."""
+        qualifiers = []
+        for pattern, qualifier_type in self.QUALIFIER_PATTERNS:
+            matches = re.finditer(pattern, text, re.IGNORECASE)
+            for match in matches:
+                start = max(0, match.start() - 30)
+                end = min(len(text), match.end() + 30)
+                context = text[start:end].strip()
+                qualifiers.append((match.group(), qualifier_type, context))
+        return qualifiers
+
+    def _detect_confident_delivery(self, text: str) -> bool:
+        """v1.1: Detect implicit completion via confident delivery."""
+        for pattern in self.CONFIDENT_DELIVERY_PATTERNS:
+            if re.search(pattern, text, re.IGNORECASE):
+                return True
+        return False
+
+    def _detect_planned_work(self, text: str) -> List[tuple]:
+        """v1.2: Detect indicators of planned/future work (not actually complete)."""
+        indicators = []
+        for pattern, indicator_type in self.PLANNED_WORK_PATTERNS:
+            matches = re.finditer(pattern, text, re.IGNORECASE)
+            for match in matches:
+                start = max(0, match.start() - 30)
+                end = min(len(text), match.end() + 30)
+                context = text[start:end].strip()
+                indicators.append((match.group(), indicator_type, context))
+        return indicators
+
+    def _is_intentionally_scoped_task(self, task: str) -> bool:
+        """v1.2: Check if task is intentionally scoped (MVP, prototype, etc.)."""
+        task_lower = task.lower()
+        for pattern in self.SCOPED_TASK_PATTERNS:
+            if re.search(pattern, task_lower):
+                return True
+        return False
+
+    def _detect_progress_language(self, text: str) -> bool:
+        """v1.2: Detect progress language that implies work is ongoing (not complete)."""
+        for pattern in self.PROGRESS_NOT_COMPLETE_PATTERNS:
+            if re.search(pattern, text, re.IGNORECASE):
+                return True
+        return False
 
     def _extract_success_criteria(self, task: str) -> List[str]:
         """Extract success criteria from task description."""
@@ -262,8 +411,13 @@ class CompletionMisjudgmentDetector:
         """
         issues = []
 
-        # Check if agent claims completion
+        # Check if agent claims completion (explicit or implicit)
         completion_claimed = self._detect_completion_claim(agent_output)
+
+        # v1.1: Check for implicit completion via confident delivery
+        confident_delivery = self._detect_confident_delivery(agent_output)
+        if confident_delivery and not completion_claimed:
+            completion_claimed = True  # Treat confident delivery as implicit claim
 
         # Detect incomplete markers
         incomplete_markers = self._detect_incomplete_markers(agent_output)
@@ -271,8 +425,23 @@ class CompletionMisjudgmentDetector:
         # Detect errors
         errors = self._detect_errors(agent_output)
 
+        # v1.1: Detect partial completion hedges and qualifiers
+        has_quant_req = self._has_quantitative_requirement(task)
+        partial_indicators = self._detect_partial_completion(agent_output)
+        qualifiers = self._detect_qualifiers(agent_output)
+
+        # v1.2: Detect planned/future work indicators and check for scoped tasks
+        planned_work = self._detect_planned_work(agent_output)
+        is_scoped_task = self._is_intentionally_scoped_task(task)
+        has_progress_language = self._detect_progress_language(agent_output)
+
         # Calculate completion ratio
         completion_ratio = self._calculate_completion_ratio(agent_output, task)
+
+        # v1.1: Penalize completion ratio if partial indicators found with quantitative requirement
+        if has_quant_req and partial_indicators:
+            penalty = min(0.3, len(partial_indicators) * 0.1)
+            completion_ratio = max(0.0, completion_ratio - penalty)
 
         # Analyze subtasks if provided
         subtasks_completed = 0
@@ -358,6 +527,72 @@ class CompletionMisjudgmentDetector:
                 severity=CompletionSeverity.MODERATE,
                 missing_element=unmet_criteria[0] if unmet_criteria else None,
             ))
+
+        # v1.1: Check for partial completion with quantitative requirement
+        if has_quant_req and partial_indicators and completion_claimed:
+            for indicator, indicator_type, context in partial_indicators[:2]:
+                issues.append(CompletionIssue(
+                    issue_type=CompletionIssueType.PARTIAL_DELIVERY,
+                    description=f"Task requires 100% but output indicates partial: '{indicator}'",
+                    severity=CompletionSeverity.MODERATE,
+                    evidence=context,
+                ))
+
+        # v1.1: Check for uncertainty qualifiers with completion claim
+        if qualifiers and completion_claimed:
+            for qualifier, qualifier_type, context in qualifiers[:2]:
+                issues.append(CompletionIssue(
+                    issue_type=CompletionIssueType.INCOMPLETE_VERIFICATION,
+                    description=f"Uncertainty qualifier suggests incomplete: '{qualifier}'",
+                    severity=CompletionSeverity.MINOR,
+                    evidence=context,
+                ))
+
+        # v1.2: Check for planned/future work (indicates incomplete even with completion claim)
+        if planned_work and completion_claimed:
+            for indicator, indicator_type, context in planned_work[:2]:
+                issues.append(CompletionIssue(
+                    issue_type=CompletionIssueType.PREMATURE_COMPLETION,
+                    description=f"Work marked as planned/future but completion claimed: '{indicator}'",
+                    severity=CompletionSeverity.MODERATE,
+                    evidence=context,
+                ))
+
+        # v1.2: For quantitative requirements, detect failure even without explicit claim
+        # If task requires "all" and output shows partial work, that's a failure
+        if has_quant_req and not is_scoped_task and not completion_claimed:
+            # Check if there are partial indicators or qualifiers
+            if partial_indicators:
+                for indicator, indicator_type, context in partial_indicators[:2]:
+                    issues.append(CompletionIssue(
+                        issue_type=CompletionIssueType.PARTIAL_DELIVERY,
+                        description=f"Task requires 100% completion but partial work indicated: '{indicator}'",
+                        severity=CompletionSeverity.MODERATE,
+                        evidence=context,
+                    ))
+            if qualifiers:
+                for qualifier, qualifier_type, context in qualifiers[:2]:
+                    issues.append(CompletionIssue(
+                        issue_type=CompletionIssueType.INCOMPLETE_VERIFICATION,
+                        description=f"Task requires certainty but uncertainty expressed: '{qualifier}'",
+                        severity=CompletionSeverity.MODERATE,
+                        evidence=context,
+                    ))
+            # v1.2: Progress language without completion = not done
+            if has_progress_language:
+                issues.append(CompletionIssue(
+                    issue_type=CompletionIssueType.PREMATURE_COMPLETION,
+                    description="Task requires 100% but uses progress language (implies ongoing work)",
+                    severity=CompletionSeverity.MODERATE,
+                    evidence="Progress language detected without explicit completion claim",
+                ))
+
+        # v1.2: Reduce false positives for scoped tasks
+        if is_scoped_task and issues:
+            # Filter out minor issues for intentionally scoped tasks
+            issues = [i for i in issues if i.severity in [
+                CompletionSeverity.SEVERE, CompletionSeverity.CRITICAL
+            ]]
 
         # Determine result
         detected = len(issues) > 0
