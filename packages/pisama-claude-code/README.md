@@ -12,8 +12,8 @@ Trace capture and failure detection for Claude Code sessions.
 # Install
 pip install pisama-claude-code
 
-# Initialize (installs hooks to ~/.claude/)
-pisama-cc init
+# Install hooks to ~/.claude/
+pisama-cc install
 
 # Use Claude Code normally - traces are captured automatically
 claude
@@ -49,14 +49,15 @@ The package detects MAST failure modes including:
 ## CLI Commands
 
 ```bash
-pisama-cc init            # Install hooks, create config
-pisama-cc status          # Show connection status
+pisama-cc install         # Install hooks to ~/.claude/hooks/
+pisama-cc uninstall       # Remove hooks
+pisama-cc status          # Show installation and connection status
+pisama-cc config          # View/edit configuration
+pisama-cc traces          # View recent traces
 pisama-cc analyze         # Run local failure detection
 pisama-cc export          # Export traces to file
 pisama-cc connect         # Connect to MAO Testing platform
 pisama-cc sync            # Upload traces to platform
-pisama-cc config          # View/edit configuration
-pisama-cc traces          # View recent traces
 ```
 
 ## Usage Examples

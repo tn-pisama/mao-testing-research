@@ -60,7 +60,7 @@ def save_config(config: dict):
 
 
 @click.group()
-@click.version_option(version="0.1.0")
+@click.version_option(version="0.1.1")
 def main():
     """PISAMA Claude Code - Trace capture and failure detection."""
     pass
@@ -413,19 +413,55 @@ def export(last: int, output: str, compress: bool):
 
 # Helper functions
 
+def normalize_trace(t: dict) -> dict:
+    """Normalize trace to consistent format (handles old and new formats)."""
+    # New format uses 'name', old uses 'tool_name'
+    tool_name = t.get("tool_name") or t.get("name")
+
+    # New format uses 'start_time', old uses 'timestamp'
+    timestamp = t.get("timestamp") or t.get("start_time")
+
+    # New format puts hook_type in attributes, old has it at top level
+    attrs = t.get("attributes", {})
+    hook_type = t.get("hook_type") or attrs.get("hook_type", "")
+
+    # Normalize hook_type (pre -> PreToolUse, post -> PostToolUse)
+    if hook_type == "pre":
+        hook_type = "PreToolUse"
+    elif hook_type == "post":
+        hook_type = "PostToolUse"
+
+    # New format uses 'input_data', old uses 'tool_input'
+    tool_input = t.get("tool_input") or t.get("input_data", {})
+
+    # Session ID might be in different places
+    session_id = t.get("session_id") or t.get("trace_id", "")[:8]
+
+    return {
+        "tool_name": tool_name,
+        "timestamp": timestamp,
+        "hook_type": hook_type,
+        "session_id": session_id,
+        "tool_input": tool_input,
+        "working_dir": t.get("working_dir") or attrs.get("working_dir", ""),
+        "_raw": t,
+    }
+
+
 def load_recent_traces(n: int) -> list:
     """Load recent traces from local storage."""
     traces = []
     if not TRACES_DIR.exists():
         return traces
-    
+
     for tf in sorted(TRACES_DIR.glob("traces-*.jsonl"), reverse=True):
         with open(tf) as f:
             for line in f:
-                traces.append(json.loads(line))
+                raw = json.loads(line)
+                traces.append(normalize_trace(raw))
         if len(traces) >= n:
             break
-    
+
     return traces[-n:]
 
 
