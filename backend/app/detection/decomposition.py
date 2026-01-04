@@ -120,19 +120,35 @@ class TaskDecompositionDetector:
 
     def _parse_subtasks(self, decomposition: str) -> list[Subtask]:
         subtasks = []
-        
+
+        # v1.1: Enhanced patterns to handle more decomposition formats
         patterns = [
+            # Standard numbered lists: "1. xxx" or "1) xxx"
             r'(?:^|\n)\s*\d+[.)]\s*([^\n]+)',
+            # Bullet points: "- xxx" or "* xxx" or "• xxx"
             r'(?:^|\n)\s*[-•*]\s*([^\n]+)',
+            # Explicit step/task labels: "Step 1: xxx" or "Task: xxx"
             r'(?:^|\n)\s*(?:step|task|subtask)\s*\d*[:.]\s*([^\n]+)',
+            # Phase labels: "Phase 1: xxx" or "Phase A: xxx"
+            r'(?:^|\n)\s*(?:phase|part|stage)\s*[\dA-Za-z]*[:.]\s*([^\n]+)',
+            # Prose phases: "first, xxx" or "then, xxx" or "finally, xxx"
+            r'(?:^|\n)\s*(?:first|second|third|then|next|finally|lastly)[,:]?\s*([^\n]+)',
         ]
-        
+
         items = []
         for pattern in patterns:
             matches = re.findall(pattern, decomposition, re.IGNORECASE)
             if matches:
                 items = matches
                 break
+
+        # v1.1: Fallback - try to find colon-separated phrases that look like phases
+        if not items:
+            # Look for "xxx: yyy" patterns that might be phase descriptions
+            colon_pattern = r'(?:^|\n)\s*([A-Z][^:]+):\s*([^\n]+)'
+            colon_matches = re.findall(colon_pattern, decomposition)
+            if colon_matches:
+                items = [f"{label}: {desc}" for label, desc in colon_matches]
         
         for i, item in enumerate(items):
             deps = []
@@ -292,17 +308,36 @@ class TaskDecompositionDetector:
         agent_capabilities: Optional[dict[str, list[str]]] = None,
     ) -> DecompositionResult:
         subtasks = self._parse_subtasks(decomposition)
-        
+
+        # v1.1: If no subtasks found, check if task is complex
         if not subtasks:
-            return DecompositionResult(
-                detected=False,
-                issues=[],
-                severity=DecompositionSeverity.NONE,
-                confidence=0.5,
-                subtask_count=0,
-                problematic_subtasks=[],
-                explanation="No subtasks found in decomposition",
-            )
+            if self._is_complex_task(task_description):
+                # Complex task without structured decomposition is a failure
+                return DecompositionResult(
+                    detected=True,
+                    issues=[DecompositionIssue.WRONG_GRANULARITY],
+                    severity=DecompositionSeverity.MODERATE,
+                    confidence=0.7,
+                    subtask_count=0,
+                    problematic_subtasks=["no_structured_decomposition"],
+                    explanation=f"Complex task '{task_description[:50]}...' lacks structured decomposition",
+                    suggested_fix="Provide a clear numbered or bulleted list of subtasks",
+                    vague_count=0,
+                    complex_count=0,
+                )
+            else:
+                # Simple task doesn't need decomposition
+                return DecompositionResult(
+                    detected=False,
+                    issues=[],
+                    severity=DecompositionSeverity.NONE,
+                    confidence=0.5,
+                    subtask_count=0,
+                    problematic_subtasks=[],
+                    explanation="No subtasks found (simple task may not need decomposition)",
+                    vague_count=0,
+                    complex_count=0,
+                )
 
         issues = []
         problematic = []
