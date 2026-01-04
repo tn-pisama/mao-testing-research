@@ -9,16 +9,24 @@ Detection Methods:
 1. Semantic similarity between task and output
 2. Topic drift via embedding distance
 3. Keyword extraction and matching
-4. Entailment checking
+4. Task coverage verification (v1.1+)
+
+Version History:
+- v1.0: Initial implementation with Jaccard similarity and topic drift
+- v1.1: Added task coverage check to reduce over-detection on helpful expansions
 """
 
 import logging
-from dataclasses import dataclass
+from dataclasses import dataclass, field
 from enum import Enum
-from typing import Optional
+from typing import Optional, Any
 import numpy as np
 
 logger = logging.getLogger(__name__)
+
+# Detector version for tracking
+DETECTOR_VERSION = "1.1"
+DETECTOR_NAME = "TaskDerailmentDetector"
 
 
 class DerailmentSeverity(str, Enum):
@@ -39,6 +47,8 @@ class DerailmentResult:
     suggested_fix: Optional[str] = None
     raw_score: Optional[float] = None
     evidence: Optional[dict] = None
+    task_coverage: float = 0.0  # v1.1: How much of the task is addressed
+    version: str = DETECTOR_VERSION
 
 
 class TaskDerailmentDetector:
@@ -55,11 +65,13 @@ class TaskDerailmentDetector:
         drift_threshold: float = 0.5,
         min_output_length: int = 20,
         confidence_scaling: float = 1.0,
+        task_coverage_threshold: float = 0.5,  # Minimum task term coverage to consider task addressed
     ):
         self.similarity_threshold = similarity_threshold
         self.drift_threshold = drift_threshold
         self.min_output_length = min_output_length
         self.confidence_scaling = confidence_scaling
+        self.task_coverage_threshold = task_coverage_threshold
         self._embedder = None
     
     def _calibrate_confidence(
@@ -138,16 +150,21 @@ class TaskDerailmentDetector:
         task: str,
         output: str,
         context: Optional[str] = None,
-    ) -> float:
+    ) -> tuple[float, float]:
+        """Compute topic drift and task coverage.
+
+        Returns:
+            tuple: (drift_score, task_coverage)
+        """
         task_terms = self._extract_key_terms(task)
         output_terms = self._extract_key_terms(output)
-        
+
         if not task_terms:
-            return 0.0
-        
+            return 0.0, 1.0
+
         overlap = task_terms & output_terms
         coverage = len(overlap) / len(task_terms)
-        
+
         if context:
             context_terms = self._extract_key_terms(context)
             new_terms = output_terms - task_terms - context_terms
@@ -155,9 +172,57 @@ class TaskDerailmentDetector:
         else:
             new_terms = output_terms - task_terms
             novelty_ratio = len(new_terms) / max(len(output_terms), 1)
-        
+
         drift_score = (1 - coverage) * 0.6 + novelty_ratio * 0.4
-        return min(drift_score, 1.0)
+        return min(drift_score, 1.0), coverage
+
+    def _is_task_addressed(
+        self,
+        task: str,
+        output: str,
+        coverage: float,
+    ) -> bool:
+        """Check if the core task is addressed in the output.
+
+        v1.1: Added to reduce over-detection on outputs that complete
+        the task but include helpful additional information.
+
+        Args:
+            task: The original task
+            output: The agent output
+            coverage: Pre-computed task term coverage
+
+        Returns:
+            True if the task appears to be addressed
+        """
+        # If task terms are well-covered, consider task addressed
+        if coverage >= self.task_coverage_threshold:
+            return True
+
+        # Check for task action verbs being addressed
+        task_lower = task.lower()
+        output_lower = output.lower()
+
+        # Common task action patterns
+        action_patterns = [
+            ("analyze", ["analysis", "analyzed", "analyzing", "findings", "results"]),
+            ("debug", ["fixed", "bug", "issue", "resolved", "debugging"]),
+            ("fix", ["fixed", "resolved", "corrected", "patched"]),
+            ("review", ["review", "reviewed", "reviewing", "found", "identified"]),
+            ("write", ["here", "following", "created", "written"]),
+            ("create", ["created", "here", "following", "built"]),
+            ("test", ["tested", "testing", "test", "passed", "failed"]),
+            ("optimize", ["optimized", "improved", "faster", "performance"]),
+            ("document", ["documentation", "documented", "docs"]),
+            ("implement", ["implemented", "implementation", "built", "created"]),
+        ]
+
+        for action, indicators in action_patterns:
+            if action in task_lower:
+                if any(ind in output_lower for ind in indicators):
+                    return True
+
+        return False
 
     def detect(
         self,
@@ -174,32 +239,54 @@ class TaskDerailmentDetector:
                 task_output_similarity=1.0,
                 topic_drift_score=0.0,
                 explanation="Output too short to analyze",
+                task_coverage=1.0,
             )
 
         similarity = self._compute_similarity(task, output)
-        drift_score = self._compute_topic_drift(task, output, context)
-        
-        detected = similarity < self.similarity_threshold or drift_score > self.drift_threshold
-        
+        drift_score, task_coverage = self._compute_topic_drift(task, output, context)
+
+        # v1.1: Check if task is addressed before flagging derailment
+        # This prevents over-detection when agent completes task + adds helpful info
+        task_addressed = self._is_task_addressed(task, output, task_coverage)
+
+        # Only flag derailment if:
+        # 1. Task is NOT addressed AND (low similarity OR high drift)
+        # 2. Extremely low similarity (completely off-topic)
+        if task_addressed:
+            # Task is addressed - only flag for severe cases (completely unrelated output)
+            detected = similarity < 0.1  # Very strict threshold when task is addressed
+        else:
+            # Task not addressed - use standard thresholds
+            detected = similarity < self.similarity_threshold or drift_score > self.drift_threshold
+
         raw_score = drift_score
         evidence = {
             "similarity": round(similarity, 4),
             "drift_score": round(drift_score, 4),
+            "task_coverage": round(task_coverage, 4),
+            "task_addressed": task_addressed,
             "similarity_threshold": self.similarity_threshold,
             "drift_threshold": self.drift_threshold,
+            "task_coverage_threshold": self.task_coverage_threshold,
             "output_length": len(output),
+            "detector_version": DETECTOR_VERSION,
         }
-        
+
         if not detected:
+            explanation = "Agent stayed on task"
+            if task_addressed and drift_score > self.drift_threshold:
+                explanation = "Agent addressed the task with helpful additional context"
+
             return DerailmentResult(
                 detected=False,
                 severity=DerailmentSeverity.NONE,
                 confidence=1.0 - drift_score,
                 task_output_similarity=similarity,
                 topic_drift_score=drift_score,
-                explanation="Agent stayed on task",
+                explanation=explanation,
                 raw_score=raw_score,
                 evidence=evidence,
+                task_coverage=task_coverage,
             )
 
         if drift_score > 0.8 or similarity < 0.1:
@@ -220,7 +307,8 @@ class TaskDerailmentDetector:
         explanation = (
             f"{agent_prefix} deviated from the assigned task. "
             f"Task-output similarity: {similarity:.2f} (threshold: {self.similarity_threshold}). "
-            f"Topic drift score: {drift_score:.2f} (threshold: {self.drift_threshold})."
+            f"Topic drift score: {drift_score:.2f} (threshold: {self.drift_threshold}). "
+            f"Task coverage: {task_coverage:.2f}."
         )
 
         suggested_fix = (
@@ -238,7 +326,22 @@ class TaskDerailmentDetector:
             suggested_fix=suggested_fix,
             raw_score=raw_score,
             evidence=evidence,
+            task_coverage=task_coverage,
         )
+
+    def get_config(self) -> dict:
+        """Return detector configuration for versioning."""
+        return {
+            "name": DETECTOR_NAME,
+            "version": DETECTOR_VERSION,
+            "thresholds": {
+                "similarity_threshold": self.similarity_threshold,
+                "drift_threshold": self.drift_threshold,
+                "task_coverage_threshold": self.task_coverage_threshold,
+                "min_output_length": self.min_output_length,
+            },
+            "description": "Task derailment detection with task coverage verification",
+        }
 
     def detect_from_trace(
         self,
