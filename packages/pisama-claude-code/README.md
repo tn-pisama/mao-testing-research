@@ -1,58 +1,70 @@
 # pisama-claude-code
 
-> **Coming Soon** - This package is in private development and not yet available for public use.
+> **Coming Soon** - This package is in private development.
 
-Trace capture and failure detection for Claude Code sessions.
+Trace capture for Claude Code sessions.
 
 [![Python 3.10+](https://img.shields.io/badge/python-3.10+-blue.svg)](https://www.python.org/downloads/)
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
 
-## Status
-
-This package is currently in **private beta**. Public release coming soon.
-
-To join the waitlist or request early access, contact: team@pisama.dev
-
 ## Overview
 
-PISAMA Claude Code provides:
+Lightweight trace capture client for Claude Code. Captures tool calls and syncs to PISAMA platform for analysis.
 
-- **Trace Capture**: Automatic capture of Claude Code tool calls and sessions
-- **Failure Detection**: MAST-based detection of agent failure modes (F4-F16)
-- **Self-Healing**: Automatic fix injection for common issues (platform tier)
-- **Privacy-First**: Local storage by default, opt-in cloud sync
+**This package captures traces. Analysis happens on the platform.**
 
-## Planned Features
+```
+┌─────────────────────┐         ┌─────────────────────┐
+│   Claude Code       │         │   PISAMA Platform   │
+│   + pisama-cc       │ ──────▶ │   (analysis)        │
+│   (capture)         │  sync   │   (detection)       │
+└─────────────────────┘         │   (self-healing)    │
+                                └─────────────────────┘
+```
 
-| Feature | Free (Local) | Platform |
-|---------|--------------|----------|
-| Trace capture | Yes | Yes |
-| Basic detection (pass/fail) | Yes | Yes |
-| Severity scores & explanations | - | Yes |
-| Fix suggestions | - | Yes |
-| Self-healing | - | Yes |
-| Team dashboard | - | Yes |
+## Features
 
-## Detection Capabilities
+| Feature | pisama-claude-code | Platform |
+|---------|-------------------|----------|
+| Trace capture | ✅ | - |
+| Local storage | ✅ | - |
+| Export to JSONL | ✅ | - |
+| Sync to platform | ✅ | ✅ |
+| Failure detection (28 modes) | - | ✅ |
+| Severity & explanations | - | ✅ |
+| Fix suggestions | - | ✅ |
+| Self-healing | - | ✅ |
+| Dashboard | - | ✅ |
 
-Based on the MAST (Multi-Agent System Testing) taxonomy:
+## CLI Commands
 
-- **F4 Tool Misuse**: Wrong tool selection patterns
-- **F6 Loop**: Infinite loop and repetition detection
-- **F8 Context Overflow**: Token usage anomalies
-- **F12 Cascade Failure**: Error propagation patterns
-- **F15 Grounding Failure**: Outputs not supported by sources
-- **F16 Retrieval Quality**: Poor document retrieval
+```bash
+pisama-cc install     # Install capture hooks
+pisama-cc uninstall   # Remove hooks
+pisama-cc status      # Show status
+pisama-cc traces      # View local traces
+pisama-cc export      # Export to file
+pisama-cc connect     # Connect to platform
+pisama-cc sync        # Upload traces
+pisama-cc analyze     # Run analysis (requires platform)
+```
+
+## Privacy
+
+- Traces stored locally in `~/.claude/pisama/traces/`
+- Secrets automatically redacted
+- Paths anonymized
+- Platform sync is opt-in
 
 ## Requirements
 
 - Python 3.10+
 - Claude Code CLI
 
+## Status
+
+Private beta. Contact team@pisama.dev for early access.
+
 ## License
 
-MIT License - see [LICENSE](LICENSE) for details.
-
-## Links
-
-- [MAO Testing Platform](https://maotesting.com/)
+MIT

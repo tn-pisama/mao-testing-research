@@ -1,22 +1,21 @@
 #!/usr/bin/env python3
 """PISAMA Claude Code Installer.
 
-Installs PISAMA hooks and configuration into ~/.claude/.
+Installs trace capture hooks into ~/.claude/.
 """
 
 import json
-import shutil
 import stat
 from pathlib import Path
 
 
 HOOK_TEMPLATE = '''#!/usr/bin/env python3
-"""Auto-generated PISAMA hook wrapper."""
+"""Auto-generated PISAMA capture hook."""
 
 import sys
 sys.path.insert(0, "{packages_path}")
 
-from pisama_claude_code.hooks.{hook_module} import main
+from pisama_claude_code.hooks.capture_hook import main
 main()
 '''
 
@@ -48,91 +47,52 @@ def install(force: bool = False):
                 packages_path = path
                 break
 
-    # Install hooks
-    hooks = [
-        ("pisama-guardian-hook.py", "guardian_hook"),
-        ("pisama-capture.py", "capture_hook"),
-    ]
-
-    for filename, module in hooks:
-        hook_path = hooks_dir / filename
-
-        if hook_path.exists() and not force:
-            print(f"Skipping {filename} (exists, use --force to overwrite)")
-            continue
-
-        # Write hook wrapper
-        content = HOOK_TEMPLATE.format(
-            packages_path=str(packages_path),
-            hook_module=module,
-        )
+    # Install capture hook
+    hook_path = hooks_dir / "pisama-capture.py"
+    if hook_path.exists() and not force:
+        print(f"Skipping pisama-capture.py (exists, use --force to overwrite)")
+    else:
+        content = HOOK_TEMPLATE.format(packages_path=str(packages_path))
         hook_path.write_text(content)
-
-        # Make executable
         hook_path.chmod(hook_path.stat().st_mode | stat.S_IXUSR | stat.S_IXGRP | stat.S_IXOTH)
-        print(f"Installed {filename}")
+        print("Installed pisama-capture.py")
 
     # Install shell wrappers
     _install_shell_hooks(hooks_dir, force)
 
-    # Install default config, preserving connection settings
+    # Install minimal config, preserving connection settings
     config_path = pisama_dir / "config.json"
-    default_config = {
-        "self_healing": {
-            "enabled": True,
-            "mode": "manual",
-            "severity_threshold": 40,
-            "auto_fix_types": ["break_loop", "add_delay", "switch_strategy"],
-            "blocked_fixes": ["delete_file", "git_push", "external_api"],
-            "max_auto_fixes": 10,
-            "cooldown_seconds": 30
-        },
-        "monitoring": {
-            "enabled": True,
-            "pattern_window": 10,
-            "alert_on_warning": False
-        },
-        "ignored_patterns": []
-    }
+    default_config = {}
 
     if config_path.exists():
-        # Merge with existing config, preserving connection settings
+        # Preserve existing config (especially connection settings)
         try:
             existing = json.loads(config_path.read_text())
-            # Preserve connection settings
-            for key in ["api_key", "api_url", "auto_sync", "connected_at"]:
-                if key in existing:
-                    default_config[key] = existing[key]
-            # Merge self_healing and monitoring (existing takes precedence)
-            if "self_healing" in existing:
-                default_config["self_healing"].update(existing["self_healing"])
-            if "monitoring" in existing:
-                default_config["monitoring"].update(existing["monitoring"])
-        except (json.JSONDecodeError, KeyError):
+            default_config = existing
+        except json.JSONDecodeError:
             pass
 
-    if not config_path.exists() or force:
+    if not config_path.exists():
         config_path.write_text(json.dumps(default_config, indent=2))
-        print(f"Installed default config")
+        print("Installed default config")
 
     # Update settings.local.json
     _update_settings(claude_dir, hooks_dir)
 
     print("\nPISAMA installation complete!")
     print(f"Hooks installed to: {hooks_dir}")
-    print(f"Config at: {config_path}")
-    print("\nTo enable, ensure your settings.local.json has the hooks configured.")
+    print(f"Traces will be stored in: {pisama_dir / 'traces'}")
+    print("\nNext steps:")
+    print("  1. Add hooks to settings.local.json (see above)")
+    print("  2. Run 'pisama-cc connect --api-key <key>' to enable analysis")
 
 
 def _install_shell_hooks(hooks_dir: Path, force: bool):
     """Install shell wrapper hooks."""
     # Pre-hook shell script
     pre_script = '''#!/bin/bash
-# PISAMA Pre-hook wrapper
-# Runs capture and guardian before tool calls
-
+# PISAMA Pre-hook - capture tool calls
 PISAMA_HOOK_TYPE=pre ~/.claude/hooks/pisama-capture.py
-~/.claude/hooks/pisama-guardian-hook.py
 '''
 
     pre_path = hooks_dir / "pisama-pre.sh"
@@ -143,7 +103,7 @@ PISAMA_HOOK_TYPE=pre ~/.claude/hooks/pisama-capture.py
 
     # Post-hook shell script
     post_script = '''#!/bin/bash
-# PISAMA Post-hook wrapper
+# PISAMA Post-hook - capture tool results
 PISAMA_HOOK_TYPE=post ~/.claude/hooks/pisama-capture.py
 '''
 
@@ -176,7 +136,7 @@ def _update_settings(claude_dir: Path, hooks_dir: Path):
     "PreToolCall": [
       {
         "command": "~/.claude/hooks/pisama-pre.sh",
-        "timeout": 5000
+        "timeout": 2000
       }
     ],
     "PostToolCall": [
@@ -194,7 +154,6 @@ def uninstall():
     hooks_dir = Path.home() / ".claude" / "hooks"
 
     hooks = [
-        "pisama-guardian-hook.py",
         "pisama-capture.py",
         "pisama-pre.sh",
         "pisama-post.sh",

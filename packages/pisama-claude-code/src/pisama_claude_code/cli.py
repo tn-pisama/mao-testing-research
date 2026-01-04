@@ -1,23 +1,22 @@
-"""PISAMA Claude Code CLI - Self-healing agent guard.
+"""PISAMA Claude Code CLI - Trace capture for Claude Code.
 
-Command-line interface for managing PISAMA hooks, configuration,
-trace analysis, and platform sync for Claude Code.
+Command-line interface for capturing Claude Code traces and syncing
+to the PISAMA platform for analysis and self-healing.
 
 Usage:
     pisama-cc install     Install hooks to ~/.claude/
     pisama-cc uninstall   Remove hooks
     pisama-cc status      Show current status
-    pisama-cc config      View/edit configuration
     pisama-cc traces      View recent traces
-    pisama-cc analyze     Run analysis on traces
+    pisama-cc export      Export traces to file
     pisama-cc connect     Connect to PISAMA platform
     pisama-cc sync        Sync traces to platform
+    pisama-cc analyze     Analyze traces (requires platform)
 """
 
 import click
 import json
 import gzip
-import sys
 from pathlib import Path
 from datetime import datetime, timezone
 from typing import Optional
@@ -26,16 +25,6 @@ try:
     import httpx
 except ImportError:
     httpx = None
-
-try:
-    from rich.console import Console
-    from rich.table import Table
-    from rich.panel import Panel
-    console = Console()
-    HAS_RICH = True
-except ImportError:
-    HAS_RICH = False
-    console = None
 
 
 # Config paths
@@ -60,9 +49,9 @@ def save_config(config: dict):
 
 
 @click.group()
-@click.version_option(version="0.2.0")
+@click.version_option(version="0.3.0")
 def main():
-    """PISAMA Claude Code - Trace capture and failure detection."""
+    """PISAMA Claude Code - Trace capture and sync."""
     pass
 
 
@@ -79,67 +68,6 @@ def uninstall():
     """Remove PISAMA hooks from ~/.claude/hooks/."""
     from pisama_claude_code.install import uninstall as do_uninstall
     do_uninstall()
-
-
-@main.command()
-@click.option("--show", is_flag=True, help="Show current configuration")
-@click.option("--mode", type=click.Choice(["report", "manual", "auto"]), help="Set self-healing mode")
-@click.option("--threshold", type=int, help="Set severity threshold (0-100)")
-@click.option("--enable/--disable", default=None, help="Enable/disable self-healing")
-def config(show: bool, mode: Optional[str], threshold: Optional[int], enable: Optional[bool]):
-    """View or edit PISAMA configuration."""
-    config_data = get_config()
-    is_platform = config_data.get("api_key") is not None
-
-    # Apply changes
-    changed = False
-    if mode is not None:
-        if not is_platform and mode in ("manual", "auto"):
-            click.echo("⚠️  Self-healing modes 'manual' and 'auto' require platform connection")
-            click.echo("   Run: pisama-cc connect --api-key <your-key>")
-            click.echo("   Get your key at: https://app.maotesting.com/settings/api")
-            return
-        config_data.setdefault("self_healing", {})["mode"] = mode
-        changed = True
-    if threshold is not None:
-        config_data.setdefault("self_healing", {})["severity_threshold"] = threshold
-        changed = True
-    if enable is not None:
-        if not is_platform and enable:
-            click.echo("⚠️  Self-healing requires platform connection")
-            click.echo("   Run: pisama-cc connect --api-key <your-key>")
-            click.echo("   Get your key at: https://app.maotesting.com/settings/api")
-            return
-        config_data.setdefault("self_healing", {})["enabled"] = enable
-        changed = True
-
-    if changed:
-        save_config(config_data)
-        click.echo("✅ Configuration updated")
-
-    # Show config
-    if show or not changed:
-        click.echo("📋 PISAMA Configuration")
-        click.echo("=" * 40)
-        sh = config_data.get("self_healing", {})
-        enabled = sh.get("enabled", False)
-        mode_val = sh.get("mode", "report")
-        click.echo(f"   Enabled: {enabled}")
-        click.echo(f"   Mode: {mode_val}")
-        click.echo(f"   Severity threshold: {sh.get('severity_threshold', 40)}")
-
-        # Show platform requirement for self-healing
-        if not is_platform:
-            click.echo("\n   ⚠️  Self-healing requires platform connection")
-            if enabled and mode_val in ("manual", "auto"):
-                click.echo("   Current settings will not take effect until connected")
-        else:
-            click.echo(f"   Auto-fix types: {sh.get('auto_fix_types', [])}")
-            click.echo(f"   Blocked fixes: {sh.get('blocked_fixes', [])}")
-
-        mon = config_data.get("monitoring", {})
-        click.echo(f"\n   Pattern window: {mon.get('pattern_window', 10)}")
-        click.echo(f"   Alert on warning: {mon.get('alert_on_warning', False)}")
 
 
 @main.command()
@@ -178,9 +106,13 @@ def traces(last: int, tool: Optional[str], session: Optional[str]):
 @click.option("--api-url", default="https://api.maotesting.com", help="API base URL")
 @click.option("--auto-sync/--no-auto-sync", default=True, help="Enable auto-sync")
 def connect(api_key: str, api_url: str, auto_sync: bool):
-    """Connect to PISAMA platform for trace sync."""
+    """Connect to PISAMA platform."""
+    if httpx is None:
+        click.echo("❌ httpx required. Run: pip install httpx")
+        return
+
     click.echo("🔗 Connecting to PISAMA platform...")
-    
+
     # Validate API key
     try:
         response = httpx.get(
@@ -193,7 +125,7 @@ def connect(api_key: str, api_url: str, auto_sync: bool):
             return
     except httpx.ConnectError:
         click.echo(f"⚠️  Could not reach {api_url} - saving config for later")
-    
+
     # Save config
     config = get_config()
     config["api_key"] = api_key
@@ -201,42 +133,45 @@ def connect(api_key: str, api_url: str, auto_sync: bool):
     config["auto_sync"] = auto_sync
     config["connected_at"] = datetime.now(timezone.utc).isoformat()
     save_config(config)
-    
+
     click.echo("✅ Connected to PISAMA platform")
     click.echo(f"   API URL: {api_url}")
     click.echo(f"   Auto-sync: {'enabled' if auto_sync else 'disabled'}")
-    
-    if auto_sync:
-        click.echo("\n📡 Traces will automatically sync to the platform")
-        click.echo("   Run 'pisama-cc sync' to manually sync now")
+
+    click.echo("\n📡 You can now:")
+    click.echo("   pisama-cc sync      - Upload traces to platform")
+    click.echo("   pisama-cc analyze   - Run failure detection")
 
 
 @main.command()
 @click.option("--last", default=100, help="Number of recent traces to sync")
 @click.option("--include-outputs/--no-outputs", default=False, help="Include tool outputs")
-@click.option("--force", is_flag=True, help="Sync even if already synced")
-def sync(last: int, include_outputs: bool, force: bool):
+def sync(last: int, include_outputs: bool):
     """Sync traces to PISAMA platform."""
+    if httpx is None:
+        click.echo("❌ httpx required. Run: pip install httpx")
+        return
+
     config = get_config()
-    
+
     if not config.get("api_key"):
         click.echo("❌ Not connected. Run 'pisama-cc connect --api-key <key>' first")
         return
-    
+
     click.echo(f"📤 Syncing last {last} traces...")
-    
+
     # Load traces
-    traces = load_recent_traces(last)
-    if not traces:
+    traces_list = load_recent_traces(last)
+    if not traces_list:
         click.echo("No traces found to sync")
         return
-    
+
     # Prepare payload (redact sensitive data)
-    payload = prepare_sync_payload(traces, include_outputs)
-    
-    click.echo(f"   Found {len(traces)} traces")
+    payload = prepare_sync_payload(traces_list, include_outputs)
+
+    click.echo(f"   Found {len(traces_list)} traces")
     click.echo(f"   Payload size: {len(json.dumps(payload)) // 1024} KB")
-    
+
     # Upload
     try:
         response = httpx.post(
@@ -248,14 +183,14 @@ def sync(last: int, include_outputs: bool, force: bool):
             json=payload,
             timeout=30,
         )
-        
+
         if response.status_code in (200, 201, 202):
             result = response.json()
-            click.echo(f"✅ Synced {result.get('traces_received', len(traces))} traces")
+            click.echo(f"✅ Synced {result.get('traces_received', len(traces_list))} traces")
             click.echo(f"   View at: {config['api_url'].replace('api.', 'app.')}/traces")
-            
+
             # Mark as synced
-            mark_synced(traces)
+            mark_synced(traces_list)
         else:
             click.echo(f"❌ Sync failed: {response.status_code}")
             click.echo(f"   {response.text[:200]}")
@@ -266,58 +201,88 @@ def sync(last: int, include_outputs: bool, force: bool):
 
 @main.command()
 @click.option("--last", default=50, help="Number of recent traces to analyze")
-@click.option("--live", is_flag=True, help="Live monitoring mode")
-@click.option("--show", is_flag=True, help="Show trace details")
-def analyze(last: int, live: bool, show: bool):
-    """Analyze traces for MAST failures."""
+def analyze(last: int):
+    """Analyze traces for failures (requires platform connection)."""
+    if httpx is None:
+        click.echo("❌ httpx required. Run: pip install httpx")
+        return
+
+    config = get_config()
+
+    if not config.get("api_key"):
+        click.echo("❌ Analysis requires platform connection")
+        click.echo("")
+        click.echo("Connect to get:")
+        click.echo("   • Failure detection (28 MAST modes)")
+        click.echo("   • Severity scores & explanations")
+        click.echo("   • Fix suggestions")
+        click.echo("   • Self-healing capabilities")
+        click.echo("")
+        click.echo("Run: pisama-cc connect --api-key <your-key>")
+        click.echo("Get your key at: https://app.maotesting.com/settings/api")
+        return
+
     click.echo(f"🔍 Analyzing last {last} traces...")
 
-    traces = load_recent_traces(last)
-    if not traces:
+    # Load and sync traces first
+    traces_list = load_recent_traces(last)
+    if not traces_list:
         click.echo("No traces found")
         return
 
-    # Check if connected to platform
-    config = get_config()
-    is_platform = config.get("api_key") is not None
+    # Send to platform for analysis
+    try:
+        payload = prepare_sync_payload(traces_list, include_outputs=False)
+        response = httpx.post(
+            f"{config['api_url']}/v1/traces/claude-code/analyze",
+            headers={
+                "Authorization": f"Bearer {config['api_key']}",
+                "Content-Type": "application/json",
+            },
+            json=payload,
+            timeout=60,
+        )
 
-    # Run detection
-    results = run_detection(traces, is_connected=is_platform)
+        if response.status_code == 200:
+            results = response.json()
+            display_analysis_results(results)
+        else:
+            click.echo(f"❌ Analysis failed: {response.status_code}")
+            click.echo(f"   {response.text[:200]}")
+    except httpx.ConnectError:
+        click.echo(f"❌ Could not connect to {config['api_url']}")
 
-    # Count issues
-    issues_found = sum(1 for r in results.values() if r["detected"])
 
-    # Display results
-    click.echo(f"\n📊 Analysis Results ({len(traces)} traces)")
+def display_analysis_results(results: dict):
+    """Display analysis results from platform."""
+    detections = results.get("detections", [])
+    trace_count = results.get("trace_count", 0)
+
+    click.echo(f"\n📊 Analysis Results ({trace_count} traces)")
     click.echo("=" * 50)
 
-    for detector, result in results.items():
-        status = "🟡" if result["detected"] else "✅"
-        if is_platform and result["detected"]:
-            # Platform: Show full details
-            click.echo(f"{status} {detector}")
-            click.echo(f"   Severity: {result.get('severity', 0)}/100")
-            click.echo(f"   {result.get('explanation', '')}")
-            if result.get("fix"):
-                click.echo(f"   💡 Fix: {result['fix']}")
+    if not detections:
+        click.echo("✅ No issues detected")
+        return
+
+    for d in detections:
+        severity = d.get("severity", 0)
+        if severity >= 70:
+            icon = "🔴"
+        elif severity >= 40:
+            icon = "🟡"
         else:
-            # Free tier: Just show detected/OK
-            label = "DETECTED" if result["detected"] else "OK"
-            click.echo(f"{status} {detector}: {label}")
+            icon = "🟢"
 
-    # Show upgrade prompt for free tier with issues
-    if not is_platform and issues_found > 0:
-        click.echo("\n" + "─" * 50)
-        click.echo("💎 Upgrade to see severity scores, explanations, and fix suggestions")
-        click.echo("   Run: pisama-cc connect --api-key <your-key>")
-        click.echo("   Get your key at: https://app.maotesting.com/settings/api")
+        click.echo(f"\n{icon} {d.get('type', 'Unknown')} (severity: {severity}/100)")
+        click.echo(f"   {d.get('explanation', '')}")
+        if d.get("fix"):
+            click.echo(f"   💡 Fix: {d['fix']}")
 
-    if show:
-        click.echo("\n📋 Recent Traces:")
-        for t in traces[-10:]:
-            ts = t.get("timestamp", "")[:19]
-            tool = t.get("tool_name", "?")[:15]
-            click.echo(f"   {ts} | {tool}")
+    # Summary
+    click.echo("\n" + "─" * 50)
+    click.echo(f"Found {len(detections)} issue(s)")
+    click.echo(f"View details at: {results.get('dashboard_url', 'https://app.maotesting.com')}")
 
 
 @main.command()
@@ -331,7 +296,6 @@ def status():
     # Check hook installation
     click.echo("\n🔧 Hook Installation:")
     hook_files = [
-        "pisama-guardian-hook.py",
         "pisama-capture.py",
         "pisama-pre.sh",
         "pisama-post.sh",
@@ -351,22 +315,6 @@ def status():
         click.echo("   Run 'pisama-cc install' to install hooks")
     else:
         click.echo("   Run 'pisama-cc install --force' to reinstall")
-
-    # Check self-healing config
-    click.echo("\n⚡ Self-Healing:")
-    sh = config_data.get("self_healing", {})
-    enabled = sh.get("enabled", False)
-    mode = sh.get("mode", "report")
-    threshold = sh.get("severity_threshold", 40)
-    is_platform = config_data.get("api_key") is not None
-
-    if is_platform:
-        click.echo(f"   Enabled: {'✅' if enabled else '❌'} {enabled}")
-        click.echo(f"   Mode: {mode}")
-        click.echo(f"   Threshold: {threshold}")
-    else:
-        click.echo("   ❌ Not available (free tier)")
-        click.echo("   💎 Connect to platform to enable self-healing")
 
     # Check platform connection
     click.echo("\n🔗 Platform Connection:")
@@ -423,16 +371,16 @@ def status():
 @click.option("--output", "-o", default="traces-export.jsonl", help="Output file")
 @click.option("--compress", is_flag=True, help="Gzip compress output")
 def export(last: int, output: str, compress: bool):
-    """Export traces to a file for sharing."""
-    traces = load_recent_traces(last)
-    
-    if not traces:
+    """Export traces to a file."""
+    traces_list = load_recent_traces(last)
+
+    if not traces_list:
         click.echo("No traces to export")
         return
-    
+
     # Prepare export (redact sensitive data)
     export_data = []
-    for t in traces:
+    for t in traces_list:
         clean = {
             "timestamp": t.get("timestamp"),
             "tool_name": t.get("tool_name"),
@@ -444,7 +392,7 @@ def export(last: int, output: str, compress: bool):
         if isinstance(inp, dict):
             clean["tool_input"] = sanitize_input(inp)
         export_data.append(clean)
-    
+
     output_path = Path(output)
     if compress or output.endswith(".gz"):
         if not output.endswith(".gz"):
@@ -456,7 +404,7 @@ def export(last: int, output: str, compress: bool):
         with open(output_path, "w") as f:
             for trace in export_data:
                 f.write(json.dumps(trace) + "\n")
-    
+
     size_kb = output_path.stat().st_size // 1024
     click.echo(f"✅ Exported {len(export_data)} traces to {output_path} ({size_kb} KB)")
 
@@ -518,7 +466,7 @@ def load_recent_traces(n: int) -> list:
 def prepare_sync_payload(traces: list, include_outputs: bool) -> dict:
     """Prepare traces for sync, redacting sensitive data."""
     clean_traces = []
-    
+
     for t in traces:
         clean = {
             "timestamp": t.get("timestamp"),
@@ -527,23 +475,23 @@ def prepare_sync_payload(traces: list, include_outputs: bool) -> dict:
             "session_id": t.get("session_id"),
             "working_dir": anonymize_path(t.get("working_dir", "")),
         }
-        
+
         # Sanitize input
         inp = t.get("tool_input", {})
         if isinstance(inp, dict):
             clean["tool_input"] = sanitize_input(inp)
-        
+
         # Optionally include output
         if include_outputs:
             out = t.get("tool_output")
             if out and len(str(out)) < 1000:
                 clean["tool_output"] = out
-        
+
         clean_traces.append(clean)
-    
+
     return {
         "source": "claude-code",
-        "version": "0.1.0",
+        "version": "0.3.0",
         "uploaded_at": datetime.now(timezone.utc).isoformat(),
         "trace_count": len(clean_traces),
         "traces": clean_traces,
@@ -554,7 +502,7 @@ def sanitize_input(inp: dict) -> dict:
     """Remove sensitive data from tool input."""
     clean = {}
     sensitive_keys = {"api_key", "password", "secret", "token", "credential"}
-    
+
     for k, v in inp.items():
         # Skip sensitive keys
         if any(s in k.lower() for s in sensitive_keys):
@@ -567,7 +515,7 @@ def sanitize_input(inp: dict) -> dict:
             clean[k] = v[:500] + "...[truncated]"
         else:
             clean[k] = v
-    
+
     return clean
 
 
@@ -590,65 +538,6 @@ def mark_synced(traces: list):
                 "timestamp": t.get("timestamp"),
                 "session_id": t.get("session_id"),
             }) + "\n")
-
-
-def run_detection(traces: list, is_connected: bool = False) -> dict:
-    """Run MAST failure detection on traces.
-
-    Free tier: Returns detected (bool) only
-    Platform tier: Returns severity, confidence, explanation, fix suggestions
-    """
-    results = {}
-    config = get_config()
-    is_platform = is_connected or config.get("api_key") is not None
-
-    # F4: Tool Misuse
-    bash_misuse = sum(1 for t in traces
-        if t.get("tool_name") == "Bash"
-        and any(x in str(t.get("tool_input", {}).get("command", ""))
-                for x in ["cat ", "head ", "tail "]))
-    results["F4_tool_misuse"] = {
-        "detected": bash_misuse > 0,
-    }
-    if is_platform:
-        results["F4_tool_misuse"].update({
-            "severity": min(bash_misuse * 10, 100) if bash_misuse else 0,
-            "count": bash_misuse,
-            "explanation": f"{bash_misuse} bash-for-read issues detected. Use Read tool instead of cat/head/tail.",
-            "fix": "Replace Bash cat/head/tail with the Read tool for file operations.",
-        })
-
-    # F6: Loop
-    tool_seq = [t.get("tool_name") for t in traces]
-    repeats = sum(1 for i in range(1, len(tool_seq)) if tool_seq[i] == tool_seq[i-1])
-    results["F6_loop"] = {
-        "detected": repeats > 10,
-    }
-    if is_platform:
-        results["F6_loop"].update({
-            "severity": min(repeats * 5, 100) if repeats > 10 else 0,
-            "count": repeats,
-            "explanation": f"{repeats} consecutive repeated tool calls detected. Agent may be stuck.",
-            "fix": "Break the loop pattern. Try a different approach or tool.",
-        })
-
-    # F15: Grounding
-    results["F15_grounding"] = {"detected": False}
-    if is_platform:
-        results["F15_grounding"].update({
-            "severity": 0,
-            "explanation": "No grounding issues detected.",
-        })
-
-    # F16: Retrieval
-    results["F16_retrieval"] = {"detected": False}
-    if is_platform:
-        results["F16_retrieval"].update({
-            "severity": 0,
-            "explanation": "No retrieval quality issues detected.",
-        })
-
-    return results
 
 
 if __name__ == "__main__":
