@@ -25,13 +25,13 @@ from app.detection.specification import SpecificationMismatchDetector
 from app.detection.decomposition import TaskDecompositionDetector
 from app.detection.resource_misallocation import ResourceMisallocationDetector, ResourceEvent
 from app.detection.tool_provision import ToolProvisionDetector
-from app.detection.workflow import FlawedWorkflowDetector
+from app.detection.workflow import FlawedWorkflowDetector, WorkflowNode
 from app.detection.derailment import TaskDerailmentDetector
 from app.detection.context import ContextNeglectDetector
 from app.detection.withholding import InformationWithholdingDetector
-from app.detection.role_usurpation import RoleUsurpationDetector
+from app.detection.role_usurpation import RoleUsurpationDetector, AgentAction
 from app.detection.communication import CommunicationBreakdownDetector
-from app.detection.coordination import CoordinationAnalyzer
+from app.detection.coordination import CoordinationAnalyzer, Message
 from app.detection.output_validation import OutputValidationDetector, ValidationStep
 from app.detection.quality_gate import QualityGateDetector
 from app.detection.completion import CompletionMisjudgmentDetector
@@ -333,42 +333,61 @@ def generate_f4_traces(count: int = 20) -> Tuple[List[Dict], List[Dict]]:
 
 
 def generate_f5_traces(count: int = 20) -> Tuple[List[Dict], List[Dict]]:
-    """F5: Flawed Workflow Design - missing validation or error handling."""
+    """F5: Flawed Workflow Design - structural issues in workflow graph.
+
+    The detector expects WorkflowNode objects with:
+    - id, name, node_type, incoming, outgoing, has_error_handler, is_terminal
+    Detects: unreachable nodes, dead ends, infinite loops, missing error handling
+    """
     failure_traces = []
     healthy_traces = []
 
+    # Failure case 1: Dead end (node with no outgoing, not terminal)
+    dead_end_nodes = [
+        {"id": "start", "name": "start", "node_type": "start", "incoming": [], "outgoing": ["process"], "has_error_handler": True, "is_terminal": False},
+        {"id": "process", "name": "process", "node_type": "agent", "incoming": ["start"], "outgoing": ["dead_end"], "has_error_handler": True, "is_terminal": False},
+        {"id": "dead_end", "name": "dead_end", "node_type": "agent", "incoming": ["process"], "outgoing": [], "has_error_handler": False, "is_terminal": False},  # Dead end!
+    ]
+
+    # Failure case 2: Infinite loop (self-referencing node)
+    loop_nodes = [
+        {"id": "start", "name": "start", "node_type": "start", "incoming": [], "outgoing": ["looper"], "has_error_handler": True, "is_terminal": False},
+        {"id": "looper", "name": "looper", "node_type": "agent", "incoming": ["start", "looper"], "outgoing": ["looper", "end"], "has_error_handler": True, "is_terminal": False},  # Self-loop!
+        {"id": "end", "name": "end", "node_type": "end", "incoming": ["looper"], "outgoing": [], "has_error_handler": True, "is_terminal": True},
+    ]
+
+    # Failure case 3: Missing termination (no terminal nodes)
+    no_termination_nodes = [
+        {"id": "start", "name": "start", "node_type": "start", "incoming": [], "outgoing": ["process"], "has_error_handler": True, "is_terminal": False},
+        {"id": "process", "name": "process", "node_type": "agent", "incoming": ["start"], "outgoing": ["review"], "has_error_handler": True, "is_terminal": False},
+        {"id": "review", "name": "review", "node_type": "agent", "incoming": ["process"], "outgoing": [], "has_error_handler": True, "is_terminal": False},  # No terminal!
+    ]
+
+    failure_cases = [dead_end_nodes, loop_nodes, no_termination_nodes]
+
     for i in range(count):
+        nodes = failure_cases[i % len(failure_cases)]
         failure_traces.append({
             "trace_id": str(uuid.uuid4()),
             "failure_mode": "F5",
             "is_failure": True,
-            "workflow": {
-                "nodes": ["input", "process", "deploy"],  # Missing validation!
-                "edges": [("input", "process"), ("process", "deploy")],
-            },
-            "issue": "No validation step before deployment",
-            "spans": [
-                {"name": "input", "content": "Received user request"},
-                {"name": "process", "content": "Processing data"},
-                {"name": "deploy", "content": "Deploying to production without validation"},
-            ]
+            "workflow_nodes": nodes,
         })
+
+    # Healthy case: Well-formed workflow with proper structure
+    healthy_nodes = [
+        {"id": "start", "name": "start", "node_type": "start", "incoming": [], "outgoing": ["process"], "has_error_handler": True, "is_terminal": False},
+        {"id": "process", "name": "process", "node_type": "agent", "incoming": ["start"], "outgoing": ["validate"], "has_error_handler": True, "is_terminal": False},
+        {"id": "validate", "name": "validate", "node_type": "condition", "incoming": ["process"], "outgoing": ["end"], "has_error_handler": True, "is_terminal": False},
+        {"id": "end", "name": "end", "node_type": "end", "incoming": ["validate"], "outgoing": [], "has_error_handler": True, "is_terminal": True},
+    ]
 
     for i in range(count):
         healthy_traces.append({
             "trace_id": str(uuid.uuid4()),
             "failure_mode": "F5",
             "is_failure": False,
-            "workflow": {
-                "nodes": ["input", "process", "validate", "deploy"],
-                "edges": [("input", "process"), ("process", "validate"), ("validate", "deploy")],
-            },
-            "spans": [
-                {"name": "input", "content": "Received user request"},
-                {"name": "process", "content": "Processing data"},
-                {"name": "validate", "content": "Validation passed"},
-                {"name": "deploy", "content": "Deploying to production"},
-            ]
+            "workflow_nodes": healthy_nodes,
         })
 
     return failure_traces, healthy_traces
@@ -500,36 +519,64 @@ def generate_f8_traces(count: int = 20) -> Tuple[List[Dict], List[Dict]]:
 
 
 def generate_f9_traces(count: int = 20) -> Tuple[List[Dict], List[Dict]]:
-    """F9: Role Usurpation - agent exceeds role boundaries."""
+    """F9: Role Usurpation - agent exceeds role boundaries.
+
+    The detector expects AgentAction objects with:
+    - agent_id, agent_role, action_type, action_description, timestamp, metadata
+    Detects: role violations, scope expansion, authority violations, task hijacking
+    Uses patterns like "I'll decide", "reorganizing", "approving the PR", "skip the review"
+    """
     failure_traces = []
     healthy_traces = []
 
+    # Failure case 1: Analysis agent doing planning/review actions
+    usurpation_actions_1 = [
+        {"agent_id": "analyst_1", "agent_role": "analysis", "action_type": "action",
+         "action_description": "I'll decide which tasks to prioritize and reorganize the team assignments.",
+         "timestamp": 1.0},
+    ]
+
+    # Failure case 2: Execution agent doing review/approval actions
+    usurpation_actions_2 = [
+        {"agent_id": "dev_1", "agent_role": "execution", "action_type": "action",
+         "action_description": "Approving the PR and merging the code to main branch.",
+         "timestamp": 1.0},
+    ]
+
+    # Failure case 3: Taking over another agent's task
+    usurpation_actions_3 = [
+        {"agent_id": "helper_1", "agent_role": "monitoring", "action_type": "action",
+         "action_description": "Taking over control of the deployment pipeline and skipping the review process.",
+         "timestamp": 1.0},
+    ]
+
+    failure_cases = [usurpation_actions_1, usurpation_actions_2, usurpation_actions_3]
+
     for i in range(count):
+        actions = failure_cases[i % len(failure_cases)]
         failure_traces.append({
             "trace_id": str(uuid.uuid4()),
             "failure_mode": "F9",
             "is_failure": True,
-            "agent_role": "Research Assistant",
-            "allowed_actions": ["search", "summarize", "cite sources"],
-            "actual_action": "Deployed code to production server",
-            "spans": [
-                {"name": "research_agent", "role": "Research Assistant",
-                 "content": "I've deployed the code to production and updated the database schema."},
-            ]
+            "agent_actions": actions,
         })
+
+    # Healthy case: Agents stay within their roles
+    healthy_actions = [
+        {"agent_id": "analyst_1", "agent_role": "analysis", "action_type": "action",
+         "action_description": "I analyzed the data and evaluated the results to assess performance.",
+         "timestamp": 1.0},
+        {"agent_id": "dev_1", "agent_role": "execution", "action_type": "action",
+         "action_description": "I implemented the feature and built the component as specified.",
+         "timestamp": 2.0},
+    ]
 
     for i in range(count):
         healthy_traces.append({
             "trace_id": str(uuid.uuid4()),
             "failure_mode": "F9",
             "is_failure": False,
-            "agent_role": "Research Assistant",
-            "allowed_actions": ["search", "summarize", "cite sources"],
-            "actual_action": "Searched and summarized findings",
-            "spans": [
-                {"name": "research_agent", "role": "Research Assistant",
-                 "content": "I've researched the topic and summarized the key findings with citations."},
-            ]
+            "agent_actions": healthy_actions,
         })
 
     return failure_traces, healthy_traces
@@ -574,36 +621,67 @@ def generate_f10_traces(count: int = 20) -> Tuple[List[Dict], List[Dict]]:
 
 
 def generate_f11_traces(count: int = 20) -> Tuple[List[Dict], List[Dict]]:
-    """F11: Coordination Failure - agents don't sync properly."""
+    """F11: Coordination Failure - agents don't sync properly.
+
+    The detector expects Message objects with:
+    - from_agent, to_agent, content, timestamp, acknowledged
+    Detects: ignored messages, excessive back-forth, circular delegation
+    """
     failure_traces = []
     healthy_traces = []
 
+    # Failure case 1: Ignored messages (not acknowledged)
+    ignored_messages = [
+        {"from_agent": "agent_A", "to_agent": "agent_B", "content": "Please process this data", "timestamp": 1.0, "acknowledged": False},
+        {"from_agent": "agent_A", "to_agent": "agent_C", "content": "Waiting for response", "timestamp": 2.0, "acknowledged": False},
+    ]
+
+    # Failure case 2: Circular delegation
+    circular_messages = [
+        {"from_agent": "agent_A", "to_agent": "agent_B", "content": "I delegate this task to you", "timestamp": 1.0, "acknowledged": True},
+        {"from_agent": "agent_B", "to_agent": "agent_C", "content": "I delegate this task to you", "timestamp": 2.0, "acknowledged": True},
+        {"from_agent": "agent_C", "to_agent": "agent_A", "content": "I delegate this task to you", "timestamp": 3.0, "acknowledged": True},
+    ]
+
+    # Failure case 3: Excessive back and forth (>5 exchanges)
+    excessive_messages = [
+        {"from_agent": "agent_A", "to_agent": "agent_B", "content": "msg1", "timestamp": 1.0, "acknowledged": True},
+        {"from_agent": "agent_B", "to_agent": "agent_A", "content": "reply1", "timestamp": 2.0, "acknowledged": True},
+        {"from_agent": "agent_A", "to_agent": "agent_B", "content": "msg2", "timestamp": 3.0, "acknowledged": True},
+        {"from_agent": "agent_B", "to_agent": "agent_A", "content": "reply2", "timestamp": 4.0, "acknowledged": True},
+        {"from_agent": "agent_A", "to_agent": "agent_B", "content": "msg3", "timestamp": 5.0, "acknowledged": True},
+        {"from_agent": "agent_B", "to_agent": "agent_A", "content": "reply3", "timestamp": 6.0, "acknowledged": True},
+        {"from_agent": "agent_A", "to_agent": "agent_B", "content": "msg4", "timestamp": 7.0, "acknowledged": True},
+    ]
+
+    failure_cases = [ignored_messages, circular_messages, excessive_messages]
+
     for i in range(count):
+        messages = failure_cases[i % len(failure_cases)]
+        agent_ids = list(set(m["from_agent"] for m in messages) | set(m["to_agent"] for m in messages))
         failure_traces.append({
             "trace_id": str(uuid.uuid4()),
             "failure_mode": "F11",
             "is_failure": True,
-            "agents": ["writer", "reviewer", "publisher"],
-            "coordination_issue": "circular_delegation",
-            "spans": [
-                {"name": "writer", "agent_id": "writer", "content": "Delegating to reviewer"},
-                {"name": "reviewer", "agent_id": "reviewer", "content": "Delegating to publisher"},
-                {"name": "publisher", "agent_id": "publisher", "content": "Delegating back to writer"},
-                {"name": "writer", "agent_id": "writer", "content": "Delegating to reviewer again..."},
-            ]
+            "messages": messages,
+            "agent_ids": agent_ids,
         })
+
+    # Healthy case: Normal coordination with acknowledgments
+    healthy_messages = [
+        {"from_agent": "writer", "to_agent": "reviewer", "content": "Draft ready for review", "timestamp": 1.0, "acknowledged": True},
+        {"from_agent": "reviewer", "to_agent": "writer", "content": "Review complete", "timestamp": 2.0, "acknowledged": True},
+        {"from_agent": "writer", "to_agent": "publisher", "content": "Final version ready", "timestamp": 3.0, "acknowledged": True},
+        {"from_agent": "publisher", "to_agent": "writer", "content": "Published", "timestamp": 4.0, "acknowledged": True},
+    ]
 
     for i in range(count):
         healthy_traces.append({
             "trace_id": str(uuid.uuid4()),
             "failure_mode": "F11",
             "is_failure": False,
-            "agents": ["writer", "reviewer", "publisher"],
-            "spans": [
-                {"name": "writer", "agent_id": "writer", "content": "Draft complete, sending to reviewer"},
-                {"name": "reviewer", "agent_id": "reviewer", "content": "Review complete, approved for publishing"},
-                {"name": "publisher", "agent_id": "publisher", "content": "Published successfully"},
-            ]
+            "messages": healthy_messages,
+            "agent_ids": ["writer", "reviewer", "publisher"],
         })
 
     return failure_traces, healthy_traces
@@ -1018,10 +1096,27 @@ def run_detector(detector: Any, trace: Dict, failure_mode: str) -> bool:
             )
             return result.detected if hasattr(result, 'detected') else bool(result)
 
-        # F5: Workflow - needs WorkflowNode objects
-        # Skip for now - requires specialized data structures
+        # F5: Workflow
+        # API: detect(nodes: List[WorkflowNode])
         elif failure_mode == "F5":
-            return False  # Needs WorkflowNode objects
+            node_dicts = trace.get("workflow_nodes", [])
+            if not node_dicts:
+                return False
+            # Convert dicts to WorkflowNode objects
+            nodes = [
+                WorkflowNode(
+                    id=n["id"],
+                    name=n["name"],
+                    node_type=n["node_type"],
+                    incoming=n["incoming"],
+                    outgoing=n["outgoing"],
+                    has_error_handler=n.get("has_error_handler", False),
+                    is_terminal=n.get("is_terminal", False),
+                )
+                for n in node_dicts
+            ]
+            result = detector.detect(nodes)
+            return result.detected if hasattr(result, 'detected') else bool(result)
 
         # F6: Derailment
         # API: detect(task, output, context=None, agent_name=None)
@@ -1050,10 +1145,26 @@ def run_detector(detector: Any, trace: Dict, failure_mode: str) -> bool:
             )
             return result.detected if hasattr(result, 'detected') else bool(result)
 
-        # F9: Role Usurpation - needs AgentAction objects
-        # Skip for now - requires specialized data structures
+        # F9: Role Usurpation
+        # API: detect(actions: List[AgentAction], role_definitions=None)
         elif failure_mode == "F9":
-            return False  # Needs AgentAction objects
+            action_dicts = trace.get("agent_actions", [])
+            if not action_dicts:
+                return False
+            # Convert dicts to AgentAction objects
+            actions = [
+                AgentAction(
+                    agent_id=a["agent_id"],
+                    agent_role=a["agent_role"],
+                    action_type=a["action_type"],
+                    action_description=a["action_description"],
+                    timestamp=a.get("timestamp", 0.0),
+                    metadata=a.get("metadata", {}),
+                )
+                for a in action_dicts
+            ]
+            result = detector.detect(actions)
+            return result.detected if hasattr(result, 'detected') else bool(result)
 
         # F10: Communication Breakdown
         # API: detect(sender_message, receiver_response, receiver_action=None, sender_name=None, receiver_name=None)
@@ -1067,10 +1178,26 @@ def run_detector(detector: Any, trace: Dict, failure_mode: str) -> bool:
                 return result.detected if hasattr(result, 'detected') else bool(result)
             return False
 
-        # F11: Coordination - needs Message objects
-        # Skip for now - requires specialized data structures
+        # F11: Coordination
+        # API: analyze_coordination_with_confidence(messages: List[Message], agent_ids: List[str])
         elif failure_mode == "F11":
-            return False  # Needs Message objects
+            message_dicts = trace.get("messages", [])
+            agent_ids = trace.get("agent_ids", [])
+            if not message_dicts:
+                return False
+            # Convert dicts to Message objects
+            messages = [
+                Message(
+                    from_agent=m["from_agent"],
+                    to_agent=m["to_agent"],
+                    content=m["content"],
+                    timestamp=m["timestamp"],
+                    acknowledged=m.get("acknowledged", False),
+                )
+                for m in message_dicts
+            ]
+            result = detector.analyze_coordination_with_confidence(messages, agent_ids)
+            return result.detected if hasattr(result, 'detected') else bool(result)
 
         # F12: Output Validation
         # API: detect(validation_steps: List[ValidationStep], final_approved=False, content_type=None)

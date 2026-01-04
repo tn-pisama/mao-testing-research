@@ -1,5 +1,5 @@
 {
-  "timestamp": "2026-01-04T03:13:33.526639",
+  "timestamp": "2026-01-04T11:57:28.811752",
   "phase": "1_synthetic_baseline",
   "results": {
     "F1": {
@@ -48,13 +48,13 @@
     },
     "F5": {
       "detector": "FlawedWorkflowDetector",
-      "true_positives": 0,
+      "true_positives": 20,
       "false_positives": 0,
       "true_negatives": 20,
-      "false_negatives": 20,
-      "precision": 0.0,
-      "recall": 0.0,
-      "f1": 0.0,
+      "false_negatives": 0,
+      "precision": 1.0,
+      "recall": 1.0,
+      "f1": 1.0,
       "fpr": 0.0
     },
     "F6": {
@@ -92,13 +92,13 @@
     },
     "F9": {
       "detector": "RoleUsurpationDetector",
-      "true_positives": 0,
+      "true_positives": 20,
       "false_positives": 0,
       "true_negatives": 20,
-      "false_negatives": 20,
-      "precision": 0.0,
-      "recall": 0.0,
-      "f1": 0.0,
+      "false_negatives": 0,
+      "precision": 1.0,
+      "recall": 1.0,
+      "f1": 1.0,
       "fpr": 0.0
     },
     "F10": {
@@ -114,13 +114,13 @@
     },
     "F11": {
       "detector": "CoordinationAnalyzer",
-      "true_positives": 0,
+      "true_positives": 20,
       "false_positives": 0,
       "true_negatives": 20,
-      "false_negatives": 20,
-      "precision": 0.0,
-      "recall": 0.0,
-      "f1": 0.0,
+      "false_negatives": 0,
+      "precision": 1.0,
+      "recall": 1.0,
+      "f1": 1.0,
       "fpr": 0.0
     },
     "F12": {
