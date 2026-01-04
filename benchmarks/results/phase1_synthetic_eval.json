@@ -1,0 +1,182 @@
+{
+  "timestamp": "2026-01-04T02:37:39.751569",
+  "phase": "1_synthetic_baseline",
+  "results": {
+    "F1": {
+      "detector": "SpecificationMismatchDetector",
+      "true_positives": 4,
+      "false_positives": 0,
+      "true_negatives": 20,
+      "false_negatives": 16,
+      "precision": 1.0,
+      "recall": 0.2,
+      "f1": 0.33333333333333337,
+      "fpr": 0.0
+    },
+    "F2": {
+      "detector": "TaskDecompositionDetector",
+      "true_positives": 0,
+      "false_positives": 0,
+      "true_negatives": 20,
+      "false_negatives": 20,
+      "precision": 0.0,
+      "recall": 0.0,
+      "f1": 0.0,
+      "fpr": 0.0
+    },
+    "F3": {
+      "detector": "ResourceMisallocationDetector",
+      "true_positives": 0,
+      "false_positives": 0,
+      "true_negatives": 20,
+      "false_negatives": 20,
+      "precision": 0.0,
+      "recall": 0.0,
+      "f1": 0.0,
+      "fpr": 0.0
+    },
+    "F4": {
+      "detector": "ToolProvisionDetector",
+      "true_positives": 0,
+      "false_positives": 0,
+      "true_negatives": 20,
+      "false_negatives": 20,
+      "precision": 0.0,
+      "recall": 0.0,
+      "f1": 0.0,
+      "fpr": 0.0
+    },
+    "F5": {
+      "detector": "FlawedWorkflowDetector",
+      "true_positives": 0,
+      "false_positives": 0,
+      "true_negatives": 20,
+      "false_negatives": 20,
+      "precision": 0.0,
+      "recall": 0.0,
+      "f1": 0.0,
+      "fpr": 0.0
+    },
+    "F6": {
+      "detector": "TaskDerailmentDetector",
+      "true_positives": 20,
+      "false_positives": 20,
+      "true_negatives": 0,
+      "false_negatives": 0,
+      "precision": 0.5,
+      "recall": 1.0,
+      "f1": 0.6666666666666666,
+      "fpr": 1.0
+    },
+    "F7": {
+      "detector": "ContextNeglectDetector",
+      "true_positives": 20,
+      "false_positives": 0,
+      "true_negatives": 20,
+      "false_negatives": 0,
+      "precision": 1.0,
+      "recall": 1.0,
+      "f1": 1.0,
+      "fpr": 0.0
+    },
+    "F8": {
+      "detector": "InformationWithholdingDetector",
+      "true_positives": 20,
+      "false_positives": 20,
+      "true_negatives": 0,
+      "false_negatives": 0,
+      "precision": 0.5,
+      "recall": 1.0,
+      "f1": 0.6666666666666666,
+      "fpr": 1.0
+    },
+    "F9": {
+      "detector": "RoleUsurpationDetector",
+      "true_positives": 0,
+      "false_positives": 0,
+      "true_negatives": 20,
+      "false_negatives": 20,
+      "precision": 0.0,
+      "recall": 0.0,
+      "f1": 0.0,
+      "fpr": 0.0
+    },
+    "F10": {
+      "detector": "CommunicationBreakdownDetector",
+      "true_positives": 20,
+      "false_positives": 0,
+      "true_negatives": 20,
+      "false_negatives": 0,
+      "precision": 1.0,
+      "recall": 1.0,
+      "f1": 1.0,
+      "fpr": 0.0
+    },
+    "F11": {
+      "detector": "CoordinationAnalyzer",
+      "true_positives": 0,
+      "false_positives": 0,
+      "true_negatives": 20,
+      "false_negatives": 20,
+      "precision": 0.0,
+      "recall": 0.0,
+      "f1": 0.0,
+      "fpr": 0.0
+    },
+    "F12": {
+      "detector": "OutputValidationDetector",
+      "true_positives": 0,
+      "false_positives": 0,
+      "true_negatives": 20,
+      "false_negatives": 20,
+      "precision": 0.0,
+      "recall": 0.0,
+      "f1": 0.0,
+      "fpr": 0.0
+    },
+    "F13": {
+      "detector": "QualityGateDetector",
+      "true_positives": 0,
+      "false_positives": 0,
+      "true_negatives": 20,
+      "false_negatives": 20,
+      "precision": 0.0,
+      "recall": 0.0,
+      "f1": 0.0,
+      "fpr": 0.0
+    },
+    "F14": {
+      "detector": "CompletionMisjudgmentDetector",
+      "true_positives": 0,
+      "false_positives": 0,
+      "true_negatives": 20,
+      "false_negatives": 20,
+      "precision": 0.0,
+      "recall": 0.0,
+      "f1": 0.0,
+      "fpr": 0.0
+    },
+    "F15": {
+      "detector": "GroundingDetector",
+      "true_positives": 20,
+      "false_positives": 20,
+      "true_negatives": 0,
+      "false_negatives": 0,
+      "precision": 0.5,
+      "recall": 1.0,
+      "f1": 0.6666666666666666,
+      "fpr": 1.0
+    },
+    "F16": {
+      "detector": "RetrievalQualityDetector",
+      "true_positives": 0,
+      "false_positives": 0,
+      "true_negatives": 20,
+      "false_negatives": 20,
+      "precision": 0.0,
+      "recall": 0.0,
+      "f1": 0.0,
+      "fpr": 0.0
+    }
+  }
+}
