@@ -75,26 +75,43 @@ def install(force: bool = False):
     # Install shell wrappers
     _install_shell_hooks(hooks_dir, force)
 
-    # Install default config if not exists
+    # Install default config, preserving connection settings
     config_path = pisama_dir / "config.json"
+    default_config = {
+        "self_healing": {
+            "enabled": True,
+            "mode": "manual",
+            "severity_threshold": 40,
+            "auto_fix_types": ["break_loop", "add_delay", "switch_strategy"],
+            "blocked_fixes": ["delete_file", "git_push", "external_api"],
+            "max_auto_fixes": 10,
+            "cooldown_seconds": 30
+        },
+        "monitoring": {
+            "enabled": True,
+            "pattern_window": 10,
+            "alert_on_warning": False
+        },
+        "ignored_patterns": []
+    }
+
+    if config_path.exists():
+        # Merge with existing config, preserving connection settings
+        try:
+            existing = json.loads(config_path.read_text())
+            # Preserve connection settings
+            for key in ["api_key", "api_url", "auto_sync", "connected_at"]:
+                if key in existing:
+                    default_config[key] = existing[key]
+            # Merge self_healing and monitoring (existing takes precedence)
+            if "self_healing" in existing:
+                default_config["self_healing"].update(existing["self_healing"])
+            if "monitoring" in existing:
+                default_config["monitoring"].update(existing["monitoring"])
+        except (json.JSONDecodeError, KeyError):
+            pass
+
     if not config_path.exists() or force:
-        default_config = {
-            "self_healing": {
-                "enabled": True,
-                "mode": "manual",
-                "severity_threshold": 40,
-                "auto_fix_types": ["break_loop", "add_delay", "switch_strategy"],
-                "blocked_fixes": ["delete_file", "git_push", "external_api"],
-                "max_auto_fixes": 10,
-                "cooldown_seconds": 30
-            },
-            "monitoring": {
-                "enabled": True,
-                "pattern_window": 10,
-                "alert_on_warning": False
-            },
-            "ignored_patterns": []
-        }
         config_path.write_text(json.dumps(default_config, indent=2))
         print(f"Installed default config")
 
