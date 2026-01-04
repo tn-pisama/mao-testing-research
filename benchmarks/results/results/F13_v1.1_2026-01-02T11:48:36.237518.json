@@ -1,0 +1,22 @@
+{
+  "mode": "F13",
+  "version": "v1.1",
+  "config_hash": "baseline",
+  "timestamp": "2026-01-02T11:48:36.237518",
+  "tp": 568,
+  "fp": 524,
+  "tn": 44,
+  "fn": 0,
+  "precision": 0.5201,
+  "recall": 1.0,
+  "f1": 0.6843,
+  "fpr": 0.9225,
+  "failure_traces": 568,
+  "healthy_traces": 568,
+  "frameworks": [
+    "langchain",
+    "autogen",
+    "crewai",
+    "n8n"
+  ]
+}

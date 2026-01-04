@@ -1,0 +1,22 @@
+{
+  "mode": "F4",
+  "version": "v1.1",
+  "config_hash": "baseline",
+  "timestamp": "2026-01-02T11:47:14.318337",
+  "tp": 568,
+  "fp": 340,
+  "tn": 228,
+  "fn": 0,
+  "precision": 0.6256,
+  "recall": 1.0,
+  "f1": 0.7696,
+  "fpr": 0.5986,
+  "failure_traces": 568,
+  "healthy_traces": 568,
+  "frameworks": [
+    "langchain",
+    "autogen",
+    "crewai",
+    "n8n"
+  ]
+}
