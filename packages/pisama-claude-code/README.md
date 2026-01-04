@@ -1,210 +1,151 @@
-# PISAMA Claude Code Adapter
+# pisama-claude-code
 
-Claude Code integration for the PISAMA agent forensics platform.
+Trace capture and failure detection for Claude Code sessions.
 
-## Overview
+[![PyPI version](https://badge.fury.io/py/pisama-claude-code.svg)](https://badge.fury.io/py/pisama-claude-code)
+[![Python 3.10+](https://img.shields.io/badge/python-3.10+-blue.svg)](https://www.python.org/downloads/)
+[![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
 
-This package provides real-time detection and self-healing for Claude Code sessions by:
-
-1. **Capturing traces** from Claude Code tool calls via hooks
-2. **Detecting issues** using pisama-core detection algorithms
-3. **Injecting fixes** via stderr messages visible to Claude
-4. **Blocking** problematic tool calls when severity is high
-
-## Installation
+## Quick Start
 
 ```bash
-# Install from packages directory
-pip install -e packages/pisama-core
-pip install -e packages/pisama-claude-code
+# Install
+pip install pisama-claude-code
 
-# Install hooks to ~/.claude/
-python -m pisama_claude_code.install
+# Initialize (installs hooks to ~/.claude/)
+pisama-cc init
+
+# Use Claude Code normally - traces are captured automatically
+claude
+
+# Analyze captured traces for failures
+pisama-cc analyze --last 100
 ```
+
+## Features
+
+| Feature | Local (Free) | Cloud (Platform) |
+|---------|--------------|------------------|
+| Trace capture | :white_check_mark: | :white_check_mark: |
+| F4-F16 detection | :white_check_mark: | :white_check_mark: |
+| Skill differentiation | :white_check_mark: | :white_check_mark: |
+| Self-healing (loop break) | :white_check_mark: | :white_check_mark: |
+| Export traces | :white_check_mark: | :white_check_mark: |
+| Sync to platform | :x: | :white_check_mark: |
+| Team dashboard | :x: | :white_check_mark: |
+| Cross-session analytics | :x: | :white_check_mark: |
+
+## Detection Modes
+
+The package detects MAST failure modes including:
+
+- **F4 Tool Misuse**: Using Bash for file operations instead of dedicated tools
+- **F6 Loop**: Consecutive repeated tool calls
+- **F8 Context Overflow**: Token usage anomalies
+- **F12 Cascade Failure**: Error propagation patterns
+- **F15 Grounding Failure**: Outputs not supported by sources
+- **F16 Retrieval Quality**: Poor document retrieval
+
+## CLI Commands
+
+```bash
+pisama-cc init            # Install hooks, create config
+pisama-cc status          # Show connection status
+pisama-cc analyze         # Run local failure detection
+pisama-cc export          # Export traces to file
+pisama-cc connect         # Connect to MAO Testing platform
+pisama-cc sync            # Upload traces to platform
+pisama-cc config          # View/edit configuration
+pisama-cc traces          # View recent traces
+```
+
+## Usage Examples
+
+### Analyze Recent Session
+
+```bash
+# Analyze last 100 traces for failures
+pisama-cc analyze --last 100
+
+# Output:
+# F4 Tool Misuse: OK
+# F6 Loop: 12 consecutive repeats detected
+# F15 Grounding: OK
+```
+
+### Export Traces
+
+```bash
+# Export last 50 traces to file
+pisama-cc export --last 50 -o traces.jsonl
+
+# Export with filtering
+pisama-cc export --last 100 --tool Bash -o bash-traces.jsonl
+```
+
+### Connect to Platform
+
+```bash
+# Connect with API key
+pisama-cc connect --api-key pk_live_xxx
+
+# Sync traces to platform
+pisama-cc sync --last 100
+```
+
+## Privacy
+
+- **Local by default**: All traces stored locally in `~/.claude/pisama/traces/`
+- **Automatic redaction**: API keys, passwords, and secrets are automatically redacted
+- **Path anonymization**: Home directory paths are replaced with `~/`
+- **Opt-in cloud**: Sync to platform requires explicit connection
+
+### What Is Captured
+
+| Data | Captured | Synced to Cloud |
+|------|----------|-----------------|
+| Tool names | :white_check_mark: | :white_check_mark: |
+| Timestamps | :white_check_mark: | :white_check_mark: |
+| Session IDs | :white_check_mark: | :white_check_mark: |
+| Tool inputs | :white_check_mark: | :white_check_mark: (sanitized) |
+| File contents | :x: | :x: |
+| Secrets/API keys | :x: (redacted) | :x: |
 
 ## Configuration
 
-PISAMA configuration lives in `~/.claude/pisama/config.json`:
+Configuration lives in `~/.claude/pisama/config.json`:
 
 ```json
 {
   "self_healing": {
     "enabled": true,
     "mode": "manual",
-    "severity_threshold": 40,
-    "auto_fix_types": ["break_loop", "add_delay", "switch_strategy"],
-    "blocked_fixes": ["delete_file", "git_push", "external_api"],
-    "max_auto_fixes": 10,
-    "cooldown_seconds": 30
+    "severity_threshold": 40
   },
   "monitoring": {
     "enabled": true,
-    "pattern_window": 10,
-    "alert_on_warning": false
+    "pattern_window": 10
   }
 }
 ```
 
 ### Modes
 
-- **manual**: Alerts user and optionally blocks, requires user approval for fixes
+- **manual**: Alerts and requires user approval for fixes
 - **auto**: Automatically applies approved fix types
 - **report**: Logs issues but never blocks
 
-## Hook Setup
+## Requirements
 
-Add to `~/.claude/settings.local.json`:
-
-```json
-{
-  "hooks": {
-    "PreToolCall": [
-      {
-        "command": "~/.claude/hooks/pisama-pre.sh",
-        "timeout": 5000
-      }
-    ],
-    "PostToolCall": [
-      {
-        "command": "~/.claude/hooks/pisama-post.sh",
-        "timeout": 2000
-      }
-    ]
-  }
-}
-```
-
-## Architecture
-
-```
-┌─────────────────────────────────────────────────────────────────┐
-│                       Claude Code                                │
-│                                                                  │
-│  ┌──────────────┐       ┌──────────────┐       ┌──────────────┐ │
-│  │  Pre Hook    │──────▶│   Guardian   │──────▶│  Post Hook   │ │
-│  │  (capture)   │       │  (detect)    │       │  (capture)   │ │
-│  └──────────────┘       └──────┬───────┘       └──────────────┘ │
-│                                │                                 │
-└────────────────────────────────┼─────────────────────────────────┘
-                                 │
-                                 ▼
-                    ┌───────────────────────┐
-                    │     pisama-core       │
-                    ├───────────────────────┤
-                    │  • Detection Engine   │
-                    │  • Scoring Engine     │
-                    │  • Healing Engine     │
-                    │  • Enforcement        │
-                    └───────────────────────┘
-```
-
-## Components
-
-### ClaudeCodeAdapter
-
-Implements `PlatformAdapter` interface for Claude Code:
-
-```python
-from pisama_claude_code import ClaudeCodeAdapter
-
-adapter = ClaudeCodeAdapter()
-
-# Convert hook data to universal span
-span = adapter.capture_span(hook_data)
-
-# Store trace
-adapter.store_span(span)
-
-# Inject fix directive
-adapter.inject_fix(
-    directive="Break the loop and try a different approach",
-    level=EnforcementLevel.DIRECT,
-    session_id="session-123",
-)
-```
-
-### Guardian
-
-Real-time detection and intervention:
-
-```python
-from pisama_claude_code.guardian import Guardian
-
-guardian = Guardian()
-
-# Analyze tool call
-result = await guardian.analyze(hook_data, session_id)
-
-if result.should_block:
-    sys.exit(1)  # Block the tool call
-```
-
-### TraceStorage
-
-Local storage for traces:
-
-```python
-from pisama_claude_code import TraceStorage
-
-storage = TraceStorage(traces_dir)
-
-# Get recent tool sequence
-tools = storage.get_tool_sequence(limit=10)
-
-# Get recent spans
-spans = storage.get_recent(limit=10, session_id="session-123")
-```
-
-## Detection Patterns
-
-The guardian detects:
-
-- **Loop patterns**: Same tool repeated consecutively
-- **Cyclic patterns**: Repeating sequences of tools
-- **Low diversity**: Using the same few tools repeatedly
-- **Coordination failures**: Escalation issues
-- **Cost anomalies**: Excessive API usage
-
-## Fix Injection
-
-Fixes are injected via stderr which Claude sees in its context:
-
-```
-[PISAMA Guardian Alert]
-Severity: 65/100
-Issues:
-  - Loop detected: Read -> Read -> Read (5x)
-
-DIRECTIVE: Break the loop and try a different approach
-
-Use /pisama-intervene to review and decide how to proceed.
-```
-
-## Enforcement Levels
-
-1. **SUGGEST** (1-39 severity): Soft suggestion via stderr
-2. **DIRECT** (40-59): Direct instruction + MCP alert
-3. **BLOCK** (60-79): Block tool call, require acknowledgment
-4. **TERMINATE** (80-100): Terminate session
-
-## Audit Logging
-
-All events are logged to `~/.claude/pisama/audit_log.jsonl`:
-
-```json
-{"timestamp": "2024-01-02T12:00:00Z", "type": "intervention", "severity": 65, "issues": ["Loop detected"], "action": "blocked_for_approval"}
-```
-
-## Development
-
-```bash
-# Install dev dependencies
-pip install -e "packages/pisama-claude-code[dev]"
-
-# Run tests
-pytest packages/pisama-claude-code/tests/
-```
+- Python 3.10+
+- Claude Code CLI
 
 ## License
 
-MIT
+MIT License - see [LICENSE](LICENSE) for details.
+
+## Links
+
+- [Documentation](https://docs.maotesting.com/claude-code/)
+- [MAO Testing Platform](https://app.maotesting.com/)
+- [GitHub Issues](https://github.com/mao-testing/pisama-claude-code/issues)

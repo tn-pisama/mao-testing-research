@@ -35,17 +35,15 @@ classifiers = [
 ]
 
 dependencies = [
-    "pisama-core>=0.1.0",
     "click>=8.0.0",
     "pydantic>=2.0.0",
+    "httpx>=0.25.0",
+    "rich>=13.0.0",
 ]
 
 [project.optional-dependencies]
-cloud = [
-    "httpx>=0.25.0",
-]
-rich = [
-    "rich>=13.0.0",
+core = [
+    "pisama-core>=0.1.0",
 ]
 dev = [
     "pytest>=7.0.0",
@@ -53,7 +51,7 @@ dev = [
     "pytest-cov>=4.0.0",
 ]
 all = [
-    "pisama-claude-code[cloud,rich]",
+    "pisama-claude-code[core]",
 ]
 
 [project.scripts]

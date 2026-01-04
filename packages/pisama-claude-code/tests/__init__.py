@@ -1,1 +1,1 @@
-"""PISAMA Claude Code test suite."""
+"""Tests for pisama-claude-code package."""
