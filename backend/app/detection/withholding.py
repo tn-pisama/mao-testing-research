@@ -8,7 +8,18 @@ This occurs in inter-agent communication when:
 - Agent summarizes away critical details
 - Agent selectively omits negative findings
 - Agent's output is significantly less informative than its internal state
+
+Version History:
+- v1.0: Initial implementation
+- v1.1: Task-aware detection to reduce false positives:
+  - Recognize summary/list tasks expect condensed output
+  - Links to full details = NOT withholding
+  - Organized/structured output = NOT withholding
 """
+
+# Detector version for tracking
+DETECTOR_VERSION = "1.1"
+DETECTOR_NAME = "InformationWithholdingDetector"
 
 import logging
 import re
@@ -95,6 +106,36 @@ class InformationWithholdingDetector:
         r'\b(overall|in general|generally speaking)\b',
     ]
 
+    # v1.1: Tasks that explicitly request summary/list format (not withholding)
+    SUMMARY_TASK_PATTERNS = [
+        r'\bsummar(?:y|ize|ise)\b',
+        r'\bbrief(?:ly)?\b',
+        r'\boverview\b',
+        r'\bkey\s+(?:points?|findings?|takeaways?)\b',
+        r'\bhighlights?\b',
+        r'\blist\b',
+    ]
+
+    # v1.1: Patterns indicating full information is accessible (not withholding)
+    FULL_ACCESS_PATTERNS = [
+        r'\bsee\s+(?:full|complete|detailed)\b',
+        r'\bfull\s+(?:details?|report|analysis)\s+(?:at|in|available)\b',
+        r'\bmore\s+(?:details?|information)\s+(?:at|in|available)\b',
+        r'\blink(?:s|ed)?\s+(?:to|below|above)\b',
+        r'\b(?:attached|appendix|supplement)\b',
+        r'\brefer(?:ence)?\s+to\b',
+        r'\bfor\s+(?:more|additional|complete)\s+(?:details?|information)\b',
+    ]
+
+    # v1.1: Patterns indicating organized/structured output
+    STRUCTURED_OUTPUT_PATTERNS = [
+        r'(?:^|\n)\s*[-•*]\s+',  # Bullet points
+        r'(?:^|\n)\s*\d+[.)]\s+',  # Numbered list
+        r'(?:^|\n)\s*#{1,6}\s+',  # Markdown headers
+        r'"[^"]+":\s*[{\[]',  # JSON structure
+        r'\n\s+\w+:\s+',  # Key-value pairs
+    ]
+
     def __init__(
         self,
         critical_retention_threshold: float = 0.8,
@@ -131,6 +172,30 @@ class InformationWithholdingDetector:
                 findings.append(context)
 
         return findings
+
+    def _is_summary_task(self, task: str) -> bool:
+        """v1.1: Check if task explicitly requests summary/list format."""
+        if not task:
+            return False
+        for pattern in self.SUMMARY_TASK_PATTERNS:
+            if re.search(pattern, task, re.IGNORECASE):
+                return True
+        return False
+
+    def _has_full_access_indicators(self, text: str) -> bool:
+        """v1.1: Check if output provides access to full information."""
+        for pattern in self.FULL_ACCESS_PATTERNS:
+            if re.search(pattern, text, re.IGNORECASE):
+                return True
+        return False
+
+    def _is_structured_output(self, text: str) -> bool:
+        """v1.1: Check if output is well-structured (organized, not withheld)."""
+        structure_count = 0
+        for pattern in self.STRUCTURED_OUTPUT_PATTERNS:
+            if re.search(pattern, text, re.MULTILINE):
+                structure_count += 1
+        return structure_count >= 2  # Multiple structure indicators
 
     def _calculate_information_density(self, text: str) -> float:
         """Calculate information density of text."""
@@ -234,6 +299,11 @@ class InformationWithholdingDetector:
                 explanation="Insufficient data for withholding detection",
             )
 
+        # v1.1: Check for false positive indicators
+        is_summary_task = self._is_summary_task(task_context or internal_state)
+        has_full_access = self._has_full_access_indicators(agent_output)
+        is_structured = self._is_structured_output(agent_output)
+
         # Extract critical items from internal state
         internal_critical = self._extract_critical_items(internal_state)
         found, retained, missing_critical = self._check_item_retention(internal_critical, agent_output)
@@ -294,6 +364,35 @@ class InformationWithholdingDetector:
                     severity=WithholdingSeverity.MINOR,
                     description="Output significantly less detailed than internal state",
                 ))
+
+        # v1.1: Reduce false positives based on task type and output characteristics
+        if issues:
+            # If task explicitly asks for summary/list, don't flag summarization as withholding
+            if is_summary_task:
+                issues = [i for i in issues if i.issue_type not in [
+                    WithholdingType.CONTEXT_STRIPPING,
+                    WithholdingType.DETAIL_LOSS,
+                ]]
+
+            # If output provides links/references to full info, don't flag as withholding
+            if has_full_access:
+                issues = [i for i in issues if i.severity in [
+                    WithholdingSeverity.SEVERE,
+                    WithholdingSeverity.CRITICAL,
+                ]]  # Only keep critical issues
+
+            # If output is well-structured, reduce severity of detail loss
+            if is_structured:
+                for i, issue in enumerate(issues):
+                    if issue.issue_type == WithholdingType.DETAIL_LOSS:
+                        # Structured output likely just organized info differently
+                        issues[i] = WithholdingIssue(
+                            issue_type=issue.issue_type,
+                            withheld_info=issue.withheld_info,
+                            severity=WithholdingSeverity.NONE,  # Don't flag
+                            description=issue.description,
+                        )
+                issues = [i for i in issues if i.severity != WithholdingSeverity.NONE]
 
         # Determine result
         detected = len(issues) > 0
