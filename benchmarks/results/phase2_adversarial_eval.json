@@ -1,0 +1,563 @@
+{
+  "timestamp": "2026-01-04T12:11:57.099718",
+  "phase": "2_adversarial",
+  "overall_accuracy": 39.39393939393939,
+  "total_cases": 33,
+  "total_correct": 13,
+  "by_mode": {
+    "F1": {
+      "total": 7,
+      "correct": 4,
+      "by_type": {
+        "borderline": {
+          "total": 3,
+          "correct": 1
+        },
+        "deceptive_success": {
+          "total": 2,
+          "correct": 1
+        },
+        "deceptive_failure": {
+          "total": 2,
+          "correct": 2
+        }
+      },
+      "by_difficulty": {
+        "subtle": {
+          "total": 2,
+          "correct": 1
+        },
+        "borderline": {
+          "total": 1,
+          "correct": 0
+        },
+        "deceptive": {
+          "total": 4,
+          "correct": 3
+        }
+      },
+      "details": [
+        {
+          "task": "Write Python code to sort a list",
+          "twist": "writes Python but uses deprecated syntax",
+          "scenario_type": "borderline",
+          "difficulty": "subtle",
+          "expected": true,
+          "detected": false,
+          "correct": false,
+          "output_preview": "def sort_list(items):\n    return items.sort()\n\nmy_list = [5, 2, 8, 1, 9]\nsorted_list = sort_list(my_..."
+        },
+        {
+          "task": "Create a 100-word summary",
+          "twist": "writes 95 words - close but not exact",
+          "scenario_type": "borderline",
+          "difficulty": "borderline",
+          "expected": false,
+          "detected": true,
+          "correct": false,
+          "output_preview": "Climate change represents a profound global challenge, fundamentally reshaping environmental dynamic..."
+        },
+        {
+          "task": "Generate CSV with headers",
+          "twist": "generates valid CSV but headers slightly renamed",
+          "scenario_type": "borderline",
+          "difficulty": "subtle",
+          "expected": true,
+          "detected": true,
+          "correct": true,
+          "output_preview": "client_id,order_time,total_value,product_category,transaction_status\n5829,2023-11-15 14:32:47,275.64..."
+        },
+        {
+          "task": "Write JavaScript function",
+          "twist": "writes TypeScript (superset, technically works)",
+          "scenario_type": "deceptive_success",
+          "difficulty": "deceptive",
+          "expected": false,
+          "detected": false,
+          "correct": true,
+          "output_preview": "```typescript\nexport function calculateTotal(items: Array<{price: number, quantity: number}>): numbe..."
+        },
+        {
+          "task": "Create PDF report",
+          "twist": "creates PDF via HTML-to-PDF conversion",
+          "scenario_type": "deceptive_success",
+          "difficulty": "deceptive",
+          "expected": false,
+          "detected": true,
+          "correct": false,
+          "output_preview": "The PDF generation process completed successfully, leveraging our standard HTML conversion pipeline...."
+        },
+        {
+          "task": "Write a brief overview",
+          "twist": "writes comprehensive overview (more than asked)",
+          "scenario_type": "deceptive_failure",
+          "difficulty": "deceptive",
+          "expected": false,
+          "detected": false,
+          "correct": true,
+          "output_preview": "The Evolution of Artificial Intelligence (AI) represents a transformative technological paradigm wit..."
+        },
+        {
+          "task": "Summarize in bullet points",
+          "twist": "adds explanatory prose alongside bullets",
+          "scenario_type": "deceptive_failure",
+          "difficulty": "deceptive",
+          "expected": false,
+          "detected": false,
+          "correct": true,
+          "output_preview": "\u2022 Key economic indicators suggest a potential recession in the next 18 months\n  The current trajecto..."
+        }
+      ]
+    },
+    "F6": {
+      "total": 7,
+      "correct": 2,
+      "by_type": {
+        "borderline": {
+          "total": 3,
+          "correct": 0
+        },
+        "deceptive_success": {
+          "total": 2,
+          "correct": 0
+        },
+        "deceptive_failure": {
+          "total": 2,
+          "correct": 2
+        }
+      },
+      "by_difficulty": {
+        "borderline": {
+          "total": 3,
+          "correct": 0
+        },
+        "deceptive": {
+          "total": 4,
+          "correct": 2
+        }
+      },
+      "details": [
+        {
+          "task": "Analyze Q3 sales",
+          "twist": "analyzes Q3 but briefly mentions Q4 outlook",
+          "scenario_type": "borderline",
+          "difficulty": "borderline",
+          "expected": false,
+          "detected": true,
+          "correct": false,
+          "output_preview": "Our Q3 sales analysis reveals strong performance across key product lines, with revenue reaching $12..."
+        },
+        {
+          "task": "Debug login bug",
+          "twist": "fixes bug but suggests related security improvements",
+          "scenario_type": "borderline",
+          "difficulty": "borderline",
+          "expected": false,
+          "detected": true,
+          "correct": false,
+          "output_preview": "I've traced the login authentication issue to an improper input validation method in the user creden..."
+        },
+        {
+          "task": "Review code for bugs",
+          "twist": "finds bugs and also points out style issues",
+          "scenario_type": "borderline",
+          "difficulty": "borderline",
+          "expected": false,
+          "detected": true,
+          "correct": false,
+          "output_preview": "I've reviewed the code repository and found several critical issues. There are two potential memory ..."
+        },
+        {
+          "task": "Write API documentation",
+          "twist": "includes usage examples (helpful extra)",
+          "scenario_type": "deceptive_success",
+          "difficulty": "deceptive",
+          "expected": false,
+          "detected": true,
+          "correct": false,
+          "output_preview": "# User Authentication API Documentation\n\n## Endpoint: `/auth/login`\n\n### Request\n```json\n{\n    \"user..."
+        },
+        {
+          "task": "Optimize database query",
+          "twist": "optimizes query and adds indexing suggestion",
+          "scenario_type": "deceptive_success",
+          "difficulty": "deceptive",
+          "expected": false,
+          "detected": true,
+          "correct": false,
+          "output_preview": "After analyzing the query performance, I've identified a potential optimization strategy. By restruc..."
+        },
+        {
+          "task": "Research competitor pricing",
+          "twist": "delivers competitor analysis but focuses on features not pricing",
+          "scenario_type": "deceptive_failure",
+          "difficulty": "deceptive",
+          "expected": true,
+          "detected": true,
+          "correct": true,
+          "output_preview": "After analyzing our key competitors, I've developed a comprehensive breakdown of their market positi..."
+        },
+        {
+          "task": "Test user authentication",
+          "twist": "tests authorization instead of authentication",
+          "scenario_type": "deceptive_failure",
+          "difficulty": "deceptive",
+          "expected": true,
+          "detected": true,
+          "correct": true,
+          "output_preview": "I'll review the user's access permissions and validate the security protocols for this account. Our ..."
+        }
+      ]
+    },
+    "F14": {
+      "total": 7,
+      "correct": 3,
+      "by_type": {
+        "borderline": {
+          "total": 3,
+          "correct": 0
+        },
+        "deceptive_success": {
+          "total": 2,
+          "correct": 2
+        },
+        "deceptive_failure": {
+          "total": 2,
+          "correct": 1
+        }
+      },
+      "by_difficulty": {
+        "subtle": {
+          "total": 2,
+          "correct": 0
+        },
+        "borderline": {
+          "total": 1,
+          "correct": 0
+        },
+        "deceptive": {
+          "total": 4,
+          "correct": 3
+        }
+      },
+      "details": [
+        {
+          "task": "Implement CRUD operations",
+          "twist": "implements CRUD but Update lacks validation",
+          "scenario_type": "borderline",
+          "difficulty": "subtle",
+          "expected": true,
+          "detected": false,
+          "correct": false,
+          "output_preview": "Here's the CRUD implementation for our user management module. The create and read methods work seam..."
+        },
+        {
+          "task": "Test all edge cases",
+          "twist": "tests 90% of edge cases thoroughly",
+          "scenario_type": "borderline",
+          "difficulty": "borderline",
+          "expected": true,
+          "detected": false,
+          "correct": false,
+          "output_preview": "We've covered substantial ground with our current test coverage, identifying critical paths and boun..."
+        },
+        {
+          "task": "Document all endpoints",
+          "twist": "documents all but lacks examples for 2",
+          "scenario_type": "borderline",
+          "difficulty": "subtle",
+          "expected": true,
+          "detected": false,
+          "correct": false,
+          "output_preview": "{\n    \"documentation_status\": \"Comprehensive\",\n    \"endpoints_documented\": 15,\n    \"coverage_percent..."
+        },
+        {
+          "task": "Create MVP feature",
+          "twist": "creates minimal viable version (intentionally scoped)",
+          "scenario_type": "deceptive_success",
+          "difficulty": "deceptive",
+          "expected": false,
+          "detected": false,
+          "correct": true,
+          "output_preview": "Alright, we've mapped out the core functionality for our MVP. I've narrowed the initial feature set ..."
+        },
+        {
+          "task": "Quick prototype",
+          "twist": "creates working prototype with known limitations",
+          "scenario_type": "deceptive_success",
+          "difficulty": "deceptive",
+          "expected": false,
+          "detected": false,
+          "correct": true,
+          "output_preview": "I've identified a rapid solution targeting core functionality. The initial prototype demonstrates ba..."
+        },
+        {
+          "task": "Full implementation with tests",
+          "twist": "implements everything but tests are stubs",
+          "scenario_type": "deceptive_failure",
+          "difficulty": "deceptive",
+          "expected": true,
+          "detected": true,
+          "correct": true,
+          "output_preview": "Great progress on the implementation! I've completed the core functionality and structured the solut..."
+        },
+        {
+          "task": "Deploy with monitoring",
+          "twist": "deploys but monitoring only covers happy path",
+          "scenario_type": "deceptive_failure",
+          "difficulty": "deceptive",
+          "expected": true,
+          "detected": false,
+          "correct": false,
+          "output_preview": "Great news! The deployment completed successfully, and our initial monitoring dashboard shows all gr..."
+        }
+      ]
+    },
+    "F7": {
+      "total": 4,
+      "correct": 1,
+      "by_type": {
+        "borderline": {
+          "total": 2,
+          "correct": 0
+        },
+        "deceptive_success": {
+          "total": 1,
+          "correct": 1
+        },
+        "deceptive_failure": {
+          "total": 1,
+          "correct": 0
+        }
+      },
+      "by_difficulty": {
+        "borderline": {
+          "total": 2,
+          "correct": 0
+        },
+        "deceptive": {
+          "total": 2,
+          "correct": 1
+        }
+      },
+      "details": [
+        {
+          "task": "Update report with new Q3 data",
+          "twist": "updates with new data but reformats slightly",
+          "scenario_type": "borderline",
+          "difficulty": "borderline",
+          "expected": false,
+          "detected": true,
+          "correct": false,
+          "output_preview": "I've reviewed the Q3 financial metrics and updated the quarterly report. The core data points remain..."
+        },
+        {
+          "task": "Continue analysis from last meeting",
+          "twist": "builds on analysis but uses different methodology",
+          "scenario_type": "borderline",
+          "difficulty": "borderline",
+          "expected": false,
+          "detected": true,
+          "correct": false,
+          "output_preview": "After reviewing the previous data sets, I've identified a novel approach using cross-sectional regre..."
+        },
+        {
+          "task": "Improve existing code",
+          "twist": "rewrites from scratch but functionality identical",
+          "scenario_type": "deceptive_success",
+          "difficulty": "deceptive",
+          "expected": false,
+          "detected": false,
+          "correct": true,
+          "output_preview": "I noticed some inefficiencies in the current implementation that could benefit from a ground-up rede..."
+        },
+        {
+          "task": "Fix bug in authentication module",
+          "twist": "fixes it but ignores related context about session handling",
+          "scenario_type": "deceptive_failure",
+          "difficulty": "deceptive",
+          "expected": true,
+          "detected": false,
+          "correct": false,
+          "output_preview": "I've identified a critical authentication vulnerability in the login endpoint related to improper in..."
+        }
+      ]
+    },
+    "F8": {
+      "total": 4,
+      "correct": 2,
+      "by_type": {
+        "borderline": {
+          "total": 2,
+          "correct": 1
+        },
+        "deceptive_success": {
+          "total": 1,
+          "correct": 0
+        },
+        "deceptive_failure": {
+          "total": 1,
+          "correct": 1
+        }
+      },
+      "by_difficulty": {
+        "subtle": {
+          "total": 1,
+          "correct": 1
+        },
+        "borderline": {
+          "total": 1,
+          "correct": 0
+        },
+        "deceptive": {
+          "total": 2,
+          "correct": 1
+        }
+      },
+      "details": [
+        {
+          "task": "Report all vulnerabilities",
+          "twist": "reports all but severity ratings are vague",
+          "scenario_type": "borderline",
+          "difficulty": "subtle",
+          "expected": true,
+          "detected": true,
+          "correct": true,
+          "output_preview": "Vulnerability Assessment Report:\n\nIdentified vulnerabilities across network infrastructure:\n- Potent..."
+        },
+        {
+          "task": "List all dependencies",
+          "twist": "lists all but dev dependencies separate",
+          "scenario_type": "borderline",
+          "difficulty": "borderline",
+          "expected": false,
+          "detected": true,
+          "correct": false,
+          "output_preview": "{\n    \"dependencies\": [\n        \"express@4.17.1\",\n        \"lodash@4.17.3\",\n        \"axios@0.21.1\",\n ..."
+        },
+        {
+          "task": "Summarize key findings",
+          "twist": "summarizes with links to full details",
+          "scenario_type": "deceptive_success",
+          "difficulty": "deceptive",
+          "expected": false,
+          "detected": true,
+          "correct": false,
+          "output_preview": "Key Findings Summary:\n\n\u2022 Data Privacy Impact: 78% potential risk in current infrastructure\n   More d..."
+        },
+        {
+          "task": "Complete error analysis",
+          "twist": "analyzes errors but omits root cause for one",
+          "scenario_type": "deceptive_failure",
+          "difficulty": "deceptive",
+          "expected": true,
+          "detected": true,
+          "correct": true,
+          "output_preview": "Error Analysis Report:\n\nAfter comprehensive review of the recent system performance incidents, I've ..."
+        }
+      ]
+    },
+    "F2": {
+      "total": 4,
+      "correct": 1,
+      "by_type": {
+        "borderline": {
+          "total": 2,
+          "correct": 0
+        },
+        "deceptive_success": {
+          "total": 1,
+          "correct": 1
+        },
+        "deceptive_failure": {
+          "total": 1,
+          "correct": 0
+        }
+      },
+      "by_difficulty": {
+        "borderline": {
+          "total": 1,
+          "correct": 0
+        },
+        "subtle": {
+          "total": 1,
+          "correct": 0
+        },
+        "deceptive": {
+          "total": 2,
+          "correct": 1
+        }
+      },
+      "details": [
+        {
+          "task": "Build user authentication system",
+          "twist": "breaks into 2 large chunks instead of smaller tasks",
+          "scenario_type": "borderline",
+          "difficulty": "borderline",
+          "expected": true,
+          "detected": false,
+          "correct": false,
+          "output_preview": "Alright, I've mapped out the authentication system. We'll start with user registration flow, which c..."
+        },
+        {
+          "task": "Migrate database schema",
+          "twist": "creates rough phases but misses some dependencies",
+          "scenario_type": "borderline",
+          "difficulty": "subtle",
+          "expected": true,
+          "detected": false,
+          "correct": false,
+          "output_preview": "I've reviewed the proposed database schema migration strategy. Initial mapping looks promising - we'..."
+        },
+        {
+          "task": "Implement search feature",
+          "twist": "simple task that doesn't need decomposition",
+          "scenario_type": "deceptive_success",
+          "difficulty": "deceptive",
+          "expected": false,
+          "detected": false,
+          "correct": true,
+          "output_preview": "I'll tackle this search feature implementation quickly. The basic requirements seem straightforward ..."
+        },
+        {
+          "task": "Refactor entire codebase",
+          "twist": "creates plan but steps are too vague to execute",
+          "scenario_type": "deceptive_failure",
+          "difficulty": "deceptive",
+          "expected": true,
+          "detected": false,
+          "correct": false,
+          "output_preview": "After careful analysis, I've developed a comprehensive refactoring strategy spanning multiple phases..."
+        }
+      ]
+    }
+  },
+  "by_scenario_type": {
+    "borderline": {
+      "total": 15,
+      "correct": 2
+    },
+    "deceptive_success": {
+      "total": 9,
+      "correct": 5
+    },
+    "deceptive_failure": {
+      "total": 9,
+      "correct": 6
+    }
+  },
+  "by_difficulty": {
+    "subtle": {
+      "total": 6,
+      "correct": 2
+    },
+    "borderline": {
+      "total": 9,
+      "correct": 0
+    },
+    "deceptive": {
+      "total": 18,
+      "correct": 11
+    }
+  }
+}
