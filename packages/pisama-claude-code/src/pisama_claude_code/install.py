@@ -6,14 +6,12 @@ Installs trace capture hooks into ~/.claude/.
 
 import json
 import stat
+import sys
 from pathlib import Path
 
 
-HOOK_TEMPLATE = '''#!/usr/bin/env python3
+HOOK_TEMPLATE = '''#!{python_path}
 """Auto-generated PISAMA capture hook."""
-
-import sys
-sys.path.insert(0, "{packages_path}")
 
 from pisama_claude_code.hooks.capture_hook import main
 main()
@@ -35,24 +33,15 @@ def install(force: bool = False):
     pisama_dir.mkdir(parents=True, exist_ok=True)
     (pisama_dir / "traces").mkdir(exist_ok=True)
 
-    # Find packages path
-    packages_path = Path(__file__).parent.parent.parent
-    if not packages_path.exists():
-        # Try to find in common locations
-        for path in [
-            Path.home() / "mao-testing-research" / "packages",
-            Path.home() / "code" / "mao-testing-research" / "packages",
-        ]:
-            if path.exists():
-                packages_path = path
-                break
+    # Use the Python executable that has pisama_claude_code installed
+    python_path = sys.executable
 
     # Install capture hook
     hook_path = hooks_dir / "pisama-capture.py"
     if hook_path.exists() and not force:
         print(f"Skipping pisama-capture.py (exists, use --force to overwrite)")
     else:
-        content = HOOK_TEMPLATE.format(packages_path=str(packages_path))
+        content = HOOK_TEMPLATE.format(python_path=python_path)
         hook_path.write_text(content)
         hook_path.chmod(hook_path.stat().st_mode | stat.S_IXUSR | stat.S_IXGRP | stat.S_IXOTH)
         print("Installed pisama-capture.py")

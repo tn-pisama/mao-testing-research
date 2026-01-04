@@ -38,7 +38,10 @@ HOOKS_DIR = CLAUDE_DIR / "hooks"
 def get_config() -> dict:
     """Load PISAMA config."""
     if CONFIG_FILE.exists():
-        return json.loads(CONFIG_FILE.read_text())
+        try:
+            return json.loads(CONFIG_FILE.read_text())
+        except json.JSONDecodeError:
+            return {}
     return {}
 
 
@@ -394,6 +397,14 @@ def export(last: int, output: str, compress: bool):
         export_data.append(clean)
 
     output_path = Path(output)
+
+    # Ensure parent directory exists
+    try:
+        output_path.parent.mkdir(parents=True, exist_ok=True)
+    except OSError as e:
+        click.echo(f"❌ Cannot create directory: {e}")
+        return
+
     if compress or output.endswith(".gz"):
         if not output.endswith(".gz"):
             output_path = Path(output + ".gz")
