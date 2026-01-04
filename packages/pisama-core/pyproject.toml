@@ -31,7 +31,9 @@ classifiers = [
     "Topic :: Software Development :: Libraries :: Python Modules",
     "Topic :: System :: Monitoring",
 ]
-dependencies = []
+dependencies = [
+    "pydantic>=2.0.0",
+]
 
 [project.optional-dependencies]
 dev = [

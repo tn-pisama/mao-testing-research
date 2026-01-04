@@ -1,18 +1,49 @@
-"""PISAMA Claude Code CLI - Trace capture, analysis, and sync."""
+"""PISAMA Claude Code CLI - Self-healing agent guard.
+
+Command-line interface for managing PISAMA hooks, configuration,
+trace analysis, and platform sync for Claude Code.
+
+Usage:
+    pisama-cc install     Install hooks to ~/.claude/
+    pisama-cc uninstall   Remove hooks
+    pisama-cc status      Show current status
+    pisama-cc config      View/edit configuration
+    pisama-cc traces      View recent traces
+    pisama-cc analyze     Run analysis on traces
+    pisama-cc connect     Connect to PISAMA platform
+    pisama-cc sync        Sync traces to platform
+"""
 
 import click
 import json
 import gzip
-import httpx
+import sys
 from pathlib import Path
-from datetime import datetime
+from datetime import datetime, timezone
 from typing import Optional
+
+try:
+    import httpx
+except ImportError:
+    httpx = None
+
+try:
+    from rich.console import Console
+    from rich.table import Table
+    from rich.panel import Panel
+    console = Console()
+    HAS_RICH = True
+except ImportError:
+    HAS_RICH = False
+    console = None
 
 
 # Config paths
-CONFIG_DIR = Path.home() / ".claude" / "pisama"
+CLAUDE_DIR = Path.home() / ".claude"
+CONFIG_DIR = CLAUDE_DIR / "pisama"
 CONFIG_FILE = CONFIG_DIR / "config.json"
 TRACES_DIR = CONFIG_DIR / "traces"
+HOOKS_DIR = CLAUDE_DIR / "hooks"
 
 
 def get_config() -> dict:
@@ -33,6 +64,93 @@ def save_config(config: dict):
 def main():
     """PISAMA Claude Code - Trace capture and failure detection."""
     pass
+
+
+@main.command()
+@click.option("--force", "-f", is_flag=True, help="Overwrite existing hooks")
+def install(force: bool):
+    """Install PISAMA hooks to ~/.claude/hooks/."""
+    from pisama_claude_code.install import install as do_install
+    do_install(force=force)
+
+
+@main.command()
+def uninstall():
+    """Remove PISAMA hooks from ~/.claude/hooks/."""
+    from pisama_claude_code.install import uninstall as do_uninstall
+    do_uninstall()
+
+
+@main.command()
+@click.option("--show", is_flag=True, help="Show current configuration")
+@click.option("--mode", type=click.Choice(["report", "manual", "auto"]), help="Set self-healing mode")
+@click.option("--threshold", type=int, help="Set severity threshold (0-100)")
+@click.option("--enable/--disable", default=None, help="Enable/disable self-healing")
+def config(show: bool, mode: Optional[str], threshold: Optional[int], enable: Optional[bool]):
+    """View or edit PISAMA configuration."""
+    config_data = get_config()
+
+    # Apply changes
+    changed = False
+    if mode is not None:
+        config_data.setdefault("self_healing", {})["mode"] = mode
+        changed = True
+    if threshold is not None:
+        config_data.setdefault("self_healing", {})["severity_threshold"] = threshold
+        changed = True
+    if enable is not None:
+        config_data.setdefault("self_healing", {})["enabled"] = enable
+        changed = True
+
+    if changed:
+        save_config(config_data)
+        click.echo("✅ Configuration updated")
+
+    # Show config
+    if show or not changed:
+        click.echo("📋 PISAMA Configuration")
+        click.echo("=" * 40)
+        sh = config_data.get("self_healing", {})
+        click.echo(f"   Enabled: {sh.get('enabled', True)}")
+        click.echo(f"   Mode: {sh.get('mode', 'manual')}")
+        click.echo(f"   Severity threshold: {sh.get('severity_threshold', 40)}")
+        click.echo(f"   Auto-fix types: {sh.get('auto_fix_types', [])}")
+        click.echo(f"   Blocked fixes: {sh.get('blocked_fixes', [])}")
+
+        mon = config_data.get("monitoring", {})
+        click.echo(f"\n   Pattern window: {mon.get('pattern_window', 10)}")
+        click.echo(f"   Alert on warning: {mon.get('alert_on_warning', False)}")
+
+
+@main.command()
+@click.option("--last", default=20, help="Number of traces to show")
+@click.option("--tool", help="Filter by tool name")
+@click.option("--session", help="Filter by session ID")
+def traces(last: int, tool: Optional[str], session: Optional[str]):
+    """View recent traces."""
+    all_traces = load_recent_traces(last * 3)  # Load extra for filtering
+
+    # Apply filters
+    if tool:
+        all_traces = [t for t in all_traces if t.get("tool_name") == tool]
+    if session:
+        all_traces = [t for t in all_traces if t.get("session_id") == session]
+
+    traces_to_show = all_traces[-last:]
+
+    if not traces_to_show:
+        click.echo("No traces found")
+        return
+
+    click.echo(f"📋 Recent Traces ({len(traces_to_show)} shown)")
+    click.echo("=" * 60)
+
+    for t in traces_to_show:
+        ts = t.get("timestamp", "")[:19]
+        tool_name = t.get("tool_name", "?")[:15].ljust(15)
+        sess = t.get("session_id", "?")[:8]
+        hook = t.get("hook_type", "?")[:4]
+        click.echo(f"{ts} | {tool_name} | {sess} | {hook}")
 
 
 @main.command()
@@ -61,7 +179,7 @@ def connect(api_key: str, api_url: str, auto_sync: bool):
     config["api_key"] = api_key
     config["api_url"] = api_url
     config["auto_sync"] = auto_sync
-    config["connected_at"] = datetime.utcnow().isoformat()
+    config["connected_at"] = datetime.now(timezone.utc).isoformat()
     save_config(config)
     
     click.echo("✅ Connected to PISAMA platform")
@@ -160,40 +278,94 @@ def analyze(last: int, live: bool, show: bool):
 
 @main.command()
 def status():
-    """Show PISAMA connection status."""
-    config = get_config()
-    
+    """Show PISAMA installation and connection status."""
+    config_data = get_config()
+
     click.echo("📊 PISAMA Status")
     click.echo("=" * 40)
-    
-    if config.get("api_key"):
-        click.echo(f"✅ Connected to: {config.get('api_url', 'unknown')}")
-        click.echo(f"   Connected at: {config.get('connected_at', 'unknown')[:19]}")
-        click.echo(f"   Auto-sync: {'enabled' if config.get('auto_sync') else 'disabled'}")
+
+    # Check hook installation
+    click.echo("\n🔧 Hook Installation:")
+    hook_files = [
+        "pisama-guardian-hook.py",
+        "pisama-capture.py",
+        "pisama-pre.sh",
+        "pisama-post.sh",
+    ]
+    hooks_installed = 0
+    for hf in hook_files:
+        hook_path = HOOKS_DIR / hf
+        if hook_path.exists():
+            hooks_installed += 1
+            click.echo(f"   ✅ {hf}")
+        else:
+            click.echo(f"   ❌ {hf} (missing)")
+
+    if hooks_installed == len(hook_files):
+        click.echo("   All hooks installed")
+    elif hooks_installed == 0:
+        click.echo("   Run 'pisama-cc install' to install hooks")
     else:
-        click.echo("❌ Not connected")
+        click.echo("   Run 'pisama-cc install --force' to reinstall")
+
+    # Check self-healing config
+    click.echo("\n⚡ Self-Healing:")
+    sh = config_data.get("self_healing", {})
+    enabled = sh.get("enabled", False)
+    mode = sh.get("mode", "manual")
+    threshold = sh.get("severity_threshold", 40)
+    click.echo(f"   Enabled: {'✅' if enabled else '❌'} {enabled}")
+    click.echo(f"   Mode: {mode}")
+    click.echo(f"   Threshold: {threshold}")
+
+    # Check platform connection
+    click.echo("\n🔗 Platform Connection:")
+    if config_data.get("api_key"):
+        click.echo(f"   ✅ Connected to: {config_data.get('api_url', 'unknown')}")
+        connected_at = config_data.get("connected_at", "")
+        if connected_at:
+            click.echo(f"   Connected at: {connected_at[:19]}")
+        click.echo(f"   Auto-sync: {'enabled' if config_data.get('auto_sync') else 'disabled'}")
+    else:
+        click.echo("   ❌ Not connected")
         click.echo("   Run 'pisama-cc connect --api-key <key>'")
-    
+
     # Count local traces
     trace_count = 0
     if TRACES_DIR.exists():
         for tf in TRACES_DIR.glob("traces-*.jsonl"):
             with open(tf) as f:
                 trace_count += sum(1 for _ in f)
-    
+
     click.echo(f"\n📁 Local traces: {trace_count}")
-    
-    # Check hooks
-    settings_file = Path.home() / ".claude" / "settings.json"
+
+    # Check Claude Code settings for hook integration
+    settings_file = Path.home() / ".claude" / "settings.local.json"
+    if not settings_file.exists():
+        settings_file = Path.home() / ".claude" / "settings.json"
+
+    click.echo("\n📝 Claude Code Settings:")
     if settings_file.exists():
-        settings = json.loads(settings_file.read_text())
-        hooks = settings.get("hooks", {})
-        if hooks.get("PreToolUse") or hooks.get("PostToolUse"):
-            click.echo("✅ Hooks: installed")
-        else:
-            click.echo("⚠️  Hooks: not configured")
+        try:
+            settings = json.loads(settings_file.read_text())
+            hooks = settings.get("hooks", {})
+            pre_hooks = hooks.get("PreToolCall", [])
+            post_hooks = hooks.get("PostToolCall", [])
+
+            pisama_in_pre = any("pisama" in str(h).lower() for h in pre_hooks)
+            pisama_in_post = any("pisama" in str(h).lower() for h in post_hooks)
+
+            if pisama_in_pre and pisama_in_post:
+                click.echo("   ✅ PISAMA hooks configured in settings")
+            elif pisama_in_pre or pisama_in_post:
+                click.echo("   ⚠️  PISAMA hooks partially configured")
+            else:
+                click.echo("   ❌ PISAMA hooks not in settings")
+                click.echo("   Add hooks to settings.local.json (see 'pisama-cc install' output)")
+        except json.JSONDecodeError:
+            click.echo("   ⚠️  Could not parse settings file")
     else:
-        click.echo("⚠️  Hooks: settings.json not found")
+        click.echo("   ❌ No settings file found")
 
 
 @main.command()
@@ -286,7 +458,7 @@ def prepare_sync_payload(traces: list, include_outputs: bool) -> dict:
     return {
         "source": "claude-code",
         "version": "0.1.0",
-        "uploaded_at": datetime.utcnow().isoformat(),
+        "uploaded_at": datetime.now(timezone.utc).isoformat(),
         "trace_count": len(clean_traces),
         "traces": clean_traces,
     }
@@ -328,7 +500,7 @@ def mark_synced(traces: list):
     with open(sync_log, "a") as f:
         for t in traces:
             f.write(json.dumps({
-                "synced_at": datetime.utcnow().isoformat(),
+                "synced_at": datetime.now(timezone.utc).isoformat(),
                 "timestamp": t.get("timestamp"),
                 "session_id": t.get("session_id"),
             }) + "\n")

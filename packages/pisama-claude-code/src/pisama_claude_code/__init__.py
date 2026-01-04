@@ -2,8 +2,17 @@
 
 __version__ = "0.1.0"
 
-from .installer import install, uninstall
-from .analyzer import analyze_session
-from .config import PISAMAConfig
+# Lazy imports to avoid loading everything at startup
+def install(force: bool = False):
+    """Install PISAMA hooks to ~/.claude/hooks/."""
+    from .install import install as _install
+    return _install(force=force)
 
-__all__ = ["install", "uninstall", "analyze_session", "PISAMAConfig", "__version__"]
+
+def uninstall():
+    """Remove PISAMA hooks from ~/.claude/hooks/."""
+    from .install import uninstall as _uninstall
+    return _uninstall()
+
+
+__all__ = ["install", "uninstall", "__version__"]
