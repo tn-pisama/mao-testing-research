@@ -60,7 +60,7 @@ def save_config(config: dict):
 
 
 @click.group()
-@click.version_option(version="0.1.3")
+@click.version_option(version="0.2.0")
 def main():
     """PISAMA Claude Code - Trace capture and failure detection."""
     pass
@@ -89,16 +89,27 @@ def uninstall():
 def config(show: bool, mode: Optional[str], threshold: Optional[int], enable: Optional[bool]):
     """View or edit PISAMA configuration."""
     config_data = get_config()
+    is_platform = config_data.get("api_key") is not None
 
     # Apply changes
     changed = False
     if mode is not None:
+        if not is_platform and mode in ("manual", "auto"):
+            click.echo("⚠️  Self-healing modes 'manual' and 'auto' require platform connection")
+            click.echo("   Run: pisama-cc connect --api-key <your-key>")
+            click.echo("   Get your key at: https://app.maotesting.com/settings/api")
+            return
         config_data.setdefault("self_healing", {})["mode"] = mode
         changed = True
     if threshold is not None:
         config_data.setdefault("self_healing", {})["severity_threshold"] = threshold
         changed = True
     if enable is not None:
+        if not is_platform and enable:
+            click.echo("⚠️  Self-healing requires platform connection")
+            click.echo("   Run: pisama-cc connect --api-key <your-key>")
+            click.echo("   Get your key at: https://app.maotesting.com/settings/api")
+            return
         config_data.setdefault("self_healing", {})["enabled"] = enable
         changed = True
 
@@ -111,11 +122,20 @@ def config(show: bool, mode: Optional[str], threshold: Optional[int], enable: Op
         click.echo("📋 PISAMA Configuration")
         click.echo("=" * 40)
         sh = config_data.get("self_healing", {})
-        click.echo(f"   Enabled: {sh.get('enabled', True)}")
-        click.echo(f"   Mode: {sh.get('mode', 'manual')}")
+        enabled = sh.get("enabled", False)
+        mode_val = sh.get("mode", "report")
+        click.echo(f"   Enabled: {enabled}")
+        click.echo(f"   Mode: {mode_val}")
         click.echo(f"   Severity threshold: {sh.get('severity_threshold', 40)}")
-        click.echo(f"   Auto-fix types: {sh.get('auto_fix_types', [])}")
-        click.echo(f"   Blocked fixes: {sh.get('blocked_fixes', [])}")
+
+        # Show platform requirement for self-healing
+        if not is_platform:
+            click.echo("\n   ⚠️  Self-healing requires platform connection")
+            if enabled and mode_val in ("manual", "auto"):
+                click.echo("   Current settings will not take effect until connected")
+        else:
+            click.echo(f"   Auto-fix types: {sh.get('auto_fix_types', [])}")
+            click.echo(f"   Blocked fixes: {sh.get('blocked_fixes', [])}")
 
         mon = config_data.get("monitoring", {})
         click.echo(f"\n   Pattern window: {mon.get('pattern_window', 10)}")
@@ -251,23 +271,47 @@ def sync(last: int, include_outputs: bool, force: bool):
 def analyze(last: int, live: bool, show: bool):
     """Analyze traces for MAST failures."""
     click.echo(f"🔍 Analyzing last {last} traces...")
-    
+
     traces = load_recent_traces(last)
     if not traces:
         click.echo("No traces found")
         return
-    
+
+    # Check if connected to platform
+    config = get_config()
+    is_platform = config.get("api_key") is not None
+
     # Run detection
-    results = run_detection(traces)
-    
+    results = run_detection(traces, is_connected=is_platform)
+
+    # Count issues
+    issues_found = sum(1 for r in results.values() if r["detected"])
+
     # Display results
     click.echo(f"\n📊 Analysis Results ({len(traces)} traces)")
     click.echo("=" * 50)
-    
+
     for detector, result in results.items():
         status = "🟡" if result["detected"] else "✅"
-        click.echo(f"{status} {detector}: {result.get('explanation', 'OK')}")
-    
+        if is_platform and result["detected"]:
+            # Platform: Show full details
+            click.echo(f"{status} {detector}")
+            click.echo(f"   Severity: {result.get('severity', 0)}/100")
+            click.echo(f"   {result.get('explanation', '')}")
+            if result.get("fix"):
+                click.echo(f"   💡 Fix: {result['fix']}")
+        else:
+            # Free tier: Just show detected/OK
+            label = "DETECTED" if result["detected"] else "OK"
+            click.echo(f"{status} {detector}: {label}")
+
+    # Show upgrade prompt for free tier with issues
+    if not is_platform and issues_found > 0:
+        click.echo("\n" + "─" * 50)
+        click.echo("💎 Upgrade to see severity scores, explanations, and fix suggestions")
+        click.echo("   Run: pisama-cc connect --api-key <your-key>")
+        click.echo("   Get your key at: https://app.maotesting.com/settings/api")
+
     if show:
         click.echo("\n📋 Recent Traces:")
         for t in traces[-10:]:
@@ -312,11 +356,17 @@ def status():
     click.echo("\n⚡ Self-Healing:")
     sh = config_data.get("self_healing", {})
     enabled = sh.get("enabled", False)
-    mode = sh.get("mode", "manual")
+    mode = sh.get("mode", "report")
     threshold = sh.get("severity_threshold", 40)
-    click.echo(f"   Enabled: {'✅' if enabled else '❌'} {enabled}")
-    click.echo(f"   Mode: {mode}")
-    click.echo(f"   Threshold: {threshold}")
+    is_platform = config_data.get("api_key") is not None
+
+    if is_platform:
+        click.echo(f"   Enabled: {'✅' if enabled else '❌'} {enabled}")
+        click.echo(f"   Mode: {mode}")
+        click.echo(f"   Threshold: {threshold}")
+    else:
+        click.echo("   ❌ Not available (free tier)")
+        click.echo("   💎 Connect to platform to enable self-healing")
 
     # Check platform connection
     click.echo("\n🔗 Platform Connection:")
@@ -542,34 +592,62 @@ def mark_synced(traces: list):
             }) + "\n")
 
 
-def run_detection(traces: list) -> dict:
-    """Run MAST failure detection on traces."""
+def run_detection(traces: list, is_connected: bool = False) -> dict:
+    """Run MAST failure detection on traces.
+
+    Free tier: Returns detected (bool) only
+    Platform tier: Returns severity, confidence, explanation, fix suggestions
+    """
     results = {}
-    
+    config = get_config()
+    is_platform = is_connected or config.get("api_key") is not None
+
     # F4: Tool Misuse
-    bash_misuse = sum(1 for t in traces 
-        if t.get("tool_name") == "Bash" 
-        and any(x in str(t.get("tool_input", {}).get("command", "")) 
+    bash_misuse = sum(1 for t in traces
+        if t.get("tool_name") == "Bash"
+        and any(x in str(t.get("tool_input", {}).get("command", ""))
                 for x in ["cat ", "head ", "tail "]))
     results["F4_tool_misuse"] = {
         "detected": bash_misuse > 0,
-        "explanation": f"{bash_misuse} bash-for-read issues" if bash_misuse else "OK",
     }
-    
+    if is_platform:
+        results["F4_tool_misuse"].update({
+            "severity": min(bash_misuse * 10, 100) if bash_misuse else 0,
+            "count": bash_misuse,
+            "explanation": f"{bash_misuse} bash-for-read issues detected. Use Read tool instead of cat/head/tail.",
+            "fix": "Replace Bash cat/head/tail with the Read tool for file operations.",
+        })
+
     # F6: Loop
     tool_seq = [t.get("tool_name") for t in traces]
     repeats = sum(1 for i in range(1, len(tool_seq)) if tool_seq[i] == tool_seq[i-1])
     results["F6_loop"] = {
         "detected": repeats > 10,
-        "explanation": f"{repeats} consecutive repeats" if repeats > 10 else "OK",
     }
-    
-    # F15: Grounding (placeholder)
-    results["F15_grounding"] = {"detected": False, "explanation": "OK"}
-    
-    # F16: Retrieval (placeholder)
-    results["F16_retrieval"] = {"detected": False, "explanation": "OK"}
-    
+    if is_platform:
+        results["F6_loop"].update({
+            "severity": min(repeats * 5, 100) if repeats > 10 else 0,
+            "count": repeats,
+            "explanation": f"{repeats} consecutive repeated tool calls detected. Agent may be stuck.",
+            "fix": "Break the loop pattern. Try a different approach or tool.",
+        })
+
+    # F15: Grounding
+    results["F15_grounding"] = {"detected": False}
+    if is_platform:
+        results["F15_grounding"].update({
+            "severity": 0,
+            "explanation": "No grounding issues detected.",
+        })
+
+    # F16: Retrieval
+    results["F16_retrieval"] = {"detected": False}
+    if is_platform:
+        results["F16_retrieval"].update({
+            "severity": 0,
+            "explanation": "No retrieval quality issues detected.",
+        })
+
     return results
 
 

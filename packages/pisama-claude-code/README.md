@@ -24,16 +24,28 @@ pisama-cc analyze --last 100
 
 ## Features
 
-| Feature | Local (Free) | Cloud (Platform) |
-|---------|--------------|------------------|
-| Trace capture | :white_check_mark: | :white_check_mark: |
-| F4-F16 detection | :white_check_mark: | :white_check_mark: |
-| Skill differentiation | :white_check_mark: | :white_check_mark: |
-| Self-healing (loop break) | :white_check_mark: | :white_check_mark: |
-| Export traces | :white_check_mark: | :white_check_mark: |
-| Sync to platform | :x: | :white_check_mark: |
-| Team dashboard | :x: | :white_check_mark: |
-| Cross-session analytics | :x: | :white_check_mark: |
+| Feature | Free (Local) | Platform (Connected) |
+|---------|--------------|----------------------|
+| Trace capture | ✅ | ✅ |
+| Failure detection (detected/ok) | ✅ | ✅ |
+| Severity scores & explanations | ❌ | ✅ |
+| Fix suggestions | ❌ | ✅ |
+| Self-healing | ❌ | ✅ |
+| Export traces | ✅ | ✅ |
+| Sync to platform | ❌ | ✅ |
+| Team dashboard | ❌ | ✅ |
+| Cross-session analytics | ❌ | ✅ |
+
+### Free Tier
+- **Trace capture**: Full local trace storage
+- **Detection**: Boolean results (detected/not detected)
+- **Export**: Export traces to JSONL files
+
+### Platform Tier
+- **Full detection**: Severity scores, explanations, fix suggestions
+- **Self-healing**: Automatic fix injection for common issues
+- **Platform sync**: Upload traces for team collaboration
+- **Dashboard**: Visual analytics and cross-session insights
 
 ## Detection Modes
 
