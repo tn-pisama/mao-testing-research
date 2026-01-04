@@ -56,6 +56,22 @@ from .completion import (
     CompletionSeverity,
     CompletionIssueType,
 )
+from .grounding import (
+    grounding_detector,
+    GroundingDetector,
+    GroundingResult,
+    GroundingSeverity,
+    UngroundedClaim,
+    NumericalError,
+)
+from .retrieval_quality import (
+    retrieval_quality_detector,
+    RetrievalQualityDetector,
+    RetrievalQualityResult,
+    RetrievalSeverity,
+    IrrelevantDocument,
+    CoverageGap,
+)
 
 derailment_detector = TaskDerailmentDetector()
 context_neglect_detector = ContextNeglectDetector()
@@ -158,4 +174,18 @@ __all__ = [
     "CompletionIssue",
     "CompletionSeverity",
     "CompletionIssueType",
+    # MAST F15: Grounding Failure (OfficeQA-inspired)
+    "grounding_detector",
+    "GroundingDetector",
+    "GroundingResult",
+    "GroundingSeverity",
+    "UngroundedClaim",
+    "NumericalError",
+    # MAST F16: Retrieval Quality Failure (OfficeQA-inspired)
+    "retrieval_quality_detector",
+    "RetrievalQualityDetector",
+    "RetrievalQualityResult",
+    "RetrievalSeverity",
+    "IrrelevantDocument",
+    "CoverageGap",
 ]

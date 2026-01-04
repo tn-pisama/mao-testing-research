@@ -534,6 +534,174 @@ CONTEXT_DETECTION_SAMPLES = [
 ]
 
 
+# F15: Grounding Failure - inspired by OfficeQA benchmark showing <45% accuracy on document-grounded tasks
+GROUNDING_DETECTION_SAMPLES = [
+    GoldenDatasetEntry(
+        id="grounding_001",
+        detection_type=DetectionType.GROUNDING,
+        input_data={
+            "agent_output": "According to the Q3 report, revenue was $45.2M with a 15% growth rate.",
+            "source_documents": [
+                "Q3 2024 Financial Summary: Revenue reached $42.5M, representing a 12% year-over-year increase.",
+            ],
+        },
+        expected_detected=True,
+        expected_confidence_min=0.6,
+        expected_confidence_max=0.9,
+        description="Numerical mismatch - wrong revenue and growth figures",
+        tags=["numerical_error", "clear_positive"],
+    ),
+    GoldenDatasetEntry(
+        id="grounding_002",
+        detection_type=DetectionType.GROUNDING,
+        input_data={
+            "agent_output": "The company's Q3 revenue was $42.5M, showing 12% growth compared to last year.",
+            "source_documents": [
+                "Q3 2024 Financial Summary: Revenue reached $42.5M, representing a 12% year-over-year increase.",
+            ],
+        },
+        expected_detected=False,
+        expected_confidence_min=0.0,
+        expected_confidence_max=0.3,
+        description="Correctly grounded - matches source exactly",
+        tags=["grounded", "clear_negative"],
+    ),
+    GoldenDatasetEntry(
+        id="grounding_003",
+        detection_type=DetectionType.GROUNDING,
+        input_data={
+            "agent_output": "CEO Jane Williams announced in her 2024 keynote that the company plans to expand to 50 new markets.",
+            "source_documents": [
+                "CEO John Smith presented the Q3 results. The company operates in 25 markets.",
+            ],
+        },
+        expected_detected=True,
+        expected_confidence_min=0.7,
+        expected_confidence_max=0.95,
+        description="Fabricated CEO name and expansion plans not in source",
+        tags=["fabricated", "entity_error", "clear_positive"],
+    ),
+    GoldenDatasetEntry(
+        id="grounding_004",
+        detection_type=DetectionType.GROUNDING,
+        input_data={
+            "agent_output": "The document states that Project Alpha has a budget of $2.5M and deadline of March 2025.",
+            "source_documents": [
+                "Project Alpha Budget: $2.5 million allocated. Timeline: Project completion expected by end of Q1 2025.",
+            ],
+        },
+        expected_detected=False,
+        expected_confidence_min=0.0,
+        expected_confidence_max=0.3,
+        description="Correct paraphrasing of source content",
+        tags=["grounded", "paraphrase", "clear_negative"],
+    ),
+    GoldenDatasetEntry(
+        id="grounding_005",
+        detection_type=DetectionType.GROUNDING,
+        input_data={
+            "agent_output": "According to a 2023 Stanford study cited in the report, AI adoption increased by 78%.",
+            "source_documents": [
+                "Industry trends show growing AI adoption rates. Companies are investing more in automation.",
+            ],
+        },
+        expected_detected=True,
+        expected_confidence_min=0.6,
+        expected_confidence_max=0.9,
+        description="Fabricated citation - study not mentioned in source",
+        tags=["fabricated_citation", "clear_positive"],
+    ),
+]
+
+# F16: Retrieval Quality Failure - inspired by OfficeQA showing retrieval is the bottleneck
+RETRIEVAL_QUALITY_DETECTION_SAMPLES = [
+    GoldenDatasetEntry(
+        id="retrieval_001",
+        detection_type=DetectionType.RETRIEVAL_QUALITY,
+        input_data={
+            "query": "What was the Q3 2024 revenue for Acme Corp?",
+            "retrieved_documents": [
+                "Acme Corp History: Founded in 1985 by John Smith in Silicon Valley...",
+                "Acme Corp HR Policies: Employee benefits include health insurance...",
+            ],
+            "agent_output": "I couldn't find specific Q3 2024 revenue data for Acme Corp.",
+        },
+        expected_detected=True,
+        expected_confidence_min=0.7,
+        expected_confidence_max=0.95,
+        description="Completely irrelevant documents retrieved for financial query",
+        tags=["irrelevant_retrieval", "clear_positive"],
+    ),
+    GoldenDatasetEntry(
+        id="retrieval_002",
+        detection_type=DetectionType.RETRIEVAL_QUALITY,
+        input_data={
+            "query": "What was the Q3 2024 revenue for Acme Corp?",
+            "retrieved_documents": [
+                "Acme Corp Q3 2024 Financial Report: Revenue reached $42.5M in Q3 2024...",
+                "Acme Corp Q3 2024 Earnings Call: CEO discussed strong quarterly performance...",
+            ],
+            "agent_output": "Acme Corp's Q3 2024 revenue was $42.5M according to their financial report.",
+        },
+        expected_detected=False,
+        expected_confidence_min=0.0,
+        expected_confidence_max=0.3,
+        description="Highly relevant documents retrieved for the query",
+        tags=["relevant_retrieval", "clear_negative"],
+    ),
+    GoldenDatasetEntry(
+        id="retrieval_003",
+        detection_type=DetectionType.RETRIEVAL_QUALITY,
+        input_data={
+            "query": "Compare Acme's 2024 and 2023 performance",
+            "retrieved_documents": [
+                "Acme Corp 2024 Annual Report: Full year revenue was $180M...",
+            ],
+            "agent_output": "Based on the 2024 report, Acme had revenue of $180M, but I couldn't find 2023 data to compare.",
+        },
+        expected_detected=True,
+        expected_confidence_min=0.5,
+        expected_confidence_max=0.8,
+        description="Missing coverage - only 2024 data retrieved, no 2023",
+        tags=["coverage_gap", "clear_positive"],
+    ),
+    GoldenDatasetEntry(
+        id="retrieval_004",
+        detection_type=DetectionType.RETRIEVAL_QUALITY,
+        input_data={
+            "query": "What are Acme's product features?",
+            "retrieved_documents": [
+                "Acme Product Catalog 2024: Features include AI-powered analytics, real-time dashboards...",
+                "Acme Product Documentation: The platform supports integrations with major tools...",
+                "Acme Feature Comparison: Premium tier includes advanced reporting capabilities...",
+            ],
+            "agent_output": "Acme offers AI-powered analytics, real-time dashboards, tool integrations, and advanced reporting in premium tier.",
+        },
+        expected_detected=False,
+        expected_confidence_min=0.0,
+        expected_confidence_max=0.2,
+        description="Good retrieval coverage with multiple relevant documents",
+        tags=["comprehensive_retrieval", "clear_negative"],
+    ),
+    GoldenDatasetEntry(
+        id="retrieval_005",
+        detection_type=DetectionType.RETRIEVAL_QUALITY,
+        input_data={
+            "query": "What were Acme's Q4 2024 results?",
+            "retrieved_documents": [
+                "Acme Corp Q4 2019 Results: Revenue was $25M with 5% growth...",
+                "Acme Corp Q4 2020 Results: Revenue was $30M with 20% growth...",
+            ],
+            "agent_output": "The retrieved documents only contain data from 2019-2020, not Q4 2024.",
+        },
+        expected_detected=True,
+        expected_confidence_min=0.7,
+        expected_confidence_max=0.95,
+        description="Wrong time period - query asks for 2024 but retrieved 2019-2020",
+        tags=["temporal_mismatch", "clear_positive"],
+    ),
+]
+
 COMMUNICATION_DETECTION_SAMPLES = [
     GoldenDatasetEntry(
         id="communication_001",
@@ -632,6 +800,12 @@ def create_default_golden_dataset() -> GoldenDataset:
         dataset.add_entry(sample)
 
     for sample in CONTEXT_DETECTION_SAMPLES:
+        dataset.add_entry(sample)
+
+    for sample in GROUNDING_DETECTION_SAMPLES:
+        dataset.add_entry(sample)
+
+    for sample in RETRIEVAL_QUALITY_DETECTION_SAMPLES:
         dataset.add_entry(sample)
 
     return dataset

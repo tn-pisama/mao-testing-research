@@ -23,6 +23,8 @@ from app.detection.withholding import InformationWithholdingDetector
 from app.detection.derailment import TaskDerailmentDetector
 from app.detection.completion import CompletionMisjudgmentDetector
 from app.detection.tool_provision import ToolProvisionDetector
+from app.detection.grounding import GroundingDetector, GroundingSeverity
+from app.detection.retrieval_quality import RetrievalQualityDetector, RetrievalSeverity
 
 
 settings = get_settings()
@@ -40,6 +42,8 @@ class DetectionCategory(str, Enum):
     TASK_DERAILMENT = "task_derailment"
     COMPLETION_MISJUDGMENT = "completion_misjudgment"
     TOOL_PROVISION = "tool_provision"
+    GROUNDING_FAILURE = "grounding_failure"  # F15: OfficeQA-inspired
+    RETRIEVAL_QUALITY = "retrieval_quality"  # F16: OfficeQA-inspired
     UNKNOWN = "unknown"
 
 
@@ -161,6 +165,8 @@ class DetectionOrchestrator:
         self._derailment_detector: Optional[TaskDerailmentDetector] = None
         self._completion_detector: Optional[CompletionMisjudgmentDetector] = None
         self._tool_provision_detector: Optional[ToolProvisionDetector] = None
+        self._grounding_detector: Optional[GroundingDetector] = None
+        self._retrieval_quality_detector: Optional[RetrievalQualityDetector] = None
 
     @property
     def loop_detector(self) -> MultiLevelLoopDetector:
@@ -173,6 +179,18 @@ class DetectionOrchestrator:
         if self._overflow_detector is None:
             self._overflow_detector = ContextOverflowDetector()
         return self._overflow_detector
+
+    @property
+    def grounding_detector(self) -> GroundingDetector:
+        if self._grounding_detector is None:
+            self._grounding_detector = GroundingDetector()
+        return self._grounding_detector
+
+    @property
+    def retrieval_quality_detector(self) -> RetrievalQualityDetector:
+        if self._retrieval_quality_detector is None:
+            self._retrieval_quality_detector = RetrievalQualityDetector()
+        return self._retrieval_quality_detector
 
     def analyze_trace(self, trace: UniversalTrace) -> DiagnosisResult:
         """Run comprehensive detection on a trace.
@@ -222,6 +240,18 @@ class DetectionOrchestrator:
         all_detections.extend(error_results)
         if error_results:
             result.detectors_run.append("error_patterns")
+
+        # Run grounding failure detection (F15: OfficeQA-inspired)
+        grounding_result = self._detect_grounding_failure(trace)
+        if grounding_result:
+            all_detections.append(grounding_result)
+            result.detectors_run.append("grounding")
+
+        # Run retrieval quality detection (F16: OfficeQA-inspired)
+        retrieval_result = self._detect_retrieval_quality(trace)
+        if retrieval_result:
+            all_detections.append(retrieval_result)
+            result.detectors_run.append("retrieval_quality")
 
         # Filter to only detected issues
         detected_issues = [d for d in all_detections if d.detected]
@@ -436,6 +466,138 @@ class DetectionOrchestrator:
 
         return results
 
+    def _detect_grounding_failure(self, trace: UniversalTrace) -> Optional[DetectionResult]:
+        """Detect F15: Grounding Failure - output not supported by sources.
+
+        Inspired by OfficeQA benchmark showing agents achieve <45% accuracy on
+        document-grounded tasks due to extracting wrong values, misattributing data,
+        and hallucinating numbers not present in sources.
+        """
+        # Extract agent output and source documents from trace
+        agent_output = ""
+        source_documents = []
+
+        for span in trace.spans:
+            # Collect LLM outputs
+            if span.type == SpanType.LLM and span.output:
+                agent_output += span.output + "\n"
+
+            # Collect tool outputs as potential sources
+            if span.type == SpanType.TOOL and span.output:
+                source_documents.append(span.output)
+
+            # Collect retrieval results
+            if span.type == SpanType.RETRIEVAL and span.output:
+                source_documents.append(span.output)
+
+        # Need both output and sources to check grounding
+        if not agent_output or not source_documents:
+            return None
+
+        try:
+            result = self.grounding_detector.detect(
+                agent_output=agent_output,
+                source_documents=source_documents,
+            )
+
+            if result.detected:
+                # Map severity
+                severity_map = {
+                    GroundingSeverity.CRITICAL: Severity.CRITICAL,
+                    GroundingSeverity.SEVERE: Severity.HIGH,
+                    GroundingSeverity.MODERATE: Severity.MEDIUM,
+                    GroundingSeverity.MINOR: Severity.LOW,
+                    GroundingSeverity.NONE: Severity.INFO,
+                }
+
+                return DetectionResult(
+                    category=DetectionCategory.GROUNDING_FAILURE,
+                    detected=True,
+                    confidence=result.confidence,
+                    severity=severity_map.get(result.severity, Severity.MEDIUM),
+                    title="Grounding Failure Detected",
+                    description=result.explanation,
+                    evidence=[{
+                        "grounding_score": result.grounding_score,
+                        "citation_accuracy": result.citation_accuracy,
+                        "ungrounded_claims": len(result.ungrounded_claims),
+                        "numerical_errors": len(result.numerical_errors),
+                    }],
+                    suggested_fix=result.suggested_fix,
+                    raw_result=result,
+                )
+        except Exception as e:
+            pass
+
+        return None
+
+    def _detect_retrieval_quality(self, trace: UniversalTrace) -> Optional[DetectionResult]:
+        """Detect F16: Retrieval Quality Failure - wrong/insufficient documents retrieved.
+
+        Inspired by OfficeQA benchmark showing humans need 50 min/question to find
+        data 'buried across decades' - retrieval is the bottleneck.
+        """
+        # Extract query and retrieved documents from trace
+        query = ""
+        retrieved_documents = []
+        agent_output = ""
+
+        for span in trace.spans:
+            # Find the original query (usually first LLM input or user message)
+            if span.type == SpanType.LLM and span.input and not query:
+                query = span.input
+
+            # Collect retrieval results
+            if span.type == SpanType.RETRIEVAL and span.output:
+                retrieved_documents.append(span.output)
+
+            # Collect LLM outputs
+            if span.type == SpanType.LLM and span.output:
+                agent_output += span.output + "\n"
+
+        # Need query and retrieval to check quality
+        if not query or not retrieved_documents:
+            return None
+
+        try:
+            result = self.retrieval_quality_detector.detect(
+                query=query,
+                retrieved_documents=retrieved_documents,
+                agent_output=agent_output,
+            )
+
+            if result.detected:
+                # Map severity
+                severity_map = {
+                    RetrievalSeverity.CRITICAL: Severity.CRITICAL,
+                    RetrievalSeverity.SEVERE: Severity.HIGH,
+                    RetrievalSeverity.MODERATE: Severity.MEDIUM,
+                    RetrievalSeverity.MINOR: Severity.LOW,
+                    RetrievalSeverity.NONE: Severity.INFO,
+                }
+
+                return DetectionResult(
+                    category=DetectionCategory.RETRIEVAL_QUALITY,
+                    detected=True,
+                    confidence=result.confidence,
+                    severity=severity_map.get(result.severity, Severity.MEDIUM),
+                    title="Retrieval Quality Issue Detected",
+                    description=result.explanation,
+                    evidence=[{
+                        "relevance_score": result.relevance_score,
+                        "coverage_score": result.coverage_score,
+                        "precision": result.precision,
+                        "irrelevant_docs": len(result.irrelevant_docs),
+                        "missing_signals": len(result.missing_signals),
+                    }],
+                    suggested_fix=result.suggested_fix,
+                    raw_result=result,
+                )
+        except Exception as e:
+            pass
+
+        return None
+
     def _generate_explanation(self, primary: DetectionResult, trace: UniversalTrace) -> str:
         """Generate a human-readable root cause explanation.
 
@@ -461,6 +623,18 @@ class DetectionOrchestrator:
                 f"Agent state became corrupted during execution. {primary.description} "
                 "This can occur when data is improperly serialized, parsed, or when "
                 "there are concurrent modifications to shared state."
+            ),
+            DetectionCategory.GROUNDING_FAILURE: (
+                f"Agent output contains information not properly grounded in source documents. "
+                f"{primary.description} This is a common issue identified in document-grounded tasks, "
+                "where agents extract wrong values from tables, misattribute data to wrong columns, "
+                "or hallucinate numbers not present in sources."
+            ),
+            DetectionCategory.RETRIEVAL_QUALITY: (
+                f"Agent retrieved wrong, irrelevant, or insufficient documents for the task. "
+                f"{primary.description} Poor retrieval quality is often the bottleneck in RAG systems, "
+                "leading to incomplete or incorrect reasoning when relevant documents are missed "
+                "or irrelevant documents dilute the context."
             ),
         }
 
