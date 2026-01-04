@@ -23,10 +23,10 @@ class TestDetectionConfig:
         config = DetectionConfig(
             enabled=True,
             severity_threshold=50,
-            disabled_detectors=["cost"],
+            enabled_detectors=["loop", "hallucination"],
         )
         assert config.severity_threshold == 50
-        assert "cost" in config.disabled_detectors
+        assert "loop" in config.enabled_detectors
 
 
 class TestHealingConfig:
@@ -43,8 +43,8 @@ class TestHealingConfig:
         config = HealingConfig(
             enabled=True,
             mode="auto",
-            auto_fix_types=["break_loop", "add_delay"],
-            blocked_fixes=["terminate"],
+            auto_fix_types=["break_loop", "switch_strategy"],
+            blocked_fix_types=["terminate"],
             max_auto_fixes=5,
         )
         assert config.mode == "auto"

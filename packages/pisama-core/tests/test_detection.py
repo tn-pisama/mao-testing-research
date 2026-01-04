@@ -240,14 +240,17 @@ class TestDetectorRegistry:
         assert registry.count == 1
         assert registry.get("simple_test") is detector
 
-    def test_register_duplicate_raises(self):
-        """Test that duplicate registration raises."""
+    def test_register_duplicate_overwrites(self):
+        """Test that duplicate registration overwrites."""
         registry = DetectorRegistry()
         detector = SimpleTestDetector()
         registry.register(detector)
 
-        with pytest.raises(ValueError):
-            registry.register(detector)
+        # Registering again should overwrite, not raise
+        detector2 = SimpleTestDetector()
+        registry.register(detector2)
+        assert registry.count == 1
+        assert registry.get("simple_test") is detector2
 
     def test_get_for_platform(self):
         """Test getting detectors for platform."""

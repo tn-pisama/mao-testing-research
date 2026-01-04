@@ -152,14 +152,16 @@ class Guardian:
 
         # Build trace from recent spans
         recent_spans = self.adapter.get_recent_spans(self.config.pattern_window)
+        # Include current span in the trace if not already present
+        all_spans = recent_spans if span in recent_spans else [span] + recent_spans
         trace = Trace(
             trace_id=span.trace_id or session_id,
-            root_span=span,
-            spans=recent_spans,
+            spans=all_spans,
         )
 
         # Run detection
-        detection_results = await self.detector_orchestrator.detect_all(trace)
+        analysis = await self.detector_orchestrator.analyze(trace)
+        detection_results = analysis.detection_results
 
         # Calculate severity
         if detection_results:

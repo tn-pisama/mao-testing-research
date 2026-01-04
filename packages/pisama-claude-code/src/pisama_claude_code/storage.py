@@ -135,7 +135,7 @@ class TraceStorage:
             "attributes": span.attributes,
             "input_data": span.input_data,
             "output_data": span.output_data,
-            "error": span.error,
+            "error": span.error_message,
             "raw": raw_data,
         }
 
@@ -178,7 +178,7 @@ class TraceStorage:
                 json.dumps(span.output_data) if span.output_data else None,
                 json.dumps(span.attributes),
                 duration_ms,
-                span.error,
+                span.error_message,
                 working_dir,
             ))
             conn.commit()
