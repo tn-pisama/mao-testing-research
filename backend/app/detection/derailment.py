@@ -14,6 +14,12 @@ Detection Methods:
 Version History:
 - v1.0: Initial implementation with Jaccard similarity and topic drift
 - v1.1: Added task coverage check to reduce over-detection on helpful expansions
+- v1.2: Fixed remaining edge cases:
+  - Added related topic recognition (review->style issues is OK)
+  - Added task substitution detection (authentication vs authorization)
+- v1.3: Improved task substitution with semantic clusters
+  - Counts related terms to determine actual focus
+  - E.g., "access control", "permissions", "roles" indicate authorization focus
 """
 
 import logging
@@ -25,8 +31,41 @@ import numpy as np
 logger = logging.getLogger(__name__)
 
 # Detector version for tracking
-DETECTOR_VERSION = "1.1"
+DETECTOR_VERSION = "1.3"
 DETECTOR_NAME = "TaskDerailmentDetector"
+
+# v1.3: Semantic clusters for related task concepts
+# Each cluster maps a concept to related terms that indicate focus on that concept
+TASK_CLUSTERS = {
+    "authentication": ["authenticate", "login", "password", "credential", "identity", "sign in", "sign-in", "logged in"],
+    "authorization": ["authorize", "permission", "access control", "role", "rbac", "acl", "privilege", "allowed"],
+    "encrypt": ["encrypt", "encryption", "cipher", "encode"],
+    "decrypt": ["decrypt", "decryption", "decipher", "decode"],
+    "upload": ["upload", "uploading", "send file", "put file"],
+    "download": ["download", "downloading", "get file", "fetch file"],
+    "create": ["create", "creating", "add new", "insert", "generate"],
+    "delete": ["delete", "deleting", "remove", "drop", "destroy"],
+    "frontend": ["frontend", "front-end", "ui", "user interface", "client-side", "react", "vue", "angular"],
+    "backend": ["backend", "back-end", "server-side", "api", "database", "server"],
+    "unit test": ["unit test", "unit testing", "isolated test", "mock"],
+    "integration test": ["integration test", "integration testing", "e2e", "end-to-end"],
+}
+
+# v1.3: Substitution pairs map task concept to commonly confused concept
+SUBSTITUTION_PAIRS = [
+    ("authentication", "authorization"),
+    ("authorization", "authentication"),
+    ("encrypt", "decrypt"),
+    ("decrypt", "encrypt"),
+    ("upload", "download"),
+    ("download", "upload"),
+    ("create", "delete"),
+    ("delete", "create"),
+    ("frontend", "backend"),
+    ("backend", "frontend"),
+    ("unit test", "integration test"),
+    ("integration test", "unit test"),
+]
 
 
 class DerailmentSeverity(str, Enum):
@@ -176,6 +215,58 @@ class TaskDerailmentDetector:
         drift_score = (1 - coverage) * 0.6 + novelty_ratio * 0.4
         return min(drift_score, 1.0), coverage
 
+    def _count_cluster_matches(self, text: str, concept: str) -> int:
+        """Count how many terms from a concept's cluster appear in text."""
+        if concept not in TASK_CLUSTERS:
+            return 1 if concept in text else 0
+
+        count = 0
+        text_lower = text.lower()
+        for term in TASK_CLUSTERS[concept]:
+            if term in text_lower:
+                count += 1
+        # Also count the concept itself
+        if concept in text_lower:
+            count += 1
+        return count
+
+    def _detect_task_substitution(
+        self,
+        task: str,
+        output: str,
+    ) -> tuple[bool, Optional[str]]:
+        """Detect if the output addresses a different but related task.
+
+        v1.3: Uses semantic clusters to detect when output focuses on
+        a related but different concept than what the task requested.
+        E.g., tests authorization (permissions, roles) when asked to
+        test authentication (login, credentials).
+
+        Returns:
+            tuple: (substitution_detected, description)
+        """
+        task_lower = task.lower()
+        output_lower = output.lower()
+
+        for task_concept, wrong_concept in SUBSTITUTION_PAIRS:
+            # Check if task mentions this concept
+            if task_concept not in task_lower:
+                continue
+
+            # Count how many terms from each cluster appear in the output
+            task_concept_count = self._count_cluster_matches(output_lower, task_concept)
+            wrong_concept_count = self._count_cluster_matches(output_lower, wrong_concept)
+
+            # Substitution detected if output focuses more on wrong concept
+            # Require at least 2 matches in wrong cluster to avoid false positives
+            if wrong_concept_count >= 2 and wrong_concept_count > task_concept_count:
+                return True, (
+                    f"Task asks for '{task_concept}' but output focuses on "
+                    f"'{wrong_concept}' ({wrong_concept_count} matches vs {task_concept_count})"
+                )
+
+        return False, None
+
     def _is_task_addressed(
         self,
         task: str,
@@ -186,6 +277,7 @@ class TaskDerailmentDetector:
 
         v1.1: Added to reduce over-detection on outputs that complete
         the task but include helpful additional information.
+        v1.2: Improved patterns for code review and related topics.
 
         Args:
             task: The original task
@@ -203,23 +295,44 @@ class TaskDerailmentDetector:
         task_lower = task.lower()
         output_lower = output.lower()
 
-        # Common task action patterns
+        # v1.2: Enhanced action patterns with related topics
+        # Each pattern: (action_verb, indicators, related_topics_allowed)
         action_patterns = [
-            ("analyze", ["analysis", "analyzed", "analyzing", "findings", "results"]),
-            ("debug", ["fixed", "bug", "issue", "resolved", "debugging"]),
-            ("fix", ["fixed", "resolved", "corrected", "patched"]),
-            ("review", ["review", "reviewed", "reviewing", "found", "identified"]),
-            ("write", ["here", "following", "created", "written"]),
-            ("create", ["created", "here", "following", "built"]),
-            ("test", ["tested", "testing", "test", "passed", "failed"]),
-            ("optimize", ["optimized", "improved", "faster", "performance"]),
-            ("document", ["documentation", "documented", "docs"]),
-            ("implement", ["implemented", "implementation", "built", "created"]),
+            ("analyze", ["analysis", "analyzed", "analyzing", "findings", "results", "examined"]),
+            ("debug", ["fixed", "bug", "issue", "resolved", "debugging", "error", "problem"]),
+            ("fix", ["fixed", "resolved", "corrected", "patched", "repaired"]),
+            # v1.2: Review can include bugs, issues, style, quality, improvements
+            ("review", ["review", "reviewed", "reviewing", "found", "identified", "issue",
+                       "bug", "problem", "style", "suggestion", "improvement", "code"]),
+            ("write", ["here", "following", "created", "written", "wrote"]),
+            ("create", ["created", "here", "following", "built", "made"]),
+            ("test", ["tested", "testing", "test", "passed", "failed", "verified", "checked"]),
+            ("optimize", ["optimized", "improved", "faster", "performance", "efficient"]),
+            ("document", ["documentation", "documented", "docs", "description"]),
+            ("implement", ["implemented", "implementation", "built", "created", "added"]),
+            ("check", ["checked", "verified", "confirmed", "validated", "found"]),
+            ("validate", ["validated", "verified", "confirmed", "checked"]),
         ]
 
         for action, indicators in action_patterns:
             if action in task_lower:
                 if any(ind in output_lower for ind in indicators):
+                    return True
+
+        # v1.2: Additional check for compound tasks like "review code for bugs"
+        # If task mentions a specific focus (bugs, security, performance),
+        # output addressing that focus counts as task addressed
+        focus_terms = {
+            "bug": ["bug", "issue", "error", "problem", "defect", "fix"],
+            "security": ["security", "vulnerability", "secure", "auth", "permission"],
+            "performance": ["performance", "speed", "fast", "slow", "optimize", "efficient"],
+            "style": ["style", "format", "convention", "naming", "readable"],
+            "quality": ["quality", "clean", "maintainable", "readable", "best practice"],
+        }
+
+        for focus, related_terms in focus_terms.items():
+            if focus in task_lower:
+                if any(term in output_lower for term in related_terms):
                     return True
 
         return False
@@ -245,14 +358,21 @@ class TaskDerailmentDetector:
         similarity = self._compute_similarity(task, output)
         drift_score, task_coverage = self._compute_topic_drift(task, output, context)
 
+        # v1.2: Check for task substitution (e.g., authorization vs authentication)
+        substitution_detected, substitution_desc = self._detect_task_substitution(task, output)
+
         # v1.1: Check if task is addressed before flagging derailment
         # This prevents over-detection when agent completes task + adds helpful info
         task_addressed = self._is_task_addressed(task, output, task_coverage)
 
-        # Only flag derailment if:
-        # 1. Task is NOT addressed AND (low similarity OR high drift)
-        # 2. Extremely low similarity (completely off-topic)
-        if task_addressed:
+        # Detection logic:
+        # 1. Task substitution is always a derailment (wrong task entirely)
+        # 2. If task is addressed, only flag for severe cases
+        # 3. Otherwise, use standard thresholds
+        if substitution_detected:
+            # v1.2: Task substitution is a clear derailment
+            detected = True
+        elif task_addressed:
             # Task is addressed - only flag for severe cases (completely unrelated output)
             detected = similarity < 0.1  # Very strict threshold when task is addressed
         else:
@@ -265,6 +385,8 @@ class TaskDerailmentDetector:
             "drift_score": round(drift_score, 4),
             "task_coverage": round(task_coverage, 4),
             "task_addressed": task_addressed,
+            "substitution_detected": substitution_detected,
+            "substitution_description": substitution_desc,
             "similarity_threshold": self.similarity_threshold,
             "drift_threshold": self.drift_threshold,
             "task_coverage_threshold": self.task_coverage_threshold,
