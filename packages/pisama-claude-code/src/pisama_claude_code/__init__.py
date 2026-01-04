@@ -1,21 +1,9 @@
-"""PISAMA Claude Code Adapter.
+"""PISAMA Claude Code Integration - Trace capture, failure detection, and self-healing."""
 
-This package provides Claude Code integration for the PISAMA agent forensics platform.
-It implements the PlatformAdapter interface for:
-- Trace capture from Claude Code hooks
-- Real-time detection during tool calls
-- Fix injection via stderr and MCP
-- Enforcement and blocking
-"""
+__version__ = "0.1.0"
 
-from pisama_claude_code.adapter import ClaudeCodeAdapter
-from pisama_claude_code.trace_converter import TraceConverter
-from pisama_claude_code.storage import TraceStorage
+from .installer import install, uninstall
+from .analyzer import analyze_session
+from .config import PISAMAConfig
 
-__all__ = [
-    "ClaudeCodeAdapter",
-    "TraceConverter",
-    "TraceStorage",
-]
-
-__version__ = "1.0.0"
+__all__ = ["install", "uninstall", "analyze_session", "PISAMAConfig", "__version__"]

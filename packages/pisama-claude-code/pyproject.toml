@@ -4,35 +4,37 @@ build-backend = "hatchling.build"
 
 [project]
 name = "pisama-claude-code"
-version = "1.0.0"
-description = "Claude Code adapter for PISAMA agent forensics"
+version = "0.1.0"
+description = "PISAMA integration for Claude Code - trace capture, failure detection, and self-healing"
 readme = "README.md"
-requires-python = ">=3.10"
 license = "MIT"
+requires-python = ">=3.10"
 authors = [
-    { name = "PISAMA Team" }
+    { name = "MAO Testing", email = "hello@maotesting.com" }
 ]
-keywords = ["pisama", "claude-code", "agent-forensics", "self-healing"]
+keywords = ["claude", "claude-code", "mao", "testing", "llm", "agent", "observability"]
 classifiers = [
     "Development Status :: 4 - Beta",
     "Intended Audience :: Developers",
-    "Programming Language :: Python :: 3.10",
-    "Programming Language :: Python :: 3.11",
-    "Programming Language :: Python :: 3.12",
+    "Programming Language :: Python :: 3",
 ]
+
 dependencies = [
-    "pisama-core>=1.0.0",
+    "click>=8.0.0",
+    "rich>=13.0.0",
+    "pydantic>=2.0.0",
+    "httpx>=0.25.0",
 ]
 
 [project.optional-dependencies]
-dev = [
-    "pytest>=7.0",
-    "pytest-asyncio>=0.21",
-]
+cloud = ["pisama-core>=0.1.0"]
+dev = ["pytest>=7.0.0"]
+
+[project.scripts]
+pisama-cc = "pisama_claude_code.cli:main"
+
+[project.urls]
+Homepage = "https://github.com/tn-pisama/mao-testing-research"
 
 [tool.hatch.build.targets.wheel]
 packages = ["src/pisama_claude_code"]
-
-[tool.pytest.ini_options]
-asyncio_mode = "auto"
-testpaths = ["tests"]
