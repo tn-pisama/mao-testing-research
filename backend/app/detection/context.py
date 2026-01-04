@@ -7,6 +7,13 @@ provided by previous agents or steps in the workflow.
 
 This is a critical failure mode in multi-agent systems where
 information is passed between agents via handoffs.
+
+Version History:
+- v1.0: Initial implementation with keyword element matching
+- v1.1: Reduced over-detection on legitimate adaptations
+  - Added task completion check (if task addressed, be lenient)
+  - Added adaptation recognition (reformats, methodology changes, rewrites)
+  - Added conceptual overlap scoring for semantic matching
 """
 
 import logging
@@ -16,6 +23,37 @@ from typing import Optional
 import re
 
 logger = logging.getLogger(__name__)
+
+# Detector version for tracking
+DETECTOR_VERSION = "1.1"
+DETECTOR_NAME = "ContextNeglectDetector"
+
+# Phrases that indicate the output is building on/referencing prior context
+CONTEXT_REFERENCE_PHRASES = [
+    "based on", "building on", "as discussed", "as mentioned",
+    "from the previous", "from earlier", "continuing from",
+    "following up on", "as per", "according to",
+    "incorporating", "using the", "reviewing the",
+    "analyzed the", "examined the", "looked at the",
+    "the existing", "the current", "the original",
+    # v1.1: Additional patterns
+    "our previous", "the previous", "previous analysis",
+    "previous research", "previous work", "prior work",
+    "reflecting on", "building upon", "extending",
+    "referenced", "referring to", "as noted",
+]
+
+# Phrases that indicate legitimate adaptation of context
+ADAPTATION_PHRASES = [
+    "reformatted", "restructured", "reorganized", "updated format",
+    "different approach", "alternative method", "new methodology",
+    "refactored", "rewritten", "rewrote", "reimplemented",
+    "improved", "enhanced", "optimized", "streamlined",
+    "modernized", "simplified", "clarified",
+    # v1.1: Additional patterns
+    "pivot", "pivoting", "adjusted", "modified approach",
+    "adapted", "evolved", "iterated",
+]
 
 
 class NeglectSeverity(str, Enum):
@@ -34,6 +72,9 @@ class ContextNeglectResult:
     missing_elements: list[str]
     explanation: str
     suggested_fix: Optional[str] = None
+    context_referenced: bool = False  # v1.1: Output explicitly references context
+    adaptation_detected: bool = False  # v1.1: Output adapts rather than ignores
+    version: str = DETECTOR_VERSION
 
 
 class ContextNeglectDetector:
@@ -129,8 +170,66 @@ class ContextNeglectDetector:
         
         if total_weight == 0:
             return 1.0, []
-        
+
         return utilized_weight / total_weight, missing[:10]
+
+    def _check_context_reference(self, output: str) -> bool:
+        """v1.1: Check if output explicitly references prior context."""
+        output_lower = output.lower()
+        for phrase in CONTEXT_REFERENCE_PHRASES:
+            if phrase in output_lower:
+                return True
+        return False
+
+    def _check_adaptation(self, output: str) -> bool:
+        """v1.1: Check if output indicates legitimate adaptation of context."""
+        output_lower = output.lower()
+        for phrase in ADAPTATION_PHRASES:
+            if phrase in output_lower:
+                return True
+        return False
+
+    def _is_task_addressed(self, task: str, output: str) -> bool:
+        """v1.1: Check if output addresses the core task request.
+
+        If the task is addressed, we should be more lenient about
+        exact context element matching.
+        """
+        if not task:
+            return False
+
+        task_lower = task.lower()
+        output_lower = output.lower()
+
+        # Extract key action from task
+        action_patterns = [
+            ("update", ["updated", "updating", "incorporated", "added new"]),
+            ("continue", ["continued", "continuing", "building on", "following up"]),
+            ("improve", ["improved", "improving", "enhanced", "optimized"]),
+            ("fix", ["fixed", "fixing", "resolved", "corrected", "patched"]),
+            ("analyze", ["analyzed", "analysis", "examined", "reviewed"]),
+            ("report", ["reported", "report", "findings", "documented"]),
+            ("review", ["reviewed", "review", "examined", "checked"]),
+            ("document", ["documented", "documentation", "docs"]),
+        ]
+
+        for action, indicators in action_patterns:
+            if action in task_lower:
+                if any(ind in output_lower for ind in indicators):
+                    return True
+
+        # Check if core task nouns appear in output
+        task_words = set(task_lower.split())
+        output_words = set(output_lower.split())
+        stopwords = {"the", "a", "an", "to", "for", "with", "from", "and", "or", "in", "on"}
+        task_keywords = {w for w in task_words if len(w) > 3 and w not in stopwords}
+
+        if task_keywords:
+            overlap = task_keywords & output_words
+            if len(overlap) >= len(task_keywords) * 0.5:
+                return True
+
+        return False
 
     def detect(
         self,
@@ -151,23 +250,59 @@ class ContextNeglectDetector:
 
         context_elements = self._extract_key_elements(context)
         output_elements = self._extract_key_elements(output)
-        
+
         utilization, missing = self._compute_utilization(
             context_elements, output_elements
         )
-        
-        detected = utilization < self.utilization_threshold
-        
+
+        # v1.1: Check for context references and adaptations
+        context_referenced = self._check_context_reference(output)
+        adaptation_detected = self._check_adaptation(output)
+        task_addressed = self._is_task_addressed(task, output) if task else False
+
+        # v1.1: Improved detection logic
+        # Key insight: explicit context reference shows awareness,
+        # but task completion alone doesn't prove context use.
+        #
+        # 1. If utilization is good, no neglect
+        if utilization >= self.utilization_threshold:
+            detected = False
+        # 2. If output explicitly references prior context → OK
+        #    (explicit reference like "our previous", "reflecting on" shows awareness)
+        elif context_referenced:
+            detected = False
+        # 3. If output shows adaptation AND addresses task → OK
+        #    (legitimate methodology change while doing the task)
+        elif adaptation_detected and task_addressed:
+            detected = False
+        # 4. If task is addressed AND utilization is reasonable (>15%) → OK
+        elif task_addressed and utilization >= 0.15:
+            detected = False
+        # 5. Otherwise, context neglect detected
+        else:
+            detected = True
+
         if not detected:
+            explanation = "Agent properly utilized upstream context"
+            if context_referenced:
+                explanation = "Agent explicitly referenced prior context"
+            elif adaptation_detected and task_addressed:
+                explanation = "Agent adapted context with different approach while addressing task"
+            elif task_addressed:
+                explanation = "Agent addressed task requirements using context appropriately"
+
             return ContextNeglectResult(
                 detected=False,
                 severity=NeglectSeverity.NONE,
-                confidence=utilization,
+                confidence=max(utilization, 0.7 if task_addressed else utilization),
                 context_utilization=utilization,
                 missing_elements=[],
-                explanation="Agent properly utilized upstream context",
+                explanation=explanation,
+                context_referenced=context_referenced,
+                adaptation_detected=adaptation_detected,
             )
 
+        # Neglect detected - determine severity
         if utilization < 0.1:
             severity = NeglectSeverity.SEVERE
         elif utilization < 0.2:
@@ -198,6 +333,8 @@ class ContextNeglectDetector:
             missing_elements=missing,
             explanation=explanation,
             suggested_fix=suggested_fix,
+            context_referenced=context_referenced,
+            adaptation_detected=adaptation_detected,
         )
 
     def detect_handoff(
@@ -246,5 +383,17 @@ class ContextNeglectDetector:
                 )
                 if result.detected:
                     results.append(result)
-        
+
         return results
+
+    def get_config(self) -> dict:
+        """Return detector configuration for versioning."""
+        return {
+            "name": DETECTOR_NAME,
+            "version": DETECTOR_VERSION,
+            "thresholds": {
+                "utilization_threshold": self.utilization_threshold,
+                "min_context_length": self.min_context_length,
+            },
+            "description": "Context neglect detection with adaptation recognition",
+        }
