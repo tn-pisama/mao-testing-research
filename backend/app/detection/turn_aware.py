@@ -1140,12 +1140,14 @@ class TurnAwareCoordinationFailureDetector(TurnAwareDetector):
     version = "1.0"
     supported_failure_modes = ["F11"]
 
-    # Conflict indicators - words suggesting disagreement or contradiction
+    # Conflict indicators - stronger signals of inter-agent disagreement
+    # Tuned to reduce FP from common words like "however", "error"
     CONFLICT_INDICATORS = [
-        "instead", "rather", "however", "but actually", "not correct",
-        "wrong", "mistake", "error", "should not", "shouldn't",
-        "incorrect", "that's not", "actually", "no,", "wait,",
-        "let me correct", "correction", "fix that", "redo",
+        "i disagree", "that's wrong", "you made a mistake",
+        "let me correct", "that's not correct", "should not have",
+        "you shouldn't", "incorrect approach", "wrong approach",
+        "redo this", "start over", "conflicting with", "contradicts",
+        "not what i asked", "misunderstood", "that's incorrect",
     ]
 
     # Redundancy indicators - signs of duplicate work

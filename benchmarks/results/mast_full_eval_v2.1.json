@@ -1,0 +1,57 @@
+{
+  "timestamp": "2026-01-05T12:08:08.885609",
+  "dataset": "MAST-Data (UC Berkeley MAD)",
+  "total_traces": 1242,
+  "multi_agent_traces": 383,
+  "single_agent_traces": 859,
+  "detector_version": "2.1",
+  "key_findings": {
+    "semantic_gap": "MAST annotations for AG2 include F11 for single-agent math problems, where coordination failure refers to reasoning coherence rather than inter-agent coordination",
+    "multi_agent_performance": "Detectors perform better on true multi-agent traces (F11: 27% F1 vs 10% overall)",
+    "recommendation": "Filter by agent count when evaluating coordination-related detectors"
+  },
+  "metrics_all_traces": {
+    "F1": {
+      "precision": 0.2857,
+      "recall": 0.3488,
+      "f1": 0.3141,
+      "fpr": 0.3657
+    },
+    "F5": {
+      "precision": 0.2275,
+      "recall": 0.1098,
+      "f1": 0.1481,
+      "fpr": 0.144
+    },
+    "F6": {
+      "precision": 0.0321,
+      "recall": 0.14,
+      "f1": 0.0522,
+      "fpr": 0.177
+    },
+    "F7": {
+      "precision": 0.1132,
+      "recall": 0.0198,
+      "f1": 0.0337,
+      "fpr": 0.0501
+    },
+    "F11": {
+      "precision": 0.3125,
+      "recall": 0.0606,
+      "f1": 0.1015,
+      "fpr": 0.0884
+    }
+  },
+  "metrics_multi_agent_traces": {
+    "F11": {
+      "precision": 0.3125,
+      "recall": 0.2381,
+      "f1": 0.2703,
+      "fpr": 0.2568,
+      "tp": 30,
+      "fp": 66,
+      "tn": 191,
+      "fn": 96
+    }
+  }
+}

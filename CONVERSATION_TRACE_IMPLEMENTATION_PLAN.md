@@ -25,10 +25,34 @@ Key tuning applied:
 - F6 v1.1: Raised drift threshold, added code-awareness, multi-agent support
 - F7 v1.1: Added explicit neglect detection, code-awareness, removed context_drift
 
-### Future Enhancements (Optional)
-- Test with real MAST-Data dataset (currently using 4 sample traces)
-- Add turn-aware detectors for F1-F4, F8-F14
-- Fine-tune thresholds on larger dataset
+### Real MAST Evaluation Results (2026-01-05)
+
+Evaluated on full UC Berkeley MAST-Data (MAD) dataset: **1,242 traces** across 7 frameworks.
+
+| Detector | Mode | Precision | Recall | F1 | Notes |
+|----------|------|-----------|--------|-----|-------|
+| SpecificationMismatch | F1 | 29% | 35% | **31%** | Best performer |
+| LoopDetector | F5 | 23% | 11% | 15% | Semantic gap: MAST F5 = workflow design, not loops |
+| DerailmentDetector | F6 | 3% | 14% | 5% | MAST F6 is rare (4% prevalence) |
+| ContextNeglectDetector | F7 | 11% | 2% | 3% | Needs tuning for MAST semantics |
+| CoordinationFailure | F11 | 31% | 24% | **27%** | Multi-agent traces only (n=383) |
+
+**Key Finding**: MAST semantic gap
+- MAST includes 859 single-agent traces (AG2 math problems) with F11 annotations
+- MAST F11 for single-agent = reasoning coherence, not inter-agent coordination
+- F11 detector performs much better on true multi-agent traces (27% vs 10% overall)
+
+**Dataset Analysis**:
+- 77% of traces have at least one failure annotation
+- Most common: F11 (40%), F3 (36%), F1 (30%), F5 (28%), F7 (24%)
+- Least common: F2 (0.8%), F9 (3%), F6 (4%)
+
+**Recommendation**: Filter by agent count when evaluating coordination detectors; recognize semantic differences between MAST annotation schema and pattern-based detection.
+
+### Future Enhancements
+- Improve F5/F6/F7 to match MAST semantics better
+- Add turn-aware detectors for F3 (Resource), F8 (Info Withholding), F12-F14 (Verification)
+- Consider LLM-based semantic detection for higher accuracy
 
 ## Executive Summary
 
