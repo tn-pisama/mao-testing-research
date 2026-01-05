@@ -50,6 +50,20 @@ from pisama_core.config.loader import load_config
 # Adapters
 from pisama_core.adapters.base import PlatformAdapter, InjectionResult
 
+# Tokenization
+from pisama_core.tokenization import (
+    PIIDetector,
+    PIIMatch,
+    PIIPattern,
+    PIIType,
+    TokenGenerator,
+    TokenParser,
+    TokenVault,
+    KeychainManager,
+    Tokenizer,
+    tokenize_trace_data,
+)
+
 __all__ = [
     # Version
     "__version__",
@@ -95,4 +109,15 @@ __all__ = [
     # Adapters
     "PlatformAdapter",
     "InjectionResult",
+    # Tokenization
+    "PIIDetector",
+    "PIIMatch",
+    "PIIPattern",
+    "PIIType",
+    "TokenGenerator",
+    "TokenParser",
+    "TokenVault",
+    "KeychainManager",
+    "Tokenizer",
+    "tokenize_trace_data",
 ]

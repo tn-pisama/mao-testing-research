@@ -36,12 +36,20 @@ dependencies = [
 ]
 
 [project.optional-dependencies]
+tokenization = [
+    "cryptography>=41.0.0",  # AES-256-GCM encryption
+]
+tokenization-linux = [
+    "cryptography>=41.0.0",
+    "secretstorage>=3.3.0",  # Linux Secret Service keychain
+]
 dev = [
     "pytest>=7.0.0",
     "pytest-asyncio>=0.21.0",
     "pytest-cov>=4.0.0",
     "ruff>=0.1.0",
     "mypy>=1.0.0",
+    "cryptography>=41.0.0",
 ]
 
 [project.urls]

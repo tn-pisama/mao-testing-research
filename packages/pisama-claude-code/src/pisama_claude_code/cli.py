@@ -680,5 +680,463 @@ def mark_synced(traces: list):
             }) + "\n")
 
 
+# =============================================================================
+# VAULT COMMANDS - PII Tokenization Vault Management
+# =============================================================================
+
+@main.group()
+def vault():
+    """Manage the PII tokenization vault."""
+    pass
+
+
+@vault.command("status")
+def vault_status():
+    """Show vault status and statistics."""
+    try:
+        from pisama_core.tokenization import TokenVault, KeychainManager
+    except ImportError:
+        click.echo("❌ pisama-core not installed or tokenization not available")
+        click.echo("   Install with: pip install pisama-core[tokenization]")
+        return
+
+    vault_path = CONFIG_DIR / "vault.db"
+
+    click.echo("🔐 PISAMA Vault Status")
+    click.echo("=" * 50)
+
+    # Check keychain
+    click.echo("\n🔑 Encryption Key:")
+    try:
+        keychain = KeychainManager(allow_file_fallback=True)
+        status = keychain.get_status()
+        if status["available"]:
+            click.echo(f"   Backend: {status['backend']}")
+            if status["key_exists"]:
+                click.echo("   ✅ Key stored")
+                if not status["is_secure"]:
+                    click.echo("   ⚠️  Using file fallback (less secure)")
+            else:
+                click.echo("   ❌ No key found")
+                click.echo("   Key will be auto-generated on first use")
+        else:
+            click.echo("   ❌ Keychain not available")
+    except Exception as e:
+        click.echo(f"   ❌ Error: {e}")
+
+    # Check vault database
+    click.echo("\n💾 Vault Database:")
+    if vault_path.exists():
+        size_kb = vault_path.stat().st_size // 1024
+        click.echo(f"   Path: {vault_path}")
+        click.echo(f"   Size: {size_kb} KB")
+
+        try:
+            token_vault = TokenVault(vault_path)
+            token_vault.initialize()
+            stats = token_vault.get_stats()
+
+            click.echo(f"   Total tokens: {stats.get('total_tokens', 0):,}")
+            click.echo(f"   Sessions: {stats.get('unique_sessions', 0)}")
+
+            by_type = stats.get("by_type", {})
+            if by_type:
+                click.echo("   By type:")
+                for pii_type, count in sorted(by_type.items()):
+                    click.echo(f"      {pii_type}: {count:,}")
+
+            if not stats.get("encryption_available"):
+                click.echo("   ⚠️  Encryption not available (install cryptography)")
+
+            token_vault.close()
+        except Exception as e:
+            click.echo(f"   ❌ Error reading vault: {e}")
+    else:
+        click.echo(f"   Path: {vault_path}")
+        click.echo("   Status: Not created yet")
+        click.echo("   Will be created on first tokenization")
+
+    # Tokenization config
+    click.echo("\n⚙️  Configuration:")
+    config_data = get_config()
+    tokenization = config_data.get("tokenization", {})
+    enabled = tokenization.get("enabled", True)
+    click.echo(f"   Tokenization: {'enabled' if enabled else 'disabled'}")
+
+
+@vault.command("lookup")
+@click.argument("token")
+@click.option("--reason", "-r", required=True, help="Reason for lookup (audit log)")
+@click.option("--ticket", "-t", help="Incident ticket reference")
+def vault_lookup(token: str, reason: str, ticket: Optional[str]):
+    """Look up a token to reveal original value (with audit logging)."""
+    try:
+        from pisama_core.tokenization import TokenVault, KeychainManager, TokenParser
+    except ImportError:
+        click.echo("❌ pisama-core not installed")
+        return
+
+    vault_path = CONFIG_DIR / "vault.db"
+
+    if not vault_path.exists():
+        click.echo("❌ Vault not found")
+        return
+
+    # Validate token format
+    parser = TokenParser()
+    if not parser.is_valid_token(token):
+        click.echo(f"❌ Invalid token format: {token}")
+        click.echo("   Expected: [TYPE:sess:random]")
+        return
+
+    # Get encryption key
+    keychain = KeychainManager(allow_file_fallback=True)
+    key = keychain.get_key()
+
+    if key is None:
+        click.echo("❌ No encryption key found")
+        return
+
+    # Lookup in vault
+    token_vault = TokenVault(vault_path)
+    token_vault.initialize()
+
+    try:
+        original = token_vault.retrieve(token, key)
+
+        if original:
+            click.echo(f"Token: {token}")
+            click.echo(f"Value: {original}")
+
+            # Get token info
+            info = token_vault.get_token_info(token)
+            if info:
+                click.echo(f"Type: {info.pii_type}")
+                click.echo(f"Session: {info.session_id}")
+                click.echo(f"Created: {info.created_at}")
+
+            # Log to audit
+            _log_vault_access(token, reason, ticket, "lookup")
+            click.echo(f"\n✅ Access logged (reason: {reason})")
+        else:
+            click.echo(f"❌ Token not found: {token}")
+    finally:
+        token_vault.close()
+
+
+@vault.command("delete")
+@click.option("--token", help="Delete specific token")
+@click.option("--session", help="Delete all tokens for session")
+@click.option("--value-hash", help="Delete by value hash (GDPR erasure)")
+@click.option("--reason", "-r", required=True, help="Reason for deletion")
+@click.option("--confirm", is_flag=True, help="Skip confirmation prompt")
+def vault_delete(
+    token: Optional[str],
+    session: Optional[str],
+    value_hash: Optional[str],
+    reason: str,
+    confirm: bool,
+):
+    """Delete tokens from vault (GDPR erasure support)."""
+    try:
+        from pisama_core.tokenization import TokenVault
+    except ImportError:
+        click.echo("❌ pisama-core not installed")
+        return
+
+    if not any([token, session, value_hash]):
+        click.echo("❌ Specify --token, --session, or --value-hash")
+        return
+
+    vault_path = CONFIG_DIR / "vault.db"
+    if not vault_path.exists():
+        click.echo("❌ Vault not found")
+        return
+
+    token_vault = TokenVault(vault_path)
+    token_vault.initialize()
+
+    try:
+        if token:
+            if not confirm:
+                click.confirm(f"Delete token {token}?", abort=True)
+            deleted = token_vault.delete_token(token)
+            if deleted:
+                click.echo(f"✅ Deleted token: {token}")
+                _log_vault_access(token, reason, None, "delete")
+            else:
+                click.echo(f"❌ Token not found: {token}")
+
+        elif session:
+            tokens = token_vault.list_session_tokens(session)
+            if not tokens:
+                click.echo(f"No tokens found for session: {session}")
+                return
+
+            if not confirm:
+                click.confirm(f"Delete {len(tokens)} tokens for session {session}?", abort=True)
+
+            count = token_vault.delete_session(session)
+            click.echo(f"✅ Deleted {count} tokens for session {session}")
+            _log_vault_access(f"session:{session}", reason, None, "delete_session")
+
+        elif value_hash:
+            if not confirm:
+                click.confirm(f"Delete all tokens with value hash {value_hash[:16]}...?", abort=True)
+
+            count = token_vault.delete_by_value_hash(value_hash)
+            if count > 0:
+                click.echo(f"✅ Deleted {count} tokens (GDPR erasure)")
+                _log_vault_access(f"hash:{value_hash[:16]}", reason, None, "gdpr_erasure")
+            else:
+                click.echo("No matching tokens found")
+
+    finally:
+        token_vault.close()
+
+
+@vault.command("health")
+def vault_health():
+    """Check vault health and integrity."""
+    try:
+        from pisama_core.tokenization import TokenVault, KeychainManager
+    except ImportError:
+        click.echo("❌ pisama-core not installed")
+        return
+
+    vault_path = CONFIG_DIR / "vault.db"
+
+    click.echo("🏥 Vault Health Check")
+    click.echo("=" * 50)
+
+    issues = []
+
+    # Check vault file
+    click.echo("\n1. Vault Database:")
+    if vault_path.exists():
+        click.echo("   ✅ Database exists")
+        size = vault_path.stat().st_size
+        if size > 100 * 1024 * 1024:  # 100MB
+            click.echo(f"   ⚠️  Large database ({size // 1024 // 1024} MB)")
+            issues.append("Consider running 'pisama-cc vault vacuum'")
+    else:
+        click.echo("   ⚠️  Database not created yet")
+
+    # Check encryption key
+    click.echo("\n2. Encryption Key:")
+    try:
+        keychain = KeychainManager(allow_file_fallback=True)
+        if keychain.key_exists():
+            click.echo("   ✅ Key available")
+            status = keychain.get_status()
+            if not status["is_secure"]:
+                click.echo("   ⚠️  Using file fallback (less secure)")
+                issues.append("Consider enabling OS keychain for better security")
+        else:
+            click.echo("   ⚠️  No key (will be created on first use)")
+    except Exception as e:
+        click.echo(f"   ❌ Error: {e}")
+        issues.append(f"Keychain error: {e}")
+
+    # Check database integrity
+    click.echo("\n3. Database Integrity:")
+    if vault_path.exists():
+        try:
+            import sqlite3
+            conn = sqlite3.connect(str(vault_path))
+            result = conn.execute("PRAGMA integrity_check").fetchone()
+            if result[0] == "ok":
+                click.echo("   ✅ Integrity check passed")
+            else:
+                click.echo(f"   ❌ Integrity issue: {result[0]}")
+                issues.append("Database integrity issue detected")
+            conn.close()
+        except Exception as e:
+            click.echo(f"   ❌ Error: {e}")
+            issues.append(f"Database error: {e}")
+    else:
+        click.echo("   ⚠️  No database to check")
+
+    # Summary
+    click.echo("\n" + "=" * 50)
+    if issues:
+        click.echo(f"⚠️  {len(issues)} issue(s) found:")
+        for issue in issues:
+            click.echo(f"   • {issue}")
+    else:
+        click.echo("✅ All checks passed")
+
+
+@vault.command("backup")
+@click.option("--output", "-o", help="Output path (default: vault-backup-{date}.db)")
+def vault_backup(output: Optional[str]):
+    """Create a backup of the vault database."""
+    vault_path = CONFIG_DIR / "vault.db"
+
+    if not vault_path.exists():
+        click.echo("❌ No vault to backup")
+        return
+
+    # Generate backup path
+    if output:
+        backup_path = Path(output)
+    else:
+        date_str = datetime.now().strftime("%Y%m%d-%H%M%S")
+        backup_path = CONFIG_DIR / f"vault-backup-{date_str}.db"
+
+    # Copy vault
+    import shutil
+    try:
+        shutil.copy2(vault_path, backup_path)
+        size_kb = backup_path.stat().st_size // 1024
+        click.echo(f"✅ Backup created: {backup_path} ({size_kb} KB)")
+    except Exception as e:
+        click.echo(f"❌ Backup failed: {e}")
+
+
+@vault.command("restore")
+@click.argument("backup_path")
+@click.option("--confirm", is_flag=True, help="Skip confirmation")
+def vault_restore(backup_path: str, confirm: bool):
+    """Restore vault from a backup."""
+    backup = Path(backup_path)
+
+    if not backup.exists():
+        click.echo(f"❌ Backup not found: {backup_path}")
+        return
+
+    vault_path = CONFIG_DIR / "vault.db"
+
+    if vault_path.exists() and not confirm:
+        click.confirm("This will overwrite the current vault. Continue?", abort=True)
+
+    import shutil
+    try:
+        shutil.copy2(backup, vault_path)
+        click.echo(f"✅ Vault restored from {backup_path}")
+    except Exception as e:
+        click.echo(f"❌ Restore failed: {e}")
+
+
+@vault.command("vacuum")
+def vault_vacuum():
+    """Compact the vault database to reclaim space."""
+    try:
+        from pisama_core.tokenization import TokenVault
+    except ImportError:
+        click.echo("❌ pisama-core not installed")
+        return
+
+    vault_path = CONFIG_DIR / "vault.db"
+
+    if not vault_path.exists():
+        click.echo("❌ No vault to vacuum")
+        return
+
+    size_before = vault_path.stat().st_size
+
+    token_vault = TokenVault(vault_path)
+    token_vault.initialize()
+    token_vault.vacuum()
+    token_vault.close()
+
+    size_after = vault_path.stat().st_size
+    saved = size_before - size_after
+
+    click.echo(f"✅ Vault compacted")
+    click.echo(f"   Before: {size_before // 1024} KB")
+    click.echo(f"   After:  {size_after // 1024} KB")
+    click.echo(f"   Saved:  {saved // 1024} KB")
+
+
+def _log_vault_access(target: str, reason: str, ticket: Optional[str], action: str):
+    """Log vault access to audit log."""
+    import os
+
+    audit_log = CONFIG_DIR / "audit_log.jsonl"
+    audit_log.parent.mkdir(parents=True, exist_ok=True)
+
+    entry = {
+        "timestamp": datetime.now(timezone.utc).isoformat(),
+        "action": action,
+        "target": target,
+        "reason": reason,
+        "ticket": ticket,
+        "principal": os.environ.get("USER", "unknown"),
+    }
+
+    with open(audit_log, "a") as f:
+        f.write(json.dumps(entry) + "\n")
+
+
+# =============================================================================
+# TOKENIZE COMMAND - Manual tokenization testing
+# =============================================================================
+
+@main.group()
+def tokenize():
+    """PII tokenization tools."""
+    pass
+
+
+@tokenize.command("test")
+@click.argument("text")
+@click.option("--patterns", help="Comma-separated list of patterns to use")
+def tokenize_test(text: str, patterns: Optional[str]):
+    """Test PII detection on a string."""
+    try:
+        from pisama_core.tokenization import PIIDetector
+    except ImportError:
+        click.echo("❌ pisama-core not installed")
+        return
+
+    detector = PIIDetector()
+
+    # Filter patterns if specified
+    if patterns:
+        pattern_list = [p.strip() for p in patterns.split(",")]
+        for name in list(detector.patterns.keys()):
+            if name not in pattern_list:
+                detector.disable_pattern(name)
+
+    matches = detector.detect(text)
+
+    click.echo("PII Detection Results")
+    click.echo("=" * 50)
+    click.echo(f"\nInput: \"{text}\"")
+
+    if matches:
+        click.echo("\nDetected:")
+        for m in matches:
+            click.echo(f"  [{m.pii_type}] \"{m.value}\" at position {m.start}-{m.end}")
+    else:
+        click.echo("\nNo PII detected")
+
+
+@tokenize.command("config")
+def tokenize_config():
+    """Show tokenization configuration."""
+    config_data = get_config()
+    tokenization = config_data.get("tokenization", {})
+
+    click.echo("⚙️  Tokenization Configuration")
+    click.echo("=" * 50)
+    click.echo(f"Enabled: {tokenization.get('enabled', True)}")
+    click.echo(f"Fail-open: {tokenization.get('fail_open', True)}")
+
+    custom = tokenization.get("custom_patterns", {})
+    if custom:
+        click.echo("\nCustom Patterns:")
+        for name, pattern in custom.items():
+            if not name.startswith("_"):
+                click.echo(f"  {name}: {pattern}")
+
+    exclusions = tokenization.get("exclusions", [])
+    if exclusions:
+        click.echo("\nExclusions:")
+        for e in exclusions:
+            click.echo(f"  {e}")
+
+
 if __name__ == "__main__":
     main()

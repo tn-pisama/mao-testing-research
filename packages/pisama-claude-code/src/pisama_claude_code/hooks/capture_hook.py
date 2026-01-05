@@ -8,6 +8,7 @@ Now includes:
 - AI response capture from transcript
 - Token usage tracking
 - Cost calculation
+- PII tokenization (optional, configurable)
 
 Usage:
     Install in ~/.claude/hooks/ and configure in settings.local.json
@@ -16,6 +17,11 @@ Usage:
 import json
 import os
 import sys
+from typing import Any
+
+# PII Tokenization configuration
+TOKENIZATION_ENABLED = os.environ.get("PISAMA_TOKENIZATION", "1") == "1"
+TOKENIZATION_FIELDS = ["tool_input", "tool_output", "ai_response"]
 
 # Claude model pricing (per 1M tokens) - as of Jan 2025
 MODEL_PRICING = {
@@ -45,6 +51,71 @@ def calculate_cost(model: str, usage: dict) -> float:
         (cache_create / 1_000_000) * pricing["input"]
     )
     return round(cost, 6)
+
+
+def get_tokenizer(session_id: str) -> Any:
+    """Get a Tokenizer instance for PII protection.
+
+    Returns None if tokenization is disabled or unavailable.
+    """
+    if not TOKENIZATION_ENABLED:
+        return None
+
+    try:
+        from pisama_core.tokenization import Tokenizer
+        return Tokenizer(
+            session_id=session_id,
+            enabled=True,
+            fail_open=True,  # Don't fail if tokenization has issues
+        )
+    except ImportError:
+        return None
+    except Exception:
+        return None
+
+
+def tokenize_trace_data(
+    trace: dict,
+    session_id: str,
+    fields: list[str] | None = None,
+) -> dict:
+    """Tokenize sensitive fields in trace data.
+
+    Args:
+        trace: The trace dictionary to tokenize.
+        session_id: Session ID for token scoping.
+        fields: Fields to tokenize (defaults to TOKENIZATION_FIELDS).
+
+    Returns:
+        Trace with PII tokenized (or original if tokenization unavailable).
+    """
+    if not TOKENIZATION_ENABLED:
+        return trace
+
+    tokenizer = get_tokenizer(session_id)
+    if tokenizer is None:
+        return trace
+
+    fields = fields or TOKENIZATION_FIELDS
+    result = trace.copy()
+
+    try:
+        for field in fields:
+            if field in result and result[field]:
+                value = result[field]
+                if isinstance(value, str):
+                    result[field] = tokenizer.tokenize_string(value)
+                elif isinstance(value, dict):
+                    result[field] = tokenizer.tokenize_dict(value)
+        return result
+    except Exception:
+        # Fail open - return original trace if tokenization fails
+        return trace
+    finally:
+        try:
+            tokenizer.close()
+        except Exception:
+            pass
 
 
 def get_last_assistant_message(transcript_path: str) -> dict:
@@ -178,6 +249,10 @@ def _fallback_capture(hook_data: dict, hook_type: str) -> None:
         "raw": hook_data,
     }
 
+    # Tokenize PII before storage (PostToolUse only to avoid double-tokenization)
+    if hook_type in ("post", "PostToolUse"):
+        trace = tokenize_trace_data(trace, session_id)
+
     with open(jsonl_path, "a") as f:
         f.write(json.dumps(trace) + "\n")
 
@@ -221,6 +296,7 @@ def _fallback_capture(hook_data: dict, hook_type: str) -> None:
             except sqlite3.OperationalError:
                 pass  # Column already exists
 
+        # Use tokenized values from trace dict
         conn.execute("""
             INSERT INTO traces (
                 session_id, timestamp, hook_type, tool_name, tool_input, tool_output,
@@ -232,15 +308,15 @@ def _fallback_capture(hook_data: dict, hook_type: str) -> None:
             timestamp,
             hook_type,
             tool_name,
-            json.dumps(tool_input) if tool_input else None,
-            json.dumps(tool_output) if tool_output else None,
+            json.dumps(trace.get("tool_input")) if trace.get("tool_input") else None,
+            json.dumps(trace.get("tool_output")) if trace.get("tool_output") else None,
             os.getcwd(),
             model,
             usage.get("input_tokens"),
             usage.get("output_tokens"),
             usage.get("cache_read_input_tokens"),
             cost,
-            ai_response,
+            trace.get("ai_response"),
         ))
         conn.commit()
         conn.close()
