@@ -15,10 +15,15 @@ Version History:
   - Numeric tolerance for approximate constraints (word counts, etc.)
   - Language mismatch detection (requested Python, got TypeScript)
   - Deprecated syntax detection
+- v1.2: Phase 2 adversarial fixes:
+  - Python deprecated syntax detection (cmp=, has_key, print statement)
+  - JavaScript deprecated patterns (var, arguments.callee)
+  - General deprecated API patterns
+  - Improved word count tolerance handling
 """
 
 # Detector version for tracking
-DETECTOR_VERSION = "1.1"
+DETECTOR_VERSION = "1.2"
 DETECTOR_NAME = "SpecificationMismatchDetector"
 
 import logging
@@ -86,6 +91,41 @@ class SpecificationMismatchDetector:
         (r'throw\s+new\s+Error\(["\']not implemented', "not_implemented"),
         (r'\.\.\.\s*$', "ellipsis_placeholder"),  # ... as placeholder
     ]
+
+    # v1.2: Deprecated syntax patterns by language
+    DEPRECATED_SYNTAX_PATTERNS = {
+        'python': [
+            # Python 2 deprecated in Python 3
+            (r'\bcmp\s*=', "deprecated_cmp_parameter"),  # sorted(..., cmp=func)
+            (r'\.has_key\s*\(', "deprecated_has_key"),  # dict.has_key() -> use 'in'
+            (r'\bprint\s+["\']', "deprecated_print_statement"),  # print "x" without parens
+            (r'\braw_input\s*\(', "deprecated_raw_input"),  # raw_input() -> input()
+            (r'\bexecfile\s*\(', "deprecated_execfile"),  # execfile() removed
+            (r'\bxrange\s*\(', "deprecated_xrange"),  # xrange() -> range()
+            (r'\.iteritems\s*\(', "deprecated_iteritems"),  # dict.iteritems() -> items()
+            (r'\.iterkeys\s*\(', "deprecated_iterkeys"),  # dict.iterkeys() -> keys()
+            (r'\.itervalues\s*\(', "deprecated_itervalues"),  # dict.itervalues() -> values()
+            (r'\breduce\s*\((?![^)]*functools)', "deprecated_reduce"),  # reduce() needs functools
+            (r'\bapply\s*\(', "deprecated_apply"),  # apply() removed
+            (r'\bcoerce\s*\(', "deprecated_coerce"),  # coerce() removed
+            (r'<>\s*', "deprecated_not_equal"),  # <> -> !=
+            (r'\blong\s*\(', "deprecated_long"),  # long() -> int()
+            (r'\bunicode\s*\(', "deprecated_unicode"),  # unicode() -> str()
+        ],
+        'javascript': [
+            (r'\bvar\s+\w+', "deprecated_var"),  # var -> let/const (ES6+)
+            (r'arguments\.callee', "deprecated_callee"),  # arguments.callee deprecated
+            (r'with\s*\([^)]+\)\s*{', "deprecated_with"),  # with statement deprecated
+            (r'\.substr\s*\(', "deprecated_substr"),  # substr -> substring/slice
+            (r'escape\s*\(', "deprecated_escape"),  # escape() -> encodeURIComponent
+            (r'unescape\s*\(', "deprecated_unescape"),  # unescape() -> decodeURIComponent
+        ],
+        'java': [
+            (r'new\s+Date\s*\(\s*\d+\s*,', "deprecated_date_constructor"),  # Date(year,month,day) deprecated
+            (r'\.getYear\s*\(', "deprecated_getYear"),  # getYear() -> getFullYear() - 1900
+            (r'Thread\s*\.\s*stop\s*\(', "deprecated_thread_stop"),  # Thread.stop() deprecated
+        ],
+    }
 
     # v1.1: Numeric constraint patterns with tolerance
     NUMERIC_CONSTRAINT_PATTERNS = [
@@ -180,6 +220,21 @@ class SpecificationMismatchDetector:
                 # Get context around the match
                 start = max(0, match.start() - 20)
                 end = min(len(output), match.end() + 20)
+                context = output[start:end].strip()
+                issues.append((issue_type, match.group(), context))
+        return issues
+
+    def _check_deprecated_syntax(self, output: str, language: Optional[str]) -> list[tuple]:
+        """v1.2: Check for deprecated syntax patterns in code output."""
+        issues = []
+        if not language or language not in self.DEPRECATED_SYNTAX_PATTERNS:
+            return issues
+
+        for pattern, issue_type in self.DEPRECATED_SYNTAX_PATTERNS[language]:
+            matches = re.finditer(pattern, output, re.MULTILINE)
+            for match in matches:
+                start = max(0, match.start() - 30)
+                end = min(len(output), match.end() + 30)
                 context = output[start:end].strip()
                 issues.append((issue_type, match.group(), context))
         return issues
@@ -307,8 +362,18 @@ class SpecificationMismatchDetector:
                     missing.append(f"code issue: {issue_type}")
 
         # v1.1: Check language mismatch (only flag if wrong language, not supersets)
+        # v1.2: Also check for deprecated syntax
         requested_lang = self._detect_requested_language(user_intent)
         if requested_lang:
+            # v1.2: Check deprecated syntax
+            deprecated_issues = self._check_deprecated_syntax(task_specification, requested_lang)
+            if deprecated_issues:
+                detected = True
+                mismatch_type = MismatchType.MISSING_REQUIREMENT
+                for issue_type, match, context in deprecated_issues[:3]:
+                    missing.append(f"deprecated syntax: {issue_type}")
+
+            # v1.1: Check language mismatch
             output_lang = self._detect_output_language(task_specification)
             # TypeScript is superset of JavaScript - don't flag
             # Other language mismatches should be flagged
