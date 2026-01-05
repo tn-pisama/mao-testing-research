@@ -10,6 +10,8 @@ from .base import BaseImporter
 from .raw_json import RawJSONImporter
 from .langsmith import LangSmithImporter
 from .otel import OTELImporter
+from .conversation import ConversationImporter
+from .mast import MASTImporter
 
 
 # Registry of available importers
@@ -22,6 +24,9 @@ IMPORTERS: Dict[str, Type[BaseImporter]] = {
     "otel": OTELImporter,
     "opentelemetry": OTELImporter,
     "otlp": OTELImporter,
+    "conversation": ConversationImporter,
+    "mast": MASTImporter,
+    "mast-data": MASTImporter,
 }
 
 
@@ -77,6 +82,8 @@ __all__ = [
     "RawJSONImporter",
     "LangSmithImporter",
     "OTELImporter",
+    "ConversationImporter",
+    "MASTImporter",
     "get_importer",
     "detect_format",
     "import_trace",
