@@ -1,8 +1,8 @@
-import { SignIn } from '@clerk/nextjs'
+import { SignUp } from '@clerk/nextjs'
 import Link from 'next/link'
 import { ArrowLeft } from 'lucide-react'
 
-export default function SignInPage() {
+export default function SignUpPage() {
   return (
     <main className="min-h-screen bg-slate-900 flex flex-col items-center justify-center p-4">
       <Link
@@ -13,7 +13,7 @@ export default function SignInPage() {
         <span>Back</span>
       </Link>
 
-      <SignIn
+      <SignUp
         appearance={{
           elements: {
             rootBox: 'mx-auto',
