@@ -1,94 +1,86 @@
 {
-  "total_records": 335,
-  "total_evaluations": 2010,
-  "skipped_records": 907,
+  "total_records": 553,
+  "total_evaluations": 2212,
+  "skipped_records": 689,
   "by_mode": {
     "F1": {
-      "tp": 46,
-      "fp": 104,
-      "tn": 135,
-      "fn": 50
-    },
-    "F2": {
-      "tp": 2,
-      "fp": 262,
-      "tn": 71,
-      "fn": 0
-    },
-    "F6": {
-      "tp": 7,
-      "fp": 194,
-      "tn": 130,
-      "fn": 4
+      "tp": 22,
+      "fp": 41,
+      "tn": 370,
+      "fn": 120
     },
     "F7": {
-      "tp": 14,
-      "fp": 45,
-      "tn": 215,
-      "fn": 61
+      "tp": 18,
+      "fp": 107,
+      "tn": 337,
+      "fn": 91
     },
     "F8": {
-      "tp": 25,
-      "fp": 117,
-      "tn": 166,
-      "fn": 27
+      "tp": 22,
+      "fp": 151,
+      "tn": 323,
+      "fn": 57
     },
     "F14": {
-      "tp": 11,
-      "fp": 38,
-      "tn": 220,
-      "fn": 66
+      "tp": 3,
+      "fp": 10,
+      "tn": 405,
+      "fn": 135
     }
   },
   "by_framework": {
     "ChatDev": {
-      "correct": 498,
-      "total": 780
-    },
-    "OpenManus": {
-      "correct": 8,
-      "total": 24
-    },
-    "Magentic": {
-      "correct": 511,
-      "total": 1152
-    },
-    "HyperAgent": {
-      "correct": 15,
-      "total": 30
-    },
-    "AG2": {
-      "correct": 3,
-      "total": 6
+      "correct": 408,
+      "total": 520
     },
     "MetaGPT": {
-      "correct": 7,
-      "total": 18
+      "correct": 592,
+      "total": 920
+    },
+    "OpenManus": {
+      "correct": 78,
+      "total": 116
+    },
+    "Magentic": {
+      "correct": 202,
+      "total": 296
+    },
+    "AG2": {
+      "correct": 75,
+      "total": 120
+    },
+    "AppWorld": {
+      "correct": 76,
+      "total": 120
+    },
+    "HyperAgent": {
+      "correct": 69,
+      "total": 120
     }
   },
   "by_llm": {
     "GPT-4o": {
-      "correct": 1022,
-      "total": 1968
+      "correct": 1189,
+      "total": 1692
     },
     "Claude": {
-      "correct": 20,
-      "total": 42
+      "correct": 311,
+      "total": 520
     }
   },
   "label_distribution": {
-    "F7": 75,
-    "F8": 52,
-    "F1": 96,
-    "F11": 120,
-    "F14": 77,
-    "F3": 117,
-    "F5": 89,
-    "F9": 9,
-    "F12": 46,
-    "F4": 15,
-    "F6": 11,
-    "F13": 56,
-    "F2": 2
+    "F7": 109,
+    "F8": 79,
+    "F1": 142,
+    "F11": 157,
+    "F14": 138,
+    "F3": 183,
+    "F5": 141,
+    "F9": 17,
+    "F12": 59,
+    "F4": 23,
+    "F6": 17,
+    "F13": 83,
+    "F2": 1
   }
 }
