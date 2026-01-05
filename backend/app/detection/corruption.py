@@ -1,7 +1,31 @@
+"""
+F7: Memory/State Corruption Detection (MAST Taxonomy)
+======================================================
+
+Detects when agent memory or state becomes corrupted, including:
+- Structured state corruption (type drift, schema violations)
+- Text-based context corruption (ignoring related context)
+- Cross-field inconsistencies
+- Hallucinated references
+
+Version History:
+- v1.0: Initial implementation (structured state only)
+- v1.1: Improved for adversarial accuracy:
+  - Text-based context analysis for ignored context
+  - Related topic extraction and verification
+  - Narrow focus detection patterns
+  - Task dependency awareness
+"""
+
+# Detector version for tracking
+DETECTOR_VERSION = "1.1"
+DETECTOR_NAME = "SemanticCorruptionDetector"
+
 from dataclasses import dataclass, field
 from typing import List, Dict, Any, Callable, Optional, Tuple
 from datetime import datetime, timedelta
 from collections import deque
+import re
 
 
 @dataclass
@@ -49,12 +73,54 @@ class Schema:
 
 
 class SemanticCorruptionDetector:
+    """
+    Detects F7: Memory/State Corruption in agent systems.
+
+    Handles both structured state corruption and text-based context corruption.
+    """
+
+    # v1.1: Related topic mappings for context verification
+    # When a task mentions key topic, related topics should typically be addressed
+    RELATED_TOPICS = {
+        'authentication': ['session', 'token', 'login', 'logout', 'credential', 'password', 'security'],
+        'auth': ['session', 'token', 'login', 'logout', 'credential', 'password', 'security'],
+        'login': ['session', 'authentication', 'token', 'logout', 'security'],
+        'database': ['transaction', 'connection', 'query', 'migration', 'schema', 'index'],
+        'api': ['endpoint', 'request', 'response', 'error handling', 'validation', 'rate limit'],
+        'payment': ['refund', 'transaction', 'billing', 'subscription', 'invoice'],
+        'user': ['profile', 'permission', 'role', 'account', 'preference'],
+        'cache': ['invalidation', 'expiration', 'refresh', 'consistency'],
+        'file': ['permission', 'path', 'encoding', 'backup', 'cleanup'],
+        'error': ['logging', 'handling', 'recovery', 'notification', 'retry'],
+        'test': ['coverage', 'assertion', 'mock', 'fixture', 'edge case'],
+    }
+
+    # v1.1: Patterns indicating narrow focus (potential context ignorance)
+    NARROW_FOCUS_PATTERNS = [
+        (r'\bonly\s+(?:addressed|fixed|updated|changed|modified)\b', 'explicit_narrow_focus'),
+        (r'\bjust\s+(?:the|this|that)\s+\w+\b', 'narrow_scope'),
+        (r'\bfocused\s+(?:specifically|only|solely)\s+on\b', 'explicit_narrow_focus'),
+        (r'\bwithout\s+(?:touching|changing|modifying|affecting)\b', 'explicit_exclusion'),
+        (r'\bdidn\'t\s+(?:touch|change|modify|address)\b', 'explicit_exclusion'),
+        (r'\bignored?\s+(?:the|any)\b', 'explicit_ignorance'),
+        (r'\bspecific\s+(?:fix|change|update)\b', 'narrow_scope'),
+    ]
+
+    # v1.1: Patterns indicating comprehensive handling (reduces false positives)
+    COMPREHENSIVE_PATTERNS = [
+        r'\balso\s+(?:updated|checked|verified|ensured)\b',
+        r'\badditionally\b',
+        r'\brelated\s+(?:to|changes|updates)\b',
+        r'\bensured?\s+(?:that|consistency)\b',
+        r'\bconsidered?\s+(?:the|all|related)\b',
+        r'\bacross\s+(?:the|all|related)\b',
+    ]
+
     def __init__(
         self,
         velocity_config: Optional[VelocityConfig] = None,
         confidence_scaling: float = 1.0,
     ):
-        import re
         email_pattern = re.compile(r'^[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}$')
         url_pattern = re.compile(r'^https?://[a-zA-Z0-9][-a-zA-Z0-9]*(\.[a-zA-Z0-9][-a-zA-Z0-9]*)+(/.*)?$')
         
@@ -436,6 +502,193 @@ class SemanticCorruptionDetector:
     
     def register_known_id(self, id_value: str):
         self.known_ids.add(id_value)
+
+    # =========================================================================
+    # v1.1: Text-based context corruption detection
+    # =========================================================================
+
+    def _extract_task_topics(self, task: str) -> List[str]:
+        """v1.1: Extract key topics from task description."""
+        task_lower = task.lower()
+        found_topics = []
+
+        for topic in self.RELATED_TOPICS.keys():
+            if topic in task_lower:
+                found_topics.append(topic)
+
+        return found_topics
+
+    def _get_expected_related_topics(self, task_topics: List[str]) -> List[str]:
+        """v1.1: Get related topics that should be addressed given task topics."""
+        related = set()
+        for topic in task_topics:
+            if topic in self.RELATED_TOPICS:
+                related.update(self.RELATED_TOPICS[topic])
+        return list(related)
+
+    def _check_narrow_focus_patterns(self, output: str) -> List[tuple]:
+        """v1.1: Check for patterns indicating narrow/incomplete focus."""
+        found_patterns = []
+        output_lower = output.lower()
+
+        for pattern, pattern_type in self.NARROW_FOCUS_PATTERNS:
+            if re.search(pattern, output_lower):
+                found_patterns.append((pattern_type, pattern))
+
+        return found_patterns
+
+    def _check_comprehensive_patterns(self, output: str) -> bool:
+        """v1.1: Check if output shows signs of comprehensive handling."""
+        output_lower = output.lower()
+
+        for pattern in self.COMPREHENSIVE_PATTERNS:
+            if re.search(pattern, output_lower):
+                return True
+
+        return False
+
+    def _check_related_topics_addressed(
+        self,
+        output: str,
+        expected_related: List[str],
+    ) -> tuple[List[str], List[str]]:
+        """v1.1: Check which related topics are addressed vs missing."""
+        output_lower = output.lower()
+        addressed = []
+        missing = []
+
+        for topic in expected_related:
+            # Check if topic or its variants are mentioned
+            if topic in output_lower:
+                addressed.append(topic)
+            else:
+                missing.append(topic)
+
+        return addressed, missing
+
+    def detect_from_text(
+        self,
+        task: str,
+        output: str,
+        context: Optional[str] = None,
+    ) -> CorruptionResult:
+        """
+        v1.1: Detect context/memory corruption in text-based outputs.
+
+        Checks if the output ignores related context that should be addressed
+        given the task description.
+
+        Args:
+            task: The task description/instruction
+            output: The agent's output text
+            context: Optional additional context that was provided
+
+        Returns:
+            CorruptionResult with detection status and issues
+        """
+        issues = []
+
+        # Extract topics from task
+        task_topics = self._extract_task_topics(task)
+
+        if not task_topics:
+            # No recognized topics, can't verify context handling
+            return CorruptionResult(
+                detected=False,
+                confidence=0.0,
+                issues=[],
+                issue_count=0,
+                max_severity="none",
+            )
+
+        # Get expected related topics
+        expected_related = self._get_expected_related_topics(task_topics)
+
+        # Check for narrow focus patterns
+        narrow_patterns = self._check_narrow_focus_patterns(output)
+
+        # Check for comprehensive handling
+        is_comprehensive = self._check_comprehensive_patterns(output)
+
+        # Check which related topics are addressed
+        addressed, missing = self._check_related_topics_addressed(output, expected_related)
+
+        # Determine if there's a context corruption issue
+        # Issue detected if: narrow focus patterns found + missing related topics + not comprehensive
+        if narrow_patterns and missing and not is_comprehensive:
+            issues.append(CorruptionIssue(
+                issue_type="context_ignored",
+                field=",".join(task_topics),
+                message=f"Task mentions {task_topics} but output shows narrow focus, missing: {missing[:3]}",
+                severity="medium",
+            ))
+
+        # Also flag if significant related topics missing without explicit narrow focus
+        # (but only if many related topics are expected and most are missing)
+        if len(missing) >= 3 and len(missing) > len(addressed) and not is_comprehensive:
+            issues.append(CorruptionIssue(
+                issue_type="incomplete_context",
+                field=",".join(missing[:3]),
+                message=f"Related topics not addressed: {missing[:3]}",
+                severity="low",
+            ))
+
+        # Check context parameter if provided
+        if context:
+            context_keywords = self._extract_context_keywords(context)
+            missing_context = [kw for kw in context_keywords if kw.lower() not in output.lower()]
+            if len(missing_context) > len(context_keywords) * 0.7:  # More than 70% missing
+                issues.append(CorruptionIssue(
+                    issue_type="context_not_used",
+                    field="context",
+                    message=f"Provided context largely ignored: {missing_context[:3]}",
+                    severity="high",
+                ))
+
+        # Calculate result
+        if not issues:
+            return CorruptionResult(
+                detected=False,
+                confidence=0.0,
+                issues=[],
+                issue_count=0,
+                max_severity="none",
+            )
+
+        max_severity = max((self._severity_rank(i.severity) for i in issues), default=0)
+        severity_map = {0: "low", 1: "medium", 2: "high", 3: "critical"}
+
+        # Confidence based on number of indicators
+        confidence = min(0.9, 0.3 + len(issues) * 0.2 + len(narrow_patterns) * 0.1)
+
+        return CorruptionResult(
+            detected=True,
+            confidence=round(confidence, 2),
+            issues=issues,
+            issue_count=len(issues),
+            max_severity=severity_map.get(max_severity, "low"),
+        )
+
+    def _extract_context_keywords(self, context: str) -> List[str]:
+        """v1.1: Extract key terms from context string."""
+        # Extract significant words (nouns, technical terms)
+        words = re.findall(r'\b[a-zA-Z_][a-zA-Z0-9_]{3,}\b', context)
+        # Filter common words
+        stopwords = {'this', 'that', 'with', 'from', 'have', 'been', 'will', 'would', 'should', 'could', 'when', 'where', 'what', 'which', 'there', 'their', 'them', 'then', 'than', 'also', 'just', 'only', 'some', 'more', 'other', 'into', 'your', 'about'}
+        return [w for w in words if w.lower() not in stopwords][:10]
+
+    def detect(
+        self,
+        task: str,
+        output: str,
+        context: Optional[str] = None,
+    ) -> CorruptionResult:
+        """
+        v1.1: Main detection entry point for text-based detection.
+
+        Convenience method that wraps detect_from_text.
+        """
+        return self.detect_from_text(task, output, context)
 
 
 corruption_detector = SemanticCorruptionDetector()
