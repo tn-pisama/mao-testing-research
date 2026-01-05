@@ -4,6 +4,11 @@
 This hook runs on tool calls to capture trace data for analysis.
 It stores traces in both SQLite (for querying) and JSONL (for archival).
 
+Now includes:
+- AI response capture from transcript
+- Token usage tracking
+- Cost calculation
+
 Usage:
     Install in ~/.claude/hooks/ and configure in settings.local.json
 """
@@ -11,6 +16,65 @@ Usage:
 import json
 import os
 import sys
+
+# Claude model pricing (per 1M tokens) - as of Jan 2025
+MODEL_PRICING = {
+    "claude-sonnet-4-20250514": {"input": 3.00, "output": 15.00, "cache_read": 0.30},
+    "claude-opus-4-5-20251101": {"input": 15.00, "output": 75.00, "cache_read": 1.50},
+    "claude-3-5-sonnet-20241022": {"input": 3.00, "output": 15.00, "cache_read": 0.30},
+    "claude-3-5-haiku-20241022": {"input": 0.80, "output": 4.00, "cache_read": 0.08},
+    # Fallback for unknown models
+    "default": {"input": 3.00, "output": 15.00, "cache_read": 0.30},
+}
+
+
+def calculate_cost(model: str, usage: dict) -> float:
+    """Calculate cost in USD from token usage."""
+    pricing = MODEL_PRICING.get(model, MODEL_PRICING["default"])
+
+    input_tokens = usage.get("input_tokens", 0)
+    output_tokens = usage.get("output_tokens", 0)
+    cache_read = usage.get("cache_read_input_tokens", 0)
+    cache_create = usage.get("cache_creation_input_tokens", 0)
+
+    # Cache creation costs same as input
+    cost = (
+        (input_tokens / 1_000_000) * pricing["input"] +
+        (output_tokens / 1_000_000) * pricing["output"] +
+        (cache_read / 1_000_000) * pricing["cache_read"] +
+        (cache_create / 1_000_000) * pricing["input"]
+    )
+    return round(cost, 6)
+
+
+def get_last_assistant_message(transcript_path: str) -> dict:
+    """Read transcript and get the last assistant message with usage."""
+    try:
+        from pathlib import Path
+        transcript = Path(transcript_path)
+        if not transcript.exists():
+            return {}
+
+        # Read last 20 lines to find most recent assistant message
+        with open(transcript) as f:
+            lines = f.readlines()[-20:]
+
+        for line in reversed(lines):
+            try:
+                entry = json.loads(line)
+                if entry.get("type") == "assistant" and "message" in entry:
+                    msg = entry["message"]
+                    return {
+                        "model": msg.get("model"),
+                        "usage": msg.get("usage", {}),
+                        "content": msg.get("content", []),
+                        "stop_reason": msg.get("stop_reason"),
+                    }
+            except json.JSONDecodeError:
+                continue
+        return {}
+    except Exception:
+        return {}
 
 
 def main():
@@ -55,6 +119,7 @@ def _fallback_capture(hook_data: dict, hook_type: str) -> None:
     """Fallback capture when pisama_claude_code is not installed.
 
     Provides basic trace storage without the full pisama-core stack.
+    Now includes AI response, token usage, and cost tracking.
     """
     import sqlite3
     from datetime import datetime, timezone
@@ -70,7 +135,28 @@ def _fallback_capture(hook_data: dict, hook_type: str) -> None:
     session_id = hook_data.get("session_id", os.environ.get("CLAUDE_SESSION_ID", "unknown"))
     tool_name = hook_data.get("tool_name", hook_data.get("tool", "unknown"))
     tool_input = hook_data.get("tool_input", hook_data.get("input", {}))
-    tool_output = hook_data.get("tool_output", hook_data.get("output"))
+    tool_output = hook_data.get("tool_response", hook_data.get("tool_output"))
+
+    # Get AI response and token usage from transcript (PostToolUse only)
+    model = None
+    usage = {}
+    cost = 0.0
+    ai_response = None
+
+    transcript_path = hook_data.get("transcript_path")
+    if transcript_path and hook_type in ("post", "PostToolUse"):
+        assistant_msg = get_last_assistant_message(transcript_path)
+        if assistant_msg:
+            model = assistant_msg.get("model")
+            usage = assistant_msg.get("usage", {})
+            cost = calculate_cost(model, usage) if model and usage else 0.0
+            # Extract text from content blocks
+            content = assistant_msg.get("content", [])
+            if isinstance(content, list):
+                ai_response = " ".join(
+                    block.get("text", "") for block in content
+                    if isinstance(block, dict) and block.get("type") == "text"
+                )[:500]  # Limit to 500 chars
 
     # Write to JSONL
     date_str = datetime.now(timezone.utc).strftime("%Y-%m-%d")
@@ -84,6 +170,11 @@ def _fallback_capture(hook_data: dict, hook_type: str) -> None:
         "tool_input": tool_input,
         "tool_output": tool_output,
         "working_dir": os.getcwd(),
+        # New fields
+        "model": model,
+        "usage": usage,
+        "cost_usd": cost,
+        "ai_response": ai_response,
         "raw": hook_data,
     }
 
@@ -93,6 +184,7 @@ def _fallback_capture(hook_data: dict, hook_type: str) -> None:
     # Write to SQLite
     try:
         conn = sqlite3.connect(str(db_path))
+        # Updated schema with new columns
         conn.execute("""
             CREATE TABLE IF NOT EXISTS traces (
                 id INTEGER PRIMARY KEY AUTOINCREMENT,
@@ -103,15 +195,38 @@ def _fallback_capture(hook_data: dict, hook_type: str) -> None:
                 tool_input TEXT,
                 tool_output TEXT,
                 working_dir TEXT,
+                model TEXT,
+                input_tokens INTEGER,
+                output_tokens INTEGER,
+                cache_read_tokens INTEGER,
+                cost_usd REAL,
+                ai_response TEXT,
                 created_at DATETIME DEFAULT CURRENT_TIMESTAMP
             )
         """)
         conn.execute("CREATE INDEX IF NOT EXISTS idx_session ON traces(session_id)")
         conn.execute("CREATE INDEX IF NOT EXISTS idx_tool ON traces(tool_name)")
 
+        # Add columns if they don't exist (migration for existing DBs)
+        for col, col_type in [
+            ("model", "TEXT"),
+            ("input_tokens", "INTEGER"),
+            ("output_tokens", "INTEGER"),
+            ("cache_read_tokens", "INTEGER"),
+            ("cost_usd", "REAL"),
+            ("ai_response", "TEXT"),
+        ]:
+            try:
+                conn.execute(f"ALTER TABLE traces ADD COLUMN {col} {col_type}")
+            except sqlite3.OperationalError:
+                pass  # Column already exists
+
         conn.execute("""
-            INSERT INTO traces (session_id, timestamp, hook_type, tool_name, tool_input, tool_output, working_dir)
-            VALUES (?, ?, ?, ?, ?, ?, ?)
+            INSERT INTO traces (
+                session_id, timestamp, hook_type, tool_name, tool_input, tool_output,
+                working_dir, model, input_tokens, output_tokens, cache_read_tokens, cost_usd, ai_response
+            )
+            VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
         """, (
             session_id,
             timestamp,
@@ -120,6 +235,12 @@ def _fallback_capture(hook_data: dict, hook_type: str) -> None:
             json.dumps(tool_input) if tool_input else None,
             json.dumps(tool_output) if tool_output else None,
             os.getcwd(),
+            model,
+            usage.get("input_tokens"),
+            usage.get("output_tokens"),
+            usage.get("cache_read_input_tokens"),
+            cost,
+            ai_response,
         ))
         conn.commit()
         conn.close()

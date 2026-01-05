@@ -6,8 +6,9 @@ to the PISAMA platform for analysis and self-healing.
 Usage:
     pisama-cc install     Install hooks to ~/.claude/
     pisama-cc uninstall   Remove hooks
-    pisama-cc status      Show current status
-    pisama-cc traces      View recent traces
+    pisama-cc status      Show current status (incl. token/cost totals)
+    pisama-cc traces      View recent traces (-v for token usage)
+    pisama-cc usage       Show token usage and cost breakdown
     pisama-cc export      Export traces to file
     pisama-cc connect     Connect to PISAMA platform
     pisama-cc sync        Sync traces to platform
@@ -77,7 +78,8 @@ def uninstall():
 @click.option("--last", default=20, help="Number of traces to show")
 @click.option("--tool", help="Filter by tool name")
 @click.option("--session", help="Filter by session ID")
-def traces(last: int, tool: Optional[str], session: Optional[str]):
+@click.option("--verbose", "-v", is_flag=True, help="Show token usage and cost")
+def traces(last: int, tool: Optional[str], session: Optional[str], verbose: bool):
     """View recent traces."""
     all_traces = load_recent_traces(last * 3)  # Load extra for filtering
 
@@ -93,15 +95,34 @@ def traces(last: int, tool: Optional[str], session: Optional[str]):
         click.echo("No traces found")
         return
 
+    # Calculate totals
+    total_input = sum(t.get("input_tokens", 0) for t in traces_to_show)
+    total_output = sum(t.get("output_tokens", 0) for t in traces_to_show)
+    total_cost = sum(t.get("cost_usd", 0) for t in traces_to_show)
+
     click.echo(f"📋 Recent Traces ({len(traces_to_show)} shown)")
-    click.echo("=" * 60)
+    click.echo("=" * 70)
 
     for t in traces_to_show:
         ts = t.get("timestamp", "")[:19]
-        tool_name = t.get("tool_name", "?")[:15].ljust(15)
+        tool_name = t.get("tool_name", "?")[:12].ljust(12)
         sess = t.get("session_id", "?")[:8]
         hook = t.get("hook_type", "?")[:4]
-        click.echo(f"{ts} | {tool_name} | {sess} | {hook}")
+
+        if verbose:
+            inp = t.get("input_tokens", 0)
+            out = t.get("output_tokens", 0)
+            cost = t.get("cost_usd", 0)
+            tokens = f"{inp:>6}i {out:>5}o" if inp or out else "       -      "
+            cost_str = f"${cost:.4f}" if cost else "  -    "
+            click.echo(f"{ts} | {tool_name} | {sess} | {hook} | {tokens} | {cost_str}")
+        else:
+            click.echo(f"{ts} | {tool_name} | {sess} | {hook}")
+
+    # Show totals if we have usage data
+    if verbose and (total_input or total_output or total_cost):
+        click.echo("─" * 70)
+        click.echo(f"Totals: {total_input:,} input + {total_output:,} output tokens = ${total_cost:.4f}")
 
 
 @main.command()
@@ -331,14 +352,37 @@ def status():
         click.echo("   ❌ Not connected")
         click.echo("   Run 'pisama-cc connect --api-key <key>'")
 
-    # Count local traces
+    # Count local traces and calculate totals
     trace_count = 0
+    total_input_tokens = 0
+    total_output_tokens = 0
+    total_cost = 0.0
+    models_used = set()
+
     if TRACES_DIR.exists():
         for tf in TRACES_DIR.glob("traces-*.jsonl"):
             with open(tf) as f:
-                trace_count += sum(1 for _ in f)
+                for line in f:
+                    trace_count += 1
+                    try:
+                        t = json.loads(line)
+                        usage = t.get("usage", {})
+                        if usage:
+                            total_input_tokens += usage.get("input_tokens", 0)
+                            total_output_tokens += usage.get("output_tokens", 0)
+                        total_cost += t.get("cost_usd", 0) or 0
+                        if t.get("model"):
+                            models_used.add(t.get("model"))
+                    except json.JSONDecodeError:
+                        pass
 
-    click.echo(f"\n📁 Local traces: {trace_count}")
+    click.echo(f"\n📁 Local Traces: {trace_count}")
+    if total_input_tokens or total_output_tokens:
+        click.echo(f"   Input tokens:  {total_input_tokens:,}")
+        click.echo(f"   Output tokens: {total_output_tokens:,}")
+        click.echo(f"   Total cost:    ${total_cost:.4f}")
+    if models_used:
+        click.echo(f"   Models: {', '.join(sorted(models_used))}")
 
     # Check Claude Code settings for hook integration
     settings_file = Path.home() / ".claude" / "settings.local.json"
@@ -370,6 +414,63 @@ def status():
 
 
 @main.command()
+@click.option("--last", default=100, help="Number of traces to analyze")
+@click.option("--by-model", is_flag=True, help="Group by model")
+@click.option("--by-tool", is_flag=True, help="Group by tool")
+def usage(last: int, by_model: bool, by_tool: bool):
+    """Show token usage and cost breakdown."""
+    traces_list = load_recent_traces(last)
+
+    if not traces_list:
+        click.echo("No traces found")
+        return
+
+    # Calculate totals
+    total_input = sum(t.get("input_tokens", 0) for t in traces_list)
+    total_output = sum(t.get("output_tokens", 0) for t in traces_list)
+    total_cache = sum(t.get("cache_read_tokens", 0) for t in traces_list)
+    total_cost = sum(t.get("cost_usd", 0) for t in traces_list)
+
+    click.echo(f"📊 Token Usage Summary (last {len(traces_list)} traces)")
+    click.echo("=" * 50)
+    click.echo(f"Input tokens:      {total_input:>12,}")
+    click.echo(f"Output tokens:     {total_output:>12,}")
+    click.echo(f"Cache read tokens: {total_cache:>12,}")
+    click.echo(f"Total tokens:      {total_input + total_output:>12,}")
+    click.echo(f"Total cost:        ${total_cost:>11.4f}")
+
+    if by_model:
+        click.echo("\n📈 By Model:")
+        click.echo("-" * 50)
+        model_stats = {}
+        for t in traces_list:
+            model = t.get("model") or "unknown"
+            if model not in model_stats:
+                model_stats[model] = {"input": 0, "output": 0, "cost": 0}
+            model_stats[model]["input"] += t.get("input_tokens", 0)
+            model_stats[model]["output"] += t.get("output_tokens", 0)
+            model_stats[model]["cost"] += t.get("cost_usd", 0)
+
+        for model, stats in sorted(model_stats.items(), key=lambda x: -x[1]["cost"]):
+            if stats["cost"] > 0:
+                click.echo(f"  {model[:35]:<35} ${stats['cost']:.4f}")
+
+    if by_tool:
+        click.echo("\n🔧 By Tool:")
+        click.echo("-" * 50)
+        tool_stats = {}
+        for t in traces_list:
+            tool = t.get("tool_name") or "unknown"
+            if tool not in tool_stats:
+                tool_stats[tool] = {"count": 0, "cost": 0}
+            tool_stats[tool]["count"] += 1
+            tool_stats[tool]["cost"] += t.get("cost_usd", 0)
+
+        for tool, stats in sorted(tool_stats.items(), key=lambda x: -x[1]["count"]):
+            click.echo(f"  {tool:<20} {stats['count']:>5} calls  ${stats['cost']:.4f}")
+
+
+@main.command()
 @click.option("--last", default=50, help="Number of traces to export")
 @click.option("--output", "-o", default="traces-export.jsonl", help="Output file")
 @click.option("--compress", is_flag=True, help="Gzip compress output")
@@ -389,6 +490,12 @@ def export(last: int, output: str, compress: bool):
             "tool_name": t.get("tool_name"),
             "hook_type": t.get("hook_type"),
             "session_id": t.get("session_id"),
+            # New fields
+            "model": t.get("model"),
+            "input_tokens": t.get("input_tokens"),
+            "output_tokens": t.get("output_tokens"),
+            "cache_read_tokens": t.get("cache_read_tokens"),
+            "cost_usd": t.get("cost_usd"),
         }
         # Include sanitized input
         inp = t.get("tool_input", {})
@@ -446,6 +553,12 @@ def normalize_trace(t: dict) -> dict:
     # Session ID might be in different places
     session_id = t.get("session_id") or t.get("trace_id", "")[:8]
 
+    # Extract usage data (new fields)
+    usage = t.get("usage", {})
+    input_tokens = usage.get("input_tokens", 0) if usage else 0
+    output_tokens = usage.get("output_tokens", 0) if usage else 0
+    cache_read = usage.get("cache_read_input_tokens", 0) if usage else 0
+
     return {
         "tool_name": tool_name,
         "timestamp": timestamp,
@@ -453,6 +566,13 @@ def normalize_trace(t: dict) -> dict:
         "session_id": session_id,
         "tool_input": tool_input,
         "working_dir": t.get("working_dir") or attrs.get("working_dir", ""),
+        # New fields
+        "model": t.get("model"),
+        "input_tokens": input_tokens,
+        "output_tokens": output_tokens,
+        "cache_read_tokens": cache_read,
+        "cost_usd": t.get("cost_usd", 0.0),
+        "ai_response": t.get("ai_response"),
         "_raw": t,
     }
 
