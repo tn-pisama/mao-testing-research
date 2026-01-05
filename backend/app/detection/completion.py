@@ -21,10 +21,16 @@ Version History:
   - Detection without explicit completion claim for quant requirements
   - "Planned" and "future" work detection as incomplete
   - Task-aware detection (MVP/prototype exemptions)
+- v1.3: Phase 2 adversarial fixes:
+  - Fixed percentage pattern regex (80% now matches)
+  - JSON completion claim detection ("status": "complete")
+  - JSON incomplete indicator detection ("documented": false)
+  - Numeric ratio detection (8/10, documentedEndpoints: 8, total: 10)
+  - Uncertainty language detection ("lingering", "might have missed")
 """
 
 # Detector version for tracking
-DETECTOR_VERSION = "1.2"
+DETECTOR_VERSION = "1.3"
 DETECTOR_NAME = "CompletionMisjudgmentDetector"
 
 import logging
@@ -131,11 +137,14 @@ class CompletionMisjudgmentDetector:
         (r'\b(?:most|majority|mainly|primarily|largely)\b', "partial_scope"),
         (r'\b(?:core|main|primary|key|essential)\s+(?:functionality|features?|parts?)\b', "core_only"),
         (r'\b(?:basic|minimal|initial|preliminary)\b', "minimal_scope"),
-        (r'\b\d{1,2}%\b', "percentage_incomplete"),  # e.g., "90%"
+        (r'\b\d{1,2}%', "percentage_incomplete"),  # v1.3: Fixed - removed trailing \b (% is not word char)
         (r'\b(?:some|several|few|certain)\s+(?:of|aspects?|parts?|areas?)\b', "partial_coverage"),
         (r'\b(?:focus(?:ed|ing)?|priorit(?:ized?|izing))\s+on\b', "selective_focus"),
         (r'\b(?:for now|at this point|currently|at the moment)\b', "temporal_limitation"),
         (r'\b(?:happy path|common case|typical scenario)\b', "limited_coverage"),
+        # v1.3: Uncertainty language indicating incomplete
+        (r'\b(?:lingering|might have missed|could still|probably missed)\b', "uncertainty_incomplete"),
+        (r'\b(?:couple of|few more|some more)\s+(?:edge cases?|cases?|tests?|items?)\b', "acknowledged_gaps"),
     ]
 
     # v1.1: Qualifier patterns that suggest uncertainty about completion
@@ -187,6 +196,27 @@ class CompletionMisjudgmentDetector:
         r'\b(?:quick|initial|rough|first)\s+(?:draft|version|pass|attempt)\b',
         r'\b(?:minimal|basic)\s+(?:version|implementation)\b',
         r'\bv0(?:\.\d+)?\b',  # v0.1, v0.2, etc.
+    ]
+
+    # v1.3: JSON-specific completion claim patterns
+    JSON_COMPLETION_PATTERNS = [
+        r'"status"\s*:\s*"[^"]*(?:complete|done|finished)[^"]*"',
+        r'"(?:is_complete|completed|finished|done)"\s*:\s*true',
+        r'"state"\s*:\s*"[^"]*(?:complete|success)[^"]*"',
+    ]
+
+    # v1.3: JSON-specific incomplete indicator patterns
+    JSON_INCOMPLETE_PATTERNS = [
+        (r'"(?:documented|hasExamples?|completed|done|tested|covered|implemented)"\s*:\s*false', "json_false_flag"),
+        (r'"(?:missing|pending|todo|incomplete)"\s*:\s*\[', "json_missing_list"),
+        (r'"(?:coverage|completion)"\s*:\s*"?\d{1,2}%"?', "json_partial_coverage"),
+    ]
+
+    # v1.3: Numeric ratio patterns (e.g., "8/10", "documented: 8, total: 10")
+    NUMERIC_RATIO_PATTERNS = [
+        (r'(\d+)\s*/\s*(\d+)', "explicit_ratio"),  # 8/10
+        (r'(\d+)\s+(?:of|out of)\s+(\d+)', "explicit_count"),  # 8 of 10
+        (r'"(?:documented|completed|done|tested)(?:Endpoints?|Items?|Tasks?)?"\s*:\s*(\d+).*?"(?:total)(?:Endpoints?|Items?|Tasks?)?"\s*:\s*(\d+)', "json_ratio"),
     ]
 
     # Success criteria extraction patterns
@@ -302,6 +332,50 @@ class CompletionMisjudgmentDetector:
             if re.search(pattern, text, re.IGNORECASE):
                 return True
         return False
+
+    def _detect_json_completion_claim(self, text: str) -> bool:
+        """v1.3: Detect completion claims in JSON/structured output."""
+        for pattern in self.JSON_COMPLETION_PATTERNS:
+            if re.search(pattern, text, re.IGNORECASE):
+                return True
+        return False
+
+    def _detect_json_incomplete(self, text: str) -> List[tuple]:
+        """v1.3: Detect incomplete indicators in JSON/structured output."""
+        indicators = []
+        for pattern, indicator_type in self.JSON_INCOMPLETE_PATTERNS:
+            matches = re.finditer(pattern, text, re.IGNORECASE)
+            for match in matches:
+                start = max(0, match.start() - 30)
+                end = min(len(text), match.end() + 30)
+                context = text[start:end].strip()
+                indicators.append((match.group(), indicator_type, context))
+        return indicators
+
+    def _detect_numeric_ratio(self, text: str) -> Optional[tuple]:
+        """v1.3: Detect numeric ratios indicating partial completion (e.g., 8/10).
+
+        Returns:
+            tuple: (completed, total, ratio) if found, None otherwise
+        """
+        for pattern, ratio_type in self.NUMERIC_RATIO_PATTERNS:
+            matches = re.finditer(pattern, text, re.IGNORECASE | re.DOTALL)
+            for match in matches:
+                try:
+                    if ratio_type == "json_ratio":
+                        completed = int(match.group(1))
+                        total = int(match.group(2))
+                    else:
+                        completed = int(match.group(1))
+                        total = int(match.group(2))
+
+                    # Only flag if ratio is less than 100%
+                    if total > 0 and completed < total:
+                        ratio = completed / total
+                        return (completed, total, ratio)
+                except (ValueError, IndexError):
+                    continue
+        return None
 
     def _extract_success_criteria(self, task: str) -> List[str]:
         """Extract success criteria from task description."""
@@ -419,8 +493,19 @@ class CompletionMisjudgmentDetector:
         if confident_delivery and not completion_claimed:
             completion_claimed = True  # Treat confident delivery as implicit claim
 
+        # v1.3: Check for JSON-specific completion claims
+        json_completion = self._detect_json_completion_claim(agent_output)
+        if json_completion and not completion_claimed:
+            completion_claimed = True  # Treat JSON completion status as claim
+
         # Detect incomplete markers
         incomplete_markers = self._detect_incomplete_markers(agent_output)
+
+        # v1.3: Detect JSON-specific incomplete indicators
+        json_incomplete = self._detect_json_incomplete(agent_output)
+
+        # v1.3: Detect numeric ratios (e.g., 8/10)
+        numeric_ratio = self._detect_numeric_ratio(agent_output)
 
         # Detect errors
         errors = self._detect_errors(agent_output)
@@ -585,6 +670,37 @@ class CompletionMisjudgmentDetector:
                     description="Task requires 100% but uses progress language (implies ongoing work)",
                     severity=CompletionSeverity.MODERATE,
                     evidence="Progress language detected without explicit completion claim",
+                ))
+
+        # v1.3: Check for JSON incomplete indicators with completion claim
+        if completion_claimed and json_incomplete:
+            for indicator, indicator_type, context in json_incomplete[:2]:
+                issues.append(CompletionIssue(
+                    issue_type=CompletionIssueType.PARTIAL_DELIVERY,
+                    description=f"JSON output shows incomplete items: '{indicator}'",
+                    severity=CompletionSeverity.MODERATE,
+                    evidence=context,
+                ))
+
+        # v1.3: Check for numeric ratios showing incomplete (with or without completion claim)
+        if numeric_ratio and has_quant_req and not is_scoped_task:
+            completed, total, ratio = numeric_ratio
+            if ratio < 1.0:
+                issues.append(CompletionIssue(
+                    issue_type=CompletionIssueType.PARTIAL_DELIVERY,
+                    description=f"Task requires 100% but output shows {completed}/{total} ({ratio*100:.0f}%)",
+                    severity=CompletionSeverity.MODERATE,
+                    evidence=f"Numeric ratio detected: {completed}/{total}",
+                ))
+
+        # v1.3: JSON incomplete without explicit claim but with quantitative requirement
+        if json_incomplete and has_quant_req and not is_scoped_task and not completion_claimed:
+            for indicator, indicator_type, context in json_incomplete[:2]:
+                issues.append(CompletionIssue(
+                    issue_type=CompletionIssueType.PARTIAL_DELIVERY,
+                    description=f"Task requires 100% but JSON shows incomplete: '{indicator}'",
+                    severity=CompletionSeverity.MODERATE,
+                    evidence=context,
                 ))
 
         # v1.2: Reduce false positives for scoped tasks
