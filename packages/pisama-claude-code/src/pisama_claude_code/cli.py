@@ -53,7 +53,7 @@ def save_config(config: dict):
 
 
 @click.group()
-@click.version_option(version="0.3.1")
+@click.version_option(version="0.3.2")
 def main():
     """PISAMA Claude Code - Trace capture and sync."""
     pass
