@@ -66,3 +66,4 @@ logs/
 
 # Local config
 *.local
+models/
