@@ -11,6 +11,12 @@ from opentelemetry.trace import Status, StatusCode
 if TYPE_CHECKING:
     from .session import TraceSession
 
+# Attribute size limits for conversation trace support
+# Increased from standard 4KB to support multi-turn conversations
+MAX_ATTRIBUTE_LENGTH = 16384  # 16KB for standard attributes
+MAX_ACCUMULATED_CONTEXT = 65536  # 64KB for accumulated conversation context
+MAX_CONTENT_LENGTH = 32768  # 32KB for content fields
+
 
 @dataclass
 class SpanData:
@@ -70,15 +76,38 @@ class Span:
         return (end - self._start_time_ns) / 1_000_000
     
     def set_attribute(self, key: str, value: Any) -> "Span":
-        """Set an attribute on the span."""
-        if isinstance(value, (str, int, float, bool)):
+        """Set an attribute on the span with smart truncation.
+
+        Applies appropriate size limits based on the attribute type:
+        - accumulated_context: 64KB limit (for full conversation history)
+        - content/prompt/response: 32KB limit
+        - Other string attributes: 16KB limit
+        """
+        if isinstance(value, str):
+            # Apply size limits based on attribute type
+            if key == "accumulated_context":
+                max_len = MAX_ACCUMULATED_CONTEXT
+            elif key in ("content", "prompt", "response", "input", "output"):
+                max_len = MAX_CONTENT_LENGTH
+            else:
+                max_len = MAX_ATTRIBUTE_LENGTH
+
+            if len(value) > max_len:
+                # Truncate with indicator
+                value = value[:max_len - 20] + "\n[...truncated...]"
+
+            self._attributes[key] = value
+        elif isinstance(value, (int, float, bool)):
             self._attributes[key] = value
         else:
-            self._attributes[key] = json.dumps(value)
-        
+            serialized = json.dumps(value)
+            if len(serialized) > MAX_ATTRIBUTE_LENGTH:
+                serialized = serialized[:MAX_ATTRIBUTE_LENGTH - 20] + "...truncated"
+            self._attributes[key] = serialized
+
         if self._otel_span:
             self._otel_span.set_attribute(key, self._attributes[key])
-        
+
         return self
     
     def set_attributes(self, attributes: Dict[str, Any]) -> "Span":
