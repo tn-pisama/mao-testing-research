@@ -14,6 +14,10 @@ Version History:
   - Added task completion check (if task addressed, be lenient)
   - Added adaptation recognition (reformats, methodology changes, rewrites)
   - Added conceptual overlap scoring for semantic matching
+- v1.2: Stricter detection for critical context
+  - Added CRITICAL/IMPORTANT marker detection
+  - Raised task_addressed threshold from 0.15 to 0.25
+  - Added critical keyword requirement check
 """
 
 import logging
@@ -25,8 +29,17 @@ import re
 logger = logging.getLogger(__name__)
 
 # Detector version for tracking
-DETECTOR_VERSION = "1.1"
+DETECTOR_VERSION = "1.2"
 DETECTOR_NAME = "ContextNeglectDetector"
+
+# v1.2: Markers indicating critical context that should not be ignored
+# v1.2.1: Made more strict - only explicit critical/important markers, not soft markers
+CRITICAL_CONTEXT_MARKERS = [
+    "critical:", "important:", "critical -", "important -",
+    "must handle", "must address", "must review", "must consider",
+    "required:", "mandatory:",
+    "do not ignore", "don't ignore",
+]
 
 # Phrases that indicate the output is building on/referencing prior context
 CONTEXT_REFERENCE_PHRASES = [
@@ -189,6 +202,87 @@ class ContextNeglectDetector:
                 return True
         return False
 
+    def _has_critical_context(self, context: str) -> bool:
+        """v1.2: Check if context contains critical markers requiring strict matching."""
+        context_lower = context.lower()
+        for marker in CRITICAL_CONTEXT_MARKERS:
+            if marker in context_lower:
+                return True
+        return False
+
+    def _extract_critical_topics(self, context: str) -> set[str]:
+        """v1.2: Extract key topic words from context sections marked as critical/important.
+
+        Finds words near CRITICAL/IMPORTANT markers that represent the key topics
+        that should be addressed in the output.
+        """
+        context_lower = context.lower()
+        critical_topics = set()
+
+        # Split into sentences/sections
+        sections = re.split(r'[.!?]', context_lower)
+
+        for section in sections:
+            # Check if section has critical markers
+            has_marker = any(marker in section for marker in CRITICAL_CONTEXT_MARKERS)
+            if has_marker:
+                # Extract significant words from this section (domain-specific terms)
+                # Look for hyphenated terms (like "token-expiration-cleanup")
+                hyphenated = re.findall(r'\b[a-z]+-[a-z]+(?:-[a-z]+)*\b', section)
+                critical_topics.update(hyphenated)
+
+                # Look for capitalized terms that were lowercased (like "SessionManager")
+                # These would appear as camelCase or compound words
+                compounds = re.findall(r'\b[a-z]+(?:manager|handler|controller|service|config|policy|hook|store)\b', section)
+                critical_topics.update(compounds)
+
+        return critical_topics
+
+    def _check_critical_topics_addressed(self, critical_topics: set[str], output: str) -> tuple[bool, set[str]]:
+        """v1.2: Check if critical topics from context are addressed in output.
+
+        Returns (addressed, missing) where addressed is True if enough critical
+        topics are mentioned, and missing contains the unaddressed topics.
+
+        v1.2.1: Made matching stricter - require either full topic or
+        multiple significant parts (at least 2) to match.
+        """
+        if not critical_topics:
+            return True, set()
+
+        output_lower = output.lower()
+        addressed = set()
+        missing = set()
+
+        for topic in critical_topics:
+            # Check if full topic appears in output
+            if topic in output_lower:
+                addressed.add(topic)
+                continue
+
+            # For hyphenated topics, require at least 2 significant parts to match
+            topic_parts = [p for p in topic.split('-') if len(p) > 4]
+            if len(topic_parts) >= 2:
+                # Count how many parts appear in output
+                parts_matched = sum(1 for part in topic_parts if part in output_lower)
+                if parts_matched >= 2:
+                    addressed.add(topic)
+                    continue
+
+            # For compound words (like sessionmanager), check if they appear
+            if len(topic) > 10 and topic in output_lower:
+                addressed.add(topic)
+                continue
+
+            missing.add(topic)
+
+        # Require at least 30% of critical topics to be addressed
+        if not critical_topics:
+            return True, set()
+
+        coverage = len(addressed) / len(critical_topics)
+        return coverage >= 0.3, missing
+
     def _is_task_addressed(self, task: str, output: str) -> bool:
         """v1.1: Check if output addresses the core task request.
 
@@ -260,12 +354,36 @@ class ContextNeglectDetector:
         adaptation_detected = self._check_adaptation(output)
         task_addressed = self._is_task_addressed(task, output) if task else False
 
-        # v1.1: Improved detection logic
+        # v1.2: Check if context has critical markers (requires stricter matching)
+        has_critical_context = self._has_critical_context(context)
+
+        # v1.2: Extract and check critical topics if present
+        critical_topics = set()
+        critical_topics_addressed = True
+        critical_topics_missing = set()
+        if has_critical_context:
+            critical_topics = self._extract_critical_topics(context)
+            critical_topics_addressed, critical_topics_missing = self._check_critical_topics_addressed(
+                critical_topics, output
+            )
+
+        # v1.2: Set thresholds based on context importance
+        # Critical context requires higher utilization to pass
+        task_utilization_threshold = 0.25 if has_critical_context else 0.15
+
+        # v1.1/v1.2: Improved detection logic
         # Key insight: explicit context reference shows awareness,
         # but task completion alone doesn't prove context use.
         #
+        # v1.2.2: CRITICAL CONTEXT OVERRIDE
+        # If there are critical topics that aren't addressed, detect failure
+        # regardless of other heuristics (context reference, adaptation, etc.)
+        if has_critical_context and not critical_topics_addressed:
+            detected = True
+            # Add critical topics to missing elements for explanation
+            missing.extend([f"critical: {t}" for t in list(critical_topics_missing)[:5]])
         # 1. If utilization is good, no neglect
-        if utilization >= self.utilization_threshold:
+        elif utilization >= self.utilization_threshold:
             detected = False
         # 2. If output explicitly references prior context → OK
         #    (explicit reference like "our previous", "reflecting on" shows awareness)
@@ -275,8 +393,8 @@ class ContextNeglectDetector:
         #    (legitimate methodology change while doing the task)
         elif adaptation_detected and task_addressed:
             detected = False
-        # 4. If task is addressed AND utilization is reasonable (>15%) → OK
-        elif task_addressed and utilization >= 0.15:
+        # 4. If task is addressed AND utilization meets threshold → OK
+        elif task_addressed and utilization >= task_utilization_threshold:
             detected = False
         # 5. Otherwise, context neglect detected
         else:

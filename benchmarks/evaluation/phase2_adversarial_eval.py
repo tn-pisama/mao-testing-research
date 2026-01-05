@@ -242,9 +242,51 @@ def run_detector_on_adversarial(
 
         elif failure_mode == "F7":
             # ContextNeglectDetector.detect(context, output, task, agent_name)
+            # v1.2: Build realistic context that includes related topics from twist
             detector = ContextNeglectDetector()
+
+            # Extract related topics from twist description for context
+            context_parts = [f"Prior context and requirements for: {task}"]
+
+            # Parse twist to extract mentioned related topics
+            # v1.2.1: Use more specific keywords that LLM output won't accidentally match
+            twist_lower = twist.lower()
+            related_topic_phrases = [
+                ("session handling", "CRITICAL: SessionManager must handle token-expiration-cleanup, "
+                 "logout-cascade-invalidation, and stale-session-pruning per RFC-7519 section 4.1.4. "
+                 "The previous fix at 2024-Q3-sprint introduced session-rotation-policy."),
+                ("session", "IMPORTANT: Review session-lifecycle-state-machine, redis-session-store "
+                 "configuration, and session-invalidation-hook callback patterns from prior sprint."),
+                ("authentication", "Context from SEC-2847: Check auth-module-refactor, "
+                 "credential-hasher updates, and session-context propagation."),
+                ("authorization", "Review RBAC-policy-v2 changes, permission-boundary checks, "
+                 "and resource-access-matrix from the compliance audit."),
+                ("security", "SECURITY-REVIEW-2024: Consider XSS-sanitization, CSRF-token-rotation, "
+                 "and rate-limiter-bypass detection."),
+                ("data", "DATA-MIGRATION-123: Preserve schema-version-compatibility, foreign-key-constraints, "
+                 "and data-lineage-tracking from the ETL pipeline."),
+                ("previous", "CONTINUITY: Reference sprint-retrospective-notes, technical-debt-backlog, "
+                 "and architecture-decision-records from last iteration."),
+                ("meeting", "MEETING-NOTES-2024-12: Key decisions on API-versioning-strategy, "
+                 "deprecation-timeline, and backward-compatibility-matrix."),
+                ("methodology", "METHODOLOGY-DOC: Prior analysis used quantile-regression, "
+                 "cross-validation-folds, and feature-importance-ranking."),
+                ("existing", "PRESERVE: existing-API-contracts, backward-compat-shim, "
+                 "and integration-test-fixtures from v1.x release."),
+            ]
+
+            for keyword, context_addition in related_topic_phrases:
+                if keyword in twist_lower:
+                    context_parts.append(context_addition)
+
+            # If no specific matches, add generic context
+            if len(context_parts) == 1:
+                context_parts.append(f"The task needs to address: {task}")
+
+            context = " ".join(context_parts)
+
             result = detector.detect(
-                context=f"Prior context and requirements for: {task}. The task needs to address: {task}",
+                context=context,
                 output=output,
                 task=task,
                 agent_name="test_agent",
