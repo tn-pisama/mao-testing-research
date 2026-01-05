@@ -1424,6 +1424,447 @@ class TurnAwareCoordinationFailureDetector(TurnAwareDetector):
         return len(intersection) / len(union) if union else 0.0
 
 
+class TurnAwareResourceMisallocationDetector(TurnAwareDetector):
+    """Detects F3: Resource Misallocation in multi-agent conversations.
+
+    Analyzes whether agents have appropriate resources:
+    1. Missing tools/capabilities - agent needs something they don't have
+    2. Wrong agent for task - task assigned to agent without required skills
+    3. Resource overload - one agent given too much work
+    4. Underutilized agents - some agents doing nothing while others overloaded
+    5. Tool/API failures - resources not working as expected
+
+    This is the 2nd most common failure mode in MAST (36% prevalence).
+    """
+
+    name = "TurnAwareResourceMisallocationDetector"
+    version = "1.0"
+    supported_failure_modes = ["F3"]
+
+    # Resource complaint indicators
+    RESOURCE_COMPLAINTS = [
+        "don't have access", "no access to", "cannot access",
+        "missing", "not available", "unavailable",
+        "need permission", "not authorized", "access denied",
+        "tool not found", "function not", "api error",
+        "unable to", "can't find", "doesn't exist",
+        "no such", "not installed", "import error",
+    ]
+
+    # Capability mismatch indicators
+    CAPABILITY_MISMATCH = [
+        "not my expertise", "outside my scope", "not qualified",
+        "don't know how to", "unfamiliar with", "not trained",
+        "beyond my capabilities", "can't do that", "not designed for",
+        "wrong agent", "should be handled by", "need specialist",
+    ]
+
+    # Overload indicators
+    OVERLOAD_INDICATORS = [
+        "too many tasks", "overloaded", "too much work",
+        "overwhelmed", "can't handle all", "backed up",
+        "queue is full", "rate limit", "throttled",
+        "timeout", "timed out", "slow response",
+    ]
+
+    def __init__(
+        self,
+        min_turns: int = 2,
+    ):
+        self.min_turns = min_turns
+
+    def detect(
+        self,
+        turns: List[TurnSnapshot],
+        conversation_metadata: Optional[Dict[str, Any]] = None,
+    ) -> TurnAwareDetectionResult:
+        """Detect resource misallocation issues."""
+        agent_turns = [t for t in turns if t.participant_type == "agent"]
+        tool_turns = [t for t in turns if t.participant_type == "tool"]
+
+        if len(agent_turns) < self.min_turns:
+            return TurnAwareDetectionResult(
+                detected=False,
+                severity=TurnAwareSeverity.NONE,
+                confidence=0.0,
+                failure_mode=None,
+                explanation="Too few agent turns to analyze",
+                detector_name=self.name,
+            )
+
+        issues = []
+        affected_turns = []
+
+        # 1. Check for resource complaints
+        resource_issues = self._detect_resource_complaints(agent_turns + tool_turns)
+        issues.extend(resource_issues)
+        for issue in resource_issues:
+            affected_turns.extend(issue.get("turns", []))
+
+        # 2. Check for capability mismatches
+        capability_issues = self._detect_capability_mismatch(agent_turns)
+        issues.extend(capability_issues)
+        for issue in capability_issues:
+            affected_turns.extend(issue.get("turns", []))
+
+        # 3. Check for overload indicators
+        overload_issues = self._detect_overload(agent_turns)
+        issues.extend(overload_issues)
+        for issue in overload_issues:
+            affected_turns.extend(issue.get("turns", []))
+
+        # 4. Check for tool/API failures in tool responses
+        tool_issues = self._detect_tool_failures(tool_turns)
+        issues.extend(tool_issues)
+        for issue in tool_issues:
+            affected_turns.extend(issue.get("turns", []))
+
+        # 5. Check for uneven work distribution (multi-agent)
+        distribution_issues = self._detect_uneven_distribution(agent_turns)
+        issues.extend(distribution_issues)
+
+        if not issues:
+            return TurnAwareDetectionResult(
+                detected=False,
+                severity=TurnAwareSeverity.NONE,
+                confidence=0.8,
+                failure_mode=None,
+                explanation="No resource misallocation detected",
+                detector_name=self.name,
+            )
+
+        # Severity based on issue count and types
+        if len(issues) >= 3 or any(i["type"] == "tool_failure" for i in issues):
+            severity = TurnAwareSeverity.SEVERE
+        elif len(issues) >= 2:
+            severity = TurnAwareSeverity.MODERATE
+        else:
+            severity = TurnAwareSeverity.MINOR
+
+        confidence = min(0.85, 0.5 + len(issues) * 0.12)
+
+        return TurnAwareDetectionResult(
+            detected=True,
+            severity=severity,
+            confidence=confidence,
+            failure_mode="F3",
+            explanation=f"Resource misallocation: {len(issues)} issues found",
+            affected_turns=list(set(affected_turns)),
+            evidence={"issues": issues},
+            suggested_fix=(
+                "Review resource allocation: 1) Ensure agents have required tools/access, "
+                "2) Match agent capabilities to task requirements, "
+                "3) Balance workload across agents, 4) Add fallback resources."
+            ),
+            detector_name=self.name,
+        )
+
+    def _detect_resource_complaints(self, turns: List[TurnSnapshot]) -> list:
+        """Detect complaints about missing resources."""
+        issues = []
+        for turn in turns:
+            content_lower = turn.content.lower()
+            for indicator in self.RESOURCE_COMPLAINTS:
+                if indicator in content_lower:
+                    issues.append({
+                        "type": "resource_complaint",
+                        "turns": [turn.turn_number],
+                        "indicator": indicator,
+                        "description": f"Resource issue: '{indicator}'",
+                    })
+                    break
+        return issues[:4]
+
+    def _detect_capability_mismatch(self, agent_turns: List[TurnSnapshot]) -> list:
+        """Detect agents saying they can't do something."""
+        issues = []
+        for turn in agent_turns:
+            content_lower = turn.content.lower()
+            for indicator in self.CAPABILITY_MISMATCH:
+                if indicator in content_lower:
+                    issues.append({
+                        "type": "capability_mismatch",
+                        "turns": [turn.turn_number],
+                        "indicator": indicator,
+                        "description": f"Capability mismatch: '{indicator}'",
+                    })
+                    break
+        return issues[:3]
+
+    def _detect_overload(self, agent_turns: List[TurnSnapshot]) -> list:
+        """Detect overload complaints."""
+        issues = []
+        for turn in agent_turns:
+            content_lower = turn.content.lower()
+            for indicator in self.OVERLOAD_INDICATORS:
+                if indicator in content_lower:
+                    issues.append({
+                        "type": "overload",
+                        "turns": [turn.turn_number],
+                        "indicator": indicator,
+                        "description": f"Overload indicator: '{indicator}'",
+                    })
+                    break
+        return issues[:2]
+
+    def _detect_tool_failures(self, tool_turns: List[TurnSnapshot]) -> list:
+        """Detect tool/API failures in tool responses."""
+        issues = []
+        failure_indicators = [
+            "error", "failed", "exception", "traceback",
+            "404", "500", "401", "403", "timeout",
+            "connection refused", "not found", "invalid",
+        ]
+        for turn in tool_turns:
+            content_lower = turn.content.lower()
+            for indicator in failure_indicators:
+                if indicator in content_lower:
+                    issues.append({
+                        "type": "tool_failure",
+                        "turns": [turn.turn_number],
+                        "indicator": indicator,
+                        "description": f"Tool failure: '{indicator}'",
+                    })
+                    break
+        return issues[:3]
+
+    def _detect_uneven_distribution(self, agent_turns: List[TurnSnapshot]) -> list:
+        """Detect uneven work distribution across agents."""
+        from collections import Counter
+        agent_counts = Counter(t.participant_id for t in agent_turns)
+
+        if len(agent_counts) < 2:
+            return []
+
+        counts = list(agent_counts.values())
+        max_count = max(counts)
+        min_count = min(counts)
+
+        # If one agent has 3x+ more turns than another
+        if max_count >= 3 * min_count and max_count >= 4:
+            most_active = max(agent_counts, key=agent_counts.get)
+            least_active = min(agent_counts, key=agent_counts.get)
+            return [{
+                "type": "uneven_distribution",
+                "most_active": most_active,
+                "least_active": least_active,
+                "ratio": max_count / min_count if min_count > 0 else max_count,
+                "description": f"Uneven workload: {most_active} has {max_count} turns vs {min_count} for {least_active}",
+            }]
+        return []
+
+
+class TurnAwareInformationWithholdingDetector(TurnAwareDetector):
+    """Detects F8: Information Withholding in conversations.
+
+    Analyzes whether agents properly share information:
+    1. Unanswered questions - agent asks but gets no answer
+    2. Missing context - agent responds without using provided info
+    3. Incomplete sharing - partial information provided
+    4. Ignored requests - explicit requests for info not addressed
+
+    F8 has 18% prevalence in MAST.
+    """
+
+    name = "TurnAwareInformationWithholdingDetector"
+    version = "1.0"
+    supported_failure_modes = ["F8"]
+
+    # Question indicators
+    QUESTION_PATTERNS = [
+        "?", "what is", "how do", "can you", "could you",
+        "please provide", "please share", "need to know",
+        "tell me", "explain", "clarify", "which",
+    ]
+
+    # Withholding indicators in responses
+    WITHHOLDING_INDICATORS = [
+        "can't share", "cannot disclose", "not allowed to",
+        "confidential", "private", "restricted",
+        "don't have that", "no information", "unknown",
+        "not sure", "i don't know", "unclear",
+    ]
+
+    # Missing context indicators
+    MISSING_CONTEXT = [
+        "what do you mean", "more context", "be more specific",
+        "unclear what", "don't understand", "confused about",
+        "missing information", "need more details", "incomplete",
+    ]
+
+    def __init__(
+        self,
+        min_turns: int = 3,
+    ):
+        self.min_turns = min_turns
+
+    def detect(
+        self,
+        turns: List[TurnSnapshot],
+        conversation_metadata: Optional[Dict[str, Any]] = None,
+    ) -> TurnAwareDetectionResult:
+        """Detect information withholding issues."""
+        if len(turns) < self.min_turns:
+            return TurnAwareDetectionResult(
+                detected=False,
+                severity=TurnAwareSeverity.NONE,
+                confidence=0.0,
+                failure_mode=None,
+                explanation="Too few turns to analyze",
+                detector_name=self.name,
+            )
+
+        issues = []
+        affected_turns = []
+
+        # 1. Check for unanswered questions
+        unanswered = self._detect_unanswered_questions(turns)
+        issues.extend(unanswered)
+        for issue in unanswered:
+            affected_turns.extend(issue.get("turns", []))
+
+        # 2. Check for withholding indicators
+        withholding = self._detect_withholding(turns)
+        issues.extend(withholding)
+        for issue in withholding:
+            affected_turns.extend(issue.get("turns", []))
+
+        # 3. Check for missing context complaints
+        missing = self._detect_missing_context(turns)
+        issues.extend(missing)
+        for issue in missing:
+            affected_turns.extend(issue.get("turns", []))
+
+        # 4. Check for ignored information requests
+        ignored = self._detect_ignored_requests(turns)
+        issues.extend(ignored)
+        for issue in ignored:
+            affected_turns.extend(issue.get("turns", []))
+
+        if not issues:
+            return TurnAwareDetectionResult(
+                detected=False,
+                severity=TurnAwareSeverity.NONE,
+                confidence=0.8,
+                failure_mode=None,
+                explanation="No information withholding detected",
+                detector_name=self.name,
+            )
+
+        if len(issues) >= 3:
+            severity = TurnAwareSeverity.SEVERE
+        elif len(issues) >= 2:
+            severity = TurnAwareSeverity.MODERATE
+        else:
+            severity = TurnAwareSeverity.MINOR
+
+        confidence = min(0.85, 0.5 + len(issues) * 0.12)
+
+        return TurnAwareDetectionResult(
+            detected=True,
+            severity=severity,
+            confidence=confidence,
+            failure_mode="F8",
+            explanation=f"Information withholding: {len(issues)} issues found",
+            affected_turns=list(set(affected_turns)),
+            evidence={"issues": issues},
+            suggested_fix=(
+                "Improve information sharing: 1) Ensure all questions are addressed, "
+                "2) Share full context when responding, 3) Proactively share relevant info, "
+                "4) Ask clarifying questions when info is incomplete."
+            ),
+            detector_name=self.name,
+        )
+
+    def _detect_unanswered_questions(self, turns: List[TurnSnapshot]) -> list:
+        """Detect questions that weren't answered."""
+        issues = []
+        for i, turn in enumerate(turns[:-1]):
+            content = turn.content
+            # Check if this turn contains a question
+            if "?" in content:
+                # Look at next 2 turns for an answer
+                answered = False
+                for j in range(i + 1, min(i + 3, len(turns))):
+                    next_turn = turns[j]
+                    # Different participant responding
+                    if next_turn.participant_id != turn.participant_id:
+                        # Check if response is substantive (not just acknowledgment)
+                        if len(next_turn.content) > 50:
+                            answered = True
+                            break
+                if not answered:
+                    issues.append({
+                        "type": "unanswered_question",
+                        "turns": [turn.turn_number],
+                        "description": "Question appears unanswered",
+                    })
+        return issues[:3]
+
+    def _detect_withholding(self, turns: List[TurnSnapshot]) -> list:
+        """Detect explicit withholding of information."""
+        issues = []
+        for turn in turns:
+            content_lower = turn.content.lower()
+            for indicator in self.WITHHOLDING_INDICATORS:
+                if indicator in content_lower:
+                    issues.append({
+                        "type": "explicit_withholding",
+                        "turns": [turn.turn_number],
+                        "indicator": indicator,
+                        "description": f"Info withheld: '{indicator}'",
+                    })
+                    break
+        return issues[:3]
+
+    def _detect_missing_context(self, turns: List[TurnSnapshot]) -> list:
+        """Detect complaints about missing context."""
+        issues = []
+        for turn in turns:
+            content_lower = turn.content.lower()
+            for indicator in self.MISSING_CONTEXT:
+                if indicator in content_lower:
+                    issues.append({
+                        "type": "missing_context",
+                        "turns": [turn.turn_number],
+                        "indicator": indicator,
+                        "description": f"Missing context: '{indicator}'",
+                    })
+                    break
+        return issues[:3]
+
+    def _detect_ignored_requests(self, turns: List[TurnSnapshot]) -> list:
+        """Detect explicit info requests that were ignored."""
+        issues = []
+        request_phrases = [
+            "please provide", "please share", "send me",
+            "give me", "need the", "what about",
+        ]
+
+        for i, turn in enumerate(turns[:-1]):
+            content_lower = turn.content.lower()
+            for phrase in request_phrases:
+                if phrase in content_lower:
+                    # Check if next response addresses it
+                    addressed = False
+                    for j in range(i + 1, min(i + 3, len(turns))):
+                        next_turn = turns[j]
+                        if next_turn.participant_id != turn.participant_id:
+                            # Check for substantive response
+                            if len(next_turn.content) > 100:
+                                addressed = True
+                                break
+                    if not addressed:
+                        issues.append({
+                            "type": "ignored_request",
+                            "turns": [turn.turn_number],
+                            "phrase": phrase,
+                            "description": f"Request ignored: '{phrase}'",
+                        })
+                    break
+        return issues[:2]
+
+
 # Convenience function to run all turn-aware detectors
 def analyze_conversation_turns(
     turns: List[TurnSnapshot],
@@ -1445,9 +1886,11 @@ def analyze_conversation_turns(
     if detectors is None:
         detectors = [
             TurnAwareSpecificationMismatchDetector(),  # F1
+            TurnAwareResourceMisallocationDetector(),  # F3
             TurnAwareLoopDetector(),  # F5
             TurnAwareDerailmentDetector(),  # F6
             TurnAwareContextNeglectDetector(),  # F7
+            TurnAwareInformationWithholdingDetector(),  # F8
             TurnAwareCoordinationFailureDetector(),  # F11
         ]
 
