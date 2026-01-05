@@ -1,7 +1,7 @@
 # Competitive Analysis: PISAMA vs Google, Amazon, Databricks
 
 **Date:** 2026-01-05
-**Version:** 1.0
+**Version:** 1.1
 **Author:** PISAMA Team
 
 ---
@@ -14,11 +14,11 @@ All three competitors are converging on similar capabilities but with different 
 
 | Aspect | Google Vertex AI | Amazon Bedrock AgentCore | Databricks/MLflow | PISAMA |
 |--------|------------------|-------------------------|-------------------|--------|
-| **Core Philosophy** | Platform-integrated, GCP-native | Framework-agnostic, OTEL-first | Open source MLOps→AIOps | Self-healing focused, local-first |
+| **Core Philosophy** | Platform-integrated, GCP-native | Framework-agnostic, OTEL-first | Open source MLOps→AIOps | Local-first, multi-agent focused |
 | **OTEL Support** | Native via Cloud Trace | Native OTLP export | Native OTLP | Export only (v0.4.0) |
-| **Evaluators** | Adaptive rubrics + trajectory | 13 built-in evaluators | 47 scorers | 14 failure modes |
-| **Self-Healing** | Tool retry "self-heal" plugin | Playbook-based remediation | None | Core differentiator (planned) |
-| **Multi-Agent** | ADK orchestration + A2A protocol | Supervisor mode + routing | Limited | Detection-focused |
+| **Evaluators** | Adaptive rubrics + trajectory | 13 built-in evaluators | 47 scorers | 14 failure modes (shipped) |
+| **Self-Healing** | Tool retry only | Playbook-based (manual) | None | AI-generated fixes (planned) |
+| **Multi-Agent** | ADK orchestration + A2A protocol | Supervisor mode + routing | Limited | F3/F4 detection (shipped) |
 
 ---
 
@@ -454,24 +454,37 @@ Categories include:
 
 ### Positioning Statement
 
-**"PISAMA: The only platform that detects agent failures AND automatically fixes them."**
+**"PISAMA: Ship reliable AI agents without dedicated SRE - detect, diagnose, and resolve failures before users notice."**
 
-| Competitor | What They Do | What They Don't Do |
-|------------|--------------|-------------------|
-| **AWS Bedrock** | Observes + manual playbooks | Closed-loop remediation |
-| **Google Vertex AI** | Observes + tool retry | Full self-healing |
-| **Databricks/MLflow** | Observes + evaluates | Any remediation |
-| **LangSmith** | Best DX for LangChain | Self-healing |
-| **PISAMA** | **Observes + detects + diagnoses + fixes + verifies + learns** | - |
+> **Note:** Avoid "only" claims. AWS Bedrock has playbook-based remediation, Google has tool retry. PISAMA's differentiator is *AI-generated* closed-loop fixes with learning, not remediation itself.
+
+### Honest Competitor Comparison
+
+| Competitor | Remediation Capability | PISAMA Differentiation |
+|------------|------------------------|------------------------|
+| **AWS Bedrock** | Playbook-based (manual setup, deterministic) | AI-generated fixes + learning loop |
+| **Google Vertex AI** | Tool retry only (single action) | Full workflow remediation |
+| **Databricks/MLflow** | None | Any remediation |
+| **LangSmith** | None | Self-healing + multi-framework |
+
+### Defensible Differentiators
+
+| Differentiator | Status | Competitors Have? |
+|----------------|--------|-------------------|
+| Multi-agent failure detection (F3/F4) | **Shipped** | No |
+| Local-first privacy model | **Shipped** | No |
+| Framework-agnostic approach | **Shipped** | Partial (AWS) |
+| AI-generated fixes with learning | **Planned** | No |
+| Closed-loop self-healing pipeline | **Planned** | No (AWS is open-loop playbooks) |
 
 ### Target Segments
 
-| Segment | Pain Point | PISAMA Value |
-|---------|------------|--------------|
-| **Startups** | Can't afford dedicated SRE for agents | Self-healing reduces ops burden |
-| **Mid-Market** | Multi-framework, no vendor lock-in | Framework-agnostic approach |
-| **Enterprise** | Privacy concerns, data residency | Local-first with optional cloud |
-| **Regulated Industries** | Audit trails, compliance | Full trace capture with PII tokenization |
+| Segment | Ready? | Pain Point | PISAMA Value |
+|---------|--------|------------|--------------|
+| **AI-native Startups** | YES | Can't afford dedicated SRE for agents | Self-healing reduces ops burden |
+| **Mid-Market SaaS** | YES | Multi-framework, no vendor lock-in | Framework-agnostic approach |
+| **Enterprise** | PARTIAL | Privacy concerns, data residency | Local-first with optional cloud |
+| **Regulated Industries** | NO | SOC 2, HIPAA compliance | Need SOC 2 certification first |
 
 ---
 
@@ -513,3 +526,4 @@ Categories include:
 | Version | Date | Changes |
 |---------|------|---------|
 | 1.0 | 2026-01-05 | Initial competitive analysis |
+| 1.1 | 2026-01-05 | Updated positioning: removed false "only" claim, added honest competitor comparison, marked shipped vs planned features, added segment readiness assessment |
