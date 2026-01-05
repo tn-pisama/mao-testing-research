@@ -389,24 +389,26 @@ Based on personas, recommended pricing structure:
 
 ## Decision Required
 
-### Option A: Adopt Revised Roadmap
+### Option A: Adopt Revised Roadmap ✅ ADOPTED
 - Restructure around startup ICP
 - Defer enterprise features to Phase 5
 - Add pricing, onboarding, alerting to Phase 1
 
-### Option B: Keep Original Roadmap
-- Continue enterprise parity focus
-- Accept slower startup acquisition
-- Plan for sales-led GTM
+### ~~Option B: Keep Original Roadmap~~
+- ~~Continue enterprise parity focus~~
+- ~~Accept slower startup acquisition~~
+- ~~Plan for sales-led GTM~~
 
-### Option C: Hybrid
-- Add onboarding + pricing to Phase 1
-- Keep some enterprise features (OTEL ingestion)
-- Longer Phase 1 (8 weeks instead of 4)
+### ~~Option C: Hybrid~~
+- ~~Add onboarding + pricing to Phase 1~~
+- ~~Keep some enterprise features (OTEL ingestion)~~
+- ~~Longer Phase 1 (8 weeks instead of 4)~~
 
-### Recommendation: Option A
+### Decision: Option A Adopted (2026-01-05)
 
 The primary ICP is startups. Building for enterprise parity when your buyers are startups is a mismatch. Startups will not wait for OTEL native ingestion - they'll adopt something that works today.
+
+**Updated roadmap applied to:** `docs/competitive-analysis-2025.md` v2.0
 
 ---
 

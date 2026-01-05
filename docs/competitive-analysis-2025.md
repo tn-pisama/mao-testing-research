@@ -1,7 +1,7 @@
 # Competitive Analysis: PISAMA vs Google, Amazon, Databricks
 
 **Date:** 2026-01-05
-**Version:** 1.1
+**Version:** 2.0
 **Author:** PISAMA Team
 
 ---
@@ -341,112 +341,169 @@ Categories include:
 
 ## Recommended PISAMA Roadmap
 
-### Phase 1: Platform Parity (Weeks 1-6)
+> **Strategy:** ICP-aligned, startup-first approach. Build for the primary buyer (AI-native startups), not for enterprise competitive parity.
 
-**Goal:** Match table-stakes features that all competitors have.
+### Phase 1: Startup Value (Weeks 1-4)
+
+**Goal:** Nail the core value prop for primary ICP. Get users to first detection in <5 minutes.
 
 ```
 ┌─────────────────────────────────────────────────────────────────────────┐
-│                    PISAMA Platform Parity                                │
+│                    PHASE 1: STARTUP VALUE                                │
+│                    "Works in 5 minutes"                                  │
 ├─────────────────────────────────────────────────────────────────────────┤
 │                                                                          │
-│  1. OTEL-NATIVE INGESTION                                               │
-│     - OTLP HTTP/gRPC receiver in backend                                │
-│     - GenAI semantic conventions support                                │
-│     - Maintain HTTP API for backward compat                             │
+│  1. SELF-SERVE ONBOARDING                                               │
+│     - Guided setup wizard                                               │
+│     - <5 min to first detection                                         │
+│     - Framework-specific quick starts                                   │
 │                                                                          │
-│  2. QUALITY EVALUATORS (Beyond Failure Detection)                       │
-│     - Correctness (factual accuracy)                                    │
-│     - Helpfulness (user value)                                          │
-│     - Instruction Following                                             │
-│     - Tool Selection Accuracy                                           │
-│     - Response Relevance                                                │
-│     - Cost Efficiency                                                   │
+│  2. FIX SUGGESTIONS V2                                                  │
+│     - Code-level, copy-pasteable fixes                                  │
+│     - Root cause explanation                                            │
+│     - Confidence scoring                                                │
 │                                                                          │
-│  3. REAL-TIME DASHBOARDS                                                │
-│     - Live trace streaming                                              │
-│     - Token/cost monitoring                                             │
-│     - Error rate tracking                                               │
-│     - Session timeline view                                             │
+│  3. ALERTING                                                            │
+│     - Slack integration                                                 │
+│     - Webhook support                                                   │
+│     - Email notifications                                               │
+│                                                                          │
+│  4. FREE TIER + PRICING                                                 │
+│     - Free: 1 project, 1K traces/mo                                     │
+│     - Startup: $49/mo, 50K traces                                       │
+│     - Growth: $199/mo, 500K traces                                      │
 │                                                                          │
 └─────────────────────────────────────────────────────────────────────────┘
 ```
 
-### Phase 2: Self-Healing Differentiation (Weeks 7-12)
+### Phase 2: Cost & Value (Weeks 5-8)
 
-**Goal:** Build the feature no competitor has - closed-loop self-healing.
+**Goal:** Enable CTO justification and cost control. Answer "what's the ROI?"
 
 ```
 ┌─────────────────────────────────────────────────────────────────────────┐
-│                    PISAMA Self-Healing Pipeline                          │
-│                    (No Competitor Has This)                              │
+│                    PHASE 2: COST & VALUE                                 │
+│                    "Prove the ROI"                                       │
 ├─────────────────────────────────────────────────────────────────────────┤
 │                                                                          │
-│  ┌──────────┐    ┌──────────┐    ┌──────────┐    ┌──────────┐          │
-│  │ DETECT   │───▶│ DIAGNOSE │───▶│ GENERATE │───▶│  APPLY   │          │
-│  │ (14 F*)  │    │ (root    │    │   FIX    │    │ (canary) │          │
-│  │          │    │  cause)  │    │ (AI-gen) │    │          │          │
-│  └──────────┘    └──────────┘    └──────────┘    └──────────┘          │
-│       │               │               │               │                 │
-│       │               │               │               │                 │
-│       └───────────────┴───────────────┴───────────────┘                 │
-│                               │                                          │
-│                               ▼                                          │
-│                    ┌──────────────────────┐                             │
-│                    │    FEEDBACK LOOP     │                             │
-│                    │  - Monitor fix       │                             │
-│                    │  - Auto-rollback     │                             │
-│                    │  - Learn from fixes  │                             │
-│                    └──────────────────────┘                             │
+│  1. COST ANALYTICS DASHBOARD                                            │
+│     - Token usage by agent/workflow                                     │
+│     - Cost breakdown and trends                                         │
+│     - Budget alerts and projections                                     │
+│                                                                          │
+│  2. VALUE METRICS                                                       │
+│     - Failures detected (before users saw them)                         │
+│     - Estimated time saved                                              │
+│     - Cost anomalies caught                                             │
+│                                                                          │
+│  3. TEAM FEATURES                                                       │
+│     - Team invites                                                      │
+│     - Basic roles (admin/member)                                        │
+│     - Usage-based billing                                               │
+│                                                                          │
+└─────────────────────────────────────────────────────────────────────────┘
+```
+
+### Phase 3: Integration & Growth (Weeks 9-12)
+
+**Goal:** Remove platform engineer blockers, enable organic growth.
+
+```
+┌─────────────────────────────────────────────────────────────────────────┐
+│                    PHASE 3: INTEGRATION & GROWTH                         │
+│                    "Fits your stack"                                     │
+├─────────────────────────────────────────────────────────────────────────┤
+│                                                                          │
+│  1. OBSERVABILITY INTEGRATION                                           │
+│     - OTEL export improvements                                          │
+│     - PagerDuty integration                                             │
+│     - OpsGenie integration                                              │
+│                                                                          │
+│  2. DEVELOPER EXPERIENCE                                                │
+│     - Public API (OpenAPI docs)                                         │
+│     - Webhook customization                                             │
+│     - CLI improvements                                                  │
+│                                                                          │
+│  3. GROWTH                                                              │
+│     - Referral program                                                  │
+│     - Case study framework                                              │
+│     - Community Slack/Discord                                           │
+│                                                                          │
+└─────────────────────────────────────────────────────────────────────────┘
+```
+
+### Phase 4: Differentiation (Weeks 13-18)
+
+**Goal:** Build moat features that justify premium and competitors can't copy quickly.
+
+```
+┌─────────────────────────────────────────────────────────────────────────┐
+│                    PHASE 4: DIFFERENTIATION                              │
+│                    "What competitors don't have"                         │
+├─────────────────────────────────────────────────────────────────────────┤
+│                                                                          │
+│  1. SELF-HEALING MVP                                                    │
+│     - Playbook-based fixes (config, retry, circuit breaker)            │
+│     - Canary deployment for fixes                                       │
+│     - Rollback on regression                                            │
+│     - Human approval for high-risk                                      │
+│                                                                          │
+│  2. MULTI-AGENT INTELLIGENCE                                            │
+│     - F3/F4 detection improvements                                      │
+│     - Cross-agent trace correlation                                     │
+│     - Coordination failure analysis                                     │
+│                                                                          │
+│  3. AI-POWERED OPERATIONS                                               │
+│     - Cost optimization suggestions                                     │
+│     - AI-generated runbooks                                             │
+│     - Predictive failure alerts                                         │
 │                                                                          │
 │  Competitive Moat:                                                       │
-│  - AWS: Playbooks (manual)                                              │
+│  - AWS: Playbooks (manual setup, no learning)                           │
 │  - Google: Tool retry only                                              │
 │  - MLflow: No remediation                                               │
-│  - PISAMA: Closed-loop AI-powered self-healing                          │
+│  - PISAMA: AI-generated fixes + learning loop                           │
 │                                                                          │
 └─────────────────────────────────────────────────────────────────────────┘
 ```
 
-### Phase 3: Multi-Agent Depth (Weeks 13-18)
+### Phase 5: Enterprise Expansion (Weeks 19-24)
 
-**Goal:** Build unique multi-agent intelligence that competitors lack.
+**Goal:** Capture enterprise opportunities that emerge from startup success.
 
 ```
 ┌─────────────────────────────────────────────────────────────────────────┐
-│                    PISAMA Multi-Agent Intelligence                       │
+│                    PHASE 5: ENTERPRISE EXPANSION                         │
+│                    "Enterprise-ready"                                    │
 ├─────────────────────────────────────────────────────────────────────────┤
 │                                                                          │
-│  Beyond what AWS/Google offer:                                          │
+│  1. ENTERPRISE INTEGRATION                                              │
+│     - OTEL native ingestion (OTLP receiver)                            │
+│     - SSO/SAML integration                                              │
+│     - Advanced RBAC                                                     │
 │                                                                          │
-│  1. COORDINATION FAILURE DETECTION                                      │
-│     - F4: Deadlock detection                                            │
-│     - F3: Persona drift across agents                                   │
-│     - NEW: Communication graph analysis                                 │
-│     - NEW: Resource contention detection                                │
+│  2. COMPLIANCE                                                          │
+│     - SOC 2 Type II preparation                                         │
+│     - Data residency options                                            │
+│     - Audit logging with export                                         │
 │                                                                          │
-│  2. CROSS-AGENT TRACING                                                 │
-│     - Delegation chain visualization                                    │
-│     - Shared state mutation tracking                                    │
-│     - End-to-end latency attribution                                    │
-│                                                                          │
-│  3. MULTI-AGENT EVALUATION                                              │
-│     - Team effectiveness metrics                                        │
-│     - Communication efficiency                                          │
-│     - Consensus quality                                                 │
+│  3. ENTERPRISE FEATURES                                                 │
+│     - Quality evaluators (correctness, helpfulness, etc.)              │
+│     - Custom dashboards                                                 │
+│     - SLA and dedicated support                                         │
 │                                                                          │
 └─────────────────────────────────────────────────────────────────────────┘
 ```
 
-### Phase 4: Enterprise Readiness (Weeks 19-24)
+### Roadmap Summary
 
-**Goal:** Enterprise features for larger deployments.
-
-- SSO/SAML integration beyond Clerk
-- Granular RBAC with custom roles
-- SOC 2 compliance preparation
-- Data residency options
-- Audit logging with export
+| Phase | Weeks | Focus | Key Deliverable |
+|-------|-------|-------|-----------------|
+| 1 | 1-4 | Startup Value | Free tier, Slack alerts, onboarding |
+| 2 | 5-8 | Cost & Value | Cost dashboard, ROI metrics |
+| 3 | 9-12 | Integration | PagerDuty, API docs, OTEL export |
+| 4 | 13-18 | Differentiation | Self-healing MVP, AI runbooks |
+| 5 | 19-24 | Enterprise | OTEL ingestion, SSO, SOC 2 |
 
 ---
 
@@ -526,4 +583,5 @@ Categories include:
 | Version | Date | Changes |
 |---------|------|---------|
 | 1.0 | 2026-01-05 | Initial competitive analysis |
-| 1.1 | 2026-01-05 | Updated positioning: removed false "only" claim, added honest competitor comparison, marked shipped vs planned features, added segment readiness assessment |
+| 1.1 | 2026-01-05 | Updated positioning: removed false "only" claim, added honest competitor comparison |
+| 2.0 | 2026-01-05 | **Major revision:** Adopted startup-focused roadmap based on ICP analysis. Restructured from enterprise-parity to startup-value-first. New 5-phase plan: (1) Startup Value, (2) Cost & Value, (3) Integration, (4) Differentiation, (5) Enterprise. Deferred OTEL ingestion, quality evaluators to Phase 5. Added free tier, alerting, cost analytics to Phase 1-2. |
