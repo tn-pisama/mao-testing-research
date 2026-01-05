@@ -115,6 +115,8 @@ def extract_trace_info(record: Dict) -> Dict:
     - trace: Contains trajectory with task and output
     - mast_annotation: Dict with numeric codes (1.1, 2.1, etc.) as keys and 0/1 as values
     """
+    import re
+
     info = {
         "task": "",
         "output": "",
@@ -131,17 +133,52 @@ def extract_trace_info(record: Dict) -> Dict:
     if isinstance(trace, dict):
         trajectory = trace.get("trajectory", "")
 
-        # Extract task from trajectory (usually in task_prompt)
-        if "task_prompt" in trajectory:
-            # Parse task_prompt from the log
-            import re
-            match = re.search(r'\*\*task_prompt\*\*:\s*(.+?)(?:\n\n|\*\*)', trajectory, re.DOTALL)
-            if match:
-                info["task"] = match.group(1).strip()[:500]
+        # Try multiple patterns for task extraction
+        task_patterns = [
+            # ChatDev format
+            r'\*\*task_prompt\*\*:\s*([^\n|]+)',
+            r'\| \*\*task_prompt\*\* \| ([^|]+) \|',
+            # Generic patterns
+            r'Task:\s*(.+?)(?:\n\n|\n\[|$)',
+            r'User Request:\s*(.+?)(?:\n\n|\n\[|$)',
+            # MetaGPT, HyperAgent formats
+            r'"task":\s*"([^"]+)"',
+            r'task:\s*(.+?)(?:\n|$)',
+        ]
 
-        # Use full trajectory as output/context
-        info["output"] = trajectory[-2000:] if len(trajectory) > 2000 else trajectory
-        info["context"] = trajectory[:2000] if len(trajectory) > 2000 else trajectory
+        for pattern in task_patterns:
+            match = re.search(pattern, trajectory, re.IGNORECASE)
+            if match:
+                task_text = match.group(1).strip()
+                # Clean up common artifacts
+                task_text = re.sub(r'\s*\|.*$', '', task_text)
+                task_text = task_text.strip()
+                if len(task_text) > 10:  # Must be meaningful
+                    info["task"] = task_text[:1000]
+                    break
+
+        # Extract output - look for final sections or use last portion
+        output_patterns = [
+            r'\*\*\[Final Output\]\*\*(.+?)(?:\*\*\[|$)',
+            r'\[Final\](.+?)(?:\[|$)',
+            r'Result:(.+?)(?:\n\n|$)',
+            r'Output:(.+?)(?:\n\n|$)',
+        ]
+
+        output_found = False
+        for pattern in output_patterns:
+            match = re.search(pattern, trajectory[-50000:], re.DOTALL | re.IGNORECASE)
+            if match:
+                info["output"] = match.group(1).strip()[:3000]
+                output_found = True
+                break
+
+        if not output_found:
+            # Use last 3000 chars of trajectory as output
+            info["output"] = trajectory[-3000:] if len(trajectory) > 3000 else trajectory
+
+        # Use first 3000 chars as context
+        info["context"] = trajectory[:3000] if len(trajectory) > 3000 else trajectory
 
     # Extract failure modes from mast_annotation
     annotation = record.get("mast_annotation", {})
@@ -212,6 +249,7 @@ def evaluate_mast_data(data: List[Dict]) -> Dict:
     results = {
         "total_records": 0,
         "total_evaluations": 0,
+        "skipped_records": 0,
         "by_mode": defaultdict(lambda: {"tp": 0, "fp": 0, "tn": 0, "fn": 0}),
         "by_framework": defaultdict(lambda: {"correct": 0, "total": 0}),
         "by_llm": defaultdict(lambda: {"correct": 0, "total": 0}),
@@ -236,6 +274,7 @@ def evaluate_mast_data(data: List[Dict]) -> Dict:
 
         # Skip if no task/output extracted
         if not trace_info["task"] or not trace_info["output"]:
+            results["skipped_records"] += 1
             continue
 
         results["total_records"] += 1
@@ -285,6 +324,7 @@ def print_results(results: Dict):
     print("=" * 70)
 
     print(f"\nTotal MAST records processed: {results['total_records']}")
+    print(f"Records skipped (no task/output): {results.get('skipped_records', 0)}")
     print(f"Total detector evaluations: {results['total_evaluations']}")
 
     # Label distribution
@@ -393,10 +433,11 @@ def main():
     output_path = Path(__file__).parent.parent / "benchmarks" / "results" / "mast_data_eval.json"
     output_path.parent.mkdir(parents=True, exist_ok=True)
 
-    # Convert sets to lists for JSON serialization
-    results["unmapped_labels"] = list(results["unmapped_labels"])
+    # Convert defaultdicts for JSON serialization
     results["by_mode"] = dict(results["by_mode"])
     results["by_framework"] = dict(results["by_framework"])
+    results["by_llm"] = dict(results["by_llm"])
+    results["label_distribution"] = dict(results["label_distribution"])
 
     with open(output_path, "w") as f:
         json.dump(results, f, indent=2)

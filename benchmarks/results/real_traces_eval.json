@@ -1,0 +1,381 @@
+{
+  "loop_detection": {
+    "total_sessions": 11,
+    "loops_detected": 6,
+    "details": [
+      {
+        "session_id": "debug-lo",
+        "reason": "Same command repeated 3+ times"
+      },
+      {
+        "session_id": "api-cata",
+        "reason": "Same command repeated 3+ times"
+      },
+      {
+        "session_id": "30277e89",
+        "reason": "Same command repeated 3+ times"
+      },
+      {
+        "session_id": "300cbb26",
+        "reason": "Same command repeated 3+ times"
+      },
+      {
+        "session_id": "e8628a96",
+        "reason": "Same command repeated 3+ times"
+      },
+      {
+        "session_id": "6731de22",
+        "reason": "Same command repeated 3+ times"
+      }
+    ]
+  },
+  "session_health": {
+    "total_sessions": 25,
+    "total_traces": 2833,
+    "by_tool": {
+      "Read": 478,
+      "Glob": 77,
+      "Grep": 55,
+      "Edit": 244,
+      "Bash": 1398,
+      "Write": 138,
+      "TodoWrite": 151,
+      "Task": 12,
+      "WebFetch": 62,
+      "WebSearch": 26,
+      "unknown": 173,
+      "TestTool": 4,
+      "EndToEndTest": 1,
+      "TaskOutput": 14
+    },
+    "session_details": [
+      {
+        "session_id": "truly-he",
+        "trace_count": 15,
+        "tools_used": {
+          "Read": 4,
+          "Glob": 1,
+          "Grep": 2,
+          "Edit": 2,
+          "Bash": 5,
+          "Write": 1
+        },
+        "duration_mins": 0.005366333333333333,
+        "potential_issues": []
+      },
+      {
+        "session_id": "warning-",
+        "trace_count": 10,
+        "tools_used": {
+          "Read": 3,
+          "Edit": 3,
+          "Bash": 3,
+          "Grep": 1
+        },
+        "duration_mins": 0.00345475,
+        "potential_issues": [
+          "Repeated command (possible loop)"
+        ]
+      },
+      {
+        "session_id": "debug-lo",
+        "trace_count": 46,
+        "tools_used": {
+          "Read": 16,
+          "Edit": 15,
+          "Bash": 15
+        },
+        "duration_mins": 0.0173732,
+        "potential_issues": [
+          "Repeated command (possible loop)"
+        ]
+      },
+      {
+        "session_id": "api-cata",
+        "trace_count": 21,
+        "tools_used": {
+          "Read": 1,
+          "Bash": 20
+        },
+        "duration_mins": 0.007771200000000001,
+        "potential_issues": [
+          "Repeated command (possible loop)"
+        ]
+      },
+      {
+        "session_id": "search-s",
+        "trace_count": 16,
+        "tools_used": {
+          "Grep": 8,
+          "Glob": 8
+        },
+        "duration_mins": 0.005743133333333333,
+        "potential_issues": []
+      },
+      {
+        "session_id": "edge-war",
+        "trace_count": 10,
+        "tools_used": {
+          "Read": 8,
+          "Edit": 1,
+          "Bash": 1
+        },
+        "duration_mins": 0.0035454833333333335,
+        "potential_issues": []
+      },
+      {
+        "session_id": "edge-war",
+        "trace_count": 10,
+        "tools_used": {
+          "Read": 2,
+          "Edit": 1,
+          "Bash": 5,
+          "Grep": 1,
+          "Write": 1
+        },
+        "duration_mins": 0.00342605,
+        "potential_issues": []
+      },
+      {
+        "session_id": "edge-pro",
+        "trace_count": 12,
+        "tools_used": {
+          "Read": 10,
+          "Edit": 1,
+          "Bash": 1
+        },
+        "duration_mins": 0.004161616666666667,
+        "potential_issues": []
+      },
+      {
+        "session_id": "live-tes",
+        "trace_count": 1,
+        "tools_used": {
+          "Read": 1
+        },
+        "duration_mins": 0,
+        "potential_issues": []
+      },
+      {
+        "session_id": "healthy-",
+        "trace_count": 5,
+        "tools_used": {
+          "Read": 1,
+          "Grep": 1,
+          "Edit": 1,
+          "Bash": 1,
+          "Write": 1
+        },
+        "duration_mins": 0.0014619166666666667,
+        "potential_issues": []
+      },
+      {
+        "session_id": "loop-tes",
+        "trace_count": 24,
+        "tools_used": {
+          "Read": 8,
+          "Edit": 8,
+          "Bash": 8
+        },
+        "duration_mins": 0.008285316666666665,
+        "potential_issues": []
+      },
+      {
+        "session_id": "repeat-t",
+        "trace_count": 10,
+        "tools_used": {
+          "Bash": 10
+        },
+        "duration_mins": 0.0032507833333333333,
+        "potential_issues": []
+      },
+      {
+        "session_id": "extreme-",
+        "trace_count": 15,
+        "tools_used": {
+          "Bash": 15
+        },
+        "duration_mins": 0.005042466666666666,
+        "potential_issues": []
+      },
+      {
+        "session_id": "extreme-",
+        "trace_count": 20,
+        "tools_used": {
+          "Read": 10,
+          "Edit": 10
+        },
+        "duration_mins": 0.006959716666666667,
+        "potential_issues": []
+      },
+      {
+        "session_id": "auto-tes",
+        "trace_count": 12,
+        "tools_used": {
+          "Bash": 12
+        },
+        "duration_mins": 0.0039805,
+        "potential_issues": []
+      },
+      {
+        "session_id": "30277e89",
+        "trace_count": 718,
+        "tools_used": {
+          "Edit": 37,
+          "Bash": 499,
+          "TodoWrite": 53,
+          "Write": 11,
+          "Glob": 18,
+          "Grep": 10,
+          "Task": 2,
+          "WebFetch": 30,
+          "Read": 48,
+          "WebSearch": 10
+        },
+        "duration_mins": 1204.1132044,
+        "potential_issues": [
+          "Repeated command (possible loop)",
+          "Long session (>60 min)"
+        ]
+      },
+      {
+        "session_id": "unknown",
+        "trace_count": 175,
+        "tools_used": {
+          "unknown": 173,
+          "TestTool": 2
+        },
+        "duration_mins": 0,
+        "potential_issues": []
+      },
+      {
+        "session_id": "test-ses",
+        "trace_count": 2,
+        "tools_used": {
+          "TestTool": 2
+        },
+        "duration_mins": 1094.2333168166667,
+        "potential_issues": []
+      },
+      {
+        "session_id": "300cbb26",
+        "trace_count": 277,
+        "tools_used": {
+          "Bash": 68,
+          "WebFetch": 12,
+          "Read": 110,
+          "WebSearch": 6,
+          "Glob": 6,
+          "TodoWrite": 14,
+          "Write": 38,
+          "Edit": 23
+        },
+        "duration_mins": 78.50155791666666,
+        "potential_issues": [
+          "Repeated command (possible loop)",
+          "Long session (>60 min)"
+        ]
+      },
+      {
+        "session_id": "9018c183",
+        "trace_count": 182,
+        "tools_used": {
+          "Task": 2,
+          "Read": 30,
+          "WebFetch": 12,
+          "Glob": 12,
+          "TodoWrite": 24,
+          "Bash": 50,
+          "Write": 28,
+          "Edit": 24
+        },
+        "duration_mins": 87.10002571666668,
+        "potential_issues": [
+          "Long session (>60 min)"
+        ]
+      },
+      {
+        "session_id": "e2e-test",
+        "trace_count": 1,
+        "tools_used": {
+          "EndToEndTest": 1
+        },
+        "duration_mins": 0,
+        "potential_issues": []
+      },
+      {
+        "session_id": "f2bcb42d",
+        "trace_count": 322,
+        "tools_used": {
+          "Bash": 147,
+          "Task": 6,
+          "Glob": 12,
+          "Read": 97,
+          "TodoWrite": 20,
+          "Write": 18,
+          "Edit": 20,
+          "WebFetch": 2
+        },
+        "duration_mins": 81.89644568333333,
+        "potential_issues": [
+          "Long session (>60 min)"
+        ]
+      },
+      {
+        "session_id": "e8628a96",
+        "trace_count": 453,
+        "tools_used": {
+          "Bash": 244,
+          "Task": 2,
+          "Read": 93,
+          "Grep": 24,
+          "Glob": 14,
+          "TodoWrite": 20,
+          "Edit": 38,
+          "Write": 8,
+          "TaskOutput": 10
+        },
+        "duration_mins": 643.0961798666667,
+        "potential_issues": [
+          "Repeated command (possible loop)",
+          "Long session (>60 min)"
+        ]
+      },
+      {
+        "session_id": "6731de22",
+        "trace_count": 400,
+        "tools_used": {
+          "Bash": 252,
+          "WebSearch": 4,
+          "Read": 32,
+          "TodoWrite": 20,
+          "Write": 26,
+          "Edit": 56,
+          "Grep": 8,
+          "TaskOutput": 2
+        },
+        "duration_mins": 71.70517020000001,
+        "potential_issues": [
+          "Repeated command (possible loop)",
+          "Long session (>60 min)"
+        ]
+      },
+      {
+        "session_id": "0bcc1c0f",
+        "trace_count": 76,
+        "tools_used": {
+          "WebFetch": 6,
+          "Glob": 6,
+          "Bash": 42,
+          "Read": 4,
+          "Edit": 4,
+          "WebSearch": 6,
+          "Write": 6,
+          "TaskOutput": 2
+        },
+        "duration_mins": 41.32243385,
+        "potential_issues": []
+      }
+    ]
+  }
+}
