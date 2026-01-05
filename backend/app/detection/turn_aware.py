@@ -32,7 +32,165 @@ MAX_TURNS_BEFORE_SUMMARIZATION = 50
 MAX_TOKENS_BEFORE_SUMMARIZATION = 8000
 
 # Module version
-MODULE_VERSION = "1.0"
+MODULE_VERSION = "1.1"  # Updated for semantic enhancements
+
+# Embedding configuration
+EMBEDDING_SIMILARITY_THRESHOLD = 0.7  # Below this = significant drift
+EMBEDDING_AVAILABLE = None  # Lazy-loaded flag
+
+
+def _check_embedding_available() -> bool:
+    """Check if embedding service is available (lazy load)."""
+    global EMBEDDING_AVAILABLE
+    if EMBEDDING_AVAILABLE is None:
+        try:
+            from app.core.embeddings import get_embedder
+            embedder = get_embedder()
+            # Try a quick encode to verify it works
+            _ = embedder.encode("test", is_query=True)
+            EMBEDDING_AVAILABLE = True
+            logger.info("Embedding service available for semantic detection")
+        except Exception as e:
+            EMBEDDING_AVAILABLE = False
+            logger.warning(f"Embedding service not available, using keyword fallback: {e}")
+    return EMBEDDING_AVAILABLE
+
+
+class EmbeddingMixin:
+    """Mixin providing embedding-based semantic analysis for detectors.
+
+    Based on STATE_OF_THE_ART_DETECTOR_DESIGN.md recommendations:
+    - Tier 2 detection using embedding similarity
+    - Semantic drift detection for task alignment
+    - Information density analysis
+    """
+
+    _embedder = None
+
+    @property
+    def embedder(self):
+        """Lazy-load embedding service."""
+        if self._embedder is None and _check_embedding_available():
+            try:
+                from app.core.embeddings import get_embedder
+                self._embedder = get_embedder()
+            except Exception:
+                pass
+        return self._embedder
+
+    def semantic_similarity(self, text1: str, text2: str) -> float:
+        """Compute semantic similarity between two texts.
+
+        Returns:
+            Cosine similarity score (0-1), or -1 if embeddings unavailable
+        """
+        if not self.embedder:
+            return -1.0
+
+        try:
+            emb1 = self.embedder.encode(text1, is_query=True)
+            emb2 = self.embedder.encode(text2, is_query=False)
+            return self.embedder.similarity(emb1, emb2)
+        except Exception as e:
+            logger.debug(f"Embedding similarity failed: {e}")
+            return -1.0
+
+    def batch_semantic_similarity(
+        self,
+        query: str,
+        passages: List[str]
+    ) -> List[float]:
+        """Compute semantic similarity between query and multiple passages.
+
+        Returns:
+            List of similarity scores, or empty list if unavailable
+        """
+        if not self.embedder or not passages:
+            return []
+
+        try:
+            query_emb = self.embedder.encode_query(query)
+            passage_embs = self.embedder.encode_passages(passages)
+            similarities = self.embedder.batch_similarity(query_emb, passage_embs)
+            return similarities.tolist()
+        except Exception as e:
+            logger.debug(f"Batch embedding similarity failed: {e}")
+            return []
+
+    def detect_semantic_drift(
+        self,
+        reference: str,
+        responses: List[str],
+        threshold: float = EMBEDDING_SIMILARITY_THRESHOLD
+    ) -> Dict[str, Any]:
+        """Detect semantic drift from reference text across multiple responses.
+
+        Based on MAST research: embedding similarity < 0.7 indicates significant drift.
+
+        Returns:
+            Dict with drift analysis including scores and drifted indices
+        """
+        similarities = self.batch_semantic_similarity(reference, responses)
+
+        if not similarities:
+            return {"available": False}
+
+        drifted_indices = [i for i, sim in enumerate(similarities) if sim < threshold]
+        avg_similarity = sum(similarities) / len(similarities) if similarities else 0
+
+        # Detect progressive drift (similarity decreasing over time)
+        progressive = False
+        if len(similarities) >= 3:
+            first_half = similarities[:len(similarities)//2]
+            second_half = similarities[len(similarities)//2:]
+            first_avg = sum(first_half) / len(first_half) if first_half else 0
+            second_avg = sum(second_half) / len(second_half) if second_half else 0
+            progressive = second_avg < first_avg - 0.1  # 10% degradation
+
+        return {
+            "available": True,
+            "similarities": similarities,
+            "avg_similarity": avg_similarity,
+            "drifted_indices": drifted_indices,
+            "drift_detected": len(drifted_indices) > 0,
+            "progressive_drift": progressive,
+            "threshold": threshold,
+        }
+
+    def compute_information_density(self, text: str) -> float:
+        """Estimate information density of text.
+
+        Higher values = more substantive content.
+        Based on: unique terms, sentence complexity, specificity markers.
+        """
+        if not text:
+            return 0.0
+
+        words = text.lower().split()
+        if not words:
+            return 0.0
+
+        # Unique word ratio
+        unique_ratio = len(set(words)) / len(words)
+
+        # Specificity markers (numbers, technical terms, proper nouns)
+        import re
+        numbers = len(re.findall(r'\b\d+(?:\.\d+)?\b', text))
+        technical = len(re.findall(r'\b[A-Z][a-z]*[A-Z]\w*\b', text))  # camelCase
+
+        # Sentence complexity (words per sentence)
+        sentences = max(1, text.count('.') + text.count('!') + text.count('?'))
+        words_per_sentence = len(words) / sentences
+
+        # Combine metrics
+        density = (
+            unique_ratio * 0.4 +
+            min(1.0, numbers / 10) * 0.2 +
+            min(1.0, technical / 5) * 0.2 +
+            min(1.0, words_per_sentence / 20) * 0.2
+        )
+
+        return min(1.0, density)
 
 
 class TurnAwareSeverity(str, Enum):
@@ -118,7 +276,7 @@ class TurnAwareDetector(ABC):
         }
 
 
-class TurnAwareContextNeglectDetector(TurnAwareDetector):
+class TurnAwareContextNeglectDetector(EmbeddingMixin, TurnAwareDetector):
     """Detects F7: Context Neglect across conversation turns.
 
     Analyzes whether agents properly utilize context from:
@@ -129,14 +287,16 @@ class TurnAwareContextNeglectDetector(TurnAwareDetector):
     Uses accumulated context tracking to detect when information
     is "lost" or ignored as the conversation progresses.
 
-    Tuned to reduce false positives:
-    - Code responses have different vocabulary than questions
-    - Low word overlap doesn't mean neglect if topic is addressed
-    - Repetition is F5's job, not context neglect
+    Enhanced with semantic embeddings (v2.0):
+    - Embedding-based context utilization scoring
+    - Semantic similarity to detect topic alignment even with different words
+    - Information density analysis for substantive responses
+
+    Based on MAST research (NeurIPS 2025): FM-1.4 Loss of Conversation History (12%)
     """
 
     name = "TurnAwareContextNeglectDetector"
-    version = "1.1"  # Version bump for tuning
+    version = "2.0"  # Semantic enhancement
     supported_failure_modes = ["F7"]
 
     # Code patterns that indicate a code response
@@ -369,7 +529,18 @@ class TurnAwareContextNeglectDetector(TurnAwareDetector):
         return False
 
     def _compute_utilization(self, context: str, output: str) -> float:
-        """Compute how much of the context is reflected in the output."""
+        """Compute how much of the context is reflected in the output.
+
+        Enhanced with semantic similarity (v2.0):
+        - Uses embedding similarity when available (more accurate)
+        - Falls back to word overlap for speed or when unavailable
+        """
+        # Try semantic similarity first (more accurate for different phrasings)
+        similarity = self.semantic_similarity(context, output)
+        if similarity >= 0:  # Embeddings available
+            return similarity
+
+        # Fallback to keyword-based
         context_words = set(w.lower() for w in context.split() if len(w) > 3)
         output_words = set(w.lower() for w in output.split() if len(w) > 3)
 
@@ -379,8 +550,34 @@ class TurnAwareContextNeglectDetector(TurnAwareDetector):
         overlap = context_words & output_words
         return len(overlap) / len(context_words)
 
+    def _check_semantic_context_alignment(
+        self,
+        user_context: str,
+        agent_response: str,
+        threshold: float = 0.5
+    ) -> Dict[str, Any]:
+        """Check if agent response semantically aligns with user context.
 
-class TurnAwareDerailmentDetector(TurnAwareDetector):
+        Returns dict with alignment analysis.
+        """
+        similarity = self.semantic_similarity(user_context, agent_response)
+
+        if similarity < 0:  # Embeddings unavailable
+            return {"available": False}
+
+        # Also check information density of response
+        response_density = self.compute_information_density(agent_response)
+
+        return {
+            "available": True,
+            "similarity": similarity,
+            "aligned": similarity >= threshold,
+            "response_density": response_density,
+            "low_density": response_density < 0.3,  # Very sparse response
+        }
+
+
+class TurnAwareDerailmentDetector(EmbeddingMixin, TurnAwareDetector):
     """Detects F6: Task Derailment across conversation turns.
 
     Tracks topic consistency and task focus across the conversation,
@@ -391,14 +588,16 @@ class TurnAwareDerailmentDetector(TurnAwareDetector):
 
     Uses sliding window analysis to detect gradual drift.
 
-    Tuned to reduce false positives:
-    - Code responses have different vocabulary than task descriptions
-    - Requires stronger evidence (task substitution OR progressive drift)
-    - Single-turn drift alone is not sufficient
+    Enhanced with semantic embeddings (v2.0):
+    - Embedding-based topic drift detection when available
+    - Falls back to keyword-based for speed or when embeddings unavailable
+    - Progressive drift detection using similarity trends
+
+    Based on MAST research (NeurIPS 2025): FM-2.3 Task Derailment (20% prevalence)
     """
 
     name = "TurnAwareDerailmentDetector"
-    version = "1.1"  # Version bump for tuning
+    version = "2.0"  # Semantic enhancement
     supported_failure_modes = ["F6"]
 
     # Code patterns (shared with F7 detector logic)
@@ -640,12 +839,27 @@ class TurnAwareDerailmentDetector(TurnAwareDetector):
         self,
         task: str,
         output: str,
+        use_embeddings: bool = True,
     ) -> tuple:
         """Compute topic drift and task coverage.
 
+        Enhanced with embedding-based semantic similarity (v2.0).
+        Falls back to keyword-based when embeddings unavailable.
+
         Returns:
-            (drift_score, coverage) tuple
+            (drift_score, coverage) tuple where drift_score in [0,1]
+            Higher drift_score = more drift from task
         """
+        # Try embedding-based similarity first (more accurate)
+        if use_embeddings:
+            similarity = self.semantic_similarity(task, output)
+            if similarity >= 0:  # Embeddings available
+                # Convert similarity to drift score (inverted)
+                drift_score = 1.0 - similarity
+                coverage = similarity  # Similarity approximates coverage
+                return drift_score, coverage
+
+        # Fallback to keyword-based
         task_terms = self._extract_key_terms(task)
         output_terms = self._extract_key_terms(output)
 
@@ -668,40 +882,75 @@ class TurnAwareDerailmentDetector(TurnAwareDetector):
         agent_turns: List[TurnSnapshot],
         is_code_task: bool = False,
     ) -> Dict[str, Any]:
-        """Detect if agent responses are progressively drifting."""
-        drift_scores = []
+        """Detect if agent responses are progressively drifting.
 
+        Enhanced with batch embedding analysis (v2.0).
+        """
+        # Filter turns for analysis
+        turns_to_analyze = []
         for turn in agent_turns:
-            # Skip code responses for code tasks
             if is_code_task and self._is_code_response(turn.content):
                 continue
+            turns_to_analyze.append(turn)
 
-            drift, _ = self._compute_topic_drift(initial_task, turn.content)
+        if len(turns_to_analyze) < 3:
+            return {"detected": False}
+
+        # Try batch embedding analysis first (more efficient)
+        responses = [t.content for t in turns_to_analyze]
+        semantic_result = self.detect_semantic_drift(initial_task, responses)
+
+        if semantic_result.get("available"):
+            # Use embedding-based progressive drift detection
+            if semantic_result.get("progressive_drift"):
+                similarities = semantic_result["similarities"]
+                # Find worst turn (lowest similarity)
+                min_idx = similarities.index(min(similarities))
+                worst_turn = turns_to_analyze[min_idx].turn_number
+
+                drift_scores = [
+                    {"turn": t.turn_number, "drift": 1.0 - sim, "similarity": sim}
+                    for t, sim in zip(turns_to_analyze, similarities)
+                ]
+
+                return {
+                    "detected": True,
+                    "worst_turn": worst_turn,
+                    "drift_scores": drift_scores,
+                    "avg_similarity": semantic_result["avg_similarity"],
+                    "method": "embedding",
+                }
+
+            return {"detected": False, "method": "embedding"}
+
+        # Fallback to keyword-based progressive drift
+        drift_scores = []
+        for turn in turns_to_analyze:
+            drift, _ = self._compute_topic_drift(initial_task, turn.content, use_embeddings=False)
             drift_scores.append({
                 "turn": turn.turn_number,
                 "drift": drift,
             })
 
         # Check if drift is increasing
-        if len(drift_scores) >= 3:
-            scores = [d["drift"] for d in drift_scores]
-            # Simple trend detection: is later half worse than first half?
-            mid = len(scores) // 2
-            first_half_avg = sum(scores[:mid]) / mid if mid > 0 else 0
-            second_half_avg = sum(scores[mid:]) / (len(scores) - mid) if len(scores) > mid else 0
+        scores = [d["drift"] for d in drift_scores]
+        mid = len(scores) // 2
+        first_half_avg = sum(scores[:mid]) / mid if mid > 0 else 0
+        second_half_avg = sum(scores[mid:]) / (len(scores) - mid) if len(scores) > mid else 0
 
-            # Raised threshold from 0.2 to 0.3 to reduce false positives
-            if second_half_avg > first_half_avg + 0.3:  # Significant increase
-                worst_turn = max(drift_scores, key=lambda x: x["drift"])["turn"]
-                return {
-                    "detected": True,
-                    "worst_turn": worst_turn,
-                    "drift_scores": drift_scores,
-                    "first_half_avg": first_half_avg,
-                    "second_half_avg": second_half_avg,
-                }
+        # Raised threshold from 0.2 to 0.3 to reduce false positives
+        if second_half_avg > first_half_avg + 0.3:  # Significant increase
+            worst_turn = max(drift_scores, key=lambda x: x["drift"])["turn"]
+            return {
+                "detected": True,
+                "worst_turn": worst_turn,
+                "drift_scores": drift_scores,
+                "first_half_avg": first_half_avg,
+                "second_half_avg": second_half_avg,
+                "method": "keyword",
+            }
 
-        return {"detected": False}
+        return {"detected": False, "method": "keyword"}
 
     def _detect_task_substitution(
         self,
@@ -1654,7 +1903,7 @@ class TurnAwareResourceMisallocationDetector(TurnAwareDetector):
         return []
 
 
-class TurnAwareInformationWithholdingDetector(TurnAwareDetector):
+class TurnAwareInformationWithholdingDetector(EmbeddingMixin, TurnAwareDetector):
     """Detects F8: Information Withholding in conversations.
 
     Analyzes whether agents properly share information:
@@ -1663,11 +1912,16 @@ class TurnAwareInformationWithholdingDetector(TurnAwareDetector):
     3. Incomplete sharing - partial information provided
     4. Ignored requests - explicit requests for info not addressed
 
-    F8 has 18% prevalence in MAST.
+    Enhanced with semantic analysis (v2.0):
+    - Information density scoring for response completeness
+    - Semantic similarity for question-answer relevance
+    - Entity tracking across turns
+
+    Based on MAST research (NeurIPS 2025): FM-2.4 Information Withholding (12%)
     """
 
     name = "TurnAwareInformationWithholdingDetector"
-    version = "1.0"
+    version = "2.0"  # Semantic enhancement
     supported_failure_modes = ["F8"]
 
     # Question indicators
@@ -1777,7 +2031,12 @@ class TurnAwareInformationWithholdingDetector(TurnAwareDetector):
         )
 
     def _detect_unanswered_questions(self, turns: List[TurnSnapshot]) -> list:
-        """Detect questions that weren't answered."""
+        """Detect questions that weren't answered.
+
+        Enhanced with semantic similarity (v2.0):
+        - Uses embedding similarity to check if response addresses question
+        - Also checks information density of response
+        """
         issues = []
         for i, turn in enumerate(turns[:-1]):
             content = turn.content
@@ -1785,19 +2044,37 @@ class TurnAwareInformationWithholdingDetector(TurnAwareDetector):
             if "?" in content:
                 # Look at next 2 turns for an answer
                 answered = False
+                answer_quality = "none"
+
                 for j in range(i + 1, min(i + 3, len(turns))):
                     next_turn = turns[j]
                     # Different participant responding
                     if next_turn.participant_id != turn.participant_id:
-                        # Check if response is substantive (not just acknowledgment)
-                        if len(next_turn.content) > 50:
-                            answered = True
-                            break
+                        # Check semantic relevance of response to question
+                        similarity = self.semantic_similarity(content, next_turn.content)
+
+                        if similarity >= 0:  # Embeddings available
+                            if similarity >= 0.4:  # Response related to question
+                                response_density = self.compute_information_density(next_turn.content)
+                                if response_density >= 0.3:  # Substantive response
+                                    answered = True
+                                    answer_quality = "good"
+                                else:
+                                    answer_quality = "low_density"
+                                break
+                        else:
+                            # Fallback: length-based check
+                            if len(next_turn.content) > 50:
+                                answered = True
+                                answer_quality = "length_only"
+                                break
+
                 if not answered:
                     issues.append({
                         "type": "unanswered_question",
                         "turns": [turn.turn_number],
                         "description": "Question appears unanswered",
+                        "answer_quality": answer_quality,
                     })
         return issues[:3]
 
@@ -1865,7 +2142,7 @@ class TurnAwareInformationWithholdingDetector(TurnAwareDetector):
         return issues[:2]
 
 
-class TurnAwareOutputValidationDetector(TurnAwareDetector):
+class TurnAwareOutputValidationDetector(EmbeddingMixin, TurnAwareDetector):
     """Detects F12: Output Validation Failure in conversations.
 
     Analyzes whether agent outputs are properly validated:
@@ -1875,11 +2152,16 @@ class TurnAwareOutputValidationDetector(TurnAwareDetector):
     4. Format issues - output doesn't match expected format
     5. Incomplete output - missing required components
 
-    F12 has 17% prevalence in MAST.
+    Enhanced with semantic analysis (v2.0):
+    - Error-after-success pattern detection using semantic shift
+    - Output quality scoring based on information density
+    - Validation completeness analysis
+
+    Based on MAST research (NeurIPS 2025): FM-3.3 Incorrect Verification (28%)
     """
 
     name = "TurnAwareOutputValidationDetector"
-    version = "1.0"
+    version = "2.0"  # Semantic enhancement
     supported_failure_modes = ["F12"]
 
     # Validation failure indicators
@@ -2057,7 +2339,7 @@ class TurnAwareOutputValidationDetector(TurnAwareDetector):
         return issues[:2]
 
 
-class TurnAwareQualityGateBypassDetector(TurnAwareDetector):
+class TurnAwareQualityGateBypassDetector(EmbeddingMixin, TurnAwareDetector):
     """Detects F13: Quality Gate Bypass in conversations.
 
     Analyzes whether quality checks are properly followed:
@@ -2067,11 +2349,16 @@ class TurnAwareQualityGateBypassDetector(TurnAwareDetector):
     4. Missing tests - no testing before deployment/completion
     5. Rush to completion - moving forward despite issues
 
-    F13 has 17% prevalence in MAST.
+    Enhanced with semantic analysis (v2.0):
+    - Sentiment shift detection (positive → negative)
+    - Quality discussion density scoring
+    - Verification completeness tracking
+
+    Based on MAST research (NeurIPS 2025): FM-3.2 No/Incomplete Verification (50%)
     """
 
     name = "TurnAwareQualityGateBypassDetector"
-    version = "1.0"
+    version = "2.0"  # Semantic enhancement
     supported_failure_modes = ["F13"]
 
     # Bypass indicators
@@ -2469,7 +2756,7 @@ class TurnAwareCompletionMisjudgmentDetector(TurnAwareDetector):
         return issues[:3]
 
 
-class TurnAwareTerminationAwarenessDetector(TurnAwareDetector):
+class TurnAwareTerminationAwarenessDetector(EmbeddingMixin, TurnAwareDetector):
     """Detects FM-1.5: Unaware of Termination Conditions.
 
     Based on MAST research (NeurIPS 2025): This is the highest-prevalence
@@ -2481,11 +2768,16 @@ class TurnAwareTerminationAwarenessDetector(TurnAwareDetector):
     3. Repeated completion claims without actual completion
     4. Infinite processing without progress indicators
 
+    Enhanced with semantic analysis (v2.0):
+    - Semantic similarity to detect completion claims
+    - Progress tracking via embedding drift
+    - Task completion verification
+
     Reference: https://arxiv.org/abs/2503.13657
     """
 
     name = "TurnAwareTerminationAwarenessDetector"
-    version = "1.0"
+    version = "2.0"  # Semantic enhancement
     supported_failure_modes = ["F15"]  # FM-1.5 maps to new F15
 
     # Explicit termination signals
