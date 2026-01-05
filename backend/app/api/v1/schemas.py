@@ -265,3 +265,66 @@ class DiagnoseQuickCheckResponse(BaseModel):
     primary_category: Optional[str] = None
     primary_severity: Optional[str] = None
     message: str
+
+
+# Conversation Trace Schemas
+
+class ConversationIngestRequest(BaseModel):
+    """Request to ingest a conversation trace."""
+    content: str = Field(..., description="Raw conversation content (JSON or trajectory text)")
+    format: str = Field(default="auto", description="Format: auto, mast, openai, claude, generic")
+
+
+class ConversationTurnResponse(BaseModel):
+    """Single turn in a conversation."""
+    id: UUID
+    turn_number: int
+    participant_type: str
+    participant_id: str
+    content: str
+    content_hash: Optional[str] = None
+    accumulated_tokens: int = 0
+    created_at: datetime
+
+
+class ConversationResponse(BaseModel):
+    """Response after ingesting a conversation."""
+    trace_id: UUID
+    conversation_id: str
+    framework: str
+    total_turns: int
+    total_tokens: int
+    participants: List[str]
+    is_conversation: bool = True
+    failure_modes: List[str] = []
+
+
+class ConversationListResponse(BaseModel):
+    """List of conversations."""
+    conversations: List[ConversationResponse]
+    total: int
+    page: int
+    per_page: int
+
+
+class ConversationDetailResponse(BaseModel):
+    """Detailed conversation with all turns."""
+    trace_id: UUID
+    conversation_id: str
+    framework: str
+    total_turns: int
+    total_tokens: int
+    participants: List[str]
+    turns: List[ConversationTurnResponse]
+    failure_modes: List[str] = []
+    mast_annotations: Optional[Dict[str, Any]] = None
+    created_at: datetime
+
+
+class ConversationAnalyzeResponse(BaseModel):
+    """Response from analyzing a conversation."""
+    trace_id: UUID
+    analyzed_turns: int
+    detections: List[Dict[str, Any]]
+    failure_modes_detected: List[str]
+    turn_issues: List[Dict[str, Any]] = []
