@@ -479,16 +479,16 @@ class DetectionOrchestrator:
 
         for span in trace.spans:
             # Collect LLM outputs
-            if span.type == SpanType.LLM and span.output:
-                agent_output += span.output + "\n"
+            if span.span_type == SpanType.LLM_CALL and span.response:
+                agent_output += span.response + "\n"
 
             # Collect tool outputs as potential sources
-            if span.type == SpanType.TOOL and span.output:
-                source_documents.append(span.output)
+            if span.span_type == SpanType.TOOL_CALL and span.tool_result:
+                source_documents.append(str(span.tool_result))
 
             # Collect retrieval results
-            if span.type == SpanType.RETRIEVAL and span.output:
-                source_documents.append(span.output)
+            if span.span_type == SpanType.RETRIEVAL and span.output_data:
+                source_documents.append(str(span.output_data))
 
         # Need both output and sources to check grounding
         if not agent_output or not source_documents:
@@ -544,16 +544,16 @@ class DetectionOrchestrator:
 
         for span in trace.spans:
             # Find the original query (usually first LLM input or user message)
-            if span.type == SpanType.LLM and span.input and not query:
-                query = span.input
+            if span.span_type == SpanType.LLM_CALL and span.prompt and not query:
+                query = span.prompt
 
             # Collect retrieval results
-            if span.type == SpanType.RETRIEVAL and span.output:
-                retrieved_documents.append(span.output)
+            if span.span_type == SpanType.RETRIEVAL and span.output_data:
+                retrieved_documents.append(str(span.output_data))
 
             # Collect LLM outputs
-            if span.type == SpanType.LLM and span.output:
-                agent_output += span.output + "\n"
+            if span.span_type == SpanType.LLM_CALL and span.response:
+                agent_output += span.response + "\n"
 
         # Need query and retrieval to check quality
         if not query or not retrieved_documents:

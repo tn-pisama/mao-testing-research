@@ -75,7 +75,7 @@ class TestTaskDerailmentDetector:
     # Topic Drift Tests
     def test_compute_topic_drift_on_topic(self):
         """Should return low drift for on-topic output."""
-        drift = self.detector._compute_topic_drift(
+        drift, _ = self.detector._compute_topic_drift(
             task="analyze revenue growth trends",
             output="The revenue growth analysis shows a 25% increase in Q4 trends"
         )
@@ -83,7 +83,7 @@ class TestTaskDerailmentDetector:
 
     def test_compute_topic_drift_off_topic(self):
         """Should return high drift for off-topic output."""
-        drift = self.detector._compute_topic_drift(
+        drift, _ = self.detector._compute_topic_drift(
             task="analyze revenue growth trends",
             output="I love pizza and sunny beaches in California!"
         )
@@ -91,7 +91,7 @@ class TestTaskDerailmentDetector:
 
     def test_compute_topic_drift_with_context(self):
         """Should consider context in drift calculation."""
-        drift = self.detector._compute_topic_drift(
+        drift, _ = self.detector._compute_topic_drift(
             task="summarize the report",
             output="The financial report shows strong performance",
             context="This is a financial performance report for Q4"
@@ -101,7 +101,7 @@ class TestTaskDerailmentDetector:
 
     def test_compute_topic_drift_empty_task(self):
         """Should handle empty task."""
-        drift = self.detector._compute_topic_drift(
+        drift, _ = self.detector._compute_topic_drift(
             task="",
             output="Some output text here"
         )

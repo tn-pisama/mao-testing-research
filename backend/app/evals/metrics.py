@@ -3,23 +3,18 @@
 from typing import Optional, List, Set
 import re
 import numpy as np
-from sentence_transformers import SentenceTransformer
-from app.config import get_settings
 
-settings = get_settings()
-
-_embedder = None
-
-
-def get_embedder():
-    global _embedder
-    if _embedder is None:
-        _embedder = SentenceTransformer(settings.embedding_model)
-    return _embedder
+# Use centralized embedding service to avoid duplicate model loading
+from app.core.embeddings import get_embedder
 
 
 def cosine_similarity(a: np.ndarray, b: np.ndarray) -> float:
-    return float(np.dot(a, b) / (np.linalg.norm(a) * np.linalg.norm(b)))
+    """Compute cosine similarity between two vectors."""
+    norm_a = np.linalg.norm(a)
+    norm_b = np.linalg.norm(b)
+    if norm_a == 0 or norm_b == 0:
+        return 0.0
+    return float(np.dot(a, b) / (norm_a * norm_b))
 
 
 def relevance_score(
@@ -31,9 +26,9 @@ def relevance_score(
         return 0.0
     
     if use_embeddings:
-        embedder = get_embedder()
-        output_emb = embedder.encode(output)
-        context_emb = embedder.encode(context)
+        embedding_service = get_embedder()
+        output_emb = embedding_service.encode(output)
+        context_emb = embedding_service.encode(context)
         return cosine_similarity(output_emb, context_emb)
     
     output_words = set(output.lower().split())
@@ -55,9 +50,9 @@ def coherence_score(output: str) -> float:
     
     if len(sentences) < 2:
         return 0.8
-    
-    embedder = get_embedder()
-    embeddings = embedder.encode(sentences)
+
+    embedding_service = get_embedder()
+    embeddings = embedding_service.encode(sentences)
     
     coherence_scores = []
     for i in range(1, len(embeddings)):
@@ -153,17 +148,16 @@ def factuality_score(
 ) -> float:
     if not output or not sources:
         return 0.5
-    
-    embedder = get_embedder()
-    
+
     sentences = re.split(r'[.!?]+', output)
     sentences = [s.strip() for s in sentences if len(s.strip()) > 15]
     
     if not sentences:
         return 0.5
-    
+
+    embedding_service = get_embedder()
     all_texts = sentences + sources
-    embeddings = embedder.encode(all_texts)
+    embeddings = embedding_service.encode(all_texts)
     
     output_embs = embeddings[:len(sentences)]
     source_embs = embeddings[len(sentences):]
