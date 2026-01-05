@@ -2469,6 +2469,702 @@ class TurnAwareCompletionMisjudgmentDetector(TurnAwareDetector):
         return issues[:3]
 
 
+class TurnAwareTerminationAwarenessDetector(TurnAwareDetector):
+    """Detects FM-1.5: Unaware of Termination Conditions.
+
+    Based on MAST research (NeurIPS 2025): This is the highest-prevalence
+    failure mode in FC1 (40% of system design failures).
+
+    Detects:
+    1. Missing termination signals in long conversations
+    2. Continuation after explicit termination
+    3. Repeated completion claims without actual completion
+    4. Infinite processing without progress indicators
+
+    Reference: https://arxiv.org/abs/2503.13657
+    """
+
+    name = "TurnAwareTerminationAwarenessDetector"
+    version = "1.0"
+    supported_failure_modes = ["F15"]  # FM-1.5 maps to new F15
+
+    # Explicit termination signals
+    TERMINATION_SIGNALS = [
+        "terminate", "done", "complete", "finished",
+        "task complete", "goal achieved", "mission accomplished",
+        "all done", "nothing more", "that's all",
+        "successfully completed", "work is done", "task finished",
+        "end of task", "completed successfully", "job done",
+    ]
+
+    # Signals that conversation continues after termination
+    CONTINUATION_AFTER_TERMINATION = [
+        "but wait", "actually", "one more thing",
+        "let me also", "additionally", "furthermore",
+        "however", "also need to", "i should also",
+        "before we finish", "wait", "hold on",
+    ]
+
+    # Progress indicators that show work is happening
+    PROGRESS_INDICATORS = [
+        "step", "progress", "moving on", "next",
+        "continuing", "proceeding", "working on",
+        "now i'll", "let me", "i will",
+    ]
+
+    def __init__(
+        self,
+        max_turns_without_termination: int = 25,
+        max_turns_without_progress: int = 10,
+    ):
+        self.max_turns_without_termination = max_turns_without_termination
+        self.max_turns_without_progress = max_turns_without_progress
+
+    def detect(
+        self,
+        turns: List[TurnSnapshot],
+        conversation_metadata: Optional[Dict[str, Any]] = None,
+    ) -> TurnAwareDetectionResult:
+        """Detect termination awareness failures."""
+        if len(turns) < 3:
+            return TurnAwareDetectionResult(
+                detected=False,
+                severity=TurnAwareSeverity.NONE,
+                confidence=0.0,
+                failure_mode=None,
+                explanation="Too few turns to analyze termination patterns",
+                detector_name=self.name,
+            )
+
+        issues = []
+        affected_turns = []
+
+        # 1. Check for missing termination in long conversations
+        missing_term = self._detect_missing_termination(turns)
+        issues.extend(missing_term)
+
+        # 2. Check for continuation after termination
+        ignored_term = self._detect_ignored_termination(turns)
+        issues.extend(ignored_term)
+        for issue in ignored_term:
+            affected_turns.extend(issue.get("turns", []))
+
+        # 3. Check for stalled progress
+        stalled = self._detect_stalled_progress(turns)
+        issues.extend(stalled)
+
+        # 4. Check for repeated completion claims
+        repeated = self._detect_repeated_completion_claims(turns)
+        issues.extend(repeated)
+        for issue in repeated:
+            affected_turns.extend(issue.get("turns", []))
+
+        if not issues:
+            return TurnAwareDetectionResult(
+                detected=False,
+                severity=TurnAwareSeverity.NONE,
+                confidence=0.85,
+                failure_mode=None,
+                explanation="No termination awareness issues detected",
+                detector_name=self.name,
+            )
+
+        # Severity based on issue count and type
+        has_critical = any(i.get("type") == "ignored_termination" for i in issues)
+        if has_critical or len(issues) >= 3:
+            severity = TurnAwareSeverity.SEVERE
+        elif len(issues) >= 2:
+            severity = TurnAwareSeverity.MODERATE
+        else:
+            severity = TurnAwareSeverity.MINOR
+
+        confidence = min(0.90, 0.55 + len(issues) * 0.12)
+
+        return TurnAwareDetectionResult(
+            detected=True,
+            severity=severity,
+            confidence=confidence,
+            failure_mode="F15",
+            explanation=f"Termination awareness failure: {len(issues)} issues found",
+            affected_turns=list(set(affected_turns)),
+            evidence={"issues": issues},
+            suggested_fix=(
+                "Implement clear termination conditions: 1) Define explicit stopping criteria, "
+                "2) Add termination signal recognition, 3) Prevent processing after completion, "
+                "4) Add progress indicators and maximum iteration limits."
+            ),
+            detector_name=self.name,
+        )
+
+    def _detect_missing_termination(self, turns: List[TurnSnapshot]) -> list:
+        """Detect conversations that run too long without termination."""
+        issues = []
+
+        if len(turns) > self.max_turns_without_termination:
+            # Check if there's any termination signal in recent turns
+            recent_turns = turns[-5:]
+            has_termination = any(
+                any(sig in t.content.lower() for sig in self.TERMINATION_SIGNALS)
+                for t in recent_turns
+            )
+
+            if not has_termination:
+                issues.append({
+                    "type": "missing_termination",
+                    "turns": [len(turns)],
+                    "description": f"Long conversation ({len(turns)} turns) without termination signal",
+                })
+
+        return issues
+
+    def _detect_ignored_termination(self, turns: List[TurnSnapshot]) -> list:
+        """Detect when termination signals are ignored."""
+        issues = []
+
+        for i, turn in enumerate(turns[:-1]):
+            content_lower = turn.content.lower()
+
+            # Check if this turn has termination signal
+            has_termination = any(sig in content_lower for sig in self.TERMINATION_SIGNALS)
+
+            if has_termination:
+                # Check if next turn continues inappropriately
+                next_turn = turns[i + 1]
+                next_lower = next_turn.content.lower()
+
+                # Check for continuation markers
+                continues = any(cont in next_lower for cont in self.CONTINUATION_AFTER_TERMINATION)
+
+                # Or if the next turn is from same participant continuing work
+                same_participant = turn.participant_id == next_turn.participant_id
+                substantial_content = len(next_turn.content) > 100
+
+                if continues or (same_participant and substantial_content):
+                    issues.append({
+                        "type": "ignored_termination",
+                        "turns": [turn.turn_number, next_turn.turn_number],
+                        "description": "Conversation continues after termination signal",
+                    })
+
+        return issues[:2]
+
+    def _detect_stalled_progress(self, turns: List[TurnSnapshot]) -> list:
+        """Detect when conversation stalls without progress."""
+        issues = []
+
+        if len(turns) < self.max_turns_without_progress:
+            return issues
+
+        # Check recent turns for progress indicators
+        recent = turns[-self.max_turns_without_progress:]
+        progress_count = sum(
+            1 for t in recent
+            if any(prog in t.content.lower() for prog in self.PROGRESS_INDICATORS)
+        )
+
+        # If very few progress indicators in many turns
+        if progress_count < 2:
+            issues.append({
+                "type": "stalled_progress",
+                "turns": [t.turn_number for t in recent],
+                "description": f"No progress indicators in last {self.max_turns_without_progress} turns",
+            })
+
+        return issues
+
+    def _detect_repeated_completion_claims(self, turns: List[TurnSnapshot]) -> list:
+        """Detect repeated claims of completion without actual termination."""
+        issues = []
+        completion_turns = []
+
+        for turn in turns:
+            content_lower = turn.content.lower()
+            if any(sig in content_lower for sig in self.TERMINATION_SIGNALS[:6]):
+                completion_turns.append(turn.turn_number)
+
+        # Multiple completion claims suggests issues
+        if len(completion_turns) >= 3:
+            issues.append({
+                "type": "repeated_completion_claims",
+                "turns": completion_turns,
+                "description": f"Multiple completion claims ({len(completion_turns)}) without actual termination",
+            })
+
+        return issues
+
+
+class TurnAwareReasoningActionMismatchDetector(TurnAwareDetector):
+    """Detects FM-2.6: Reasoning-Action Mismatch.
+
+    Based on MAST research (NeurIPS 2025): This is the highest-prevalence
+    failure mode in FC2 (26% of inter-agent misalignment failures).
+
+    Detects discrepancy between stated reasoning and actual actions:
+    1. Intent expressed but different action taken
+    2. Reasoning suggests one approach, execution uses another
+    3. Chain-of-thought diverges from final action
+    4. Stated goals don't match actions taken
+
+    Reference: https://arxiv.org/abs/2503.13657
+    ReAct Framework: https://arxiv.org/abs/2210.03629
+    """
+
+    name = "TurnAwareReasoningActionMismatchDetector"
+    version = "1.0"
+    supported_failure_modes = ["F16"]  # FM-2.6 maps to new F16
+
+    # Intent markers in reasoning
+    INTENT_MARKERS = {
+        "search": ["will search", "going to search", "let me search", "searching for", "i'll look up"],
+        "write": ["will write", "going to create", "let me write", "i'll generate", "creating"],
+        "read": ["will read", "going to read", "let me examine", "i'll review", "reading"],
+        "calculate": ["will calculate", "going to compute", "let me figure", "computing"],
+        "execute": ["will run", "going to execute", "let me run", "executing", "running"],
+        "analyze": ["will analyze", "going to analyze", "let me analyze", "analyzing"],
+        "fix": ["will fix", "going to fix", "let me fix", "fixing", "correcting"],
+        "test": ["will test", "going to test", "let me test", "testing", "verifying"],
+    }
+
+    # Action indicators
+    ACTION_INDICATORS = {
+        "search": ["searched", "found", "results show", "search returned", "query results"],
+        "write": ["wrote", "created", "generated", "here's the code", "here is the"],
+        "read": ["read", "examined", "reviewed", "content shows", "file contains"],
+        "calculate": ["calculated", "computed", "result is", "equals", "total"],
+        "execute": ["ran", "executed", "output:", "returned", "result:"],
+        "analyze": ["analyzed", "analysis shows", "found that", "discovered"],
+        "fix": ["fixed", "corrected", "updated", "changed", "modified"],
+        "test": ["tested", "test passed", "test failed", "verification", "confirmed"],
+    }
+
+    # Contradiction patterns
+    CONTRADICTIONS = [
+        ("will search", "without searching"),
+        ("will read", "without reading"),
+        ("will test", "skipping test"),
+        ("will verify", "assuming correct"),
+        ("need to check", "assuming"),
+        ("should validate", "looks correct"),
+    ]
+
+    def __init__(self, min_turns: int = 3):
+        self.min_turns = min_turns
+
+    def detect(
+        self,
+        turns: List[TurnSnapshot],
+        conversation_metadata: Optional[Dict[str, Any]] = None,
+    ) -> TurnAwareDetectionResult:
+        """Detect reasoning-action mismatches."""
+        agent_turns = [t for t in turns if t.participant_type == "agent"]
+
+        if len(agent_turns) < self.min_turns:
+            return TurnAwareDetectionResult(
+                detected=False,
+                severity=TurnAwareSeverity.NONE,
+                confidence=0.0,
+                failure_mode=None,
+                explanation="Too few agent turns to analyze reasoning patterns",
+                detector_name=self.name,
+            )
+
+        issues = []
+        affected_turns = []
+
+        # 1. Check for intent-action mismatches within turns
+        within_turn = self._detect_within_turn_mismatch(agent_turns)
+        issues.extend(within_turn)
+        for issue in within_turn:
+            affected_turns.extend(issue.get("turns", []))
+
+        # 2. Check for cross-turn intent-action mismatches
+        cross_turn = self._detect_cross_turn_mismatch(agent_turns)
+        issues.extend(cross_turn)
+        for issue in cross_turn:
+            affected_turns.extend(issue.get("turns", []))
+
+        # 3. Check for explicit contradictions
+        contradictions = self._detect_contradictions(agent_turns)
+        issues.extend(contradictions)
+        for issue in contradictions:
+            affected_turns.extend(issue.get("turns", []))
+
+        # 4. Check for saying-doing gaps
+        saying_doing = self._detect_saying_doing_gap(agent_turns)
+        issues.extend(saying_doing)
+        for issue in saying_doing:
+            affected_turns.extend(issue.get("turns", []))
+
+        if not issues:
+            return TurnAwareDetectionResult(
+                detected=False,
+                severity=TurnAwareSeverity.NONE,
+                confidence=0.82,
+                failure_mode=None,
+                explanation="No reasoning-action mismatches detected",
+                detector_name=self.name,
+            )
+
+        if len(issues) >= 3:
+            severity = TurnAwareSeverity.SEVERE
+        elif len(issues) >= 2:
+            severity = TurnAwareSeverity.MODERATE
+        else:
+            severity = TurnAwareSeverity.MINOR
+
+        confidence = min(0.88, 0.52 + len(issues) * 0.12)
+
+        return TurnAwareDetectionResult(
+            detected=True,
+            severity=severity,
+            confidence=confidence,
+            failure_mode="F16",
+            explanation=f"Reasoning-action mismatch: {len(issues)} issues found",
+            affected_turns=list(set(affected_turns)),
+            evidence={"issues": issues},
+            suggested_fix=(
+                "Ensure reasoning aligns with actions: 1) Verify intended actions are executed, "
+                "2) Add explicit action logging, 3) Implement thought-action consistency checks, "
+                "4) Use ReAct-style structured reasoning with explicit action verification."
+            ),
+            detector_name=self.name,
+        )
+
+    def _detect_within_turn_mismatch(self, turns: List[TurnSnapshot]) -> list:
+        """Detect mismatches between reasoning and action within same turn."""
+        issues = []
+
+        for turn in turns:
+            content_lower = turn.content.lower()
+
+            for action_type, intent_phrases in self.INTENT_MARKERS.items():
+                # Check if intent is expressed
+                has_intent = any(phrase in content_lower for phrase in intent_phrases)
+
+                if has_intent:
+                    # Check if corresponding action is taken
+                    action_phrases = self.ACTION_INDICATORS.get(action_type, [])
+                    has_action = any(phrase in content_lower for phrase in action_phrases)
+
+                    # If intent without action, might be mismatch
+                    # But only flag if turn is substantial (not just planning)
+                    if not has_action and len(turn.content) > 200:
+                        issues.append({
+                            "type": "intent_without_action",
+                            "turns": [turn.turn_number],
+                            "intent": action_type,
+                            "description": f"Expressed intent to '{action_type}' but no action taken",
+                        })
+
+        return issues[:2]
+
+    def _detect_cross_turn_mismatch(self, turns: List[TurnSnapshot]) -> list:
+        """Detect mismatches between turns (intent in one, no action in next)."""
+        issues = []
+
+        for i in range(len(turns) - 1):
+            current = turns[i]
+            next_turn = turns[i + 1]
+            current_lower = current.content.lower()
+            next_lower = next_turn.content.lower()
+
+            for action_type, intent_phrases in self.INTENT_MARKERS.items():
+                has_intent = any(phrase in current_lower for phrase in intent_phrases)
+
+                if has_intent:
+                    # Check if next turn has the action
+                    action_phrases = self.ACTION_INDICATORS.get(action_type, [])
+                    next_has_action = any(phrase in next_lower for phrase in action_phrases)
+
+                    # Check if next turn abandons the intent
+                    abandons = any(phrase in next_lower for phrase in [
+                        "instead", "actually", "let me", "different approach",
+                        "skip", "ignore", "without"
+                    ])
+
+                    if not next_has_action and abandons:
+                        issues.append({
+                            "type": "abandoned_intent",
+                            "turns": [current.turn_number, next_turn.turn_number],
+                            "intent": action_type,
+                            "description": f"Intent to '{action_type}' abandoned in next turn",
+                        })
+
+        return issues[:2]
+
+    def _detect_contradictions(self, turns: List[TurnSnapshot]) -> list:
+        """Detect explicit contradictions in reasoning."""
+        issues = []
+
+        for turn in turns:
+            content_lower = turn.content.lower()
+
+            for intent_phrase, contradiction_phrase in self.CONTRADICTIONS:
+                if intent_phrase in content_lower and contradiction_phrase in content_lower:
+                    issues.append({
+                        "type": "explicit_contradiction",
+                        "turns": [turn.turn_number],
+                        "intent": intent_phrase,
+                        "contradiction": contradiction_phrase,
+                        "description": f"Contradiction: '{intent_phrase}' but '{contradiction_phrase}'",
+                    })
+
+        return issues[:2]
+
+    def _detect_saying_doing_gap(self, turns: List[TurnSnapshot]) -> list:
+        """Detect gaps between what agent says and does."""
+        issues = []
+
+        for turn in turns:
+            content_lower = turn.content.lower()
+
+            # Check for "I did X" without evidence of X
+            claim_action_pairs = [
+                ("tested", "test"),
+                ("verified", "verif"),
+                ("checked", "check"),
+                ("validated", "valid"),
+                ("confirmed", "confirm"),
+            ]
+
+            for claim, evidence in claim_action_pairs:
+                if f"i {claim}" in content_lower or f"i have {claim}" in content_lower:
+                    # Look for evidence of actual testing/verification
+                    evidence_markers = [
+                        "output:", "result:", "returned", "shows",
+                        "passed", "failed", "error:", "success"
+                    ]
+                    has_evidence = any(marker in content_lower for marker in evidence_markers)
+
+                    if not has_evidence:
+                        issues.append({
+                            "type": "claim_without_evidence",
+                            "turns": [turn.turn_number],
+                            "claim": claim,
+                            "description": f"Claims to have {claim} but no evidence shown",
+                        })
+
+        return issues[:2]
+
+
+class TurnAwareClarificationRequestDetector(TurnAwareDetector):
+    """Detects FM-2.2: Failure to Ask for Clarification.
+
+    Based on MAST research (NeurIPS 2025): 18% of FC2 failures.
+    Agents proceed with ambiguous instructions without seeking clarification.
+
+    Detects:
+    1. Ambiguous task with no clarification request
+    2. Proceeding despite uncertainty
+    3. Making assumptions without verification
+    4. Missing clarification in multi-step tasks
+
+    Reference: https://arxiv.org/abs/2503.13657
+    """
+
+    name = "TurnAwareClarificationRequestDetector"
+    version = "1.0"
+    supported_failure_modes = ["F17"]  # FM-2.2 maps to new F17
+
+    # Ambiguity indicators in user/task messages
+    AMBIGUITY_MARKERS = [
+        "maybe", "perhaps", "could be", "either", "or",
+        "not sure", "unclear", "ambiguous", "vague",
+        "depending", "depends on", "if needed",
+        "something like", "kind of", "sort of",
+        "whatever", "anything", "some", "any",
+    ]
+
+    # Assumption indicators without clarification
+    ASSUMPTION_WITHOUT_CLARIFICATION = [
+        "i'll assume", "assuming", "i assume",
+        "let me assume", "i'm assuming", "assuming that",
+        "i'll go with", "i'll use", "defaulting to",
+        "probably means", "likely means", "must mean",
+        "interpreting as", "taking this to mean",
+    ]
+
+    # Proper clarification request indicators
+    CLARIFICATION_REQUESTS = [
+        "could you clarify", "can you clarify", "please clarify",
+        "what do you mean", "could you explain", "can you specify",
+        "which one", "do you mean", "are you referring to",
+        "to clarify", "just to confirm", "to make sure",
+        "?",  # Questions in general
+    ]
+
+    def __init__(self, min_turns: int = 2):
+        self.min_turns = min_turns
+
+    def detect(
+        self,
+        turns: List[TurnSnapshot],
+        conversation_metadata: Optional[Dict[str, Any]] = None,
+    ) -> TurnAwareDetectionResult:
+        """Detect failure to ask for clarification."""
+        if len(turns) < self.min_turns:
+            return TurnAwareDetectionResult(
+                detected=False,
+                severity=TurnAwareSeverity.NONE,
+                confidence=0.0,
+                failure_mode=None,
+                explanation="Too few turns to analyze clarification patterns",
+                detector_name=self.name,
+            )
+
+        issues = []
+        affected_turns = []
+
+        # 1. Check for assumptions without clarification
+        assumptions = self._detect_assumptions_without_clarification(turns)
+        issues.extend(assumptions)
+        for issue in assumptions:
+            affected_turns.extend(issue.get("turns", []))
+
+        # 2. Check for proceeding with ambiguous input
+        ambiguous = self._detect_proceeding_with_ambiguity(turns)
+        issues.extend(ambiguous)
+        for issue in ambiguous:
+            affected_turns.extend(issue.get("turns", []))
+
+        # 3. Check for missing clarification in complex tasks
+        complex_task = self._detect_complex_task_without_clarification(turns)
+        issues.extend(complex_task)
+        for issue in complex_task:
+            affected_turns.extend(issue.get("turns", []))
+
+        if not issues:
+            return TurnAwareDetectionResult(
+                detected=False,
+                severity=TurnAwareSeverity.NONE,
+                confidence=0.80,
+                failure_mode=None,
+                explanation="No clarification request failures detected",
+                detector_name=self.name,
+            )
+
+        if len(issues) >= 3:
+            severity = TurnAwareSeverity.SEVERE
+        elif len(issues) >= 2:
+            severity = TurnAwareSeverity.MODERATE
+        else:
+            severity = TurnAwareSeverity.MINOR
+
+        confidence = min(0.85, 0.50 + len(issues) * 0.12)
+
+        return TurnAwareDetectionResult(
+            detected=True,
+            severity=severity,
+            confidence=confidence,
+            failure_mode="F17",
+            explanation=f"Clarification request failure: {len(issues)} issues found",
+            affected_turns=list(set(affected_turns)),
+            evidence={"issues": issues},
+            suggested_fix=(
+                "Ask for clarification when needed: 1) Identify ambiguous requirements, "
+                "2) Ask specific clarifying questions before proceeding, "
+                "3) Confirm assumptions with user, 4) Don't proceed on uncertain paths."
+            ),
+            detector_name=self.name,
+        )
+
+    def _detect_assumptions_without_clarification(self, turns: List[TurnSnapshot]) -> list:
+        """Detect when agent makes assumptions without asking."""
+        issues = []
+        agent_turns = [t for t in turns if t.participant_type == "agent"]
+
+        for turn in agent_turns:
+            content_lower = turn.content.lower()
+
+            # Check for assumption markers
+            has_assumption = any(marker in content_lower for marker in self.ASSUMPTION_WITHOUT_CLARIFICATION)
+
+            if has_assumption:
+                # Check if there was a prior clarification request
+                prior_turns = [t for t in turns if t.turn_number < turn.turn_number]
+                asked_clarification = any(
+                    any(req in t.content.lower() for req in self.CLARIFICATION_REQUESTS)
+                    for t in prior_turns
+                    if t.participant_type == "agent"
+                )
+
+                if not asked_clarification:
+                    issues.append({
+                        "type": "assumption_without_clarification",
+                        "turns": [turn.turn_number],
+                        "description": "Made assumption without asking for clarification",
+                    })
+
+        return issues[:2]
+
+    def _detect_proceeding_with_ambiguity(self, turns: List[TurnSnapshot]) -> list:
+        """Detect when agent proceeds despite ambiguous input."""
+        issues = []
+
+        # Find user turns with ambiguity
+        for i, turn in enumerate(turns):
+            if turn.participant_type in ("user", "system"):
+                content_lower = turn.content.lower()
+                has_ambiguity = any(marker in content_lower for marker in self.AMBIGUITY_MARKERS)
+
+                if has_ambiguity:
+                    # Check if next agent turn asks for clarification
+                    next_agent_turns = [
+                        t for t in turns[i+1:]
+                        if t.participant_type == "agent"
+                    ][:2]
+
+                    asks_clarification = any(
+                        any(req in t.content.lower() for req in self.CLARIFICATION_REQUESTS)
+                        for t in next_agent_turns
+                    )
+
+                    if not asks_clarification and next_agent_turns:
+                        issues.append({
+                            "type": "proceeding_with_ambiguity",
+                            "turns": [turn.turn_number, next_agent_turns[0].turn_number],
+                            "description": "Proceeded with ambiguous input without clarification",
+                        })
+
+        return issues[:2]
+
+    def _detect_complex_task_without_clarification(self, turns: List[TurnSnapshot]) -> list:
+        """Detect complex multi-part tasks without clarification."""
+        issues = []
+
+        # Check first few turns for complex task indicators
+        early_turns = turns[:3]
+        for turn in early_turns:
+            if turn.participant_type in ("user", "system"):
+                content = turn.content
+
+                # Indicators of complex/multi-part task
+                complex_indicators = [
+                    " and ", " then ", " also ", " additionally ",
+                    "1.", "2.", "first", "second", "multiple",
+                    "several", "various", "different",
+                ]
+
+                has_complexity = sum(1 for ind in complex_indicators if ind in content.lower())
+
+                if has_complexity >= 2 and len(content) > 200:
+                    # Check if agent asks clarifying questions
+                    next_agent_turns = [t for t in turns if t.participant_type == "agent"][:2]
+                    asks_questions = any(
+                        "?" in t.content
+                        for t in next_agent_turns
+                    )
+
+                    if not asks_questions:
+                        issues.append({
+                            "type": "complex_task_no_clarification",
+                            "turns": [turn.turn_number],
+                            "description": "Complex multi-part task without clarifying questions",
+                        })
+
+        return issues[:1]
+
+
 # Convenience function to run all turn-aware detectors
 def analyze_conversation_turns(
     turns: List[TurnSnapshot],
@@ -2499,6 +3195,10 @@ def analyze_conversation_turns(
             TurnAwareOutputValidationDetector(),  # F12
             TurnAwareQualityGateBypassDetector(),  # F13
             TurnAwareCompletionMisjudgmentDetector(),  # F14
+            # New MAST-aligned detectors (NeurIPS 2025)
+            TurnAwareTerminationAwarenessDetector(),  # F15 (FM-1.5, 40% of FC1)
+            TurnAwareReasoningActionMismatchDetector(),  # F16 (FM-2.6, 26% of FC2)
+            TurnAwareClarificationRequestDetector(),  # F17 (FM-2.2, 18% of FC2)
         ]
 
     # Check if conversation is long enough to need summarization
