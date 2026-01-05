@@ -53,7 +53,7 @@ def save_config(config: dict):
 
 
 @click.group()
-@click.version_option(version="0.3.0")
+@click.version_option(version="0.3.1")
 def main():
     """PISAMA Claude Code - Trace capture and sync."""
     pass
@@ -579,15 +579,24 @@ def normalize_trace(t: dict) -> dict:
 
 def load_recent_traces(n: int) -> list:
     """Load recent traces from local storage."""
+    if n <= 0:
+        return []
+
     traces = []
     if not TRACES_DIR.exists():
         return traces
 
     for tf in sorted(TRACES_DIR.glob("traces-*.jsonl"), reverse=True):
-        with open(tf) as f:
-            for line in f:
-                raw = json.loads(line)
-                traces.append(normalize_trace(raw))
+        try:
+            with open(tf) as f:
+                for line in f:
+                    try:
+                        raw = json.loads(line)
+                        traces.append(normalize_trace(raw))
+                    except json.JSONDecodeError:
+                        continue  # Skip invalid JSON lines
+        except OSError:
+            continue  # Skip files that can't be read
         if len(traces) >= n:
             break
 
