@@ -2,19 +2,25 @@
 
 export const dynamic = 'force-dynamic'
 
-import { useEffect, useState } from 'react'
+import { useState, useEffect } from 'react'
+import {
+  LandingHeader,
+  HeroSection,
+  FeatureCards,
+  QuickStart,
+  PlatformCTA,
+  WaitlistModal,
+  Footer,
+} from '@/components/landing'
 
 export default function Home() {
+  const [showWaitlist, setShowWaitlist] = useState(false)
   const [mounted, setMounted] = useState(false)
-  const [hasClerk, setHasClerk] = useState(false)
 
   useEffect(() => {
-    // Check for Clerk key on client side to avoid SSR issues
-    setHasClerk(!!process.env.NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY)
     setMounted(true)
   }, [])
 
-  // Show loading state until mounted
   if (!mounted) {
     return (
       <main className="min-h-screen bg-slate-900 flex items-center justify-center">
@@ -23,34 +29,19 @@ export default function Home() {
     )
   }
 
-  // When Clerk is not configured, just redirect to dashboard
-  if (!hasClerk) {
-    return <RedirectToDashboard />
-  }
-
-  // Only import Clerk components when Clerk is configured and mounted
-  const ClerkComponents = require('@clerk/nextjs')
-  const { SignIn, SignedIn, SignedOut } = ClerkComponents
-
   return (
-    <main className="min-h-screen bg-slate-900 flex items-center justify-center">
-      <SignedOut>
-        <SignIn fallbackRedirectUrl="/dashboard" />
-      </SignedOut>
-      <SignedIn>
-        <RedirectToDashboard />
-      </SignedIn>
-    </main>
-  )
-}
+    <main className="min-h-screen bg-slate-900">
+      <LandingHeader onJoinWaitlist={() => setShowWaitlist(true)} />
+      <HeroSection />
+      <FeatureCards />
+      <QuickStart />
+      <PlatformCTA onJoinWaitlist={() => setShowWaitlist(true)} />
+      <Footer />
 
-function RedirectToDashboard() {
-  useEffect(() => {
-    window.location.href = '/dashboard'
-  }, [])
-  return (
-    <main className="min-h-screen bg-slate-900 flex items-center justify-center">
-      <div className="text-white">Redirecting to dashboard...</div>
+      <WaitlistModal
+        isOpen={showWaitlist}
+        onClose={() => setShowWaitlist(false)}
+      />
     </main>
   )
 }
