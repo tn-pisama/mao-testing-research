@@ -16,6 +16,10 @@ Version History:
   - Added vagueness detection for non-actionable steps
   - Added complexity estimation for too-large subtasks
   - Task-aware granularity checking (complex tasks need more steps)
+- v1.2: Reduced false positives for simple direct implementations:
+  - Simple task detection (doesn't require decomposition)
+  - Direct implementation detection (straightforward approach indicators)
+  - Prose-style output handling (not flagging casual phrasing as decomposition)
 """
 
 import logging
@@ -27,7 +31,7 @@ import re
 logger = logging.getLogger(__name__)
 
 # Detector version for tracking
-DETECTOR_VERSION = "1.1"
+DETECTOR_VERSION = "1.2"
 DETECTOR_NAME = "TaskDecompositionDetector"
 
 # v1.1: Words that indicate vague/non-actionable steps
@@ -55,6 +59,25 @@ COMPLEX_TASK_INDICATORS = [
     "authentication", "authorization", "database",
     "migration", "refactor", "integration",
     "infrastructure", "deployment", "pipeline",
+]
+
+# v1.2: Words that indicate a simple task that doesn't require decomposition
+SIMPLE_TASK_INDICATORS = [
+    "simple", "basic", "quick", "small", "minor",
+    "single", "one", "just", "only",
+    "add", "fix", "update", "change", "tweak",
+    "button", "field", "input", "label", "text",
+    "feature", "function", "method", "endpoint",
+]
+
+# v1.2: Patterns indicating direct implementation (not decomposition)
+DIRECT_IMPLEMENTATION_PATTERNS = [
+    r'\b(?:dive\s+right\s+in|straightforward|directly|right\s+away)\b',
+    r'\b(?:simple|easy|quick)\s+(?:approach|implementation|solution)\b',
+    r'\b(?:here\'s|here\s+is)\s+(?:the|my|a)\s+(?:code|implementation|solution)\b',
+    r'\b(?:i\'ll|let\s+me)\s+(?:just|simply|directly)\b',
+    r'\b(?:no\s+need\s+(?:to|for)|without\s+(?:the\s+)?need)\b',
+    r'\bstraightforward\s+approach\b',
 ]
 
 
@@ -295,6 +318,22 @@ class TaskDecompositionDetector:
         task_lower = task_description.lower()
         return any(ind in task_lower for ind in COMPLEX_TASK_INDICATORS)
 
+    def _is_simple_task(self, task_description: str) -> bool:
+        """v1.2: Determine if task is simple and may not need decomposition."""
+        task_lower = task_description.lower()
+        # Simple if has simple indicators AND no complex indicators
+        has_simple = any(ind in task_lower for ind in SIMPLE_TASK_INDICATORS)
+        has_complex = self._is_complex_task(task_description)
+        return has_simple and not has_complex
+
+    def _is_direct_implementation(self, output: str) -> bool:
+        """v1.2: Check if output indicates direct implementation (not decomposition)."""
+        output_lower = output.lower()
+        for pattern in DIRECT_IMPLEMENTATION_PATTERNS:
+            if re.search(pattern, output_lower):
+                return True
+        return False
+
     def _get_min_subtasks_for_task(self, task_description: str) -> int:
         """v1.1: Get minimum recommended subtasks based on task complexity."""
         if self._is_complex_task(task_description):
@@ -307,9 +346,27 @@ class TaskDecompositionDetector:
         decomposition: str,
         agent_capabilities: Optional[dict[str, list[str]]] = None,
     ) -> DecompositionResult:
+        # v1.2: Check for direct implementation of simple tasks first
+        is_simple = self._is_simple_task(task_description)
+        is_direct = self._is_direct_implementation(decomposition)
+
+        # v1.2: Simple task with direct implementation = no decomposition needed
+        if is_simple and is_direct:
+            return DecompositionResult(
+                detected=False,
+                issues=[],
+                severity=DecompositionSeverity.NONE,
+                confidence=0.8,
+                subtask_count=0,
+                problematic_subtasks=[],
+                explanation="Simple task handled with direct implementation approach",
+                vague_count=0,
+                complex_count=0,
+            )
+
         subtasks = self._parse_subtasks(decomposition)
 
-        # v1.1: If no subtasks found, check if task is complex
+        # v1.1/v1.2: If no subtasks found, check task complexity
         if not subtasks:
             if self._is_complex_task(task_description):
                 # Complex task without structured decomposition is a failure
@@ -338,6 +395,21 @@ class TaskDecompositionDetector:
                     vague_count=0,
                     complex_count=0,
                 )
+
+        # v1.2: Even with parsed subtasks, if task is simple and approach is direct,
+        # don't penalize for minimal decomposition
+        if is_simple and is_direct and len(subtasks) <= 3:
+            return DecompositionResult(
+                detected=False,
+                issues=[],
+                severity=DecompositionSeverity.NONE,
+                confidence=0.7,
+                subtask_count=len(subtasks),
+                problematic_subtasks=[],
+                explanation="Simple task with straightforward approach (minimal decomposition acceptable)",
+                vague_count=0,
+                complex_count=0,
+            )
 
         issues = []
         problematic = []
