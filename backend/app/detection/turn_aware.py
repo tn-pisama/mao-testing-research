@@ -128,23 +128,45 @@ class TurnAwareContextNeglectDetector(TurnAwareDetector):
 
     Uses accumulated context tracking to detect when information
     is "lost" or ignored as the conversation progresses.
+
+    Tuned to reduce false positives:
+    - Code responses have different vocabulary than questions
+    - Low word overlap doesn't mean neglect if topic is addressed
+    - Repetition is F5's job, not context neglect
     """
 
     name = "TurnAwareContextNeglectDetector"
-    version = "1.0"
+    version = "1.1"  # Version bump for tuning
     supported_failure_modes = ["F7"]
+
+    # Code patterns that indicate a code response
+    CODE_PATTERNS = [
+        "def ", "class ", "import ", "from ", "function ",
+        "const ", "let ", "var ", "return ", "if (", "if(",
+        "for (", "for(", "while ", "=>", "```", "{", "}",
+        "self.", "this.", "async ", "await ",
+    ]
+
+    # Explicit neglect indicators - agent explicitly ignoring or misunderstanding
+    NEGLECT_INDICATORS = [
+        "instead", "rather than", "not what you asked",
+        "different topic", "unrelated", "i'll analyze",
+        "let me look at", "i'll check",
+    ]
 
     def __init__(
         self,
-        utilization_threshold: float = 0.3,
+        utilization_threshold: float = 0.1,  # Lowered from 0.3
         min_context_length: int = 50,
         check_user_instructions: bool = True,
         check_tool_outputs: bool = True,
+        require_explicit_neglect: bool = True,  # New: require stronger evidence
     ):
         self.utilization_threshold = utilization_threshold
         self.min_context_length = min_context_length
         self.check_user_instructions = check_user_instructions
         self.check_tool_outputs = check_tool_outputs
+        self.require_explicit_neglect = require_explicit_neglect
 
     def detect(
         self,
@@ -173,13 +195,37 @@ class TurnAwareContextNeglectDetector(TurnAwareDetector):
         # Check 1: Agent responses vs user instructions
         if self.check_user_instructions and user_turns and agent_turns:
             for agent_turn in agent_turns:
-                # Find user turns before this agent turn
+                # Find the most recent user turn before this agent turn
                 prior_user_turns = [
                     u for u in user_turns
                     if u.turn_number < agent_turn.turn_number
                 ]
-                if prior_user_turns:
-                    user_context = "\n".join(u.content for u in prior_user_turns)
+                if not prior_user_turns:
+                    continue
+
+                # Get the immediately preceding user turn for comparison
+                immediate_user = max(prior_user_turns, key=lambda u: u.turn_number)
+                user_context = immediate_user.content
+
+                # Skip if agent response is code and user asked for code
+                if self._is_code_response(agent_turn.content):
+                    if self._is_code_request(user_context):
+                        continue  # Code response to code request = OK
+
+                # Check for explicit neglect patterns
+                has_explicit_neglect = self._has_explicit_neglect(
+                    user_context, agent_turn.content
+                )
+
+                if has_explicit_neglect:
+                    neglect_issues.append({
+                        "type": "explicit_neglect",
+                        "turn": agent_turn.turn_number,
+                        "description": f"Agent turn {agent_turn.turn_number} explicitly ignored user request",
+                    })
+                    affected_turns.append(agent_turn.turn_number)
+                elif not self.require_explicit_neglect:
+                    # Only check utilization if not requiring explicit neglect
                     utilization = self._compute_utilization(
                         user_context, agent_turn.content
                     )
@@ -204,27 +250,16 @@ class TurnAwareContextNeglectDetector(TurnAwareDetector):
                 if prior_tool_turns:
                     tool_context = "\n".join(t.content for t in prior_tool_turns)
                     if len(tool_context) >= self.min_context_length:
-                        utilization = self._compute_utilization(
-                            tool_context, agent_turn.content
-                        )
-                        if utilization < self.utilization_threshold:
+                        # For tool outputs, check if key data is referenced
+                        if self._ignores_tool_data(tool_context, agent_turn.content):
                             neglect_issues.append({
                                 "type": "tool_output_neglect",
                                 "turn": agent_turn.turn_number,
-                                "utilization": utilization,
                                 "description": f"Agent turn {agent_turn.turn_number} ignored tool output",
                             })
                             affected_turns.append(agent_turn.turn_number)
 
-        # Check 3: Context drift over time (accumulated context shrinking)
-        context_drift = self._detect_context_drift(agent_turns)
-        if context_drift["detected"]:
-            neglect_issues.append({
-                "type": "context_drift",
-                "turn": context_drift["turn"],
-                "description": "Agent responses becoming increasingly disconnected from conversation",
-            })
-            affected_turns.append(context_drift["turn"])
+        # NOTE: Removed context_drift check - repetition is F5's job, not F7
 
         if not neglect_issues:
             return TurnAwareDetectionResult(
@@ -237,9 +272,9 @@ class TurnAwareContextNeglectDetector(TurnAwareDetector):
             )
 
         # Determine severity based on number and type of issues
-        if len(neglect_issues) >= 3 or any(i["type"] == "context_drift" for i in neglect_issues):
+        if len(neglect_issues) >= 3:
             severity = TurnAwareSeverity.SEVERE
-        elif len(neglect_issues) >= 2:
+        elif len(neglect_issues) >= 2 or any(i["type"] == "explicit_neglect" for i in neglect_issues):
             severity = TurnAwareSeverity.MODERATE
         else:
             severity = TurnAwareSeverity.MINOR
@@ -265,6 +300,74 @@ class TurnAwareContextNeglectDetector(TurnAwareDetector):
             detector_name=self.name,
         )
 
+    def _is_code_response(self, content: str) -> bool:
+        """Check if response contains code."""
+        content_lower = content.lower()
+        code_pattern_count = sum(1 for p in self.CODE_PATTERNS if p.lower() in content_lower)
+        return code_pattern_count >= 2
+
+    def _is_code_request(self, content: str) -> bool:
+        """Check if user is asking for code."""
+        code_keywords = [
+            "write", "code", "function", "implement", "create",
+            "program", "script", "fix", "debug", "add", "python",
+            "javascript", "java", "def", "class", "method",
+        ]
+        content_lower = content.lower()
+        return any(kw in content_lower for kw in code_keywords)
+
+    def _has_explicit_neglect(self, user_context: str, agent_response: str) -> bool:
+        """Check for explicit signs of ignoring user context."""
+        response_lower = agent_response.lower()
+        context_lower = user_context.lower()
+
+        # Check if agent mentions doing something else
+        for indicator in self.NEGLECT_INDICATORS:
+            if indicator in response_lower:
+                # Verify it's not the user's correction
+                if indicator not in context_lower:
+                    return True
+
+        # Check for topic mismatch: user asks about X, agent talks about Y
+        # Extract key nouns from both
+        user_topics = self._extract_topics(context_lower)
+        agent_topics = self._extract_topics(response_lower)
+
+        if user_topics and agent_topics:
+            overlap = user_topics & agent_topics
+            if len(overlap) == 0 and not self._is_code_response(agent_response):
+                # No topic overlap and not a code response = likely neglect
+                return True
+
+        return False
+
+    def _extract_topics(self, text: str) -> set:
+        """Extract main topic words from text."""
+        # Common domain-specific keywords that indicate topic
+        topic_indicators = {
+            "sales", "data", "analysis", "report", "weather", "temperature",
+            "calculator", "function", "code", "implementation", "database",
+            "user", "authentication", "api", "server", "client", "file",
+            "error", "bug", "test", "performance", "security", "config",
+        }
+        words = set(text.split())
+        return words & topic_indicators
+
+    def _ignores_tool_data(self, tool_output: str, agent_response: str) -> bool:
+        """Check if agent ignores important data from tool output."""
+        # Look for numbers, names, or key data in tool output
+        import re
+
+        # Extract numbers from tool output
+        numbers = set(re.findall(r'\b\d+(?:\.\d+)?\b', tool_output))
+        response_numbers = set(re.findall(r'\b\d+(?:\.\d+)?\b', agent_response))
+
+        # If tool output has significant numbers and none appear in response
+        if len(numbers) >= 3 and len(numbers & response_numbers) == 0:
+            return True
+
+        return False
+
     def _compute_utilization(self, context: str, output: str) -> float:
         """Compute how much of the context is reflected in the output."""
         context_words = set(w.lower() for w in context.split() if len(w) > 3)
@@ -275,33 +378,6 @@ class TurnAwareContextNeglectDetector(TurnAwareDetector):
 
         overlap = context_words & output_words
         return len(overlap) / len(context_words)
-
-    def _detect_context_drift(
-        self,
-        agent_turns: List[TurnSnapshot],
-    ) -> Dict[str, Any]:
-        """Detect if agent responses are drifting from accumulated context."""
-        if len(agent_turns) < 3:
-            return {"detected": False}
-
-        # Compare content hashes to detect repetition or drift
-        hashes = [t.content_hash for t in agent_turns]
-        unique_hashes = len(set(hashes))
-
-        # If responses are becoming repetitive, that's a sign of drift
-        if unique_hashes < len(hashes) * 0.5:
-            # Find the first repeated turn
-            seen = {}
-            for turn in agent_turns:
-                if turn.content_hash in seen:
-                    return {
-                        "detected": True,
-                        "turn": turn.turn_number,
-                        "reason": "Repetitive agent responses",
-                    }
-                seen[turn.content_hash] = turn.turn_number
-
-        return {"detected": False}
 
 
 class TurnAwareDerailmentDetector(TurnAwareDetector):
@@ -314,21 +390,36 @@ class TurnAwareDerailmentDetector(TurnAwareDetector):
     3. Agent addresses wrong task or substitutes tasks
 
     Uses sliding window analysis to detect gradual drift.
+
+    Tuned to reduce false positives:
+    - Code responses have different vocabulary than task descriptions
+    - Requires stronger evidence (task substitution OR progressive drift)
+    - Single-turn drift alone is not sufficient
     """
 
     name = "TurnAwareDerailmentDetector"
-    version = "1.0"
+    version = "1.1"  # Version bump for tuning
     supported_failure_modes = ["F6"]
+
+    # Code patterns (shared with F7 detector logic)
+    CODE_PATTERNS = [
+        "def ", "class ", "import ", "from ", "function ",
+        "const ", "let ", "var ", "return ", "if (", "if(",
+        "for (", "for(", "while ", "=>", "```", "{", "}",
+        "self.", "this.", "async ", "await ",
+    ]
 
     def __init__(
         self,
-        drift_threshold: float = 0.5,
+        drift_threshold: float = 0.75,  # Raised from 0.5 to reduce FPs
         min_turns_for_analysis: int = 3,
         window_size: int = 5,
+        require_strong_evidence: bool = True,  # New: require multiple signals
     ):
         self.drift_threshold = drift_threshold
         self.min_turns_for_analysis = min_turns_for_analysis
         self.window_size = window_size
+        self.require_strong_evidence = require_strong_evidence
         self._embedder = None
 
     @property
@@ -358,11 +449,19 @@ class TurnAwareDerailmentDetector(TurnAwareDetector):
                 detector_name=self.name,
             )
 
-        # Extract initial task/topic from first user turn
+        # Extract initial task/topic from first user turn (or first turn if all agents)
         user_turns = [t for t in turns if t.participant_type == "user"]
         agent_turns = [t for t in turns if t.participant_type == "agent"]
 
-        if not user_turns or not agent_turns:
+        # Handle multi-agent systems where all participants are "agent" role
+        # (e.g., ChatDev where CEO gives task to Programmer)
+        if not user_turns and agent_turns:
+            # Treat first agent as task-giver, rest as executors
+            initial_task = agent_turns[0].content
+            agent_turns = agent_turns[1:]  # Remaining agents to check for derailment
+        elif user_turns and agent_turns:
+            initial_task = user_turns[0].content
+        else:
             return TurnAwareDetectionResult(
                 detected=False,
                 severity=TurnAwareSeverity.NONE,
@@ -371,34 +470,44 @@ class TurnAwareDerailmentDetector(TurnAwareDetector):
                 explanation="No user-agent interaction found",
                 detector_name=self.name,
             )
-
-        # Initial task from first user turn
-        initial_task = user_turns[0].content
         initial_terms = self._extract_key_terms(initial_task)
+
+        # Check if user is asking for code
+        is_code_task = self._is_code_task(initial_task)
 
         derailment_issues = []
         affected_turns = []
+        high_drift_count = 0
 
         # Check each agent response for task alignment
         for agent_turn in agent_turns:
+            # Skip drift check for code responses to code tasks
+            if is_code_task and self._is_code_response(agent_turn.content):
+                continue  # Code response to code task - don't flag as drift
+
             drift_score, coverage = self._compute_topic_drift(
                 initial_task, agent_turn.content
             )
 
             if drift_score > self.drift_threshold:
-                derailment_issues.append({
-                    "type": "topic_drift",
-                    "turn": agent_turn.turn_number,
-                    "drift_score": drift_score,
-                    "coverage": coverage,
-                    "description": f"Agent turn {agent_turn.turn_number} drifted from task (drift={drift_score:.2f})",
-                })
-                affected_turns.append(agent_turn.turn_number)
+                high_drift_count += 1
+                # Only add as issue if NOT requiring strong evidence
+                # OR if we have multiple high-drift turns
+                if not self.require_strong_evidence:
+                    derailment_issues.append({
+                        "type": "topic_drift",
+                        "turn": agent_turn.turn_number,
+                        "drift_score": drift_score,
+                        "coverage": coverage,
+                        "description": f"Agent turn {agent_turn.turn_number} drifted from task (drift={drift_score:.2f})",
+                    })
+                    affected_turns.append(agent_turn.turn_number)
 
         # Check for progressive drift (getting worse over time)
+        progressive_drift = {"detected": False}
         if len(agent_turns) >= 3:
             progressive_drift = self._detect_progressive_drift(
-                initial_task, agent_turns
+                initial_task, agent_turns, is_code_task
             )
             if progressive_drift["detected"]:
                 derailment_issues.append({
@@ -409,7 +518,7 @@ class TurnAwareDerailmentDetector(TurnAwareDetector):
                 })
                 affected_turns.append(progressive_drift["worst_turn"])
 
-        # Check for task substitution
+        # Check for task substitution (strongest signal)
         task_substitution = self._detect_task_substitution(
             initial_task, agent_turns
         )
@@ -420,6 +529,40 @@ class TurnAwareDerailmentDetector(TurnAwareDetector):
                 "description": task_substitution["description"],
             })
             affected_turns.append(task_substitution["turn"])
+
+        # If requiring strong evidence, only detect if we have:
+        # 1. Task substitution, OR
+        # 2. Progressive drift, OR
+        # 3. Multiple (3+) high-drift turns
+        if self.require_strong_evidence:
+            has_strong_evidence = (
+                task_substitution["detected"] or
+                progressive_drift["detected"] or
+                high_drift_count >= 3
+            )
+            if not has_strong_evidence:
+                return TurnAwareDetectionResult(
+                    detected=False,
+                    severity=TurnAwareSeverity.NONE,
+                    confidence=0.9,
+                    failure_mode=None,
+                    explanation="Agent maintained task focus across all turns",
+                    detector_name=self.name,
+                )
+            # If we have strong evidence from high_drift_count, add drift issues
+            elif high_drift_count >= 3 and not derailment_issues:
+                derailment_issues.append({
+                    "type": "high_drift",
+                    "turn": "multiple",
+                    "description": f"Multiple turns ({high_drift_count}) showed high topic drift from initial task",
+                    "drift_count": high_drift_count,
+                })
+                # Add affected turn numbers
+                for agent_turn in agent_turns:
+                    if not (is_code_task and self._is_code_response(agent_turn.content)):
+                        drift_score, _ = self._compute_topic_drift(initial_task, agent_turn.content)
+                        if drift_score > self.drift_threshold:
+                            affected_turns.append(agent_turn.turn_number)
 
         if not derailment_issues:
             return TurnAwareDetectionResult(
@@ -476,6 +619,23 @@ class TurnAwareDerailmentDetector(TurnAwareDetector):
         }
         return {w for w in words if len(w) > 2 and w not in stopwords}
 
+    def _is_code_task(self, task: str) -> bool:
+        """Check if the task is asking for code."""
+        code_keywords = [
+            "write", "code", "function", "implement", "create",
+            "program", "script", "fix", "debug", "add", "python",
+            "javascript", "java", "def", "class", "method",
+            "build", "develop", "generate", "make",
+        ]
+        task_lower = task.lower()
+        return any(kw in task_lower for kw in code_keywords)
+
+    def _is_code_response(self, content: str) -> bool:
+        """Check if response contains code."""
+        content_lower = content.lower()
+        code_pattern_count = sum(1 for p in self.CODE_PATTERNS if p.lower() in content_lower)
+        return code_pattern_count >= 2
+
     def _compute_topic_drift(
         self,
         task: str,
@@ -506,11 +666,16 @@ class TurnAwareDerailmentDetector(TurnAwareDetector):
         self,
         initial_task: str,
         agent_turns: List[TurnSnapshot],
+        is_code_task: bool = False,
     ) -> Dict[str, Any]:
         """Detect if agent responses are progressively drifting."""
         drift_scores = []
 
         for turn in agent_turns:
+            # Skip code responses for code tasks
+            if is_code_task and self._is_code_response(turn.content):
+                continue
+
             drift, _ = self._compute_topic_drift(initial_task, turn.content)
             drift_scores.append({
                 "turn": turn.turn_number,
@@ -525,7 +690,8 @@ class TurnAwareDerailmentDetector(TurnAwareDetector):
             first_half_avg = sum(scores[:mid]) / mid if mid > 0 else 0
             second_half_avg = sum(scores[mid:]) / (len(scores) - mid) if len(scores) > mid else 0
 
-            if second_half_avg > first_half_avg + 0.2:  # Significant increase
+            # Raised threshold from 0.2 to 0.3 to reduce false positives
+            if second_half_avg > first_half_avg + 0.3:  # Significant increase
                 worst_turn = max(drift_scores, key=lambda x: x["drift"])["turn"]
                 return {
                     "detected": True,
