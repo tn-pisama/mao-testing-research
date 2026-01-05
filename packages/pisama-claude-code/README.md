@@ -3,6 +3,7 @@
 > Lightweight trace capture for Claude Code sessions with token usage and cost tracking.
 
 [![PyPI version](https://img.shields.io/pypi/v/pisama-claude-code.svg)](https://pypi.org/project/pisama-claude-code/)
+[![GitHub stars](https://img.shields.io/github/stars/tn-pisama/pisama-claude-code?style=social)](https://github.com/tn-pisama/pisama-claude-code)
 [![Python versions](https://img.shields.io/pypi/pyversions/pisama-claude-code.svg)](https://pypi.org/project/pisama-claude-code/)
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
 [![CI](https://github.com/tn-pisama/pisama-claude-code/actions/workflows/ci.yml/badge.svg)](https://github.com/tn-pisama/pisama-claude-code/actions/workflows/ci.yml)
