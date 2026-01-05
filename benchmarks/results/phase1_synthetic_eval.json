@@ -1,5 +1,5 @@
 {
-  "timestamp": "2026-01-04T13:24:12.261390",
+  "timestamp": "2026-01-04T23:30:10.872394",
   "phase": "1_synthetic_baseline",
   "results": {
     "F1": {
@@ -16,13 +16,13 @@
     "F2": {
       "detector": "TaskDecompositionDetector",
       "true_positives": 20,
-      "false_positives": 0,
-      "true_negatives": 20,
+      "false_positives": 20,
+      "true_negatives": 0,
       "false_negatives": 0,
-      "precision": 1.0,
+      "precision": 0.5,
       "recall": 1.0,
-      "f1": 1.0,
-      "fpr": 0.0
+      "f1": 0.6666666666666666,
+      "fpr": 1.0
     },
     "F3": {
       "detector": "ResourceMisallocationDetector",

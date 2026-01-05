@@ -25,11 +25,21 @@ class ClaudeCodeTrace(BaseModel):
     tool_input: Optional[Dict[str, Any]] = None
     tool_output: Optional[Any] = None
     working_dir: Optional[str] = None
-    
+
     # Enhanced fields
     trace_type: Optional[str] = None  # tool, skill, task, mcp
     skill_name: Optional[str] = None
     skill_source: Optional[str] = None
+
+    # LLM interaction content
+    user_input: Optional[str] = None  # User's message to Claude
+    reasoning: Optional[str] = None   # Claude's extended thinking
+    ai_output: Optional[str] = None   # Claude's text response
+    model: Optional[str] = None       # Model used (e.g., claude-sonnet-4-20250514)
+    input_tokens: Optional[int] = None
+    output_tokens: Optional[int] = None
+    cache_read_tokens: Optional[int] = None
+    cost_usd: Optional[float] = None
 
 
 class ClaudeCodeIngestRequest(BaseModel):
@@ -113,6 +123,15 @@ async def ingest_claude_code_traces(
                     "skill_name": t.skill_name,
                     "skill_source": t.skill_source,
                     "working_dir": t.working_dir,
+                    # LLM interaction content
+                    "user_input": t.user_input,
+                    "reasoning": t.reasoning,
+                    "ai_output": t.ai_output,
+                    "model": t.model,
+                    "input_tokens": t.input_tokens,
+                    "output_tokens": t.output_tokens,
+                    "cache_read_tokens": t.cache_read_tokens,
+                    "cost_usd": t.cost_usd,
                 },
             )
             db.add(state)

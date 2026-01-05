@@ -40,10 +40,47 @@ export function StateHistory({ states, isLoading }: StateHistoryProps) {
             <span className="text-xs font-mono text-slate-500">{state.state_hash}</span>
           </button>
           {expandedState === state.id && (
-            <div className="px-4 pb-4">
-              <pre className="bg-slate-900 rounded-lg p-3 text-xs text-slate-300 overflow-x-auto">
-                {JSON.stringify(state.state_delta, null, 2)}
-              </pre>
+            <div className="px-4 pb-4 space-y-3">
+              {/* LLM Interaction Content (Claude Code) */}
+              {state.metadata?.user_input && (
+                <div>
+                  <div className="text-xs font-semibold text-blue-400 mb-1">User Input</div>
+                  <pre className="bg-slate-900 rounded-lg p-3 text-xs text-slate-300 overflow-x-auto whitespace-pre-wrap">
+                    {state.metadata.user_input}
+                  </pre>
+                </div>
+              )}
+              {state.metadata?.reasoning && (
+                <div>
+                  <div className="text-xs font-semibold text-purple-400 mb-1">Reasoning (Extended Thinking)</div>
+                  <pre className="bg-slate-900 rounded-lg p-3 text-xs text-slate-300 overflow-x-auto whitespace-pre-wrap max-h-48 overflow-y-auto">
+                    {state.metadata.reasoning}
+                  </pre>
+                </div>
+              )}
+              {state.metadata?.ai_output && (
+                <div>
+                  <div className="text-xs font-semibold text-green-400 mb-1">AI Output</div>
+                  <pre className="bg-slate-900 rounded-lg p-3 text-xs text-slate-300 overflow-x-auto whitespace-pre-wrap">
+                    {state.metadata.ai_output}
+                  </pre>
+                </div>
+              )}
+              {/* Token usage */}
+              {(state.metadata?.input_tokens || state.metadata?.output_tokens) && (
+                <div className="flex gap-4 text-xs text-slate-400">
+                  {state.metadata.model && <span>Model: {state.metadata.model}</span>}
+                  {state.metadata.input_tokens && <span>Input: {state.metadata.input_tokens.toLocaleString()} tokens</span>}
+                  {state.metadata.output_tokens && <span>Output: {state.metadata.output_tokens.toLocaleString()} tokens</span>}
+                  {state.metadata.cost_usd && <span>Cost: ${state.metadata.cost_usd.toFixed(4)}</span>}
+                </div>
+              )}
+              {/* State delta (fallback for non-Claude Code traces) */}
+              {!state.metadata?.user_input && !state.metadata?.reasoning && !state.metadata?.ai_output && (
+                <pre className="bg-slate-900 rounded-lg p-3 text-xs text-slate-300 overflow-x-auto">
+                  {JSON.stringify(state.state_delta, null, 2)}
+                </pre>
+              )}
             </div>
           )}
         </div>

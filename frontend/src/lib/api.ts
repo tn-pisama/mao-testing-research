@@ -60,6 +60,20 @@ export interface State {
   token_count: number
   latency_ms: number
   created_at: string
+  // Claude Code specific fields (in metadata)
+  metadata?: {
+    user_input?: string
+    reasoning?: string
+    ai_output?: string
+    model?: string
+    input_tokens?: number
+    output_tokens?: number
+    cache_read_tokens?: number
+    cost_usd?: number
+    trace_type?: string
+    skill_name?: string
+    working_dir?: string
+  }
 }
 
 export interface Detection {
