@@ -77,10 +77,10 @@ pisama-cc = "pisama_claude_code.cli:main"
 [project.urls]
 Homepage = "https://pisama.dev"
 Documentation = "https://pisama.dev/docs/claude-code"
-Repository = "https://github.com/pisama/pisama-claude-code"
-Issues = "https://github.com/pisama/pisama-claude-code/issues"
-Changelog = "https://github.com/pisama/pisama-claude-code/blob/main/CHANGELOG.md"
-Discussions = "https://github.com/pisama/pisama-claude-code/discussions"
+Repository = "https://github.com/tn-pisama/pisama-claude-code"
+Issues = "https://github.com/tn-pisama/pisama-claude-code/issues"
+Changelog = "https://github.com/tn-pisama/pisama-claude-code/blob/main/CHANGELOG.md"
+Discussions = "https://github.com/tn-pisama/pisama-claude-code/discussions"
 
 [tool.hatch.build.targets.wheel]
 packages = ["src/pisama_claude_code"]

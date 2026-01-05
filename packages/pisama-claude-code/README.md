@@ -5,7 +5,7 @@
 [![PyPI version](https://img.shields.io/pypi/v/pisama-claude-code.svg)](https://pypi.org/project/pisama-claude-code/)
 [![Python versions](https://img.shields.io/pypi/pyversions/pisama-claude-code.svg)](https://pypi.org/project/pisama-claude-code/)
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
-[![CI](https://github.com/pisama/pisama-claude-code/actions/workflows/ci.yml/badge.svg)](https://github.com/pisama/pisama-claude-code/actions/workflows/ci.yml)
+[![CI](https://github.com/tn-pisama/pisama-claude-code/actions/workflows/ci.yml/badge.svg)](https://github.com/tn-pisama/pisama-claude-code/actions/workflows/ci.yml)
 [![Downloads](https://static.pepy.tech/badge/pisama-claude-code)](https://pepy.tech/project/pisama-claude-code)
 [![Code style: ruff](https://img.shields.io/badge/code%20style-ruff-000000.svg)](https://github.com/astral-sh/ruff)
 
@@ -193,7 +193,7 @@ We welcome contributions! See [CONTRIBUTING.md](CONTRIBUTING.md) for guidelines.
 
 ```bash
 # Development setup
-git clone https://github.com/pisama/pisama-claude-code.git
+git clone https://github.com/tn-pisama/pisama-claude-code.git
 cd pisama-claude-code
 python -m venv .venv
 source .venv/bin/activate
@@ -218,8 +218,8 @@ MIT License - see [LICENSE](LICENSE) for details.
 
 - [Documentation](https://pisama.dev/docs/claude-code)
 - [PISAMA Platform](https://pisama.dev)
-- [Issue Tracker](https://github.com/pisama/pisama-claude-code/issues)
-- [Discussions](https://github.com/pisama/pisama-claude-code/discussions)
+- [Issue Tracker](https://github.com/tn-pisama/pisama-claude-code/issues)
+- [Discussions](https://github.com/tn-pisama/pisama-claude-code/discussions)
 
 ---
 
