@@ -1,6 +1,5 @@
 'use client'
 
-import Link from 'next/link'
 import { Search } from 'lucide-react'
 
 interface LandingHeaderProps {
@@ -28,29 +27,31 @@ export function LandingHeader({ onJoinWaitlist }: LandingHeaderProps) {
             PyPI
           </a>
           <a
-            href="https://github.com/tuomonikulainen/pisama-claude-code"
+            href="https://github.com/tn-pisama/pisama-claude-code"
             target="_blank"
             rel="noopener noreferrer"
             className="text-slate-400 hover:text-white transition-colors text-sm"
           >
             GitHub
           </a>
-          <Link
-            href="/docs"
+          <a
+            href="https://github.com/tn-pisama/pisama-claude-code#readme"
+            target="_blank"
+            rel="noopener noreferrer"
             className="text-slate-400 hover:text-white transition-colors text-sm"
           >
             Docs
-          </Link>
+          </a>
         </nav>
 
         {/* Auth Buttons */}
         <div className="flex items-center gap-3">
-          <Link
+          <a
             href="/sign-in"
             className="text-slate-300 hover:text-white transition-colors text-sm px-3 py-2"
           >
             Sign In
-          </Link>
+          </a>
           <button
             onClick={onJoinWaitlist}
             className="bg-primary-600 hover:bg-primary-500 text-white text-sm font-medium px-4 py-2 rounded-lg transition-colors"

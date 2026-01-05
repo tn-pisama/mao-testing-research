@@ -25,19 +25,21 @@ export function Footer() {
               PyPI
             </a>
             <a
-              href="https://github.com/tuomonikulainen/pisama-claude-code"
+              href="https://github.com/tn-pisama/pisama-claude-code"
               target="_blank"
               rel="noopener noreferrer"
               className="text-slate-400 hover:text-white transition-colors"
             >
               GitHub
             </a>
-            <Link
-              href="/docs"
+            <a
+              href="https://github.com/tn-pisama/pisama-claude-code#readme"
+              target="_blank"
+              rel="noopener noreferrer"
               className="text-slate-400 hover:text-white transition-colors"
             >
               Documentation
-            </Link>
+            </a>
             <Link
               href="/terms"
               className="text-slate-400 hover:text-white transition-colors"

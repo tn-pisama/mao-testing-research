@@ -73,7 +73,7 @@ export function HeroSection() {
             <img src="https://img.shields.io/pypi/v/pisama-claude-code?style=flat&label=PyPI" alt="PyPI" className="h-5" />
           </a>
           <a
-            href="https://github.com/tuomonikulainen/pisama-claude-code"
+            href="https://github.com/tn-pisama/pisama-claude-code"
             target="_blank"
             rel="noopener noreferrer"
             className="inline-flex items-center gap-2 text-slate-400 hover:text-white transition-colors text-sm"

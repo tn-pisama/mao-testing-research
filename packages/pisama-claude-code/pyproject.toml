@@ -10,28 +10,45 @@ readme = "README.md"
 license = "MIT"
 requires-python = ">=3.10"
 authors = [
+    { name = "Tuomo Nikulainen" }
+]
+maintainers = [
     { name = "PISAMA Team", email = "team@pisama.dev" }
 ]
 keywords = [
     "claude",
     "claude-code",
+    "anthropic",
     "pisama",
     "llm",
+    "ai-agent",
     "agent",
     "observability",
+    "tracing",
+    "monitoring",
     "self-healing",
-    "forensics"
+    "forensics",
+    "debugging",
+    "developer-tools"
 ]
 classifiers = [
     "Development Status :: 4 - Beta",
     "Intended Audience :: Developers",
+    "Intended Audience :: Science/Research",
     "License :: OSI Approved :: MIT License",
+    "Operating System :: OS Independent",
+    "Environment :: Console",
     "Programming Language :: Python :: 3",
     "Programming Language :: Python :: 3.10",
     "Programming Language :: Python :: 3.11",
     "Programming Language :: Python :: 3.12",
+    "Programming Language :: Python :: 3.13",
     "Topic :: Software Development :: Libraries :: Python Modules",
+    "Topic :: Software Development :: Debuggers",
+    "Topic :: Software Development :: Quality Assurance",
     "Topic :: System :: Monitoring",
+    "Topic :: Scientific/Engineering :: Artificial Intelligence",
+    "Typing :: Typed",
 ]
 
 dependencies = [
@@ -60,7 +77,10 @@ pisama-cc = "pisama_claude_code.cli:main"
 [project.urls]
 Homepage = "https://pisama.dev"
 Documentation = "https://pisama.dev/docs/claude-code"
-Repository = "https://github.com/tn-pisama/pisama-claude-code"
+Repository = "https://github.com/pisama/pisama-claude-code"
+Issues = "https://github.com/pisama/pisama-claude-code/issues"
+Changelog = "https://github.com/pisama/pisama-claude-code/blob/main/CHANGELOG.md"
+Discussions = "https://github.com/pisama/pisama-claude-code/discussions"
 
 [tool.hatch.build.targets.wheel]
 packages = ["src/pisama_claude_code"]
