@@ -1865,6 +1865,610 @@ class TurnAwareInformationWithholdingDetector(TurnAwareDetector):
         return issues[:2]
 
 
+class TurnAwareOutputValidationDetector(TurnAwareDetector):
+    """Detects F12: Output Validation Failure in conversations.
+
+    Analyzes whether agent outputs are properly validated:
+    1. Missing validation - outputs produced without checking
+    2. Failed validation - validation ran but output doesn't pass
+    3. Uncaught errors - errors in output that weren't caught
+    4. Format issues - output doesn't match expected format
+    5. Incomplete output - missing required components
+
+    F12 has 17% prevalence in MAST.
+    """
+
+    name = "TurnAwareOutputValidationDetector"
+    version = "1.0"
+    supported_failure_modes = ["F12"]
+
+    # Validation failure indicators
+    VALIDATION_FAILURES = [
+        "validation failed", "invalid output", "doesn't validate",
+        "failed to validate", "validation error", "schema error",
+        "type error", "format error", "malformed",
+        "doesn't match", "expected format", "invalid format",
+        "parsing error", "parse failed", "couldn't parse",
+    ]
+
+    # Missing validation indicators
+    MISSING_VALIDATION = [
+        "didn't check", "forgot to validate", "skipped validation",
+        "no validation", "without checking", "unchecked",
+        "assumed correct", "didn't verify", "unverified",
+    ]
+
+    # Output error indicators
+    OUTPUT_ERRORS = [
+        "output error", "result is wrong", "incorrect output",
+        "wrong result", "bad output", "output incorrect",
+        "doesn't work", "broken", "buggy", "syntax error",
+        "runtime error", "compile error", "execution failed",
+    ]
+
+    def __init__(self, min_turns: int = 2):
+        self.min_turns = min_turns
+
+    def detect(
+        self,
+        turns: List[TurnSnapshot],
+        conversation_metadata: Optional[Dict[str, Any]] = None,
+    ) -> TurnAwareDetectionResult:
+        """Detect output validation failures."""
+        agent_turns = [t for t in turns if t.participant_type == "agent"]
+
+        if len(agent_turns) < self.min_turns:
+            return TurnAwareDetectionResult(
+                detected=False,
+                severity=TurnAwareSeverity.NONE,
+                confidence=0.0,
+                failure_mode=None,
+                explanation="Too few agent turns to analyze",
+                detector_name=self.name,
+            )
+
+        issues = []
+        affected_turns = []
+
+        # 1. Check for validation failure indicators
+        validation_issues = self._detect_validation_failures(turns)
+        issues.extend(validation_issues)
+        for issue in validation_issues:
+            affected_turns.extend(issue.get("turns", []))
+
+        # 2. Check for missing validation
+        missing_issues = self._detect_missing_validation(turns)
+        issues.extend(missing_issues)
+        for issue in missing_issues:
+            affected_turns.extend(issue.get("turns", []))
+
+        # 3. Check for output errors
+        error_issues = self._detect_output_errors(turns)
+        issues.extend(error_issues)
+        for issue in error_issues:
+            affected_turns.extend(issue.get("turns", []))
+
+        # 4. Check for code that doesn't run/compile
+        code_issues = self._detect_broken_code(agent_turns)
+        issues.extend(code_issues)
+        for issue in code_issues:
+            affected_turns.extend(issue.get("turns", []))
+
+        if not issues:
+            return TurnAwareDetectionResult(
+                detected=False,
+                severity=TurnAwareSeverity.NONE,
+                confidence=0.8,
+                failure_mode=None,
+                explanation="No output validation failures detected",
+                detector_name=self.name,
+            )
+
+        if len(issues) >= 3:
+            severity = TurnAwareSeverity.SEVERE
+        elif len(issues) >= 2:
+            severity = TurnAwareSeverity.MODERATE
+        else:
+            severity = TurnAwareSeverity.MINOR
+
+        confidence = min(0.85, 0.5 + len(issues) * 0.12)
+
+        return TurnAwareDetectionResult(
+            detected=True,
+            severity=severity,
+            confidence=confidence,
+            failure_mode="F12",
+            explanation=f"Output validation failure: {len(issues)} issues found",
+            affected_turns=list(set(affected_turns)),
+            evidence={"issues": issues},
+            suggested_fix=(
+                "Add output validation: 1) Validate all outputs against schema, "
+                "2) Run tests before returning results, 3) Check for common errors, "
+                "4) Verify output format matches expectations."
+            ),
+            detector_name=self.name,
+        )
+
+    def _detect_validation_failures(self, turns: List[TurnSnapshot]) -> list:
+        """Detect explicit validation failures."""
+        issues = []
+        for turn in turns:
+            content_lower = turn.content.lower()
+            for indicator in self.VALIDATION_FAILURES:
+                if indicator in content_lower:
+                    issues.append({
+                        "type": "validation_failure",
+                        "turns": [turn.turn_number],
+                        "indicator": indicator,
+                        "description": f"Validation failure: '{indicator}'",
+                    })
+                    break
+        return issues[:3]
+
+    def _detect_missing_validation(self, turns: List[TurnSnapshot]) -> list:
+        """Detect missing validation."""
+        issues = []
+        for turn in turns:
+            content_lower = turn.content.lower()
+            for indicator in self.MISSING_VALIDATION:
+                if indicator in content_lower:
+                    issues.append({
+                        "type": "missing_validation",
+                        "turns": [turn.turn_number],
+                        "indicator": indicator,
+                        "description": f"Missing validation: '{indicator}'",
+                    })
+                    break
+        return issues[:2]
+
+    def _detect_output_errors(self, turns: List[TurnSnapshot]) -> list:
+        """Detect output errors."""
+        issues = []
+        for turn in turns:
+            content_lower = turn.content.lower()
+            for indicator in self.OUTPUT_ERRORS:
+                if indicator in content_lower:
+                    issues.append({
+                        "type": "output_error",
+                        "turns": [turn.turn_number],
+                        "indicator": indicator,
+                        "description": f"Output error: '{indicator}'",
+                    })
+                    break
+        return issues[:3]
+
+    def _detect_broken_code(self, agent_turns: List[TurnSnapshot]) -> list:
+        """Detect code blocks followed by error mentions."""
+        issues = []
+        for i, turn in enumerate(agent_turns):
+            # Check if this turn has code
+            has_code = "```" in turn.content or "def " in turn.content or "class " in turn.content
+            if has_code and i < len(agent_turns) - 1:
+                # Check next turns for error indicators
+                for j in range(i + 1, min(i + 3, len(agent_turns))):
+                    next_content = agent_turns[j].content.lower()
+                    if any(err in next_content for err in ["error", "failed", "doesn't work", "bug", "fix"]):
+                        issues.append({
+                            "type": "broken_code",
+                            "turns": [turn.turn_number, agent_turns[j].turn_number],
+                            "description": "Code followed by error discussion",
+                        })
+                        break
+        return issues[:2]
+
+
+class TurnAwareQualityGateBypassDetector(TurnAwareDetector):
+    """Detects F13: Quality Gate Bypass in conversations.
+
+    Analyzes whether quality checks are properly followed:
+    1. Skipped reviews - code review or QA steps skipped
+    2. Ignored warnings - warnings present but ignored
+    3. Bypassed checks - explicitly skipping quality gates
+    4. Missing tests - no testing before deployment/completion
+    5. Rush to completion - moving forward despite issues
+
+    F13 has 17% prevalence in MAST.
+    """
+
+    name = "TurnAwareQualityGateBypassDetector"
+    version = "1.0"
+    supported_failure_modes = ["F13"]
+
+    # Bypass indicators
+    BYPASS_INDICATORS = [
+        "skip the", "let's skip", "skipping", "bypass",
+        "ignore the", "ignoring", "don't need to",
+        "no need to test", "skip testing", "skip review",
+        "good enough", "ship it", "move on",
+        "later", "we can fix later", "TODO", "FIXME",
+    ]
+
+    # Warning ignore indicators
+    WARNING_IGNORES = [
+        "ignore warning", "suppress warning", "disable warning",
+        "warning ignored", "warnings disabled", "lint disable",
+        "noqa", "pylint: disable", "eslint-disable",
+        "despite warning", "warning but", "@suppress",
+    ]
+
+    # Missing quality steps
+    MISSING_QUALITY = [
+        "no tests", "without testing", "untested",
+        "no review", "without review", "unreviewed",
+        "no qa", "skip qa", "no quality",
+        "didn't test", "haven't tested", "not tested",
+    ]
+
+    # Rush indicators
+    RUSH_INDICATORS = [
+        "quick and dirty", "just ship", "good for now",
+        "will fix later", "temporary", "hack",
+        "workaround", "shortcut", "quick fix",
+        "time constraint", "deadline", "rush",
+    ]
+
+    def __init__(self, min_turns: int = 2):
+        self.min_turns = min_turns
+
+    def detect(
+        self,
+        turns: List[TurnSnapshot],
+        conversation_metadata: Optional[Dict[str, Any]] = None,
+    ) -> TurnAwareDetectionResult:
+        """Detect quality gate bypass issues."""
+        agent_turns = [t for t in turns if t.participant_type == "agent"]
+
+        if len(agent_turns) < self.min_turns:
+            return TurnAwareDetectionResult(
+                detected=False,
+                severity=TurnAwareSeverity.NONE,
+                confidence=0.0,
+                failure_mode=None,
+                explanation="Too few agent turns to analyze",
+                detector_name=self.name,
+            )
+
+        issues = []
+        affected_turns = []
+
+        # 1. Check for bypass indicators
+        bypass_issues = self._detect_bypass(turns)
+        issues.extend(bypass_issues)
+        for issue in bypass_issues:
+            affected_turns.extend(issue.get("turns", []))
+
+        # 2. Check for warning ignores
+        warning_issues = self._detect_warning_ignores(turns)
+        issues.extend(warning_issues)
+        for issue in warning_issues:
+            affected_turns.extend(issue.get("turns", []))
+
+        # 3. Check for missing quality steps
+        missing_issues = self._detect_missing_quality(turns)
+        issues.extend(missing_issues)
+        for issue in missing_issues:
+            affected_turns.extend(issue.get("turns", []))
+
+        # 4. Check for rush indicators
+        rush_issues = self._detect_rush(turns)
+        issues.extend(rush_issues)
+        for issue in rush_issues:
+            affected_turns.extend(issue.get("turns", []))
+
+        if not issues:
+            return TurnAwareDetectionResult(
+                detected=False,
+                severity=TurnAwareSeverity.NONE,
+                confidence=0.8,
+                failure_mode=None,
+                explanation="No quality gate bypass detected",
+                detector_name=self.name,
+            )
+
+        if len(issues) >= 3:
+            severity = TurnAwareSeverity.SEVERE
+        elif len(issues) >= 2:
+            severity = TurnAwareSeverity.MODERATE
+        else:
+            severity = TurnAwareSeverity.MINOR
+
+        confidence = min(0.85, 0.5 + len(issues) * 0.12)
+
+        return TurnAwareDetectionResult(
+            detected=True,
+            severity=severity,
+            confidence=confidence,
+            failure_mode="F13",
+            explanation=f"Quality gate bypass: {len(issues)} issues found",
+            affected_turns=list(set(affected_turns)),
+            evidence={"issues": issues},
+            suggested_fix=(
+                "Enforce quality gates: 1) Don't skip code reviews, "
+                "2) Address warnings before proceeding, 3) Write tests before completion, "
+                "4) Follow established quality processes."
+            ),
+            detector_name=self.name,
+        )
+
+    def _detect_bypass(self, turns: List[TurnSnapshot]) -> list:
+        """Detect explicit bypass of quality gates."""
+        issues = []
+        for turn in turns:
+            content_lower = turn.content.lower()
+            for indicator in self.BYPASS_INDICATORS:
+                if indicator in content_lower:
+                    issues.append({
+                        "type": "bypass",
+                        "turns": [turn.turn_number],
+                        "indicator": indicator,
+                        "description": f"Quality bypass: '{indicator}'",
+                    })
+                    break
+        return issues[:3]
+
+    def _detect_warning_ignores(self, turns: List[TurnSnapshot]) -> list:
+        """Detect ignored warnings."""
+        issues = []
+        for turn in turns:
+            content_lower = turn.content.lower()
+            for indicator in self.WARNING_IGNORES:
+                if indicator in content_lower:
+                    issues.append({
+                        "type": "warning_ignore",
+                        "turns": [turn.turn_number],
+                        "indicator": indicator,
+                        "description": f"Warning ignored: '{indicator}'",
+                    })
+                    break
+        return issues[:2]
+
+    def _detect_missing_quality(self, turns: List[TurnSnapshot]) -> list:
+        """Detect missing quality steps."""
+        issues = []
+        for turn in turns:
+            content_lower = turn.content.lower()
+            for indicator in self.MISSING_QUALITY:
+                if indicator in content_lower:
+                    issues.append({
+                        "type": "missing_quality",
+                        "turns": [turn.turn_number],
+                        "indicator": indicator,
+                        "description": f"Missing quality: '{indicator}'",
+                    })
+                    break
+        return issues[:2]
+
+    def _detect_rush(self, turns: List[TurnSnapshot]) -> list:
+        """Detect rush to completion."""
+        issues = []
+        for turn in turns:
+            content_lower = turn.content.lower()
+            for indicator in self.RUSH_INDICATORS:
+                if indicator in content_lower:
+                    issues.append({
+                        "type": "rush",
+                        "turns": [turn.turn_number],
+                        "indicator": indicator,
+                        "description": f"Rush indicator: '{indicator}'",
+                    })
+                    break
+        return issues[:2]
+
+
+class TurnAwareCompletionMisjudgmentDetector(TurnAwareDetector):
+    """Detects F14: Completion Misjudgment in conversations.
+
+    Analyzes whether task completion is correctly assessed:
+    1. Premature completion - declaring done when not finished
+    2. Incomplete requirements - not all requirements addressed
+    3. Unfinished work - obvious gaps in deliverables
+    4. False success claims - claiming success despite failures
+    5. Missed acceptance criteria - not meeting stated criteria
+
+    F14 has 23% prevalence in MAST.
+    """
+
+    name = "TurnAwareCompletionMisjudgmentDetector"
+    version = "1.0"
+    supported_failure_modes = ["F14"]
+
+    # Premature completion indicators
+    PREMATURE_COMPLETION = [
+        "done", "completed", "finished", "all done",
+        "task complete", "mission accomplished", "that's it",
+        "here you go", "here's the result", "final version",
+    ]
+
+    # Incomplete indicators following completion
+    INCOMPLETE_INDICATORS = [
+        "but", "however", "except", "still need",
+        "remaining", "left to do", "not yet",
+        "missing", "incomplete", "partial",
+        "TODO", "FIXME", "TBD", "WIP",
+        "placeholder", "stub", "mock",
+    ]
+
+    # False success indicators
+    FALSE_SUCCESS = [
+        "should work", "might work", "probably works",
+        "seems to work", "appears to", "looks like it",
+        "assuming", "hopefully", "fingers crossed",
+        "not sure if", "haven't verified", "untested",
+    ]
+
+    # Continuation needed indicators
+    CONTINUATION_NEEDED = [
+        "next step", "then we need", "after that",
+        "following that", "additionally", "also need",
+        "don't forget", "remember to", "make sure to",
+        "still need to", "have to also", "need to also",
+    ]
+
+    def __init__(self, min_turns: int = 2):
+        self.min_turns = min_turns
+
+    def detect(
+        self,
+        turns: List[TurnSnapshot],
+        conversation_metadata: Optional[Dict[str, Any]] = None,
+    ) -> TurnAwareDetectionResult:
+        """Detect completion misjudgment issues."""
+        if len(turns) < self.min_turns:
+            return TurnAwareDetectionResult(
+                detected=False,
+                severity=TurnAwareSeverity.NONE,
+                confidence=0.0,
+                failure_mode=None,
+                explanation="Too few turns to analyze",
+                detector_name=self.name,
+            )
+
+        issues = []
+        affected_turns = []
+
+        # 1. Check for completion followed by incompleteness
+        completion_issues = self._detect_premature_completion(turns)
+        issues.extend(completion_issues)
+        for issue in completion_issues:
+            affected_turns.extend(issue.get("turns", []))
+
+        # 2. Check for false success claims
+        false_success_issues = self._detect_false_success(turns)
+        issues.extend(false_success_issues)
+        for issue in false_success_issues:
+            affected_turns.extend(issue.get("turns", []))
+
+        # 3. Check for continuation needed after completion claim
+        continuation_issues = self._detect_continuation_needed(turns)
+        issues.extend(continuation_issues)
+        for issue in continuation_issues:
+            affected_turns.extend(issue.get("turns", []))
+
+        # 4. Check for TODO/FIXME in "completed" work
+        todo_issues = self._detect_unfinished_markers(turns)
+        issues.extend(todo_issues)
+        for issue in todo_issues:
+            affected_turns.extend(issue.get("turns", []))
+
+        if not issues:
+            return TurnAwareDetectionResult(
+                detected=False,
+                severity=TurnAwareSeverity.NONE,
+                confidence=0.8,
+                failure_mode=None,
+                explanation="No completion misjudgment detected",
+                detector_name=self.name,
+            )
+
+        if len(issues) >= 3:
+            severity = TurnAwareSeverity.SEVERE
+        elif len(issues) >= 2:
+            severity = TurnAwareSeverity.MODERATE
+        else:
+            severity = TurnAwareSeverity.MINOR
+
+        confidence = min(0.85, 0.5 + len(issues) * 0.12)
+
+        return TurnAwareDetectionResult(
+            detected=True,
+            severity=severity,
+            confidence=confidence,
+            failure_mode="F14",
+            explanation=f"Completion misjudgment: {len(issues)} issues found",
+            affected_turns=list(set(affected_turns)),
+            evidence={"issues": issues},
+            suggested_fix=(
+                "Verify completion properly: 1) Check all requirements are met, "
+                "2) Test the output before declaring done, 3) Review for TODOs/FIXMEs, "
+                "4) Validate against acceptance criteria."
+            ),
+            detector_name=self.name,
+        )
+
+    def _detect_premature_completion(self, turns: List[TurnSnapshot]) -> list:
+        """Detect completion claims followed by incompleteness."""
+        issues = []
+        for i, turn in enumerate(turns):
+            content_lower = turn.content.lower()
+            # Check for completion claim
+            has_completion = any(ind in content_lower for ind in self.PREMATURE_COMPLETION)
+            if has_completion:
+                # Check same turn or next turns for incompleteness
+                all_content = content_lower
+                if i < len(turns) - 1:
+                    all_content += " " + turns[i + 1].content.lower()
+
+                for ind in self.INCOMPLETE_INDICATORS:
+                    if ind.lower() in all_content:
+                        issues.append({
+                            "type": "premature_completion",
+                            "turns": [turn.turn_number],
+                            "indicator": ind,
+                            "description": f"Completion claim with incompleteness: '{ind}'",
+                        })
+                        break
+        return issues[:3]
+
+    def _detect_false_success(self, turns: List[TurnSnapshot]) -> list:
+        """Detect uncertain success claims."""
+        issues = []
+        for turn in turns:
+            content_lower = turn.content.lower()
+            for indicator in self.FALSE_SUCCESS:
+                if indicator in content_lower:
+                    issues.append({
+                        "type": "false_success",
+                        "turns": [turn.turn_number],
+                        "indicator": indicator,
+                        "description": f"Uncertain success: '{indicator}'",
+                    })
+                    break
+        return issues[:3]
+
+    def _detect_continuation_needed(self, turns: List[TurnSnapshot]) -> list:
+        """Detect continuation needed after completion."""
+        issues = []
+        completion_found = False
+
+        for turn in turns:
+            content_lower = turn.content.lower()
+
+            # Track if completion was claimed
+            if any(ind in content_lower for ind in self.PREMATURE_COMPLETION):
+                completion_found = True
+
+            # After completion, check for continuation needs
+            if completion_found:
+                for indicator in self.CONTINUATION_NEEDED:
+                    if indicator in content_lower:
+                        issues.append({
+                            "type": "continuation_needed",
+                            "turns": [turn.turn_number],
+                            "indicator": indicator,
+                            "description": f"More work needed after completion: '{indicator}'",
+                        })
+                        break
+        return issues[:2]
+
+    def _detect_unfinished_markers(self, turns: List[TurnSnapshot]) -> list:
+        """Detect TODO/FIXME markers in supposedly complete work."""
+        issues = []
+        markers = ["TODO", "FIXME", "XXX", "HACK", "TBD", "WIP"]
+
+        for turn in turns:
+            content = turn.content
+            for marker in markers:
+                if marker in content:
+                    issues.append({
+                        "type": "unfinished_marker",
+                        "turns": [turn.turn_number],
+                        "marker": marker,
+                        "description": f"Unfinished marker: {marker}",
+                    })
+                    break
+        return issues[:3]
+
+
 # Convenience function to run all turn-aware detectors
 def analyze_conversation_turns(
     turns: List[TurnSnapshot],
@@ -1892,6 +2496,9 @@ def analyze_conversation_turns(
             TurnAwareContextNeglectDetector(),  # F7
             TurnAwareInformationWithholdingDetector(),  # F8
             TurnAwareCoordinationFailureDetector(),  # F11
+            TurnAwareOutputValidationDetector(),  # F12
+            TurnAwareQualityGateBypassDetector(),  # F13
+            TurnAwareCompletionMisjudgmentDetector(),  # F14
         ]
 
     # Check if conversation is long enough to need summarization
