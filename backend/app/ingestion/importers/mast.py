@@ -172,59 +172,159 @@ class MASTImporter(ConversationImporter):
             )
 
     def _extract_metagpt(self, trajectory: str) -> Iterator[ConversationTurnData]:
-        """MetaGPT: [Action] CONTENT:\n ... format
+        """MetaGPT: Multiple formats supported.
 
-        MetaGPT uses action-based logging with roles like:
-        ProductManager, Architect, ProjectManager, Engineer
+        Real MAST format:
+        [timestamp] FROM: X TO: Y
+        ACTION: ...
+        CONTENT:
+        ...
+
+        Also: SimpleCoder: ... blocks
         """
-        # Pattern for action blocks
-        pattern = r'\[(\w+)\]\s*(?:CONTENT:)?\s*\n(.*?)(?=\n\[\w+\]|\Z)'
+        turns = []
+        turn_idx = 0
 
-        matches = list(re.finditer(pattern, trajectory, re.DOTALL))
-
-        if not matches:
-            # Try alternative format: Role: content
-            pattern = r'(ProductManager|Architect|ProjectManager|Engineer|QA):\s*\n?(.*?)(?=\n(?:ProductManager|Architect|ProjectManager|Engineer|QA):|\Z)'
-            matches = list(re.finditer(pattern, trajectory, re.DOTALL | re.IGNORECASE))
-
-        for i, match in enumerate(matches):
-            action = match.group(1)
+        # Primary pattern: [timestamp] FROM: ... CONTENT: ...
+        pattern1 = r'\[\d{4}-\d{2}-\d{2}[^\]]*\]\s*(?:FROM:\s*(\w+)[^\n]*\n)?(?:ACTION:\s*[^\n]*\n)?CONTENT:\s*\n(.*?)(?=\n-{10,}|\n\[\d{4}|\Z)'
+        for match in re.finditer(pattern1, trajectory, re.DOTALL):
+            sender = match.group(1) or "System"
             content = match.group(2).strip()[:4096]
-
             if content and len(content) > 20:
-                yield ConversationTurnData(
-                    turn_id=f"metagpt_{i}",
-                    turn_number=i + 1,
-                    role="agent",
-                    participant_id=f"metagpt:{action}",
+                role = "user" if sender.lower() == "human" else "agent"
+                turns.append(ConversationTurnData(
+                    turn_id=f"metagpt_{turn_idx}",
+                    turn_number=turn_idx + 1,
+                    role=role,
+                    participant_id=f"metagpt:{sender}",
                     content=content,
-                    extra={"action": action},
-                )
+                ))
+                turn_idx += 1
+
+        # Secondary pattern: SimpleCoder: ... or other agent names followed by code
+        pattern2 = r'\n(SimpleCoder|ProductManager|Architect|Engineer|QA|Reviewer):\s*\n(.*?)(?=\n(?:SimpleCoder|ProductManager|Architect|Engineer|QA|Reviewer):|\n\[\d{4}|\Z)'
+        for match in re.finditer(pattern2, trajectory, re.DOTALL):
+            agent = match.group(1)
+            content = match.group(2).strip()[:4096]
+            if content and len(content) > 20:
+                # Avoid duplicates
+                if not any(t.content[:100] == content[:100] for t in turns):
+                    turns.append(ConversationTurnData(
+                        turn_id=f"metagpt_{turn_idx}",
+                        turn_number=turn_idx + 1,
+                        role="agent",
+                        participant_id=f"metagpt:{agent}",
+                        content=content,
+                    ))
+                    turn_idx += 1
+
+        # Sort by appearance order and yield
+        for turn in turns:
+            yield turn
 
     def _extract_ag2(self, trajectory: str) -> Iterator[ConversationTurnData]:
-        """AG2/AutoGen: Agent (to Recipient):\n content
+        """AG2/AutoGen: Multiple formats supported.
 
-        AutoGen uses conversational agents with explicit routing.
+        Format 1: Traditional - Agent (to Recipient):\n content
+        Format 2: MAST YAML - problem_statement + trajectory content
+        Format 3: MAST dict-repr - {'content': [...], 'role': ..., 'name': ...}
         """
-        pattern = r'(\w+)\s*\(to\s*(\w+)\):\s*\n(.*?)(?=\n\w+\s*\(to|\n-{5,}|TERMINATE|\Z)'
+        turns = []
+        turn_idx = 0
 
-        for i, match in enumerate(re.finditer(pattern, trajectory, re.DOTALL)):
+        # Pattern 1: Traditional AG2 format: Agent (to Recipient):
+        pattern1 = r'(\w+)\s*\(to\s*(\w+)\):\s*\n(.*?)(?=\n\w+\s*\(to|\n-{5,}|TERMINATE|\Z)'
+        for match in re.finditer(pattern1, trajectory, re.DOTALL):
             sender = match.group(1)
             recipient = match.group(2)
             content = match.group(3).strip()[:4096]
-
             if content and len(content) > 10:
-                # Determine role
                 role = "user" if sender.lower() in ("user", "human", "admin", "user_proxy") else "agent"
-
-                yield ConversationTurnData(
-                    turn_id=f"ag2_{i}",
-                    turn_number=i + 1,
+                turns.append(ConversationTurnData(
+                    turn_id=f"ag2_{turn_idx}",
+                    turn_number=turn_idx + 1,
                     role=role,
                     participant_id=f"ag2:{sender}",
                     content=content,
                     extra={"recipient": recipient, "sender": sender},
-                )
+                ))
+                turn_idx += 1
+
+        if turns:
+            for turn in turns:
+                yield turn
+            return
+
+        # Pattern 2: MAST dict-repr format - {'content': [...], 'role': ..., 'name': ...}
+        # This is Python dict repr, parse it carefully
+        dict_pattern = r"\{'content':\s*\[(.*?)\],\s*'role':\s*'(\w+)',\s*'name':\s*'(\w+)'\}"
+        for match in re.finditer(dict_pattern, trajectory, re.DOTALL):
+            content_list = match.group(1)
+            role_str = match.group(2)
+            name = match.group(3)
+
+            # Parse content list (it's comma-separated quoted strings)
+            # Extract Problem: line if present for user message
+            content_text = ""
+            if "'Problem:'" in content_list or '"Problem:"' in content_list:
+                # Extract problem
+                prob_match = re.search(r"'Problem:',\s*['\"]([^'\"]+)['\"]", content_list)
+                if prob_match:
+                    content_text = f"Problem: {prob_match.group(1)}"
+            elif "# Key Idea" in content_list or "```python" in content_list:
+                # Agent response with code
+                content_text = content_list.replace("', '", "\n").replace('", "', "\n")
+                content_text = content_text.strip("'\"")
+
+            if not content_text:
+                # Fallback: join all content
+                content_text = content_list[:4096]
+
+            if content_text and len(content_text) > 20:
+                role = "user" if role_str == "user" or "proxy" in name.lower() else "agent"
+                turns.append(ConversationTurnData(
+                    turn_id=f"ag2_{turn_idx}",
+                    turn_number=turn_idx + 1,
+                    role=role,
+                    participant_id=f"ag2:{name}",
+                    content=content_text[:4096],
+                ))
+                turn_idx += 1
+
+        if turns:
+            for turn in turns:
+                yield turn
+            return
+
+        # Pattern 3: MAST YAML format - problem_statement + trajectory
+        problem_match = re.search(r'problem_statement:\s*(.+?)(?=\nother_data:|\ntrajectory:|\Z)', trajectory, re.DOTALL)
+        if problem_match:
+            problem = problem_match.group(1).strip()[:4096]
+            if problem and len(problem) > 10:
+                turns.append(ConversationTurnData(
+                    turn_id=f"ag2_{turn_idx}",
+                    turn_number=turn_idx + 1,
+                    role="user",
+                    participant_id="ag2:user",
+                    content=problem,
+                ))
+                turn_idx += 1
+
+        traj_match = re.search(r'trajectory:\s*\n\s*content:\s*\n(.*?)(?=\n\s*ground_truth:|\n\s*is_correct:|\Z)', trajectory, re.DOTALL)
+        if traj_match:
+            traj_content = traj_match.group(1).strip()[:4096]
+            if traj_content and len(traj_content) > 20:
+                turns.append(ConversationTurnData(
+                    turn_id=f"ag2_{turn_idx}",
+                    turn_number=turn_idx + 1,
+                    role="agent",
+                    participant_id="ag2:assistant",
+                    content=traj_content,
+                ))
+                turn_idx += 1
+
+        for turn in turns:
+            yield turn
 
     def _extract_magentic(self, trajectory: str) -> Iterator[ConversationTurnData]:
         """Magentic-One: Similar to AG2 but with specialized agents.
@@ -310,25 +410,63 @@ class MASTImporter(ConversationImporter):
             yield from self._extract_generic(trajectory)
 
     def _extract_hyperagent(self, trajectory: str) -> Iterator[ConversationTurnData]:
-        """HyperAgent: Hierarchical agent format."""
-        # HyperAgent uses hierarchical task decomposition
-        task_pattern = r'(?:Task|Subtask)\s*(\d+)?:\s*(.*?)(?=\n(?:Task|Subtask)|\Z)'
+        """HyperAgent: GitHub issue/bug fix format in MAST.
 
-        for i, match in enumerate(re.finditer(task_pattern, trajectory, re.DOTALL)):
-            task_num = match.group(1) or str(i)
-            content = match.group(2).strip()[:4096]
+        Format: instance_id, problem_statement (issue description),
+        followed by agent attempts to fix.
+        """
+        turns = []
+        turn_idx = 0
 
-            if content and len(content) > 20:
-                yield ConversationTurnData(
-                    turn_id=f"hyperagent_{i}",
-                    turn_number=i + 1,
+        # Extract problem_statement (the GitHub issue) as user turn
+        problem_match = re.search(r'problem_statement:\s*\n(.*?)(?=\nother_data:|\ntrajectory:|\n\s*\n[a-z_]+:|\Z)', trajectory, re.DOTALL)
+        if problem_match:
+            problem = problem_match.group(1).strip()[:4096]
+            if problem and len(problem) > 20:
+                turns.append(ConversationTurnData(
+                    turn_id=f"hyperagent_{turn_idx}",
+                    turn_number=turn_idx + 1,
+                    role="user",
+                    participant_id="hyperagent:issue",
+                    content=problem,
+                    extra={"type": "github_issue"},
+                ))
+                turn_idx += 1
+
+        # Extract trajectory content as agent response
+        traj_match = re.search(r'trajectory:\s*\n(.*?)(?=\n\s*ground_truth:|\n\s*is_correct:|\Z)', trajectory, re.DOTALL)
+        if traj_match:
+            traj_content = traj_match.group(1).strip()[:4096]
+            if traj_content and len(traj_content) > 20:
+                turns.append(ConversationTurnData(
+                    turn_id=f"hyperagent_{turn_idx}",
+                    turn_number=turn_idx + 1,
                     role="agent",
-                    participant_id=f"hyperagent:task_{task_num}",
-                    content=content,
-                )
+                    participant_id="hyperagent:solver",
+                    content=traj_content,
+                ))
+                turn_idx += 1
 
-        # If no tasks found, fall back to generic
-        if i == 0:
+        # Look for code patches/diffs as additional agent turns
+        patch_pattern = r'(?:```(?:diff|patch)?\n(.*?)```|(?:^|\n)([-+]{3}\s+[^\n]+\n(?:[-+@\s].*\n)+))'
+        for match in re.finditer(patch_pattern, trajectory, re.DOTALL):
+            patch = (match.group(1) or match.group(2) or "").strip()[:4096]
+            if patch and len(patch) > 20:
+                turns.append(ConversationTurnData(
+                    turn_id=f"hyperagent_{turn_idx}",
+                    turn_number=turn_idx + 1,
+                    role="agent",
+                    participant_id="hyperagent:patcher",
+                    content=patch,
+                    extra={"type": "patch"},
+                ))
+                turn_idx += 1
+
+        if turns:
+            for turn in turns:
+                yield turn
+        else:
+            # Fall back to generic extraction
             yield from self._extract_generic(trajectory)
 
     def _extract_camel(self, trajectory: str) -> Iterator[ConversationTurnData]:

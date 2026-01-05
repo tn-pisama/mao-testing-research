@@ -1,0 +1,43 @@
+{
+  "timestamp": "2026-01-05T12:03:22.076351",
+  "dataset": "MAST-Data (UC Berkeley)",
+  "total_traces": 1242,
+  "detector_version": "1.0",
+  "metrics_by_mode": {
+    "F5": {
+      "precision": 0.2275449101796407,
+      "recall": 0.10982658959537572,
+      "f1": 0.14814814814814814,
+      "fpr": 0.14397321428571427,
+      "true_positives": 38,
+      "false_positives": 129,
+      "true_negatives": 767,
+      "false_negatives": 308
+    },
+    "F6": {
+      "precision": 0.03211009174311927,
+      "recall": 0.14,
+      "f1": 0.05223880597014926,
+      "fpr": 0.17701342281879195,
+      "true_positives": 7,
+      "false_positives": 211,
+      "true_negatives": 981,
+      "false_negatives": 43
+    },
+    "F7": {
+      "precision": 0.11320754716981132,
+      "recall": 0.019801980198019802,
+      "f1": 0.03370786516853933,
+      "fpr": 0.05005324813631523,
+      "true_positives": 6,
+      "false_positives": 47,
+      "true_negatives": 892,
+      "false_negatives": 297
+    }
+  },
+  "overall": {
+    "precision": 0.11643835616438356,
+    "recall": 0.07296137339055794,
+    "f1": 0.08970976253298153
+  }
+}
