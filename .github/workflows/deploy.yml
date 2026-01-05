@@ -68,20 +68,7 @@ jobs:
           cd frontend
           npm run build
 
-  deploy-backend:
-    needs: test
-    runs-on: ubuntu-latest
-    
-    steps:
-      - uses: actions/checkout@v4
-      
-      - name: Deploy to Railway
-        env:
-          RAILWAY_TOKEN: ${{ secrets.RAILWAY_TOKEN }}
-        run: |
-          npm install -g @railway/cli
-          cd backend
-          railway up --service mao-backend
+  # Backend auto-deploys via Render on push to main
 
   deploy-frontend:
     needs: test
