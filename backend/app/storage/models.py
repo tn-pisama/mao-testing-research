@@ -89,7 +89,7 @@ class AuthAudit(Base):
 
 class Trace(Base):
     __tablename__ = "traces"
-    
+
     id = Column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
     tenant_id = Column(UUID(as_uuid=True), ForeignKey("tenants.id"), nullable=False)
     session_id = Column(String(64), nullable=False)
@@ -98,13 +98,15 @@ class Trace(Base):
     status = Column(String(32), default="running")
     total_tokens = Column(Integer, default=0)
     total_cost_cents = Column(Integer, default=0)
+    is_conversation = Column(Boolean, default=False)
     created_at = Column(DateTime(timezone=True), server_default=func.now())
     completed_at = Column(DateTime(timezone=True), nullable=True)
-    
+
     tenant = relationship("Tenant", back_populates="traces")
     states = relationship("State", back_populates="trace")
     detections = relationship("Detection", back_populates="trace")
-    
+    conversation_turns = relationship("ConversationTurn", back_populates="trace", cascade="all, delete-orphan")
+
     __table_args__ = (
         Index("idx_traces_tenant", "tenant_id"),
         Index("idx_traces_session", "session_id"),
@@ -115,7 +117,7 @@ class Trace(Base):
 
 class State(Base):
     __tablename__ = "states"
-    
+
     id = Column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
     trace_id = Column(UUID(as_uuid=True), ForeignKey("traces.id"), nullable=False)
     tenant_id = Column(UUID(as_uuid=True), ForeignKey("tenants.id"), nullable=False)
@@ -130,9 +132,10 @@ class State(Base):
     token_count = Column(Integer, default=0)
     latency_ms = Column(Integer, default=0)
     created_at = Column(DateTime(timezone=True), server_default=func.now())
-    
+
     trace = relationship("Trace", back_populates="states")
-    
+    turn_states = relationship("TurnState", back_populates="state", cascade="all, delete-orphan")
+
     __table_args__ = (
         UniqueConstraint("trace_id", "sequence_num"),
         Index("idx_states_trace", "trace_id"),
@@ -261,15 +264,78 @@ class WebhookNonce(Base):
 
 class N8nWorkflow(Base):
     __tablename__ = "n8n_workflows"
-    
+
     id = Column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
     tenant_id = Column(UUID(as_uuid=True), ForeignKey("tenants.id"), nullable=False)
     workflow_id = Column(String(255), nullable=False)
     workflow_name = Column(String(255), nullable=True)
     webhook_secret = Column(String(255), nullable=True)
     registered_at = Column(DateTime(timezone=True), server_default=func.now())
-    
+
     __table_args__ = (
         UniqueConstraint("tenant_id", "workflow_id", name="uq_n8n_workflow_tenant"),
         Index("idx_n8n_workflows_tenant", "tenant_id"),
+    )
+
+
+class ConversationTurn(Base):
+    """Represents a single turn in a multi-turn conversation trace."""
+    __tablename__ = "conversation_turns"
+
+    id = Column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
+    trace_id = Column(UUID(as_uuid=True), ForeignKey("traces.id", ondelete="CASCADE"), nullable=False)
+    tenant_id = Column(UUID(as_uuid=True), ForeignKey("tenants.id"), nullable=False)
+
+    # Turn identification
+    conversation_id = Column(String(64), nullable=False)
+    turn_number = Column(Integer, nullable=False)
+
+    # Participant info
+    participant_type = Column(String(32), nullable=False)  # user, agent, system, tool
+    participant_id = Column(String(128), nullable=False)
+
+    # Content
+    content = Column(Text, nullable=False)
+    content_hash = Column(String(64), nullable=True)
+    accumulated_context = Column(Text, nullable=True)
+    accumulated_tokens = Column(Integer, default=0)
+
+    # Semantic embedding for similarity search
+    embedding = Column(Vector(1024), nullable=True)
+
+    # Extra data
+    turn_metadata = Column(JSONB, default=dict)
+    created_at = Column(DateTime(timezone=True), server_default=func.now())
+
+    # Relationships
+    trace = relationship("Trace", back_populates="conversation_turns")
+    turn_states = relationship("TurnState", back_populates="turn", cascade="all, delete-orphan")
+
+    __table_args__ = (
+        UniqueConstraint("trace_id", "conversation_id", "turn_number", name="uq_turn_sequence"),
+        Index("idx_turns_trace", "trace_id"),
+        Index("idx_turns_tenant", "tenant_id"),
+        Index("idx_turns_conversation", "conversation_id"),
+        Index("idx_turns_participant", "participant_id"),
+        Index("idx_turns_created", "created_at"),
+    )
+
+
+class TurnState(Base):
+    """Junction table linking conversation turns to their constituent states."""
+    __tablename__ = "turn_states"
+
+    id = Column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
+    turn_id = Column(UUID(as_uuid=True), ForeignKey("conversation_turns.id", ondelete="CASCADE"), nullable=False)
+    state_id = Column(UUID(as_uuid=True), ForeignKey("states.id", ondelete="CASCADE"), nullable=False)
+    state_order = Column(Integer, nullable=False)
+
+    # Relationships
+    turn = relationship("ConversationTurn", back_populates="turn_states")
+    state = relationship("State", back_populates="turn_states")
+
+    __table_args__ = (
+        UniqueConstraint("turn_id", "state_id", name="uq_turn_state"),
+        Index("idx_turn_states_turn", "turn_id"),
+        Index("idx_turn_states_state", "state_id"),
     )
