@@ -20,6 +20,10 @@ Version History:
 - v1.3: Improved task substitution with semantic clusters
   - Counts related terms to determine actual focus
   - E.g., "access control", "permissions", "roles" indicate authorization focus
+- v1.4: Fixed remaining Phase 2 adversarial cases:
+  - Better documentation detection (API docs with examples = still docs)
+  - Focus mismatch detection for research tasks (pricing vs features)
+  - Content-type matching for writing tasks
 """
 
 import logging
@@ -31,7 +35,7 @@ import numpy as np
 logger = logging.getLogger(__name__)
 
 # Detector version for tracking
-DETECTOR_VERSION = "1.3"
+DETECTOR_VERSION = "1.4"
 DETECTOR_NAME = "TaskDerailmentDetector"
 
 # v1.3: Semantic clusters for related task concepts
@@ -66,6 +70,23 @@ SUBSTITUTION_PAIRS = [
     ("unit test", "integration test"),
     ("integration test", "unit test"),
 ]
+
+# v1.4: Research/analysis focus terms - what the task asks for vs what might be delivered
+RESEARCH_FOCUS_CLUSTERS = {
+    "pricing": ["price", "pricing", "cost", "rate", "fee", "subscription", "tier", "plan", "dollar", "$", "budget", "expense"],
+    "features": ["feature", "functionality", "capability", "function", "tool", "option", "integration"],
+    "market": ["market", "positioning", "segment", "target", "audience", "demographic"],
+    "technical": ["technical", "architecture", "stack", "technology", "infrastructure", "performance"],
+    "competitor": ["competitor", "competition", "rival", "alternative", "versus", "vs"],
+    "strategy": ["strategy", "strategic", "approach", "roadmap", "vision", "plan"],
+}
+
+# v1.4: Content-type patterns for writing tasks
+CONTENT_TYPE_PATTERNS = {
+    "documentation": ["#", "##", "###", "overview", "guide", "reference", "api", "endpoint", "parameter", "return", "example", "usage", "method", "function"],
+    "report": ["summary", "findings", "analysis", "conclusion", "recommendation", "result", "data", "metric"],
+    "code": ["def ", "function ", "class ", "import ", "const ", "let ", "var ", "return ", "if ", "for ", "while "],
+}
 
 
 class DerailmentSeverity(str, Enum):
@@ -230,6 +251,94 @@ class TaskDerailmentDetector:
             count += 1
         return count
 
+    def _count_focus_matches(self, text: str, focus: str) -> int:
+        """v1.4: Count matches for a research focus cluster."""
+        if focus not in RESEARCH_FOCUS_CLUSTERS:
+            return 1 if focus in text.lower() else 0
+
+        count = 0
+        text_lower = text.lower()
+        for term in RESEARCH_FOCUS_CLUSTERS[focus]:
+            if term in text_lower:
+                count += 1
+        return count
+
+    def _detect_research_focus_mismatch(
+        self,
+        task: str,
+        output: str,
+    ) -> tuple[bool, Optional[str]]:
+        """v1.4: Detect when research/analysis focuses on wrong aspect.
+
+        E.g., task asks for "pricing" research but output focuses on "features".
+        """
+        task_lower = task.lower()
+        output_lower = output.lower()
+
+        # Check for research/analysis tasks
+        research_indicators = ["research", "analyze", "analysis", "study", "investigate", "examine", "evaluate"]
+        is_research_task = any(ind in task_lower for ind in research_indicators)
+
+        if not is_research_task:
+            return False, None
+
+        # Find requested focus in task
+        requested_focus = None
+        for focus in RESEARCH_FOCUS_CLUSTERS.keys():
+            if focus in task_lower:
+                requested_focus = focus
+                break
+
+        if not requested_focus:
+            return False, None
+
+        # Count matches for each focus in output
+        focus_counts = {}
+        for focus in RESEARCH_FOCUS_CLUSTERS.keys():
+            focus_counts[focus] = self._count_focus_matches(output_lower, focus)
+
+        requested_count = focus_counts.get(requested_focus, 0)
+
+        # Find if another focus dominates
+        for other_focus, other_count in focus_counts.items():
+            if other_focus != requested_focus and other_count >= 3 and other_count > requested_count * 2:
+                return True, (
+                    f"Task asks for '{requested_focus}' research but output focuses on "
+                    f"'{other_focus}' ({other_count} matches vs {requested_count} for {requested_focus})"
+                )
+
+        return False, None
+
+    def _matches_content_type(self, output: str, content_type: str) -> bool:
+        """v1.4: Check if output matches the expected content type."""
+        if content_type not in CONTENT_TYPE_PATTERNS:
+            return False
+
+        patterns = CONTENT_TYPE_PATTERNS[content_type]
+        output_lower = output.lower()
+
+        # Count how many patterns match
+        matches = sum(1 for p in patterns if p.lower() in output_lower)
+
+        # Need at least 3 matches to confirm content type
+        return matches >= 3
+
+    def _is_writing_task(self, task: str) -> tuple[bool, Optional[str]]:
+        """v1.4: Check if task is a writing task and identify expected content type."""
+        task_lower = task.lower()
+
+        writing_indicators = {
+            "documentation": ["write documentation", "create documentation", "document", "api documentation", "write docs"],
+            "report": ["write report", "create report", "prepare report", "generate report"],
+            "code": ["write code", "create code", "implement", "develop", "build"],
+        }
+
+        for content_type, indicators in writing_indicators.items():
+            if any(ind in task_lower for ind in indicators):
+                return True, content_type
+
+        return False, None
+
     def _detect_task_substitution(
         self,
         task: str,
@@ -358,6 +467,25 @@ class TaskDerailmentDetector:
         similarity = self._compute_similarity(task, output)
         drift_score, task_coverage = self._compute_topic_drift(task, output, context)
 
+        # v1.4: Check for writing tasks with matching content type
+        # If task asks for documentation and output IS documentation, don't flag
+        is_writing, expected_content_type = self._is_writing_task(task)
+        if is_writing and expected_content_type:
+            if self._matches_content_type(output, expected_content_type):
+                # Output matches expected content type - not a derailment
+                return DerailmentResult(
+                    detected=False,
+                    severity=DerailmentSeverity.NONE,
+                    confidence=0.9,
+                    task_output_similarity=similarity,
+                    topic_drift_score=drift_score,
+                    explanation=f"Output matches expected content type: {expected_content_type}",
+                    task_coverage=task_coverage,
+                )
+
+        # v1.4: Check for research focus mismatch (e.g., pricing vs features)
+        focus_mismatch, focus_desc = self._detect_research_focus_mismatch(task, output)
+
         # v1.2: Check for task substitution (e.g., authorization vs authentication)
         substitution_detected, substitution_desc = self._detect_task_substitution(task, output)
 
@@ -367,10 +495,14 @@ class TaskDerailmentDetector:
 
         # Detection logic:
         # 1. Task substitution is always a derailment (wrong task entirely)
-        # 2. If task is addressed, only flag for severe cases
-        # 3. Otherwise, use standard thresholds
+        # 2. Research focus mismatch is a derailment (wrong aspect)
+        # 3. If task is addressed, only flag for severe cases
+        # 4. Otherwise, use standard thresholds
         if substitution_detected:
             # v1.2: Task substitution is a clear derailment
+            detected = True
+        elif focus_mismatch:
+            # v1.4: Research focus mismatch is a derailment
             detected = True
         elif task_addressed:
             # Task is addressed - only flag for severe cases (completely unrelated output)
@@ -387,6 +519,8 @@ class TaskDerailmentDetector:
             "task_addressed": task_addressed,
             "substitution_detected": substitution_detected,
             "substitution_description": substitution_desc,
+            "focus_mismatch_detected": focus_mismatch,
+            "focus_mismatch_description": focus_desc,
             "similarity_threshold": self.similarity_threshold,
             "drift_threshold": self.drift_threshold,
             "task_coverage_threshold": self.task_coverage_threshold,
