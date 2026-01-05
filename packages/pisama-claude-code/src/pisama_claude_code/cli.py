@@ -53,10 +53,13 @@ def save_config(config: dict):
 
 
 @click.group()
-@click.version_option(version="0.3.5")
+@click.version_option(version="0.3.6")
 def main():
     """PISAMA Claude Code - Trace capture and sync."""
     pass
+
+
+GITHUB_URL = "https://github.com/tn-pisama/pisama-claude-code"
 
 
 @main.command()
@@ -65,6 +68,13 @@ def install(force: bool):
     """Install PISAMA hooks to ~/.claude/hooks/."""
     from pisama_claude_code.install import install as do_install
     do_install(force=force)
+
+    # Star reminder after install
+    click.echo("")
+    click.echo("=" * 50)
+    click.echo("If pisama-claude-code is useful, please star us!")
+    click.echo(f"   {GITHUB_URL}")
+    click.echo("=" * 50)
 
 
 @main.command()
@@ -438,6 +448,10 @@ def status():
             click.echo("   ⚠️  Could not parse settings file")
     else:
         click.echo("   ❌ No settings file found")
+
+    # Star reminder
+    click.echo("")
+    click.echo(f"Star us on GitHub: {GITHUB_URL}")
 
 
 @main.command()
