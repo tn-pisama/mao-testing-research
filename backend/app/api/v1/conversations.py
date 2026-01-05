@@ -16,6 +16,13 @@ from app.storage.models import Trace, ConversationTurn, TurnState, State, Detect
 from app.core.auth import get_current_tenant
 from app.ingestion.importers import MASTImporter, ConversationImporter
 from app.ingestion.conversation_trace import ConversationTrace as ConversationTraceData
+from app.detection.turn_aware import (
+    TurnSnapshot,
+    TurnAwareContextNeglectDetector,
+    TurnAwareDerailmentDetector,
+    TurnAwareLoopDetector,
+    analyze_conversation_turns,
+)
 from app.api.v1.schemas import (
     ConversationIngestRequest,
     ConversationResponse,
@@ -361,9 +368,9 @@ async def analyze_conversation(
     """Analyze a conversation for failures.
 
     Runs turn-aware detection algorithms to identify issues like:
-    - Context neglect between turns
-    - Task derailment over the conversation
-    - Communication breakdown patterns
+    - Context neglect between turns (F7)
+    - Task derailment over the conversation (F6)
+    - Infinite loops and repetitive behavior (F5)
     """
     await set_tenant_context(db, tenant_id)
 
@@ -385,46 +392,78 @@ async def analyze_conversation(
             ConversationTurn.trace_id == trace_id,
         ).order_by(ConversationTurn.turn_number)
     )
-    turns = turns_result.scalars().all()
+    db_turns = turns_result.scalars().all()
 
-    if not turns:
+    if not db_turns:
         raise HTTPException(status_code=404, detail="Conversation has no turns")
 
-    # Run basic analysis (placeholder for Phase 4 turn-aware detectors)
+    # Convert database turns to TurnSnapshots for detection
+    turn_snapshots = [
+        TurnSnapshot(
+            turn_number=t.turn_number,
+            participant_type=t.participant_type,
+            participant_id=t.participant_id,
+            content=t.content,
+            content_hash=t.content_hash,
+            accumulated_context=t.accumulated_context,
+            accumulated_tokens=t.accumulated_tokens,
+            turn_metadata=t.turn_metadata or {},
+        )
+        for t in db_turns
+    ]
+
+    # Run turn-aware detectors
+    detection_results = analyze_conversation_turns(
+        turns=turn_snapshots,
+        conversation_metadata={
+            "trace_id": str(trace_id),
+            "framework": trace.framework,
+        },
+    )
+
+    # Convert detection results to API response format
     detections = []
     turn_issues = []
     failure_modes_detected = []
 
-    # Basic pattern detection
-    # Check for very short responses (potential context neglect)
-    for i, turn in enumerate(turns):
-        if turn.participant_type == "agent" and len(turn.content) < 50:
-            if i > 0 and len(turns[i-1].content) > 200:
-                turn_issues.append({
-                    "turn_number": turn.turn_number,
-                    "issue": "short_response",
-                    "description": f"Agent response unusually short ({len(turn.content)} chars) after detailed input",
-                })
-
-    # Check for repetitive agent responses (potential loop)
-    agent_responses = [t.content_hash for t in turns if t.participant_type == "agent"]
-    if len(agent_responses) > len(set(agent_responses)):
+    for result in detection_results:
+        # Add to detections list
         detections.append({
-            "type": "repetitive_responses",
-            "confidence": 0.7,
-            "description": "Detected duplicate agent responses suggesting potential loop",
+            "type": result.detector_name,
+            "confidence": result.confidence,
+            "description": result.explanation,
+            "severity": result.severity.value,
+            "evidence": result.evidence,
         })
-        failure_modes_detected.append("F6")  # Task Derailment
 
-    # Store detections
-    for det in detections:
+        # Track failure modes
+        if result.failure_mode and result.failure_mode not in failure_modes_detected:
+            failure_modes_detected.append(result.failure_mode)
+
+        # Add turn-specific issues
+        for turn_num in result.affected_turns:
+            turn_issues.append({
+                "turn_number": turn_num,
+                "issue": result.failure_mode or "unknown",
+                "description": f"{result.detector_name}: {result.explanation}",
+                "severity": result.severity.value,
+            })
+
+        # Store detection in database
         detection = Detection(
             tenant_id=UUID(tenant_id),
             trace_id=trace_id,
-            detection_type=det["type"],
-            confidence=int(det["confidence"] * 100),
-            method="conversation_analysis",
-            details=det,
+            detection_type=result.failure_mode or result.detector_name,
+            confidence=int(result.confidence * 100),
+            method="turn_aware_analysis",
+            details={
+                "detector": result.detector_name,
+                "detector_version": result.detector_version,
+                "explanation": result.explanation,
+                "affected_turns": result.affected_turns,
+                "evidence": result.evidence,
+                "suggested_fix": result.suggested_fix,
+            },
         )
         db.add(detection)
 
@@ -432,7 +471,7 @@ async def analyze_conversation(
 
     return ConversationAnalyzeResponse(
         trace_id=trace_id,
-        analyzed_turns=len(turns),
+        analyzed_turns=len(db_turns),
         detections=detections,
         failure_modes_detected=failure_modes_detected,
         turn_issues=turn_issues,

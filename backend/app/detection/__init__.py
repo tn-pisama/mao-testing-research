@@ -72,6 +72,16 @@ from .retrieval_quality import (
     IrrelevantDocument,
     CoverageGap,
 )
+from .turn_aware import (
+    TurnSnapshot,
+    TurnAwareDetector,
+    TurnAwareDetectionResult,
+    TurnAwareSeverity,
+    TurnAwareContextNeglectDetector,
+    TurnAwareDerailmentDetector,
+    TurnAwareLoopDetector,
+    analyze_conversation_turns,
+)
 
 derailment_detector = TaskDerailmentDetector()
 context_neglect_detector = ContextNeglectDetector()
@@ -188,4 +198,13 @@ __all__ = [
     "RetrievalSeverity",
     "IrrelevantDocument",
     "CoverageGap",
+    # Turn-aware detection for multi-turn conversations (MAST-Data)
+    "TurnSnapshot",
+    "TurnAwareDetector",
+    "TurnAwareDetectionResult",
+    "TurnAwareSeverity",
+    "TurnAwareContextNeglectDetector",
+    "TurnAwareDerailmentDetector",
+    "TurnAwareLoopDetector",
+    "analyze_conversation_turns",
 ]
