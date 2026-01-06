@@ -1,0 +1,54 @@
+{
+  "timestamp": "2026-01-05T13:23:30.666916",
+  "total_traces": 1242,
+  "parsed_traces": 1242,
+  "extraction_rate": 1.0,
+  "avg_turns_per_trace": 7.676328502415459,
+  "overall_f1": 0.061593253674446506,
+  "overall_accuracy": 0.7804616210413312,
+  "framework_breakdown": {
+    "ChatDev": 130,
+    "MetaGPT": 230,
+    "OpenManus": 30,
+    "Magentic": 195,
+    "AG2": 597,
+    "AppWorld": 30,
+    "HyperAgent": 30
+  },
+  "metrics_by_mode": {
+    "F5": {
+      "precision": 0.2375,
+      "recall": 0.10982658959537572,
+      "f1": 0.15019762845849802,
+      "fpr": 0.13616071428571427,
+      "true_positives": 38,
+      "false_positives": 122,
+      "true_negatives": 774,
+      "false_negatives": 308,
+      "total_samples": 1242
+    },
+    "F6": {
+      "precision": 0.0,
+      "recall": 0.0,
+      "f1": 0.0,
+      "fpr": 0.0025167785234899327,
+      "true_positives": 0,
+      "false_positives": 3,
+      "true_negatives": 1189,
+      "false_negatives": 50,
+      "total_samples": 1242
+    },
+    "F7": {
+      "precision": 0.13636363636363635,
+      "recall": 0.019801980198019802,
+      "f1": 0.0345821325648415,
+      "fpr": 0.04046858359957402,
+      "true_positives": 6,
+      "false_positives": 38,
+      "true_negatives": 901,
+      "false_negatives": 297,
+      "total_samples": 1242
+    }
+  },
+  "errors": []
+}
