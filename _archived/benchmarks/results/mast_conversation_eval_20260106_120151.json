@@ -1,0 +1,126 @@
+{
+  "timestamp": "2026-01-06T12:01:45.846928",
+  "total_traces": 11,
+  "parsed_traces": 11,
+  "extraction_rate": 1.0,
+  "avg_turns_per_trace": 4.909090909090909,
+  "overall_f1": 0.7583333333333333,
+  "overall_accuracy": 0.8909090909090909,
+  "framework_breakdown": {
+    "AG2": 7,
+    "ChatDev": 4
+  },
+  "metrics_by_mode": {
+    "F1": {
+      "precision": 0.14285714285714285,
+      "recall": 1.0,
+      "f1": 0.25,
+      "fpr": 0.6,
+      "true_positives": 1,
+      "false_positives": 6,
+      "true_negatives": 4,
+      "false_negatives": 0,
+      "total_samples": 11
+    },
+    "F3": {
+      "precision": 0.5,
+      "recall": 1.0,
+      "f1": 0.6666666666666666,
+      "fpr": 0.1,
+      "true_positives": 1,
+      "false_positives": 1,
+      "true_negatives": 9,
+      "false_negatives": 0,
+      "total_samples": 11
+    },
+    "F5": {
+      "precision": 1.0,
+      "recall": 1.0,
+      "f1": 1.0,
+      "fpr": 0.0,
+      "true_positives": 1,
+      "false_positives": 0,
+      "true_negatives": 10,
+      "false_negatives": 0,
+      "total_samples": 11
+    },
+    "F6": {
+      "precision": 1.0,
+      "recall": 1.0,
+      "f1": 1.0,
+      "fpr": 0.0,
+      "true_positives": 1,
+      "false_positives": 0,
+      "true_negatives": 10,
+      "false_negatives": 0,
+      "total_samples": 11
+    },
+    "F7": {
+      "precision": 1.0,
+      "recall": 1.0,
+      "f1": 1.0,
+      "fpr": 0.0,
+      "true_positives": 1,
+      "false_positives": 0,
+      "true_negatives": 10,
+      "false_negatives": 0,
+      "total_samples": 11
+    },
+    "F8": {
+      "precision": 0.3333333333333333,
+      "recall": 1.0,
+      "f1": 0.5,
+      "fpr": 0.2,
+      "true_positives": 1,
+      "false_positives": 2,
+      "true_negatives": 8,
+      "false_negatives": 0,
+      "total_samples": 11
+    },
+    "F11": {
+      "precision": 1.0,
+      "recall": 1.0,
+      "f1": 1.0,
+      "fpr": 0.0,
+      "true_positives": 1,
+      "false_positives": 0,
+      "true_negatives": 10,
+      "false_negatives": 0,
+      "total_samples": 11
+    },
+    "F12": {
+      "precision": 0.3333333333333333,
+      "recall": 1.0,
+      "f1": 0.5,
+      "fpr": 0.2,
+      "true_positives": 1,
+      "false_positives": 2,
+      "true_negatives": 8,
+      "false_negatives": 0,
+      "total_samples": 11
+    },
+    "F13": {
+      "precision": 0.5,
+      "recall": 1.0,
+      "f1": 0.6666666666666666,
+      "fpr": 0.1,
+      "true_positives": 1,
+      "false_positives": 1,
+      "true_negatives": 9,
+      "false_negatives": 0,
+      "total_samples": 11
+    },
+    "F14": {
+      "precision": 1.0,
+      "recall": 1.0,
+      "f1": 1.0,
+      "fpr": 0.0,
+      "true_positives": 1,
+      "false_positives": 0,
+      "true_negatives": 10,
+      "false_negatives": 0,
+      "total_samples": 11
+    }
+  },
+  "errors": []
+}
