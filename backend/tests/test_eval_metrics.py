@@ -4,7 +4,7 @@ import pytest
 import numpy as np
 from unittest.mock import patch, MagicMock
 
-from app.evals.metrics import (
+from app.enterprise.evals.metrics import (
     get_embedder,
     cosine_similarity,
     relevance_score,

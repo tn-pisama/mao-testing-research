@@ -4,9 +4,9 @@ from typing import Optional, List
 from fastapi import APIRouter, HTTPException, Depends
 from pydantic import BaseModel
 
-from app.evals import EvalScorer, EvalType, EvalConfig, EvalResult
-from app.evals.llm_judge import LLMJudge, JudgeModel, create_default_scorers
-from app.evals.metrics import (
+from app.enterprise.evals import EvalScorer, EvalType, EvalConfig, EvalResult
+from app.enterprise.evals.llm_judge import LLMJudge, JudgeModel, create_default_scorers
+from app.enterprise.evals.metrics import (
     relevance_score,
     coherence_score,
     helpfulness_score,

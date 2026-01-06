@@ -13,25 +13,25 @@ import pytest
 from datetime import datetime, timedelta
 from unittest.mock import patch, MagicMock
 
-from app.regression.fingerprint import (
+from app.enterprise.regression.fingerprint import (
     model_fingerprinter,
     ModelFingerprinter,
     ModelFingerprint,
 )
-from app.regression.baseline import (
+from app.enterprise.regression.baseline import (
     baseline_store,
     BaselineStore,
     Baseline,
     BaselineEntry,
 )
-from app.regression.drift import (
+from app.enterprise.regression.drift import (
     drift_detector,
     DriftDetector,
     DriftResult,
     DriftSeverity,
     DriftType,
 )
-from app.regression.alerts import (
+from app.enterprise.regression.alerts import (
     alert_manager,
     AlertManager,
     RegressionAlert,

@@ -4,7 +4,7 @@ import pytest
 from unittest.mock import patch, MagicMock
 import json
 
-from app.evals.llm_judge import (
+from app.enterprise.evals.llm_judge import (
     LLMJudge,
     LLMJudgeScorer,
     JudgmentResult,
@@ -12,7 +12,7 @@ from app.evals.llm_judge import (
     EVAL_PROMPTS,
     create_default_scorers,
 )
-from app.evals.scorer import EvalType, EvalResult, BaseScorer
+from app.enterprise.evals.scorer import EvalType, EvalResult, BaseScorer
 
 
 # ============================================================================

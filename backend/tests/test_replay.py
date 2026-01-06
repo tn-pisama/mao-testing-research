@@ -14,22 +14,22 @@ import asyncio
 from datetime import datetime
 from unittest.mock import MagicMock, AsyncMock
 
-from app.replay.recorder import (
+from app.enterprise.replay.recorder import (
     ReplayRecorder,
     RecordedEvent,
     EventType,
 )
-from app.replay.bundle import (
+from app.enterprise.replay.bundle import (
     ReplayBundle,
     BundleMetadata,
 )
-from app.replay.diff import (
+from app.enterprise.replay.diff import (
     ReplayDiff,
     DiffResult,
     DiffType,
     DiffSegment,
 )
-from app.replay.engine import (
+from app.enterprise.replay.engine import (
     ReplayEngine,
     ReplayMode,
     ReplayStatus,
@@ -801,7 +801,7 @@ class TestReplayIntegration:
 
     def test_imports(self):
         """Test all components are importable."""
-        from app.replay import (
+        from app.enterprise.replay import (
             ReplayRecorder,
             ReplayBundle,
             ReplayDiff,

@@ -6,7 +6,7 @@ from fastapi import APIRouter, Depends, HTTPException, status
 from pydantic import BaseModel, Field
 
 from app.core.auth import get_current_tenant
-from app.regression import (
+from app.enterprise.regression import (
     baseline_store,
     model_fingerprinter,
     DriftDetector,

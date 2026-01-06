@@ -4,14 +4,14 @@ from fastapi import APIRouter, Depends, HTTPException, status
 from pydantic import BaseModel, Field
 
 from app.core.auth import get_current_tenant
-from app.chaos import (
+from app.enterprise.chaos import (
     ChaosController,
     ChaosTarget,
     TargetType,
     SafetyConfig,
     BlastRadius,
 )
-from app.chaos.experiments import (
+from app.enterprise.chaos.experiments import (
     ExperimentType,
     LatencyExperiment,
     ErrorExperiment,
@@ -19,7 +19,7 @@ from app.chaos.experiments import (
     UncooperativeAgentExperiment,
     ContextTruncationExperiment,
 )
-from app.chaos.controller import chaos_controller
+from app.enterprise.chaos.controller import chaos_controller
 
 router = APIRouter(prefix="/chaos", tags=["chaos"])
 

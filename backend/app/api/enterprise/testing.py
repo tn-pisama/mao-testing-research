@@ -6,7 +6,7 @@ from fastapi import APIRouter, Depends, HTTPException, status
 from pydantic import BaseModel, Field
 
 from app.core.auth import get_current_tenant
-from app.testing import (
+from app.enterprise.testing import (
     HandoffExtractor,
     Handoff,
     HandoffAnalysis,

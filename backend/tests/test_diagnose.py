@@ -7,7 +7,7 @@ import json
 from app.ingestion.universal_trace import UniversalSpan, UniversalTrace, SpanType, SpanStatus
 from app.ingestion.importers import import_trace, detect_format
 from app.ingestion.importers.raw_json import RawJSONImporter
-from app.ingestion.importers.langsmith import LangSmithImporter
+from app.ingestion_enterprise.importers.langsmith import LangSmithImporter
 from app.detection.orchestrator import DetectionOrchestrator, DetectionCategory, Severity
 
 

@@ -5,7 +5,7 @@ Tests for the testing module - handoff extraction, assertions, and test generati
 import pytest
 from datetime import datetime, timedelta
 
-from app.testing import (
+from app.enterprise.testing import (
     HandoffExtractor,
     Handoff,
     HandoffAnalysis,
@@ -19,9 +19,9 @@ from app.testing import (
     TestCase,
     TestSuite,
 )
-from app.testing.handoff import HandoffType, HandoffStatus
-from app.testing.assertions import AssertionStatus
-from app.testing.generator import TestPriority, TestCategory, TestResult
+from app.enterprise.testing.handoff import HandoffType, HandoffStatus
+from app.enterprise.testing.assertions import AssertionStatus
+from app.enterprise.testing.generator import TestPriority, TestCategory, TestResult
 
 
 # =============================================================================
@@ -1238,7 +1238,7 @@ class TestModuleImports:
 
     def test_import_from_testing_module(self):
         """Test that all exports are importable from testing module."""
-        from app.testing import (
+        from app.enterprise.testing import (
             HandoffExtractor,
             Handoff,
             HandoffAnalysis,
@@ -1267,9 +1267,9 @@ class TestModuleImports:
 
     def test_import_enums(self):
         """Test that enums are importable."""
-        from app.testing.handoff import HandoffType, HandoffStatus
-        from app.testing.assertions import AssertionStatus
-        from app.testing.generator import TestPriority, TestCategory
+        from app.enterprise.testing.handoff import HandoffType, HandoffStatus
+        from app.enterprise.testing.assertions import AssertionStatus
+        from app.enterprise.testing.generator import TestPriority, TestCategory
 
         assert HandoffType.SEQUENTIAL
         assert HandoffStatus.SUCCESS

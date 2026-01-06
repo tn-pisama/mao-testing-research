@@ -130,7 +130,7 @@ class TieredDetector(Generic[T]):
         """Lazy load LLM Judge to avoid import overhead."""
         if self._llm_judge is None:
             try:
-                from app.evals.llm_judge import LLMJudge, JudgeModel
+                from app.enterprise.evals.llm_judge import LLMJudge, JudgeModel
                 self._llm_judge = {
                     "cheap": LLMJudge(model=JudgeModel.GPT4O_MINI),
                     "expensive": LLMJudge(model=JudgeModel.GPT4O),
@@ -267,7 +267,7 @@ Respond in JSON: {{"score": <float>, "reasoning": "<explanation>"}}""",
             return {"error": f"Judge not available for tier {tier}"}
 
         try:
-            from app.evals.scorer import EvalType
+            from app.enterprise.evals.scorer import EvalType
 
             prompt = self._get_ai_prompt(text, context, rule_result)
             result = judge.judge(

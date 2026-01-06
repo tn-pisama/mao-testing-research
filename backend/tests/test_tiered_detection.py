@@ -4,7 +4,7 @@ import pytest
 from unittest.mock import MagicMock, patch
 from dataclasses import dataclass
 
-from app.detection.tiered import (
+from app.detection_enterprise.tiered import (
     TieredDetector,
     TieredResult,
     TierConfig,

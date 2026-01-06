@@ -5,7 +5,7 @@ import asyncio
 from datetime import datetime, timedelta
 from unittest.mock import patch, MagicMock
 
-from app.chaos.experiments import (
+from app.enterprise.chaos.experiments import (
     ChaosExperiment,
     ExperimentStatus,
     ExperimentType,
@@ -17,13 +17,13 @@ from app.chaos.experiments import (
     UncooperativeAgentExperiment,
     ContextTruncationExperiment,
 )
-from app.chaos.targeting import (
+from app.enterprise.chaos.targeting import (
     TargetType,
     ChaosTarget,
     TargetBuilder,
     target,
 )
-from app.chaos.safety import (
+from app.enterprise.chaos.safety import (
     BlastRadius,
     SafetyConfig,
     SafetyMonitor,
@@ -31,7 +31,7 @@ from app.chaos.safety import (
     STRICT_SAFETY_CONFIG,
     RELAXED_SAFETY_CONFIG,
 )
-from app.chaos.controller import (
+from app.enterprise.chaos.controller import (
     ChaosSession,
     ChaosController,
     create_latency_experiment,

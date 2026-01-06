@@ -8,12 +8,13 @@ Feature flags required:
 - trace_replay: Trace replay and what-if simulation
 - regression_testing: Regression testing framework
 - advanced_evals: Advanced evaluation framework
-- audit_logging: Compliance audit logging
 
 To enable, set in environment:
     FEATURE_ENTERPRISE_ENABLED=true
     FEATURE_CHAOS_ENGINEERING=true
     # etc.
+
+Note: audit logging is available in ICP tier at app.core.audit
 """
 
 from app.core.feature_gate import is_feature_enabled
@@ -38,7 +39,3 @@ if is_feature_enabled("advanced_evals"):
     from . import evals
     from . import integrations
     __all__.extend(["evals", "integrations"])
-
-if is_feature_enabled("audit_logging"):
-    from . import audit
-    __all__.append("audit")
