@@ -1,6 +1,110 @@
 from pydantic_settings import BaseSettings
 from pydantic import Field, field_validator
 from functools import lru_cache
+from typing import Dict, Optional
+from dataclasses import dataclass
+
+
+@dataclass
+class FrameworkThresholds:
+    """Per-framework detection thresholds.
+
+    Different frameworks have different failure patterns:
+    - LangGraph: State-heavy, prone to structural loops
+    - AutoGen: Multi-agent, prone to conversation circles
+    - CrewAI: Task-based, prone to coordination failures
+    - LangChain: Chain-based, moderate patterns
+    """
+    structural_threshold: float
+    semantic_threshold: float
+    loop_detection_window: int
+    min_matches_for_loop: int
+    confidence_scaling: float
+
+
+# Framework-specific threshold configurations
+# Tuned based on observed failure patterns per framework
+FRAMEWORK_THRESHOLDS: Dict[str, FrameworkThresholds] = {
+    # LangGraph: Tight state management, structural patterns are highly reliable
+    "langgraph": FrameworkThresholds(
+        structural_threshold=0.92,  # Lower - structural matches are reliable
+        semantic_threshold=0.88,    # Higher - semantic loops less common
+        loop_detection_window=5,    # Shorter - state changes are atomic
+        min_matches_for_loop=2,
+        confidence_scaling=1.0,
+    ),
+    # AutoGen: Multi-agent conversations, semantic loops are common
+    "autogen": FrameworkThresholds(
+        structural_threshold=0.90,
+        semantic_threshold=0.80,    # Lower - catch conversation circles
+        loop_detection_window=10,   # Longer - multi-turn conversations
+        min_matches_for_loop=3,     # More matches needed due to verbosity
+        confidence_scaling=0.95,    # Slightly lower - more false positives expected
+    ),
+    # CrewAI: Task delegation, coordination patterns
+    "crewai": FrameworkThresholds(
+        structural_threshold=0.88,  # Lower - task handoffs have patterns
+        semantic_threshold=0.82,
+        loop_detection_window=8,
+        min_matches_for_loop=2,
+        confidence_scaling=1.0,
+    ),
+    # LangChain: Standard chain patterns
+    "langchain": FrameworkThresholds(
+        structural_threshold=0.95,
+        semantic_threshold=0.85,
+        loop_detection_window=7,
+        min_matches_for_loop=2,
+        confidence_scaling=1.0,
+    ),
+    # OpenAI Assistants: Function calling patterns
+    "openai": FrameworkThresholds(
+        structural_threshold=0.93,
+        semantic_threshold=0.86,
+        loop_detection_window=6,
+        min_matches_for_loop=2,
+        confidence_scaling=1.0,
+    ),
+    # Anthropic/Claude: Similar to OpenAI
+    "anthropic": FrameworkThresholds(
+        structural_threshold=0.93,
+        semantic_threshold=0.86,
+        loop_detection_window=6,
+        min_matches_for_loop=2,
+        confidence_scaling=1.0,
+    ),
+    # n8n: Workflow automation, very structured
+    "n8n": FrameworkThresholds(
+        structural_threshold=0.98,  # Very high - n8n is deterministic
+        semantic_threshold=0.90,
+        loop_detection_window=5,
+        min_matches_for_loop=2,
+        confidence_scaling=1.1,     # Higher confidence for detected loops
+    ),
+    # Default/unknown frameworks
+    "unknown": FrameworkThresholds(
+        structural_threshold=0.95,
+        semantic_threshold=0.85,
+        loop_detection_window=7,
+        min_matches_for_loop=2,
+        confidence_scaling=1.0,
+    ),
+}
+
+
+def get_framework_thresholds(framework: Optional[str] = None) -> FrameworkThresholds:
+    """Get detection thresholds for a specific framework.
+
+    Args:
+        framework: Framework name (langgraph, autogen, crewai, etc.)
+
+    Returns:
+        FrameworkThresholds for the specified framework
+    """
+    if framework is None:
+        framework = "unknown"
+    framework = framework.lower().strip()
+    return FRAMEWORK_THRESHOLDS.get(framework, FRAMEWORK_THRESHOLDS["unknown"])
 
 
 class FeatureFlags(BaseSettings):

@@ -4,7 +4,7 @@ from dataclasses import dataclass
 from typing import List, Optional
 import numpy as np
 from sklearn.cluster import KMeans
-from app.config import get_settings
+from app.config import get_settings, get_framework_thresholds, FrameworkThresholds
 from app.core.embeddings import get_embedder
 
 settings = get_settings()
@@ -20,6 +20,7 @@ class LoopDetectionResult:
     loop_length: Optional[int] = None
     raw_score: Optional[float] = None
     evidence: Optional[dict] = None
+    framework: Optional[str] = None  # Framework used for detection thresholds
 
 
 @dataclass
@@ -36,15 +37,40 @@ class MultiLevelLoopDetector:
         structural_threshold: Optional[float] = None,
         semantic_threshold: Optional[float] = None,
         window_size: Optional[int] = None,
-        min_matches_for_loop: int = 2,
-        confidence_scaling: float = 1.0,
+        min_matches_for_loop: Optional[int] = None,
+        confidence_scaling: Optional[float] = None,
+        framework: Optional[str] = None,
     ):
         self._embedder = None
-        self.structural_threshold = structural_threshold or settings.structural_threshold
-        self.semantic_threshold = semantic_threshold or settings.semantic_threshold
-        self.window_size = window_size or settings.loop_detection_window
-        self.min_matches_for_loop = min_matches_for_loop
-        self.confidence_scaling = confidence_scaling
+        self.framework = framework
+
+        # Get framework-specific defaults if framework is specified
+        if framework:
+            fw_thresholds = get_framework_thresholds(framework)
+            self.structural_threshold = structural_threshold or fw_thresholds.structural_threshold
+            self.semantic_threshold = semantic_threshold or fw_thresholds.semantic_threshold
+            self.window_size = window_size or fw_thresholds.loop_detection_window
+            self.min_matches_for_loop = min_matches_for_loop or fw_thresholds.min_matches_for_loop
+            self.confidence_scaling = confidence_scaling or fw_thresholds.confidence_scaling
+        else:
+            # Fall back to global settings
+            self.structural_threshold = structural_threshold or settings.structural_threshold
+            self.semantic_threshold = semantic_threshold or settings.semantic_threshold
+            self.window_size = window_size or settings.loop_detection_window
+            self.min_matches_for_loop = min_matches_for_loop or 2
+            self.confidence_scaling = confidence_scaling or 1.0
+
+    @classmethod
+    def for_framework(cls, framework: str) -> "MultiLevelLoopDetector":
+        """Create a detector configured for a specific framework.
+
+        Args:
+            framework: Framework name (langgraph, autogen, crewai, etc.)
+
+        Returns:
+            MultiLevelLoopDetector with framework-specific thresholds
+        """
+        return cls(framework=framework)
     
     @property
     def embedder(self):
@@ -76,17 +102,17 @@ class MultiLevelLoopDetector:
     
     def detect_loop(self, states: List[StateSnapshot]) -> LoopDetectionResult:
         if len(states) < 3:
-            return LoopDetectionResult(detected=False, confidence=0.0, method=None, cost=0.0)
-        
+            return LoopDetectionResult(detected=False, confidence=0.0, method=None, cost=0.0, framework=self.framework)
+
         current = states[-1]
         window = states[-self.window_size:-1] if len(states) > self.window_size else states[:-1]
-        
+
         structural_matches = []
         for i, prev in enumerate(window):
             if self._structural_match(current, prev):
                 if not self._has_meaningful_progress(prev, current):
                     structural_matches.append(i)
-        
+
         if structural_matches:
             first_match = structural_matches[0]
             loop_length = len(window) - first_match
@@ -94,14 +120,14 @@ class MultiLevelLoopDetector:
             loop_start_index = window_start + first_match
             raw_score = len(structural_matches) / len(window)
             evidence_strength = min(1.0, len(structural_matches) / 3)
-            
+
             confidence = self._calibrate_confidence(
                 raw_score=raw_score,
                 method="structural",
                 evidence_strength=evidence_strength,
                 loop_length=loop_length,
             )
-            
+
             return LoopDetectionResult(
                 detected=True,
                 confidence=confidence,
@@ -110,29 +136,34 @@ class MultiLevelLoopDetector:
                 loop_start_index=loop_start_index,
                 loop_length=loop_length,
                 raw_score=raw_score,
-                evidence={"structural_matches": len(structural_matches), "window_size": len(window)},
+                evidence={
+                    "structural_matches": len(structural_matches),
+                    "window_size": len(window),
+                    "structural_threshold": self.structural_threshold,
+                },
+                framework=self.framework,
             )
-        
+
         current_hash = self._compute_state_hash(current)
         hash_matches = []
         for i, prev in enumerate(window):
             prev_hash = self._compute_state_hash(prev)
             if current_hash == prev_hash:
                 hash_matches.append(i)
-        
+
         if hash_matches:
             first_match = hash_matches[0]
             loop_length = len(window) - first_match
             raw_score = len(hash_matches) / len(window)
             evidence_strength = min(1.0, len(hash_matches) / 2)
-            
+
             confidence = self._calibrate_confidence(
                 raw_score=raw_score,
                 method="hash",
                 evidence_strength=evidence_strength,
                 loop_length=loop_length,
             )
-            
+
             return LoopDetectionResult(
                 detected=True,
                 confidence=confidence,
@@ -142,40 +173,41 @@ class MultiLevelLoopDetector:
                 loop_length=loop_length,
                 raw_score=raw_score,
                 evidence={"hash_matches": len(hash_matches), "window_size": len(window)},
+                framework=self.framework,
             )
-        
+
         try:
             contents = [s.content for s in window] + [current.content]
             if len(contents) < 4:
-                return LoopDetectionResult(detected=False, confidence=0.0, method=None, cost=0.0)
-            
+                return LoopDetectionResult(detected=False, confidence=0.0, method=None, cost=0.0, framework=self.framework)
+
             embeddings = self.embedder.encode(contents)
-            
+
             current_emb = embeddings[-1]
             similarities = []
             for i, emb in enumerate(embeddings[:-1]):
                 sim = self.embedder.similarity(current_emb, emb)
                 similarities.append((i, sim))
-            
+
             high_sim_matches = [(i, sim) for i, sim in similarities if sim > self.semantic_threshold]
-            
+
             if len(high_sim_matches) >= self.min_matches_for_loop:
                 first_match_idx = high_sim_matches[0][0]
                 avg_similarity = sum(s for _, s in high_sim_matches) / len(high_sim_matches)
                 max_similarity = max(s for _, s in high_sim_matches)
                 loop_length = len(window) - first_match_idx
                 window_start = max(0, len(states) - self.window_size - 1)
-                
+
                 raw_score = avg_similarity
                 evidence_strength = min(1.0, len(high_sim_matches) / 4)
-                
+
                 confidence = self._calibrate_confidence(
                     raw_score=raw_score,
                     method="semantic",
                     evidence_strength=evidence_strength,
                     loop_length=loop_length,
                 )
-                
+
                 return LoopDetectionResult(
                     detected=True,
                     confidence=confidence,
@@ -190,11 +222,12 @@ class MultiLevelLoopDetector:
                         "max_similarity": round(max_similarity, 4),
                         "threshold": self.semantic_threshold,
                     },
+                    framework=self.framework,
                 )
         except Exception:
             pass
-        
-        return LoopDetectionResult(detected=False, confidence=0.0, method=None, cost=0.0)
+
+        return LoopDetectionResult(detected=False, confidence=0.0, method=None, cost=0.0, framework=self.framework)
     
     def _structural_match(self, a: StateSnapshot, b: StateSnapshot) -> bool:
         return (

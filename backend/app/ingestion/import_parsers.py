@@ -37,9 +37,9 @@ class ImportParser(ABC):
             first_line = content.split('\n')[0].strip()
             if not first_line:
                 return None
-            
+
             sample = json.loads(first_line)
-            
+
             if "run_type" in sample and "inputs" in sample:
                 return "langsmith"
             if "traces" in sample or "observations" in sample:
@@ -48,10 +48,104 @@ class ImportParser(ABC):
                 return "otlp"
             if "agent_id" in sample or "agent" in sample:
                 return "generic"
-            
+
             return "generic"
         except json.JSONDecodeError:
             return None
+
+    @classmethod
+    def detect_framework(cls, content: str) -> str:
+        """Detect the agent framework from trace content.
+
+        Args:
+            content: Raw content to analyze
+
+        Returns:
+            Detected framework name (langgraph, autogen, crewai, langchain, etc.)
+        """
+        try:
+            content_lower = content.lower()
+
+            # Parse first few lines for inspection
+            sample_items = []
+            for line in content.strip().split('\n')[:10]:
+                line = line.strip()
+                if line.startswith('{'):
+                    try:
+                        sample_items.append(json.loads(line))
+                    except json.JSONDecodeError:
+                        continue
+
+            # Check for explicit framework markers in data
+            for item in sample_items:
+                if not isinstance(item, dict):
+                    continue
+
+                # Check mas_name field (MAST format)
+                mas_name = str(item.get("mas_name", "")).lower()
+                if mas_name:
+                    return cls._normalize_framework_name(mas_name)
+
+                # Check framework field
+                framework = str(item.get("framework", "")).lower()
+                if framework:
+                    return cls._normalize_framework_name(framework)
+
+                # Check metadata for framework hints
+                metadata = item.get("metadata", {}) or {}
+                if isinstance(metadata, dict):
+                    fw = str(metadata.get("framework", "") or metadata.get("agent_framework", "")).lower()
+                    if fw:
+                        return cls._normalize_framework_name(fw)
+
+                # Check run_type patterns (LangSmith traces)
+                run_type = str(item.get("run_type", "")).lower()
+                if run_type in ["agent", "chain"]:
+                    if "langgraph" in content_lower:
+                        return "langgraph"
+                    return "langchain"
+
+            # String-based heuristics
+            framework_markers = {
+                "langgraph": ["langgraph", "stategraph", "compiledgraph", "add_node", "add_edge"],
+                "autogen": ["autogen", "conversableagent", "assistantagent", "useragent", "groupchat"],
+                "crewai": ["crewai", "crew", "task.output", "agent.role", "kickoff"],
+                "langchain": ["langchain", "lcel", "runnablesequence", "agentexecutor"],
+                "openai": ["openai", "gpt-4", "gpt-3.5", "assistants", "function_call"],
+                "anthropic": ["anthropic", "claude", "human_turn_idx"],
+                "n8n": ["n8n", "workflowid", "executionid", "nodetype"],
+            }
+
+            for framework, markers in framework_markers.items():
+                if any(marker in content_lower for marker in markers):
+                    return framework
+
+            return "unknown"
+        except Exception:
+            return "unknown"
+
+    @classmethod
+    def _normalize_framework_name(cls, name: str) -> str:
+        """Normalize framework name to standard form."""
+        name = name.lower().strip()
+
+        framework_aliases = {
+            "langgraph": ["langgraph", "lang_graph", "lang-graph"],
+            "langchain": ["langchain", "lang_chain", "lang-chain", "lcel"],
+            "autogen": ["autogen", "auto_gen", "auto-gen", "ag2", "magentic-one", "magentic"],
+            "crewai": ["crewai", "crew_ai", "crew-ai", "crew"],
+            "openai": ["openai", "open_ai", "open-ai", "gpt", "chatgpt"],
+            "anthropic": ["anthropic", "claude"],
+            "n8n": ["n8n"],
+            "chatdev": ["chatdev", "chat_dev"],
+            "metagpt": ["metagpt", "meta_gpt", "meta-gpt"],
+        }
+
+        for canonical, aliases in framework_aliases.items():
+            if any(alias in name for alias in aliases):
+                return canonical
+
+        return name if name else "unknown"
     
     def _parse_timestamp(self, ts: Any) -> datetime:
         if isinstance(ts, datetime):

@@ -18,7 +18,7 @@ from app.ingestion.import_parsers import (
     ImportParser,
     ParsedRecord,
 )
-from app.detection.loop import loop_detector, StateSnapshot
+from app.detection.loop import MultiLevelLoopDetector, StateSnapshot
 from pydantic import BaseModel
 from typing import Dict, Any
 
@@ -311,14 +311,17 @@ async def process_import_job(
             parser = get_parser(format_type)
             traces_map = {}
             states_by_trace = {}
-            
+
+            # Detect the actual agent framework from content
+            detected_framework = ImportParser.detect_framework(content)
+
             for i, record in enumerate(parser.parse(content)):
                 try:
                     if record.trace_id not in traces_map:
                         trace = Trace(
                             tenant_id=UUID(tenant_id),
                             session_id=record.trace_id,
-                            framework=format_type,
+                            framework=detected_framework,  # Use detected framework, not format
                             status="imported",
                         )
                         db.add(trace)
@@ -371,11 +374,14 @@ async def process_import_job(
                     db.add(error)
             
             await db.commit()
-            
+
+            # Create framework-aware detector for post-import analysis
+            loop_detector = MultiLevelLoopDetector.for_framework(detected_framework)
+
             for trace_id, states in states_by_trace.items():
                 if len(states) < 3:
                     continue
-                
+
                 snapshots = [
                     StateSnapshot(
                         agent_id=s.agent_id,
@@ -385,9 +391,9 @@ async def process_import_job(
                     )
                     for s in states
                 ]
-                
+
                 loop_result = loop_detector.detect_loop(snapshots)
-                
+
                 if loop_result.detected:
                     trace = traces_map[trace_id]
                     detection = Detection(
@@ -400,6 +406,8 @@ async def process_import_job(
                             "loop_start_index": loop_result.loop_start_index,
                             "loop_length": loop_result.loop_length,
                             "source": "import",
+                            "framework": detected_framework,
+                            "evidence": loop_result.evidence,
                         },
                     )
                     db.add(detection)
