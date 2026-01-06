@@ -55,7 +55,7 @@ from .completion import (
     CompletionSeverity,
     CompletionIssueType,
 )
-from .validation import ValidationDetector, ValidationResult
+from .validation import DetectionValidator, ValidationMetrics
 
 # Create singleton instances for convenience
 derailment_detector = TaskDerailmentDetector()
@@ -152,8 +152,8 @@ __all__ = [
     "CompletionSeverity",
     "CompletionIssueType",
     # Validation
-    "ValidationDetector",
-    "ValidationResult",
+    "DetectionValidator",
+    "ValidationMetrics",
 ]
 
 # Enterprise exports - conditionally add when enabled
