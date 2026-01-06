@@ -3,12 +3,14 @@
 Command-line interface for capturing Claude Code traces and syncing
 to the PISAMA platform for analysis and self-healing.
 
-Quick Start:
-    pisama-cc demo         Run instant demo detection (no setup needed!)
-    pisama-cc install      Install hooks to ~/.claude/
+Quick Start (3 lines!):
+    pip install pisama-claude-code    # Install package
+    pisama-cc install                 # Install hooks + auto-config
+    pisama-cc verify                  # Confirm everything works
 
 Usage:
-    pisama-cc install      Install hooks to ~/.claude/
+    pisama-cc install      Install hooks to ~/.claude/ (auto-updates settings)
+    pisama-cc verify       Verify installation is working
     pisama-cc uninstall    Remove hooks
     pisama-cc status       Show current status (incl. token/cost totals)
     pisama-cc traces       View recent traces (-v for token usage)
@@ -79,10 +81,32 @@ GITHUB_URL = "https://github.com/tn-pisama/pisama-claude-code"
 
 @main.command()
 @click.option("--force", "-f", is_flag=True, help="Overwrite existing hooks")
-def install(force: bool):
-    """Install PISAMA hooks to ~/.claude/hooks/."""
+@click.option("--no-auto-config", is_flag=True, help="Don't auto-update settings.local.json")
+def install(force: bool, no_auto_config: bool):
+    """Install PISAMA hooks to ~/.claude/hooks/.
+
+    By default, automatically updates settings.local.json to enable hooks.
+    Use --no-auto-config to skip automatic configuration.
+    """
     from pisama_claude_code.install import install as do_install
-    do_install(force=force)
+    do_install(force=force, auto_config=not no_auto_config)
+
+
+@main.command()
+def verify():
+    """Verify PISAMA installation is working correctly.
+
+    Checks:
+    - Hook files exist and are executable
+    - settings.local.json has PISAMA hooks configured
+    - All required directories exist
+
+    Exit code 0 if all checks pass, 1 otherwise.
+    """
+    from pisama_claude_code.install import verify as do_verify
+    import sys
+    success = do_verify()
+    sys.exit(0 if success else 1)
 
 
 @main.command()
