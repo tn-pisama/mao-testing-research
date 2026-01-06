@@ -375,3 +375,50 @@ class TurnState(Base):
         Index("idx_turn_states_turn", "turn_id"),
         Index("idx_turn_states_state", "state_id"),
     )
+
+
+class HealingRecord(Base):
+    """Tracks self-healing fix applications and their outcomes."""
+    __tablename__ = "healing_records"
+
+    id = Column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
+    tenant_id = Column(UUID(as_uuid=True), ForeignKey("tenants.id"), nullable=False)
+    detection_id = Column(UUID(as_uuid=True), ForeignKey("detections.id"), nullable=False)
+
+    # Healing status
+    status = Column(String(32), nullable=False, default="pending")  # pending, in_progress, applied, rolled_back, failed
+
+    # Fix details
+    fix_type = Column(String(64), nullable=False)  # From FixType enum
+    fix_id = Column(String(64), nullable=False)  # Unique ID of the fix suggestion
+    fix_suggestions = Column(JSONB, nullable=False)  # List of fix suggestions considered
+    applied_fixes = Column(JSONB, default=dict)  # Details of fixes that were applied
+
+    # State for rollback
+    original_state = Column(JSONB, default=dict)  # Snapshot of state before fix
+    rollback_available = Column(Boolean, default=True)
+
+    # Validation
+    validation_status = Column(String(32), nullable=True)  # passed, failed, skipped
+    validation_results = Column(JSONB, default=dict)
+
+    # Approval workflow
+    approval_required = Column(Boolean, default=False)
+    approved_by = Column(String(128), nullable=True)
+    approved_at = Column(DateTime(timezone=True), nullable=True)
+
+    # Timestamps
+    started_at = Column(DateTime(timezone=True), nullable=True)
+    completed_at = Column(DateTime(timezone=True), nullable=True)
+    rolled_back_at = Column(DateTime(timezone=True), nullable=True)
+    created_at = Column(DateTime(timezone=True), server_default=func.now())
+
+    # Error tracking
+    error_message = Column(Text, nullable=True)
+
+    __table_args__ = (
+        Index("idx_healing_tenant", "tenant_id"),
+        Index("idx_healing_detection", "detection_id"),
+        Index("idx_healing_status", "status"),
+        Index("idx_healing_created", "created_at"),
+    )
