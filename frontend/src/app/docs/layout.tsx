@@ -17,6 +17,7 @@ import {
   Terminal,
   Boxes,
   Webhook,
+  Target,
 } from 'lucide-react'
 
 const docsNav = [
@@ -48,6 +49,7 @@ const docsNav = [
     items: [
       { href: '/docs/api-reference', label: 'REST API', icon: Code },
       { href: '/docs/webhooks', label: 'Webhooks', icon: Webhook },
+      { href: '/docs/methodology', label: 'Methodology', icon: Target },
     ],
   },
 ]
