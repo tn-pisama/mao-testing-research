@@ -9,7 +9,7 @@ from datetime import datetime
 import hashlib
 
 from app.storage.database import get_db, set_tenant_context
-from app.storage.models import ImportJob, ImportError as ImportErrorModel, Trace, State, Detection
+from app.storage.models import ImportJob, ImportError as ImportErrorModel, Trace, State, Detection, Tenant
 from app.core.auth import get_current_tenant
 from app.ingestion.import_parsers import (
     get_parser, 
@@ -308,6 +308,13 @@ async def process_import_job(
         await db.commit()
         
         try:
+            # Fetch tenant settings for threshold configuration
+            tenant_result = await db.execute(
+                select(Tenant).where(Tenant.id == UUID(tenant_id))
+            )
+            tenant = tenant_result.scalar_one_or_none()
+            tenant_settings = tenant.settings if tenant else None
+
             parser = get_parser(format_type)
             traces_map = {}
             states_by_trace = {}
@@ -375,8 +382,9 @@ async def process_import_job(
             
             await db.commit()
 
-            # Create framework-aware detector for post-import analysis
-            loop_detector = MultiLevelLoopDetector.for_framework(detected_framework)
+            # Create tenant-aware detector for post-import analysis
+            # Uses tenant threshold overrides merged with framework defaults
+            loop_detector = MultiLevelLoopDetector.for_tenant(tenant_settings, detected_framework)
 
             for trace_id, states in states_by_trace.items():
                 if len(states) < 3:

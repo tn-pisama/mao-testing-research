@@ -4,7 +4,7 @@ from dataclasses import dataclass
 from typing import List, Optional
 import numpy as np
 from sklearn.cluster import KMeans
-from app.config import get_settings, get_framework_thresholds, FrameworkThresholds
+from app.config import get_settings, get_framework_thresholds, get_tenant_thresholds, FrameworkThresholds
 from app.core.embeddings import get_embedder
 
 settings = get_settings()
@@ -40,18 +40,20 @@ class MultiLevelLoopDetector:
         min_matches_for_loop: Optional[int] = None,
         confidence_scaling: Optional[float] = None,
         framework: Optional[str] = None,
+        tenant_settings: Optional[dict] = None,
     ):
         self._embedder = None
         self.framework = framework
+        self.tenant_settings = tenant_settings
 
-        # Get framework-specific defaults if framework is specified
-        if framework:
-            fw_thresholds = get_framework_thresholds(framework)
-            self.structural_threshold = structural_threshold or fw_thresholds.structural_threshold
-            self.semantic_threshold = semantic_threshold or fw_thresholds.semantic_threshold
-            self.window_size = window_size or fw_thresholds.loop_detection_window
-            self.min_matches_for_loop = min_matches_for_loop or fw_thresholds.min_matches_for_loop
-            self.confidence_scaling = confidence_scaling or fw_thresholds.confidence_scaling
+        # Get thresholds with tenant overrides if available
+        if tenant_settings or framework:
+            thresholds = get_tenant_thresholds(tenant_settings, framework)
+            self.structural_threshold = structural_threshold or thresholds.structural_threshold
+            self.semantic_threshold = semantic_threshold or thresholds.semantic_threshold
+            self.window_size = window_size or thresholds.loop_detection_window
+            self.min_matches_for_loop = min_matches_for_loop or thresholds.min_matches_for_loop
+            self.confidence_scaling = confidence_scaling or thresholds.confidence_scaling
         else:
             # Fall back to global settings
             self.structural_threshold = structural_threshold or settings.structural_threshold
@@ -71,6 +73,21 @@ class MultiLevelLoopDetector:
             MultiLevelLoopDetector with framework-specific thresholds
         """
         return cls(framework=framework)
+
+    @classmethod
+    def for_tenant(cls, tenant_settings: Optional[dict], framework: Optional[str] = None) -> "MultiLevelLoopDetector":
+        """Create a detector configured for a specific tenant.
+
+        Uses tenant-specific threshold overrides merged with framework defaults.
+
+        Args:
+            tenant_settings: Tenant's settings dict (from tenant.settings)
+            framework: Framework name for framework-specific defaults
+
+        Returns:
+            MultiLevelLoopDetector with tenant-specific thresholds
+        """
+        return cls(framework=framework, tenant_settings=tenant_settings)
     
     @property
     def embedder(self):

@@ -107,6 +107,88 @@ def get_framework_thresholds(framework: Optional[str] = None) -> FrameworkThresh
     return FRAMEWORK_THRESHOLDS.get(framework, FRAMEWORK_THRESHOLDS["unknown"])
 
 
+def get_tenant_thresholds(
+    tenant_settings: Optional[Dict] = None,
+    framework: Optional[str] = None
+) -> FrameworkThresholds:
+    """Get detection thresholds with tenant overrides.
+
+    Merges tenant-specific threshold settings with framework defaults.
+    Tenant settings take precedence over framework defaults.
+
+    Tenant settings format in tenant.settings JSONB:
+    {
+        "detection_thresholds": {
+            "global": {  # Applied to all frameworks
+                "structural_threshold": 0.92,
+                "semantic_threshold": 0.85,
+                ...
+            },
+            "frameworks": {  # Per-framework overrides
+                "langgraph": {
+                    "structural_threshold": 0.90,
+                    ...
+                }
+            }
+        }
+    }
+
+    Args:
+        tenant_settings: Tenant's settings dict (from tenant.settings)
+        framework: Framework name for framework-specific defaults
+
+    Returns:
+        FrameworkThresholds with tenant overrides applied
+    """
+    # Start with framework defaults
+    base = get_framework_thresholds(framework)
+
+    if not tenant_settings:
+        return base
+
+    detection_config = tenant_settings.get("detection_thresholds", {})
+
+    # Apply global tenant overrides first
+    global_overrides = detection_config.get("global", {})
+
+    # Then apply framework-specific tenant overrides
+    framework_key = (framework or "unknown").lower().strip()
+    framework_overrides = detection_config.get("frameworks", {}).get(framework_key, {})
+
+    # Merge: base -> global overrides -> framework overrides
+    return FrameworkThresholds(
+        structural_threshold=framework_overrides.get(
+            "structural_threshold",
+            global_overrides.get("structural_threshold", base.structural_threshold)
+        ),
+        semantic_threshold=framework_overrides.get(
+            "semantic_threshold",
+            global_overrides.get("semantic_threshold", base.semantic_threshold)
+        ),
+        loop_detection_window=framework_overrides.get(
+            "loop_detection_window",
+            global_overrides.get("loop_detection_window", base.loop_detection_window)
+        ),
+        min_matches_for_loop=framework_overrides.get(
+            "min_matches_for_loop",
+            global_overrides.get("min_matches_for_loop", base.min_matches_for_loop)
+        ),
+        confidence_scaling=framework_overrides.get(
+            "confidence_scaling",
+            global_overrides.get("confidence_scaling", base.confidence_scaling)
+        ),
+    )
+
+
+# Default threshold config for new tenants
+DEFAULT_TENANT_THRESHOLD_CONFIG = {
+    "detection_thresholds": {
+        "global": {},  # No global overrides by default
+        "frameworks": {},  # No per-framework overrides by default
+    }
+}
+
+
 class FeatureFlags(BaseSettings):
     """Feature flags for ICP vs Enterprise feature separation.
 
