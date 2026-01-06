@@ -22,7 +22,10 @@ import {
   Zap,
   RefreshCw,
   Trash2,
+  Sliders,
+  ExternalLink,
 } from 'lucide-react'
+import Link from 'next/link'
 
 type SettingsTab = 'general' | 'api' | 'notifications' | 'detection' | 'integrations'
 
@@ -220,6 +223,25 @@ export default function SettingsPage() {
 
             {activeTab === 'detection' && (
               <div className="space-y-6">
+                {/* Link to advanced threshold tuning */}
+                <Link
+                  href="/settings/tuning"
+                  className="flex items-center justify-between p-4 rounded-xl bg-gradient-to-r from-purple-600/20 to-indigo-600/20 border border-purple-500/30 hover:border-purple-500/50 transition-colors group"
+                >
+                  <div className="flex items-center gap-3">
+                    <div className="p-2 bg-purple-600/30 rounded-lg">
+                      <Sliders className="w-5 h-5 text-purple-400" />
+                    </div>
+                    <div>
+                      <div className="text-white font-medium">Advanced Threshold Tuning</div>
+                      <div className="text-sm text-slate-400">
+                        Optimize detection accuracy using feedback analytics
+                      </div>
+                    </div>
+                  </div>
+                  <ExternalLink size={16} className="text-purple-400 group-hover:translate-x-1 transition-transform" />
+                </Link>
+
                 <SettingsSection title="Detection Sensitivity" description="Adjust detection thresholds">
                   <SettingsField label="Confidence Threshold (%)">
                     <input
