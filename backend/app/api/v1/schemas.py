@@ -98,6 +98,10 @@ class DetectionResponse(BaseModel):
     validated: bool
     false_positive: Optional[bool]
     created_at: datetime
+    # Plain-English explanation fields
+    explanation: Optional[str] = None  # Human-readable explanation
+    business_impact: Optional[str] = None  # Impact on users/business
+    suggested_action: Optional[str] = None  # What to do next
 
 
 class DetectionValidateRequest(BaseModel):

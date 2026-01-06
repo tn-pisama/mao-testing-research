@@ -87,6 +87,10 @@ export interface Detection {
   validated: boolean
   false_positive?: boolean
   created_at: string
+  // Plain-English explanation fields
+  explanation?: string
+  business_impact?: string
+  suggested_action?: string
 }
 
 export interface LoopAnalytics {

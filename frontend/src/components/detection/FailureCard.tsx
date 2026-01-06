@@ -1,7 +1,7 @@
 'use client'
 
 import { useState } from 'react'
-import { AlertTriangle, RefreshCcw, CheckCircle, XCircle, Wrench, Loader2 } from 'lucide-react'
+import { AlertTriangle, RefreshCcw, CheckCircle, XCircle, Wrench, Loader2, ChevronDown, ChevronUp, Lightbulb, TrendingDown } from 'lucide-react'
 import { formatDistanceToNow } from 'date-fns'
 import type { Detection, FixSuggestion } from '@/lib/api'
 import { clsx } from 'clsx'
@@ -20,6 +20,8 @@ export function FailureCard({ detection, onValidate, onGetFixes, onApplyFix }: F
   const [selectedFix, setSelectedFix] = useState<FixSuggestion | null>(null)
   const [applyingFix, setApplyingFix] = useState(false)
   const [fixApplied, setFixApplied] = useState(false)
+  const [showDetails, setShowDetails] = useState(false)
+
   const icons = {
     loop: RefreshCcw,
     corruption: AlertTriangle,
@@ -89,14 +91,52 @@ export function FailureCard({ detection, onValidate, onGetFixes, onApplyFix }: F
               {formatDistanceToNow(new Date(detection.created_at), { addSuffix: true })}
             </span>
           </div>
-          <div className="flex items-center gap-4 text-sm text-slate-400 mb-2">
+          <div className="flex items-center gap-4 text-sm text-slate-400 mb-3">
             <span>Confidence: {detection.confidence}%</span>
             <span>Method: {detection.method}</span>
           </div>
+
+          {/* Plain-English Explanation */}
+          {detection.explanation && (
+            <div className="mb-3 space-y-2">
+              <p className="text-sm text-slate-200">{detection.explanation}</p>
+
+              {detection.business_impact && (
+                <div className="flex items-start gap-2 text-sm">
+                  <TrendingDown size={14} className="text-warning-500 mt-0.5 flex-shrink-0" />
+                  <span className="text-slate-400">
+                    <span className="text-warning-500 font-medium">Impact:</span> {detection.business_impact}
+                  </span>
+                </div>
+              )}
+
+              {detection.suggested_action && (
+                <div className="flex items-start gap-2 text-sm">
+                  <Lightbulb size={14} className="text-primary-500 mt-0.5 flex-shrink-0" />
+                  <span className="text-slate-400">
+                    <span className="text-primary-500 font-medium">Suggestion:</span> {detection.suggested_action}
+                  </span>
+                </div>
+              )}
+            </div>
+          )}
+
+          {/* Collapsible raw details */}
           {detection.details && Object.keys(detection.details).length > 0 && (
-            <pre className="bg-slate-900 rounded p-2 text-xs text-slate-300 overflow-x-auto">
-              {JSON.stringify(detection.details, null, 2)}
-            </pre>
+            <div className="mb-2">
+              <button
+                onClick={() => setShowDetails(!showDetails)}
+                className="flex items-center gap-1 text-xs text-slate-500 hover:text-slate-300 transition-colors"
+              >
+                {showDetails ? <ChevronUp size={12} /> : <ChevronDown size={12} />}
+                {showDetails ? 'Hide details' : 'Show technical details'}
+              </button>
+              {showDetails && (
+                <pre className="mt-2 bg-slate-900 rounded p-2 text-xs text-slate-300 overflow-x-auto">
+                  {JSON.stringify(detection.details, null, 2)}
+                </pre>
+              )}
+            </div>
           )}
           <div className="flex gap-2 mt-3 flex-wrap">
             {/* Apply Fix button - always show when fixes are available */}

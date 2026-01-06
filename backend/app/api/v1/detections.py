@@ -10,8 +10,36 @@ from app.storage.models import Detection
 from app.core.auth import get_current_tenant
 from app.api.v1.schemas import DetectionResponse, DetectionValidateRequest, FixSuggestionsListResponse, ApplyFixResponse
 from app.fixes import FixGenerator, LoopFixGenerator, CorruptionFixGenerator, PersonaFixGenerator, DeadlockFixGenerator
+from app.detection.explainer import explain_detection
 
 router = APIRouter(prefix="/detections", tags=["detections"])
+
+
+def detection_to_response(d: Detection) -> DetectionResponse:
+    """Convert Detection model to DetectionResponse with explanations."""
+    # Generate explanations
+    explanation_data = explain_detection({
+        "detection_type": d.detection_type,
+        "method": d.method,
+        "details": d.details or {},
+        "confidence": d.confidence,
+    })
+
+    return DetectionResponse(
+        id=d.id,
+        trace_id=d.trace_id,
+        state_id=d.state_id,
+        detection_type=d.detection_type,
+        confidence=d.confidence,
+        method=d.method,
+        details=d.details,
+        validated=d.validated,
+        false_positive=d.false_positive,
+        created_at=d.created_at,
+        explanation=explanation_data.get("explanation"),
+        business_impact=explanation_data.get("business_impact"),
+        suggested_action=explanation_data.get("suggested_action"),
+    )
 
 
 @router.get("", response_model=List[DetectionResponse])
@@ -37,22 +65,8 @@ async def list_detections(
     
     result = await db.execute(query)
     detections = result.scalars().all()
-    
-    return [
-        DetectionResponse(
-            id=d.id,
-            trace_id=d.trace_id,
-            state_id=d.state_id,
-            detection_type=d.detection_type,
-            confidence=d.confidence,
-            method=d.method,
-            details=d.details,
-            validated=d.validated,
-            false_positive=d.false_positive,
-            created_at=d.created_at,
-        )
-        for d in detections
-    ]
+
+    return [detection_to_response(d) for d in detections]
 
 
 @router.get("/{detection_id}", response_model=DetectionResponse)
@@ -73,19 +87,8 @@ async def get_detection(
     
     if not detection:
         raise HTTPException(status_code=404, detail="Detection not found")
-    
-    return DetectionResponse(
-        id=detection.id,
-        trace_id=detection.trace_id,
-        state_id=detection.state_id,
-        detection_type=detection.detection_type,
-        confidence=detection.confidence,
-        method=detection.method,
-        details=detection.details,
-        validated=detection.validated,
-        false_positive=detection.false_positive,
-        created_at=detection.created_at,
-    )
+
+    return detection_to_response(detection)
 
 
 @router.post("/{detection_id}/validate", response_model=DetectionResponse)
@@ -117,19 +120,8 @@ async def validate_detection(
     
     await db.commit()
     await db.refresh(detection)
-    
-    return DetectionResponse(
-        id=detection.id,
-        trace_id=detection.trace_id,
-        state_id=detection.state_id,
-        detection_type=detection.detection_type,
-        confidence=detection.confidence,
-        method=detection.method,
-        details=detection.details,
-        validated=detection.validated,
-        false_positive=detection.false_positive,
-        created_at=detection.created_at,
-    )
+
+    return detection_to_response(detection)
 
 
 def get_fix_generator() -> FixGenerator:
