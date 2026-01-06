@@ -1,0 +1,57 @@
+{
+  "trace_id": "demo-semantic-001",
+  "framework": "autogen",
+  "failure_mode": "F3",
+  "states": [
+    {
+      "agent_id": "assistant",
+      "content": "I'd like to help you with your request. Could you provide more details about what you're looking for?",
+      "state": {"intent": "clarify", "turn": 1}
+    },
+    {
+      "agent_id": "user_proxy",
+      "content": "I want to analyze the data.",
+      "state": {"user_input": true, "turn": 2}
+    },
+    {
+      "agent_id": "assistant",
+      "content": "To analyze the data, I need a bit more information. What specific aspects would you like me to focus on?",
+      "state": {"intent": "clarify", "turn": 3}
+    },
+    {
+      "agent_id": "user_proxy",
+      "content": "The sales data.",
+      "state": {"user_input": true, "turn": 4}
+    },
+    {
+      "agent_id": "assistant",
+      "content": "I understand you want to look at sales data. Could you clarify what kind of analysis you're hoping to perform?",
+      "state": {"intent": "clarify", "turn": 5}
+    },
+    {
+      "agent_id": "user_proxy",
+      "content": "Just analyze it.",
+      "state": {"user_input": true, "turn": 6}
+    },
+    {
+      "agent_id": "assistant",
+      "content": "I want to make sure I understand correctly. When you say 'analyze', are you looking for trends, comparisons, or something else?",
+      "state": {"intent": "clarify", "turn": 7}
+    },
+    {
+      "agent_id": "user_proxy",
+      "content": "Whatever you think is best.",
+      "state": {"user_input": true, "turn": 8}
+    },
+    {
+      "agent_id": "assistant",
+      "content": "Before I proceed, could you tell me a bit more about your goals? That way I can provide the most relevant analysis.",
+      "state": {"intent": "clarify", "turn": 9}
+    },
+    {
+      "agent_id": "assistant",
+      "content": "I'd really like to help. Can you share what insights would be most valuable to you?",
+      "state": {"intent": "clarify", "turn": 10}
+    }
+  ]
+}

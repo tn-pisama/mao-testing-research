@@ -1,0 +1,47 @@
+{
+  "trace_id": "demo-healthy-001",
+  "framework": "langgraph",
+  "failure_mode": "healthy",
+  "states": [
+    {
+      "agent_id": "planner",
+      "content": "Analyzing user request: 'Create a summary of the quarterly report'",
+      "state": {"task": "summarize", "status": "planning"}
+    },
+    {
+      "agent_id": "planner",
+      "content": "Breaking down into subtasks: 1) Read report, 2) Extract key metrics, 3) Write summary",
+      "state": {"task": "summarize", "subtasks": 3, "status": "planned"}
+    },
+    {
+      "agent_id": "reader",
+      "content": "Reading quarterly report document...",
+      "state": {"task": "read", "status": "in_progress"}
+    },
+    {
+      "agent_id": "reader",
+      "content": "Extracted content: Revenue up 15%, new product launch successful, Q2 outlook positive",
+      "state": {"task": "read", "status": "complete", "metrics_found": 3}
+    },
+    {
+      "agent_id": "analyzer",
+      "content": "Analyzing key metrics: Revenue growth 15%, Product launch ROI 2.3x, Customer satisfaction 4.5/5",
+      "state": {"task": "analyze", "status": "complete"}
+    },
+    {
+      "agent_id": "writer",
+      "content": "Writing executive summary...",
+      "state": {"task": "write", "status": "in_progress"}
+    },
+    {
+      "agent_id": "writer",
+      "content": "Summary complete: Q3 showed strong performance with 15% revenue growth driven by successful product launch. Customer satisfaction remains high at 4.5/5.",
+      "state": {"task": "write", "status": "complete"}
+    },
+    {
+      "agent_id": "reviewer",
+      "content": "Review complete. Summary accurately reflects report content. Task finished.",
+      "state": {"task": "review", "status": "complete", "approved": true}
+    }
+  ]
+}

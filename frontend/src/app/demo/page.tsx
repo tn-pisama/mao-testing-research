@@ -9,9 +9,11 @@ import { DemoControlsPanel } from '@/components/demo/DemoControlsPanel'
 import { DemoScenarioSelector } from '@/components/demo/DemoScenarioSelector'
 import { LiveDetectionFeed } from '@/components/demo/LiveDetectionFeed'
 import { LoopVisualization } from '@/components/demo/LoopVisualization'
+import { GuidedWalkthrough, WalkthroughTrigger } from '@/components/demo/GuidedWalkthrough'
+import { TraceUpload } from '@/components/demo/TraceUpload'
 import { useDemoMode } from '@/hooks/useDemoMode'
 import { Button } from '@/components/ui/Button'
-import { Play, RotateCcw, Sparkles, AlertTriangle, TrendingUp } from 'lucide-react'
+import { Play, RotateCcw, Sparkles, AlertTriangle, TrendingUp, Upload } from 'lucide-react'
 
 type DemoScenario = 'healthy' | 'loop' | 'corruption' | 'deadlock'
 
@@ -42,7 +44,19 @@ export default function DemoPage() {
   const [activeScenario, setActiveScenario] = useState<DemoScenario>('healthy')
   const [demoStep, setDemoStep] = useState(0)
   const [showDetection, setShowDetection] = useState(false)
+  const [showWalkthrough, setShowWalkthrough] = useState(false)
+  const [hasSeenTour, setHasSeenTour] = useState(false)
   const demo = useDemoMode({ autoSimulate: false })
+
+  // Check if user has seen tour before
+  useEffect(() => {
+    const seen = localStorage.getItem('pisama_demo_tour_seen')
+    if (!seen) {
+      setShowWalkthrough(true)
+    } else {
+      setHasSeenTour(true)
+    }
+  }, [])
 
   useEffect(() => {
     if (demo.isSimulating && activeScenario !== 'healthy') {
@@ -74,6 +88,22 @@ export default function DemoPage() {
     demo.refreshData()
   }
 
+  const handleWalkthroughComplete = () => {
+    localStorage.setItem('pisama_demo_tour_seen', 'true')
+    setShowWalkthrough(false)
+    setHasSeenTour(true)
+  }
+
+  const handleWalkthroughSkip = () => {
+    localStorage.setItem('pisama_demo_tour_seen', 'true')
+    setShowWalkthrough(false)
+    setHasSeenTour(true)
+  }
+
+  const handleStartTour = () => {
+    setShowWalkthrough(true)
+  }
+
   if (!demo.isLoaded) {
     return (
       <Layout>
@@ -91,22 +121,35 @@ export default function DemoPage() {
 
   return (
     <Layout>
+      {/* Guided Walkthrough */}
+      {showWalkthrough && (
+        <GuidedWalkthrough
+          onComplete={handleWalkthroughComplete}
+          onSkip={handleWalkthroughSkip}
+        />
+      )}
+
       <div className="p-6">
         <div className="mb-8">
-          <div className="flex items-center gap-3 mb-2">
-            <div className="p-2 rounded-lg bg-gradient-to-br from-purple-500/20 to-pink-500/20 border border-purple-500/30">
-              <Sparkles size={24} className="text-purple-400" />
+          <div className="flex items-center justify-between">
+            <div className="flex items-center gap-3 mb-2">
+              <div className="p-2 rounded-lg bg-gradient-to-br from-purple-500/20 to-pink-500/20 border border-purple-500/30">
+                <Sparkles size={24} className="text-purple-400" />
+              </div>
+              <div>
+                <h1 className="text-2xl font-bold text-white">Interactive Demo</h1>
+                <p className="text-sm text-slate-400">
+                  Experience real-time multi-agent failure detection
+                </p>
+              </div>
             </div>
-            <div>
-              <h1 className="text-2xl font-bold text-white">Interactive Demo</h1>
-              <p className="text-sm text-slate-400">
-                Experience real-time multi-agent failure detection
-              </p>
-            </div>
+            {hasSeenTour && (
+              <WalkthroughTrigger onClick={handleStartTour} />
+            )}
           </div>
         </div>
 
-        <div className="grid lg:grid-cols-4 gap-6 mb-6">
+        <div className="grid lg:grid-cols-4 gap-6 mb-6 scenario-selector">
           <DemoScenarioSelector
             scenarios={scenarios}
             activeScenario={activeScenario}
@@ -116,7 +159,7 @@ export default function DemoPage() {
 
         <div className="flex items-center gap-4 mb-6">
           {demoStep === 0 ? (
-            <Button onClick={handleStartDemo} leftIcon={<Play size={16} />} size="lg">
+            <Button onClick={handleStartDemo} leftIcon={<Play size={16} />} size="lg" className="demo-start-button">
               Start Demo
             </Button>
           ) : (
@@ -142,7 +185,9 @@ export default function DemoPage() {
 
         {demoStep > 0 && (
           <>
-            <AgentMetricsPanel metrics={demo.agentMetrics} />
+            <div className="metrics-panel">
+              <AgentMetricsPanel metrics={demo.agentMetrics} />
+            </div>
 
             <div className="mt-6 grid lg:grid-cols-3 gap-6">
               <div className="lg:col-span-2">
@@ -168,10 +213,12 @@ export default function DemoPage() {
 
               <div className="space-y-6">
                 {showDetection && (
-                  <LiveDetectionFeed
-                    scenario={activeScenario}
-                    isActive={demo.isSimulating}
-                  />
+                  <div className="detection-feed">
+                    <LiveDetectionFeed
+                      scenario={activeScenario}
+                      isActive={demo.isSimulating}
+                    />
+                  </div>
                 )}
                 <AgentActivityFeed
                   events={demo.activityEvents}
@@ -184,19 +231,27 @@ export default function DemoPage() {
         )}
 
         {demoStep === 0 && (
-          <div className="mt-8 p-8 rounded-2xl border border-slate-700 bg-gradient-to-br from-slate-800/50 to-slate-900/50 text-center">
-            <div className="max-w-md mx-auto">
-              <div className="p-4 rounded-full bg-slate-800 border border-slate-700 w-16 h-16 mx-auto mb-4 flex items-center justify-center">
-                <Play size={24} className="text-primary-400" />
+          <div className="mt-8 grid lg:grid-cols-3 gap-6">
+            {/* Main CTA */}
+            <div className="lg:col-span-2 p-8 rounded-2xl border border-slate-700 bg-gradient-to-br from-slate-800/50 to-slate-900/50 text-center">
+              <div className="max-w-md mx-auto">
+                <div className="p-4 rounded-full bg-slate-800 border border-slate-700 w-16 h-16 mx-auto mb-4 flex items-center justify-center">
+                  <Play size={24} className="text-primary-400" />
+                </div>
+                <h3 className="text-xl font-semibold text-white mb-2">Ready to Demo</h3>
+                <p className="text-slate-400 mb-6">
+                  Select a scenario above and click Start Demo to see PISAMA in action.
+                  Watch as agents execute, metrics update in real-time, and failures are detected.
+                </p>
+                <Button onClick={handleStartDemo} size="lg" leftIcon={<Play size={16} />}>
+                  Start Demo
+                </Button>
               </div>
-              <h3 className="text-xl font-semibold text-white mb-2">Ready to Demo</h3>
-              <p className="text-slate-400 mb-6">
-                Select a scenario above and click Start Demo to see PISAMA in action.
-                Watch as agents execute, metrics update in real-time, and failures are detected.
-              </p>
-              <Button onClick={handleStartDemo} size="lg" leftIcon={<Play size={16} />}>
-                Start Demo
-              </Button>
+            </div>
+
+            {/* Trace Upload */}
+            <div className="trace-upload">
+              <TraceUpload />
             </div>
           </div>
         )}

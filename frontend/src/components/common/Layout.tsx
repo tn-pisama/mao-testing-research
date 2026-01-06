@@ -19,7 +19,8 @@ import {
   FlaskConical,
   Search,
   User,
-  Target
+  Target,
+  Users
 } from 'lucide-react'
 import { useUIStore } from '@/stores/uiStore'
 import { clsx } from 'clsx'
@@ -51,6 +52,7 @@ const navItems = [
   { href: '/regression', label: 'Regression', icon: GitBranch },
   { href: '/demo', label: 'Demo', icon: PlayCircle },
   { href: '/benchmarks', label: 'Benchmarks', icon: Target },
+  { href: '/case-studies', label: 'Case Studies', icon: Users },
   { href: '/docs', label: 'Docs', icon: BookOpen },
   { href: '/settings', label: 'Settings', icon: Settings },
 ]

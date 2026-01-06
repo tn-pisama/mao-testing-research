@@ -1,0 +1,42 @@
+{
+  "trace_id": "demo-loop-001",
+  "framework": "claude_code",
+  "failure_mode": "F1",
+  "states": [
+    {
+      "agent_id": "agent",
+      "content": "User requested to find the config file. Searching...",
+      "state": {"action": "search", "target": "config.yaml"}
+    },
+    {
+      "agent_id": "agent",
+      "content": "File not found. Trying alternative location...",
+      "state": {"action": "search", "target": "config.yaml", "attempt": 1}
+    },
+    {
+      "agent_id": "agent",
+      "content": "Searching for config.yaml in project root...",
+      "state": {"action": "search", "target": "config.yaml", "attempt": 2}
+    },
+    {
+      "agent_id": "agent",
+      "content": "Searching for config.yaml in project root...",
+      "state": {"action": "search", "target": "config.yaml", "attempt": 3}
+    },
+    {
+      "agent_id": "agent",
+      "content": "Searching for config.yaml in project root...",
+      "state": {"action": "search", "target": "config.yaml", "attempt": 4}
+    },
+    {
+      "agent_id": "agent",
+      "content": "Searching for config.yaml in project root...",
+      "state": {"action": "search", "target": "config.yaml", "attempt": 5}
+    },
+    {
+      "agent_id": "agent",
+      "content": "Searching for config.yaml in project root...",
+      "state": {"action": "search", "target": "config.yaml", "attempt": 6}
+    }
+  ]
+}
