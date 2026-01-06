@@ -348,16 +348,33 @@ class TurnAwareContextNeglectDetector(EmbeddingMixin, TurnAwareDetector):
         user_turns = [t for t in turns if t.participant_type == "user"]
         agent_turns = [t for t in turns if t.participant_type == "agent"]
         tool_turns = [t for t in turns if t.participant_type == "tool"]
+        system_turns = [t for t in turns if t.participant_type == "system"]
 
         neglect_issues = []
         affected_turns = []
 
-        # Check 1: Agent responses vs user instructions
-        if self.check_user_instructions and user_turns and agent_turns:
-            for agent_turn in agent_turns:
-                # Find the most recent user turn before this agent turn
+        # Handle multi-agent systems where all participants are "agent" role
+        # (e.g., ChatDev where CEO gives task to Programmer)
+        # The task can come from: user turns, system prompt, or first agent
+        synthetic_user_turns = []
+        agents_to_check = agent_turns
+        if user_turns:
+            # Traditional user-agent conversation
+            synthetic_user_turns = user_turns
+        elif system_turns and any(len(t.content) > 50 for t in system_turns):
+            # Multi-agent: system prompt contains the task (e.g., "develop a program...")
+            synthetic_user_turns = [t for t in system_turns if len(t.content) > 50]
+        elif agent_turns:
+            # Multi-agent: first agent's message is the task
+            synthetic_user_turns = [agent_turns[0]]
+            agents_to_check = agent_turns[1:]
+
+        # Check 1: Agent responses vs user instructions (or first agent in multi-agent)
+        if self.check_user_instructions and synthetic_user_turns and agents_to_check:
+            for agent_turn in agents_to_check:
+                # Find the most recent user/task-giver turn before this agent turn
                 prior_user_turns = [
-                    u for u in user_turns
+                    u for u in synthetic_user_turns
                     if u.turn_number < agent_turn.turn_number
                 ]
                 if not prior_user_turns:
@@ -651,16 +668,24 @@ class TurnAwareDerailmentDetector(EmbeddingMixin, TurnAwareDetector):
         # Extract initial task/topic from first user turn (or first turn if all agents)
         user_turns = [t for t in turns if t.participant_type == "user"]
         agent_turns = [t for t in turns if t.participant_type == "agent"]
+        system_turns = [t for t in turns if t.participant_type == "system"]
 
         # Handle multi-agent systems where all participants are "agent" role
         # (e.g., ChatDev where CEO gives task to Programmer)
-        if not user_turns and agent_turns:
+        # The task can come from: user turns, system prompt, or first agent
+        initial_task = None
+        if user_turns:
+            initial_task = user_turns[0].content
+        elif system_turns and any(len(t.content) > 50 for t in system_turns):
+            # Multi-agent: system prompt contains the task
+            task_turns = [t for t in system_turns if len(t.content) > 50]
+            initial_task = task_turns[0].content
+        elif agent_turns:
             # Treat first agent as task-giver, rest as executors
             initial_task = agent_turns[0].content
             agent_turns = agent_turns[1:]  # Remaining agents to check for derailment
-        elif user_turns and agent_turns:
-            initial_task = user_turns[0].content
-        else:
+
+        if not initial_task or not agent_turns:
             return TurnAwareDetectionResult(
                 detected=False,
                 severity=TurnAwareSeverity.NONE,
@@ -1188,8 +1213,24 @@ class TurnAwareSpecificationMismatchDetector(TurnAwareDetector):
         """Detect specification mismatches between requirements and outputs."""
         user_turns = [t for t in turns if t.participant_type == "user"]
         agent_turns = [t for t in turns if t.participant_type == "agent"]
+        system_turns = [t for t in turns if t.participant_type == "system"]
 
-        if not user_turns or not agent_turns:
+        # Handle multi-agent systems where all participants are "agent" role
+        # (e.g., ChatDev where CEO gives task to Programmer)
+        # The task can come from: user turns, system prompt, or first agent
+        synthetic_user_turns = []
+        agents_to_check = agent_turns
+        if user_turns:
+            synthetic_user_turns = user_turns
+        elif system_turns and any(len(t.content) > 50 for t in system_turns):
+            # Multi-agent: system prompt contains the task
+            synthetic_user_turns = [t for t in system_turns if len(t.content) > 50]
+        elif agent_turns:
+            # Multi-agent: first agent's message contains the task
+            synthetic_user_turns = [agent_turns[0]]
+            agents_to_check = agent_turns[1:]
+
+        if not synthetic_user_turns or not agents_to_check:
             return TurnAwareDetectionResult(
                 detected=False,
                 severity=TurnAwareSeverity.NONE,
@@ -1202,8 +1243,8 @@ class TurnAwareSpecificationMismatchDetector(TurnAwareDetector):
         issues = []
         affected_turns = []
 
-        # Extract requirements from user turns
-        requirements = self._extract_requirements(user_turns)
+        # Extract requirements from user turns (or first agent in multi-agent)
+        requirements = self._extract_requirements(synthetic_user_turns)
 
         if len(requirements) < self.min_requirement_terms:
             return TurnAwareDetectionResult(
@@ -1216,7 +1257,7 @@ class TurnAwareSpecificationMismatchDetector(TurnAwareDetector):
             )
 
         # Check agent responses against requirements
-        agent_content = " ".join([t.content for t in agent_turns])
+        agent_content = " ".join([t.content for t in agents_to_check])
 
         # 1. Check requirement coverage
         coverage_result = self._check_coverage(requirements, agent_content)
@@ -1227,17 +1268,17 @@ class TurnAwareSpecificationMismatchDetector(TurnAwareDetector):
                 "coverage_ratio": coverage_result["coverage"],
                 "description": f"Missing requirements: {', '.join(coverage_result['uncovered'][:3])}",
             })
-            for ut in user_turns:
+            for ut in synthetic_user_turns:
                 affected_turns.append(ut.turn_number)
 
         # 2. Check for explicit mismatch indicators
-        mismatch_issues = self._check_mismatch_indicators(agent_turns)
+        mismatch_issues = self._check_mismatch_indicators(agents_to_check)
         issues.extend(mismatch_issues)
         for issue in mismatch_issues:
             affected_turns.extend(issue.get("turns", []))
 
         # 3. Check for scope creep (unrequested additions)
-        scope_issues = self._check_scope_creep(user_turns, agent_turns)
+        scope_issues = self._check_scope_creep(synthetic_user_turns, agents_to_check)
         issues.extend(scope_issues)
         for issue in scope_issues:
             affected_turns.extend(issue.get("turns", []))
