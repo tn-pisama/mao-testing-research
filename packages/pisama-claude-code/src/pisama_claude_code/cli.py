@@ -3,12 +3,17 @@
 Command-line interface for capturing Claude Code traces and syncing
 to the PISAMA platform for analysis and self-healing.
 
+Quick Start:
+    pisama-cc demo         Run instant demo detection (no setup needed!)
+    pisama-cc install      Install hooks to ~/.claude/
+
 Usage:
     pisama-cc install      Install hooks to ~/.claude/
     pisama-cc uninstall    Remove hooks
     pisama-cc status       Show current status (incl. token/cost totals)
     pisama-cc traces       View recent traces (-v for token usage)
     pisama-cc usage        Show token usage and cost breakdown
+    pisama-cc demo         Run demo detection on sample traces
     pisama-cc export       Export traces to file (JSONL or OTEL format)
     pisama-cc export-otel  Export traces to OpenTelemetry collector
     pisama-cc connect      Connect to PISAMA platform
@@ -85,6 +90,208 @@ def uninstall():
     """Remove PISAMA hooks from ~/.claude/hooks/."""
     from pisama_claude_code.install import uninstall as do_uninstall
     do_uninstall()
+
+
+@main.command()
+@click.option("--verbose", "-v", is_flag=True, help="Show detailed detection info")
+def demo(verbose: bool):
+    """Run a demo detection on sample traces.
+
+    This demonstrates PISAMA's failure detection capabilities without
+    requiring platform connection. Uses bundled sample traces that
+    showcase common agent failures.
+
+    Example:
+        pisama-cc demo           # Quick demo
+        pisama-cc demo -v        # Verbose with details
+    """
+    import importlib.resources
+
+    click.echo("")
+    click.echo("🚀 PISAMA Demo - Instant Failure Detection")
+    click.echo("=" * 55)
+    click.echo("")
+
+    # Load sample trace from package
+    try:
+        # Python 3.9+ compatible way to get package resources
+        try:
+            from importlib.resources import files
+            sample_path = files("pisama_claude_code.sample_traces").joinpath("demo_loop.jsonl")
+            sample_content = sample_path.read_text()
+        except (ImportError, TypeError):
+            # Fallback for older Python
+            import pkg_resources
+            sample_content = pkg_resources.resource_string(
+                "pisama_claude_code", "sample_traces/demo_loop.jsonl"
+            ).decode("utf-8")
+    except Exception as e:
+        click.echo(f"❌ Could not load sample traces: {e}")
+        click.echo("   Try reinstalling: pip install --upgrade pisama-claude-code")
+        return
+
+    # Parse traces
+    traces = []
+    for line in sample_content.strip().split("\n"):
+        if line.strip():
+            try:
+                traces.append(json.loads(line))
+            except json.JSONDecodeError:
+                continue
+
+    if not traces:
+        click.echo("❌ No valid traces in sample file")
+        return
+
+    click.echo(f"📥 Loaded {len(traces)} sample tool calls")
+    click.echo("")
+
+    # Run local loop detection
+    click.echo("🔍 Analyzing for failures...")
+    click.echo("")
+
+    detections = _run_local_detection(traces)
+
+    if not detections:
+        click.echo("✅ No failures detected in sample trace")
+        click.echo("")
+        click.echo("Try running on your own traces:")
+        click.echo("   pisama-cc traces     # View captured traces")
+        click.echo("   pisama-cc analyze    # Analyze with platform (requires connection)")
+        return
+
+    # Display detections with explanations
+    for i, detection in enumerate(detections, 1):
+        severity = detection.get("severity", 50)
+        if severity >= 70:
+            icon = "🔴"
+        elif severity >= 40:
+            icon = "🟡"
+        else:
+            icon = "🟢"
+
+        click.echo(f"{icon} Detection #{i}: {detection.get('type', 'Unknown Failure')}")
+        click.echo(f"   Confidence: {detection.get('confidence', 0)}%")
+        click.echo("")
+
+        # Plain English explanation
+        explanation = detection.get("explanation", "")
+        if explanation:
+            click.echo(f"   📝 {explanation}")
+            click.echo("")
+
+        # Business impact
+        impact = detection.get("business_impact", "")
+        if impact:
+            click.echo(f"   ⚠️  Impact: {impact}")
+
+        # Suggested action
+        action = detection.get("suggested_action", "")
+        if action:
+            click.echo(f"   💡 Fix: {action}")
+
+        click.echo("")
+
+        # Verbose details
+        if verbose and detection.get("details"):
+            click.echo("   Technical Details:")
+            for key, value in detection.get("details", {}).items():
+                click.echo(f"      {key}: {value}")
+            click.echo("")
+
+    # Celebration and next steps
+    click.echo("=" * 55)
+    click.echo("🎉 First detection complete!")
+    click.echo("")
+    click.echo("📋 Next Steps:")
+    click.echo("   1. Install hooks to capture your traces:")
+    click.echo("      pisama-cc install")
+    click.echo("")
+    click.echo("   2. Use Claude Code normally - traces are captured automatically")
+    click.echo("")
+    click.echo("   3. View your traces:")
+    click.echo("      pisama-cc traces")
+    click.echo("")
+    click.echo("   4. Connect to platform for advanced analysis:")
+    click.echo("      pisama-cc connect --api-key <your-key>")
+    click.echo("")
+    click.echo(f"Star us on GitHub: {GITHUB_URL}")
+    click.echo("")
+
+
+def _run_local_detection(traces: list) -> list:
+    """Run basic local detection without platform connection.
+
+    Currently supports:
+    - Loop detection (exact message repetition)
+    - Tool loop detection (same tool repeated)
+    """
+    detections = []
+
+    # Check for loop detection
+    if len(traces) >= 3:
+        # Check for exact message loops
+        tool_calls = [(t.get("tool_name", ""), json.dumps(t.get("tool_input", {}), sort_keys=True)) for t in traces]
+
+        # Find repeated sequences
+        consecutive_same = 1
+        max_consecutive = 1
+        repeated_tool = None
+        repeated_input = None
+
+        for i in range(1, len(tool_calls)):
+            if tool_calls[i] == tool_calls[i - 1]:
+                consecutive_same += 1
+                if consecutive_same > max_consecutive:
+                    max_consecutive = consecutive_same
+                    repeated_tool = tool_calls[i][0]
+                    repeated_input = tool_calls[i][1]
+            else:
+                consecutive_same = 1
+
+        # Report loop if 3+ consecutive identical calls
+        if max_consecutive >= 3:
+            confidence = min(95, 70 + (max_consecutive - 3) * 5)
+            severity = min(80, 40 + max_consecutive * 5)
+
+            detections.append({
+                "type": "Tool Loop Detected",
+                "confidence": confidence,
+                "severity": severity,
+                "explanation": f"Your agent called '{repeated_tool}' {max_consecutive} times in a row with identical parameters. This indicates the agent is stuck repeating the same action without making progress.",
+                "business_impact": "This wastes compute resources and API credits. The agent will likely time out without completing the task.",
+                "suggested_action": f"Add a retry limit (recommend max 3 attempts) for '{repeated_tool}'. Consider caching results to avoid duplicate calls.",
+                "details": {
+                    "tool_name": repeated_tool,
+                    "repetition_count": max_consecutive,
+                    "detection_method": "exact_hash_match",
+                },
+            })
+
+    # Check for semantic loops (same tool, different params but same pattern)
+    tool_sequence = [t.get("tool_name", "") for t in traces]
+    tool_counts = {}
+    for tool in tool_sequence:
+        tool_counts[tool] = tool_counts.get(tool, 0) + 1
+
+    for tool, count in tool_counts.items():
+        if count >= 4 and count / len(traces) > 0.6:
+            # High concentration of one tool
+            detections.append({
+                "type": "Tool Overuse Pattern",
+                "confidence": 75,
+                "severity": 45,
+                "explanation": f"'{tool}' was called {count} times ({int(count/len(traces)*100)}% of all calls). This suggests the agent may be over-relying on one approach.",
+                "business_impact": "The agent might be missing more effective strategies or tools for the task.",
+                "suggested_action": f"Review why '{tool}' is being called so frequently. Consider adding alternative approaches or result caching.",
+                "details": {
+                    "tool_name": tool,
+                    "call_count": count,
+                    "percentage": f"{int(count/len(traces)*100)}%",
+                },
+            })
+
+    return detections
 
 
 @main.command()
