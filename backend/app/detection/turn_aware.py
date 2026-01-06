@@ -1259,14 +1259,14 @@ class TurnAwareSpecificationMismatchDetector(TurnAwareDetector):
         # Check agent responses against requirements
         agent_content = " ".join([t.content for t in agents_to_check])
 
-        # 1. Check requirement coverage
+        # 1. Check requirement coverage - only flag if below threshold
         coverage_result = self._check_coverage(requirements, agent_content)
-        if coverage_result["uncovered"]:
+        if coverage_result["coverage"] < self.coverage_threshold:
             issues.append({
                 "type": "missing_requirements",
                 "uncovered": coverage_result["uncovered"][:5],
                 "coverage_ratio": coverage_result["coverage"],
-                "description": f"Missing requirements: {', '.join(coverage_result['uncovered'][:3])}",
+                "description": f"Missing requirements: {', '.join(coverage_result['uncovered'][:3])} ({coverage_result['coverage']:.0%} coverage < {self.coverage_threshold:.0%} threshold)",
             })
             for ut in synthetic_user_turns:
                 affected_turns.append(ut.turn_number)
