@@ -162,7 +162,7 @@ class Transition(Base):
 
 class Detection(Base):
     __tablename__ = "detections"
-    
+
     id = Column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
     tenant_id = Column(UUID(as_uuid=True), ForeignKey("tenants.id"), nullable=False)
     trace_id = Column(UUID(as_uuid=True), ForeignKey("traces.id"), nullable=False)
@@ -175,16 +175,52 @@ class Detection(Base):
     validated_by = Column(String(128), nullable=True)
     false_positive = Column(Boolean, nullable=True)
     created_at = Column(DateTime(timezone=True), server_default=func.now())
-    
+
     tenant = relationship("Tenant", back_populates="detections")
     trace = relationship("Trace", back_populates="detections")
-    
+    feedback = relationship("DetectionFeedback", back_populates="detection", uselist=False)
+
     __table_args__ = (
         Index("idx_detections_tenant", "tenant_id"),
         Index("idx_detections_trace", "trace_id"),
         Index("idx_detections_type", "detection_type"),
         Index("idx_detections_tenant_created", "tenant_id", "created_at"),
         Index("idx_detections_tenant_type", "tenant_id", "detection_type"),
+    )
+
+
+class DetectionFeedback(Base):
+    """User feedback on detection accuracy for threshold tuning."""
+    __tablename__ = "detection_feedback"
+
+    id = Column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
+    detection_id = Column(UUID(as_uuid=True), ForeignKey("detections.id", ondelete="CASCADE"), nullable=False, unique=True)
+    tenant_id = Column(UUID(as_uuid=True), ForeignKey("tenants.id"), nullable=False)
+
+    # Feedback classification
+    is_correct = Column(Boolean, nullable=False)  # Was the detection correct?
+    feedback_type = Column(String(32), nullable=False)  # true_positive, false_positive, false_negative, true_negative
+
+    # Context captured at feedback time
+    detection_confidence = Column(Integer, nullable=False)  # Original confidence
+    detection_method = Column(String(32), nullable=False)   # Original method
+    framework = Column(String(32), nullable=True)           # Framework used
+
+    # User-provided context
+    reason = Column(Text, nullable=True)                    # Why user thinks it's wrong/right
+    severity_rating = Column(Integer, nullable=True)        # 1-5 user severity rating
+
+    # Metadata
+    submitted_by = Column(String(128), nullable=True)
+    created_at = Column(DateTime(timezone=True), server_default=func.now())
+
+    detection = relationship("Detection", back_populates="feedback")
+
+    __table_args__ = (
+        Index("idx_feedback_tenant", "tenant_id"),
+        Index("idx_feedback_type", "feedback_type"),
+        Index("idx_feedback_framework", "framework"),
+        Index("idx_feedback_created", "created_at"),
     )
 
 

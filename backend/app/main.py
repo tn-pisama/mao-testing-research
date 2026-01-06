@@ -22,6 +22,7 @@ from app.api.v1 import (
     claude_code,
     conversations,
     benchmarks,
+    feedback,
 )
 
 settings = get_settings()
@@ -124,6 +125,7 @@ app.include_router(metrics.router, prefix="/api/v1")
 app.include_router(benchmarks.router, prefix="/api/v1")  # Benchmark results
 app.include_router(claude_code.router, prefix="/api/v1")  # Claude Code trace ingestion
 app.include_router(conversations.router, prefix="/api/v1/tenants/{tenant_id}")  # Conversation traces
+app.include_router(feedback.router, prefix="/api/v1/tenants/{tenant_id}")  # Detection feedback
 
 # Enterprise routers - conditionally included based on feature flags
 if enterprise_routers_loaded:
