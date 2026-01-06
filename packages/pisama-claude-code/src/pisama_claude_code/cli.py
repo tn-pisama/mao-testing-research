@@ -15,6 +15,11 @@ Usage:
     pisama-cc sync         Sync traces to platform
     pisama-cc analyze      Analyze traces (requires platform)
 
+Self-Healing:
+    pisama-cc fix list                   List available fixes
+    pisama-cc fix show FIX_ID            Show fix details
+    pisama-cc fix apply FIX_ID           Apply a suggested fix
+
 OTEL Export:
     pisama-cc export --format otel -o traces.json
     pisama-cc export-otel -e http://localhost:4318/v1/traces
@@ -73,13 +78,6 @@ def install(force: bool):
     """Install PISAMA hooks to ~/.claude/hooks/."""
     from pisama_claude_code.install import install as do_install
     do_install(force=force)
-
-    # Star reminder after install
-    click.echo("")
-    click.echo("=" * 50)
-    click.echo("If pisama-claude-code is useful, please star us!")
-    click.echo(f"   {GITHUB_URL}")
-    click.echo("=" * 50)
 
 
 @main.command()
@@ -349,6 +347,273 @@ def display_analysis_results(results: dict):
     click.echo("\n" + "─" * 50)
     click.echo(f"Found {len(detections)} issue(s)")
     click.echo(f"View details at: {results.get('dashboard_url', 'https://app.maotesting.com')}")
+
+
+# =============================================================================
+# FIX COMMANDS - Self-Healing Fix Application
+# =============================================================================
+
+@main.group()
+def fix():
+    """Self-healing fix commands."""
+    pass
+
+
+@fix.command("list")
+@click.option("--detection-id", help="Show fixes for specific detection")
+def fix_list(detection_id: Optional[str]):
+    """List available fixes for detected issues."""
+    if httpx is None:
+        click.echo("❌ httpx required. Run: pip install httpx")
+        return
+
+    config = get_config()
+
+    if not config.get("api_key"):
+        click.echo("❌ Fix listing requires platform connection")
+        click.echo("   Run: pisama-cc connect --api-key <your-key>")
+        return
+
+    click.echo("🔧 Available Fixes")
+    click.echo("=" * 60)
+
+    try:
+        # Get recent detections with fixes
+        endpoint = f"{config['api_url']}/v1/detections"
+        if detection_id:
+            endpoint = f"{config['api_url']}/v1/detections/{detection_id}/fixes"
+
+        response = httpx.get(
+            endpoint,
+            headers={"Authorization": f"Bearer {config['api_key']}"},
+            timeout=30,
+        )
+
+        if response.status_code == 200:
+            data = response.json()
+            if detection_id:
+                # Single detection fixes
+                suggestions = data.get("suggestions", [])
+                if suggestions:
+                    for i, fix_data in enumerate(suggestions, 1):
+                        click.echo(f"\n{i}. {fix_data.get('title', 'Unnamed Fix')}")
+                        click.echo(f"   ID: {fix_data.get('id', 'unknown')}")
+                        click.echo(f"   Type: {fix_data.get('fix_type', 'unknown')}")
+                        click.echo(f"   Confidence: {fix_data.get('confidence', 'unknown')}")
+                        click.echo(f"   {fix_data.get('description', '')[:100]}")
+                else:
+                    click.echo("No fixes available for this detection")
+            else:
+                # List detections
+                detections = data if isinstance(data, list) else data.get("detections", [])
+                for d in detections[:10]:
+                    click.echo(f"\n• {d.get('detection_type', 'unknown')} [{d.get('id', '')[:8]}]")
+                    click.echo(f"  Confidence: {d.get('confidence', 0)}%")
+                    click.echo(f"  Run: pisama-cc fix list --detection-id {d.get('id', '')}")
+        else:
+            click.echo(f"❌ Failed to fetch fixes: {response.status_code}")
+    except httpx.ConnectError:
+        click.echo(f"❌ Could not connect to {config['api_url']}")
+
+
+@fix.command("show")
+@click.argument("fix_id")
+@click.option("--detection-id", required=True, help="Detection ID for the fix")
+def fix_show(fix_id: str, detection_id: str):
+    """Show detailed fix information with code changes."""
+    if httpx is None:
+        click.echo("❌ httpx required. Run: pip install httpx")
+        return
+
+    config = get_config()
+
+    if not config.get("api_key"):
+        click.echo("❌ Fix viewing requires platform connection")
+        click.echo("   Run: pisama-cc connect --api-key <your-key>")
+        return
+
+    try:
+        response = httpx.get(
+            f"{config['api_url']}/v1/detections/{detection_id}/fixes",
+            headers={"Authorization": f"Bearer {config['api_key']}"},
+            timeout=30,
+        )
+
+        if response.status_code == 200:
+            data = response.json()
+            suggestions = data.get("suggestions", [])
+
+            # Find the specific fix
+            fix_data = None
+            for s in suggestions:
+                if s.get("id") == fix_id:
+                    fix_data = s
+                    break
+
+            if not fix_data:
+                click.echo(f"❌ Fix {fix_id} not found")
+                return
+
+            click.echo("🔧 Fix Details")
+            click.echo("=" * 60)
+            click.echo(f"\nTitle: {fix_data.get('title', 'Unnamed')}")
+            click.echo(f"Type: {fix_data.get('fix_type', 'unknown')}")
+            click.echo(f"Confidence: {fix_data.get('confidence', 'unknown')}")
+
+            if fix_data.get("breaking_changes"):
+                click.echo("\n⚠️  WARNING: This fix may introduce breaking changes")
+
+            if fix_data.get("requires_testing"):
+                click.echo("ℹ️  This fix requires testing after application")
+
+            click.echo(f"\nDescription:\n{fix_data.get('description', 'No description')}")
+            click.echo(f"\nRationale:\n{fix_data.get('rationale', 'No rationale')}")
+
+            # Show code changes
+            code_changes = fix_data.get("code_changes", [])
+            if code_changes:
+                click.echo("\n" + "─" * 60)
+                click.echo("Code Changes:")
+                for change in code_changes:
+                    click.echo(f"\n📄 {change.get('file_path', 'unknown')} ({change.get('language', '')})")
+                    if change.get("description"):
+                        click.echo(f"   {change['description']}")
+                    if change.get("diff"):
+                        click.echo("\n" + change["diff"])
+                    elif change.get("suggested_code"):
+                        click.echo("\nSuggested code:")
+                        click.echo(change["suggested_code"])
+
+            click.echo("\n" + "─" * 60)
+            click.echo(f"To apply: pisama-cc fix apply {fix_id} --detection-id {detection_id}")
+        else:
+            click.echo(f"❌ Failed to fetch fix details: {response.status_code}")
+    except httpx.ConnectError:
+        click.echo(f"❌ Could not connect to {config['api_url']}")
+
+
+@fix.command("apply")
+@click.argument("fix_id")
+@click.option("--detection-id", required=True, help="Detection ID for the fix")
+@click.option("--dry-run", is_flag=True, help="Show what would be applied without making changes")
+@click.option("--force", "-f", is_flag=True, help="Apply without confirmation")
+def fix_apply(fix_id: str, detection_id: str, dry_run: bool, force: bool):
+    """Apply a suggested fix for a detected issue.
+
+    This records the fix as applied and shows the code changes to implement.
+    The actual code changes need to be applied manually or via your IDE.
+
+    Examples:
+
+        # View a fix before applying
+        pisama-cc fix show FIX_ID --detection-id DETECTION_ID
+
+        # Apply a fix
+        pisama-cc fix apply FIX_ID --detection-id DETECTION_ID
+
+        # Dry run to see what would happen
+        pisama-cc fix apply FIX_ID --detection-id DETECTION_ID --dry-run
+    """
+    if httpx is None:
+        click.echo("❌ httpx required. Run: pip install httpx")
+        return
+
+    config = get_config()
+
+    if not config.get("api_key"):
+        click.echo("❌ Fix application requires platform connection")
+        click.echo("   Run: pisama-cc connect --api-key <your-key>")
+        return
+
+    try:
+        # First, get the fix details
+        response = httpx.get(
+            f"{config['api_url']}/v1/detections/{detection_id}/fixes",
+            headers={"Authorization": f"Bearer {config['api_key']}"},
+            timeout=30,
+        )
+
+        if response.status_code != 200:
+            click.echo(f"❌ Failed to fetch fix: {response.status_code}")
+            return
+
+        data = response.json()
+        suggestions = data.get("suggestions", [])
+
+        # Find the specific fix
+        fix_data = None
+        for s in suggestions:
+            if s.get("id") == fix_id:
+                fix_data = s
+                break
+
+        if not fix_data:
+            click.echo(f"❌ Fix {fix_id} not found")
+            return
+
+        # Display fix summary
+        click.echo("🔧 Applying Fix")
+        click.echo("=" * 60)
+        click.echo(f"\nTitle: {fix_data.get('title', 'Unnamed')}")
+        click.echo(f"Type: {fix_data.get('fix_type', 'unknown')}")
+        click.echo(f"Detection: {detection_id[:8]}...")
+
+        if fix_data.get("breaking_changes"):
+            click.echo("\n⚠️  WARNING: This fix may introduce breaking changes!")
+
+        # Show code changes
+        code_changes = fix_data.get("code_changes", [])
+        if code_changes:
+            click.echo("\nCode changes to apply:")
+            for change in code_changes:
+                click.echo(f"\n📄 {change.get('file_path', 'unknown')}")
+                if change.get("diff"):
+                    click.echo(change["diff"][:500])
+                    if len(change.get("diff", "")) > 500:
+                        click.echo("... (truncated, run 'fix show' to see full diff)")
+
+        if dry_run:
+            click.echo("\n" + "─" * 60)
+            click.echo("🔍 DRY RUN - No changes made")
+            click.echo("Remove --dry-run to apply this fix")
+            return
+
+        # Confirm application
+        if not force:
+            if not click.confirm("\nApply this fix?"):
+                click.echo("Cancelled")
+                return
+
+        # Apply the fix via API
+        apply_response = httpx.post(
+            f"{config['api_url']}/v1/detections/{detection_id}/fixes/{fix_id}/apply",
+            headers={"Authorization": f"Bearer {config['api_key']}"},
+            timeout=30,
+        )
+
+        if apply_response.status_code in (200, 201):
+            result = apply_response.json()
+            click.echo("\n" + "=" * 60)
+            click.echo("✅ Fix recorded as applied!")
+            click.echo(f"\n{result.get('message', 'Fix applied successfully.')}")
+
+            if result.get("rollback_available"):
+                click.echo("\nRollback is available if needed.")
+
+            # Show next steps
+            click.echo("\n📋 Next Steps:")
+            click.echo("1. Review the code changes above")
+            click.echo("2. Apply the changes to your codebase")
+            click.echo("3. Test the affected code paths")
+            click.echo("4. Commit the changes")
+        else:
+            click.echo(f"\n❌ Failed to apply fix: {apply_response.status_code}")
+            click.echo(f"   {apply_response.text[:200]}")
+
+    except httpx.ConnectError:
+        click.echo(f"❌ Could not connect to {config['api_url']}")
+    except Exception as e:
+        click.echo(f"❌ Error: {e}")
 
 
 @main.command()

@@ -413,6 +413,50 @@ export interface CostCalculation {
   provider: string
 }
 
+// Fix Suggestion types
+export interface CodeChange {
+  file_path: string
+  language: string
+  original_code?: string
+  suggested_code: string
+  start_line?: number
+  end_line?: number
+  description: string
+  diff: string
+}
+
+export interface FixSuggestion {
+  id: string
+  detection_id: string
+  detection_type: string
+  fix_type: string
+  confidence: string
+  title: string
+  description: string
+  rationale: string
+  code_changes: CodeChange[]
+  estimated_impact: string
+  breaking_changes: boolean
+  requires_testing: boolean
+  tags: string[]
+  metadata: Record<string, any>
+}
+
+export interface FixSuggestionsResponse {
+  detection_id: string
+  suggestions: FixSuggestion[]
+  total: number
+}
+
+export interface ApplyFixResult {
+  success: boolean
+  fix_id: string
+  detection_id: string
+  applied_at: string
+  message: string
+  rollback_available: boolean
+}
+
 // Import Job types
 export interface ImportJob {
   id: string
@@ -476,6 +520,18 @@ export function createApiClient(token?: string | null, tenantId?: string | null)
         ...opts,
         method: 'POST',
         body: { false_positive: falsePositive, notes },
+      })
+    },
+
+    // Fix suggestion endpoints
+    async getFixSuggestions(detectionId: string) {
+      return fetchApi<FixSuggestionsResponse>(`/tenants/{tenant_id}/detections/${detectionId}/fixes`, opts)
+    },
+
+    async applyFix(detectionId: string, fixId: string) {
+      return fetchApi<ApplyFixResult>(`/tenants/{tenant_id}/detections/${detectionId}/fixes/${fixId}/apply`, {
+        ...opts,
+        method: 'POST',
       })
     },
 

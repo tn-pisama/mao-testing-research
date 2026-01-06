@@ -195,6 +195,16 @@ class FixSuggestionsListResponse(BaseModel):
     total: int
 
 
+class ApplyFixResponse(BaseModel):
+    """Response when applying a fix."""
+    success: bool
+    fix_id: str
+    detection_id: str
+    applied_at: datetime
+    message: str
+    rollback_available: bool = False
+
+
 # Agent Forensics Diagnosis Schemas
 
 class DiagnoseRequest(BaseModel):

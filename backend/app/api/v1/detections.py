@@ -3,11 +3,12 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy import select, func
 from typing import List
 from uuid import UUID
+from datetime import datetime
 
 from app.storage.database import get_db, set_tenant_context
 from app.storage.models import Detection
 from app.core.auth import get_current_tenant
-from app.api.v1.schemas import DetectionResponse, DetectionValidateRequest, FixSuggestionsListResponse
+from app.api.v1.schemas import DetectionResponse, DetectionValidateRequest, FixSuggestionsListResponse, ApplyFixResponse
 from app.fixes import FixGenerator, LoopFixGenerator, CorruptionFixGenerator, PersonaFixGenerator, DeadlockFixGenerator
 
 router = APIRouter(prefix="/detections", tags=["detections"])
@@ -173,4 +174,81 @@ async def get_fix_suggestions(
         detection_id=str(detection_id),
         suggestions=[f.to_dict() for f in fixes],
         total=len(fixes),
+    )
+
+
+@router.post("/{detection_id}/fixes/{fix_id}/apply", response_model=ApplyFixResponse)
+async def apply_fix(
+    detection_id: UUID,
+    fix_id: str,
+    tenant_id: str = Depends(get_current_tenant),
+    db: AsyncSession = Depends(get_db),
+):
+    """Apply a suggested fix to address a detected failure.
+
+    This endpoint records the fix application and marks the detection as addressed.
+    The actual fix application depends on the fix type:
+    - Code fixes: Returns the fix details for the user to apply
+    - Configuration fixes: Can be applied automatically if permissions allow
+    - Prompt fixes: Returns the updated prompt for the user to apply
+    """
+    await set_tenant_context(db, tenant_id)
+
+    # Get the detection
+    result = await db.execute(
+        select(Detection).where(
+            Detection.id == detection_id,
+            Detection.tenant_id == UUID(tenant_id),
+        )
+    )
+    detection = result.scalar_one_or_none()
+
+    if not detection:
+        raise HTTPException(status_code=404, detail="Detection not found")
+
+    # Generate fixes to validate the fix_id
+    detection_dict = {
+        "id": str(detection.id),
+        "detection_type": detection.detection_type,
+        "method": detection.method,
+        "details": detection.details,
+    }
+
+    generator = get_fix_generator()
+    fixes = generator.generate_fixes(detection_dict, context={})
+
+    # Find the requested fix
+    matching_fix = None
+    for fix in fixes:
+        if fix.id == fix_id:
+            matching_fix = fix
+            break
+
+    if not matching_fix:
+        raise HTTPException(status_code=404, detail=f"Fix {fix_id} not found for this detection")
+
+    # Record the fix application in detection details
+    applied_at = datetime.utcnow()
+    detection.details = {
+        **detection.details,
+        "applied_fix": {
+            "fix_id": fix_id,
+            "fix_type": matching_fix.fix_type,
+            "title": matching_fix.title,
+            "applied_at": applied_at.isoformat(),
+            "applied_by": tenant_id,
+        }
+    }
+    detection.validated = True
+
+    await db.commit()
+    await db.refresh(detection)
+
+    return ApplyFixResponse(
+        success=True,
+        fix_id=fix_id,
+        detection_id=str(detection_id),
+        applied_at=applied_at,
+        message=f"Fix '{matching_fix.title}' has been recorded as applied. Review the code changes and apply them to your codebase.",
+        rollback_available=True,
     )

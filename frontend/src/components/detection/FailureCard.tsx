@@ -1,16 +1,25 @@
 'use client'
 
-import { AlertTriangle, RefreshCcw, CheckCircle, XCircle } from 'lucide-react'
+import { useState } from 'react'
+import { AlertTriangle, RefreshCcw, CheckCircle, XCircle, Wrench, Loader2 } from 'lucide-react'
 import { formatDistanceToNow } from 'date-fns'
-import type { Detection } from '@/lib/api'
+import type { Detection, FixSuggestion } from '@/lib/api'
 import { clsx } from 'clsx'
+import { FixPreviewModal } from './FixPreviewModal'
 
 interface FailureCardProps {
   detection: Detection
   onValidate?: (id: string, falsePositive: boolean) => void
+  onGetFixes?: (detectionId: string) => Promise<FixSuggestion[]>
+  onApplyFix?: (detectionId: string, fixId: string) => Promise<void>
 }
 
-export function FailureCard({ detection, onValidate }: FailureCardProps) {
+export function FailureCard({ detection, onValidate, onGetFixes, onApplyFix }: FailureCardProps) {
+  const [fixes, setFixes] = useState<FixSuggestion[]>([])
+  const [loadingFixes, setLoadingFixes] = useState(false)
+  const [selectedFix, setSelectedFix] = useState<FixSuggestion | null>(null)
+  const [applyingFix, setApplyingFix] = useState(false)
+  const [fixApplied, setFixApplied] = useState(false)
   const icons = {
     loop: RefreshCcw,
     corruption: AlertTriangle,
@@ -18,6 +27,36 @@ export function FailureCard({ detection, onValidate }: FailureCardProps) {
     coordination: AlertTriangle,
   }
   const Icon = icons[detection.detection_type as keyof typeof icons] || AlertTriangle
+
+  const handleGetFixes = async () => {
+    if (!onGetFixes) return
+    setLoadingFixes(true)
+    try {
+      const suggestions = await onGetFixes(detection.id)
+      setFixes(suggestions)
+      if (suggestions.length > 0) {
+        setSelectedFix(suggestions[0])
+      }
+    } catch (error) {
+      console.error('Failed to get fixes:', error)
+    } finally {
+      setLoadingFixes(false)
+    }
+  }
+
+  const handleApplyFix = async () => {
+    if (!onApplyFix || !selectedFix) return
+    setApplyingFix(true)
+    try {
+      await onApplyFix(detection.id, selectedFix.id)
+      setFixApplied(true)
+      setSelectedFix(null)
+    } catch (error) {
+      console.error('Failed to apply fix:', error)
+    } finally {
+      setApplyingFix(false)
+    }
+  }
 
   return (
     <div
@@ -59,26 +98,65 @@ export function FailureCard({ detection, onValidate }: FailureCardProps) {
               {JSON.stringify(detection.details, null, 2)}
             </pre>
           )}
-          {!detection.validated && onValidate && (
-            <div className="flex gap-2 mt-3">
+          <div className="flex gap-2 mt-3 flex-wrap">
+            {/* Apply Fix button - always show when fixes are available */}
+            {onGetFixes && !fixApplied && (
               <button
-                onClick={() => onValidate(detection.id, false)}
-                className="flex items-center gap-1 px-3 py-1.5 bg-success-500/20 text-success-500 rounded-lg text-sm hover:bg-success-500/30 transition-colors"
+                onClick={handleGetFixes}
+                disabled={loadingFixes}
+                className="flex items-center gap-1 px-3 py-1.5 bg-primary-500/20 text-primary-500 rounded-lg text-sm hover:bg-primary-500/30 transition-colors disabled:opacity-50"
               >
+                {loadingFixes ? (
+                  <Loader2 size={14} className="animate-spin" />
+                ) : (
+                  <Wrench size={14} />
+                )}
+                {loadingFixes ? 'Getting Fixes...' : 'Apply Fix'}
+              </button>
+            )}
+
+            {/* Fix applied indicator */}
+            {fixApplied && (
+              <span className="flex items-center gap-1 px-3 py-1.5 bg-success-500/20 text-success-500 rounded-lg text-sm">
                 <CheckCircle size={14} />
-                Confirm
-              </button>
-              <button
-                onClick={() => onValidate(detection.id, true)}
-                className="flex items-center gap-1 px-3 py-1.5 bg-slate-700 text-slate-300 rounded-lg text-sm hover:bg-slate-600 transition-colors"
-              >
-                <XCircle size={14} />
-                False Positive
-              </button>
-            </div>
-          )}
+                Fix Applied
+              </span>
+            )}
+
+            {/* Validation buttons */}
+            {!detection.validated && onValidate && (
+              <>
+                <button
+                  onClick={() => onValidate(detection.id, false)}
+                  className="flex items-center gap-1 px-3 py-1.5 bg-success-500/20 text-success-500 rounded-lg text-sm hover:bg-success-500/30 transition-colors"
+                >
+                  <CheckCircle size={14} />
+                  Confirm
+                </button>
+                <button
+                  onClick={() => onValidate(detection.id, true)}
+                  className="flex items-center gap-1 px-3 py-1.5 bg-slate-700 text-slate-300 rounded-lg text-sm hover:bg-slate-600 transition-colors"
+                >
+                  <XCircle size={14} />
+                  False Positive
+                </button>
+              </>
+            )}
+          </div>
         </div>
       </div>
+
+      {/* Fix Preview Modal */}
+      {selectedFix && (
+        <FixPreviewModal
+          fix={selectedFix}
+          allFixes={fixes}
+          onSelectFix={setSelectedFix}
+          onApply={handleApplyFix}
+          onClose={() => setSelectedFix(null)}
+          applying={applyingFix}
+        />
+      )}
     </div>
   )
 }
