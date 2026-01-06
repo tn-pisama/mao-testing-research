@@ -3,9 +3,70 @@ from pydantic import Field, field_validator
 from functools import lru_cache
 
 
+class FeatureFlags(BaseSettings):
+    """Feature flags for ICP vs Enterprise feature separation.
+
+    ICP (Startup) features are always enabled.
+    Enterprise features require explicit opt-in via these flags.
+    """
+    # Master switch - enables all enterprise features
+    enterprise_enabled: bool = Field(
+        default=False,
+        description="Master switch for all enterprise features"
+    )
+
+    # Individual enterprise feature flags
+    ml_detection: bool = Field(
+        default=False,
+        description="ML-based detection (tiered, orchestrator, golden dataset)"
+    )
+    otel_ingestion: bool = Field(
+        default=False,
+        description="OTEL native ingestion (vs SDK/export only)"
+    )
+    chaos_engineering: bool = Field(
+        default=False,
+        description="Chaos injection and resilience testing"
+    )
+    trace_replay: bool = Field(
+        default=False,
+        description="Trace replay and what-if simulation"
+    )
+    regression_testing: bool = Field(
+        default=False,
+        description="Regression testing framework"
+    )
+    advanced_evals: bool = Field(
+        default=False,
+        description="Advanced evaluation framework"
+    )
+    audit_logging: bool = Field(
+        default=False,
+        description="Compliance audit logging"
+    )
+
+    def is_enabled(self, feature: str) -> bool:
+        """Check if a specific feature is enabled.
+
+        Enterprise features require both:
+        1. The master enterprise_enabled flag
+        2. The specific feature flag
+        """
+        if not self.enterprise_enabled:
+            return False
+        return getattr(self, feature, False)
+
+    class Config:
+        env_prefix = "FEATURE_"
+        env_file = ".env"
+
+
 class Settings(BaseSettings):
     app_name: str = "MAO Testing Platform"
     debug: bool = False
+
+    # Feature flags (loaded as nested config)
+    features: FeatureFlags = Field(default_factory=FeatureFlags)
     
     database_url: str = "postgresql+asyncpg://mao:mao@localhost:5432/mao"
     redis_url: str = "redis://localhost:6379"

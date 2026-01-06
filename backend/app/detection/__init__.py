@@ -1,5 +1,30 @@
-"""Detection algorithms for MAO Testing Platform."""
+"""Detection algorithms for MAO Testing Platform.
 
+ICP (Startup) detectors - always available:
+- Loop detection (exact, structural, semantic)
+- State corruption detection
+- Persona consistency scoring
+- Coordination analysis
+- Cost calculation
+- Hallucination detection
+- Injection detection
+- Context overflow detection
+- Task derailment detection
+- Context neglect detection
+- Communication breakdown detection
+- Specification mismatch detection
+- Task decomposition detection
+- Workflow analysis
+
+Enterprise detectors (require feature flags):
+- ML-based detection (ml_detection flag)
+- Tiered detection with LLM-as-Judge (ml_detection flag)
+- Quality gate detection (advanced_evals flag)
+- Retrieval quality detection (advanced_evals flag)
+- Turn-aware detection (ml_detection flag)
+"""
+
+# ICP (Startup) detectors - always available
 from .loop import loop_detector, MultiLevelLoopDetector, LoopDetectionResult, StateSnapshot
 from .corruption import corruption_detector, SemanticCorruptionDetector, CorruptionIssue, CorruptionResult
 from .persona import persona_scorer, PersonaConsistencyScorer, PersonaConsistencyResult, Agent
@@ -14,24 +39,6 @@ from .communication import CommunicationBreakdownDetector, CommunicationBreakdow
 from .specification import SpecificationMismatchDetector, SpecificationMismatchResult, MismatchType
 from .decomposition import TaskDecompositionDetector, DecompositionResult, DecompositionIssue
 from .workflow import FlawedWorkflowDetector, WorkflowAnalysisResult, WorkflowIssue, WorkflowNode
-from .tiered import (
-    TieredDetector,
-    TieredResult,
-    TierConfig,
-    DetectionTier,
-    EscalationReason,
-    create_tiered_injection_detector,
-    create_tiered_hallucination_detector,
-    create_tiered_corruption_detector,
-)
-from .tool_provision import (
-    tool_provision_detector,
-    ToolProvisionDetector,
-    ToolProvisionResult,
-    ToolProvisionIssue,
-    ProvisionSeverity,
-    ProvisionIssueType,
-)
 from .withholding import (
     withholding_detector,
     InformationWithholdingDetector,
@@ -39,14 +46,6 @@ from .withholding import (
     WithholdingIssue,
     WithholdingSeverity,
     WithholdingType,
-)
-from .quality_gate import (
-    quality_gate_detector,
-    QualityGateDetector,
-    QualityGateResult,
-    QualityGateIssue,
-    QualityGateSeverity,
-    QualityGateIssueType,
 )
 from .completion import (
     completion_detector,
@@ -56,33 +55,9 @@ from .completion import (
     CompletionSeverity,
     CompletionIssueType,
 )
-from .grounding import (
-    grounding_detector,
-    GroundingDetector,
-    GroundingResult,
-    GroundingSeverity,
-    UngroundedClaim,
-    NumericalError,
-)
-from .retrieval_quality import (
-    retrieval_quality_detector,
-    RetrievalQualityDetector,
-    RetrievalQualityResult,
-    RetrievalSeverity,
-    IrrelevantDocument,
-    CoverageGap,
-)
-from .turn_aware import (
-    TurnSnapshot,
-    TurnAwareDetector,
-    TurnAwareDetectionResult,
-    TurnAwareSeverity,
-    TurnAwareContextNeglectDetector,
-    TurnAwareDerailmentDetector,
-    TurnAwareLoopDetector,
-    analyze_conversation_turns,
-)
+from .validation import ValidationDetector, ValidationResult
 
+# Create singleton instances for convenience
 derailment_detector = TaskDerailmentDetector()
 context_neglect_detector = ContextNeglectDetector()
 communication_detector = CommunicationBreakdownDetector()
@@ -90,121 +65,98 @@ specification_detector = SpecificationMismatchDetector()
 decomposition_detector = TaskDecompositionDetector()
 workflow_detector = FlawedWorkflowDetector()
 
+# ICP exports - always available
 __all__ = [
+    # Loop detection
     "loop_detector",
     "MultiLevelLoopDetector",
     "LoopDetectionResult",
     "StateSnapshot",
+    # Corruption detection
     "corruption_detector",
     "SemanticCorruptionDetector",
     "CorruptionIssue",
     "CorruptionResult",
+    # Persona scoring
     "persona_scorer",
     "PersonaConsistencyScorer",
     "PersonaConsistencyResult",
     "Agent",
+    # Coordination analysis
     "coordination_analyzer",
     "CoordinationAnalyzer",
     "CoordinationIssue",
     "CoordinationAnalysisResult",
     "Message",
+    # Cost calculation
     "cost_calculator",
     "CostCalculator",
     "CostResult",
     "LLM_PRICING_2025",
+    # Hallucination detection
     "hallucination_detector",
     "HallucinationDetector",
     "HallucinationResult",
+    # Injection detection
     "injection_detector",
     "InjectionDetector",
     "InjectionResult",
+    # Overflow detection
     "overflow_detector",
     "ContextOverflowDetector",
     "OverflowResult",
     "OverflowSeverity",
+    # Derailment detection
     "derailment_detector",
     "TaskDerailmentDetector",
     "DerailmentResult",
     "DerailmentSeverity",
+    # Context neglect detection
     "context_neglect_detector",
     "ContextNeglectDetector",
     "ContextNeglectResult",
     "NeglectSeverity",
+    # Communication breakdown detection
     "communication_detector",
     "CommunicationBreakdownDetector",
     "CommunicationBreakdownResult",
     "BreakdownType",
+    # Specification mismatch detection
     "specification_detector",
     "SpecificationMismatchDetector",
     "SpecificationMismatchResult",
     "MismatchType",
+    # Task decomposition detection
     "decomposition_detector",
     "TaskDecompositionDetector",
     "DecompositionResult",
     "DecompositionIssue",
+    # Workflow analysis
     "workflow_detector",
     "FlawedWorkflowDetector",
     "WorkflowAnalysisResult",
     "WorkflowIssue",
     "WorkflowNode",
-    # Tiered detection with LLM-as-Judge
-    "TieredDetector",
-    "TieredResult",
-    "TierConfig",
-    "DetectionTier",
-    "EscalationReason",
-    "create_tiered_injection_detector",
-    "create_tiered_hallucination_detector",
-    "create_tiered_corruption_detector",
-    # MAST F4: Inadequate Tool Provision
-    "tool_provision_detector",
-    "ToolProvisionDetector",
-    "ToolProvisionResult",
-    "ToolProvisionIssue",
-    "ProvisionSeverity",
-    "ProvisionIssueType",
-    # MAST F8: Information Withholding
+    # Information withholding detection
     "withholding_detector",
     "InformationWithholdingDetector",
     "WithholdingResult",
     "WithholdingIssue",
     "WithholdingSeverity",
     "WithholdingType",
-    # MAST F13: Quality Gate Bypass
-    "quality_gate_detector",
-    "QualityGateDetector",
-    "QualityGateResult",
-    "QualityGateIssue",
-    "QualityGateSeverity",
-    "QualityGateIssueType",
-    # MAST F14: Completion Misjudgment
+    # Completion misjudgment detection
     "completion_detector",
     "CompletionMisjudgmentDetector",
     "CompletionResult",
     "CompletionIssue",
     "CompletionSeverity",
     "CompletionIssueType",
-    # MAST F15: Grounding Failure (OfficeQA-inspired)
-    "grounding_detector",
-    "GroundingDetector",
-    "GroundingResult",
-    "GroundingSeverity",
-    "UngroundedClaim",
-    "NumericalError",
-    # MAST F16: Retrieval Quality Failure (OfficeQA-inspired)
-    "retrieval_quality_detector",
-    "RetrievalQualityDetector",
-    "RetrievalQualityResult",
-    "RetrievalSeverity",
-    "IrrelevantDocument",
-    "CoverageGap",
-    # Turn-aware detection for multi-turn conversations (MAST-Data)
-    "TurnSnapshot",
-    "TurnAwareDetector",
-    "TurnAwareDetectionResult",
-    "TurnAwareSeverity",
-    "TurnAwareContextNeglectDetector",
-    "TurnAwareDerailmentDetector",
-    "TurnAwareLoopDetector",
-    "analyze_conversation_turns",
+    # Validation
+    "ValidationDetector",
+    "ValidationResult",
 ]
+
+# Enterprise exports - conditionally add when enabled
+# These are imported from app.detection_enterprise when needed
+# Example usage when enterprise is enabled:
+#   from app.detection_enterprise import TieredDetector, TurnAwareDetector

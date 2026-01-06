@@ -610,17 +610,15 @@ class TurnAwareDerailmentDetector(EmbeddingMixin, TurnAwareDetector):
 
     def __init__(
         self,
-        drift_threshold: float = 0.35,  # Lowered significantly - embeddings show high similarity for related topics
+        drift_threshold: float = 0.75,  # Raised from 0.5 to reduce FPs
         min_turns_for_analysis: int = 3,
         window_size: int = 5,
-        require_strong_evidence: bool = False,  # Allow individual drift detection
-        semantic_drift_threshold: float = 0.35,  # Separate threshold for embeddings
+        require_strong_evidence: bool = True,  # New: require multiple signals
     ):
         self.drift_threshold = drift_threshold
         self.min_turns_for_analysis = min_turns_for_analysis
         self.window_size = window_size
         self.require_strong_evidence = require_strong_evidence
-        self.semantic_drift_threshold = semantic_drift_threshold
         self._embedder = None
 
     @property
@@ -682,25 +680,15 @@ class TurnAwareDerailmentDetector(EmbeddingMixin, TurnAwareDetector):
 
         # Check each agent response for task alignment
         for agent_turn in agent_turns:
-            is_code_response = self._is_code_response(agent_turn.content)
-
-            # Skip drift check for code responses to code tasks - they're on track
-            if is_code_task and is_code_response:
+            # Skip drift check for code responses to code tasks
+            if is_code_task and self._is_code_response(agent_turn.content):
                 continue  # Code response to code task - don't flag as drift
-
-            # For code tasks with non-code responses, use stricter semantic check
-            # (Agents often explain before/after code, so don't flag all non-code turns)
-            use_strict_drift = is_code_task and not is_code_response
 
             drift_score, coverage = self._compute_topic_drift(
                 initial_task, agent_turn.content
             )
 
-            # Use higher threshold for code tasks with non-code responses
-            # (0.7 instead of 0.35) since explanations are normal
-            effective_threshold = 0.7 if use_strict_drift else self.drift_threshold
-
-            if drift_score > effective_threshold:
+            if drift_score > self.drift_threshold:
                 high_drift_count += 1
                 # Only add as issue if NOT requiring strong evidence
                 # OR if we have multiple high-drift turns

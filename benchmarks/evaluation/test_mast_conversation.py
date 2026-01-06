@@ -44,16 +44,6 @@ from app.detection.turn_aware import (
     TurnAwareContextNeglectDetector,
     TurnAwareDerailmentDetector,
     TurnAwareLoopDetector,
-    TurnAwareSpecificationMismatchDetector,
-    TurnAwareResourceMisallocationDetector,
-    TurnAwareInformationWithholdingDetector,
-    TurnAwareCoordinationFailureDetector,
-    TurnAwareOutputValidationDetector,
-    TurnAwareQualityGateBypassDetector,
-    TurnAwareCompletionMisjudgmentDetector,
-    TurnAwareTerminationAwarenessDetector,
-    TurnAwareReasoningActionMismatchDetector,
-    TurnAwareClarificationRequestDetector,
     analyze_conversation_turns,
 )
 
@@ -75,21 +65,11 @@ MODE_NAMES = {
     'F14': 'Completion Misjudgment',
 }
 
-# Turn-aware detector mapping (all 13 detectors)
+# Turn-aware detector mapping (supports F5, F6, F7 currently)
 TURN_AWARE_DETECTORS = {
-    'F1': TurnAwareSpecificationMismatchDetector,
-    'F3': TurnAwareResourceMisallocationDetector,
     'F5': TurnAwareLoopDetector,
     'F6': TurnAwareDerailmentDetector,
     'F7': TurnAwareContextNeglectDetector,
-    'F8': TurnAwareInformationWithholdingDetector,
-    'F11': TurnAwareCoordinationFailureDetector,
-    'F12': TurnAwareOutputValidationDetector,
-    'F13': TurnAwareQualityGateBypassDetector,
-    'F14': TurnAwareCompletionMisjudgmentDetector,
-    'F15': TurnAwareTerminationAwarenessDetector,
-    'F16': TurnAwareReasoningActionMismatchDetector,
-    'F17': TurnAwareClarificationRequestDetector,
 }
 
 

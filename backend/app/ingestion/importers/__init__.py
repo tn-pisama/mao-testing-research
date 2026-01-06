@@ -2,32 +2,65 @@
 
 This module provides importers for converting traces from various formats
 into the UniversalTrace/UniversalSpan abstraction.
+
+ICP (Startup) importers - always available:
+- RawJSONImporter: Generic JSON trace import
+- ConversationImporter: Conversation-based traces
+- MASTImporter: MAST-Data format
+
+Enterprise importers (require feature flags):
+- OTELImporter: OpenTelemetry trace import (otel_ingestion flag)
+- LangSmithImporter: LangSmith/LangChain trace import (otel_ingestion flag)
 """
 
-from typing import Dict, Type, Optional
+from typing import Dict, Type
+
+from app.core.feature_gate import is_feature_enabled
 
 from .base import BaseImporter
 from .raw_json import RawJSONImporter
-from .langsmith import LangSmithImporter
-from .otel import OTELImporter
 from .conversation import ConversationImporter
 from .mast import MASTImporter
 
 
-# Registry of available importers
+# Registry of available importers (ICP only by default)
 IMPORTERS: Dict[str, Type[BaseImporter]] = {
     "raw": RawJSONImporter,
     "json": RawJSONImporter,
     "generic": RawJSONImporter,
-    "langsmith": LangSmithImporter,
-    "langchain": LangSmithImporter,
-    "otel": OTELImporter,
-    "opentelemetry": OTELImporter,
-    "otlp": OTELImporter,
     "conversation": ConversationImporter,
     "mast": MASTImporter,
     "mast-data": MASTImporter,
 }
+
+# ICP exports
+__all__ = [
+    "BaseImporter",
+    "RawJSONImporter",
+    "ConversationImporter",
+    "MASTImporter",
+    "get_importer",
+    "detect_format",
+    "import_trace",
+    "IMPORTERS",
+]
+
+# Conditionally add enterprise importers
+if is_feature_enabled("otel_ingestion"):
+    try:
+        from app.ingestion_enterprise.importers.otel import OTELImporter
+        from app.ingestion_enterprise.importers.langsmith import LangSmithImporter
+
+        IMPORTERS.update({
+            "langsmith": LangSmithImporter,
+            "langchain": LangSmithImporter,
+            "otel": OTELImporter,
+            "opentelemetry": OTELImporter,
+            "otlp": OTELImporter,
+        })
+        __all__.extend(["OTELImporter", "LangSmithImporter"])
+    except ImportError:
+        pass  # Enterprise modules not available
 
 
 def get_importer(format_name: str) -> BaseImporter:
@@ -44,7 +77,8 @@ def get_importer(format_name: str) -> BaseImporter:
     """
     format_lower = format_name.lower()
     if format_lower not in IMPORTERS:
-        raise ValueError(f"Unsupported format: {format_name}. Supported: {list(IMPORTERS.keys())}")
+        supported = list(IMPORTERS.keys())
+        raise ValueError(f"Unsupported format: {format_name}. Supported: {supported}")
     return IMPORTERS[format_lower]()
 
 
@@ -75,17 +109,3 @@ def import_trace(content: str, format_name: str = "auto"):
 
     importer = get_importer(format_name)
     return importer.import_trace(content)
-
-
-__all__ = [
-    "BaseImporter",
-    "RawJSONImporter",
-    "LangSmithImporter",
-    "OTELImporter",
-    "ConversationImporter",
-    "MASTImporter",
-    "get_importer",
-    "detect_format",
-    "import_trace",
-    "IMPORTERS",
-]

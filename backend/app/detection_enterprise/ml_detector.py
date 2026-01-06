@@ -423,15 +423,10 @@ class MLFailureDetector:
                 logger.warning(f"Skipping {mode}: only {y.sum()} positive samples")
                 continue
 
-            # Split data (or use all for training if test_split is 0)
-            if test_split > 0:
-                X_train, X_test, y_train, y_test = train_test_split(
-                    X, y, test_size=test_split, random_state=42, stratify=y
-                )
-            else:
-                # Use all data for training (cross-validation handles test split)
-                X_train, y_train = X, y
-                X_test, y_test = X[:10], y[:10]  # Dummy for metrics
+            # Split data
+            X_train, X_test, y_train, y_test = train_test_split(
+                X, y, test_size=test_split, random_state=42, stratify=y
+            )
 
             # Scale features
             scaler = StandardScaler()
