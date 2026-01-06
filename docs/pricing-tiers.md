@@ -1,8 +1,72 @@
 # PISAMA Pricing Tiers
 
 **Date:** 2026-01-05
-**Version:** 1.0
+**Version:** 1.1
 **Status:** Draft - requires validation
+
+---
+
+## Metering Model
+
+### What We Capture Per Span
+
+Each tool call generates a **span** containing:
+
+| Data Type | Description | Typical Size |
+|-----------|-------------|--------------|
+| **User Input** | Prompt/message that triggered the action | 100-2,000 chars |
+| **Reasoning** | Claude's extended thinking blocks | 0-10,000 chars |
+| **AI Output** | Claude's text response | 200-2,000 chars |
+| **Tool Input** | Parameters passed to tool | 100-1,000 chars |
+| **Tool Output** | Result from tool execution | 100-50,000 chars |
+| **Metadata** | Session ID, timestamp, model, tokens, cost | ~500 chars |
+
+### Billing Unit: Spans (not "Traces")
+
+| Term | Definition | Example |
+|------|------------|---------|
+| **Session** | One Claude Code conversation | User opens CC, works, closes |
+| **Span** | One tool operation within a session | `Bash`, `Read`, `Edit`, `Task` |
+
+**We bill on SPANS.**
+
+Why spans, not sessions:
+- Sessions vary wildly (10 spans to 500+ spans)
+- Spans are predictable, industry-standard (OTEL)
+- Aligns with competitors (Datadog, LangSmith)
+
+### Typical Usage
+
+| User Type | Spans/Session | Sessions/Day | Spans/Month |
+|-----------|---------------|--------------|-------------|
+| Solo (light) | 20-50 | 2-3 | 1,500-4,500 |
+| Solo (heavy) | 50-100 | 5-10 | 7,500-30,000 |
+| Team member | 50-200 | 10-20 | 15,000-120,000 |
+| Power user | 100-500 | 20+ | 60,000-300,000 |
+
+### What Counts as a Span
+
+| Counts as Span | Doesn't Count |
+|----------------|---------------|
+| `Bash` execution | Pre-flight checks |
+| `Read` file | Internal state |
+| `Edit` file | Retries (same span ID) |
+| `Write` file | Blocked operations |
+| `Task` subagent | - |
+| `Grep`/`Glob` | - |
+| MCP tool calls | - |
+| Skill invocations | - |
+
+### Capture Levels
+
+| Level | Input | Reasoning | Output | Tool I/O | Metadata |
+|-------|-------|-----------|--------|----------|----------|
+| **Full** | ✓ | ✓ | ✓ | ✓ | ✓ |
+| **Standard** | ✓ | - | ✓ | ✓ | ✓ |
+| **Minimal** | - | - | - | Summary | ✓ |
+
+- **Free tier**: Standard (no reasoning, saves storage)
+- **Paid tiers**: Full (configurable)
 
 ---
 
@@ -12,6 +76,7 @@
 2. **Clear upgrade triggers** - Users hit limits naturally when they're ready to pay
 3. **Usage-based alignment** - Pay for what you use, not seat count
 4. **No surprise bills** - Hard limits, not overage charges
+5. **Span-based billing** - Industry standard, predictable
 
 ---
 
@@ -19,7 +84,8 @@
 
 | Feature | Free | Startup ($49/mo) | Growth ($199/mo) | Enterprise |
 |---------|------|------------------|------------------|------------|
-| **Traces/month** | 5,000 | 100,000 | 1,000,000 | Unlimited |
+| **Spans/month** | 10,000 | 250,000 | 2,500,000 | Unlimited |
+| **Capture level** | Standard | Full | Full | Full |
 | **Projects** | 1 | 5 | 25 | Unlimited |
 | **Retention** | 7 days | 30 days | 90 days | Custom (up to 2 years) |
 | **Team members** | 1 | 3 | 10 | Unlimited |
@@ -82,7 +148,8 @@
 
 | Dimension | Limit | Rationale |
 |-----------|-------|-----------|
-| **Traces/month** | 5,000 | ~165/day, enough for solo dev/testing |
+| **Spans/month** | 10,000 | ~330/day, covers solo dev comfortably |
+| **Capture level** | Standard | No reasoning capture (saves 60% storage) |
 | **Projects** | 1 | Single app focus, upgrade for multi-project |
 | **Retention** | 7 days | Debug recent issues, not trend analysis |
 | **Team members** | 1 | Solo use only |
@@ -93,8 +160,8 @@
 
 | Limit | Value | Rationale |
 |-------|-------|-----------|
-| Traces/minute | 50 | Prevent burst abuse |
-| Traces/hour | 500 | ~8/min sustained |
+| Spans/minute | 100 | Prevent burst abuse |
+| Spans/hour | 1,000 | ~16/min sustained |
 | Concurrent sessions | 3 | Solo dev workload |
 
 ### Included Features
@@ -144,7 +211,8 @@ Alex (AI Team Lead) who can approve <$500/mo
 
 | Dimension | Limit |
 |-----------|-------|
-| Traces/month | 100,000 |
+| Spans/month | 250,000 |
+| Capture level | Full (incl. reasoning) |
 | Projects | 5 |
 | Retention | 30 days |
 | Team members | 3 |
@@ -167,12 +235,12 @@ Alex (AI Team Lead) who can approve <$500/mo
 
 ### Overage Handling
 
-**No overage charges.** Hard limit at 100K traces.
+**No overage charges.** Hard limit at 250K spans.
 
 When approaching limit:
-- 80%: Email warning
-- 90%: Dashboard banner
-- 100%: New traces rejected, existing data retained
+- 80% (200K): Email warning
+- 90% (225K): Dashboard banner
+- 100% (250K): New spans rejected, existing data retained
 
 User can:
 1. Wait for monthly reset
@@ -190,7 +258,8 @@ Jordan (CTO) who approves $200-500/mo for team tools
 
 | Dimension | Limit |
 |-----------|-------|
-| Traces/month | 1,000,000 |
+| Spans/month | 2,500,000 |
+| Capture level | Full (configurable) |
 | Projects | 25 |
 | Retention | 90 days |
 | Team members | 10 |
@@ -223,7 +292,8 @@ Jordan (CTO) + Procurement for companies with compliance needs
 
 | Dimension | Typical | Maximum |
 |-----------|---------|---------|
-| Traces/month | 10M+ | Unlimited |
+| Spans/month | 25M+ | Unlimited |
+| Capture level | Full + custom | Configurable |
 | Projects | 100+ | Unlimited |
 | Retention | 1 year | 2 years |
 | Team members | 50+ | Unlimited |
@@ -346,15 +416,18 @@ CREATE TABLE plan_changes (
 
 | Feature | PISAMA Free | LangSmith Free | Arize Free |
 |---------|-------------|----------------|------------|
-| Traces/month | 5,000 | 5,000 | 1,000 |
+| Spans/month | 10,000 | 5,000 traces | 1,000 |
+| Capture | Standard (no reasoning) | Full | Full |
 | Retention | 7 days | 14 days | 7 days |
 | Team members | 1 | 1 | 1 |
 | All frameworks | ✓ | LangChain only | ✓ |
-| Detection | 14 modes | Basic | Drift only |
+| Detection | 14 failure modes | Basic | Drift only |
 | Fix suggestions | ✓ | - | - |
 | Email alerts | ✓ | - | ✓ |
+| Input/Output capture | ✓ | ✓ | ✓ |
+| Reasoning capture | Paid only | ✓ | - |
 
-**PISAMA advantage:** Fix suggestions included in free tier (unique).
+**PISAMA advantage:** Fix suggestions included in free tier (unique). More generous span limit.
 
 ---
 
@@ -366,8 +439,14 @@ A: Reduce friction. We want maximum signups, filter later.
 **Q: Why hard limits instead of overage?**
 A: No surprise bills. Trust builds loyalty.
 
-**Q: Why 5,000 traces for free?**
-A: Enough for solo dev (165/day), not enough for production team.
+**Q: Why 10,000 spans for free?**
+A: Covers solo dev comfortably (~330/day). Based on typical usage: 20-50 spans/session, 2-5 sessions/day.
+
+**Q: Why no reasoning capture in free tier?**
+A: Reasoning blocks can be 10KB+ per span - 60% of storage. Standard capture (input, output, tool I/O) still provides full debugging value.
+
+**Q: What's the difference between a span and a trace?**
+A: A **span** is one tool operation (Bash, Read, Edit). A **session** (sometimes called trace) is a collection of spans from one Claude Code conversation. We bill on spans because sessions vary wildly in size.
 
 **Q: Why no Slack in free?**
 A: Natural upgrade trigger for teams. Email sufficient for solo.
@@ -378,6 +457,9 @@ A: Key differentiator. Hook users on the unique value.
 **Q: Can users downgrade?**
 A: Yes, at any time. Data beyond new limits is archived (not deleted) for 30 days.
 
+**Q: Is reasoning captured in paid tiers?**
+A: Yes, full capture including extended thinking blocks. Configurable if you want to exclude for storage savings.
+
 ---
 
 ## Revision History
@@ -385,3 +467,4 @@ A: Yes, at any time. Data beyond new limits is archived (not deleted) for 30 day
 | Version | Date | Changes |
 |---------|------|---------|
 | 1.0 | 2026-01-05 | Initial pricing structure |
+| 1.1 | 2026-01-05 | Clarified metering model: bill on spans (not traces/sessions). Added capture levels (Full/Standard/Minimal). Free tier gets Standard capture (no reasoning). Updated limits: Free 10K spans, Startup 250K, Growth 2.5M. |
