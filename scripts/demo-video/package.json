@@ -1,0 +1,20 @@
+{
+  "name": "pisama-demo-video",
+  "version": "1.0.0",
+  "description": "PISAMA Demo Video Recording Automation",
+  "scripts": {
+    "generate-voiceover": "./generate-voiceover.sh",
+    "automate": "npx ts-node demo-automation.ts",
+    "record": "./record-demo.sh",
+    "record:dry-run": "./record-demo.sh --dry-run",
+    "record:no-audio": "./record-demo.sh --no-audio"
+  },
+  "dependencies": {
+    "playwright": "^1.40.0"
+  },
+  "devDependencies": {
+    "@types/node": "^20.10.0",
+    "ts-node": "^10.9.2",
+    "typescript": "^5.3.0"
+  }
+}

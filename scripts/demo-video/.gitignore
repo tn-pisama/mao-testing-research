@@ -1,0 +1,5 @@
+# Generated audio files
+audio/
+output/
+recordings/
+node_modules/

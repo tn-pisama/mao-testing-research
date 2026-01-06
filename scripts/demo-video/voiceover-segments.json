@@ -1,0 +1,118 @@
+{
+  "voice": "Daniel",
+  "rate": 175,
+  "segments": [
+    {
+      "id": "hook",
+      "section": "1. Hook",
+      "start_time": 0,
+      "duration": 30,
+      "text": "If you're building AI agents, you've probably experienced this: you come back from a break to find your agent has burned through fifty dollars in API tokens doing absolutely nothing. It got stuck in a loop, and you had no idea. PISAMA detects these failures in under ten seconds and can automatically fix them. Let me show you how.",
+      "actions": ["show_dashboard", "flash_alert"]
+    },
+    {
+      "id": "demo_intro",
+      "section": "2. Interactive Demo",
+      "start_time": 30,
+      "duration": 15,
+      "text": "Let's start with an interactive demo. PISAMA detects sixteen types of agent failures, but let's focus on the most common one: infinite loops.",
+      "actions": ["navigate_demo"]
+    },
+    {
+      "id": "select_scenario",
+      "section": "2. Interactive Demo",
+      "start_time": 45,
+      "duration": 10,
+      "text": "I'll select the infinite loop scenario and start the simulation.",
+      "actions": ["click_scenario", "click_start"]
+    },
+    {
+      "id": "watch_agents",
+      "section": "2. Interactive Demo",
+      "start_time": 55,
+      "duration": 20,
+      "text": "Watch as the agents execute. You can see real-time metrics: active agents, messages, token usage, and costs.",
+      "actions": ["wait_for_agents"]
+    },
+    {
+      "id": "detection",
+      "section": "2. Interactive Demo",
+      "start_time": 75,
+      "duration": 20,
+      "text": "And there it is. PISAMA detected a loop in under eight seconds. It identified the exact pattern: the agent repeated the same action multiple times without making progress.",
+      "actions": ["wait_for_detection"]
+    },
+    {
+      "id": "explanation",
+      "section": "2. Interactive Demo",
+      "start_time": 95,
+      "duration": 15,
+      "text": "Notice the plain English explanation. No need to dig through logs to understand what happened. And here's the suggested fix. One click to apply it.",
+      "actions": ["show_fix"]
+    },
+    {
+      "id": "try_own_intro",
+      "section": "3. Try Your Own",
+      "start_time": 120,
+      "duration": 15,
+      "text": "But you don't have to take my word for it. You can upload your own traces and see PISAMA analyze them right now.",
+      "actions": ["scroll_to_upload"]
+    },
+    {
+      "id": "upload_trace",
+      "section": "3. Try Your Own",
+      "start_time": 135,
+      "duration": 15,
+      "text": "I'll drop in a trace from one of our test sessions.",
+      "actions": ["upload_file"]
+    },
+    {
+      "id": "analysis_result",
+      "section": "3. Try Your Own",
+      "start_time": 150,
+      "duration": 15,
+      "text": "And there we go. It found a semantic loop: the agent kept asking the same question in different words. This is something that's really hard to catch manually, but PISAMA's embedding-based detection caught it instantly.",
+      "actions": ["show_analysis"]
+    },
+    {
+      "id": "cli_intro",
+      "section": "4. CLI Install",
+      "start_time": 165,
+      "duration": 10,
+      "text": "Getting this for your own agents takes about thirty seconds.",
+      "actions": ["switch_to_terminal"]
+    },
+    {
+      "id": "cli_commands",
+      "section": "4. CLI Install",
+      "start_time": 175,
+      "duration": 20,
+      "text": "Install the package, run the install command to set up the hooks, and run the demo to see it in action with your first trace.",
+      "actions": ["show_pip_install", "show_pisama_install", "show_pisama_demo"]
+    },
+    {
+      "id": "cli_done",
+      "section": "4. CLI Install",
+      "start_time": 195,
+      "duration": 15,
+      "text": "That's it. From now on, every agent session is monitored. Loops are caught before they waste your budget.",
+      "actions": ["show_demo_output"]
+    },
+    {
+      "id": "features",
+      "section": "5. Key Features",
+      "start_time": 210,
+      "duration": 30,
+      "text": "Quick recap of what PISAMA gives you: Real-time detection for sixteen failure modes, including loops, state corruption, coordination failures, and more. Plain English explanations so you understand what went wrong. One-click fixes to resolve issues immediately. Framework support for LangGraph, AutoGen, CrewAI, Claude Code, and n8n. All running locally. Your traces never leave your machine.",
+      "actions": ["show_features_montage"]
+    },
+    {
+      "id": "cta",
+      "section": "6. CTA",
+      "start_time": 240,
+      "duration": 30,
+      "text": "Our detection accuracy is publicly benchmarked. Check out our benchmarks page to see how we perform on over twenty thousand real-world traces. Ready to try it? Check out our getting started guide at pisama.dev/docs. The free tier includes unlimited local analysis. Stop debugging agent failures manually. Let PISAMA catch them for you.",
+      "actions": ["show_benchmarks", "show_docs", "show_end_card"]
+    }
+  ]
+}
