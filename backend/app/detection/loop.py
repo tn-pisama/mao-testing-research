@@ -107,6 +107,7 @@ class MultiLevelLoopDetector:
             "structural": 0.85,
             "hash": 0.80,
             "semantic": 0.70,
+            "semantic_clustering": 0.75,  # Slightly higher than basic semantic
         }.get(method, 0.5)
         
         length_factor = min(1.0, loop_length / 5)
@@ -263,6 +264,166 @@ class MultiLevelLoopDetector:
     def _compute_state_hash(self, state: StateSnapshot) -> str:
         normalized = json.dumps(state.state_delta, sort_keys=True)
         return hashlib.sha256(normalized.encode()).hexdigest()[:16]
+
+    def detect_semantic_loop_with_clustering(
+        self, states: List[StateSnapshot]
+    ) -> Optional[LoopDetectionResult]:
+        """Advanced semantic loop detection using embedding clustering.
+
+        Uses KMeans clustering to find groups of semantically similar states,
+        then checks if recent states are repeatedly falling into the same cluster
+        (indicating a semantic loop where the agent keeps doing similar things).
+
+        This is more sophisticated than pairwise similarity because it can detect:
+        - Paraphrased loops (same intent, different wording)
+        - Escalating loops (slight variations that are semantically equivalent)
+        - Multi-step cycles (A→B→C→A where steps are semantically related)
+        """
+        if len(states) < 6:  # Need enough states for meaningful clustering
+            return None
+
+        try:
+            contents = [s.content for s in states]
+            embeddings = self.embedder.encode(contents)
+
+            # Determine optimal number of clusters
+            # Use fewer clusters for shorter traces to avoid overfitting
+            n_samples = len(embeddings)
+            n_clusters = min(max(2, n_samples // 4), 5)
+
+            if n_samples < n_clusters * 2:
+                return None
+
+            # Cluster the embeddings
+            kmeans = KMeans(n_clusters=n_clusters, random_state=42, n_init=10)
+            cluster_labels = kmeans.fit_predict(embeddings)
+
+            # Analyze recent cluster assignments (last window_size states)
+            recent_window = min(self.window_size, len(cluster_labels))
+            recent_labels = cluster_labels[-recent_window:]
+
+            # Count how many times each cluster appears in recent window
+            cluster_counts = {}
+            for label in recent_labels:
+                cluster_counts[label] = cluster_counts.get(label, 0) + 1
+
+            # Check for semantic loop indicators:
+            # 1. One cluster dominates (agent stuck doing same thing)
+            # 2. Recent sequence shows repetition (cyclic pattern)
+            max_cluster_count = max(cluster_counts.values())
+            dominant_cluster = max(cluster_counts, key=cluster_counts.get)
+
+            # Calculate dominance ratio
+            dominance_ratio = max_cluster_count / len(recent_labels)
+
+            # Check for cyclic patterns in cluster sequence
+            cycle_detected = False
+            cycle_length = 0
+            for potential_cycle in range(2, len(recent_labels) // 2 + 1):
+                # Check if last N elements match the N before them
+                pattern = tuple(recent_labels[-potential_cycle:])
+                check_against = tuple(recent_labels[-2*potential_cycle:-potential_cycle])
+                if pattern == check_against:
+                    cycle_detected = True
+                    cycle_length = potential_cycle
+                    break
+
+            # Determine if this is a semantic loop
+            is_loop = False
+            evidence = {}
+
+            if dominance_ratio >= 0.6 and max_cluster_count >= self.min_matches_for_loop:
+                is_loop = True
+                evidence["type"] = "cluster_dominance"
+                evidence["dominant_cluster"] = int(dominant_cluster)
+                evidence["dominance_ratio"] = round(dominance_ratio, 3)
+                evidence["cluster_count"] = max_cluster_count
+
+            if cycle_detected and cycle_length >= 2:
+                is_loop = True
+                evidence["type"] = evidence.get("type", "") + "_cycle" if evidence.get("type") else "cluster_cycle"
+                evidence["cycle_length"] = cycle_length
+
+            if not is_loop:
+                return None
+
+            # Calculate within-cluster similarity to validate
+            cluster_indices = [i for i, l in enumerate(cluster_labels) if l == dominant_cluster]
+            cluster_embeddings = [embeddings[i] for i in cluster_indices[-5:]]  # Last 5 in cluster
+
+            if len(cluster_embeddings) >= 2:
+                sims = []
+                for i in range(len(cluster_embeddings)):
+                    for j in range(i + 1, len(cluster_embeddings)):
+                        sim = self.embedder.similarity(cluster_embeddings[i], cluster_embeddings[j])
+                        sims.append(sim)
+                avg_intra_cluster_sim = sum(sims) / len(sims) if sims else 0
+            else:
+                avg_intra_cluster_sim = 0
+
+            evidence["avg_intra_cluster_similarity"] = round(avg_intra_cluster_sim, 4)
+            evidence["n_clusters"] = n_clusters
+            evidence["cluster_distribution"] = {int(k): v for k, v in cluster_counts.items()}
+
+            # Calculate confidence
+            raw_score = dominance_ratio * 0.5 + avg_intra_cluster_sim * 0.5
+            evidence_strength = min(1.0, max_cluster_count / 5)
+
+            confidence = self._calibrate_confidence(
+                raw_score=raw_score,
+                method="semantic_clustering",
+                evidence_strength=evidence_strength,
+                loop_length=max_cluster_count,
+            )
+
+            # Find loop start (first state in dominant cluster in recent window)
+            loop_start_index = None
+            for i in range(len(cluster_labels) - recent_window, len(cluster_labels)):
+                if cluster_labels[i] == dominant_cluster:
+                    loop_start_index = i
+                    break
+
+            return LoopDetectionResult(
+                detected=True,
+                confidence=confidence,
+                method="semantic_clustering",
+                cost=0.0,  # Local embeddings, no API cost
+                loop_start_index=loop_start_index,
+                loop_length=max_cluster_count,
+                raw_score=raw_score,
+                evidence=evidence,
+                framework=self.framework,
+            )
+
+        except Exception:
+            return None
+
+    def detect_loop_enhanced(self, states: List[StateSnapshot]) -> LoopDetectionResult:
+        """Enhanced loop detection with all methods including clustering.
+
+        Order of detection (cheapest to most expensive):
+        1. Structural matching (O(n), no API calls)
+        2. Hash collision (O(n), no API calls)
+        3. Basic semantic similarity (embedding generation + pairwise comparison)
+        4. Clustering-based semantic (embedding generation + KMeans)
+        """
+        # First try the standard methods
+        result = self.detect_loop(states)
+        if result.detected:
+            return result
+
+        # If standard methods didn't detect, try clustering-based semantic
+        clustering_result = self.detect_semantic_loop_with_clustering(states)
+        if clustering_result:
+            return clustering_result
+
+        return LoopDetectionResult(
+            detected=False,
+            confidence=0.0,
+            method=None,
+            cost=0.0,
+            framework=self.framework,
+        )
 
 
 loop_detector = MultiLevelLoopDetector()
