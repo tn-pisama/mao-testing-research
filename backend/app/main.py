@@ -21,6 +21,7 @@ from app.api.v1 import (
     metrics,
     claude_code,
     conversations,
+    benchmarks,
 )
 
 settings = get_settings()
@@ -120,6 +121,7 @@ app.include_router(webhooks.router, prefix="/api/v1")
 app.include_router(n8n.router, prefix="/api/v1")
 app.include_router(security.router, prefix="/api/v1")
 app.include_router(metrics.router, prefix="/api/v1")
+app.include_router(benchmarks.router, prefix="/api/v1")  # Benchmark results
 app.include_router(claude_code.router, prefix="/api/v1")  # Claude Code trace ingestion
 app.include_router(conversations.router, prefix="/api/v1/tenants/{tenant_id}")  # Conversation traces
 
