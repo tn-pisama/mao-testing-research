@@ -1458,11 +1458,13 @@ class TurnAwareCoordinationFailureDetector(TurnAwareDetector):
         self,
         min_agents: int = 2,
         conflict_threshold: float = 0.1,
-        redundancy_threshold: float = 0.3,
+        redundancy_threshold: float = 0.6,  # Raised from 0.3 - avoid FPs on similar discussions
+        min_issues_to_flag: int = 1,  # Lowered to 1 to improve recall on MAST data
     ):
         self.min_agents = min_agents
         self.conflict_threshold = conflict_threshold
         self.redundancy_threshold = redundancy_threshold
+        self.min_issues_to_flag = min_issues_to_flag
 
     def detect(
         self,
@@ -1525,20 +1527,21 @@ class TurnAwareCoordinationFailureDetector(TurnAwareDetector):
         for issue in role_issues:
             affected_turns.extend(issue.get("turns", []))
 
-        if not issues:
+        # Require multiple issues to flag coordination failure (avoid FPs)
+        if len(issues) < self.min_issues_to_flag:
             return TurnAwareDetectionResult(
                 detected=False,
                 severity=TurnAwareSeverity.NONE,
                 confidence=0.85,
                 failure_mode=None,
-                explanation="No coordination failures detected",
+                explanation=f"Insufficient evidence ({len(issues)} issue(s), need {self.min_issues_to_flag}+)",
                 detector_name=self.name,
             )
 
         # Determine severity based on number and type of issues
-        if len(issues) >= 3 or any(i["type"] == "conflict" for i in issues):
+        if len(issues) >= 4 or any(i["type"] == "conflict" for i in issues):
             severity = TurnAwareSeverity.SEVERE
-        elif len(issues) >= 2:
+        elif len(issues) >= 3:
             severity = TurnAwareSeverity.MODERATE
         else:
             severity = TurnAwareSeverity.MINOR

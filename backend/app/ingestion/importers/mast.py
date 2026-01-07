@@ -136,40 +136,61 @@ class MASTImporter(ConversationImporter):
         return extractors.get(framework, self._extract_generic)
 
     def _extract_chatdev(self, trajectory: str) -> Iterator[ConversationTurnData]:
-        """ChatDev: **Agent** says: ... format
+        """ChatDev: Agent Name: **content** format
 
-        ChatDev uses role-based software development agents:
-        CEO, CTO, CPO, Programmer, Reviewer, Tester, etc.
+        ChatDev uses role-based software development agents with log format:
+        [timestamp INFO] Agent Name: **[context]** content
+
+        Agents: Chief Executive Officer, Chief Product Officer, Chief Technology Officer,
+        Programmer, Code Reviewer, Software Test Engineer, etc.
         """
-        # Primary pattern
-        pattern = r'\*\*(\w+)\*\*[^:]*:\s*\n(.*?)(?=\*\*\w+\*\*|\[Software Info\]|\[ChatDev|\Z)'
+        # Agent names in ChatDev logs
+        agent_names = [
+            "Chief Executive Officer", "Chief Product Officer",
+            "Chief Technology Officer", "Chief Human Resource Officer",
+            "Programmer", "Code Reviewer", "Software Test Engineer",
+            "Chief Creative Officer", "Counselor"
+        ]
+        agent_pattern = "|".join(re.escape(a) for a in agent_names)
+
+        # Primary pattern: Agent Name: **content**
+        # Match until next agent or end of section
+        pattern = rf'(?:INFO\]\s*)?({agent_pattern}):\s*\*\*([^*]+)\*\*\s*(.*?)(?=(?:INFO\]\s*)?(?:{agent_pattern}):|$|\[Software Info\]|\[ChatDev)'
 
         matches = list(re.finditer(pattern, trajectory, re.DOTALL))
 
+        # Fallback: simpler pattern if primary doesn't match
         if not matches:
-            # Fallback pattern for variant formats
-            pattern = r'(\w+):\s*\n(.*?)(?=\n\w+:|\Z)'
+            pattern = rf'({agent_pattern}):\s*(.{{20,}}?)(?=({agent_pattern}):|\Z)'
             matches = list(re.finditer(pattern, trajectory, re.DOTALL))
 
-        for i, match in enumerate(matches):
+        turn_idx = 0
+        for match in matches:
             agent = match.group(1)
-            content = match.group(2).strip()
+            # Combine context and content
+            if len(match.groups()) >= 3:
+                context = match.group(2).strip()
+                content = match.group(3).strip() if match.group(3) else ""
+                full_content = f"[{context}]\n{content}" if content else f"[{context}]"
+            else:
+                full_content = match.group(2).strip()
 
             # Skip empty or very short content
-            if not content or len(content) < 20:
+            if not full_content or len(full_content) < 20:
                 continue
 
             # Truncate to 4KB
-            content = content[:4096]
+            full_content = full_content[:4096]
 
             yield ConversationTurnData(
-                turn_id=f"chatdev_{i}",
-                turn_number=i + 1,
+                turn_id=f"chatdev_{turn_idx}",
+                turn_number=turn_idx + 1,
                 role="agent",
-                participant_id=f"chatdev:{agent}",
-                content=content,
+                participant_id=f"chatdev:{agent.replace(' ', '_')}",
+                content=full_content,
                 extra={"agent_role": agent},
             )
+            turn_idx += 1
 
     def _extract_metagpt(self, trajectory: str) -> Iterator[ConversationTurnData]:
         """MetaGPT: Multiple formats supported.
@@ -281,7 +302,13 @@ class MASTImporter(ConversationImporter):
                 content_text = content_list[:4096]
 
             if content_text and len(content_text) > 20:
-                role = "user" if role_str == "user" or "proxy" in name.lower() else "agent"
+                # In AG2 dict format, 'role' is message direction, not agent type
+                # Use 'name' to determine if it's a human or AI agent
+                # Human identifiers: 'user', 'human', 'admin', 'user_proxy'
+                # Everything else (chat_manager, Agent_X, assistant, etc.) = AI agent
+                name_lower = name.lower()
+                is_human = name_lower in ("user", "human", "admin", "user_proxy")
+                role = "user" if is_human else "agent"
                 turns.append(ConversationTurnData(
                     turn_id=f"ag2_{turn_idx}",
                     turn_number=turn_idx + 1,
