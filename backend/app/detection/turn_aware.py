@@ -627,10 +627,10 @@ class TurnAwareDerailmentDetector(EmbeddingMixin, TurnAwareDetector):
 
     def __init__(
         self,
-        drift_threshold: float = 0.75,  # Raised from 0.5 to reduce FPs
+        drift_threshold: float = 0.6,  # Lowered for MAST sensitivity (was 0.75)
         min_turns_for_analysis: int = 3,
         window_size: int = 5,
-        require_strong_evidence: bool = True,  # New: require multiple signals
+        require_strong_evidence: bool = False,  # Disabled for MAST recall (was True)
     ):
         self.drift_threshold = drift_threshold
         self.min_turns_for_analysis = min_turns_for_analysis
