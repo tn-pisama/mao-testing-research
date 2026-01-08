@@ -159,7 +159,10 @@ class ChatDevExtractor(BaseTaskExtractor):
         for turn in turns:
             if turn.role == "system" and len(turn.content) > 30:
                 # ChatDev system prompts typically start with task description
-                if "develop" in turn.content.lower() or "create" in turn.content.lower():
+                # Common task keywords: develop, create, design, implement, build, write
+                content_lower = turn.content.lower()
+                task_keywords = ["develop", "create", "design", "implement", "build", "write", "make"]
+                if any(kw in content_lower for kw in task_keywords):
                     task = turn.content
                     confidence = 0.95
                     break

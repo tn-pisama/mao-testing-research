@@ -16,9 +16,12 @@ Options:
     --mode MODE        Evaluate specific failure mode only (F1-F14)
     --verbose          Print detailed detection results
     --save             Save results to benchmarks/results/
+    --hybrid           Use hybrid detection with LLM verification
+    --no-llm           Disable LLM verification (pattern-only)
 
 Version History:
 - v1.0: Initial implementation using turn-aware detection
+- v2.0: Added hybrid detection with Claude Opus 4.5 LLM verification
 """
 
 import argparse
@@ -54,6 +57,17 @@ from app.detection.turn_aware import (
     TurnAwareCompletionMisjudgmentDetector,  # F14
     analyze_conversation_turns,
 )
+
+# Import hybrid detection components
+from app.detection.hybrid_pipeline import (
+    HybridDetectionPipeline,
+    HybridPipelineConfig,
+    HybridDetectionResult,
+    create_hybrid_pipeline,
+)
+from app.detection.task_extractors import ConversationTurn, extract_task, detect_framework
+from app.detection.agent_graph import GraphBasedCoordinationDetector, GraphBasedUsurpationDetector
+from app.detection.mast_llm_judge import get_cost_tracker, reset_cost_tracker
 
 # Failure mode names
 MODE_NAMES = {
@@ -673,33 +687,100 @@ def conversation_to_snapshots(conv_trace: ConversationTrace) -> List[TurnSnapsho
 def run_detection(
     snapshots: List[TurnSnapshot],
     target_mode: Optional[str] = None,
-) -> Dict[str, bool]:
+    use_hybrid: bool = False,
+    hybrid_pipeline: Optional[HybridDetectionPipeline] = None,
+    metadata: Optional[Dict[str, Any]] = None,
+) -> Dict[str, Any]:
     """Run turn-aware detection on conversation snapshots.
 
     Args:
         snapshots: List of TurnSnapshot objects
         target_mode: Optional specific mode to test
+        use_hybrid: Whether to use hybrid detection with LLM
+        hybrid_pipeline: Optional pre-configured pipeline
+        metadata: Trace metadata for framework detection
 
     Returns:
-        Dict mapping failure mode codes to detected status
+        Dict mapping failure mode codes to detected status and details
     """
     detected_modes = {}
+    detection_details = {}
 
-    # Run appropriate detectors
-    if target_mode:
-        # Run single detector
-        if target_mode in TURN_AWARE_DETECTORS:
-            detector = TURN_AWARE_DETECTORS[target_mode]()
+    if use_hybrid and hybrid_pipeline:
+        # Convert snapshots to ConversationTurns for hybrid pipeline
+        turns = [
+            ConversationTurn(
+                role=s.participant_type,
+                content=s.content,
+                participant_id=s.participant_id,
+                metadata=s.turn_metadata,
+            )
+            for s in snapshots
+        ]
+
+        # Run pattern detectors first
+        pattern_results = []
+        detectors = [TURN_AWARE_DETECTORS[mode]() for mode in TURN_AWARE_DETECTORS if not target_mode or mode == target_mode]
+
+        for detector in detectors:
             result = detector.detect(snapshots)
-            detected_modes[target_mode] = result.detected
-    else:
-        # Run all turn-aware detectors
-        results = analyze_conversation_turns(snapshots)
-        for result in results:
-            if result.failure_mode:
-                detected_modes[result.failure_mode] = True
+            if result.detected or result.confidence > 0.3:
+                pattern_results.append(result)
 
-    return detected_modes
+        # Also run graph-based detectors
+        graph_coord_detector = GraphBasedCoordinationDetector()
+        graph_usurp_detector = GraphBasedUsurpationDetector()
+
+        coord_result = graph_coord_detector.detect(snapshots)
+        if coord_result.detected or coord_result.confidence > 0.3:
+            pattern_results.append(coord_result)
+
+        usurp_result = graph_usurp_detector.detect(snapshots)
+        if usurp_result.detected or usurp_result.confidence > 0.3:
+            pattern_results.append(usurp_result)
+
+        # Verify with LLM
+        hybrid_results = hybrid_pipeline.verify_detections(
+            pattern_results,
+            turns,
+            metadata or {},
+        )
+
+        for hybrid_result in hybrid_results:
+            mode = hybrid_result.pattern_result.failure_mode
+            if mode:
+                detected_modes[mode] = hybrid_result.final_detected
+                detection_details[mode] = {
+                    "pattern_confidence": hybrid_result.pattern_result.confidence,
+                    "final_confidence": hybrid_result.final_confidence,
+                    "decision": hybrid_result.decision.value,
+                    "llm_used": hybrid_result.llm_result is not None,
+                    "llm_cost": hybrid_result.llm_cost_usd,
+                    "explanation": hybrid_result.combined_explanation[:200],
+                }
+
+    else:
+        # Original pattern-only detection
+        if target_mode:
+            # Run single detector
+            if target_mode in TURN_AWARE_DETECTORS:
+                detector = TURN_AWARE_DETECTORS[target_mode]()
+                result = detector.detect(snapshots)
+                detected_modes[target_mode] = result.detected
+        else:
+            # Run all turn-aware detectors
+            results = analyze_conversation_turns(snapshots)
+            for result in results:
+                if result.failure_mode:
+                    detected_modes[result.failure_mode] = True
+
+            # Also run graph-based detectors
+            graph_coord_detector = GraphBasedCoordinationDetector()
+            coord_result = graph_coord_detector.detect(snapshots)
+            if coord_result.detected and coord_result.failure_mode:
+                detected_modes[coord_result.failure_mode] = True
+
+    return {"detected": detected_modes, "details": detection_details}
 
 
 def evaluate_trace(
@@ -707,6 +788,8 @@ def evaluate_trace(
     importer: MASTImporter,
     target_mode: Optional[str] = None,
     verbose: bool = False,
+    use_hybrid: bool = False,
+    hybrid_pipeline: Optional[HybridDetectionPipeline] = None,
 ) -> Dict[str, Any]:
     """Evaluate a single MAST trace.
 
@@ -715,6 +798,8 @@ def evaluate_trace(
         importer: MASTImporter instance
         target_mode: Optional specific mode to test
         verbose: Print detailed output
+        use_hybrid: Whether to use hybrid detection
+        hybrid_pipeline: Optional pre-configured pipeline
 
     Returns:
         Evaluation result for this trace
@@ -724,6 +809,7 @@ def evaluate_trace(
         "framework": record.get("mas_name", "unknown"),
         "ground_truth": {},
         "detected": {},
+        "detection_details": {},
         "parsed_turns": 0,
         "error": None,
     }
@@ -744,15 +830,35 @@ def evaluate_trace(
         annotations = conv_trace.extra.get("mast_annotations", {})
         result["ground_truth"] = annotations
 
+        # Build metadata for framework detection
+        metadata = {
+            "framework": record.get("mas_name", "unknown"),
+            "llm_name": record.get("llm_name", ""),
+            "benchmark_name": record.get("benchmark_name", ""),
+        }
+
         # Run detection
-        detected = run_detection(snapshots, target_mode)
-        result["detected"] = detected
+        detection_result = run_detection(
+            snapshots,
+            target_mode,
+            use_hybrid=use_hybrid,
+            hybrid_pipeline=hybrid_pipeline,
+            metadata=metadata,
+        )
+        result["detected"] = detection_result["detected"]
+        result["detection_details"] = detection_result.get("details", {})
 
         if verbose:
             print(f"\n--- Trace: {result['trace_id']} ({result['framework']}) ---")
             print(f"Turns: {result['parsed_turns']}")
             print(f"Ground Truth: {annotations}")
-            print(f"Detected: {detected}")
+            print(f"Detected: {result['detected']}")
+            if result["detection_details"]:
+                for mode, details in result["detection_details"].items():
+                    print(f"  {mode}: {details.get('decision', 'N/A')} "
+                          f"(pattern={details.get('pattern_confidence', 0):.2f}, "
+                          f"final={details.get('final_confidence', 0):.2f}, "
+                          f"llm={'yes' if details.get('llm_used') else 'no'})")
 
     except Exception as e:
         result["error"] = str(e)
@@ -768,6 +874,8 @@ def evaluate_mast_dataset(
     target_mode: Optional[str] = None,
     verbose: bool = False,
     use_sample_data: bool = False,
+    use_hybrid: bool = False,
+    llm_enabled: bool = True,
 ) -> EvaluationResult:
     """Run full MAST evaluation with conversation trace support.
 
@@ -777,6 +885,8 @@ def evaluate_mast_dataset(
         target_mode: Optional specific mode to test
         verbose: Print detailed output
         use_sample_data: Use generated sample data
+        use_hybrid: Use hybrid detection with LLM verification
+        llm_enabled: Enable LLM verification in hybrid mode
 
     Returns:
         Complete evaluation result
@@ -807,9 +917,21 @@ def evaluate_mast_dataset(
     # Initialize importer
     importer = MASTImporter()
 
+    # Initialize hybrid pipeline if requested
+    hybrid_pipeline = None
+    if use_hybrid:
+        reset_cost_tracker()  # Reset cost tracking
+        hybrid_pipeline = create_hybrid_pipeline(llm_enabled=llm_enabled)
+        print(f"Using hybrid detection (LLM {'enabled' if llm_enabled else 'disabled'})")
+
     # Track metrics by mode
     metrics: Dict[str, EvaluationMetrics] = {}
     modes_to_track = [target_mode] if target_mode else list(TURN_AWARE_DETECTORS.keys())
+
+    # Add graph-based modes
+    if not target_mode:
+        modes_to_track.extend(["F3", "F9"])  # Graph-based coordination and usurpation
+        modes_to_track = list(set(modes_to_track))  # Deduplicate
 
     for mode in modes_to_track:
         metrics[mode] = EvaluationMetrics(mode=mode)
@@ -817,8 +939,18 @@ def evaluate_mast_dataset(
     total_turns = 0
 
     # Evaluate each trace
-    for record in records:
-        trace_result = evaluate_trace(record, importer, target_mode, verbose)
+    for i, record in enumerate(records):
+        if verbose:
+            print(f"Processing trace {i+1}/{len(records)}...")
+
+        trace_result = evaluate_trace(
+            record,
+            importer,
+            target_mode,
+            verbose,
+            use_hybrid=use_hybrid,
+            hybrid_pipeline=hybrid_pipeline,
+        )
 
         if trace_result["error"]:
             result.errors.append(f"{trace_result['trace_id']}: {trace_result['error']}")
@@ -851,6 +983,16 @@ def evaluate_mast_dataset(
     result.metrics_by_mode = metrics
     result.extraction_rate = result.parsed_traces / result.total_traces if result.total_traces > 0 else 0
     result.avg_turns_per_trace = total_turns / result.parsed_traces if result.parsed_traces > 0 else 0
+
+    # Add cost tracking for hybrid mode
+    if use_hybrid:
+        cost_tracker = get_cost_tracker()
+        result.errors.append(
+            f"LLM Stats: {cost_tracker.total_calls} calls, "
+            f"{cost_tracker.cached_calls} cached, "
+            f"{cost_tracker.total_tokens} tokens, "
+            f"${cost_tracker.total_cost_usd:.4f} cost"
+        )
 
     return result
 
@@ -983,7 +1125,7 @@ def main():
     )
     parser.add_argument(
         "--mode", "-m",
-        choices=list(TURN_AWARE_DETECTORS.keys()),
+        choices=list(TURN_AWARE_DETECTORS.keys()) + ["F9"],
         help="Evaluate specific failure mode only"
     )
     parser.add_argument(
@@ -1001,6 +1143,16 @@ def main():
         action="store_true",
         help="Use generated sample data instead of real MAST data"
     )
+    parser.add_argument(
+        "--hybrid",
+        action="store_true",
+        help="Use hybrid detection with Claude Opus 4.5 LLM verification"
+    )
+    parser.add_argument(
+        "--no-llm",
+        action="store_true",
+        help="Disable LLM verification in hybrid mode (pattern-only with graph)"
+    )
 
     args = parser.parse_args()
 
@@ -1011,6 +1163,9 @@ def main():
         print("  https://github.com/KevinHuuu/MAST")
         args.use_sample_data = True
 
+    # Determine LLM setting
+    llm_enabled = not args.no_llm
+
     # Run evaluation
     result = evaluate_mast_dataset(
         data_dir=args.data_dir if not args.use_sample_data else None,
@@ -1018,6 +1173,8 @@ def main():
         target_mode=args.mode,
         verbose=args.verbose,
         use_sample_data=args.use_sample_data,
+        use_hybrid=args.hybrid,
+        llm_enabled=llm_enabled,
     )
 
     # Print results

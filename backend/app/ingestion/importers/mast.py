@@ -136,10 +136,16 @@ class MASTImporter(ConversationImporter):
         return extractors.get(framework, self._extract_generic)
 
     def _extract_chatdev(self, trajectory: str) -> Iterator[ConversationTurnData]:
-        """ChatDev: Agent Name: **content** format
+        """ChatDev: Extract actual agent dialogue from MAST logs.
 
-        ChatDev uses role-based software development agents with log format:
-        [timestamp INFO] Agent Name: **[context]** content
+        ChatDev MAST log format:
+        [timestamp INFO] Agent Name: **Phase Info**
+
+        [System context in brackets]
+
+        Actual agent response here...
+
+        [next timestamp INFO] ...
 
         Agents: Chief Executive Officer, Chief Product Officer, Chief Technology Officer,
         Programmer, Code Reviewer, Software Test Engineer, etc.
@@ -153,42 +159,54 @@ class MASTImporter(ConversationImporter):
         ]
         agent_pattern = "|".join(re.escape(a) for a in agent_names)
 
-        # Primary pattern: Agent Name: **content**
-        # Match until next agent or end of section
-        pattern = rf'(?:INFO\]\s*)?({agent_pattern}):\s*\*\*([^*]+)\*\*\s*(.*?)(?=(?:INFO\]\s*)?(?:{agent_pattern}):|$|\[Software Info\]|\[ChatDev)'
+        # Pattern: [timestamp INFO] Agent: **Phase**\n\n[content...]\n\n[next timestamp INFO]
+        # Captures agent name, phase info, and full content block
+        pattern = rf'\[[\d\-: ]+INFO\]\s*({agent_pattern}):\s*\*\*([^*]+)\*\*\s*\n\n(.*?)(?=\n\[[\d\-: ]+INFO\]|\Z)'
 
         matches = list(re.finditer(pattern, trajectory, re.DOTALL))
-
-        # Fallback: simpler pattern if primary doesn't match
-        if not matches:
-            pattern = rf'({agent_pattern}):\s*(.{{20,}}?)(?=({agent_pattern}):|\Z)'
-            matches = list(re.finditer(pattern, trajectory, re.DOTALL))
 
         turn_idx = 0
         for match in matches:
             agent = match.group(1)
-            # Combine context and content
-            if len(match.groups()) >= 3:
-                context = match.group(2).strip()
-                content = match.group(3).strip() if match.group(3) else ""
-                full_content = f"[{context}]\n{content}" if content else f"[{context}]"
-            else:
-                full_content = match.group(2).strip()
+            phase_info = match.group(2).strip()
+            full_block = match.group(3).strip()
 
-            # Skip empty or very short content
-            if not full_content or len(full_content) < 20:
+            # Extract actual response from the block
+            # The block typically has: [ChatDev system context...]\n\nActual response
+            # Find the last closing bracket of system context and get content after it
+            actual_content = full_block
+
+            # If content starts with [ChatDev is...], extract the response after the context
+            if full_block.startswith("[ChatDev is") or full_block.startswith("[ChatDev\n"):
+                # Find the closing bracket of the system context
+                bracket_idx = full_block.rfind("]\n")
+                if bracket_idx > 0 and bracket_idx < len(full_block) - 10:
+                    actual_content = full_block[bracket_idx + 2:].strip()
+
+            # If content is still the full block with brackets, try to extract meaningful part
+            if actual_content.startswith("[") and "]\n" in actual_content:
+                parts = actual_content.split("]\n", 1)
+                if len(parts) > 1 and len(parts[1].strip()) > 20:
+                    actual_content = parts[1].strip()
+
+            # Skip empty, very short, or system-only content
+            if not actual_content or len(actual_content) < 30:
+                continue
+
+            # Skip if it's just INFO markers
+            if actual_content.startswith("<INFO>") and len(actual_content) < 50:
                 continue
 
             # Truncate to 4KB
-            full_content = full_content[:4096]
+            actual_content = actual_content[:4096]
 
             yield ConversationTurnData(
                 turn_id=f"chatdev_{turn_idx}",
                 turn_number=turn_idx + 1,
                 role="agent",
                 participant_id=f"chatdev:{agent.replace(' ', '_')}",
-                content=full_content,
-                extra={"agent_role": agent},
+                content=actual_content,
+                extra={"agent_role": agent, "phase": phase_info},
             )
             turn_idx += 1
 
