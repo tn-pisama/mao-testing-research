@@ -353,67 +353,68 @@ class TurnAwareContextNeglectDetector(EmbeddingMixin, TurnAwareDetector):
         neglect_issues = []
         affected_turns = []
 
-        # Handle multi-agent systems where all participants are "agent" role
-        # (e.g., ChatDev where CEO gives task to Programmer)
-        # The task can come from: user turns, system prompt, or first agent
-        synthetic_user_turns = []
-        agents_to_check = agent_turns
-        if user_turns:
-            # Traditional user-agent conversation
-            synthetic_user_turns = user_turns
-        elif system_turns and any(len(t.content) > 50 for t in system_turns):
-            # Multi-agent: system prompt contains the task (e.g., "develop a program...")
-            synthetic_user_turns = [t for t in system_turns if len(t.content) > 50]
-        elif agent_turns:
-            # Multi-agent: first agent's message is the task
-            synthetic_user_turns = [agent_turns[0]]
-            agents_to_check = agent_turns[1:]
+        # Detect if this is a multi-agent conversation (no user turns, multiple agents)
+        is_multi_agent = not user_turns and len(agent_turns) >= 3
 
-        # Check 1: Agent responses vs user instructions (or first agent in multi-agent)
-        if self.check_user_instructions and synthetic_user_turns and agents_to_check:
-            for agent_turn in agents_to_check:
-                # Find the most recent user/task-giver turn before this agent turn
-                prior_user_turns = [
-                    u for u in synthetic_user_turns
-                    if u.turn_number < agent_turn.turn_number
-                ]
-                if not prior_user_turns:
-                    continue
+        if is_multi_agent:
+            # MULTI-AGENT MODE: Check if agents ignore accumulated context
+            # In ChatDev/MetaGPT, context neglect = agent ignores key info from prior turns
+            neglect_issues.extend(self._check_multi_agent_context_neglect(turns, agent_turns))
+            for issue in neglect_issues:
+                affected_turns.append(issue.get("turn", 0))
+        else:
+            # TRADITIONAL MODE: User-agent conversation
+            # Handle systems where task comes from system prompt
+            synthetic_user_turns = []
+            agents_to_check = agent_turns
+            if user_turns:
+                synthetic_user_turns = user_turns
+            elif system_turns and any(len(t.content) > 50 for t in system_turns):
+                synthetic_user_turns = [t for t in system_turns if len(t.content) > 50]
+            elif agent_turns:
+                synthetic_user_turns = [agent_turns[0]]
+                agents_to_check = agent_turns[1:]
 
-                # Get the immediately preceding user turn for comparison
-                immediate_user = max(prior_user_turns, key=lambda u: u.turn_number)
-                user_context = immediate_user.content
+            # Check 1: Agent responses vs user instructions
+            if self.check_user_instructions and synthetic_user_turns and agents_to_check:
+                for agent_turn in agents_to_check:
+                    prior_user_turns = [
+                        u for u in synthetic_user_turns
+                        if u.turn_number < agent_turn.turn_number
+                    ]
+                    if not prior_user_turns:
+                        continue
 
-                # Skip if agent response is code and user asked for code
-                if self._is_code_response(agent_turn.content):
-                    if self._is_code_request(user_context):
-                        continue  # Code response to code request = OK
+                    immediate_user = max(prior_user_turns, key=lambda u: u.turn_number)
+                    user_context = immediate_user.content
 
-                # Check for explicit neglect patterns
-                has_explicit_neglect = self._has_explicit_neglect(
-                    user_context, agent_turn.content
-                )
+                    if self._is_code_response(agent_turn.content):
+                        if self._is_code_request(user_context):
+                            continue
 
-                if has_explicit_neglect:
-                    neglect_issues.append({
-                        "type": "explicit_neglect",
-                        "turn": agent_turn.turn_number,
-                        "description": f"Agent turn {agent_turn.turn_number} explicitly ignored user request",
-                    })
-                    affected_turns.append(agent_turn.turn_number)
-                elif not self.require_explicit_neglect:
-                    # Only check utilization if not requiring explicit neglect
-                    utilization = self._compute_utilization(
+                    has_explicit_neglect = self._has_explicit_neglect(
                         user_context, agent_turn.content
                     )
-                    if utilization < self.utilization_threshold:
+
+                    if has_explicit_neglect:
                         neglect_issues.append({
-                            "type": "user_instruction_neglect",
+                            "type": "explicit_neglect",
                             "turn": agent_turn.turn_number,
-                            "utilization": utilization,
-                            "description": f"Agent turn {agent_turn.turn_number} poorly utilized user context",
+                            "description": f"Agent turn {agent_turn.turn_number} explicitly ignored user request",
                         })
                         affected_turns.append(agent_turn.turn_number)
+                    elif not self.require_explicit_neglect:
+                        utilization = self._compute_utilization(
+                            user_context, agent_turn.content
+                        )
+                        if utilization < self.utilization_threshold:
+                            neglect_issues.append({
+                                "type": "user_instruction_neglect",
+                                "turn": agent_turn.turn_number,
+                                "utilization": utilization,
+                                "description": f"Agent turn {agent_turn.turn_number} poorly utilized user context",
+                            })
+                            affected_turns.append(agent_turn.turn_number)
 
         # Check 2: Agent responses vs tool outputs
         if self.check_tool_outputs and tool_turns and agent_turns:
@@ -592,6 +593,294 @@ class TurnAwareContextNeglectDetector(EmbeddingMixin, TurnAwareDetector):
             "response_density": response_density,
             "low_density": response_density < 0.3,  # Very sparse response
         }
+
+    def _check_multi_agent_context_neglect(
+        self,
+        all_turns: List[TurnSnapshot],
+        agent_turns: List[TurnSnapshot],
+    ) -> List[Dict[str, Any]]:
+        """Check for context neglect in multi-agent conversations.
+
+        In multi-agent systems (ChatDev, MetaGPT), F7 occurs when:
+        1. Agents don't reference key information from earlier turns
+        2. Low semantic coherence between task and later execution
+        3. Evidence of "forgotten" context or repeated clarifications
+
+        Detection approach:
+        - Track key topic words from task description
+        - Check semantic coherence across conversation
+        - Detect low information transfer from early to late turns
+        """
+        import re
+
+        issues = []
+
+        if len(agent_turns) < 5:
+            return issues
+
+        # Step 1: Extract task topic from early turns (first 2-3 substantive turns)
+        early_turns = [t for t in agent_turns[:4] if len(t.content) > 100]
+        if not early_turns:
+            return issues
+
+        task_content = " ".join(t.content for t in early_turns)
+        task_keywords = self._extract_task_keywords(task_content)
+
+        if len(task_keywords) < 3:
+            return issues
+
+        # Step 2: Check middle turns for context coherence
+        # F7 often manifests in the middle of conversation where agents "forget"
+        mid_start = len(agent_turns) // 3
+        mid_end = 2 * len(agent_turns) // 3
+        middle_turns = agent_turns[mid_start:mid_end] if mid_end > mid_start else []
+
+        for turn in middle_turns:
+            if len(turn.content) < 50:
+                continue
+
+            turn_lower = turn.content.lower()
+            turn_words = set(turn_lower.split())
+
+            # Check keyword overlap with task
+            overlap = len(task_keywords & turn_words)
+            overlap_ratio = overlap / len(task_keywords)
+
+            # Very low overlap in a substantive turn suggests context neglect
+            if len(turn.content) > 200 and overlap_ratio < 0.1:
+                # Additional check: is this turn about something completely different?
+                if not self._is_code_response(turn.content):
+                    issues.append({
+                        "type": "low_context_coherence",
+                        "turn": turn.turn_number,
+                        "description": f"Turn {turn.turn_number} has low coherence with task context",
+                        "overlap_ratio": overlap_ratio,
+                    })
+
+        # Step 3: Check for explicit neglect indicators
+        neglect_indicators = [
+            "forgot", "forgotten", "didn't mention", "wasn't clear",
+            "misunderstood", "wrong assumption", "actually",
+            "wait", "hold on", "let me reconsider", "missed",
+        ]
+
+        for i, turn in enumerate(agent_turns[3:], start=3):
+            turn_lower = turn.content.lower()
+            for indicator in neglect_indicators:
+                if indicator in turn_lower:
+                    # Check if this seems like catching a mistake
+                    context = turn_lower[max(0, turn_lower.find(indicator)-30):turn_lower.find(indicator)+50]
+                    if any(x in context for x in ["requirement", "task", "should", "need", "must"]):
+                        issues.append({
+                            "type": "explicit_neglect_recovery",
+                            "turn": turn.turn_number,
+                            "description": f"Agent catches forgotten context: '{indicator}'",
+                        })
+                        break
+
+        # Step 4: Check for re-asking questions (strong signal)
+        question_patterns = [
+            r"what (?:is|are|should|would)",
+            r"how (?:do|should|would|can)",
+            r"could you (?:clarify|explain|tell)",
+            r"can you (?:clarify|explain|tell)",
+        ]
+
+        for i, turn in enumerate(agent_turns[4:], start=4):
+            turn_lower = turn.content.lower()
+            for pattern in question_patterns:
+                if re.search(pattern, turn_lower):
+                    # Extract what's being asked
+                    match = re.search(pattern + r"\s+(\w+(?:\s+\w+){0,3})", turn_lower)
+                    if match:
+                        asked_topic = match.group(1) if match.lastindex else ""
+                        # Check if this was discussed in earlier turns
+                        earlier = " ".join(t.content.lower() for t in agent_turns[:i])
+                        topic_words = [w for w in asked_topic.split() if len(w) > 3]
+                        if topic_words:
+                            found = sum(1 for w in topic_words if w in earlier)
+                            if found >= len(topic_words) * 0.6:
+                                issues.append({
+                                    "type": "re_asks_discussed_topic",
+                                    "turn": turn.turn_number,
+                                    "description": f"Re-asks about already discussed: {asked_topic[:30]}",
+                                })
+                                break
+
+        # Prioritize and return issues
+        # Strong signals: explicit_neglect_recovery, re_asks_discussed_topic
+        # Weak signals: low_context_coherence
+        strong_issues = [i for i in issues if i["type"] in ("explicit_neglect_recovery", "re_asks_discussed_topic")]
+        weak_issues = [i for i in issues if i["type"] == "low_context_coherence"]
+
+        if strong_issues:
+            return strong_issues[:2]
+        elif len(weak_issues) >= 2:
+            # Multiple low coherence turns = likely context neglect
+            return weak_issues[:2]
+
+        return []
+
+    def _extract_task_keywords(self, text: str) -> set:
+        """Extract key task-related keywords from early conversation.
+
+        Focuses on technical terms, product names, and specific requirements
+        that should be maintained throughout the conversation.
+        """
+        import re
+        keywords = set()
+        text_lower = text.lower()
+
+        # Extract programming-related terms
+        prog_terms = re.findall(r'\b(python|java|javascript|react|django|flask|api|database|sql|cli|gui|web|app|file|data|user|input|output|function|class|method)\b', text_lower)
+        keywords.update(prog_terms)
+
+        # Extract quoted terms (often specific requirements)
+        quoted = re.findall(r'"([^"]+)"', text)
+        for q in quoted:
+            keywords.update(w.lower() for w in q.split() if len(w) > 3)
+
+        # Extract CamelCase terms (class/component names)
+        camel = re.findall(r'\b([A-Z][a-z]+(?:[A-Z][a-z]+)+)\b', text)
+        keywords.update(c.lower() for c in camel)
+
+        # Extract snake_case terms
+        snake = re.findall(r'\b([a-z]+_[a-z_]+)\b', text)
+        keywords.update(snake)
+
+        # Extract key nouns that appear multiple times
+        words = re.findall(r'\b[a-z]{4,}\b', text_lower)
+        word_counts = {}
+        for w in words:
+            word_counts[w] = word_counts.get(w, 0) + 1
+        frequent = [w for w, c in word_counts.items() if c >= 2]
+        keywords.update(frequent[:10])
+
+        # Remove common stop words
+        stop_words = {'that', 'this', 'with', 'from', 'have', 'will', 'been', 'were', 'they', 'their', 'would', 'could', 'should', 'about', 'into', 'more', 'some', 'such', 'than', 'then', 'them', 'when', 'where', 'which', 'while', 'your'}
+        keywords -= stop_words
+
+        return keywords
+
+    def _extract_requirements(self, text: str) -> List[str]:
+        """Extract requirements/constraints from task description."""
+        requirements = []
+        text_lower = text.lower()
+
+        # Patterns that indicate requirements
+        req_patterns = [
+            r"must\s+(\w+(?:\s+\w+){0,5})",
+            r"should\s+(\w+(?:\s+\w+){0,5})",
+            r"need(?:s)?\s+to\s+(\w+(?:\s+\w+){0,5})",
+            r"require(?:s|d)?\s+(\w+(?:\s+\w+){0,5})",
+            r"implement\s+(\w+(?:\s+\w+){0,5})",
+            r"ensure\s+(\w+(?:\s+\w+){0,5})",
+            r"include\s+(\w+(?:\s+\w+){0,5})",
+        ]
+
+        import re
+        for pattern in req_patterns:
+            matches = re.findall(pattern, text_lower)
+            requirements.extend(matches)
+
+        return list(set(requirements))[:10]  # Limit to top 10
+
+    def _extract_key_entities(self, text: str) -> set:
+        """Extract key named entities from text."""
+        # Simple entity extraction - focus on technical terms
+        import re
+        words = re.findall(r'\b[A-Z][a-zA-Z]+(?:[A-Z][a-zA-Z]+)*\b', text)  # CamelCase
+        words += re.findall(r'\b[a-z]+_[a-z_]+\b', text)  # snake_case
+        return set(words)
+
+    def _check_for_contradiction(self, prior_context: str, current_turn: str) -> Optional[str]:
+        """Check if current turn contradicts prior context."""
+        prior_lower = prior_context.lower()
+        current_lower = current_turn.lower()
+
+        # Contradiction patterns
+        if "cli" in prior_lower and "gui" in current_lower:
+            if "instead of cli" in current_lower or "not cli" in current_lower:
+                return "Changed from CLI to GUI requirement"
+
+        if "web" in prior_lower and "desktop" in current_lower:
+            if "instead" in current_lower or "change to" in current_lower:
+                return "Changed platform requirement"
+
+        # Check for explicit contradictions
+        contradiction_markers = ["actually", "instead", "rather than", "change to", "not what"]
+        for marker in contradiction_markers:
+            if marker in current_lower:
+                # Check if it's contradicting something from prior context
+                idx = current_lower.find(marker)
+                context_around = current_lower[max(0, idx-50):idx+50]
+                if any(word in context_around for word in ["requirement", "task", "original", "specification"]):
+                    return f"Explicit change detected near '{marker}'"
+
+        return None
+
+    def _is_decision_turn(self, content: str) -> bool:
+        """Check if this turn makes a decision that should consider requirements."""
+        decision_indicators = [
+            "i will", "i'll", "let me", "let's", "we will", "we'll",
+            "implementing", "creating", "building", "developing",
+            "the approach", "my plan", "the solution", "the design",
+            "decided to", "choosing", "selected",
+        ]
+        content_lower = content.lower()
+        return any(ind in content_lower for ind in decision_indicators)
+
+    def _check_missing_requirements(
+        self,
+        requirements: List[str],
+        current_content: str,
+        prior_turns: List[TurnSnapshot],
+    ) -> List[str]:
+        """Check which requirements are not addressed in the conversation so far."""
+        if not requirements:
+            return []
+
+        # Build context from all prior turns
+        all_content = current_content.lower()
+        for turn in prior_turns:
+            all_content += " " + turn.content.lower()
+
+        missing = []
+        for req in requirements:
+            req_words = set(req.lower().split())
+            # Check if requirement words appear in the conversation
+            words_found = sum(1 for w in req_words if w in all_content)
+            if words_found < len(req_words) * 0.5:  # Less than half the words found
+                missing.append(req)
+
+        return missing[:3]  # Return top 3 missing
+
+    def _repeats_prior_work(
+        self,
+        current_content: str,
+        prior_turns: List[TurnSnapshot],
+    ) -> bool:
+        """Check if current turn is repeating work from prior turns."""
+        if len(prior_turns) < 2:
+            return False
+
+        current_lower = current_content.lower()
+
+        # Check for phrases indicating repetition
+        repeat_phrases = [
+            "let me implement", "let me create", "let me write",
+            "i will implement", "i will create", "i will write",
+        ]
+
+        for phrase in repeat_phrases:
+            if phrase in current_lower:
+                # Check if something similar was already done
+                for prior in prior_turns[-5:]:  # Check last 5 turns
+                    prior_lower = prior.content.lower()
+                    if phrase.replace("let me ", "i ") in prior_lower or phrase in prior_lower:
+                        return True
+
+        return False
 
 
 class TurnAwareDerailmentDetector(EmbeddingMixin, TurnAwareDetector):
