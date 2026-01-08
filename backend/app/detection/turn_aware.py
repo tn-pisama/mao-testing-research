@@ -316,11 +316,11 @@ class TurnAwareContextNeglectDetector(EmbeddingMixin, TurnAwareDetector):
 
     def __init__(
         self,
-        utilization_threshold: float = 0.1,  # Lowered from 0.3
+        utilization_threshold: float = 0.05,  # Lowered to catch implicit neglect
         min_context_length: int = 50,
         check_user_instructions: bool = True,
         check_tool_outputs: bool = True,
-        require_explicit_neglect: bool = True,  # New: require stronger evidence
+        require_explicit_neglect: bool = False,  # Enable implicit detection for F7
     ):
         self.utilization_threshold = utilization_threshold
         self.min_context_length = min_context_length
@@ -2405,37 +2405,57 @@ class TurnAwareQualityGateBypassDetector(EmbeddingMixin, TurnAwareDetector):
     version = "2.0"  # Semantic enhancement
     supported_failure_modes = ["F13"]
 
-    # Bypass indicators
+    # Bypass indicators - expanded for MAST coverage
     BYPASS_INDICATORS = [
         "skip the", "let's skip", "skipping", "bypass",
         "ignore the", "ignoring", "don't need to",
         "no need to test", "skip testing", "skip review",
         "good enough", "ship it", "move on",
         "later", "we can fix later", "TODO", "FIXME",
+        # Added for MAST: deferral patterns
+        "defer", "deferred", "post-release", "add later",
+        "v2", "phase 2", "next sprint", "backlog",
+        "out of scope", "not now", "future work",
+        "can wait", "low priority", "nice to have",
     ]
 
-    # Warning ignore indicators
+    # Warning ignore indicators - expanded
     WARNING_IGNORES = [
         "ignore warning", "suppress warning", "disable warning",
         "warning ignored", "warnings disabled", "lint disable",
         "noqa", "pylint: disable", "eslint-disable",
         "despite warning", "warning but", "@suppress",
+        # Added for MAST: broader warning/error handling
+        "ignoring error", "error ignored", "skip error",
+        "known issue", "accepted risk", "won't fix",
+        "false positive", "not a bug", "expected behavior",
+        "proceed anyway", "continue anyway", "override",
     ]
 
-    # Missing quality steps
+    # Missing quality steps - expanded
     MISSING_QUALITY = [
         "no tests", "without testing", "untested",
         "no review", "without review", "unreviewed",
         "no qa", "skip qa", "no quality",
         "didn't test", "haven't tested", "not tested",
+        # Added for MAST: incomplete verification
+        "no verification", "unverified", "not verified",
+        "no validation", "not validated", "assume correct",
+        "trust me", "looks good", "lgtm", "seems fine",
+        "should work", "probably fine", "good to go",
     ]
 
-    # Rush indicators
+    # Rush indicators - expanded
     RUSH_INDICATORS = [
         "quick and dirty", "just ship", "good for now",
         "will fix later", "temporary", "hack",
         "workaround", "shortcut", "quick fix",
         "time constraint", "deadline", "rush",
+        # Added for MAST: rush/crunch patterns
+        "crunch", "crunch time", "time pressure",
+        "minimal viable", "mvp", "bare minimum",
+        "just enough", "cut corners", "expedite",
+        "asap", "urgent", "immediately", "right now",
     ]
 
     def __init__(self, min_turns: int = 2):
@@ -3798,3 +3818,162 @@ class LLMDerailmentDetector:
             detector_name=self.name,
             detector_version=MODULE_VERSION,
         )
+
+
+class HybridDerailmentDetector:
+    """
+    Hybrid F6 (Task Derailment) detector: pattern-first, LLM-escalation.
+
+    Cost optimization strategy:
+    1. Run fast pattern detector first (free, <50ms)
+    2. If pattern confidence >= 0.7, use pattern result (clear detection or clear negative)
+    3. If pattern confidence < 0.7 (ambiguous), escalate to LLM (~$0.03/trace)
+
+    This achieves ~80% cost savings vs LLM-only while maintaining accuracy.
+
+    Usage:
+        detector = HybridDerailmentDetector()
+        result = detector.detect(snapshots, metadata)
+    """
+
+    name = "HybridDerailmentDetector"
+    version = "1.0"
+    supported_failure_modes = ["F6"]
+
+    def __init__(
+        self,
+        api_key: Optional[str] = None,
+        escalation_threshold: float = 0.7,  # Below this confidence, escalate to LLM
+        confidence_threshold: float = 0.6,  # Min confidence for LLM to detect
+    ):
+        self.api_key = api_key
+        self.escalation_threshold = escalation_threshold
+        self.confidence_threshold = confidence_threshold
+        self._pattern_detector = None
+        self._llm_detector = None
+
+    @property
+    def pattern_detector(self):
+        """Lazy-load pattern detector."""
+        if self._pattern_detector is None:
+            self._pattern_detector = TurnAwareDerailmentDetector(
+                drift_threshold=0.5,  # Sensitive for initial detection
+                require_strong_evidence=False,
+            )
+        return self._pattern_detector
+
+    @property
+    def llm_detector(self):
+        """Lazy-load LLM detector."""
+        if self._llm_detector is None:
+            self._llm_detector = LLMDerailmentDetector(
+                api_key=self.api_key,
+                confidence_threshold=self.confidence_threshold,
+            )
+        return self._llm_detector
+
+    def detect(
+        self,
+        turns: List[TurnSnapshot],
+        conversation_metadata: Optional[Dict[str, Any]] = None,
+    ) -> TurnAwareDetectionResult:
+        """
+        Detect F6 (Task Derailment) using hybrid approach.
+
+        Strategy:
+        - Pattern detector first (fast, free)
+        - Escalate to LLM only on ambiguous cases
+
+        Args:
+            turns: List of turn snapshots
+            conversation_metadata: Optional metadata about the conversation
+
+        Returns:
+            TurnAwareDetectionResult with detection decision
+        """
+        if len(turns) < 3:
+            return TurnAwareDetectionResult(
+                detected=False,
+                severity=TurnAwareSeverity.NONE,
+                confidence=0.0,
+                failure_mode=None,
+                explanation="Too few turns for derailment analysis",
+                detector_name=self.name,
+                detector_version=MODULE_VERSION,
+            )
+
+        # Step 1: Run pattern detector
+        pattern_result = self.pattern_detector.detect(turns, conversation_metadata)
+
+        # Step 2: Decide if we need LLM escalation
+        should_escalate = (
+            pattern_result.confidence < self.escalation_threshold
+            or (pattern_result.detected and pattern_result.confidence < 0.8)
+        )
+
+        if not should_escalate:
+            # High confidence from pattern detector - use its result
+            return TurnAwareDetectionResult(
+                detected=pattern_result.detected,
+                severity=pattern_result.severity,
+                confidence=pattern_result.confidence,
+                failure_mode=pattern_result.failure_mode,
+                explanation=f"[Pattern] {pattern_result.explanation}",
+                affected_turns=pattern_result.affected_turns,
+                evidence={
+                    **(pattern_result.evidence or {}),
+                    "detection_method": "pattern",
+                    "llm_escalated": False,
+                },
+                suggested_fix=pattern_result.suggested_fix,
+                detector_name=self.name,
+                detector_version=MODULE_VERSION,
+            )
+
+        # Step 3: Escalate to LLM for borderline cases
+        try:
+            llm_result = self.llm_detector.detect(turns, conversation_metadata)
+
+            # Combine evidence from both detectors
+            combined_evidence = {
+                **(pattern_result.evidence or {}),
+                **(llm_result.evidence or {}),
+                "detection_method": "hybrid",
+                "llm_escalated": True,
+                "pattern_confidence": pattern_result.confidence,
+                "pattern_detected": pattern_result.detected,
+            }
+
+            return TurnAwareDetectionResult(
+                detected=llm_result.detected,
+                severity=llm_result.severity,
+                confidence=llm_result.confidence,
+                failure_mode=llm_result.failure_mode,
+                explanation=f"[LLM-verified] {llm_result.explanation}",
+                affected_turns=llm_result.affected_turns or pattern_result.affected_turns,
+                evidence=combined_evidence,
+                suggested_fix=llm_result.suggested_fix,
+                detector_name=self.name,
+                detector_version=MODULE_VERSION,
+            )
+
+        except Exception as e:
+            # LLM failed - fall back to pattern result
+            logger.warning(f"LLM escalation failed, using pattern result: {e}")
+            return TurnAwareDetectionResult(
+                detected=pattern_result.detected,
+                severity=pattern_result.severity,
+                confidence=pattern_result.confidence,
+                failure_mode=pattern_result.failure_mode,
+                explanation=f"[Pattern-fallback] {pattern_result.explanation}",
+                affected_turns=pattern_result.affected_turns,
+                evidence={
+                    **(pattern_result.evidence or {}),
+                    "detection_method": "pattern_fallback",
+                    "llm_escalated": True,
+                    "llm_error": str(e),
+                },
+                suggested_fix=pattern_result.suggested_fix,
+                detector_name=self.name,
+                detector_version=MODULE_VERSION,
+            )

@@ -780,6 +780,12 @@ def run_detection(
             if coord_result.detected and coord_result.failure_mode:
                 detected_modes[coord_result.failure_mode] = True
 
+            # F9: Run usurpation detector (was missing!)
+            graph_usurp_detector = GraphBasedUsurpationDetector()
+            usurp_result = graph_usurp_detector.detect(snapshots)
+            if usurp_result.detected and usurp_result.failure_mode:
+                detected_modes[usurp_result.failure_mode] = True
+
     return {"detected": detected_modes, "details": detection_details}
 
 

@@ -533,13 +533,14 @@ class GraphBasedUsurpationDetector:
                     violations.append(violation)
                     affected_turns.append(i)
 
-        # F9 requires VERY STRONG evidence to reduce FPR on MAST data
-        # Multi-agent conversations naturally have many role boundary crossings
-        # FP analysis shows healthy traces average 29 "violations" - need high threshold
-        # Also require violations to be >20% of turns (not just absolute count)
-        min_violations_to_flag = 10
+        # F9: Balance precision vs recall
+        # v1: 10+ AND >30% = 0% recall
+        # v2: 5+ OR >20% = 50% recall but 75% FPR
+        # v3: Tighter thresholds with AND logic
+        min_violations_to_flag = 8
+        min_violation_ratio = 0.25
         violation_ratio = len(violations) / len(snapshots) if snapshots else 0
-        detected = len(violations) >= min_violations_to_flag and violation_ratio > 0.3
+        detected = len(violations) >= min_violations_to_flag and violation_ratio > min_violation_ratio
         confidence = min(0.9, 0.2 + violation_ratio * 0.5) if detected else 0.0
 
         severity = TurnAwareSeverity.NONE
