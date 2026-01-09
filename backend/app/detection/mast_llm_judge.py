@@ -211,14 +211,14 @@ Verdict: NO - Only terminated after meeting all objectives"""
     },
     MASTFailureMode.F13: {
         "name": "No or Incomplete Verification",
-        "definition": """FM-3.2: (Partial) omission of proper checking or confirmation of task outcomes or system outputs,
-potentially allowing errors to propagate undetected. The agent skips validation,
-doesn't test their work, or fails to verify outputs meet requirements.""",
-        "positive_example": """Agent: "Code written. Shipping to production!"
-[No tests run, no validation, no review]
-Verdict: YES - No verification of output quality""",
-        "negative_example": """Agent: "Code written. Running tests... All pass. Verified in staging."
-Verdict: NO - Proper verification performed"""
+        "definition": """FM-3.2: EXPLICIT omission of proper checking or confirmation of task outcomes.
+This is NOT about missing tests in the code - it's about the agent EXPLICITLY skipping verification steps
+or stating they won't verify. Look for: "I'll skip testing", "No need to verify", going straight to deployment
+without any checking. If the agent runs ANY tests or reviews, this is NOT F13.""",
+        "positive_example": """Agent: "Code done. I'll skip testing since it looks correct. Deploying now."
+Verdict: YES - Explicitly stated skipping verification""",
+        "negative_example": """Agent: "Code done. The reviewer checked it, tests exist in the repo."
+Verdict: NO - Some verification was mentioned/performed"""
     },
     MASTFailureMode.F14: {
         "name": "Incorrect Verification",
