@@ -78,8 +78,11 @@ class BaseTaskExtractor(ABC):
 
     framework: str = "unknown"
 
-    def _summarize_output(self, turns: List[ConversationTurn], max_length: int = 2000) -> str:
-        """Summarize agent output from turns - enhanced for LLM detection."""
+    def _summarize_output(self, turns: List[ConversationTurn], max_length: int = 5000) -> str:
+        """Summarize agent output from turns - enhanced for LLM detection.
+
+        Expanded from 2K to 5K, increased turns from 10 to 20 for MAST benchmark.
+        """
         agent_content = []
         for turn in turns:
             if turn.role in ("agent", "assistant"):
@@ -87,15 +90,15 @@ class BaseTaskExtractor(ABC):
                 if len(turn.content) > 20 and not turn.content.startswith("{"):
                     # Include participant ID for multi-agent context
                     prefix = f"[{turn.participant_id}] " if turn.participant_id else ""
-                    agent_content.append(f"{prefix}{turn.content[:800]}")
+                    agent_content.append(f"{prefix}{turn.content[:1200]}")
 
         if not agent_content:
             return "No agent output found"
 
-        combined = "\n---\n".join(agent_content[:10])  # First 10 agent turns
+        combined = "\n---\n".join(agent_content[:20])  # First 20 agent turns (was 10)
         return combined[:max_length]
 
-    def _extract_key_events(self, turns: List[ConversationTurn], max_events: int = 20) -> List[str]:
+    def _extract_key_events(self, turns: List[ConversationTurn], max_events: int = 40) -> List[str]:
         """Extract key events from turns - enhanced for failure detection."""
         events = []
 
@@ -134,13 +137,17 @@ class BaseTaskExtractor(ABC):
 
         return events[:max_events]
 
-    def _extract_full_conversation(self, turns: List[ConversationTurn], max_length: int = 8000) -> str:
-        """Extract full conversation with role labels for LLM analysis."""
+    def _extract_full_conversation(self, turns: List[ConversationTurn], max_length: int = 35000) -> str:
+        """Extract full conversation with role labels for LLM analysis.
+
+        Expanded from 8K to 35K for MAST benchmark traces which contain
+        full multi-agent conversation logs.
+        """
         lines = []
         for i, turn in enumerate(turns):
             participant = turn.participant_id or turn.role
-            # Truncate very long turns but keep enough context
-            content = turn.content[:600] if len(turn.content) > 600 else turn.content
+            # Expanded turn limit from 600 to 1500 chars for better context
+            content = turn.content[:1500] if len(turn.content) > 1500 else turn.content
             content = content.replace("\n", " ").strip()
             if content:
                 lines.append(f"[{i}] {participant.upper()}: {content}")

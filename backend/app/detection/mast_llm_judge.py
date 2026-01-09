@@ -311,17 +311,36 @@ class MASTLLMJudge:
         api_key: Optional[str] = None,
         cache_enabled: bool = True,
         max_cache_size: int = 1000,
+        rag_enabled: bool = True,
+        rag_examples_per_mode: int = 3,
+        db_session=None,
     ):
         self._api_key = api_key
         self.cache_enabled = cache_enabled
         self._cache: Dict[str, JudgmentResult] = {}
         self._max_cache_size = max_cache_size
+        self.rag_enabled = rag_enabled
+        self.rag_examples_per_mode = rag_examples_per_mode
+        self._db_session = db_session
+        self._retriever = None
 
     @property
     def api_key(self) -> str:
         if self._api_key:
             return self._api_key
         return os.getenv("ANTHROPIC_API_KEY", "")
+
+    @property
+    def retriever(self):
+        """Lazy load retriever for RAG."""
+        if self._retriever is None and self.rag_enabled:
+            try:
+                from app.detection.retrieval_service import get_retriever
+                self._retriever = get_retriever(session=self._db_session)
+            except Exception as e:
+                logger.warning(f"Could not initialize RAG retriever: {e}")
+                self._retriever = None
+        return self._retriever
 
     def _cache_key(
         self,
@@ -360,8 +379,13 @@ class MASTLLMJudge:
         full_conversation: str = "",
         agent_interactions: List[str] = None,
         coordination_events: List[str] = None,
+        rag_examples: str = "",
     ) -> str:
-        """Build the judge prompt with few-shot examples and enhanced context."""
+        """Build the judge prompt with few-shot examples and enhanced context.
+
+        Args:
+            rag_examples: Pre-formatted RAG examples from retrieval service
+        """
 
         mode_def = MAST_FAILURE_DEFINITIONS.get(failure_mode)
         if not mode_def:
@@ -381,14 +405,27 @@ class MASTLLMJudge:
         if coordination_events:
             coordination_str = "\n**Coordination Events:**\n" + "\n".join(f"  - {e}" for e in coordination_events[:10])
 
-        # Include full conversation for better context (truncated to fit token limits)
+        # Include full conversation for better context (expanded to 30K for MAST benchmark)
         conversation_section = ""
         if full_conversation:
             conversation_section = f"""
-**Full Conversation Transcript (abbreviated):**
+**Full Conversation Transcript:**
 ```
-{full_conversation[:6000]}
+{full_conversation[:30000]}
 ```
+"""
+
+        # Include RAG examples if available
+        rag_section = ""
+        if rag_examples:
+            rag_section = f"""
+---
+
+{rag_examples}
+
+Use the examples above to calibrate your judgment. Similar traces with known labels help establish the threshold for this failure mode.
+
+---
 """
 
         prompt = f"""You are an expert evaluator of AI agent behavior, specifically trained to detect failure modes in multi-agent systems. You are evaluating traces from the MAST benchmark dataset.
@@ -403,7 +440,7 @@ class MASTLLMJudge:
 
 ### Example of NOT This Failure (should return NO):
 {mode_def['negative_example']}
-
+{rag_section}
 ---
 
 ## Trace to Evaluate
@@ -450,17 +487,17 @@ Important guidelines:
         return input_cost + output_cost
 
     def _parse_response(self, content: str, failure_mode: MASTFailureMode) -> Tuple[str, float, str]:
-        """Parse LLM response into verdict, confidence, reasoning."""
+        """Parse LLM response into verdict, confidence, reasoning.
+
+        Enhanced with multiple JSON extraction strategies for ~5% malformed responses.
+        """
         import re
 
-        # Try to extract JSON
+        # Strategy 1: JSON in code block
         json_match = re.search(r'```json\s*(\{.*?\})\s*```', content, re.DOTALL)
-        if not json_match:
-            json_match = re.search(r'\{[^{}]*"verdict"[^{}]*\}', content, re.DOTALL)
-
         if json_match:
             try:
-                parsed = json.loads(json_match.group(1) if '```' in content else json_match.group())
+                parsed = json.loads(json_match.group(1))
                 verdict = parsed.get("verdict", "UNCERTAIN").upper()
                 confidence = float(parsed.get("confidence", 0.5))
                 reasoning = parsed.get("reasoning", "")
@@ -468,20 +505,52 @@ Important guidelines:
             except (json.JSONDecodeError, ValueError):
                 pass
 
-        # Fallback: look for verdict in text
+        # Strategy 2: JSON with verdict field anywhere
+        json_match = re.search(r'\{[^{}]*"verdict"[^{}]*\}', content, re.DOTALL)
+        if json_match:
+            try:
+                parsed = json.loads(json_match.group())
+                verdict = parsed.get("verdict", "UNCERTAIN").upper()
+                confidence = float(parsed.get("confidence", 0.5))
+                reasoning = parsed.get("reasoning", "")
+                return verdict, confidence, reasoning
+            except (json.JSONDecodeError, ValueError):
+                pass
+
+        # Strategy 3: Extract individual fields with regex
+        verdict_match = re.search(r'"verdict"\s*:\s*"(YES|NO|UNCERTAIN)"', content, re.IGNORECASE)
+        conf_match = re.search(r'"confidence"\s*:\s*([\d.]+)', content)
+        reason_match = re.search(r'"reasoning"\s*:\s*"([^"]*)"', content, re.DOTALL)
+
+        if verdict_match:
+            verdict = verdict_match.group(1).upper()
+            confidence = float(conf_match.group(1)) if conf_match else 0.5
+            reasoning = reason_match.group(1) if reason_match else content[:500]
+            return verdict, confidence, reasoning
+
+        # Strategy 4: Keyword-based fallback
         content_upper = content.upper()
-        if "VERDICT: YES" in content_upper or "\"YES\"" in content_upper:
+        if "VERDICT: YES" in content_upper or '"YES"' in content_upper or "IS PRESENT" in content_upper:
             verdict = "YES"
-        elif "VERDICT: NO" in content_upper or "\"NO\"" in content_upper:
+        elif "VERDICT: NO" in content_upper or '"NO"' in content_upper or "NOT PRESENT" in content_upper:
             verdict = "NO"
         else:
             verdict = "UNCERTAIN"
 
-        # Extract confidence if mentioned
+        # Extract confidence from text
         conf_match = re.search(r'confidence[:\s]+(\d*\.?\d+)', content.lower())
-        confidence = float(conf_match.group(1)) if conf_match else 0.5
+        if not conf_match:
+            conf_match = re.search(r'(\d+)%\s*(?:confident|confidence)', content.lower())
+            if conf_match:
+                confidence = float(conf_match.group(1)) / 100.0
+            else:
+                confidence = 0.5
+        else:
+            confidence = float(conf_match.group(1))
+            if confidence > 1.0:  # Probably a percentage
+                confidence = confidence / 100.0
 
-        return verdict, confidence, content[:500]
+        return verdict, min(1.0, max(0.0, confidence)), content[:500]
 
     def evaluate(
         self,
@@ -533,10 +602,31 @@ Important guidelines:
             get_cost_tracker().record(cached_copy)
             return cached_copy
 
-        # Build prompt with enhanced context
+        # Retrieve RAG examples for dynamic few-shot learning
+        rag_examples_str = ""
+        if self.rag_enabled and self.retriever is not None:
+            try:
+                # Create query text from task and summary
+                query_text = f"{task[:500]} {trace_summary[:500]}"
+                examples = self.retriever.retrieve_sync(
+                    failure_mode=failure_mode.value,
+                    query_text=query_text,
+                    k=self.rag_examples_per_mode,
+                    include_healthy=True,
+                )
+                if examples:
+                    rag_examples_str = self.retriever.format_examples_for_prompt(
+                        examples, max_chars=4000
+                    )
+                    logger.debug(f"Retrieved {len(examples)} RAG examples for {failure_mode.value}")
+            except Exception as e:
+                logger.warning(f"RAG retrieval failed: {e}")
+
+        # Build prompt with enhanced context and RAG examples
         prompt = self._build_prompt(
             failure_mode, task, trace_summary, key_events,
-            full_conversation, agent_interactions, coordination_events
+            full_conversation, agent_interactions, coordination_events,
+            rag_examples=rag_examples_str,
         )
 
         # Call Claude API

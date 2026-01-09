@@ -377,6 +377,52 @@ class TurnState(Base):
     )
 
 
+class FailureExample(Base):
+    """
+    Labeled failure examples for RAG-based detection improvement.
+
+    Stores MAST benchmark traces with their known failure modes for
+    dynamic few-shot retrieval during LLM-based detection.
+    """
+    __tablename__ = "failure_examples"
+
+    id = Column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
+
+    # Source identification
+    dataset = Column(String(64), nullable=False, default="mast")  # mast, internal, user_feedback
+    framework = Column(String(64), nullable=True)  # ag2, chatdev, metagpt, etc.
+    trace_id = Column(String(128), nullable=True)  # Original trace ID if available
+
+    # Failure classification
+    failure_mode = Column(String(16), nullable=False)  # F1-F14
+    is_failure = Column(Boolean, nullable=False)  # True if this IS a failure, False for healthy example
+
+    # Content for retrieval
+    task_description = Column(Text, nullable=False)  # The original task/goal
+    conversation_summary = Column(Text, nullable=False)  # Summary of agent behavior
+    key_events = Column(JSONB, default=list)  # List of key events
+
+    # Vector embedding for similarity search (1024 dim for e5-large-v2)
+    embedding = Column(Vector(1024), nullable=True)
+
+    # Quality metadata
+    confidence = Column(Integer, default=100)  # 0-100, how confident is the label
+    source = Column(String(64), nullable=True)  # ground_truth, llm_labeled, user_feedback
+    notes = Column(Text, nullable=True)
+
+    # Timestamps
+    created_at = Column(DateTime(timezone=True), server_default=func.now())
+    updated_at = Column(DateTime(timezone=True), server_default=func.now(), onupdate=func.now())
+
+    __table_args__ = (
+        Index("idx_failure_examples_mode", "failure_mode"),
+        Index("idx_failure_examples_dataset", "dataset"),
+        Index("idx_failure_examples_framework", "framework"),
+        Index("idx_failure_examples_is_failure", "is_failure"),
+        # IVFFlat index for vector similarity search will be created separately
+    )
+
+
 class HealingRecord(Base):
     """Tracks self-healing fix applications and their outcomes."""
     __tablename__ = "healing_records"
