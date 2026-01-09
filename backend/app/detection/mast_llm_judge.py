@@ -28,157 +28,156 @@ logger = logging.getLogger(__name__)
 
 
 class MASTFailureMode(str, Enum):
-    """MAST 14 failure modes - aligned with MAST taxonomy."""
-    # Planning failures (Category 1)
-    F1 = "F1"   # Specification Mismatch
-    F2 = "F2"   # Poor Task Decomposition
-    F3 = "F3"   # Resource Misallocation
-    F4 = "F4"   # Inadequate Tool Provision
-    F5 = "F5"   # Flawed Workflow Design
-    # Execution failures (Category 2)
-    F6 = "F6"   # Task Derailment
-    F7 = "F7"   # Context Neglect
-    F8 = "F8"   # Information Withholding
-    F9 = "F9"   # Role Usurpation
-    F10 = "F10" # Communication Breakdown
-    F11 = "F11" # Coordination Failure
-    # Verification failures (Category 3)
-    F12 = "F12" # Output Validation Failure
-    F13 = "F13" # Quality Gate Bypass
-    F14 = "F14" # Completion Misjudgment
+    """MAST 14 failure modes - aligned with MAST taxonomy (arXiv:2503.13657)."""
+    # FC1: System Design Issues (5 modes)
+    F1 = "F1"   # Disobey Task Specification (FM-1.1)
+    F2 = "F2"   # Disobey Role Specification (FM-1.2)
+    F3 = "F3"   # Step Repetition (FM-1.3)
+    F4 = "F4"   # Loss of Conversation History (FM-1.4)
+    F5 = "F5"   # Unaware of Termination Conditions (FM-1.5)
+    # FC2: Inter-Agent Misalignment (6 modes)
+    F6 = "F6"   # Conversation Reset (FM-2.1)
+    F7 = "F7"   # Fail to Ask for Clarification (FM-2.2)
+    F8 = "F8"   # Task Derailment (FM-2.3)
+    F9 = "F9"   # Information Withholding (FM-2.4)
+    F10 = "F10" # Ignored Other Agent's Input (FM-2.5)
+    F11 = "F11" # Reasoning-Action Mismatch (FM-2.6)
+    # FC3: Task Verification Issues (3 modes)
+    F12 = "F12" # Premature Termination (FM-3.1)
+    F13 = "F13" # No or Incomplete Verification (FM-3.2)
+    F14 = "F14" # Incorrect Verification (FM-3.3)
 
 
-# MAST failure mode definitions and few-shot examples
-# Aligned with MAST taxonomy: https://github.com/KevinHuuu/MAST
+# MAST Failure Mode Definitions - Aligned with arXiv:2503.13657
+# "Why Do Multi-Agent LLM Systems Fail?" (Cemri et al., 2025)
+# Reference: https://github.com/multi-agent-systems-failure-taxonomy/MAST
 MAST_FAILURE_DEFINITIONS = {
-    # === Planning Failures (Category 1) ===
+    # === FC1: System Design Issues (5 modes) ===
     MASTFailureMode.F1: {
-        "name": "Specification Mismatch",
-        "definition": """The agent's plan or output does not align with the original task specification.
-This includes misunderstanding the requirements, producing outputs that don't meet stated criteria,
-or planning steps that won't achieve the goal. The agent may complete work but it fails to
-satisfy what was actually requested.""",
+        "name": "Disobey Task Specification",
+        "definition": """FM-1.1: Failure to adhere to the specified constraints or requirements of a given task,
+leading to suboptimal or incorrect outcomes. The agent produces output that violates explicit task requirements,
+ignores stated constraints, or delivers something different from what was specified.""",
         "positive_example": """Task: "Create a REST API with authentication and rate limiting"
 Agent: "Here's a simple API endpoint: def get_users(): return users_list"
-Verdict: YES - Missing authentication AND rate limiting, both required in spec""",
+[No authentication, no rate limiting implemented]
+Verdict: YES - Disobeyed explicit task requirements""",
         "negative_example": """Task: "Create a REST API with authentication"
-Agent: "Here's the API with JWT auth middleware, token validation, and protected endpoints..."
-Verdict: NO - Implementation matches the specification with auth"""
+Agent: "Here's the API with JWT auth middleware and protected endpoints"
+Verdict: NO - Agent followed task specification"""
     },
     MASTFailureMode.F2: {
-        "name": "Poor Task Decomposition",
-        "definition": """The agent breaks down the task in a way that is illogical, incomplete,
-or creates unnecessary complexity. Subtasks may be missing, redundant, or improperly scoped.
-The decomposition makes the task harder to complete or leads to confusion.""",
-        "positive_example": """Task: "Build a user authentication system"
-Agent: "Step 1: Design the UI colors. Step 2: Pick fonts. Step 3: Maybe add login later."
-Verdict: YES - Decomposition focuses on irrelevant subtasks, ignores core auth logic""",
-        "negative_example": """Task: "Build a user authentication system"
-Agent: "Step 1: Design user model. Step 2: Implement password hashing. Step 3: Create login endpoint."
-Verdict: NO - Logical decomposition addressing core requirements"""
-    },
-    MASTFailureMode.F4: {
-        "name": "Inadequate Tool Provision",
-        "definition": """The agent either doesn't have the right tools for the task or fails to
-use available tools appropriately. This includes missing tools, wrong tool selection,
-or improper tool configuration that prevents task completion.""",
-        "positive_example": """Task: "Search the database for user records"
-Agent: "I don't have a database tool, so I'll just guess what the records contain..."
-Verdict: YES - Missing required tool, proceeds with invalid approach""",
-        "negative_example": """Task: "Search the database for user records"
-Agent: "Using the SQL query tool: SELECT * FROM users WHERE..."
-Verdict: NO - Appropriate tool available and used correctly"""
-    },
-    MASTFailureMode.F10: {
-        "name": "Communication Breakdown",
-        "definition": """Information fails to flow properly between agents or between agent and user.
-Messages are lost, misunderstood, or never sent when they should be. This includes missing
-acknowledgments, unclear handoffs, or failure to share critical updates.""",
-        "positive_example": """Agent A: "I've updated the config, please proceed with deployment"
-[No response from Agent B]
-Agent A: "Did you receive my message?"
-[Still no response]
-Verdict: YES - Communication failed, no acknowledgment""",
-        "negative_example": """Agent A: "Config updated, ready for deployment"
-Agent B: "Acknowledged, starting deployment now"
-Verdict: NO - Clear communication and acknowledgment"""
+        "name": "Disobey Role Specification",
+        "definition": """FM-1.2: Failure to adhere to the defined responsibilities and constraints of an assigned role,
+potentially leading to an agent behaving like another. Look for agents acting outside their designated role,
+performing tasks assigned to other agents, or ignoring role-specific constraints.""",
+        "positive_example": """Setup: "Coder writes code, Reviewer reviews code"
+Coder: "I wrote the code AND I approve it as the reviewer. Shipping!"
+Verdict: YES - Coder disobeyed role by acting as reviewer""",
+        "negative_example": """Coder: "Here's my code, sending to Reviewer"
+Reviewer: "Reviewed and approved"
+Verdict: NO - Each agent stayed within role specification"""
     },
     MASTFailureMode.F3: {
-        "name": "Resource Misallocation",
-        "definition": """The agent allocates computational, time, or effort resources inefficiently.
-This includes spending excessive effort on low-priority subtasks, under-allocating resources
-to critical parts, or poor distribution of work across components.""",
-        "positive_example": """Task: "Build a web app with user login and a dashboard"
-Agent: "Spent 90% of time perfecting the login button CSS animations..."
-Agent: "Dashboard? Oh, I'll add a placeholder. Time's up!"
-Verdict: YES - Grossly misallocated resources to cosmetic vs core features""",
-        "negative_example": """Task: "Build a web app with user login and dashboard"
-Agent: "First implementing auth (critical), then dashboard layout, then styling."
-Verdict: NO - Resources allocated appropriately by priority"""
+        "name": "Step Repetition",
+        "definition": """FM-1.3: Unnecessary reiteration of previously completed steps in a process,
+potentially causing delays or errors. Look for: same action repeated 3+ times, re-executing completed steps,
+getting stuck in loops, or performing redundant operations.""",
+        "positive_example": """Agent: "Let me search for the file... Found it."
+Agent: "Let me search for the file... Found it."
+Agent: "Let me search for the file... Found it."
+Verdict: YES - Same step unnecessarily repeated 3 times""",
+        "negative_example": """Agent: "Searching... Found. Parsing... Done. Next step."
+Verdict: NO - Each step executed once and progressed"""
+    },
+    MASTFailureMode.F4: {
+        "name": "Loss of Conversation History",
+        "definition": """FM-1.4: Unexpected context truncation, disregarding recent interaction history and
+reverting to an antecedent conversational state. Look for: agent forgetting recent context,
+ignoring previous decisions, asking questions already answered, or acting as if earlier conversation didn't happen.""",
+        "positive_example": """User: "Use Python 3.11"
+Agent: "Understood, using Python 3.11"
+[Later]
+Agent: "What programming language should I use?"
+Verdict: YES - Lost conversation history, forgot language decision""",
+        "negative_example": """User: "Use Python 3.11"
+Agent: "Using Python 3.11 as specified earlier..."
+Verdict: NO - Retained conversation history"""
     },
     MASTFailureMode.F5: {
-        "name": "Flawed Workflow Design",
-        "definition": """The agent designs a workflow or plan that is fundamentally flawed.
-This includes circular dependencies, missing critical steps, impossible sequences,
-or workflows that cannot achieve the stated goal even if executed perfectly.""",
-        "positive_example": """Task: "Deploy the app to production"
-Agent Plan: "1. Deploy to prod, 2. Write tests, 3. Build the app, 4. Run tests"
-Verdict: YES - Workflow order is completely wrong (deploy before build?)""",
-        "negative_example": """Task: "Deploy the app to production"
-Agent Plan: "1. Build, 2. Run tests, 3. Stage deployment, 4. Production deploy"
-Verdict: NO - Logical workflow sequence"""
+        "name": "Unaware of Termination Conditions",
+        "definition": """FM-1.5: Lack of recognition of criteria that should trigger termination of the agents' interaction,
+leading to unnecessary continuation. Look for: agent continuing after task completion, not knowing when to stop,
+adding unnecessary features, or failing to recognize success.""",
+        "positive_example": """Agent: "Task complete! All tests pass."
+Agent: "Let me add some more features..."
+Agent: "And maybe refactor this..."
+Verdict: YES - Unaware task was complete, kept going""",
+        "negative_example": """Agent: "All requirements met, tests pass. Task complete."
+[Agent stops]
+Verdict: NO - Recognized termination condition"""
     },
-    # === Execution Failures (Category 2) ===
+    # === FC2: Inter-Agent Misalignment (6 modes) ===
     MASTFailureMode.F6: {
-        "name": "Task Derailment",
-        "definition": """The agent diverges from the original task and pursues unrelated goals.
-The agent's focus shifts away from what was requested to something tangential or unrelated.""",
-        "positive_example": """Task: "Fix the login bug"
-Agent: "While looking at login, I noticed the CSS is ugly. Let me redesign the whole UI..."
-Agent: "Now adding a dark mode feature... And maybe we need a logo redesign..."
-Verdict: YES - Completely derailed from fixing the bug""",
-        "negative_example": """Task: "Fix the login bug"
-Agent: "Found the bug: password comparison was case-sensitive. Fixed. Testing now."
-Verdict: NO - Stayed focused on the task"""
+        "name": "Conversation Reset",
+        "definition": """FM-2.1: Unexpected or unwarranted restarting of a dialogue, losing context and progress.
+Look for: agent starting over from beginning without reason, abandoning accumulated state,
+resetting progress mid-task, or greeting as if conversation just started.""",
+        "positive_example": """Agent: "Great, we've established requirements. Now implementing..."
+Agent: "Hello! How can I help you today?"
+Verdict: YES - Conversation unexpectedly reset""",
+        "negative_example": """Agent: "Building on our earlier discussion..."
+Verdict: NO - Maintained conversation continuity"""
     },
     MASTFailureMode.F7: {
-        "name": "Context Neglect",
-        "definition": """The agent ignores or fails to use important context from the conversation.
-This includes ignoring user corrections, previous decisions, stated constraints, or
-information provided earlier that's relevant to current actions.""",
-        "positive_example": """User: "Use TypeScript, not JavaScript"
-[later in conversation]
-Agent: "Here's the implementation in JavaScript: const data = {...}"
-Verdict: YES - Ignored explicit TypeScript requirement""",
-        "negative_example": """User: "Use TypeScript"
-Agent: "Here's the TypeScript implementation: const data: DataType = {...}"
-Verdict: NO - Followed the context requirement"""
+        "name": "Fail to Ask for Clarification",
+        "definition": """FM-2.2: Inability to request additional information when faced with unclear or incomplete data,
+resulting in incorrect actions. Look for: agent making assumptions instead of asking, proceeding with ambiguous
+instructions, or guessing rather than seeking clarification.""",
+        "positive_example": """User: "Make it better"
+Agent: "Sure! [randomly changes colors and fonts]"
+Verdict: YES - Should have asked what "better" means""",
+        "negative_example": """User: "Make it better"
+Agent: "Could you clarify? Performance, UI, or code quality?"
+Verdict: NO - Properly asked for clarification"""
     },
     MASTFailureMode.F8: {
-        "name": "Information Withholding",
-        "definition": """The agent has relevant information but fails to share it when needed.
-This includes not providing context for decisions, withholding error details,
-failing to explain reasoning, or not sharing findings that would help.""",
-        "positive_example": """Agent: "The deployment failed."
-User: "Why?"
-Agent: "It just failed. Let me try again..."
-Agent: "Failed again."
-Verdict: YES - Agent has error info but won't share details""",
-        "negative_example": """Agent: "Deployment failed: ConnectionError to db host. Error log: [details]"
-Agent: "The database server appears to be down. Here's what I found..."
-Verdict: NO - Agent shared relevant information"""
+        "name": "Task Derailment",
+        "definition": """FM-2.3: Deviation from the intended objective or focus of a given task,
+resulting in irrelevant or unproductive actions. Look for: agent shifting focus to unrelated work,
+pursuing tangential goals, or losing track of the original objective.""",
+        "positive_example": """Task: "Fix the login bug"
+Agent: "While looking at login, the CSS is ugly. Let me redesign the UI..."
+Agent: "Now adding dark mode..."
+Verdict: YES - Derailed from bug fix to unrelated UI work""",
+        "negative_example": """Task: "Fix the login bug"
+Agent: "Found bug in password check. Fixed. Testing now."
+Verdict: NO - Stayed focused on task"""
     },
     MASTFailureMode.F9: {
-        "name": "Role Usurpation",
-        "definition": """An agent acts outside its designated role or takes over responsibilities
-belonging to another agent. This includes overstepping authority, making decisions
-reserved for other agents, or performing tasks outside assigned scope.""",
-        "positive_example": """Setup: "Coder agent handles code, Reviewer agent handles reviews"
-Coder: "I wrote the code AND I approve it. Ship it!"
-Verdict: YES - Coder usurped the Reviewer's role""",
-        "negative_example": """Coder: "Here's my implementation, sending to Reviewer"
-Reviewer: "Reviewed and approved. Minor suggestions: [list]"
-Verdict: NO - Each agent stayed in their role"""
+        "name": "Information Withholding",
+        "definition": """FM-2.4: Failure to share or communicate important data or insights that could impact
+decision-making of other agents. Look for: agent having relevant info but not sharing it,
+hiding errors, or failing to communicate important findings.""",
+        "positive_example": """Agent A knows: "Database is at 95% capacity"
+Agent B: "Should I start the data import?"
+Agent A: "Sure, go ahead." [doesn't mention capacity]
+Verdict: YES - Withheld critical capacity information""",
+        "negative_example": """Agent A: "Warning: Database at 95% capacity"
+Agent B: "Thanks, will wait for cleanup"
+Verdict: NO - Shared relevant information"""
+    },
+    MASTFailureMode.F10: {
+        "name": "Ignored Other Agent's Input",
+        "definition": """FM-2.5: Disregarding or failing to adequately consider input or recommendations from
+other agents, leading to suboptimal decisions. Look for: agent ignoring suggestions, overriding other agents'
+decisions, or acting without acknowledging teammates' contributions.""",
+        "positive_example": """Reviewer: "Critical: Add input validation before database query"
+Coder: "Thanks! Final code: [same code without validation]"
+Verdict: YES - Ignored reviewer's critical feedback""",
+        "negative_example": """Reviewer: "Add input validation"
+Coder: "Good point. Added sanitization. Updated code: [with validation]"
+Verdict: NO - Incorporated other agent's input"""
     },
     MASTFailureMode.F11: {
         "name": "Reasoning-Action Mismatch",
