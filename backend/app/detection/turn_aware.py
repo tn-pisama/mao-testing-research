@@ -321,7 +321,7 @@ class TurnAwareContextNeglectDetector(EmbeddingMixin, TurnAwareDetector):
         check_user_instructions: bool = True,
         check_tool_outputs: bool = True,
         require_explicit_neglect: bool = False,  # Enable implicit detection for F7
-        min_issues_to_flag: int = 3,  # Require 3+ issues to reduce FPR
+        min_issues_to_flag: int = 2,  # Balanced: was 3, now 2 for better recall
     ):
         self.utilization_threshold = utilization_threshold
         self.min_context_length = min_context_length
@@ -1321,7 +1321,7 @@ class TurnAwareLoopDetector(TurnAwareDetector):
     def __init__(
         self,
         repetition_threshold: float = 0.9,
-        min_repetitions: int = 3,  # Raised from 2 to reduce FPR
+        min_repetitions: int = 2,  # Balanced: was 3, now 2 for better recall
     ):
         self.repetition_threshold = repetition_threshold
         self.min_repetitions = min_repetitions
@@ -1751,7 +1751,7 @@ class TurnAwareCoordinationFailureDetector(TurnAwareDetector):
         min_agents: int = 2,
         conflict_threshold: float = 0.1,
         redundancy_threshold: float = 0.6,  # Raised from 0.3 - avoid FPs on similar discussions
-        min_issues_to_flag: int = 5,  # Require 5+ issues to reduce FPR (was 3)
+        min_issues_to_flag: int = 2,  # Balanced: was 5 (too strict), now 2
     ):
         self.min_agents = min_agents
         self.conflict_threshold = conflict_threshold
@@ -2054,7 +2054,7 @@ class TurnAwareResourceMisallocationDetector(TurnAwareDetector):
     def __init__(
         self,
         min_turns: int = 2,
-        min_issues_to_flag: int = 5,  # Require 5+ issues to reduce FPR
+        min_issues_to_flag: int = 3,  # Balanced: was 5 (too strict), now 3
     ):
         self.min_turns = min_turns
         self.min_issues_to_flag = min_issues_to_flag
@@ -2530,9 +2530,9 @@ class TurnAwareOutputValidationDetector(EmbeddingMixin, TurnAwareDetector):
         "runtime error", "compile error", "execution failed",
     ]
 
-    def __init__(self, min_turns: int = 2, min_issues_to_flag: int = 3):
+    def __init__(self, min_turns: int = 2, min_issues_to_flag: int = 2):
         self.min_turns = min_turns
-        self.min_issues_to_flag = min_issues_to_flag  # Require 3+ issues to reduce FPR
+        self.min_issues_to_flag = min_issues_to_flag  # Balanced: was 3, now 2
 
     def detect(
         self,
@@ -2755,9 +2755,9 @@ class TurnAwareQualityGateBypassDetector(EmbeddingMixin, TurnAwareDetector):
         "bare minimum for", "cut corners on", "expedite at cost",
     ]
 
-    def __init__(self, min_turns: int = 2, min_issues_to_flag: int = 3):
+    def __init__(self, min_turns: int = 2, min_issues_to_flag: int = 2):
         self.min_turns = min_turns
-        self.min_issues_to_flag = min_issues_to_flag  # Require 3+ issues to reduce FPR
+        self.min_issues_to_flag = min_issues_to_flag  # Balanced: was 3, now 2
 
     def detect(
         self,
@@ -2957,9 +2957,9 @@ class TurnAwareCompletionMisjudgmentDetector(TurnAwareDetector):
         "still need to complete", "have to also do", "need to also finish",
     ]
 
-    def __init__(self, min_turns: int = 2, min_issues_to_flag: int = 4):
+    def __init__(self, min_turns: int = 2, min_issues_to_flag: int = 2):
         self.min_turns = min_turns
-        self.min_issues_to_flag = min_issues_to_flag  # Require 4+ issues to reduce FPR (was 2)
+        self.min_issues_to_flag = min_issues_to_flag  # Balanced: was 4, now 2
 
     def detect(
         self,
