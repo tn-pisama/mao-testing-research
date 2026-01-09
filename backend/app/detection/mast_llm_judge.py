@@ -65,6 +65,44 @@ Verdict: YES - Missing authentication AND rate limiting, both required in spec""
 Agent: "Here's the API with JWT auth middleware, token validation, and protected endpoints..."
 Verdict: NO - Implementation matches the specification with auth"""
     },
+    MASTFailureMode.F2: {
+        "name": "Poor Task Decomposition",
+        "definition": """The agent breaks down the task in a way that is illogical, incomplete,
+or creates unnecessary complexity. Subtasks may be missing, redundant, or improperly scoped.
+The decomposition makes the task harder to complete or leads to confusion.""",
+        "positive_example": """Task: "Build a user authentication system"
+Agent: "Step 1: Design the UI colors. Step 2: Pick fonts. Step 3: Maybe add login later."
+Verdict: YES - Decomposition focuses on irrelevant subtasks, ignores core auth logic""",
+        "negative_example": """Task: "Build a user authentication system"
+Agent: "Step 1: Design user model. Step 2: Implement password hashing. Step 3: Create login endpoint."
+Verdict: NO - Logical decomposition addressing core requirements"""
+    },
+    MASTFailureMode.F4: {
+        "name": "Inadequate Tool Provision",
+        "definition": """The agent either doesn't have the right tools for the task or fails to
+use available tools appropriately. This includes missing tools, wrong tool selection,
+or improper tool configuration that prevents task completion.""",
+        "positive_example": """Task: "Search the database for user records"
+Agent: "I don't have a database tool, so I'll just guess what the records contain..."
+Verdict: YES - Missing required tool, proceeds with invalid approach""",
+        "negative_example": """Task: "Search the database for user records"
+Agent: "Using the SQL query tool: SELECT * FROM users WHERE..."
+Verdict: NO - Appropriate tool available and used correctly"""
+    },
+    MASTFailureMode.F10: {
+        "name": "Communication Breakdown",
+        "definition": """Information fails to flow properly between agents or between agent and user.
+Messages are lost, misunderstood, or never sent when they should be. This includes missing
+acknowledgments, unclear handoffs, or failure to share critical updates.""",
+        "positive_example": """Agent A: "I've updated the config, please proceed with deployment"
+[No response from Agent B]
+Agent A: "Did you receive my message?"
+[Still no response]
+Verdict: YES - Communication failed, no acknowledgment""",
+        "negative_example": """Agent A: "Config updated, ready for deployment"
+Agent B: "Acknowledged, starting deployment now"
+Verdict: NO - Clear communication and acknowledgment"""
+    },
     MASTFailureMode.F3: {
         "name": "Resource Misallocation",
         "definition": """The agent allocates computational, time, or effort resources inefficiently.
@@ -319,8 +357,11 @@ class MASTLLMJudge:
         task: str,
         trace_summary: str,
         key_events: List[str],
+        full_conversation: str = "",
+        agent_interactions: List[str] = None,
+        coordination_events: List[str] = None,
     ) -> str:
-        """Build the judge prompt with few-shot examples."""
+        """Build the judge prompt with few-shot examples and enhanced context."""
 
         mode_def = MAST_FAILURE_DEFINITIONS.get(failure_mode)
         if not mode_def:
@@ -332,9 +373,25 @@ class MASTLLMJudge:
                 "negative_example": "N/A",
             }
 
-        events_str = "\n".join(f"  - {e}" for e in key_events[:10])  # Limit events
+        events_str = "\n".join(f"  - {e}" for e in key_events[:20])  # More events
+        interactions_str = ""
+        if agent_interactions:
+            interactions_str = "\n**Agent Interactions:**\n" + "\n".join(f"  - {i}" for i in agent_interactions[:15])
+        coordination_str = ""
+        if coordination_events:
+            coordination_str = "\n**Coordination Events:**\n" + "\n".join(f"  - {e}" for e in coordination_events[:10])
 
-        prompt = f"""You are an expert evaluator of AI agent behavior, specifically trained to detect failure modes in multi-agent systems.
+        # Include full conversation for better context (truncated to fit token limits)
+        conversation_section = ""
+        if full_conversation:
+            conversation_section = f"""
+**Full Conversation Transcript (abbreviated):**
+```
+{full_conversation[:6000]}
+```
+"""
+
+        prompt = f"""You are an expert evaluator of AI agent behavior, specifically trained to detect failure modes in multi-agent systems. You are evaluating traces from the MAST benchmark dataset.
 
 ## Failure Mode: {failure_mode.value} - {mode_def['name']}
 
@@ -351,35 +408,38 @@ class MASTLLMJudge:
 
 ## Trace to Evaluate
 
-**Task:** {task}
+**Original Task:** {task[:1000]}
 
 **Agent Output Summary:**
-{trace_summary[:2000]}
+{trace_summary[:3000]}
 
 **Key Events:**
 {events_str}
-
+{interactions_str}
+{coordination_str}
+{conversation_section}
 ---
 
 ## Your Evaluation
 
-Does this trace exhibit failure mode {failure_mode.value} ({mode_def['name']})?
+Carefully analyze the trace above. Does it exhibit failure mode {failure_mode.value} ({mode_def['name']})?
 
 You MUST respond in this exact JSON format:
 ```json
 {{
   "verdict": "YES" | "NO" | "UNCERTAIN",
   "confidence": <float 0.0-1.0>,
-  "reasoning": "<one paragraph explanation>"
+  "reasoning": "<one paragraph explanation citing specific evidence from the trace>"
 }}
 ```
 
 Important guidelines:
-- YES: Clear evidence of this specific failure mode
-- NO: No evidence, or evidence contradicts this failure
-- UNCERTAIN: Ambiguous, could go either way
-- Be conservative: only say YES with clear evidence
-- Consider edge cases and legitimate behaviors
+- YES: Evidence suggests this failure mode is present (don't require perfect certainty)
+- NO: Clear evidence this is NOT a failure, or the trace shows successful behavior
+- UNCERTAIN: Genuinely ambiguous, roughly 50/50
+- Multi-agent systems often have partial failures - err toward YES if there are signs
+- Look for patterns in the CONVERSATION and INTERACTIONS, not just the summary
+- Consider the coordination events for failures like F9 (Role Usurpation), F11 (Coordination Failure)
 """
         return prompt
 
@@ -429,7 +489,10 @@ Important guidelines:
         task: str,
         trace_summary: str,
         key_events: Optional[List[str]] = None,
-        timeout: float = 30.0,
+        timeout: float = 60.0,  # Increased for larger prompts
+        full_conversation: str = "",
+        agent_interactions: Optional[List[str]] = None,
+        coordination_events: Optional[List[str]] = None,
     ) -> JudgmentResult:
         """
         Evaluate a trace for a specific failure mode.
@@ -440,6 +503,9 @@ Important guidelines:
             trace_summary: Summary of agent output/behavior
             key_events: List of key events from the trace
             timeout: API timeout in seconds
+            full_conversation: Full conversation transcript for context
+            agent_interactions: Agent-to-agent interaction patterns
+            coordination_events: Coordination-related events
 
         Returns:
             JudgmentResult with verdict, confidence, and reasoning
@@ -467,8 +533,11 @@ Important guidelines:
             get_cost_tracker().record(cached_copy)
             return cached_copy
 
-        # Build prompt
-        prompt = self._build_prompt(failure_mode, task, trace_summary, key_events)
+        # Build prompt with enhanced context
+        prompt = self._build_prompt(
+            failure_mode, task, trace_summary, key_events,
+            full_conversation, agent_interactions, coordination_events
+        )
 
         # Call Claude API
         start_time = time.time()
@@ -602,3 +671,186 @@ Important guidelines:
             )
             results.append(result)
         return results
+
+    def evaluate_all_modes(
+        self,
+        task: str,
+        trace_summary: str,
+        key_events: Optional[List[str]] = None,
+        modes_to_check: Optional[List[MASTFailureMode]] = None,
+        full_conversation: str = "",
+        agent_interactions: Optional[List[str]] = None,
+        coordination_events: Optional[List[str]] = None,
+    ) -> Dict[str, JudgmentResult]:
+        """
+        Evaluate a trace for all (or specified) MAST failure modes.
+
+        This is the "full LLM" mode that checks every failure mode.
+
+        Args:
+            task: The original task/goal
+            trace_summary: Summary of agent output/behavior
+            key_events: List of key events from the trace
+            modes_to_check: Optional list of specific modes (default: all 14)
+            full_conversation: Full conversation transcript for context
+            agent_interactions: Agent-to-agent interaction patterns
+            coordination_events: Coordination-related events
+
+        Returns:
+            Dict mapping mode string (e.g., "F1") to JudgmentResult
+        """
+        if modes_to_check is None:
+            modes_to_check = list(MASTFailureMode)
+
+        results = {}
+        for mode in modes_to_check:
+            result = self.evaluate(
+                failure_mode=mode,
+                task=task,
+                trace_summary=trace_summary,
+                key_events=key_events,
+                full_conversation=full_conversation,
+                agent_interactions=agent_interactions,
+                coordination_events=coordination_events,
+            )
+            results[mode.value] = result
+
+        return results
+
+
+class FullLLMDetector:
+    """
+    Full LLM-based detector using Claude Opus 4.5 for all failure modes.
+
+    Unlike hybrid detection which only escalates ambiguous cases to LLM,
+    this detector uses LLM for every trace. Target: 50-60% F1 on MAST benchmark.
+
+    Usage:
+        detector = FullLLMDetector()
+        results = detector.detect_all_modes(
+            task="Build a REST API",
+            trace_summary="Agent started by...",
+            key_events=["Started coding", "Finished endpoint"]
+        )
+
+        # Check which modes were detected
+        for mode, detected in results.items():
+            if detected:
+                print(f"{mode} failure detected!")
+    """
+
+    def __init__(self, api_key: Optional[str] = None):
+        self._judge = MASTLLMJudge(api_key=api_key)
+
+    def detect_all_modes(
+        self,
+        task: str,
+        trace_summary: str,
+        key_events: Optional[List[str]] = None,
+        modes_to_check: Optional[List[str]] = None,
+        full_conversation: str = "",
+        agent_interactions: Optional[List[str]] = None,
+        coordination_events: Optional[List[str]] = None,
+    ) -> Dict[str, bool]:
+        """
+        Detect all failure modes for a trace.
+
+        Args:
+            task: The original task/goal
+            trace_summary: Summary of agent output/behavior
+            key_events: List of key events from the trace
+            modes_to_check: Optional list of mode strings (e.g., ["F1", "F6"])
+            full_conversation: Full conversation transcript for context
+            agent_interactions: Agent-to-agent interaction patterns
+            coordination_events: Coordination-related events
+
+        Returns:
+            Dict mapping mode string to detection status (True/False)
+        """
+        # Convert string modes to enums
+        if modes_to_check:
+            enum_modes = [MASTFailureMode(m) for m in modes_to_check]
+        else:
+            enum_modes = None
+
+        # Get full LLM evaluation with enhanced context
+        judgment_results = self._judge.evaluate_all_modes(
+            task=task,
+            trace_summary=trace_summary,
+            key_events=key_events,
+            modes_to_check=enum_modes,
+            full_conversation=full_conversation,
+            agent_interactions=agent_interactions,
+            coordination_events=coordination_events,
+        )
+
+        # Convert to simple detected/not-detected
+        detected = {}
+        for mode, result in judgment_results.items():
+            # Consider YES as detected (LLM already provides calibrated confidence)
+            # Also consider UNCERTAIN with high confidence as borderline positive
+            detected[mode] = (
+                result.verdict == "YES" or
+                (result.verdict == "UNCERTAIN" and result.confidence >= 0.7)
+            )
+
+        return detected
+
+    def detect_with_details(
+        self,
+        task: str,
+        trace_summary: str,
+        key_events: Optional[List[str]] = None,
+        modes_to_check: Optional[List[str]] = None,
+        full_conversation: str = "",
+        agent_interactions: Optional[List[str]] = None,
+        coordination_events: Optional[List[str]] = None,
+    ) -> Dict[str, Dict[str, Any]]:
+        """
+        Detect with full details including confidence and reasoning.
+
+        Args:
+            task: The original task/goal
+            trace_summary: Summary of agent output/behavior
+            key_events: List of key events from the trace
+            modes_to_check: Optional list of mode strings
+            full_conversation: Full conversation transcript for context
+            agent_interactions: Agent-to-agent interaction patterns
+            coordination_events: Coordination-related events
+
+        Returns:
+            Dict with mode -> {detected, confidence, verdict, reasoning, cost}
+        """
+        if modes_to_check:
+            enum_modes = [MASTFailureMode(m) for m in modes_to_check]
+        else:
+            enum_modes = None
+
+        judgment_results = self._judge.evaluate_all_modes(
+            task=task,
+            trace_summary=trace_summary,
+            key_events=key_events,
+            modes_to_check=enum_modes,
+            full_conversation=full_conversation,
+            agent_interactions=agent_interactions,
+            coordination_events=coordination_events,
+        )
+
+        details = {}
+        for mode, result in judgment_results.items():
+            # Match detect_all_modes logic: YES or high-confidence UNCERTAIN
+            detected = (
+                result.verdict == "YES" or
+                (result.verdict == "UNCERTAIN" and result.confidence >= 0.7)
+            )
+            details[mode] = {
+                "detected": detected,
+                "confidence": result.confidence,
+                "verdict": result.verdict,
+                "reasoning": result.reasoning,
+                "cost_usd": result.cost_usd,
+                "tokens_used": result.tokens_used,
+                "cached": result.cached,
+            }
+
+        return details

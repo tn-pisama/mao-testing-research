@@ -16,12 +16,19 @@ Options:
     --mode MODE        Evaluate specific failure mode only (F1-F14)
     --verbose          Print detailed detection results
     --save             Save results to benchmarks/results/
-    --hybrid           Use hybrid detection with LLM verification
+    --hybrid           Use hybrid detection with LLM verification (30-40% F1 target)
+    --full-llm         Use full LLM detection for all modes (50-60% F1 target)
     --no-llm           Disable LLM verification (pattern-only)
+
+Detection Modes:
+    Pattern-only (default): Fast, free, 15-20% F1
+    Hybrid (--hybrid):      Pattern + selective LLM, 30-40% F1, ~$0.01-0.03/trace
+    Full LLM (--full-llm):  Claude Opus 4.5 for all modes, 50-60% F1, ~$0.05-0.15/trace
 
 Version History:
 - v1.0: Initial implementation using turn-aware detection
 - v2.0: Added hybrid detection with Claude Opus 4.5 LLM verification
+- v3.0: Added full LLM mode using Claude Opus 4.5 (claude-opus-4-5-20251101)
 """
 
 import argparse
@@ -67,7 +74,12 @@ from app.detection.hybrid_pipeline import (
 )
 from app.detection.task_extractors import ConversationTurn, extract_task, detect_framework
 from app.detection.agent_graph import GraphBasedCoordinationDetector, GraphBasedUsurpationDetector
-from app.detection.mast_llm_judge import get_cost_tracker, reset_cost_tracker
+from app.detection.mast_llm_judge import (
+    get_cost_tracker,
+    reset_cost_tracker,
+    FullLLMDetector,
+    MASTFailureMode,
+)
 
 # Failure mode names
 MODE_NAMES = {
@@ -690,6 +702,8 @@ def run_detection(
     use_hybrid: bool = False,
     hybrid_pipeline: Optional[HybridDetectionPipeline] = None,
     metadata: Optional[Dict[str, Any]] = None,
+    use_full_llm: bool = False,
+    full_llm_detector: Optional[FullLLMDetector] = None,
 ) -> Dict[str, Any]:
     """Run turn-aware detection on conversation snapshots.
 
@@ -699,12 +713,54 @@ def run_detection(
         use_hybrid: Whether to use hybrid detection with LLM
         hybrid_pipeline: Optional pre-configured pipeline
         metadata: Trace metadata for framework detection
+        use_full_llm: Whether to use full LLM detection for all modes
+        full_llm_detector: Optional pre-configured FullLLMDetector
 
     Returns:
         Dict mapping failure mode codes to detected status and details
     """
     detected_modes = {}
     detection_details = {}
+
+    # Full LLM mode: use Claude Opus 4.5 for all failure modes
+    if use_full_llm and full_llm_detector:
+        # Extract task and summary from snapshots with enhanced context
+        turns = [
+            ConversationTurn(
+                role=s.participant_type,
+                content=s.content,
+                participant_id=s.participant_id,
+                metadata=s.turn_metadata,
+            )
+            for s in snapshots
+        ]
+        extraction = extract_task(turns, metadata or {})
+
+        # Determine which modes to check
+        modes_to_check = [target_mode] if target_mode else None
+
+        # Run full LLM detection with enhanced context
+        llm_results = full_llm_detector.detect_with_details(
+            task=extraction.task,
+            trace_summary=extraction.agent_output_summary,
+            key_events=extraction.key_events,
+            modes_to_check=modes_to_check,
+            full_conversation=extraction.full_conversation,
+            agent_interactions=extraction.agent_interactions,
+            coordination_events=extraction.coordination_events,
+        )
+
+        for mode, details in llm_results.items():
+            detected_modes[mode] = details["detected"]
+            detection_details[mode] = {
+                "llm_confidence": details["confidence"],
+                "llm_verdict": details["verdict"],
+                "llm_reasoning": details["reasoning"][:200] if details["reasoning"] else "",
+                "llm_cost": details["cost_usd"],
+                "llm_cached": details["cached"],
+            }
+
+        return {"detected": detected_modes, "details": detection_details}
 
     if use_hybrid and hybrid_pipeline:
         # Convert snapshots to ConversationTurns for hybrid pipeline
@@ -796,6 +852,8 @@ def evaluate_trace(
     verbose: bool = False,
     use_hybrid: bool = False,
     hybrid_pipeline: Optional[HybridDetectionPipeline] = None,
+    use_full_llm: bool = False,
+    full_llm_detector: Optional[FullLLMDetector] = None,
 ) -> Dict[str, Any]:
     """Evaluate a single MAST trace.
 
@@ -806,6 +864,8 @@ def evaluate_trace(
         verbose: Print detailed output
         use_hybrid: Whether to use hybrid detection
         hybrid_pipeline: Optional pre-configured pipeline
+        use_full_llm: Whether to use full LLM detection
+        full_llm_detector: Optional pre-configured FullLLMDetector
 
     Returns:
         Evaluation result for this trace
@@ -850,6 +910,8 @@ def evaluate_trace(
             use_hybrid=use_hybrid,
             hybrid_pipeline=hybrid_pipeline,
             metadata=metadata,
+            use_full_llm=use_full_llm,
+            full_llm_detector=full_llm_detector,
         )
         result["detected"] = detection_result["detected"]
         result["detection_details"] = detection_result.get("details", {})
@@ -882,6 +944,7 @@ def evaluate_mast_dataset(
     use_sample_data: bool = False,
     use_hybrid: bool = False,
     llm_enabled: bool = True,
+    use_full_llm: bool = False,
 ) -> EvaluationResult:
     """Run full MAST evaluation with conversation trace support.
 
@@ -893,6 +956,7 @@ def evaluate_mast_dataset(
         use_sample_data: Use generated sample data
         use_hybrid: Use hybrid detection with LLM verification
         llm_enabled: Enable LLM verification in hybrid mode
+        use_full_llm: Use full LLM detection for all modes (most accurate but expensive)
 
     Returns:
         Complete evaluation result
@@ -923,21 +987,32 @@ def evaluate_mast_dataset(
     # Initialize importer
     importer = MASTImporter()
 
-    # Initialize hybrid pipeline if requested
+    # Initialize detectors based on mode
     hybrid_pipeline = None
-    if use_hybrid:
+    full_llm_detector = None
+
+    if use_full_llm:
+        reset_cost_tracker()  # Reset cost tracking
+        full_llm_detector = FullLLMDetector()
+        print("Using FULL LLM detection (Claude Opus 4.5 for all modes)")
+        print("WARNING: This will use significant API credits (~$0.05-0.15 per trace)")
+    elif use_hybrid:
         reset_cost_tracker()  # Reset cost tracking
         hybrid_pipeline = create_hybrid_pipeline(llm_enabled=llm_enabled)
         print(f"Using hybrid detection (LLM {'enabled' if llm_enabled else 'disabled'})")
 
     # Track metrics by mode
     metrics: Dict[str, EvaluationMetrics] = {}
-    modes_to_track = [target_mode] if target_mode else list(TURN_AWARE_DETECTORS.keys())
 
-    # Add graph-based modes
-    if not target_mode:
-        modes_to_track.extend(["F3", "F9"])  # Graph-based coordination and usurpation
-        modes_to_track = list(set(modes_to_track))  # Deduplicate
+    if use_full_llm:
+        # Full LLM mode: track all 14 failure modes
+        modes_to_track = [target_mode] if target_mode else [f"F{i}" for i in range(1, 15)]
+    else:
+        modes_to_track = [target_mode] if target_mode else list(TURN_AWARE_DETECTORS.keys())
+        # Add graph-based modes
+        if not target_mode:
+            modes_to_track.extend(["F3", "F9"])  # Graph-based coordination and usurpation
+            modes_to_track = list(set(modes_to_track))  # Deduplicate
 
     for mode in modes_to_track:
         metrics[mode] = EvaluationMetrics(mode=mode)
@@ -956,6 +1031,8 @@ def evaluate_mast_dataset(
             verbose,
             use_hybrid=use_hybrid,
             hybrid_pipeline=hybrid_pipeline,
+            use_full_llm=use_full_llm,
+            full_llm_detector=full_llm_detector,
         )
 
         if trace_result["error"]:
@@ -990,15 +1067,22 @@ def evaluate_mast_dataset(
     result.extraction_rate = result.parsed_traces / result.total_traces if result.total_traces > 0 else 0
     result.avg_turns_per_trace = total_turns / result.parsed_traces if result.parsed_traces > 0 else 0
 
-    # Add cost tracking for hybrid mode
-    if use_hybrid:
+    # Add cost tracking for hybrid and full LLM modes
+    if use_hybrid or use_full_llm:
         cost_tracker = get_cost_tracker()
+        mode_name = "Full LLM" if use_full_llm else "Hybrid"
         result.errors.append(
-            f"LLM Stats: {cost_tracker.total_calls} calls, "
+            f"{mode_name} Stats: {cost_tracker.total_calls} calls, "
             f"{cost_tracker.cached_calls} cached, "
             f"{cost_tracker.total_tokens} tokens, "
             f"${cost_tracker.total_cost_usd:.4f} cost"
         )
+        # Also print to console for immediate feedback
+        print(f"\n{mode_name} Detection Cost Summary:")
+        print(f"  Total LLM calls: {cost_tracker.total_calls}")
+        print(f"  Cached calls: {cost_tracker.cached_calls}")
+        print(f"  Tokens used: {cost_tracker.total_tokens}")
+        print(f"  Total cost: ${cost_tracker.total_cost_usd:.4f}")
 
     return result
 
@@ -1131,8 +1215,8 @@ def main():
     )
     parser.add_argument(
         "--mode", "-m",
-        choices=list(TURN_AWARE_DETECTORS.keys()) + ["F9"],
-        help="Evaluate specific failure mode only"
+        choices=[f"F{i}" for i in range(1, 15)],  # All 14 MAST failure modes
+        help="Evaluate specific failure mode only (F1-F14)"
     )
     parser.add_argument(
         "--verbose", "-v",
@@ -1155,12 +1239,22 @@ def main():
         help="Use hybrid detection with Claude Opus 4.5 LLM verification"
     )
     parser.add_argument(
+        "--full-llm",
+        action="store_true",
+        help="Use full LLM detection (Claude Opus 4.5 for all 14 modes). Target: 50-60%% F1. Expensive!"
+    )
+    parser.add_argument(
         "--no-llm",
         action="store_true",
         help="Disable LLM verification in hybrid mode (pattern-only with graph)"
     )
 
     args = parser.parse_args()
+
+    # Validate mutually exclusive options
+    if args.hybrid and args.full_llm:
+        print("Error: --hybrid and --full-llm are mutually exclusive. Choose one.")
+        return 1
 
     # Check for MAST data
     if not args.use_sample_data and not args.data_dir.exists():
@@ -1181,6 +1275,7 @@ def main():
         use_sample_data=args.use_sample_data,
         use_hybrid=args.hybrid,
         llm_enabled=llm_enabled,
+        use_full_llm=args.full_llm,
     )
 
     # Print results

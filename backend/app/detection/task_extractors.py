@@ -44,6 +44,19 @@ class ExtractionResult:
     framework: str
     agent_output_summary: str
     key_events: List[str]
+    # Enhanced fields for LLM-based detection
+    full_conversation: str = ""  # Full conversation with role labels
+    agent_interactions: List[str] = None  # Agent-to-agent interactions
+    participant_summary: Dict[str, int] = None  # Participant -> turn count
+    coordination_events: List[str] = None  # Handoffs, delegations, etc.
+
+    def __post_init__(self):
+        if self.agent_interactions is None:
+            self.agent_interactions = []
+        if self.participant_summary is None:
+            self.participant_summary = {}
+        if self.coordination_events is None:
+            self.coordination_events = []
 
 
 class TaskExtractor(Protocol):
@@ -65,48 +78,143 @@ class BaseTaskExtractor(ABC):
 
     framework: str = "unknown"
 
-    def _summarize_output(self, turns: List[ConversationTurn], max_length: int = 1000) -> str:
-        """Summarize agent output from turns."""
+    def _summarize_output(self, turns: List[ConversationTurn], max_length: int = 2000) -> str:
+        """Summarize agent output from turns - enhanced for LLM detection."""
         agent_content = []
         for turn in turns:
             if turn.role in ("agent", "assistant"):
                 # Skip very short or metadata-like content
                 if len(turn.content) > 20 and not turn.content.startswith("{"):
-                    agent_content.append(turn.content[:500])
+                    # Include participant ID for multi-agent context
+                    prefix = f"[{turn.participant_id}] " if turn.participant_id else ""
+                    agent_content.append(f"{prefix}{turn.content[:800]}")
 
         if not agent_content:
             return "No agent output found"
 
-        combined = "\n---\n".join(agent_content[:5])  # First 5 agent turns
+        combined = "\n---\n".join(agent_content[:10])  # First 10 agent turns
         return combined[:max_length]
 
-    def _extract_key_events(self, turns: List[ConversationTurn], max_events: int = 10) -> List[str]:
-        """Extract key events from turns."""
+    def _extract_key_events(self, turns: List[ConversationTurn], max_events: int = 20) -> List[str]:
+        """Extract key events from turns - enhanced for failure detection."""
         events = []
 
         for i, turn in enumerate(turns):
+            participant = turn.participant_id or turn.role
+
             # Tool calls
             if turn.role == "tool":
                 tool_name = turn.metadata.get("tool_name", "tool")
-                events.append(f"Tool call: {tool_name}")
+                events.append(f"[Turn {i}] Tool call: {tool_name}")
 
             # Errors or failures
-            if "error" in turn.content.lower() or "failed" in turn.content.lower():
+            content_lower = turn.content.lower()
+            if any(kw in content_lower for kw in ["error", "failed", "exception", "cannot", "unable"]):
+                snippet = turn.content[:150].replace("\n", " ")
+                events.append(f"[Turn {i}] {participant} ERROR: {snippet}")
+
+            # Success indicators
+            if any(kw in content_lower for kw in ["completed", "finished", "done", "success"]):
                 snippet = turn.content[:100].replace("\n", " ")
-                events.append(f"Error/Failure: {snippet}...")
+                events.append(f"[Turn {i}] {participant} SUCCESS: {snippet}")
 
             # State changes
             if "state" in turn.metadata:
-                events.append(f"State change at turn {i}")
+                events.append(f"[Turn {i}] State change by {participant}")
 
-            # Agent decisions
-            if turn.role in ("agent", "assistant") and len(turn.content) > 50:
-                # Extract first action-like sentence
-                first_sentence = turn.content.split(".")[0][:100]
-                if len(first_sentence) > 20:
-                    events.append(f"Agent: {first_sentence}")
+            # Questions/requests (coordination signals)
+            if "?" in turn.content or any(kw in content_lower for kw in ["please", "need", "should", "can you"]):
+                snippet = turn.content[:100].replace("\n", " ")
+                events.append(f"[Turn {i}] {participant} REQUEST: {snippet}")
+
+            # Handoff patterns
+            if any(kw in content_lower for kw in ["hand off", "passing to", "your turn", "please review"]):
+                snippet = turn.content[:100].replace("\n", " ")
+                events.append(f"[Turn {i}] {participant} HANDOFF: {snippet}")
 
         return events[:max_events]
+
+    def _extract_full_conversation(self, turns: List[ConversationTurn], max_length: int = 8000) -> str:
+        """Extract full conversation with role labels for LLM analysis."""
+        lines = []
+        for i, turn in enumerate(turns):
+            participant = turn.participant_id or turn.role
+            # Truncate very long turns but keep enough context
+            content = turn.content[:600] if len(turn.content) > 600 else turn.content
+            content = content.replace("\n", " ").strip()
+            if content:
+                lines.append(f"[{i}] {participant.upper()}: {content}")
+
+        full_text = "\n".join(lines)
+        return full_text[:max_length]
+
+    def _extract_agent_interactions(self, turns: List[ConversationTurn]) -> List[str]:
+        """Extract agent-to-agent interaction patterns."""
+        interactions = []
+        prev_participant = None
+
+        for i, turn in enumerate(turns):
+            participant = turn.participant_id or turn.role
+            if participant != prev_participant and prev_participant:
+                # Detect interaction type
+                content_lower = turn.content.lower()
+                interaction_type = "continues"
+                if any(kw in content_lower for kw in ["agree", "yes", "correct", "good"]):
+                    interaction_type = "agrees"
+                elif any(kw in content_lower for kw in ["disagree", "no", "but", "however", "issue"]):
+                    interaction_type = "challenges"
+                elif any(kw in content_lower for kw in ["review", "check", "verify"]):
+                    interaction_type = "reviews"
+                elif "?" in turn.content:
+                    interaction_type = "questions"
+
+                interactions.append(f"{prev_participant} -> {participant}: {interaction_type}")
+
+            prev_participant = participant
+
+        return interactions[:30]
+
+    def _extract_participant_summary(self, turns: List[ConversationTurn]) -> Dict[str, int]:
+        """Count turns per participant."""
+        summary = {}
+        for turn in turns:
+            participant = turn.participant_id or turn.role
+            summary[participant] = summary.get(participant, 0) + 1
+        return summary
+
+    def _extract_coordination_events(self, turns: List[ConversationTurn]) -> List[str]:
+        """Extract coordination-related events (handoffs, delegations, approvals)."""
+        events = []
+
+        for i, turn in enumerate(turns):
+            participant = turn.participant_id or turn.role
+            content_lower = turn.content.lower()
+
+            # Delegation patterns
+            if any(kw in content_lower for kw in ["delegate", "assign", "you should", "please handle"]):
+                events.append(f"[{i}] {participant} DELEGATES task")
+
+            # Approval patterns
+            if any(kw in content_lower for kw in ["approve", "lgtm", "looks good", "accepted", "merged"]):
+                events.append(f"[{i}] {participant} APPROVES")
+
+            # Rejection patterns
+            if any(kw in content_lower for kw in ["reject", "revise", "redo", "not acceptable", "needs work"]):
+                events.append(f"[{i}] {participant} REJECTS")
+
+            # Blocking patterns
+            if any(kw in content_lower for kw in ["blocked", "waiting for", "depend on", "need first"]):
+                events.append(f"[{i}] {participant} BLOCKED")
+
+            # Completion claims
+            if any(kw in content_lower for kw in ["task complete", "finished", "all done", "ready for"]):
+                events.append(f"[{i}] {participant} claims COMPLETE")
+
+            # Role/scope violations
+            if any(kw in content_lower for kw in ["not my job", "outside my scope", "i'll also"]):
+                events.append(f"[{i}] {participant} SCOPE discussion")
+
+        return events[:20]
 
     @abstractmethod
     def can_extract(self, turns: List[ConversationTurn], metadata: Dict[str, Any]) -> bool:
@@ -184,6 +292,11 @@ class ChatDevExtractor(BaseTaskExtractor):
             framework=self.framework,
             agent_output_summary=self._summarize_output(turns),
             key_events=self._extract_key_events(turns),
+            # Enhanced fields for LLM detection
+            full_conversation=self._extract_full_conversation(turns),
+            agent_interactions=self._extract_agent_interactions(turns),
+            participant_summary=self._extract_participant_summary(turns),
+            coordination_events=self._extract_coordination_events(turns),
         )
 
 
@@ -519,6 +632,11 @@ class GenericExtractor(BaseTaskExtractor):
             framework=metadata.get("framework", "unknown"),
             agent_output_summary=self._summarize_output(turns),
             key_events=self._extract_key_events(turns),
+            # Enhanced fields for LLM detection
+            full_conversation=self._extract_full_conversation(turns),
+            agent_interactions=self._extract_agent_interactions(turns),
+            participant_summary=self._extract_participant_summary(turns),
+            coordination_events=self._extract_coordination_events(turns),
         )
 
 
