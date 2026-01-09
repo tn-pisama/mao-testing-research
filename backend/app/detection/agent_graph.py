@@ -440,12 +440,13 @@ class GraphBasedUsurpationDetector:
 
     name = "GraphBasedUsurpationDetector"
 
-    # Common role patterns
+    # Common role patterns - made more specific to reduce false positives
+    # Single common words like "run", "check", "find" trigger too many FPs
     ROLE_PATTERNS = {
-        "coordinator": ["assign", "delegate", "coordinate", "manage", "orchestrate"],
-        "executor": ["execute", "run", "perform", "complete", "implement"],
-        "reviewer": ["review", "check", "validate", "approve", "verify"],
-        "researcher": ["search", "find", "research", "investigate", "analyze"],
+        "coordinator": ["i will assign", "let me delegate", "i'll coordinate", "as coordinator", "orchestrating"],
+        "executor": ["executing now", "i will implement", "implementing the", "as executor"],
+        "reviewer": ["reviewing your", "let me review", "my review shows", "as reviewer", "upon review"],
+        "researcher": ["researching this", "my research shows", "investigating the", "as researcher"],
     }
 
     def __init__(self, strict_roles: bool = False):
@@ -537,8 +538,9 @@ class GraphBasedUsurpationDetector:
         # v1: 10+ AND >30% = 0% recall
         # v2: 5+ OR >20% = 50% recall but 75% FPR
         # v3: Tighter thresholds with AND logic
-        min_violations_to_flag = 8
-        min_violation_ratio = 0.25
+        # v4: With more specific patterns, we can lower thresholds slightly
+        min_violations_to_flag = 4  # Lowered since patterns are more specific
+        min_violation_ratio = 0.15
         violation_ratio = len(violations) / len(snapshots) if snapshots else 0
         detected = len(violations) >= min_violations_to_flag and violation_ratio > min_violation_ratio
         confidence = min(0.9, 0.2 + violation_ratio * 0.5) if detected else 0.0

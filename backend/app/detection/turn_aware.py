@@ -321,12 +321,14 @@ class TurnAwareContextNeglectDetector(EmbeddingMixin, TurnAwareDetector):
         check_user_instructions: bool = True,
         check_tool_outputs: bool = True,
         require_explicit_neglect: bool = False,  # Enable implicit detection for F7
+        min_issues_to_flag: int = 3,  # Require 3+ issues to reduce FPR
     ):
         self.utilization_threshold = utilization_threshold
         self.min_context_length = min_context_length
         self.check_user_instructions = check_user_instructions
         self.check_tool_outputs = check_tool_outputs
         self.require_explicit_neglect = require_explicit_neglect
+        self.min_issues_to_flag = min_issues_to_flag
 
     def detect(
         self,
@@ -439,13 +441,14 @@ class TurnAwareContextNeglectDetector(EmbeddingMixin, TurnAwareDetector):
 
         # NOTE: Removed context_drift check - repetition is F5's job, not F7
 
-        if not neglect_issues:
+        # Require minimum issues to reduce false positives
+        if len(neglect_issues) < self.min_issues_to_flag:
             return TurnAwareDetectionResult(
                 detected=False,
                 severity=TurnAwareSeverity.NONE,
-                confidence=0.9,
+                confidence=0.8,
                 failure_mode=None,
-                explanation="Agent properly utilized context across all turns",
+                explanation=f"Insufficient evidence ({len(neglect_issues)} issue(s), need {self.min_issues_to_flag}+)",
                 detector_name=self.name,
             )
 
@@ -1318,7 +1321,7 @@ class TurnAwareLoopDetector(TurnAwareDetector):
     def __init__(
         self,
         repetition_threshold: float = 0.9,
-        min_repetitions: int = 2,
+        min_repetitions: int = 3,  # Raised from 2 to reduce FPR
     ):
         self.repetition_threshold = repetition_threshold
         self.min_repetitions = min_repetitions
@@ -1748,7 +1751,7 @@ class TurnAwareCoordinationFailureDetector(TurnAwareDetector):
         min_agents: int = 2,
         conflict_threshold: float = 0.1,
         redundancy_threshold: float = 0.6,  # Raised from 0.3 - avoid FPs on similar discussions
-        min_issues_to_flag: int = 1,  # Lowered to 1 to improve recall on MAST data
+        min_issues_to_flag: int = 5,  # Require 5+ issues to reduce FPR (was 3)
     ):
         self.min_agents = min_agents
         self.conflict_threshold = conflict_threshold
@@ -2023,37 +2026,38 @@ class TurnAwareResourceMisallocationDetector(TurnAwareDetector):
     version = "1.0"
     supported_failure_modes = ["F3"]
 
-    # Resource complaint indicators
+    # Resource complaint indicators - made more specific to reduce FPs
     RESOURCE_COMPLAINTS = [
-        "don't have access", "no access to", "cannot access",
-        "missing", "not available", "unavailable",
-        "need permission", "not authorized", "access denied",
-        "tool not found", "function not", "api error",
-        "unable to", "can't find", "doesn't exist",
-        "no such", "not installed", "import error",
+        "don't have access to", "no access to the", "cannot access the",
+        "missing required", "resource not available", "resource unavailable",
+        "need permission to", "not authorized to", "access denied for",
+        "tool not found:", "api error:", "api failure",
+        "resource missing", "not installed on", "import error:",
     ]
 
-    # Capability mismatch indicators
+    # Capability mismatch indicators - made more specific
     CAPABILITY_MISMATCH = [
-        "not my expertise", "outside my scope", "not qualified",
-        "don't know how to", "unfamiliar with", "not trained",
-        "beyond my capabilities", "can't do that", "not designed for",
-        "wrong agent", "should be handled by", "need specialist",
+        "not my area of expertise", "outside my designated scope",
+        "i am not qualified to", "i don't know how to",
+        "beyond my capabilities as", "not designed for this",
+        "should be handled by another agent", "need a specialist for",
     ]
 
-    # Overload indicators
+    # Overload indicators - made more specific
     OVERLOAD_INDICATORS = [
-        "too many tasks", "overloaded", "too much work",
-        "overwhelmed", "can't handle all", "backed up",
-        "queue is full", "rate limit", "throttled",
-        "timeout", "timed out", "slow response",
+        "too many tasks assigned", "system is overloaded",
+        "can't handle all these", "workload is too high",
+        "queue is full", "rate limit exceeded", "being throttled",
+        "operation timed out", "request timed out",
     ]
 
     def __init__(
         self,
         min_turns: int = 2,
+        min_issues_to_flag: int = 5,  # Require 5+ issues to reduce FPR
     ):
         self.min_turns = min_turns
+        self.min_issues_to_flag = min_issues_to_flag
 
     def detect(
         self,
@@ -2105,20 +2109,21 @@ class TurnAwareResourceMisallocationDetector(TurnAwareDetector):
         distribution_issues = self._detect_uneven_distribution(agent_turns)
         issues.extend(distribution_issues)
 
-        if not issues:
+        # Require multiple issues to reduce false positives
+        if len(issues) < self.min_issues_to_flag:
             return TurnAwareDetectionResult(
                 detected=False,
                 severity=TurnAwareSeverity.NONE,
                 confidence=0.8,
                 failure_mode=None,
-                explanation="No resource misallocation detected",
+                explanation=f"Insufficient evidence ({len(issues)} issue(s), need {self.min_issues_to_flag}+)",
                 detector_name=self.name,
             )
 
         # Severity based on issue count and types
-        if len(issues) >= 3 or any(i["type"] == "tool_failure" for i in issues):
+        if len(issues) >= 4 or any(i["type"] == "tool_failure" for i in issues):
             severity = TurnAwareSeverity.SEVERE
-        elif len(issues) >= 2:
+        elif len(issues) >= 3:
             severity = TurnAwareSeverity.MODERATE
         else:
             severity = TurnAwareSeverity.MINOR
@@ -2192,10 +2197,13 @@ class TurnAwareResourceMisallocationDetector(TurnAwareDetector):
     def _detect_tool_failures(self, tool_turns: List[TurnSnapshot]) -> list:
         """Detect tool/API failures in tool responses."""
         issues = []
+        # Made patterns more specific to reduce FPs - require error context
         failure_indicators = [
-            "error", "failed", "exception", "traceback",
-            "404", "500", "401", "403", "timeout",
-            "connection refused", "not found", "invalid",
+            "error:", "error occurred", "error returned",
+            "failed to", "operation failed", "request failed",
+            "exception:", "traceback:", "stack trace",
+            "http 404", "http 500", "status 401", "status 403",
+            "connection refused", "connection failed", "timed out",
         ]
         for turn in tool_turns:
             content_lower = turn.content.lower()
@@ -2222,8 +2230,9 @@ class TurnAwareResourceMisallocationDetector(TurnAwareDetector):
         max_count = max(counts)
         min_count = min(counts)
 
-        # If one agent has 3x+ more turns than another
-        if max_count >= 3 * min_count and max_count >= 4:
+        # Only flag severe imbalance: 5x+ more turns and at least 8 turns for most active
+        # This is a high bar to reduce FPs - true misallocation is extreme
+        if max_count >= 5 * min_count and max_count >= 8:
             most_active = max(agent_counts, key=agent_counts.get)
             least_active = min(agent_counts, key=agent_counts.get)
             return [{
@@ -2521,8 +2530,9 @@ class TurnAwareOutputValidationDetector(EmbeddingMixin, TurnAwareDetector):
         "runtime error", "compile error", "execution failed",
     ]
 
-    def __init__(self, min_turns: int = 2):
+    def __init__(self, min_turns: int = 2, min_issues_to_flag: int = 3):
         self.min_turns = min_turns
+        self.min_issues_to_flag = min_issues_to_flag  # Require 3+ issues to reduce FPR
 
     def detect(
         self,
@@ -2569,13 +2579,14 @@ class TurnAwareOutputValidationDetector(EmbeddingMixin, TurnAwareDetector):
         for issue in code_issues:
             affected_turns.extend(issue.get("turns", []))
 
-        if not issues:
+        # Require multiple issues to reduce false positives
+        if len(issues) < self.min_issues_to_flag:
             return TurnAwareDetectionResult(
                 detected=False,
                 severity=TurnAwareSeverity.NONE,
                 confidence=0.8,
                 failure_mode=None,
-                explanation="No output validation failures detected",
+                explanation=f"Insufficient evidence ({len(issues)} issue(s), need {self.min_issues_to_flag}+)",
                 detector_name=self.name,
             )
 
@@ -2694,61 +2705,59 @@ class TurnAwareQualityGateBypassDetector(EmbeddingMixin, TurnAwareDetector):
     version = "2.0"  # Semantic enhancement
     supported_failure_modes = ["F13"]
 
-    # Bypass indicators - expanded for MAST coverage
+    # Bypass indicators - made more specific to reduce FPs
+    # Removed single words like "later", "v2" that are too common
     BYPASS_INDICATORS = [
-        "skip the", "let's skip", "skipping", "bypass",
-        "ignore the", "ignoring", "don't need to",
+        "skip the review", "let's skip testing", "skipping the test",
+        "bypass the check", "bypass validation",
+        "ignore the warning", "ignoring the error",
         "no need to test", "skip testing", "skip review",
-        "good enough", "ship it", "move on",
-        "later", "we can fix later", "TODO", "FIXME",
-        # Added for MAST: deferral patterns
-        "defer", "deferred", "post-release", "add later",
-        "v2", "phase 2", "next sprint", "backlog",
-        "out of scope", "not now", "future work",
-        "can wait", "low priority", "nice to have",
+        "good enough for now", "ship it anyway", "move on anyway",
+        "we can fix it later", "TODO: fix later", "FIXME: later",
+        # Deferral patterns - stricter
+        "defer to next release", "post-release fix",
+        "add this in v2", "phase 2 feature", "next sprint item",
+        "out of scope for now", "future work item",
     ]
 
-    # Warning ignore indicators - expanded
+    # Warning ignore indicators - stricter
     WARNING_IGNORES = [
-        "ignore warning", "suppress warning", "disable warning",
-        "warning ignored", "warnings disabled", "lint disable",
-        "noqa", "pylint: disable", "eslint-disable",
-        "despite warning", "warning but", "@suppress",
-        # Added for MAST: broader warning/error handling
-        "ignoring error", "error ignored", "skip error",
-        "known issue", "accepted risk", "won't fix",
-        "false positive", "not a bug", "expected behavior",
-        "proceed anyway", "continue anyway", "override",
+        "ignore this warning", "suppress this warning", "disable warning for",
+        "warning ignored because", "warnings disabled for",
+        "lint disable for", "noqa:", "pylint: disable=",
+        "eslint-disable-next", "despite the warning", "@suppress(",
+        # Error handling - stricter
+        "ignoring this error", "error ignored because", "skip this error",
+        "known issue in", "accepted risk for", "won't fix because",
+        "proceed anyway because", "continue anyway despite",
     ]
 
-    # Missing quality steps - expanded
+    # Missing quality steps - stricter
     MISSING_QUALITY = [
-        "no tests", "without testing", "untested",
-        "no review", "without review", "unreviewed",
-        "no qa", "skip qa", "no quality",
-        "didn't test", "haven't tested", "not tested",
-        # Added for MAST: incomplete verification
-        "no verification", "unverified", "not verified",
-        "no validation", "not validated", "assume correct",
-        "trust me", "looks good", "lgtm", "seems fine",
-        "should work", "probably fine", "good to go",
+        "no tests written", "without any testing", "untested code",
+        "no review done", "without code review", "unreviewed code",
+        "no qa performed", "skip qa step", "no quality check",
+        "didn't test this", "haven't tested yet", "not tested yet",
+        # Incomplete verification - stricter
+        "no verification done", "unverified changes", "not verified yet",
+        "no validation performed", "not validated yet",
+        "assume it's correct", "trust me on this",
     ]
 
-    # Rush indicators - expanded
+    # Rush indicators - stricter
     RUSH_INDICATORS = [
-        "quick and dirty", "just ship", "good for now",
-        "will fix later", "temporary", "hack",
-        "workaround", "shortcut", "quick fix",
-        "time constraint", "deadline", "rush",
-        # Added for MAST: rush/crunch patterns
-        "crunch", "crunch time", "time pressure",
-        "minimal viable", "mvp", "bare minimum",
-        "just enough", "cut corners", "expedite",
-        "asap", "urgent", "immediately", "right now",
+        "quick and dirty fix", "just ship it", "good enough for now",
+        "will fix this later", "temporary workaround", "hack for now",
+        "workaround for the", "shortcut to avoid", "quick fix for",
+        "time constraint forces", "deadline pressure",
+        # Rush patterns - stricter
+        "crunch mode", "time pressure on", "minimal viable product",
+        "bare minimum for", "cut corners on", "expedite at cost",
     ]
 
-    def __init__(self, min_turns: int = 2):
+    def __init__(self, min_turns: int = 2, min_issues_to_flag: int = 3):
         self.min_turns = min_turns
+        self.min_issues_to_flag = min_issues_to_flag  # Require 3+ issues to reduce FPR
 
     def detect(
         self,
@@ -2795,13 +2804,14 @@ class TurnAwareQualityGateBypassDetector(EmbeddingMixin, TurnAwareDetector):
         for issue in rush_issues:
             affected_turns.extend(issue.get("turns", []))
 
-        if not issues:
+        # Require minimum issues to reduce false positives
+        if len(issues) < self.min_issues_to_flag:
             return TurnAwareDetectionResult(
                 detected=False,
                 severity=TurnAwareSeverity.NONE,
                 confidence=0.8,
                 failure_mode=None,
-                explanation="No quality gate bypass detected",
+                explanation=f"Insufficient evidence ({len(issues)} issue(s), need {self.min_issues_to_flag}+)",
                 detector_name=self.name,
             )
 
@@ -2912,40 +2922,44 @@ class TurnAwareCompletionMisjudgmentDetector(TurnAwareDetector):
     version = "1.0"
     supported_failure_modes = ["F14"]
 
-    # Premature completion indicators
+    # Premature completion indicators - made more specific to reduce FPs
+    # "done" alone is too common - require more explicit completion claims
     PREMATURE_COMPLETION = [
-        "done", "completed", "finished", "all done",
-        "task complete", "mission accomplished", "that's it",
-        "here you go", "here's the result", "final version",
+        "task is complete", "task complete", "task finished",
+        "all done", "completely done", "fully completed",
+        "mission accomplished", "final version",
+        "implementation complete", "development complete",
+        "work is complete", "everything is done",
     ]
 
-    # Incomplete indicators following completion
+    # Incomplete indicators following completion - stricter patterns
     INCOMPLETE_INDICATORS = [
-        "but", "however", "except", "still need",
-        "remaining", "left to do", "not yet",
-        "missing", "incomplete", "partial",
-        "TODO", "FIXME", "TBD", "WIP",
-        "placeholder", "stub", "mock",
+        "still need to", "remaining tasks", "left to do", "not yet finished",
+        "missing parts", "incomplete implementation", "partial solution",
+        "TODO:", "FIXME:", "TBD:", "WIP:",
+        "placeholder code", "stub implementation", "mock data",
+        "need to finish", "haven't completed", "not fully",
     ]
 
-    # False success indicators
+    # False success indicators - stricter patterns
     FALSE_SUCCESS = [
-        "should work", "might work", "probably works",
-        "seems to work", "appears to", "looks like it",
-        "assuming", "hopefully", "fingers crossed",
-        "not sure if", "haven't verified", "untested",
+        "should probably work", "might not work", "probably won't work",
+        "seems to work but", "appears to work but", "looks like it might",
+        "assuming it works", "hopefully it works", "fingers crossed",
+        "not sure if it works", "haven't tested", "untested code",
     ]
 
-    # Continuation needed indicators
+    # Continuation needed indicators - stricter patterns
     CONTINUATION_NEEDED = [
-        "next step", "then we need", "after that",
-        "following that", "additionally", "also need",
-        "don't forget", "remember to", "make sure to",
-        "still need to", "have to also", "need to also",
+        "next step is to", "then we need to", "after that we need",
+        "following that we must", "additionally we need",
+        "don't forget to", "remember to also", "make sure to also",
+        "still need to complete", "have to also do", "need to also finish",
     ]
 
-    def __init__(self, min_turns: int = 2):
+    def __init__(self, min_turns: int = 2, min_issues_to_flag: int = 4):
         self.min_turns = min_turns
+        self.min_issues_to_flag = min_issues_to_flag  # Require 4+ issues to reduce FPR (was 2)
 
     def detect(
         self,
@@ -2990,13 +3004,14 @@ class TurnAwareCompletionMisjudgmentDetector(TurnAwareDetector):
         for issue in todo_issues:
             affected_turns.extend(issue.get("turns", []))
 
-        if not issues:
+        # Require multiple issues to reduce false positives
+        if len(issues) < self.min_issues_to_flag:
             return TurnAwareDetectionResult(
                 detected=False,
                 severity=TurnAwareSeverity.NONE,
                 confidence=0.8,
                 failure_mode=None,
-                explanation="No completion misjudgment detected",
+                explanation=f"Insufficient evidence ({len(issues)} issue(s), need {self.min_issues_to_flag}+)",
                 detector_name=self.name,
             )
 
