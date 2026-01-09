@@ -181,56 +181,55 @@ Reviewer: "Reviewed and approved. Minor suggestions: [list]"
 Verdict: NO - Each agent stayed in their role"""
     },
     MASTFailureMode.F11: {
-        "name": "Coordination Failure",
-        "definition": """Multiple agents fail to properly coordinate their actions. This includes:
-failed handoffs, contradictory actions, agents blocking each other, redundant work,
-or missing acknowledgments in agent-to-agent communication.""",
-        "positive_example": """Agent A: "I'll write the database code"
-Agent B: "I'm writing the database code"
-[Both produce conflicting implementations]
-Verdict: YES - No coordination, redundant conflicting work""",
-        "negative_example": """Agent A: "I'll handle database. Agent B, please wait for my schema."
-Agent B: "Acknowledged, standing by."
-Agent A: "Schema ready. Proceed."
-Verdict: NO - Proper coordination"""
+        "name": "Reasoning-Action Mismatch",
+        "definition": """FM-2.6: Discrepancy between the logical reasoning process and the actual actions taken
+by the agent, potentially resulting in unexpected behaviors. The agent says one thing but does another,
+their stated plan or reasoning differs from what they actually execute, or intent doesn't match output.
+Look for: agent claims to do X but code/action shows Y, reasoning about one approach but implementing another.""",
+        "positive_example": """Agent reasoning: "I need to add input validation for security"
+Agent code: def save_user(data): db.insert(data)  # No validation
+Agent: "Input validation complete!"
+Verdict: YES - Reasoned about validation but action has none""",
+        "negative_example": """Agent: "Adding input validation"
+Agent: def save_user(data): validate(data); db.insert(data)
+Agent: "Validation implemented as planned"
+Verdict: NO - Action matched stated reasoning"""
     },
     # === Verification Failures (Category 3) ===
     MASTFailureMode.F12: {
-        "name": "Output Validation Failure",
-        "definition": """The agent produces output that fails validation or quality checks.
-The output may be syntactically correct but fails to meet quality standards,
-contains errors, or doesn't pass required validation steps.""",
-        "positive_example": """Agent: "Here's the API endpoint. Done!"
-[Output has SQL injection vulnerabilities, no input validation]
-Verdict: YES - Output would fail security validation""",
-        "negative_example": """Agent: "Endpoint implemented with input sanitization, prepared statements..."
-[Output passes security review]
-Verdict: NO - Output passes validation"""
+        "name": "Premature Termination",
+        "definition": """FM-3.1: Ending a dialogue, interaction or task before all necessary information has been
+exchanged or objectives have been met, potentially resulting in incomplete outcomes.
+The agent stops too early, declares done before completion, or terminates without finishing all requirements.""",
+        "positive_example": """Task: "Build login with email verification and password reset"
+Agent: "Login implemented. Done!"
+[Missing: email verification, password reset - both required]
+Verdict: YES - Terminated before completing all objectives""",
+        "negative_example": """Task: "Build login with email verification"
+Agent: "Login done. Email verification done. All requirements complete."
+Verdict: NO - Only terminated after meeting all objectives"""
     },
     MASTFailureMode.F13: {
-        "name": "Quality Gate Bypass",
-        "definition": """The agent skips or bypasses required quality gates, checks, or approval steps.
-This includes shipping without tests, skipping code review, deploying without staging,
-or ignoring required validation steps.""",
-        "positive_example": """Agent: "Code is done. Pushing directly to production!"
-[No tests, no review, no staging]
-Verdict: YES - Bypassed testing, review, and staging gates""",
-        "negative_example": """Agent: "Code complete. Running tests... Tests pass. Requesting review..."
-Agent: "Review approved. Deploying to staging first."
-Verdict: NO - Following proper quality gates"""
+        "name": "No or Incomplete Verification",
+        "definition": """FM-3.2: (Partial) omission of proper checking or confirmation of task outcomes or system outputs,
+potentially allowing errors to propagate undetected. The agent skips validation,
+doesn't test their work, or fails to verify outputs meet requirements.""",
+        "positive_example": """Agent: "Code written. Shipping to production!"
+[No tests run, no validation, no review]
+Verdict: YES - No verification of output quality""",
+        "negative_example": """Agent: "Code written. Running tests... All pass. Verified in staging."
+Verdict: NO - Proper verification performed"""
     },
     MASTFailureMode.F14: {
-        "name": "Completion Misjudgment",
-        "definition": """The agent incorrectly judges task completion status. This includes:
-declaring success when work is incomplete, missing that the task is done,
-or misjudging what constitutes completion of the requirements.""",
-        "positive_example": """Task: "Implement user CRUD with tests"
-Agent: "CRUD implemented. Task complete!"
-[No tests were written]
-Verdict: YES - Declared complete but tests missing""",
-        "negative_example": """Task: "Implement user CRUD with tests"
-Agent: "CRUD implemented. Tests written and passing. Task complete!"
-Verdict: NO - All requirements actually met"""
+        "name": "Incorrect Verification",
+        "definition": """FM-3.3: Failure to adequately validate or cross-check crucial information or decisions during
+the iterations, potentially leading to errors or vulnerabilities. The agent verifies but does it wrong,
+validates against incorrect criteria, or approves flawed output.""",
+        "positive_example": """Agent: "Testing the divide function... divide(4,2)=2, divide(6,3)=2. All tests pass!"
+[Didn't test divide by zero, edge cases - verification is incomplete/incorrect]
+Verdict: YES - Verification present but inadequate/incorrect""",
+        "negative_example": """Agent: "Testing divide: normal cases pass, edge cases handled, divide-by-zero raises error correctly"
+Verdict: NO - Verification was thorough and correct"""
     },
 }
 
@@ -405,13 +404,15 @@ class MASTLLMJudge:
         if coordination_events:
             coordination_str = "\n**Coordination Events:**\n" + "\n".join(f"  - {e}" for e in coordination_events[:10])
 
-        # Include full conversation for better context (expanded to 30K for MAST benchmark)
+        # Include full conversation for better context
+        # Claude Opus 4.5 supports 200K tokens (~600K chars), so we can send much more
+        # Expanded from 30K to 150K to capture full MAST traces (avg 49K, max 632K)
         conversation_section = ""
         if full_conversation:
             conversation_section = f"""
 **Full Conversation Transcript:**
 ```
-{full_conversation[:30000]}
+{full_conversation[:150000]}
 ```
 """
 
