@@ -370,6 +370,11 @@ class AG2Extractor(BaseTaskExtractor):
             framework=self.framework,
             agent_output_summary=self._summarize_output(turns),
             key_events=self._extract_key_events(turns),
+            # Enhanced fields for LLM detection
+            full_conversation=self._extract_full_conversation(turns),
+            agent_interactions=self._extract_agent_interactions(turns),
+            participant_summary=self._extract_participant_summary(turns),
+            coordination_events=self._extract_coordination_events(turns),
         )
 
 
@@ -429,6 +434,11 @@ class LangGraphExtractor(BaseTaskExtractor):
             framework=self.framework,
             agent_output_summary=self._summarize_output(turns),
             key_events=self._extract_key_events(turns),
+            # Enhanced fields for LLM detection
+            full_conversation=self._extract_full_conversation(turns),
+            agent_interactions=self._extract_agent_interactions(turns),
+            participant_summary=self._extract_participant_summary(turns),
+            coordination_events=self._extract_coordination_events(turns),
         )
 
 
@@ -486,6 +496,11 @@ class MetaGPTExtractor(BaseTaskExtractor):
             framework=self.framework,
             agent_output_summary=self._summarize_output(turns),
             key_events=self._extract_key_events(turns),
+            # Enhanced fields for LLM detection
+            full_conversation=self._extract_full_conversation(turns),
+            agent_interactions=self._extract_agent_interactions(turns),
+            participant_summary=self._extract_participant_summary(turns),
+            coordination_events=self._extract_coordination_events(turns),
         )
 
 
@@ -530,6 +545,11 @@ class MagenticExtractor(BaseTaskExtractor):
             framework=self.framework,
             agent_output_summary=self._summarize_output(turns),
             key_events=self._extract_key_events(turns),
+            # Enhanced fields for LLM detection
+            full_conversation=self._extract_full_conversation(turns),
+            agent_interactions=self._extract_agent_interactions(turns),
+            participant_summary=self._extract_participant_summary(turns),
+            coordination_events=self._extract_coordination_events(turns),
         )
 
 
@@ -569,6 +589,174 @@ class OpenManusExtractor(BaseTaskExtractor):
             framework=self.framework,
             agent_output_summary=self._summarize_output(turns),
             key_events=self._extract_key_events(turns),
+            # Enhanced fields for LLM detection
+            full_conversation=self._extract_full_conversation(turns),
+            agent_interactions=self._extract_agent_interactions(turns),
+            participant_summary=self._extract_participant_summary(turns),
+            coordination_events=self._extract_coordination_events(turns),
+        )
+
+
+class CrewAIExtractor(BaseTaskExtractor):
+    """Extractor for CrewAI traces.
+
+    CrewAI structure:
+    - Task definitions with crew assignments
+    - Agent roles and goals
+    - Hierarchical or sequential task execution
+    """
+
+    framework = "crewai"
+
+    def can_extract(self, turns: List[ConversationTurn], metadata: Dict[str, Any]) -> bool:
+        framework = metadata.get("framework", "").lower()
+        if "crewai" in framework or "crew" in framework:
+            return True
+
+        # Check for CrewAI-specific patterns in metadata
+        if "crew" in metadata or "agents" in metadata:
+            return True
+
+        # Check for CrewAI-specific role names
+        crewai_indicators = {"crew_agent", "task_executor", "researcher", "writer"}
+        for turn in turns:
+            if turn.participant_id:
+                pid_lower = turn.participant_id.lower()
+                if any(ind in pid_lower for ind in crewai_indicators):
+                    return True
+
+        return False
+
+    def extract(self, turns: List[ConversationTurn], metadata: Dict[str, Any]) -> ExtractionResult:
+        task = ""
+        confidence = 0.5
+        source = "unknown"
+
+        # Check metadata for task definition
+        if "task" in metadata:
+            if isinstance(metadata["task"], str):
+                task = metadata["task"]
+            elif isinstance(metadata["task"], dict):
+                task = metadata["task"].get("description", str(metadata["task"]))
+            confidence = 0.9
+            source = "metadata.task"
+
+        # Check for crew goal
+        if not task and "crew" in metadata:
+            crew = metadata["crew"]
+            if isinstance(crew, dict) and "goal" in crew:
+                task = crew["goal"]
+                confidence = 0.85
+                source = "metadata.crew.goal"
+
+        # Fallback: first user turn
+        if not task:
+            for turn in turns:
+                if turn.role == "user" and len(turn.content) > 10:
+                    task = turn.content
+                    confidence = 0.75
+                    source = "first_user_turn"
+                    break
+
+        return ExtractionResult(
+            task=task,
+            confidence=confidence,
+            source=source,
+            framework=self.framework,
+            agent_output_summary=self._summarize_output(turns),
+            key_events=self._extract_key_events(turns),
+            # Enhanced fields for LLM detection
+            full_conversation=self._extract_full_conversation(turns),
+            agent_interactions=self._extract_agent_interactions(turns),
+            participant_summary=self._extract_participant_summary(turns),
+            coordination_events=self._extract_coordination_events(turns),
+        )
+
+
+class CAMELExtractor(BaseTaskExtractor):
+    """Extractor for CAMEL traces.
+
+    CAMEL structure:
+    - Role-playing setup with AI Assistant and AI User
+    - Specified task in initial system message
+    - Conversational task completion
+    """
+
+    framework = "camel"
+
+    def can_extract(self, turns: List[ConversationTurn], metadata: Dict[str, Any]) -> bool:
+        framework = metadata.get("framework", "").lower()
+        if "camel" in framework:
+            return True
+
+        # Check for CAMEL-specific patterns
+        camel_indicators = {"ai_user", "ai_assistant", "ai assistant", "ai user"}
+        for turn in turns:
+            if turn.participant_id:
+                pid_lower = turn.participant_id.lower()
+                if any(ind in pid_lower for ind in camel_indicators):
+                    return True
+
+        # Check for role-play setup in system message
+        for turn in turns:
+            if turn.role == "system":
+                content_lower = turn.content.lower()
+                if "role-play" in content_lower or "ai assistant" in content_lower:
+                    return True
+
+        return False
+
+    def extract(self, turns: List[ConversationTurn], metadata: Dict[str, Any]) -> ExtractionResult:
+        task = ""
+        confidence = 0.5
+        source = "unknown"
+
+        # Check metadata for task specification
+        if "task" in metadata:
+            task = str(metadata["task"])
+            confidence = 0.9
+            source = "metadata.task"
+
+        # Look for task in system message (CAMEL typically specifies task there)
+        if not task:
+            for turn in turns:
+                if turn.role == "system" and len(turn.content) > 50:
+                    # CAMEL system messages often contain task specification
+                    content = turn.content
+                    # Look for task keywords
+                    task_match = re.search(r'task[:\s]+(.+?)(?:\.|$)', content, re.IGNORECASE | re.DOTALL)
+                    if task_match:
+                        task = task_match.group(1).strip()[:500]
+                        confidence = 0.85
+                        source = "system_task_specification"
+                        break
+                    else:
+                        task = content[:500]
+                        confidence = 0.7
+                        source = "system_turn"
+                        break
+
+        # Fallback: first user turn
+        if not task:
+            for turn in turns:
+                if turn.role == "user" and len(turn.content) > 10:
+                    task = turn.content
+                    confidence = 0.65
+                    source = "first_user_turn"
+                    break
+
+        return ExtractionResult(
+            task=task,
+            confidence=confidence,
+            source=source,
+            framework=self.framework,
+            agent_output_summary=self._summarize_output(turns),
+            key_events=self._extract_key_events(turns),
+            # Enhanced fields for LLM detection
+            full_conversation=self._extract_full_conversation(turns),
+            agent_interactions=self._extract_agent_interactions(turns),
+            participant_summary=self._extract_participant_summary(turns),
+            coordination_events=self._extract_coordination_events(turns),
         )
 
 
@@ -658,6 +846,8 @@ class TaskExtractorRegistry:
             MetaGPTExtractor(),
             MagenticExtractor(),
             OpenManusExtractor(),
+            CrewAIExtractor(),
+            CAMELExtractor(),
             GenericExtractor(),  # Fallback, always last
         ]
 
