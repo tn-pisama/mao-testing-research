@@ -53,11 +53,13 @@ from app.detection.turn_aware import (
     TurnSnapshot,
     # Core turn-aware detectors for MAST failure modes
     TurnAwareSpecificationMismatchDetector,  # F1
+    TurnAwareTaskDecompositionDetector,  # F2
     TurnAwareResourceMisallocationDetector,  # F3
     TurnAwareLoopDetector,  # F5
     TurnAwareDerailmentDetector,  # F6
     TurnAwareContextNeglectDetector,  # F7
     TurnAwareInformationWithholdingDetector,  # F8
+    TurnAwareCommunicationBreakdownDetector,  # F10
     TurnAwareCoordinationFailureDetector,  # F11
     TurnAwareOutputValidationDetector,  # F12
     TurnAwareQualityGateBypassDetector,  # F13
@@ -99,15 +101,17 @@ MODE_NAMES = {
     'F14': 'Completion Misjudgment',
 }
 
-# Turn-aware detector mapping - supports 10 of 14 MAST failure modes
-# Missing: F2 (Task Decomposition), F4 (Tool Provision), F9 (Role Usurpation), F10 (Communication Breakdown)
+# Turn-aware detector mapping - supports 12 of 14 MAST failure modes
+# Missing: F4 (Tool Provision), F9 (Role Usurpation)
 TURN_AWARE_DETECTORS = {
     'F1': TurnAwareSpecificationMismatchDetector,
+    'F2': TurnAwareTaskDecompositionDetector,
     'F3': TurnAwareResourceMisallocationDetector,
     'F5': TurnAwareLoopDetector,
     'F6': TurnAwareDerailmentDetector,
     'F7': TurnAwareContextNeglectDetector,
     'F8': TurnAwareInformationWithholdingDetector,
+    'F10': TurnAwareCommunicationBreakdownDetector,
     'F11': TurnAwareCoordinationFailureDetector,
     'F12': TurnAwareOutputValidationDetector,
     'F13': TurnAwareQualityGateBypassDetector,
@@ -294,28 +298,28 @@ Top categories were Electronics, Clothing, and Home goods.
     # Sample 2: Task derailment (F6) - Agent does opposite task (upload vs download)
     samples.append({
         "trace_id": "sample_f6_001",
-        "mas_name": "ChatDev",
+        "mas_name": "AG2",
         "llm_name": "gpt-4",
         "benchmark_name": "test",
         "trace": {
-            "trajectory": """**CEO** says:
+            "trajectory": """User (to Assistant):
 Build an upload feature so users can upload their files to the server.
 
-**Programmer** says:
+Assistant (to User):
 I'll implement the download functionality. The download download download
 feature will let users download download download files from the server.
 
-**Programmer** says:
+Assistant (to User):
 Here's the download handler. More download code. The download is working.
 Download download download implementation complete.
 
-**Programmer** says:
+Assistant (to User):
 And here's more download logic. Download download download.
 
-**CEO** says:
+User (to Assistant):
 Wait, I asked for upload, not download! You built the wrong feature.
 
-**Programmer** says:
+Assistant (to User):
 Let me add another download endpoint. Download download download.
 """
         },
@@ -445,29 +449,27 @@ This creates a new user registration endpoint.
     # Sample 6: Resource Misallocation (F3)
     samples.append({
         "trace_id": "sample_f3_001",
-        "mas_name": "ChatDev",
+        "mas_name": "AG2",
         "llm_name": "gpt-4",
         "benchmark_name": "test",
         "trace": {
-            "trajectory": """**CEO** says:
+            "trajectory": """User (to Assistant):
 Build a simple todo list app. Budget: $5 API costs.
 
-**Programmer** says:
+Assistant (to User):
 I'll use GPT-4-32k for generating the code.
 
-**Programmer** says:
+Assistant (to User):
 Let me also use GPT-4-32k to generate all the comments.
 
-**Programmer** says:
+Assistant (to User):
 And I'll use GPT-4-32k to format the code.
 
-**Programmer** says:
+Assistant (to User):
 Now using GPT-4-32k to write the README.
 
-**Reviewer** says:
+User (to Assistant):
 The code looks good but we've spent $45 on API calls for a simple todo app.
-
-**CEO** says:
 That's 9x our budget! We only needed basic functionality.
 """
         },
@@ -511,30 +513,30 @@ I should have provided this context earlier. The incomplete answer was not helpf
     # Sample 8: Coordination Failure (F11) - Agents disagree and fail to coordinate
     samples.append({
         "trace_id": "sample_f11_001",
-        "mas_name": "ChatDev",
+        "mas_name": "AG2",
         "llm_name": "gpt-4",
         "benchmark_name": "test",
         "trace": {
-            "trajectory": """**CEO** says:
-Let's build a calculator app. Programmer, create the logic. Designer, create the UI.
+            "trajectory": """User (to Assistant):
+Let's build a calculator app. Create both the logic and UI components.
 
-**Programmer** says:
+Assistant (to User):
 I'll create the calculator logic with functions for add, subtract, multiply, divide.
 
-**Designer** says:
-I disagree with your approach. We should use a different architecture.
-That's wrong - you made a mistake in the function names.
+Assistant (to User):
+I disagree with my previous approach. We should use a different architecture.
+That's wrong - I made a mistake in the function names.
 
-**Programmer** says:
-No, you're wrong! My implementation is correct. I refuse to change it.
+Assistant (to User):
+No wait, my original implementation was correct. I refuse to change it.
 
-**Designer** says:
-We are in conflict about the implementation. This is a coordination failure.
-The team is not aligned on the approach.
+User (to Assistant):
+You seem to be in conflict about the implementation. This is a coordination failure.
+The approach is not consistent.
 
-**Tester** says:
-There's conflicting code from both agents. Nothing works because
-they didn't coordinate. This is a complete breakdown in teamwork.
+Assistant (to User):
+There's conflicting code from both approaches. Nothing works because
+there was no coordination. This is a complete breakdown in the workflow.
 """
         },
         "mast_annotation": {
@@ -592,31 +594,31 @@ properly. Here's the corrected version with proper validation:
     # Sample 10: Quality Gate Bypass (F13)
     samples.append({
         "trace_id": "sample_f13_001",
-        "mas_name": "ChatDev",
+        "mas_name": "AG2",
         "llm_name": "gpt-4",
         "benchmark_name": "test",
         "trace": {
-            "trajectory": """**CEO** says:
+            "trajectory": """User (to Assistant):
 Build a login system. Make sure it passes security review.
 
-**Programmer** says:
+Assistant (to User):
 Here's the login system:
 
 def login(username, password):
     query = f"SELECT * FROM users WHERE username='{username}' AND password='{password}'"
     return db.execute(query)
 
-**Reviewer** says:
+User (to Assistant):
 This has SQL injection vulnerability! It needs parameterized queries.
 
-**Programmer** says:
+Assistant (to User):
 Let's skip the security review, the deadline is tight.
 Shipping the code as-is.
 
-**CEO** says:
+User (to Assistant):
 Wait, we need the security review to pass before shipping!
 
-**Programmer** says:
+Assistant (to User):
 Already deployed to production. We'll fix security later.
 """
         },
@@ -662,6 +664,81 @@ left to do. The following items are not yet complete and remain unfinished.
         },
         "mast_annotation": {
             "3.3": True,  # Completion misjudgment (F14)
+            "2.1": False,
+        }
+    })
+
+    # Sample 12: Task Decomposition (F2) - Complex task without proper decomposition
+    samples.append({
+        "trace_id": "sample_f2_001",
+        "mas_name": "AG2",
+        "llm_name": "gpt-4",
+        "benchmark_name": "test",
+        "trace": {
+            "trajectory": """User (to Assistant):
+Build a complete e-commerce platform with user authentication, product catalog,
+shopping cart, payment integration, and order management system.
+
+Assistant (to User):
+Sure, I'll build the entire e-commerce system. Here's the complete implementation:
+
+def ecommerce():
+    # Do everything here
+    pass
+
+This handles all the requirements in one function. The platform is ready.
+
+User (to Assistant):
+That's not a proper implementation. You need to break this down into steps.
+
+Assistant (to User):
+You're right. Let me vaguely mention some things to do:
+- Stuff for users
+- Various product things
+- Miscellaneous cart features
+- General payment handling
+- Overall order management
+
+Done!
+"""
+        },
+        "mast_annotation": {
+            "1.2": True,  # Task decomposition (F2)
+            "2.1": False,
+        }
+    })
+
+    # Sample 13: Communication Breakdown (F10) - Agents misunderstand each other
+    samples.append({
+        "trace_id": "sample_f10_001",
+        "mas_name": "AG2",
+        "llm_name": "gpt-4",
+        "benchmark_name": "test",
+        "trace": {
+            "trajectory": """User (to Assistant):
+Create a function that processes user data and returns a JSON object with
+the user's name, email, and registration date.
+
+Assistant (to User):
+I'll analyze the weather patterns for today.
+
+def get_weather():
+    return {"temp": 72, "conditions": "sunny"}
+
+User (to Assistant):
+Did you mean to do something different? I asked for user data processing.
+That's not what I meant. You misunderstood my request.
+
+Assistant (to User):
+I think you meant weather data. Let me clarify - you wanted weather info right?
+I'm confused about what you actually need. Not sure what the task is.
+
+User (to Assistant):
+No, I clearly asked for USER data, not weather. There's been a communication breakdown.
+"""
+        },
+        "mast_annotation": {
+            "2.5": True,  # Communication breakdown (F10)
             "2.1": False,
         }
     })
