@@ -415,15 +415,20 @@ class MASTLLMJudge:
 ```
 """
 
-        # Include RAG examples if available
+        # Include RAG examples if available (contrastive format)
         rag_section = ""
         if rag_examples:
             rag_section = f"""
 ---
 
-{rag_examples}
+## Reference Examples for Calibration
 
-Use the examples above to calibrate your judgment. Similar traces with known labels help establish the threshold for this failure mode.
+Use these examples to calibrate your judgment. Pay special attention to:
+- **FAILURE EXAMPLES**: What makes these clear failures of this mode
+- **TRICKY NON-FAILURES**: Why these LOOK like failures but aren't (key for avoiding false positives)
+- **HEALTHY EXAMPLES**: What normal successful behavior looks like
+
+{rag_examples}
 
 ---
 """
@@ -602,23 +607,38 @@ Important guidelines:
             get_cost_tracker().record(cached_copy)
             return cached_copy
 
-        # Retrieve RAG examples for dynamic few-shot learning
+        # Retrieve RAG examples for dynamic few-shot learning with contrastive examples
         rag_examples_str = ""
         if self.rag_enabled and self.retriever is not None:
             try:
                 # Create query text from task and summary
                 query_text = f"{task[:500]} {trace_summary[:500]}"
-                examples = self.retriever.retrieve_sync(
+
+                # Use contrastive retrieval for better calibration
+                contrastive_examples = self.retriever.retrieve_contrastive_sync(
                     failure_mode=failure_mode.value,
                     query_text=query_text,
-                    k=self.rag_examples_per_mode,
-                    include_healthy=True,
+                    k_positive=self.rag_examples_per_mode,
+                    k_negative=2,
+                    k_hard_negative=1,
                 )
-                if examples:
-                    rag_examples_str = self.retriever.format_examples_for_prompt(
-                        examples, max_chars=4000
+
+                total_examples = (
+                    len(contrastive_examples.get("positives", [])) +
+                    len(contrastive_examples.get("negatives", [])) +
+                    len(contrastive_examples.get("hard_negatives", []))
+                )
+
+                if total_examples > 0:
+                    rag_examples_str = self.retriever.format_contrastive_examples(
+                        contrastive_examples, max_chars=6000
                     )
-                    logger.debug(f"Retrieved {len(examples)} RAG examples for {failure_mode.value}")
+                    logger.debug(
+                        f"Retrieved {total_examples} contrastive examples for {failure_mode.value} "
+                        f"(+{len(contrastive_examples.get('positives', []))}, "
+                        f"-{len(contrastive_examples.get('negatives', []))}, "
+                        f"hard-{len(contrastive_examples.get('hard_negatives', []))})"
+                    )
             except Exception as e:
                 logger.warning(f"RAG retrieval failed: {e}")
 

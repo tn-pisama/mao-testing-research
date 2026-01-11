@@ -235,10 +235,12 @@ def populate_from_mast(
             for mode in ["F1", "F2", "F3", "F4", "F5", "F6", "F7", "F8", "F9", "F10", "F11", "F12", "F13", "F14"]:
                 is_failure = failure_modes.get(mode, False)
 
-                # Create unique ID for this example
-                example_id = hashlib.sha256(
+                # Create unique ID for this example (must be valid UUID format)
+                hash_hex = hashlib.sha256(
                     f"{trace_id}:{mode}:{is_failure}".encode()
                 ).hexdigest()[:32]
+                # Format as UUID: 8-4-4-4-12
+                example_id = f"{hash_hex[:8]}-{hash_hex[8:12]}-{hash_hex[12:16]}-{hash_hex[16:20]}-{hash_hex[20:32]}"
 
                 example = {
                     "id": example_id,
@@ -250,7 +252,7 @@ def populate_from_mast(
                     "task_description": task,
                     "conversation_summary": summary,
                     "key_events": json.dumps(key_events),
-                    "embedding": str(embedding) if embedding else None,
+                    "embedding": json.dumps(embedding) if embedding else None,
                     "confidence": 100,  # Ground truth from MAST
                     "source": "ground_truth",
                 }
@@ -292,16 +294,16 @@ def _insert_batch(engine, batch: List[Dict]) -> int:
     with engine.connect() as conn:
         for example in batch:
             try:
-                # Upsert query
+                # Upsert query - use CAST() instead of :: to avoid parameter conflicts
                 query = text("""
                     INSERT INTO failure_examples (
                         id, dataset, framework, trace_id, failure_mode, is_failure,
                         task_description, conversation_summary, key_events,
                         embedding, confidence, source
                     ) VALUES (
-                        :id::uuid, :dataset, :framework, :trace_id, :failure_mode, :is_failure,
-                        :task_description, :conversation_summary, :key_events::jsonb,
-                        :embedding::vector, :confidence, :source
+                        CAST(:id AS uuid), :dataset, :framework, :trace_id, :failure_mode, :is_failure,
+                        :task_description, :conversation_summary, CAST(:key_events AS jsonb),
+                        CAST(:embedding AS vector), :confidence, :source
                     )
                     ON CONFLICT (id) DO UPDATE SET
                         embedding = EXCLUDED.embedding,
@@ -312,7 +314,7 @@ def _insert_batch(engine, batch: List[Dict]) -> int:
                 inserted += 1
 
             except Exception as e:
-                logger.debug(f"Insert failed for {example['id']}: {e}")
+                logger.warning(f"Insert failed for {example['id']}: {e}")
                 continue
 
         conn.commit()

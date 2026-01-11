@@ -345,6 +345,330 @@ class FailureExampleRetriever:
             logger.error(f"Error querying similar examples (sync): {e}")
             return []
 
+    async def retrieve_contrastive(
+        self,
+        failure_mode: str,
+        query_text: str,
+        k_positive: int = 3,
+        k_negative: int = 2,
+        k_hard_negative: int = 1,
+        session=None,
+    ) -> Dict[str, List[RetrievedExample]]:
+        """
+        Retrieve contrastive examples for few-shot learning.
+
+        Returns positive (failure) examples, negative (healthy) examples,
+        and hard negatives (similar but not failures) for better calibration.
+
+        Args:
+            failure_mode: MAST failure mode (e.g., "F1", "F6")
+            query_text: Text to embed for similarity search
+            k_positive: Number of failure examples to retrieve
+            k_negative: Number of healthy examples to retrieve
+            k_hard_negative: Number of hard negative examples (similar non-failures)
+            session: SQLAlchemy session
+
+        Returns:
+            Dict with keys: "positives", "negatives", "hard_negatives"
+        """
+        from sqlalchemy import text
+
+        db_session = session or self._session
+        if db_session is None:
+            logger.warning("No database session provided, returning empty results")
+            return {"positives": [], "negatives": [], "hard_negatives": []}
+
+        # Get embedding
+        query_embedding = self._get_embedding(query_text)
+        embedding_list = query_embedding.tolist()
+
+        # Get similar positive examples (failures)
+        positives = await self._query_similar(
+            db_session,
+            failure_mode=failure_mode,
+            is_failure=True,
+            embedding=embedding_list,
+            limit=k_positive,
+        )
+
+        # Get similar negative examples (healthy)
+        negatives = await self._query_similar(
+            db_session,
+            failure_mode=failure_mode,
+            is_failure=False,
+            embedding=embedding_list,
+            limit=k_negative,
+        )
+
+        # Get hard negatives (very similar non-failures with min_similarity)
+        hard_negatives = await self._query_similar_with_threshold(
+            db_session,
+            failure_mode=failure_mode,
+            is_failure=False,
+            embedding=embedding_list,
+            limit=k_hard_negative,
+            min_similarity=0.7,
+        )
+
+        return {
+            "positives": positives,
+            "negatives": negatives,
+            "hard_negatives": hard_negatives,
+        }
+
+    async def _query_similar_with_threshold(
+        self,
+        session,
+        failure_mode: str,
+        is_failure: bool,
+        embedding: List[float],
+        limit: int,
+        min_similarity: float = 0.0,
+    ) -> List[RetrievedExample]:
+        """Query similar examples with minimum similarity threshold."""
+        from sqlalchemy import text
+
+        try:
+            query = text("""
+                SELECT
+                    id::text,
+                    failure_mode,
+                    is_failure,
+                    task_description,
+                    conversation_summary,
+                    key_events,
+                    framework,
+                    confidence,
+                    1 - (embedding <=> :query_embedding::vector) as similarity
+                FROM failure_examples
+                WHERE failure_mode = :failure_mode
+                  AND is_failure = :is_failure
+                  AND embedding IS NOT NULL
+                  AND 1 - (embedding <=> :query_embedding::vector) >= :min_similarity
+                ORDER BY embedding <=> :query_embedding::vector
+                LIMIT :limit
+            """)
+
+            result = await session.execute(
+                query,
+                {
+                    "failure_mode": failure_mode,
+                    "is_failure": is_failure,
+                    "query_embedding": str(embedding),
+                    "limit": limit,
+                    "min_similarity": min_similarity,
+                }
+            )
+
+            rows = result.fetchall()
+
+            examples = []
+            for row in rows:
+                examples.append(RetrievedExample(
+                    id=row.id,
+                    failure_mode=row.failure_mode,
+                    is_failure=row.is_failure,
+                    task_description=row.task_description,
+                    conversation_summary=row.conversation_summary,
+                    key_events=row.key_events or [],
+                    framework=row.framework,
+                    confidence=row.confidence or 100,
+                    similarity=float(row.similarity) if row.similarity else 0.0,
+                ))
+
+            return examples
+
+        except Exception as e:
+            logger.error(f"Error querying similar examples with threshold: {e}")
+            return []
+
+    def retrieve_contrastive_sync(
+        self,
+        failure_mode: str,
+        query_text: str,
+        k_positive: int = 3,
+        k_negative: int = 2,
+        k_hard_negative: int = 1,
+        session=None,
+    ) -> Dict[str, List[RetrievedExample]]:
+        """
+        Synchronous version of retrieve_contrastive() for non-async contexts.
+        """
+        db_session = session or self._session
+        if db_session is None:
+            logger.warning("No database session provided, returning empty results")
+            return {"positives": [], "negatives": [], "hard_negatives": []}
+
+        # Get embedding
+        query_embedding = self._get_embedding(query_text)
+        embedding_list = query_embedding.tolist()
+
+        # Get similar positive examples (failures)
+        positives = self._query_similar_sync(
+            db_session,
+            failure_mode=failure_mode,
+            is_failure=True,
+            embedding=embedding_list,
+            limit=k_positive,
+        )
+
+        # Get similar negative examples (healthy)
+        negatives = self._query_similar_sync(
+            db_session,
+            failure_mode=failure_mode,
+            is_failure=False,
+            embedding=embedding_list,
+            limit=k_negative,
+        )
+
+        # Get hard negatives with threshold
+        hard_negatives = self._query_similar_with_threshold_sync(
+            db_session,
+            failure_mode=failure_mode,
+            is_failure=False,
+            embedding=embedding_list,
+            limit=k_hard_negative,
+            min_similarity=0.7,
+        )
+
+        return {
+            "positives": positives,
+            "negatives": negatives,
+            "hard_negatives": hard_negatives,
+        }
+
+    def _query_similar_with_threshold_sync(
+        self,
+        session,
+        failure_mode: str,
+        is_failure: bool,
+        embedding: List[float],
+        limit: int,
+        min_similarity: float = 0.0,
+    ) -> List[RetrievedExample]:
+        """Synchronous query for similar examples with threshold."""
+        from sqlalchemy import text
+
+        try:
+            query = text("""
+                SELECT
+                    id::text,
+                    failure_mode,
+                    is_failure,
+                    task_description,
+                    conversation_summary,
+                    key_events,
+                    framework,
+                    confidence,
+                    1 - (embedding <=> :query_embedding::vector) as similarity
+                FROM failure_examples
+                WHERE failure_mode = :failure_mode
+                  AND is_failure = :is_failure
+                  AND embedding IS NOT NULL
+                  AND 1 - (embedding <=> :query_embedding::vector) >= :min_similarity
+                ORDER BY embedding <=> :query_embedding::vector
+                LIMIT :limit
+            """)
+
+            result = session.execute(
+                query,
+                {
+                    "failure_mode": failure_mode,
+                    "is_failure": is_failure,
+                    "query_embedding": str(embedding),
+                    "limit": limit,
+                    "min_similarity": min_similarity,
+                }
+            )
+
+            rows = result.fetchall()
+
+            examples = []
+            for row in rows:
+                examples.append(RetrievedExample(
+                    id=row.id,
+                    failure_mode=row.failure_mode,
+                    is_failure=row.is_failure,
+                    task_description=row.task_description,
+                    conversation_summary=row.conversation_summary,
+                    key_events=row.key_events or [],
+                    framework=row.framework,
+                    confidence=row.confidence or 100,
+                    similarity=float(row.similarity) if row.similarity else 0.0,
+                ))
+
+            return examples
+
+        except Exception as e:
+            logger.error(f"Error querying similar examples with threshold (sync): {e}")
+            return []
+
+    def format_contrastive_examples(
+        self,
+        examples: Dict[str, List[RetrievedExample]],
+        max_chars: int = 6000,
+    ) -> str:
+        """
+        Format contrastive examples with clear labeling for LLM prompt.
+
+        Args:
+            examples: Dict with "positives", "negatives", "hard_negatives" keys
+            max_chars: Maximum characters for all examples
+
+        Returns:
+            Formatted string with clearly labeled sections
+        """
+        sections = []
+        current_chars = 0
+
+        # Format positives first (most important)
+        if examples.get("positives"):
+            section = ["### FAILURE EXAMPLES (this IS the failure mode):\n"]
+            for ex in examples["positives"]:
+                if current_chars > max_chars:
+                    break
+                formatted = self._format_single_example(ex, "FAILURE")
+                section.append(formatted)
+                current_chars += len(formatted)
+            sections.append("".join(section))
+
+        # Format hard negatives (tricky cases)
+        if examples.get("hard_negatives"):
+            section = ["### TRICKY NON-FAILURES (similar but NOT failures):\n"]
+            for ex in examples["hard_negatives"]:
+                if current_chars > max_chars:
+                    break
+                formatted = self._format_single_example(ex, "NOT FAILURE")
+                section.append(formatted)
+                current_chars += len(formatted)
+            sections.append("".join(section))
+
+        # Format negatives (healthy examples)
+        if examples.get("negatives"):
+            section = ["### HEALTHY EXAMPLES (clearly not failures):\n"]
+            for ex in examples["negatives"]:
+                if current_chars > max_chars:
+                    break
+                formatted = self._format_single_example(ex, "NOT FAILURE")
+                section.append(formatted)
+                current_chars += len(formatted)
+            sections.append("".join(section))
+
+        return "\n\n".join(sections)
+
+    def _format_single_example(
+        self,
+        example: RetrievedExample,
+        verdict_label: str,
+    ) -> str:
+        """Format a single example with verdict label."""
+        return f"""
+**Task:** {example.task_description[:400]}
+**Behavior:** {example.conversation_summary[:600]}
+**Verdict:** {verdict_label}
+---
+"""
+
     def format_examples_for_prompt(
         self,
         examples: List[RetrievedExample],
