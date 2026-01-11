@@ -1,0 +1,123 @@
+{
+  "description": "Adversarial test cases for F12 (Resource Overflow) detector",
+  "purpose": "Test edge cases where legitimate large payloads may trigger false positives",
+  "source": "Based on Anthropic 'Demystifying evals' article - need harder cases for saturated detectors",
+  "cases": [
+    {
+      "case_id": "F12_ADV_001",
+      "description": "Large but legitimate document processing",
+      "expected_detection": false,
+      "difficulty": "hard",
+      "reason": "Large token count but within documented limits for the task",
+      "trace": {
+        "execution_id": "adv-f12-001",
+        "workflow_name": "legal-doc-analyzer",
+        "events": [
+          {"timestamp": "2024-01-01T10:00:00.000Z", "node": "Load Document", "action": "load", "document_type": "contract", "size_kb": 250},
+          {"timestamp": "2024-01-01T10:00:05.000Z", "node": "AI Analysis", "action": "analyze", "input_tokens": 95000, "model_limit": 128000, "utilization": 0.74},
+          {"timestamp": "2024-01-01T10:00:30.000Z", "node": "AI Analysis", "action": "complete", "output_tokens": 5000, "total_tokens": 100000}
+        ]
+      }
+    },
+    {
+      "case_id": "F12_ADV_002",
+      "description": "Batch processing with high cumulative tokens but reasonable per-call usage",
+      "expected_detection": false,
+      "difficulty": "hard",
+      "reason": "High total tokens but properly batched - each call is within limits",
+      "trace": {
+        "execution_id": "adv-f12-002",
+        "workflow_name": "document-batch-processor",
+        "events": [
+          {"timestamp": "2024-01-01T10:00:00.000Z", "node": "Process", "action": "batch_1", "input_tokens": 15000, "batch_size": 5},
+          {"timestamp": "2024-01-01T10:00:10.000Z", "node": "Process", "action": "batch_2", "input_tokens": 15000, "batch_size": 5},
+          {"timestamp": "2024-01-01T10:00:20.000Z", "node": "Process", "action": "batch_3", "input_tokens": 15000, "batch_size": 5},
+          {"timestamp": "2024-01-01T10:00:30.000Z", "node": "Process", "action": "batch_4", "input_tokens": 15000, "batch_size": 5},
+          {"timestamp": "2024-01-01T10:00:40.000Z", "node": "Complete", "action": "summary", "total_processed": 20, "total_tokens": 60000}
+        ]
+      }
+    },
+    {
+      "case_id": "F12_ADV_003",
+      "description": "Near-limit usage that's acceptable with Claude claude-opus-4-5-20251101",
+      "expected_detection": false,
+      "difficulty": "hard",
+      "reason": "Using 90% of context window is legitimate for complex analysis tasks",
+      "trace": {
+        "execution_id": "adv-f12-003",
+        "workflow_name": "codebase-review",
+        "events": [
+          {"timestamp": "2024-01-01T10:00:00.000Z", "node": "Gather Code", "action": "collect", "files": 25, "total_loc": 5000},
+          {"timestamp": "2024-01-01T10:00:05.000Z", "node": "AI Review", "action": "analyze", "input_tokens": 180000, "model": "claude-opus-4-5-20251101", "model_limit": 200000, "utilization": 0.90},
+          {"timestamp": "2024-01-01T10:01:30.000Z", "node": "AI Review", "action": "complete", "findings": 15, "output_tokens": 8000}
+        ]
+      }
+    },
+    {
+      "case_id": "F12_ADV_004",
+      "description": "Actual resource overflow - SHOULD be detected",
+      "expected_detection": true,
+      "difficulty": "easy",
+      "reason": "Context window exceeded, causing truncation and information loss",
+      "trace": {
+        "execution_id": "adv-f12-004",
+        "workflow_name": "broken-doc-processor",
+        "events": [
+          {"timestamp": "2024-01-01T10:00:00.000Z", "node": "Load All Docs", "action": "load", "documents": 100, "total_size_kb": 2500},
+          {"timestamp": "2024-01-01T10:00:10.000Z", "node": "AI Process", "action": "error", "error": "context_length_exceeded", "attempted_tokens": 450000, "model_limit": 128000},
+          {"timestamp": "2024-01-01T10:00:11.000Z", "node": "AI Process", "action": "truncate_and_retry", "truncated_tokens": 320000, "warning": "significant_data_loss"}
+        ]
+      }
+    },
+    {
+      "case_id": "F12_ADV_005",
+      "description": "High memory usage that's normal for image processing",
+      "expected_detection": false,
+      "difficulty": "medium",
+      "reason": "Image workflows legitimately need more memory - domain context matters",
+      "trace": {
+        "execution_id": "adv-f12-005",
+        "workflow_name": "image-analysis",
+        "events": [
+          {"timestamp": "2024-01-01T10:00:00.000Z", "node": "Load Image", "action": "load", "image_size_mb": 15, "resolution": "4K"},
+          {"timestamp": "2024-01-01T10:00:02.000Z", "node": "Vision AI", "action": "analyze", "memory_mb": 512, "expected_for_4k": true},
+          {"timestamp": "2024-01-01T10:00:10.000Z", "node": "Vision AI", "action": "complete", "objects_detected": 45}
+        ]
+      }
+    },
+    {
+      "case_id": "F12_ADV_006",
+      "description": "Cost spike from legitimate high-value task",
+      "expected_detection": false,
+      "difficulty": "hard",
+      "reason": "High cost but for a justified business-critical task with proper authorization",
+      "trace": {
+        "execution_id": "adv-f12-006",
+        "workflow_name": "quarterly-report-gen",
+        "events": [
+          {"timestamp": "2024-01-01T10:00:00.000Z", "node": "Authorize", "action": "check_budget", "task_type": "quarterly_report", "authorized_budget_usd": 50},
+          {"timestamp": "2024-01-01T10:00:01.000Z", "node": "Generate", "action": "create_report", "sections": 12, "estimated_cost_usd": 35},
+          {"timestamp": "2024-01-01T10:05:00.000Z", "node": "Generate", "action": "complete", "actual_cost_usd": 38.50, "within_budget": true}
+        ]
+      }
+    },
+    {
+      "case_id": "F12_ADV_007",
+      "description": "Runaway cost without authorization - SHOULD be detected",
+      "expected_detection": true,
+      "difficulty": "easy",
+      "reason": "Cost exceeded budget without authorization, clear resource overflow",
+      "trace": {
+        "execution_id": "adv-f12-007",
+        "workflow_name": "uncapped-generator",
+        "events": [
+          {"timestamp": "2024-01-01T10:00:00.000Z", "node": "Generate", "action": "start", "budget_usd": 5},
+          {"timestamp": "2024-01-01T10:01:00.000Z", "node": "Generate", "action": "progress", "cost_so_far_usd": 8, "budget_exceeded": true, "no_stop_condition": true},
+          {"timestamp": "2024-01-01T10:02:00.000Z", "node": "Generate", "action": "progress", "cost_so_far_usd": 15, "budget_exceeded": true},
+          {"timestamp": "2024-01-01T10:03:00.000Z", "node": "Generate", "action": "progress", "cost_so_far_usd": 25, "budget_exceeded": true},
+          {"timestamp": "2024-01-01T10:04:00.000Z", "node": "System", "action": "force_stop", "final_cost_usd": 32, "overage_percent": 540}
+        ]
+      }
+    }
+  ]
+}

@@ -1,0 +1,120 @@
+{
+  "description": "Adversarial test cases for F8 (Infinite Loop) detector",
+  "purpose": "Test edge cases where legitimate patterns may look like loops",
+  "source": "Based on Anthropic 'Demystifying evals' article - need harder cases for saturated detectors",
+  "cases": [
+    {
+      "case_id": "F8_ADV_001",
+      "description": "Legitimate retry with exponential backoff",
+      "expected_detection": false,
+      "difficulty": "hard",
+      "reason": "Pattern shows repeated calls but with increasing delays (200ms, 400ms, 800ms, 1600ms)",
+      "trace": {
+        "execution_id": "adv-f8-001",
+        "workflow_name": "api-retry-workflow",
+        "events": [
+          {"timestamp": "2024-01-01T10:00:00.000Z", "node": "HTTP Request", "action": "call_api", "result": "error_503"},
+          {"timestamp": "2024-01-01T10:00:00.200Z", "node": "HTTP Request", "action": "retry_1", "delay_ms": 200, "result": "error_503"},
+          {"timestamp": "2024-01-01T10:00:00.600Z", "node": "HTTP Request", "action": "retry_2", "delay_ms": 400, "result": "error_503"},
+          {"timestamp": "2024-01-01T10:00:01.400Z", "node": "HTTP Request", "action": "retry_3", "delay_ms": 800, "result": "error_503"},
+          {"timestamp": "2024-01-01T10:00:03.000Z", "node": "HTTP Request", "action": "retry_4", "delay_ms": 1600, "result": "success"}
+        ]
+      }
+    },
+    {
+      "case_id": "F8_ADV_002",
+      "description": "Legitimate pagination loop with proper termination",
+      "expected_detection": false,
+      "difficulty": "hard",
+      "reason": "Same action repeated but with different page parameter and clear termination",
+      "trace": {
+        "execution_id": "adv-f8-002",
+        "workflow_name": "data-fetch-pagination",
+        "events": [
+          {"timestamp": "2024-01-01T10:00:00.000Z", "node": "Fetch Data", "action": "fetch_page", "page": 1, "items_returned": 100},
+          {"timestamp": "2024-01-01T10:00:01.000Z", "node": "Fetch Data", "action": "fetch_page", "page": 2, "items_returned": 100},
+          {"timestamp": "2024-01-01T10:00:02.000Z", "node": "Fetch Data", "action": "fetch_page", "page": 3, "items_returned": 100},
+          {"timestamp": "2024-01-01T10:00:03.000Z", "node": "Fetch Data", "action": "fetch_page", "page": 4, "items_returned": 50},
+          {"timestamp": "2024-01-01T10:00:04.000Z", "node": "Process Data", "action": "complete", "total_items": 350}
+        ]
+      }
+    },
+    {
+      "case_id": "F8_ADV_003",
+      "description": "Batch processing with repeated similar operations",
+      "expected_detection": false,
+      "difficulty": "medium",
+      "reason": "Many similar operations but processing different items",
+      "trace": {
+        "execution_id": "adv-f8-003",
+        "workflow_name": "batch-email-sender",
+        "events": [
+          {"timestamp": "2024-01-01T10:00:00.000Z", "node": "Send Email", "action": "send", "recipient": "user1@example.com"},
+          {"timestamp": "2024-01-01T10:00:01.000Z", "node": "Send Email", "action": "send", "recipient": "user2@example.com"},
+          {"timestamp": "2024-01-01T10:00:02.000Z", "node": "Send Email", "action": "send", "recipient": "user3@example.com"},
+          {"timestamp": "2024-01-01T10:00:03.000Z", "node": "Send Email", "action": "send", "recipient": "user4@example.com"},
+          {"timestamp": "2024-01-01T10:00:04.000Z", "node": "Send Email", "action": "send", "recipient": "user5@example.com"},
+          {"timestamp": "2024-01-01T10:00:05.000Z", "node": "Complete", "action": "batch_complete", "sent_count": 5}
+        ]
+      }
+    },
+    {
+      "case_id": "F8_ADV_004",
+      "description": "Polling with state change (should stop when condition met)",
+      "expected_detection": false,
+      "difficulty": "hard",
+      "reason": "Repeated polling that eventually succeeds - not an infinite loop",
+      "trace": {
+        "execution_id": "adv-f8-004",
+        "workflow_name": "job-status-poller",
+        "events": [
+          {"timestamp": "2024-01-01T10:00:00.000Z", "node": "Check Status", "action": "poll", "job_status": "pending"},
+          {"timestamp": "2024-01-01T10:00:05.000Z", "node": "Check Status", "action": "poll", "job_status": "pending"},
+          {"timestamp": "2024-01-01T10:00:10.000Z", "node": "Check Status", "action": "poll", "job_status": "running"},
+          {"timestamp": "2024-01-01T10:00:15.000Z", "node": "Check Status", "action": "poll", "job_status": "running"},
+          {"timestamp": "2024-01-01T10:00:20.000Z", "node": "Check Status", "action": "poll", "job_status": "completed"},
+          {"timestamp": "2024-01-01T10:00:21.000Z", "node": "Process Result", "action": "complete"}
+        ]
+      }
+    },
+    {
+      "case_id": "F8_ADV_005",
+      "description": "Actual infinite loop for contrast - SHOULD be detected",
+      "expected_detection": true,
+      "difficulty": "easy",
+      "reason": "Same state repeated with no progress or termination condition",
+      "trace": {
+        "execution_id": "adv-f8-005",
+        "workflow_name": "broken-workflow",
+        "events": [
+          {"timestamp": "2024-01-01T10:00:00.000Z", "node": "Router", "action": "route", "decision": "retry"},
+          {"timestamp": "2024-01-01T10:00:01.000Z", "node": "Action", "action": "process", "result": "failed"},
+          {"timestamp": "2024-01-01T10:00:02.000Z", "node": "Router", "action": "route", "decision": "retry"},
+          {"timestamp": "2024-01-01T10:00:03.000Z", "node": "Action", "action": "process", "result": "failed"},
+          {"timestamp": "2024-01-01T10:00:04.000Z", "node": "Router", "action": "route", "decision": "retry"},
+          {"timestamp": "2024-01-01T10:00:05.000Z", "node": "Action", "action": "process", "result": "failed"},
+          {"timestamp": "2024-01-01T10:00:06.000Z", "node": "Router", "action": "route", "decision": "retry"},
+          {"timestamp": "2024-01-01T10:00:07.000Z", "node": "Action", "action": "process", "result": "failed"}
+        ]
+      }
+    },
+    {
+      "case_id": "F8_ADV_006",
+      "description": "Conversation turns that look repetitive but progress topic",
+      "expected_detection": false,
+      "difficulty": "hard",
+      "reason": "Agent asks clarifying questions - may look like a loop but is progressive dialogue",
+      "trace": {
+        "execution_id": "adv-f8-006",
+        "workflow_name": "customer-support-agent",
+        "events": [
+          {"timestamp": "2024-01-01T10:00:00.000Z", "node": "Agent", "action": "ask_question", "topic": "issue_type"},
+          {"timestamp": "2024-01-01T10:00:30.000Z", "node": "Agent", "action": "ask_question", "topic": "account_number"},
+          {"timestamp": "2024-01-01T10:01:00.000Z", "node": "Agent", "action": "ask_question", "topic": "issue_details"},
+          {"timestamp": "2024-01-01T10:01:30.000Z", "node": "Agent", "action": "ask_question", "topic": "preferred_resolution"},
+          {"timestamp": "2024-01-01T10:02:00.000Z", "node": "Agent", "action": "resolve", "resolution": "escalate_to_human"}
+        ]
+      }
+    }
+  ]
+}

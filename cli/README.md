@@ -51,6 +51,21 @@ notifications:
 | `mao-healer status` | Show status and recent activity |
 | `mao-healer test` | Send test notification |
 | `mao-healer version` | Show version |
+| `mao-healer detections` | List recent detections for feedback |
+| `mao-healer feedback` | Submit feedback on a detection result |
+
+### Feedback Commands
+
+The feedback commands enable human grader feedback for detection evaluation:
+
+```bash
+# List recent detections
+mao-healer detections --limit 10
+
+# Submit feedback on a detection
+mao-healer feedback <detection_id> --correct --reason "Valid loop detected"
+mao-healer feedback <detection_id> --incorrect --reason "False positive - legitimate retry"
+```
 
 ## Detection Modes
 

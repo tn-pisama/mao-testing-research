@@ -20,6 +20,7 @@ from data.detector_versioning import (
     DetectorVersionManager, DetectorConfig, EvaluationResult,
     create_evaluation_result, print_results_table, compute_metrics
 )
+from data.adversarial import load_adversarial_cases, get_adversarial_stats
 
 # Import detectors
 from app.detection.withholding import InformationWithholdingDetector
@@ -98,8 +99,14 @@ def load_traces(mode: str, is_healthy: bool = False) -> list[dict]:
     return traces
 
 
-def evaluate_mode(mode: str, version: str = "v1.0") -> EvaluationResult:
-    """Evaluate a single failure mode detector."""
+def evaluate_mode(mode: str, version: str = "v1.0", include_adversarial: bool = False) -> EvaluationResult:
+    """Evaluate a single failure mode detector.
+
+    Args:
+        mode: Failure mode (e.g., 'F8', 'F12')
+        version: Version label for this evaluation
+        include_adversarial: Include adversarial test cases for harder evaluation
+    """
     detector_name, detector_cls, run_fn = MODE_CONFIG[mode]
     detector = detector_cls() if detector_cls else None
 
@@ -123,10 +130,40 @@ def evaluate_mode(mode: str, version: str = "v1.0") -> EvaluationResult:
     fp = healthy_result["detected"]
     tn = healthy_result["total"] - fp
 
-    return create_evaluation_result(
+    # Include adversarial test cases if requested
+    adversarial_stats = {"tested": 0, "correct": 0}
+    if include_adversarial:
+        adversarial_cases = load_adversarial_cases(mode)
+        if adversarial_cases:
+            for case in adversarial_cases:
+                trace = case.get("trace", {})
+                expected = case.get("expected_detection", False)
+
+                # Run detection on this case
+                if detector:
+                    case_result = run_fn([trace], detector)
+                else:
+                    case_result = run_fn([trace])
+
+                detected = case_result["detected"] > 0
+                adversarial_stats["tested"] += 1
+
+                if detected == expected:
+                    adversarial_stats["correct"] += 1
+                    if expected:
+                        tp += 1  # Correctly detected (true positive)
+                    else:
+                        tn += 1  # Correctly not detected (true negative)
+                else:
+                    if expected:
+                        fn += 1  # Should have detected but didn't (false negative)
+                    else:
+                        fp += 1  # Shouldn't have detected but did (false positive)
+
+    result = create_evaluation_result(
         mode=mode,
         version=version,
-        config_hash="baseline",
+        config_hash="baseline" + ("_adv" if include_adversarial else ""),
         tp=tp,
         fp=fp,
         tn=tn,
@@ -136,34 +173,55 @@ def evaluate_mode(mode: str, version: str = "v1.0") -> EvaluationResult:
         frameworks=FRAMEWORKS,
     )
 
+    # Store adversarial stats in result for reporting
+    if include_adversarial and adversarial_stats["tested"] > 0:
+        result._adversarial_stats = adversarial_stats
 
-def evaluate_all(version: str = "v1.0", save_results: bool = True) -> dict[str, EvaluationResult]:
-    """Evaluate all detectors and optionally save results."""
+    return result
+
+
+def evaluate_all(version: str = "v1.0", save_results: bool = True, include_adversarial: bool = False) -> dict[str, EvaluationResult]:
+    """Evaluate all detectors and optionally save results.
+
+    Args:
+        version: Version label for this evaluation
+        save_results: Save results to disk
+        include_adversarial: Include adversarial test cases for harder evaluation
+    """
     version_manager = DetectorVersionManager()
     results = {}
 
-    print("=" * 80)
+    print("=" * 90)
     print(f"DETECTOR EVALUATION - Version: {version}")
+    if include_adversarial:
+        print("MODE: Including adversarial test cases (harder evaluation)")
+        adv_stats = get_adversarial_stats()
+        for mode, stats in adv_stats.items():
+            print(f"  {mode}: {stats['total_cases']} adversarial cases")
     print(f"Timestamp: {datetime.now().isoformat()}")
-    print("=" * 80)
+    print("=" * 90)
     print()
 
     for mode in ["F1", "F2", "F3", "F4", "F5", "F6", "F7", "F8", "F9", "F10", "F11", "F12", "F13", "F14", "F15", "F16"]:
         print(f"Evaluating {mode} ({MODE_NAMES[mode]})...", end=" ", flush=True)
-        result = evaluate_mode(mode, version)
+        result = evaluate_mode(mode, version, include_adversarial=include_adversarial)
         results[mode] = result
 
         if save_results:
             version_manager.save_result(result)
 
         status = "OK" if result.f1 > 0.5 else "WARN" if result.f1 > 0 else "FAIL"
-        print(f"F1={result.f1*100:.1f}% [{status}]")
+        adv_info = ""
+        if include_adversarial and hasattr(result, '_adversarial_stats'):
+            stats = result._adversarial_stats
+            adv_info = f" [ADV: {stats['correct']}/{stats['tested']}]"
+        print(f"F1={result.f1*100:.1f}% [{status}]{adv_info}")
 
     print()
-    print("=" * 80)
-    print("SUMMARY")
-    print("=" * 80)
-    print_results_table(results)
+    print("=" * 90)
+    print("SUMMARY (with consistency metrics)")
+    print("=" * 90)
+    print_results_table(results, show_consistency=True)
 
     # Compute totals
     total_tp = sum(r.tp for r in results.values())
@@ -172,8 +230,8 @@ def evaluate_all(version: str = "v1.0", save_results: bool = True) -> dict[str, 
     total_fn = sum(r.fn for r in results.values())
     total_metrics = compute_metrics(total_tp, total_fp, total_tn, total_fn)
 
-    print("-" * 75)
-    print(f"{'TOTAL':<5} {'':<20} {version:<6} {total_metrics['precision']*100:>6.1f}% {total_metrics['recall']*100:>6.1f}% {total_metrics['f1']*100:>6.1f}% {total_metrics['fpr']*100:>6.1f}%")
+    print("-" * 90)
+    print(f"{'TOTAL':<5} {'':<18} {version:<5} {total_metrics['precision']*100:>5.1f}% {total_metrics['recall']*100:>5.1f}% {total_metrics['f1']*100:>5.1f}%")
     print()
 
     if save_results:
@@ -208,16 +266,22 @@ def main():
     parser.add_argument("--history", "-H", action="store_true", help="Show evaluation history")
     parser.add_argument("--mode", "-m", help="Evaluate specific mode only")
     parser.add_argument("--no-save", action="store_true", help="Don't save results")
+    parser.add_argument("--include-adversarial", "-a", action="store_true",
+                        help="Include adversarial test cases for harder evaluation (F8, F12)")
 
     args = parser.parse_args()
 
     if args.history:
         show_history(args.mode)
     elif args.mode:
-        result = evaluate_mode(args.mode, args.version)
+        result = evaluate_mode(args.mode, args.version, include_adversarial=args.include_adversarial)
         print(f"{args.mode}: Precision={result.precision*100:.1f}% Recall={result.recall*100:.1f}% F1={result.f1*100:.1f}% FPR={result.fpr*100:.1f}%")
+        if args.include_adversarial and hasattr(result, '_adversarial_stats'):
+            stats = result._adversarial_stats
+            print(f"Adversarial: {stats['correct']}/{stats['tested']} correct")
+        print(f"Consistency: pass@k={result.pass_at_k*100:.1f}% pass^k={result.pass_caret_k*100:.1f}% gap={result.consistency_gap*100:.1f}%")
     else:
-        evaluate_all(args.version, save_results=not args.no_save)
+        evaluate_all(args.version, save_results=not args.no_save, include_adversarial=args.include_adversarial)
 
 
 if __name__ == "__main__":

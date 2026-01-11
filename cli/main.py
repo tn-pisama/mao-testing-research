@@ -243,6 +243,133 @@ def version():
     console.print(f"MAO Healer v{__version__}")
 
 
+@app.command()
+def detections(
+    limit: int = typer.Option(10, "--limit", "-n", help="Number of detections to show"),
+    config_path: Optional[Path] = typer.Option(None, "--config", "-c", help="Config file path"),
+):
+    """List recent detections for feedback.
+
+    Shows recent detection results that can be used with the feedback command.
+    """
+    config_file = config_path or CONFIG_FILE
+
+    if not config_file.exists():
+        console.print(f"[red]Config not found at {config_file}[/red]")
+        console.print("Run [cyan]mao-healer init[/cyan] first")
+        raise typer.Exit(1)
+
+    config = HealerConfig.load(config_file)
+
+    # Try to get recent detections from the server
+    import httpx
+
+    try:
+        with httpx.Client(timeout=5.0) as client:
+            response = client.get(
+                f"http://localhost:{config.server_port}/api/v1/detections",
+                params={"limit": limit},
+            )
+            if response.status_code == 200:
+                data = response.json()
+                detections_list = data.get("detections", [])
+
+                if not detections_list:
+                    console.print("[yellow]No recent detections found[/yellow]")
+                    return
+
+                table = Table(title=f"Recent Detections (last {limit})")
+                table.add_column("ID", style="cyan", no_wrap=True)
+                table.add_column("Mode", style="green")
+                table.add_column("Confidence", justify="right")
+                table.add_column("Workflow")
+                table.add_column("Time")
+
+                for d in detections_list:
+                    det_id = d.get("id", "N/A")[:8]
+                    mode = d.get("failure_mode", "N/A")
+                    confidence = f"{d.get('confidence', 0):.0f}%"
+                    workflow = d.get("workflow_name", "N/A")[:20]
+                    timestamp = d.get("created_at", "N/A")[:19]
+
+                    table.add_row(det_id, mode, confidence, workflow, timestamp)
+
+                console.print(table)
+                console.print("\n[dim]Use [cyan]mao-healer feedback <id> --correct/--incorrect[/cyan] to provide feedback[/dim]")
+            else:
+                console.print(f"[yellow]Server returned status {response.status_code}[/yellow]")
+    except httpx.ConnectError:
+        console.print(f"[red]Cannot connect to server on port {config.server_port}[/red]")
+        console.print("Run [cyan]mao-healer start[/cyan] first")
+
+
+@app.command()
+def feedback(
+    detection_id: str = typer.Argument(..., help="Detection ID to provide feedback on"),
+    correct: bool = typer.Option(..., "--correct/--incorrect", help="Was detection correct?"),
+    reason: Optional[str] = typer.Option(None, "--reason", "-r", help="Feedback reason"),
+    severity: Optional[int] = typer.Option(None, "--severity", "-s", help="Severity rating 1-5"),
+    config_path: Optional[Path] = typer.Option(None, "--config", "-c", help="Config file path"),
+):
+    """Submit feedback on a detection result.
+
+    This feedback is used to improve detection accuracy over time.
+    Human graders provide the gold standard for detection evaluation.
+
+    Examples:
+        mao-healer feedback abc123 --correct --reason "Valid loop detected"
+        mao-healer feedback def456 --incorrect --reason "False positive - legitimate retry"
+    """
+    config_file = config_path or CONFIG_FILE
+
+    if not config_file.exists():
+        console.print(f"[red]Config not found at {config_file}[/red]")
+        raise typer.Exit(1)
+
+    config = HealerConfig.load(config_file)
+
+    # Validate severity if provided
+    if severity is not None and not (1 <= severity <= 5):
+        console.print("[red]Severity must be between 1 and 5[/red]")
+        raise typer.Exit(1)
+
+    # Submit feedback to the server
+    import httpx
+
+    feedback_data = {
+        "detection_id": detection_id,
+        "is_correct": correct,
+        "reason": reason,
+        "severity_rating": severity,
+    }
+
+    try:
+        with httpx.Client(timeout=5.0) as client:
+            response = client.post(
+                f"http://localhost:{config.server_port}/api/v1/feedback",
+                json=feedback_data,
+            )
+            if response.status_code in (200, 201):
+                data = response.json()
+                feedback_type = "true_positive" if correct else "false_positive"
+                console.print(Panel.fit(
+                    f"[green]Feedback submitted successfully![/green]\n\n"
+                    f"Detection: {detection_id[:8]}...\n"
+                    f"Type: {feedback_type}\n"
+                    f"Reason: {reason or 'N/A'}\n"
+                    f"Severity: {severity or 'N/A'}",
+                    title="Feedback Recorded",
+                ))
+            elif response.status_code == 404:
+                console.print(f"[red]Detection '{detection_id}' not found[/red]")
+            else:
+                error = response.json().get("detail", "Unknown error")
+                console.print(f"[red]Failed to submit feedback: {error}[/red]")
+    except httpx.ConnectError:
+        console.print(f"[red]Cannot connect to server on port {config.server_port}[/red]")
+        console.print("Run [cyan]mao-healer start[/cyan] first")
+
+
 @app.callback()
 def callback():
     """MAO Healer - Self-healing agent for n8n workflows."""
