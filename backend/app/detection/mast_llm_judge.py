@@ -849,8 +849,8 @@ class FullLLMDetector:
                 print(f"{mode} failure detected!")
     """
 
-    def __init__(self, api_key: Optional[str] = None):
-        self._judge = MASTLLMJudge(api_key=api_key)
+    def __init__(self, api_key: Optional[str] = None, db_session=None):
+        self._judge = MASTLLMJudge(api_key=api_key, db_session=db_session)
 
     def detect_all_modes(
         self,

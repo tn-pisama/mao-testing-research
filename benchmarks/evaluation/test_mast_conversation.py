@@ -993,7 +993,24 @@ def evaluate_mast_dataset(
 
     if use_full_llm:
         reset_cost_tracker()  # Reset cost tracking
-        full_llm_detector = FullLLMDetector()
+        # Create database session for RAG retrieval
+        db_session = None
+        try:
+            import os
+            from sqlalchemy import create_engine
+            from sqlalchemy.orm import sessionmaker
+            db_url = os.environ.get("DATABASE_URL", "postgresql://localhost:5432/mao")
+            # Ensure sync driver for SQLAlchemy
+            if "+asyncpg" in db_url:
+                db_url = db_url.replace("+asyncpg", "")
+            engine = create_engine(db_url)
+            Session = sessionmaker(bind=engine)
+            db_session = Session()
+            print("Database session created for RAG retrieval")
+        except Exception as e:
+            print(f"Warning: Could not create database session for RAG: {e}")
+            print("RAG examples will not be used")
+        full_llm_detector = FullLLMDetector(db_session=db_session)
         print("Using FULL LLM detection (Claude Opus 4.5 for all modes)")
         print("WARNING: This will use significant API credits (~$0.05-0.15 per trace)")
     elif use_hybrid:
