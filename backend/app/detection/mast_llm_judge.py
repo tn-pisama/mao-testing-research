@@ -370,10 +370,13 @@ def reset_cost_tracker():
 
 class MASTLLMJudge:
     """
-    MAST Failure Mode Judge using Claude Opus 4.5.
+    MAST Failure Mode Judge using Claude Opus 4.5 or GPT-4 (fallback).
 
     Uses few-shot prompting based on MAST paper methodology for 94% accuracy.
     Caches results by trace hash + failure mode to reduce API costs.
+
+    Supports automatic fallback to OpenAI GPT-4 if Claude API fails
+    (e.g., insufficient credits).
 
     Usage:
         judge = MASTLLMJudge()
@@ -392,16 +395,24 @@ class MASTLLMJudge:
     INPUT_PRICE_PER_1M = 15.0   # $15 per 1M input tokens
     OUTPUT_PRICE_PER_1M = 75.0  # $75 per 1M output tokens
 
+    # OpenAI GPT-4 fallback
+    OPENAI_MODEL = "gpt-4o"  # Most capable GPT-4 variant
+    OPENAI_INPUT_PRICE_PER_1M = 2.50   # $2.50 per 1M input tokens
+    OPENAI_OUTPUT_PRICE_PER_1M = 10.0  # $10 per 1M output tokens
+
     def __init__(
         self,
         api_key: Optional[str] = None,
+        openai_api_key: Optional[str] = None,
         cache_enabled: bool = True,
         max_cache_size: int = 1000,
         rag_enabled: bool = True,
         rag_examples_per_mode: int = 3,
         db_session=None,
+        use_openai_fallback: bool = True,
     ):
         self._api_key = api_key
+        self._openai_api_key = openai_api_key
         self.cache_enabled = cache_enabled
         self._cache: Dict[str, JudgmentResult] = {}
         self._max_cache_size = max_cache_size
@@ -409,12 +420,19 @@ class MASTLLMJudge:
         self.rag_examples_per_mode = rag_examples_per_mode
         self._db_session = db_session
         self._retriever = None
+        self.use_openai_fallback = use_openai_fallback
 
     @property
     def api_key(self) -> str:
         if self._api_key:
             return self._api_key
         return os.getenv("ANTHROPIC_API_KEY", "")
+
+    @property
+    def openai_api_key(self) -> str:
+        if self._openai_api_key:
+            return self._openai_api_key
+        return os.getenv("OPENAI_API_KEY", "")
 
     @property
     def retriever(self):
@@ -597,11 +615,97 @@ Important guidelines:
 """
         return prompt
 
-    def _calculate_cost(self, input_tokens: int, output_tokens: int) -> float:
+    def _calculate_cost(self, input_tokens: int, output_tokens: int, is_openai: bool = False) -> float:
         """Calculate cost in USD."""
-        input_cost = (input_tokens / 1_000_000) * self.INPUT_PRICE_PER_1M
-        output_cost = (output_tokens / 1_000_000) * self.OUTPUT_PRICE_PER_1M
+        if is_openai:
+            input_cost = (input_tokens / 1_000_000) * self.OPENAI_INPUT_PRICE_PER_1M
+            output_cost = (output_tokens / 1_000_000) * self.OPENAI_OUTPUT_PRICE_PER_1M
+        else:
+            input_cost = (input_tokens / 1_000_000) * self.INPUT_PRICE_PER_1M
+            output_cost = (output_tokens / 1_000_000) * self.OUTPUT_PRICE_PER_1M
         return input_cost + output_cost
+
+    def _call_openai(
+        self,
+        prompt: str,
+        timeout: float = 60.0,
+        max_retries: int = 3,
+    ) -> Tuple[str, int, int, float]:
+        """Call OpenAI GPT-4 API with retry logic for rate limits.
+
+        Returns:
+            Tuple of (content, input_tokens, output_tokens, latency_ms)
+
+        Raises:
+            Exception if API call fails after retries
+        """
+        import re as regex
+
+        start_time = time.time()
+
+        for attempt in range(max_retries):
+            try:
+                with httpx.Client(timeout=timeout) as client:
+                    response = client.post(
+                        "https://api.openai.com/v1/chat/completions",
+                        headers={
+                            "Authorization": f"Bearer {self.openai_api_key}",
+                            "Content-Type": "application/json",
+                        },
+                        json={
+                            "model": self.OPENAI_MODEL,
+                            "max_tokens": 1000,
+                            "messages": [
+                                {
+                                    "role": "system",
+                                    "content": "You are an expert evaluator of AI agent behavior. Always respond with valid JSON.",
+                                },
+                                {"role": "user", "content": prompt},
+                            ],
+                            "response_format": {"type": "json_object"},
+                        },
+                    )
+
+                    latency_ms = int((time.time() - start_time) * 1000)
+
+                    if response.status_code == 429:
+                        # Rate limited - extract wait time and retry
+                        error_data = response.json()
+                        error_msg = error_data.get("error", {}).get("message", "")
+
+                        # Extract wait time from message (e.g., "try again in 3.83s")
+                        wait_match = regex.search(r'try again in ([\d.]+)s', error_msg)
+                        if wait_match:
+                            wait_time = float(wait_match.group(1)) + 0.5  # Add buffer
+                        else:
+                            wait_time = (2 ** attempt) * 2  # Exponential backoff
+
+                        logger.warning(f"OpenAI rate limit hit (attempt {attempt + 1}/{max_retries}), waiting {wait_time:.1f}s")
+                        time.sleep(wait_time)
+                        continue
+
+                    if response.status_code != 200:
+                        raise Exception(f"OpenAI API error: {response.status_code} - {response.text}")
+
+                    data = response.json()
+                    content = data["choices"][0]["message"]["content"]
+
+                    # Extract token usage
+                    usage = data.get("usage", {})
+                    input_tokens = usage.get("prompt_tokens", 0)
+                    output_tokens = usage.get("completion_tokens", 0)
+
+                    return content, input_tokens, output_tokens, latency_ms
+
+            except httpx.TimeoutException:
+                if attempt < max_retries - 1:
+                    wait_time = (2 ** attempt) * 2
+                    logger.warning(f"OpenAI timeout (attempt {attempt + 1}/{max_retries}), retrying in {wait_time}s")
+                    time.sleep(wait_time)
+                    continue
+                raise
+
+        raise Exception(f"OpenAI API failed after {max_retries} retries")
 
     def _parse_response(self, content: str, failure_mode: MASTFailureMode) -> Tuple[str, float, str]:
         """Parse LLM response into verdict, confidence, reasoning.
@@ -775,8 +879,10 @@ Important guidelines:
             knowledge_context=knowledge_context,
         )
 
-        # Call Claude API
+        # Try Claude API first
         start_time = time.time()
+        use_fallback = False
+        claude_error = None
 
         try:
             with httpx.Client(timeout=timeout) as client:
@@ -800,31 +906,63 @@ Important guidelines:
                 latency_ms = int((time.time() - start_time) * 1000)
 
                 if response.status_code != 200:
-                    logger.error(f"Claude API error: {response.status_code} - {response.text}")
-                    return JudgmentResult(
+                    claude_error = f"Claude API error: {response.status_code} - {response.text[:200]}"
+                    logger.warning(claude_error)
+                    use_fallback = True
+                else:
+                    data = response.json()
+                    content = data["content"][0]["text"]
+
+                    # Extract token usage
+                    usage = data.get("usage", {})
+                    input_tokens = usage.get("input_tokens", 0)
+                    output_tokens = usage.get("output_tokens", 0)
+                    total_tokens = input_tokens + output_tokens
+
+                    # Calculate cost
+                    cost = self._calculate_cost(input_tokens, output_tokens)
+
+                    # Parse response
+                    verdict, confidence, reasoning = self._parse_response(content, failure_mode)
+
+                    result = JudgmentResult(
                         failure_mode=failure_mode,
-                        verdict="UNCERTAIN",
-                        confidence=0.0,
-                        reasoning=f"API error: {response.status_code}",
-                        raw_response=response.text,
+                        verdict=verdict,
+                        confidence=confidence,
+                        reasoning=reasoning,
+                        raw_response=content,
                         model_used=self.MODEL,
-                        tokens_used=0,
-                        cost_usd=0.0,
+                        tokens_used=total_tokens,
+                        cost_usd=cost,
                         cached=False,
                         latency_ms=latency_ms,
                     )
 
-                data = response.json()
-                content = data["content"][0]["text"]
+                    # Cache result
+                    self._set_cached(cache_key, result)
 
-                # Extract token usage
-                usage = data.get("usage", {})
-                input_tokens = usage.get("input_tokens", 0)
-                output_tokens = usage.get("output_tokens", 0)
+                    # Track cost
+                    get_cost_tracker().record(result)
+
+                    logger.info(
+                        f"MAST Judge (Claude): {failure_mode.value} -> {verdict} "
+                        f"(conf={confidence:.2f}, tokens={total_tokens}, cost=${cost:.4f})"
+                    )
+
+                    return result
+
+        except Exception as e:
+            claude_error = f"Claude API exception: {str(e)}"
+            logger.warning(claude_error)
+            use_fallback = True
+
+        # Fallback to OpenAI GPT-4 if Claude fails
+        if use_fallback and self.use_openai_fallback and self.openai_api_key:
+            logger.info(f"Falling back to OpenAI GPT-4 for {failure_mode.value}")
+            try:
+                content, input_tokens, output_tokens, latency_ms = self._call_openai(prompt, timeout)
                 total_tokens = input_tokens + output_tokens
-
-                # Calculate cost
-                cost = self._calculate_cost(input_tokens, output_tokens)
+                cost = self._calculate_cost(input_tokens, output_tokens, is_openai=True)
 
                 # Parse response
                 verdict, confidence, reasoning = self._parse_response(content, failure_mode)
@@ -835,7 +973,7 @@ Important guidelines:
                     confidence=confidence,
                     reasoning=reasoning,
                     raw_response=content,
-                    model_used=self.MODEL,
+                    model_used=self.OPENAI_MODEL,
                     tokens_used=total_tokens,
                     cost_usd=cost,
                     cached=False,
@@ -849,40 +987,40 @@ Important guidelines:
                 get_cost_tracker().record(result)
 
                 logger.info(
-                    f"MAST Judge: {failure_mode.value} -> {verdict} "
+                    f"MAST Judge (OpenAI): {failure_mode.value} -> {verdict} "
                     f"(conf={confidence:.2f}, tokens={total_tokens}, cost=${cost:.4f})"
                 )
 
                 return result
 
-        except httpx.TimeoutException:
-            latency_ms = int((time.time() - start_time) * 1000)
-            return JudgmentResult(
-                failure_mode=failure_mode,
-                verdict="UNCERTAIN",
-                confidence=0.0,
-                reasoning="API timeout",
-                raw_response="",
-                model_used=self.MODEL,
-                tokens_used=0,
-                cost_usd=0.0,
-                cached=False,
-                latency_ms=latency_ms,
-            )
-        except Exception as e:
-            logger.exception(f"MAST Judge error: {e}")
-            return JudgmentResult(
-                failure_mode=failure_mode,
-                verdict="UNCERTAIN",
-                confidence=0.0,
-                reasoning=f"Error: {str(e)}",
-                raw_response="",
-                model_used=self.MODEL,
-                tokens_used=0,
-                cost_usd=0.0,
-                cached=False,
-                latency_ms=0,
-            )
+            except Exception as e:
+                logger.error(f"OpenAI fallback also failed: {e}")
+                return JudgmentResult(
+                    failure_mode=failure_mode,
+                    verdict="UNCERTAIN",
+                    confidence=0.0,
+                    reasoning=f"Both Claude and OpenAI APIs failed. Claude: {claude_error}. OpenAI: {str(e)}",
+                    raw_response="",
+                    model_used="none",
+                    tokens_used=0,
+                    cost_usd=0.0,
+                    cached=False,
+                    latency_ms=0,
+                )
+
+        # No fallback available
+        return JudgmentResult(
+            failure_mode=failure_mode,
+            verdict="UNCERTAIN",
+            confidence=0.0,
+            reasoning=f"API error: {claude_error}",
+            raw_response="",
+            model_used=self.MODEL,
+            tokens_used=0,
+            cost_usd=0.0,
+            cached=False,
+            latency_ms=int((time.time() - start_time) * 1000),
+        )
 
     def evaluate_batch(
         self,
