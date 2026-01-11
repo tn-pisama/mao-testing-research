@@ -10,14 +10,38 @@ from .models import (
     ValidationResult,
     AppliedFix,
 )
+from .auto_apply import (
+    AutoApplyService,
+    AutoApplyConfig,
+    ApplyResult,
+    RateLimiter,
+)
+from .git_backup import (
+    GitBackupService,
+    GitBackupConfig,
+    BackupRecord,
+    create_git_backup_service,
+)
 
 __all__ = [
+    # Engine
     "SelfHealingEngine",
     "FailureAnalyzer",
     "FixApplicator",
     "FixValidator",
+    # Models
     "HealingResult",
     "HealingStatus",
     "ValidationResult",
     "AppliedFix",
+    # Auto-apply
+    "AutoApplyService",
+    "AutoApplyConfig",
+    "ApplyResult",
+    "RateLimiter",
+    # Git backup
+    "GitBackupService",
+    "GitBackupConfig",
+    "BackupRecord",
+    "create_git_backup_service",
 ]
