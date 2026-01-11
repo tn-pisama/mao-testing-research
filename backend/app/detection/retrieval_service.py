@@ -177,9 +177,10 @@ class FailureExampleRetriever:
         try:
             # Use raw SQL for pgvector distance query
             # cosine distance: 1 - (embedding <=> query_embedding)
+            # Use CAST() instead of :: to avoid SQLAlchemy parameter conflicts
             query = text("""
                 SELECT
-                    id::text,
+                    CAST(id AS text) as id,
                     failure_mode,
                     is_failure,
                     task_description,
@@ -187,12 +188,12 @@ class FailureExampleRetriever:
                     key_events,
                     framework,
                     confidence,
-                    1 - (embedding <=> :query_embedding::vector) as similarity
+                    1 - (embedding <=> CAST(:query_embedding AS vector)) as similarity
                 FROM failure_examples
                 WHERE failure_mode = :failure_mode
                   AND is_failure = :is_failure
                   AND embedding IS NOT NULL
-                ORDER BY embedding <=> :query_embedding::vector
+                ORDER BY embedding <=> CAST(:query_embedding AS vector)
                 LIMIT :limit
             """)
 
@@ -294,9 +295,10 @@ class FailureExampleRetriever:
         from sqlalchemy import text
 
         try:
+            # Use CAST() instead of :: to avoid SQLAlchemy parameter conflicts
             query = text("""
                 SELECT
-                    id::text,
+                    CAST(id AS text) as id,
                     failure_mode,
                     is_failure,
                     task_description,
@@ -304,12 +306,12 @@ class FailureExampleRetriever:
                     key_events,
                     framework,
                     confidence,
-                    1 - (embedding <=> :query_embedding::vector) as similarity
+                    1 - (embedding <=> CAST(:query_embedding AS vector)) as similarity
                 FROM failure_examples
                 WHERE failure_mode = :failure_mode
                   AND is_failure = :is_failure
                   AND embedding IS NOT NULL
-                ORDER BY embedding <=> :query_embedding::vector
+                ORDER BY embedding <=> CAST(:query_embedding AS vector)
                 LIMIT :limit
             """)
 
@@ -429,9 +431,10 @@ class FailureExampleRetriever:
         from sqlalchemy import text
 
         try:
+            # Use CAST() instead of :: to avoid SQLAlchemy parameter conflicts
             query = text("""
                 SELECT
-                    id::text,
+                    CAST(id AS text) as id,
                     failure_mode,
                     is_failure,
                     task_description,
@@ -439,13 +442,13 @@ class FailureExampleRetriever:
                     key_events,
                     framework,
                     confidence,
-                    1 - (embedding <=> :query_embedding::vector) as similarity
+                    1 - (embedding <=> CAST(:query_embedding AS vector)) as similarity
                 FROM failure_examples
                 WHERE failure_mode = :failure_mode
                   AND is_failure = :is_failure
                   AND embedding IS NOT NULL
-                  AND 1 - (embedding <=> :query_embedding::vector) >= :min_similarity
-                ORDER BY embedding <=> :query_embedding::vector
+                  AND 1 - (embedding <=> CAST(:query_embedding AS vector)) >= :min_similarity
+                ORDER BY embedding <=> CAST(:query_embedding AS vector)
                 LIMIT :limit
             """)
 
@@ -550,9 +553,10 @@ class FailureExampleRetriever:
         from sqlalchemy import text
 
         try:
+            # Use CAST() instead of :: to avoid SQLAlchemy parameter conflicts
             query = text("""
                 SELECT
-                    id::text,
+                    CAST(id AS text) as id,
                     failure_mode,
                     is_failure,
                     task_description,
@@ -560,13 +564,13 @@ class FailureExampleRetriever:
                     key_events,
                     framework,
                     confidence,
-                    1 - (embedding <=> :query_embedding::vector) as similarity
+                    1 - (embedding <=> CAST(:query_embedding AS vector)) as similarity
                 FROM failure_examples
                 WHERE failure_mode = :failure_mode
                   AND is_failure = :is_failure
                   AND embedding IS NOT NULL
-                  AND 1 - (embedding <=> :query_embedding::vector) >= :min_similarity
-                ORDER BY embedding <=> :query_embedding::vector
+                  AND 1 - (embedding <=> CAST(:query_embedding AS vector)) >= :min_similarity
+                ORDER BY embedding <=> CAST(:query_embedding AS vector)
                 LIMIT :limit
             """)
 
