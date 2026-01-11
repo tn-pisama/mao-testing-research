@@ -23,6 +23,10 @@ from .mast_llm_judge import (
     MASTLLMJudge,
     JudgmentResult,
     get_cost_tracker,
+    get_model_for_failure_mode,
+    DEFAULT_MODEL_KEY,
+    HIGH_STAKES_MODEL_KEY,
+    HIGH_STAKES_FAILURE_MODES,
 )
 from .task_extractors import (
     ConversationTurn,
@@ -92,6 +96,14 @@ class HybridPipelineConfig:
     # Maximum LLM cost per trace (USD)
     max_llm_cost_per_trace: float = 0.10
 
+    # Tiered model selection (based on benchmark results)
+    # Default: sonnet-4 (97.1% accuracy, $0.48/100 judgments)
+    # High-stakes: sonnet-4-thinking (99.0% accuracy, $1.66/100 judgments)
+    use_tiered_models: bool = True
+    default_model_key: str = DEFAULT_MODEL_KEY
+    high_stakes_model_key: str = HIGH_STAKES_MODEL_KEY
+    high_stakes_modes: List[str] = field(default_factory=lambda: list(HIGH_STAKES_FAILURE_MODES))
+
 
 class HybridDetectionPipeline:
     """
@@ -114,13 +126,45 @@ class HybridDetectionPipeline:
     ):
         self.config = config or HybridPipelineConfig()
         self._llm_judge = llm_judge
+        # Cache for tiered model judges
+        self._judges_by_model: Dict[str, MASTLLMJudge] = {}
 
     @property
     def llm_judge(self) -> MASTLLMJudge:
-        """Lazy-load LLM judge."""
+        """Lazy-load default LLM judge."""
         if self._llm_judge is None:
-            self._llm_judge = MASTLLMJudge()
+            self._llm_judge = MASTLLMJudge(model_key=self.config.default_model_key)
         return self._llm_judge
+
+    def _get_judge_for_mode(self, failure_mode: str) -> MASTLLMJudge:
+        """
+        Get the appropriate LLM judge for a failure mode.
+
+        Uses tiered model selection when enabled:
+        - High-stakes modes (F6, F8): sonnet-4-thinking (99% accuracy)
+        - Standard modes: sonnet-4 (97.1% accuracy, lower cost)
+
+        Args:
+            failure_mode: MAST failure mode code
+
+        Returns:
+            MASTLLMJudge configured with appropriate model
+        """
+        if not self.config.use_tiered_models:
+            return self.llm_judge
+
+        # Determine model key based on failure mode
+        if failure_mode in self.config.high_stakes_modes:
+            model_key = self.config.high_stakes_model_key
+            logger.info(f"Using high-stakes model ({model_key}) for {failure_mode}")
+        else:
+            model_key = self.config.default_model_key
+
+        # Cache judges by model key
+        if model_key not in self._judges_by_model:
+            self._judges_by_model[model_key] = MASTLLMJudge(model_key=model_key)
+
+        return self._judges_by_model[model_key]
 
     def _should_verify_with_llm(
         self,
@@ -170,7 +214,7 @@ class HybridDetectionPipeline:
         pattern_result: TurnAwareDetectionResult,
         extraction: ExtractionResult,
     ) -> JudgmentResult:
-        """Send detection to LLM for verification."""
+        """Send detection to LLM for verification using tiered model selection."""
 
         # Map failure mode string to enum
         try:
@@ -189,7 +233,10 @@ class HybridDetectionPipeline:
                 cost_usd=0.0,
             )
 
-        return self.llm_judge.evaluate(
+        # Get the appropriate judge for this failure mode (tiered selection)
+        judge = self._get_judge_for_mode(pattern_result.failure_mode)
+
+        return judge.evaluate(
             failure_mode=failure_mode,
             task=extraction.task,
             trace_summary=extraction.agent_output_summary,
