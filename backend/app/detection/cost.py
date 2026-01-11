@@ -22,11 +22,16 @@ LLM_PRICING_2025: Dict[str, ModelPricing] = {
     "o1": ModelPricing(15.00, 60.00, 200000, "openai"),
     "o1-mini": ModelPricing(3.00, 12.00, 128000, "openai"),
     "o1-pro": ModelPricing(150.00, 600.00, 200000, "openai"),
+    # Claude 3.5 models
     "claude-3-5-sonnet-20241022": ModelPricing(3.00, 15.00, 200000, "anthropic"),
     "claude-3-5-haiku-20241022": ModelPricing(0.80, 4.00, 200000, "anthropic"),
     "claude-3-opus-20240229": ModelPricing(15.00, 75.00, 200000, "anthropic"),
+    # Claude 4 models
     "claude-sonnet-4-20250514": ModelPricing(3.00, 15.00, 200000, "anthropic"),
     "claude-opus-4-20250514": ModelPricing(15.00, 75.00, 200000, "anthropic"),
+    # Claude 4.5 models (latest)
+    "claude-opus-4-5-20251101": ModelPricing(15.00, 75.00, 200000, "anthropic"),
+    "claude-sonnet-4-5-20251101": ModelPricing(3.00, 15.00, 200000, "anthropic"),
     "gemini-1.5-pro": ModelPricing(1.25, 5.00, 2000000, "google"),
     "gemini-1.5-flash": ModelPricing(0.075, 0.30, 1000000, "google"),
     "gemini-2.0-flash": ModelPricing(0.10, 0.40, 1000000, "google"),
@@ -58,6 +63,11 @@ MODEL_ALIASES: Dict[str, str] = {
     "claude-3-opus-latest": "claude-3-opus-20240229",
     "claude-sonnet-4-latest": "claude-sonnet-4-20250514",
     "claude-opus-4-latest": "claude-opus-4-20250514",
+    # Claude 4.5 aliases
+    "claude-opus-4.5": "claude-opus-4-5-20251101",
+    "claude-opus-4-5-latest": "claude-opus-4-5-20251101",
+    "claude-sonnet-4.5": "claude-sonnet-4-5-20251101",
+    "claude-sonnet-4-5-latest": "claude-sonnet-4-5-20251101",
     "gemini-pro": "gemini-1.5-pro",
     "gemini-flash": "gemini-1.5-flash",
 }

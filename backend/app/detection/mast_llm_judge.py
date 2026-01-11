@@ -268,6 +268,75 @@ class JudgeCostTracker:
 # Global cost tracker
 _cost_tracker = JudgeCostTracker()
 
+
+@dataclass
+class ClaudeModelConfig:
+    """Configuration for a Claude model variant."""
+    model_id: str
+    input_price_per_1m: float
+    output_price_per_1m: float
+    thinking_price_per_1m: float = 0.0
+    use_extended_thinking: bool = False
+    thinking_budget: int = 0  # Max thinking tokens (0 = disabled)
+    context_window: int = 200000
+
+
+# All Claude models to benchmark for performance vs cost
+CLAUDE_MODELS: Dict[str, ClaudeModelConfig] = {
+    # Opus 4.5 - Highest quality, most expensive
+    "opus-4.5": ClaudeModelConfig(
+        model_id="claude-opus-4-5-20251101",
+        input_price_per_1m=15.0,
+        output_price_per_1m=75.0,
+        context_window=200000,
+    ),
+    # Opus 4.5 with extended thinking - Best for complex reasoning
+    "opus-4.5-thinking": ClaudeModelConfig(
+        model_id="claude-opus-4-5-20251101",
+        input_price_per_1m=15.0,
+        output_price_per_1m=75.0,
+        thinking_price_per_1m=10.0,
+        use_extended_thinking=True,
+        thinking_budget=16000,
+        context_window=200000,
+    ),
+    # Sonnet 4 - Balanced performance/cost
+    "sonnet-4": ClaudeModelConfig(
+        model_id="claude-sonnet-4-20250514",
+        input_price_per_1m=3.0,
+        output_price_per_1m=15.0,
+        context_window=200000,
+    ),
+    # Sonnet 4 with extended thinking
+    "sonnet-4-thinking": ClaudeModelConfig(
+        model_id="claude-sonnet-4-20250514",
+        input_price_per_1m=3.0,
+        output_price_per_1m=15.0,
+        thinking_price_per_1m=10.0,
+        use_extended_thinking=True,
+        thinking_budget=16000,
+        context_window=200000,
+    ),
+    # Sonnet 3.5 - Previous generation, good balance
+    "sonnet-3.5": ClaudeModelConfig(
+        model_id="claude-3-5-sonnet-20241022",
+        input_price_per_1m=3.0,
+        output_price_per_1m=15.0,
+        context_window=200000,
+    ),
+    # Haiku 3.5 - Fast and cheap
+    "haiku-3.5": ClaudeModelConfig(
+        model_id="claude-3-5-haiku-20241022",
+        input_price_per_1m=0.80,
+        output_price_per_1m=4.0,
+        context_window=200000,
+    ),
+}
+
+# Default model for backward compatibility
+DEFAULT_MODEL_KEY = "opus-4.5"
+
+
 # Chain-of-Thought prompts for hardest modes (F6, F8)
 # These modes require step-by-step semantic analysis
 CHAIN_OF_THOUGHT_PROMPTS = {
@@ -370,16 +439,31 @@ def reset_cost_tracker():
 
 class MASTLLMJudge:
     """
-    MAST Failure Mode Judge using Claude Opus 4.5 or GPT-4 (fallback).
+    MAST Failure Mode Judge using Claude models or GPT-4 (fallback).
+
+    Supports multiple Claude models for performance vs cost optimization:
+    - opus-4.5: Highest quality ($15/$75 per 1M tokens)
+    - opus-4.5-thinking: With extended thinking (+$10/1M thinking tokens)
+    - sonnet-4: Balanced ($3/$15 per 1M tokens)
+    - sonnet-4-thinking: With extended thinking
+    - sonnet-3.5: Previous gen ($3/$15 per 1M tokens)
+    - haiku-3.5: Fast and cheap ($0.80/$4 per 1M tokens)
 
     Uses few-shot prompting based on MAST paper methodology for 94% accuracy.
     Caches results by trace hash + failure mode to reduce API costs.
 
-    Supports automatic fallback to OpenAI GPT-4 if Claude API fails
-    (e.g., insufficient credits).
+    Supports automatic fallback to OpenAI GPT-4 if Claude API fails.
 
     Usage:
+        # Default (Opus 4.5)
         judge = MASTLLMJudge()
+
+        # Cost-optimized
+        judge = MASTLLMJudge(model_key="haiku-3.5")
+
+        # Extended thinking for complex cases
+        judge = MASTLLMJudge(model_key="sonnet-4-thinking")
+
         result = judge.evaluate(
             failure_mode=MASTFailureMode.F1,
             task="Write a factorial function",
@@ -388,17 +472,10 @@ class MASTLLMJudge:
         )
     """
 
-    # Claude Opus 4.5 model identifier
-    MODEL = "claude-opus-4-5-20251101"
-
-    # Pricing per 1M tokens (as of 2025)
-    INPUT_PRICE_PER_1M = 15.0   # $15 per 1M input tokens
-    OUTPUT_PRICE_PER_1M = 75.0  # $75 per 1M output tokens
-
-    # OpenAI GPT-4 fallback
-    OPENAI_MODEL = "gpt-4o"  # Most capable GPT-4 variant
-    OPENAI_INPUT_PRICE_PER_1M = 2.50   # $2.50 per 1M input tokens
-    OPENAI_OUTPUT_PRICE_PER_1M = 10.0  # $10 per 1M output tokens
+    # OpenAI GPT-4 fallback (class constants for backward compat)
+    OPENAI_MODEL = "gpt-4o"
+    OPENAI_INPUT_PRICE_PER_1M = 2.50
+    OPENAI_OUTPUT_PRICE_PER_1M = 10.0
 
     def __init__(
         self,
@@ -410,7 +487,21 @@ class MASTLLMJudge:
         rag_examples_per_mode: int = 3,
         db_session=None,
         use_openai_fallback: bool = True,
+        model_key: str = DEFAULT_MODEL_KEY,
     ):
+        # Model configuration
+        if model_key not in CLAUDE_MODELS:
+            raise ValueError(
+                f"Unknown model_key '{model_key}'. Available: {list(CLAUDE_MODELS.keys())}"
+            )
+        self.model_key = model_key
+        self.model_config = CLAUDE_MODELS[model_key]
+
+        # For backward compatibility, expose MODEL as instance attribute
+        self.MODEL = self.model_config.model_id
+        self.INPUT_PRICE_PER_1M = self.model_config.input_price_per_1m
+        self.OUTPUT_PRICE_PER_1M = self.model_config.output_price_per_1m
+
         self._api_key = api_key
         self._openai_api_key = openai_api_key
         self.cache_enabled = cache_enabled
@@ -421,6 +512,11 @@ class MASTLLMJudge:
         self._db_session = db_session
         self._retriever = None
         self.use_openai_fallback = use_openai_fallback
+
+        logger.info(
+            f"MASTLLMJudge initialized with model={self.model_config.model_id}, "
+            f"extended_thinking={self.model_config.use_extended_thinking}"
+        )
 
     @property
     def api_key(self) -> str:
@@ -615,15 +711,24 @@ Important guidelines:
 """
         return prompt
 
-    def _calculate_cost(self, input_tokens: int, output_tokens: int, is_openai: bool = False) -> float:
-        """Calculate cost in USD."""
+    def _calculate_cost(
+        self,
+        input_tokens: int,
+        output_tokens: int,
+        is_openai: bool = False,
+        thinking_tokens: int = 0,
+    ) -> float:
+        """Calculate cost in USD including thinking tokens for extended thinking."""
         if is_openai:
             input_cost = (input_tokens / 1_000_000) * self.OPENAI_INPUT_PRICE_PER_1M
             output_cost = (output_tokens / 1_000_000) * self.OPENAI_OUTPUT_PRICE_PER_1M
+            thinking_cost = 0.0
         else:
             input_cost = (input_tokens / 1_000_000) * self.INPUT_PRICE_PER_1M
             output_cost = (output_tokens / 1_000_000) * self.OUTPUT_PRICE_PER_1M
-        return input_cost + output_cost
+            # Thinking tokens are charged at thinking_price_per_1m
+            thinking_cost = (thinking_tokens / 1_000_000) * self.model_config.thinking_price_per_1m
+        return input_cost + output_cost + thinking_cost
 
     def _call_openai(
         self,
@@ -885,22 +990,43 @@ Important guidelines:
         claude_error = None
 
         try:
+            # Build headers - add beta header for extended thinking
+            headers = {
+                "x-api-key": self.api_key,
+                "anthropic-version": "2023-06-01",
+                "Content-Type": "application/json",
+            }
+            if self.model_config.use_extended_thinking:
+                headers["anthropic-beta"] = "interleaved-thinking-2025-05-14"
+
+            # Build request body
+            request_body = {
+                "model": self.MODEL,
+                "max_tokens": 16000 if self.model_config.use_extended_thinking else 1000,
+                "messages": [
+                    {"role": "user", "content": prompt},
+                ],
+            }
+
+            # Add system prompt (not compatible with extended thinking in some modes)
+            if not self.model_config.use_extended_thinking:
+                request_body["system"] = "You are an expert evaluator of AI agent behavior. Always respond with valid JSON."
+
+            # Add extended thinking configuration
+            if self.model_config.use_extended_thinking:
+                request_body["thinking"] = {
+                    "type": "enabled",
+                    "budget_tokens": self.model_config.thinking_budget,
+                }
+                # Prepend system context to user message for extended thinking
+                system_context = "You are an expert evaluator of AI agent behavior. Always respond with valid JSON.\n\n"
+                request_body["messages"][0]["content"] = system_context + prompt
+
             with httpx.Client(timeout=timeout) as client:
                 response = client.post(
                     "https://api.anthropic.com/v1/messages",
-                    headers={
-                        "x-api-key": self.api_key,
-                        "anthropic-version": "2023-06-01",
-                        "Content-Type": "application/json",
-                    },
-                    json={
-                        "model": self.MODEL,
-                        "max_tokens": 1000,
-                        "messages": [
-                            {"role": "user", "content": prompt},
-                        ],
-                        "system": "You are an expert evaluator of AI agent behavior. Always respond with valid JSON.",
-                    },
+                    headers=headers,
+                    json=request_body,
                 )
 
                 latency_ms = int((time.time() - start_time) * 1000)
@@ -911,19 +1037,45 @@ Important guidelines:
                     use_fallback = True
                 else:
                     data = response.json()
-                    content = data["content"][0]["text"]
 
-                    # Extract token usage
+                    # Extract content - handle extended thinking response format
+                    content = ""
+                    thinking_content = ""
+                    for block in data.get("content", []):
+                        if block.get("type") == "thinking":
+                            thinking_content = block.get("thinking", "")
+                        elif block.get("type") == "text":
+                            content = block.get("text", "")
+
+                    # Extract token usage (includes thinking tokens for extended thinking)
                     usage = data.get("usage", {})
                     input_tokens = usage.get("input_tokens", 0)
                     output_tokens = usage.get("output_tokens", 0)
-                    total_tokens = input_tokens + output_tokens
+                    thinking_tokens = 0
 
-                    # Calculate cost
-                    cost = self._calculate_cost(input_tokens, output_tokens)
+                    # Extended thinking has separate thinking token count
+                    if self.model_config.use_extended_thinking:
+                        # Thinking tokens are counted separately in cache_creation_input_tokens
+                        # or can be part of output in some API versions
+                        thinking_tokens = usage.get("cache_creation_input_tokens", 0)
+                        if thinking_tokens == 0:
+                            # Estimate from thinking content if not reported
+                            thinking_tokens = len(thinking_content) // 4 if thinking_content else 0
+
+                    total_tokens = input_tokens + output_tokens + thinking_tokens
+
+                    # Calculate cost including thinking tokens
+                    cost = self._calculate_cost(
+                        input_tokens, output_tokens,
+                        thinking_tokens=thinking_tokens
+                    )
 
                     # Parse response
                     verdict, confidence, reasoning = self._parse_response(content, failure_mode)
+
+                    # Include thinking in reasoning if available
+                    if thinking_content and self.model_config.use_extended_thinking:
+                        reasoning = f"[Extended Thinking]\n{thinking_content[:500]}...\n\n[Response]\n{reasoning}"
 
                     result = JudgmentResult(
                         failure_mode=failure_mode,
@@ -931,7 +1083,7 @@ Important guidelines:
                         confidence=confidence,
                         reasoning=reasoning,
                         raw_response=content,
-                        model_used=self.MODEL,
+                        model_used=f"{self.MODEL}" + ("-thinking" if self.model_config.use_extended_thinking else ""),
                         tokens_used=total_tokens,
                         cost_usd=cost,
                         cached=False,
@@ -944,9 +1096,10 @@ Important guidelines:
                     # Track cost
                     get_cost_tracker().record(result)
 
+                    thinking_info = f", thinking={thinking_tokens}" if thinking_tokens else ""
                     logger.info(
-                        f"MAST Judge (Claude): {failure_mode.value} -> {verdict} "
-                        f"(conf={confidence:.2f}, tokens={total_tokens}, cost=${cost:.4f})"
+                        f"MAST Judge ({self.model_key}): {failure_mode.value} -> {verdict} "
+                        f"(conf={confidence:.2f}, tokens={total_tokens}{thinking_info}, cost=${cost:.4f})"
                     )
 
                     return result
