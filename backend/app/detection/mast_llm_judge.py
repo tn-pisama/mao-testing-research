@@ -268,6 +268,94 @@ class JudgeCostTracker:
 # Global cost tracker
 _cost_tracker = JudgeCostTracker()
 
+# Chain-of-Thought prompts for hardest modes (F6, F8)
+# These modes require step-by-step semantic analysis
+CHAIN_OF_THOUGHT_PROMPTS = {
+    MASTFailureMode.F6: """## Chain-of-Thought Analysis for Conversation Reset (F6)
+
+Before making your judgment, work through these steps carefully:
+
+### Step 1: Identify the Conversation State
+- What was the accumulated context at the point of suspected reset?
+- List key facts, decisions, and progress made before the reset.
+
+### Step 2: Detect Reset Indicators
+Look for these specific patterns:
+- Greeting phrases that restart dialogue ("Hello!", "How can I help?", "Nice to meet you")
+- Loss of previously established facts or preferences
+- Agent asking questions already answered
+- Abandoning in-progress work without explanation
+- Sudden topic change with no transition
+
+### Step 3: Evaluate Continuity
+- Does the agent reference prior context appropriately?
+- Is there a logical flow from previous turns?
+- Were any explicit handoffs or continuations present?
+
+### Step 4: Distinguish from Legitimate Transitions
+NOT a reset if:
+- Agent summarizes and transitions to a new phase
+- Explicit acknowledgment of context before change
+- User-initiated topic change that agent follows appropriately
+
+### Step 5: Severity Assessment
+- Complete reset (loses ALL context) = HIGH confidence YES
+- Partial reset (loses SOME context) = MEDIUM confidence YES
+- Style change only (context maintained) = NO
+
+Now apply this analysis to the trace below:
+""",
+    MASTFailureMode.F8: """## Chain-of-Thought Analysis for Task Derailment (F8)
+
+Before making your judgment, work through these steps carefully:
+
+### Step 1: Extract Original Task Specification
+- What was the explicit task given to the agent?
+- List ALL requirements, constraints, and success criteria.
+- Note any implicit requirements based on context.
+
+### Step 2: Trace Agent Actions
+For each major action the agent takes:
+- Is this action directly advancing the original task?
+- Is this a necessary prerequisite for the task?
+- Or is this tangential/unrelated work?
+
+### Step 3: Identify Deviation Points
+Look for these patterns:
+- "While I'm at it..." or "I noticed that..." (scope creep)
+- Switching to related but different work
+- Optimizing/improving things not requested
+- Adding features not in specification
+- Pursuing interesting tangents
+
+### Step 4: Assess Impact
+- Did the deviation prevent task completion?
+- Did it significantly delay the original task?
+- Was the original task ultimately completed?
+
+### Step 5: Distinguish from Legitimate Work
+NOT derailment if:
+- Agent asks permission before expanding scope
+- Work is a necessary dependency for the task
+- Agent explicitly acknowledges trade-off and justifies
+- Minor efficiency improvements while completing task
+
+### Step 6: Calculate Derailment Severity
+- Complete abandonment of task = HIGH confidence YES
+- Significant distraction but task attempted = MEDIUM confidence YES
+- Minor tangent with task completed = NO
+
+Now apply this analysis to the trace below:
+""",
+}
+
+# Modes that benefit from knowledge augmentation
+KNOWLEDGE_AUGMENTED_MODES = {
+    MASTFailureMode.F3: "F3",  # Resource Allocation -> Cost DB
+    MASTFailureMode.F4: "F4",  # Tool Provision -> Tool Catalog
+    MASTFailureMode.F9: "F9",  # Role Usurpation -> Role Specs
+}
+
 
 def get_cost_tracker() -> JudgeCostTracker:
     """Get the global cost tracker."""
@@ -378,11 +466,13 @@ class MASTLLMJudge:
         agent_interactions: List[str] = None,
         coordination_events: List[str] = None,
         rag_examples: str = "",
+        knowledge_context: str = "",
     ) -> str:
         """Build the judge prompt with few-shot examples and enhanced context.
 
         Args:
             rag_examples: Pre-formatted RAG examples from retrieval service
+            knowledge_context: Domain knowledge for modes like F3, F4, F9
         """
 
         mode_def = MAST_FAILURE_DEFINITIONS.get(failure_mode)
@@ -433,6 +523,28 @@ Use these examples to calibrate your judgment. Pay special attention to:
 ---
 """
 
+        # Add Chain-of-Thought section for hard semantic modes (F6, F8)
+        cot_section = ""
+        if failure_mode in CHAIN_OF_THOUGHT_PROMPTS:
+            cot_section = f"""
+---
+
+{CHAIN_OF_THOUGHT_PROMPTS[failure_mode]}
+"""
+
+        # Add knowledge context section for modes that need it (F3, F4, F9)
+        knowledge_section = ""
+        if knowledge_context:
+            knowledge_section = f"""
+---
+
+## Domain Knowledge Reference
+
+{knowledge_context}
+
+---
+"""
+
         prompt = f"""You are an expert evaluator of AI agent behavior, specifically trained to detect failure modes in multi-agent systems. You are evaluating traces from the MAST benchmark dataset.
 
 ## Failure Mode: {failure_mode.value} - {mode_def['name']}
@@ -445,7 +557,7 @@ Use these examples to calibrate your judgment. Pay special attention to:
 
 ### Example of NOT This Failure (should return NO):
 {mode_def['negative_example']}
-{rag_section}
+{rag_section}{knowledge_section}{cot_section}
 ---
 
 ## Trace to Evaluate
@@ -607,6 +719,19 @@ Important guidelines:
             get_cost_tracker().record(cached_copy)
             return cached_copy
 
+        # Get knowledge context for modes that need domain knowledge (F3, F4, F9)
+        knowledge_context = ""
+        if failure_mode in KNOWLEDGE_AUGMENTED_MODES:
+            try:
+                from app.detection.knowledge_bases import get_knowledge_context
+                knowledge_context = get_knowledge_context([KNOWLEDGE_AUGMENTED_MODES[failure_mode]])
+                if knowledge_context:
+                    logger.debug(f"Added knowledge context for {failure_mode.value} ({len(knowledge_context)} chars)")
+            except ImportError:
+                logger.warning("knowledge_bases module not available")
+            except Exception as e:
+                logger.warning(f"Could not load knowledge context: {e}")
+
         # Retrieve RAG examples for dynamic few-shot learning with contrastive examples
         rag_examples_str = ""
         if self.rag_enabled and self.retriever is not None:
@@ -642,11 +767,12 @@ Important guidelines:
             except Exception as e:
                 logger.warning(f"RAG retrieval failed: {e}")
 
-        # Build prompt with enhanced context and RAG examples
+        # Build prompt with enhanced context, RAG examples, and knowledge context
         prompt = self._build_prompt(
             failure_mode, task, trace_summary, key_events,
             full_conversation, agent_interactions, coordination_events,
             rag_examples=rag_examples_str,
+            knowledge_context=knowledge_context,
         )
 
         # Call Claude API
