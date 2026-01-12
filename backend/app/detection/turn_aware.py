@@ -1532,7 +1532,7 @@ class TurnAwareLoopDetector(TurnAwareDetector):
         return {"detected": False}
 
 
-class TurnAwareSpecificationMismatchDetector(TurnAwareDetector):
+class TurnAwareSpecificationMismatchDetector(EmbeddingMixin, TurnAwareDetector):
     """Detects F1: Specification Mismatch in conversations.
 
     Analyzes whether agent outputs match the user's requirements:
@@ -1541,11 +1541,15 @@ class TurnAwareSpecificationMismatchDetector(TurnAwareDetector):
     3. Misinterpreted requirements - agent did something different than asked
     4. Incomplete implementation - partial fulfillment of requirements
 
+    Phase 2 Enhancement: Uses semantic similarity (EmbeddingMixin) for requirement
+    matching instead of simple keyword matching. This improves detection accuracy
+    by understanding semantic equivalence (e.g., "authentication" matches "login system").
+
     This is the 3rd most common failure mode in MAST (30% prevalence).
     """
 
     name = "TurnAwareSpecificationMismatchDetector"
-    version = "1.0"
+    version = "2.0"  # Phase 2: Enhanced with semantic matching
     supported_failure_modes = ["F1"]
 
     # Requirement indicators in user messages
@@ -1713,8 +1717,106 @@ class TurnAwareSpecificationMismatchDetector(TurnAwareDetector):
 
         return requirements
 
-    def _check_coverage(self, requirements: set, agent_content: str) -> dict:
-        """Check how many requirements are addressed in agent output."""
+    def _chunk_output(self, agent_content: str, max_len: int = 500) -> List[str]:
+        """Chunk agent output into smaller pieces for semantic matching.
+
+        Args:
+            agent_content: Full agent output text
+            max_len: Maximum characters per chunk
+
+        Returns:
+            List of text chunks
+        """
+        # Split on paragraphs first (double newlines or sentences)
+        paragraphs = [p.strip() for p in agent_content.split('\n\n') if p.strip()]
+
+        chunks = []
+        current_chunk = ""
+
+        for para in paragraphs:
+            if len(current_chunk) + len(para) <= max_len:
+                current_chunk += para + " "
+            else:
+                if current_chunk:
+                    chunks.append(current_chunk.strip())
+                current_chunk = para + " "
+
+        if current_chunk:
+            chunks.append(current_chunk.strip())
+
+        return chunks if chunks else [agent_content[:max_len]]
+
+    def _semantic_requirement_matching(
+        self,
+        requirements: set,
+        agent_content: str,
+        similarity_threshold: float = 0.75
+    ) -> dict:
+        """Use embeddings to check if requirements are semantically met.
+
+        Phase 2 Enhancement: Semantic matching understands synonyms and paraphrasing.
+        For example, "authentication system" matches "login functionality".
+
+        Args:
+            requirements: Set of requirement keywords/phrases
+            agent_content: Agent output text to check
+            similarity_threshold: Minimum similarity score to consider a match (0.75 based on MAST research)
+
+        Returns:
+            Dict with covered/uncovered requirements and coverage ratio
+        """
+        if not self.embedder or not requirements:
+            # Fallback to keyword matching if embeddings unavailable
+            return self._keyword_requirement_matching(requirements, agent_content)
+
+        try:
+            # Chunk agent output for better semantic matching
+            output_chunks = self._chunk_output(agent_content, max_len=500)
+
+            covered = set()
+            uncovered = set()
+
+            # For each requirement, find best matching chunk
+            for req in requirements:
+                # Compute similarity with all chunks
+                similarities = self.batch_semantic_similarity(req, output_chunks)
+
+                if similarities:
+                    best_match = max(similarities) if similarities else 0.0
+                    if best_match >= similarity_threshold:
+                        covered.add(req)
+                    else:
+                        uncovered.add(req)
+                else:
+                    # No similarities computed, fall back to keyword
+                    if req in agent_content.lower():
+                        covered.add(req)
+                    else:
+                        uncovered.add(req)
+
+            coverage = len(covered) / len(requirements) if requirements else 1.0
+
+            return {
+                "covered": list(covered),
+                "uncovered": list(uncovered),
+                "coverage": coverage,
+                "method": "semantic",
+            }
+
+        except Exception as e:
+            logger.debug(f"Semantic requirement matching failed: {e}, falling back to keyword")
+            return self._keyword_requirement_matching(requirements, agent_content)
+
+    def _keyword_requirement_matching(self, requirements: set, agent_content: str) -> dict:
+        """Keyword-based requirement matching (fallback for when embeddings unavailable).
+
+        Args:
+            requirements: Set of requirement keywords
+            agent_content: Agent output text
+
+        Returns:
+            Dict with covered/uncovered requirements and coverage ratio
+        """
         agent_lower = agent_content.lower()
         covered = set()
         uncovered = set()
@@ -1731,7 +1833,15 @@ class TurnAwareSpecificationMismatchDetector(TurnAwareDetector):
             "covered": list(covered),
             "uncovered": list(uncovered),
             "coverage": coverage,
+            "method": "keyword",
         }
+
+    def _check_coverage(self, requirements: set, agent_content: str) -> dict:
+        """Check how many requirements are addressed in agent output.
+
+        Phase 2: Prefers semantic matching, falls back to keyword matching.
+        """
+        return self._semantic_requirement_matching(requirements, agent_content)
 
     def _check_mismatch_indicators(self, agent_turns: List[TurnSnapshot]) -> list:
         """Check for explicit mismatch indicators in agent output."""
