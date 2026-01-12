@@ -62,24 +62,33 @@ def load_mast_dataset(dataset_path: Path) -> List[Dict]:
 
 
 def extract_task_description(trace: Dict) -> str:
-    """Extract task description from MAST trace."""
-    # Try multiple fields for task description
-    task = (
-        trace.get('task') or
-        trace.get('task_description') or
-        trace.get('prompt') or
-        trace.get('initial_prompt') or
-        ""
+    """Extract task description from MAST trace.
+
+    MAST structure: trace['trace']['trajectory'] contains the full log,
+    starting with problem_statement which is the task description.
+    """
+    # Get trajectory from nested structure
+    trajectory = trace.get('trace', {}).get('trajectory', '')
+
+    if not trajectory:
+        return ""
+
+    # Extract problem_statement from trajectory
+    # Format: "problem_statement:\n  <description>\n"
+    import re
+    problem_match = re.search(
+        r'problem_statement:\s*\n\s*(.+?)(?=\n\s*\n[a-z_]+:|\nother_data:|\ntrajectory:|\Z)',
+        trajectory,
+        re.DOTALL
     )
 
-    # If no direct task field, try to extract from first user message
-    if not task and 'conversation' in trace:
-        for turn in trace['conversation']:
-            if turn.get('role') == 'user':
-                task = turn.get('content', '')
-                break
+    if problem_match:
+        task = problem_match.group(1).strip()
+        # Limit to reasonable length for embedding
+        return task[:2000]
 
-    return task.strip()
+    # Fallback: use first 500 chars of trajectory
+    return trajectory[:500].strip()
 
 
 def extract_conversation_summary(trace: Dict, max_length: int = 500) -> Optional[str]:
@@ -106,15 +115,44 @@ def extract_conversation_summary(trace: Dict, max_length: int = 500) -> Optional
 
 
 def extract_ground_truth_failures(trace: Dict) -> Dict[str, bool]:
-    """Extract ground truth failure annotations from MAST trace."""
-    # MAST format has ground_truth or failures field
-    ground_truth = trace.get('ground_truth') or trace.get('failures') or {}
+    """Extract ground truth failure annotations from MAST trace.
 
-    # Ensure all 14 failure modes are present (F1-F14)
+    MAST annotation codes (1.1, 1.2, etc.) map to F1-F14:
+    - 1.1 = F1 (Specification Mismatch)
+    - 1.2 = F2 (Poor Task Decomposition)
+    - 1.3 = F3 (Resource Misallocation)
+    - 1.4 = F4 (Inadequate Tool Provision)
+    - 1.5 = F5 (Flawed Workflow Design)
+    - 2.1 = F6 (Task Derailment)
+    - 2.2 = F7 (Context Neglect)
+    - 2.3 = F8 (Information Withholding)
+    - 2.4 = F9 (Role Usurpation)
+    - 2.5 = F10 (Communication Breakdown)
+    - 2.6 = F11 (Coordination Failure)
+    - 3.1 = F12 (Output Validation Failure)
+    - 3.2 = F13 (Quality Gate Bypass)
+    - 3.3 = F14 (Completion Misjudgment)
+    """
+    # MAST annotation mapping
+    ANNOTATION_MAP = {
+        "1.1": "F1", "1.2": "F2", "1.3": "F3", "1.4": "F4", "1.5": "F5",
+        "2.1": "F6", "2.2": "F7", "2.3": "F8", "2.4": "F9", "2.5": "F10", "2.6": "F11",
+        "3.1": "F12", "3.2": "F13", "3.3": "F14",
+    }
+
+    # Get MAST annotations
+    mast_annotation = trace.get('mast_annotation', {})
+
+    # Convert to F1-F14 format
     failures = {}
     for i in range(1, 15):
-        mode = f"F{i}"
-        failures[mode] = ground_truth.get(mode, False)
+        failures[f"F{i}"] = False
+
+    for code, value in mast_annotation.items():
+        mode = ANNOTATION_MAP.get(str(code))
+        if mode:
+            # Value is integer (0 or 1)
+            failures[mode] = bool(value)
 
     return failures
 
@@ -167,7 +205,11 @@ def populate_embeddings(
             logger.info(f"Processing batch {i // batch_size + 1}/{(len(traces) + batch_size - 1) // batch_size}")
 
             for trace in batch:
-                trace_id = trace.get('id') or trace.get('trace_id') or f"trace_{i}"
+                # Create unique trace ID from key + index
+                # The trace_id field alone is not unique in MAST dataset
+                key = trace.get('trace', {}).get('key', 'unknown')
+                index = trace.get('trace', {}).get('index', i)
+                trace_id = f"{key}_{index}"
 
                 # Check if already exists
                 if not clear_existing:
@@ -185,7 +227,7 @@ def populate_embeddings(
                     continue
 
                 ground_truth_failures = extract_ground_truth_failures(trace)
-                framework = trace.get('framework', 'unknown')
+                framework = trace.get('mas_name', 'unknown')  # Framework name in MAST
                 conversation_summary = extract_conversation_summary(trace)
 
                 # Generate embedding
@@ -200,7 +242,7 @@ def populate_embeddings(
                         framework=framework,
                         task_description=task_description,
                         conversation_summary=conversation_summary,
-                        metadata={
+                        trace_metadata={
                             'source': str(dataset_path),
                             'original_index': i,
                         }

@@ -503,8 +503,8 @@ class MASTTraceEmbedding(Base):
     # Conversation summary (for few-shot context)
     conversation_summary = Column(Text, nullable=True)
 
-    # Metadata from MAST dataset
-    metadata = Column(JSONB, default=dict)
+    # Metadata from MAST dataset (renamed from 'metadata' to avoid SQLAlchemy reserved name)
+    trace_metadata = Column(JSONB, default=dict)
 
     created_at = Column(DateTime(timezone=True), server_default=func.now())
 
@@ -580,10 +580,13 @@ class MASTTraceEmbedding(Base):
 
         # Calculate actual similarities and filter
         if min_similarity > 0:
-            from app.core.embeddings import cosine_similarity
+            import numpy as np
             filtered_results = []
             for result in results:
-                similarity = cosine_similarity(query_embedding, result.task_embedding)
+                # Calculate cosine similarity
+                vec1 = np.array(query_embedding)
+                vec2 = np.array(result.task_embedding)
+                similarity = np.dot(vec1, vec2) / (np.linalg.norm(vec1) * np.linalg.norm(vec2))
                 if similarity >= min_similarity:
                     filtered_results.append(result)
             return filtered_results
