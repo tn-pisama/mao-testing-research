@@ -6,7 +6,7 @@ Successfully completed **Phase 1** (quick wins) and made substantial progress on
 
 **Current Status:**
 - Phase 1: ✅ COMPLETE
-- Phase 2: 🟡 MAJOR ENHANCEMENTS COMPLETE
+- Phase 2: ✅ COMPLETE
 - Phase 3: ⏸️ PENDING
 - Phase 4: ⏸️ PENDING
 
@@ -113,18 +113,89 @@ Successfully completed **Phase 1** (quick wins) and made substantial progress on
 **File:** `backend/app/detection/turn_aware.py:1382-1656`
 **Version:** 1.0 → 2.0
 
-### Remaining Phase 2 Work
+#### 3. F9 (Role Usurpation) - Semantic Role Analysis (✅)
 
-**Zero-F1 Modes (Baseline: 0% F1):**
-- **F9 (Role Usurpation):** 0% → 20-30% F1 (detector exists, needs enhancement)
-- **F13 (Quality Gate Bypass):** 0% → 20-28% F1 (detector exists with EmbeddingMixin)
-- **F14 (Incorrect Verification):** 0.7% → 15-22% F1 (detector exists, needs EmbeddingMixin)
+**Changes:**
+- Added `EmbeddingMixin` to detector inheritance
+- Implemented semantic role inference from agent behavior
+- Role boundary violation detection via semantic similarity (0.65 threshold)
+- Role conflict detection (multiple agents claiming same role)
+- Unauthorized action detection with permission scope checking
 
-**Other Detectors:**
-- F2, F7, F8, F10, F11 - already have detectors, may benefit from minor enhancements
+**Key Methods:**
+- `_infer_agent_roles()` - infers roles using semantic matching to role descriptions
+- `_semantic_role_matching()` - uses embeddings to match behavior to 6 role types
+- `_detect_boundary_violations()` - detects agents acting outside assigned roles
+- `_detect_role_conflicts()` - identifies multiple agents with conflicting roles
+- `_detect_unauthorized_actions()` - checks permission boundaries for sensitive actions
 
-**Integration:**
-- All detectors already integrated with hybrid pipeline
+**Expected Impact:**
+- Better role inference from implicit behavior patterns
+- Example: "I will implement" semantically matches "executor" role
+- Detects permission violations (e.g., non-coordinator trying to delegate)
+- Should improve F9 from 0% → 20-30% F1
+
+**Commit:** `6b2021ba` - "Phase 2: Enhance F9, F13, F14 detectors with semantic analysis"
+**File:** `backend/app/detection/turn_aware.py:2800-3206`
+**Version:** 1.0 → 2.0
+
+#### 4. F13 (Quality Gate Bypass) - Enhanced Semantic Detection (✅)
+
+**Changes:**
+- Enhanced existing EmbeddingMixin usage with actual semantic methods
+- Semantic bypass intent detection beyond keywords
+- Quality step omission detection using pattern matching
+- Detects implicit admissions of skipped QA processes
+
+**Key Methods:**
+- `_detect_bypass()` - enhanced with semantic similarity to bypass patterns (0.70 threshold)
+- `_detect_missing_quality()` - augmented with semantic detection (0.68 threshold)
+- Uses batch_semantic_similarity for efficient pattern matching
+
+**Expected Impact:**
+- Detects bypasses even when not explicitly stated
+- Example: "Let's save time on validation" semantically matches bypass intent
+- Better recall on quality gate violations
+- Should improve F13 from 0% → 20-28% F1
+
+**Commit:** `6b2021ba` - "Phase 2: Enhance F9, F13, F14 detectors with semantic analysis"
+**File:** `backend/app/detection/turn_aware.py:3475-3766`
+**Version:** 2.0 (enhanced semantic methods)
+
+#### 5. F14 (Completion Misjudgment) - Confidence Detection (✅)
+
+**Changes:**
+- Added `EmbeddingMixin` to detector inheritance
+- Confidence-level detection in completion claims
+- Semantic uncertainty vs confidence comparison
+- Distinguishes uncertain from confident completions
+
+**Key Methods:**
+- `_detect_false_success()` - enhanced with semantic confidence scoring
+- Compares completion claims to uncertain vs confident patterns
+- Uses differential similarity (uncertain > confident + 0.10) for detection
+- Threshold: 0.62 minimum similarity for uncertain completions
+
+**Expected Impact:**
+- Better detection of uncertain/hedged completion claims
+- Example: "I think it works" vs "It definitely works and is tested"
+- Semantic understanding of confidence levels
+- Should improve F14 from 0.7% → 15-22% F1
+
+**Commit:** `6b2021ba` - "Phase 2: Enhance F9, F13, F14 detectors with semantic analysis"
+**File:** `backend/app/detection/turn_aware.py:3769-4003`
+**Version:** 1.0 → 2.0
+
+### Phase 2 Integration
+
+**All Zero-F1 Modes Enhanced:**
+- All detectors now inherit from EmbeddingMixin
+- Semantic analysis with fallback to keyword matching
+- Consistent threshold ranges (0.50-0.75 for semantic similarity)
+- Batch processing for efficiency
+
+**Integration Status:**
+- All detectors integrated with hybrid pipeline
 - Evaluation script ready: `benchmarks/evaluation/test_mast_conversation.py`
 
 ### Phase 2 Expected Results
@@ -263,6 +334,8 @@ BENIGN_PATTERNS = {
 1. `8adb9161` - Phase 1 complete: dataset split and threshold tuning
 2. `4c8eea1a` - Phase 2: Enhance F1 detector with semantic matching
 3. `4777d7db` - Phase 2: Enhance F3/F5 Loop detector with semantic and coordination loops
+4. `92e27536` - Phase 1 & 2: Progress report and status update
+5. `6b2021ba` - Phase 2: Enhance F9, F13, F14 detectors with semantic analysis
 
 **Branch:** main
 **Remote:** https://github.com/tn-pisama/mao-testing-research.git
