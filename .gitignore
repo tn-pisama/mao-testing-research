@@ -67,3 +67,6 @@ logs/
 # Local config
 *.local
 models/
+
+# MCP config (contains API tokens)
+.mcp.json
