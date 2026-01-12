@@ -140,13 +140,38 @@ class SpecificationMismatchDetector:
     # v1.1: Tolerance for approximate numeric constraints (percentage)
     NUMERIC_TOLERANCE = 0.10  # 10% tolerance
 
+    # Phase 1: Framework-specific thresholds to reduce false positives
+    FRAMEWORK_THRESHOLDS = {
+        "ChatDev": {"spec_coverage": 0.75, "ambiguity_threshold": 4},
+        "MetaGPT": {"spec_coverage": 0.80, "ambiguity_threshold": 3},
+        "AG2": {"spec_coverage": 0.85, "ambiguity_threshold": 3},
+        "Magentic": {"spec_coverage": 0.80, "ambiguity_threshold": 3},
+        "AutoGen": {"spec_coverage": 0.85, "ambiguity_threshold": 3},
+        "LangGraph": {"spec_coverage": 0.80, "ambiguity_threshold": 3},
+        "default": {"spec_coverage": 0.80, "ambiguity_threshold": 3},
+    }
+
     def __init__(
         self,
-        coverage_threshold: float = 0.7,
+        coverage_threshold: float = 0.80,  # Phase 1: Increased from 0.7 to 0.8
         ambiguity_threshold: int = 3,
+        framework: Optional[str] = None,
     ):
-        self.coverage_threshold = coverage_threshold
-        self.ambiguity_threshold = ambiguity_threshold
+        self.framework = framework
+        # Use framework-specific thresholds if available
+        if framework and framework in self.FRAMEWORK_THRESHOLDS:
+            thresholds = self.FRAMEWORK_THRESHOLDS[framework]
+            self.coverage_threshold = thresholds["spec_coverage"]
+            self.ambiguity_threshold = thresholds["ambiguity_threshold"]
+        elif framework:
+            # Unknown framework - use default
+            thresholds = self.FRAMEWORK_THRESHOLDS["default"]
+            self.coverage_threshold = thresholds["spec_coverage"]
+            self.ambiguity_threshold = thresholds["ambiguity_threshold"]
+        else:
+            # No framework specified - use provided values
+            self.coverage_threshold = coverage_threshold
+            self.ambiguity_threshold = ambiguity_threshold
 
     def _extract_requirements(self, text: str) -> list[str]:
         requirements = []
