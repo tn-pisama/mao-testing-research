@@ -468,3 +468,140 @@ class HealingRecord(Base):
         Index("idx_healing_status", "status"),
         Index("idx_healing_created", "created_at"),
     )
+
+
+class MASTTraceEmbedding(Base):
+    """
+    MAST benchmark trace embeddings for few-shot learning.
+
+    Phase 4 Enhancement: Stores embeddings of MAST traces to enable
+    similarity search for few-shot example selection in LLM prompts.
+
+    Used by hybrid_pipeline.py to find similar traces for improving
+    LLM verification accuracy through in-context examples.
+    """
+    __tablename__ = "mast_trace_embeddings"
+
+    id = Column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
+
+    # MAST trace identifier (from original dataset)
+    trace_id = Column(String(128), unique=True, nullable=False, index=True)
+
+    # Task description embedding (1024 dimensions, e5-large-v2)
+    task_embedding = Column(Vector(1024), nullable=False)
+
+    # Ground truth failure annotations from MAST dataset
+    # Format: {"F1": true, "F3": false, "F6": true, ...}
+    ground_truth_failures = Column(JSONB, nullable=False)
+
+    # Framework for filtering (ChatDev, MetaGPT, AG2, etc.)
+    framework = Column(String(64), nullable=False, index=True)
+
+    # Original task description (for display in few-shot examples)
+    task_description = Column(Text, nullable=False)
+
+    # Conversation summary (for few-shot context)
+    conversation_summary = Column(Text, nullable=True)
+
+    # Metadata from MAST dataset
+    metadata = Column(JSONB, default=dict)
+
+    created_at = Column(DateTime(timezone=True), server_default=func.now())
+
+    __table_args__ = (
+        Index("idx_mast_trace_id", "trace_id"),
+        Index("idx_mast_framework", "framework"),
+        Index("idx_mast_created", "created_at"),
+        # Cosine similarity index for fast vector search
+        Index("idx_mast_task_embedding", "task_embedding", postgresql_using="ivfflat", postgresql_with={"lists": 100}),
+    )
+
+    @classmethod
+    def find_similar_traces(
+        cls,
+        session,
+        query_task: str,
+        failure_mode: str,
+        framework: str = None,
+        k: int = 3,
+        min_similarity: float = 0.70
+    ):
+        """
+        Find k most similar MAST traces for few-shot examples.
+
+        Args:
+            session: SQLAlchemy session
+            query_task: Task description to match against
+            failure_mode: MAST failure mode (F1-F14) to filter by
+            framework: Optional framework filter (ChatDev, MetaGPT, etc.)
+            k: Number of similar traces to return (default: 3)
+            min_similarity: Minimum cosine similarity threshold (default: 0.70)
+
+        Returns:
+            List of MASTTraceEmbedding objects ordered by similarity
+
+        Usage:
+            similar = MASTTraceEmbedding.find_similar_traces(
+                session,
+                query_task="Build a chat application",
+                failure_mode="F1",
+                framework="ChatDev",
+                k=2
+            )
+        """
+        from app.core.embeddings import get_embedder
+
+        # Generate embedding for query task
+        embedder = get_embedder()
+        query_embedding = embedder.encode(query_task, is_query=True)
+
+        # Build query with filters
+        query = session.query(cls)
+
+        # Filter by failure mode (ground truth must have this failure)
+        query = query.filter(
+            cls.ground_truth_failures[failure_mode].astext.cast(Boolean) == True
+        )
+
+        # Optional framework filter
+        if framework:
+            query = query.filter(cls.framework == framework)
+
+        # Order by cosine similarity (lower distance = higher similarity)
+        query = query.order_by(
+            cls.task_embedding.cosine_distance(query_embedding)
+        )
+
+        # Limit to k results
+        query = query.limit(k)
+
+        # Execute and filter by min_similarity if needed
+        results = query.all()
+
+        # Calculate actual similarities and filter
+        if min_similarity > 0:
+            from app.core.embeddings import cosine_similarity
+            filtered_results = []
+            for result in results:
+                similarity = cosine_similarity(query_embedding, result.task_embedding)
+                if similarity >= min_similarity:
+                    filtered_results.append(result)
+            return filtered_results
+
+        return results
+
+    def formatted_example(self) -> str:
+        """
+        Format this trace as a few-shot example for LLM prompts.
+
+        Returns:
+            Formatted string with task, summary, and ground truth failures
+        """
+        failures = [mode for mode, value in self.ground_truth_failures.items() if value]
+
+        return f"""
+**Task:** {self.task_description[:200]}
+**Framework:** {self.framework}
+**Ground Truth Failures:** {', '.join(failures)}
+**Summary:** {self.conversation_summary[:300] if self.conversation_summary else 'N/A'}
+""".strip()
