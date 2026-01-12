@@ -363,6 +363,69 @@ python benchmarks/scripts/populate_mast_embeddings.py \
 
 **Commit:** `e74269e3` - "Phase 4: Add few-shot learning to LLM prompts"
 
+#### 5. Embedding Population Fixes (✅)
+
+**Issue:** Initial population script skipped all 869 traces due to incorrect data extraction.
+
+**Root Causes:**
+1. Task extraction looked for top-level `task` field, but MAST stores it in `trace['trace']['trajectory']`
+2. Ground truth used F1-F14 keys, but MAST uses codes like '1.1', '1.2' (need mapping)
+3. Duplicate trace IDs (869 traces but only 198 unique `trace_id` values)
+4. Framework extracted from non-existent `trace['framework']` instead of `trace['mas_name']`
+5. Cosine similarity imported from non-existent module
+
+**Fixes Applied:**
+1. **Task Extraction** (`populate_mast_embeddings.py` lines 64-91):
+   - Extract from nested `trace['trace']['trajectory']` field
+   - Parse `problem_statement:` pattern from trajectory
+   - Fallback to first 500 chars if pattern not found
+
+2. **Ground Truth Mapping** (lines 117-157):
+   - Added ANNOTATION_MAP: '1.1' → F1, '1.2' → F2, etc.
+   - Extract from `trace['mast_annotation']` dictionary
+   - Initialize all F1-F14 to False, set True based on MAST codes
+
+3. **Unique Trace IDs** (lines 208-212):
+   - Changed from `trace['trace_id']` (not unique)
+   - To `f"{trace['trace']['key']}_{trace['trace']['index']}"`
+   - Format: `framework_benchmark_model_index` (e.g., `AG2_ProgramDev_Claude_5`)
+   - Result: 869 unique IDs for 869 traces
+
+4. **Framework Extraction** (line 230):
+   - Changed from `trace.get('framework', 'unknown')`
+   - To `trace.get('mas_name', 'unknown')`
+   - Distribution: AG2 (418), MetaGPT (166), Magentic (143), ChatDev (83), AppWorld (22), HyperAgent (20), OpenManus (17)
+
+5. **Cosine Similarity** (`models.py` lines 581-592):
+   - Removed import of non-existent `cosine_similarity` function
+   - Implemented using numpy: `np.dot(v1, v2) / (np.linalg.norm(v1) * np.linalg.norm(v2))`
+   - Tested and verified with sample queries
+
+**Result:**
+- ✅ 869 embeddings successfully populated in ~62 seconds
+- ✅ All 7 frameworks correctly distributed
+- ✅ Ground truth failures properly mapped (14 modes × 869 traces)
+- ✅ Similarity search tested and working
+- ✅ Retrieved 3 similar F1 examples with min_similarity=0.60
+
+**Verification:**
+```bash
+# Count embeddings by framework
+psql -d mao -c "SELECT framework, COUNT(*) FROM mast_trace_embeddings GROUP BY framework"
+# Result: AG2 (418), MetaGPT (166), Magentic (143), ChatDev (83), etc.
+
+# Test similarity search
+python3 -c "
+from app.storage.models import MASTTraceEmbedding
+similar = MASTTraceEmbedding.find_similar_traces(
+    session, 'Build a calculator app', 'F1', k=3
+)
+# Result: 3 traces with F1 failures, similarity > 0.60
+"
+```
+
+**Commit:** `24235b4d` - "fix: populate MAST embeddings with correct extraction and unique IDs"
+
 ### Phase 4 Expected Results
 
 **Target:** Overall F1 ≥ 70% (dev set), ≥68% (test set)
@@ -482,6 +545,7 @@ python benchmarks/scripts/populate_mast_embeddings.py \
 ### Phase 4
 7. `5030d26d` - Phase 4: Add MASTTraceEmbedding model and population script
 8. `e74269e3` - Phase 4: Add few-shot learning to LLM prompts
+9. `24235b4d` - Phase 4: Fix MAST embedding population (extraction, IDs, similarity)
 
 **Branch:** main
 **Remote:** https://github.com/tn-pisama/mao-testing-research.git
