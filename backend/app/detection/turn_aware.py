@@ -918,7 +918,7 @@ class TurnAwareDerailmentDetector(EmbeddingMixin, TurnAwareDetector):
     """
 
     name = "TurnAwareDerailmentDetector"
-    version = "2.0"  # Semantic enhancement
+    version = "2.1"  # Phase 1: Benign pattern whitelisting
     supported_failure_modes = ["F6"]
 
     # Code patterns (shared with F7 detector logic)
@@ -929,17 +929,55 @@ class TurnAwareDerailmentDetector(EmbeddingMixin, TurnAwareDetector):
         "self.", "this.", "async ", "await ",
     ]
 
+    # Phase 1: Framework-specific benign patterns (legitimate role transitions, not derailment)
+    BENIGN_PATTERNS = {
+        "ChatDev": [
+            r"now switching to\b",
+            r"role transition",
+            r"moving to (?:the )?next (?:phase|stage)",
+            r"switching (?:to|from) .+ (?:role|phase)",
+            r"transitioning to",
+            r"handing off to",
+            r"passing (?:control|task) to",
+        ],
+        "AG2": [
+            r"let me think",
+            r"reasoning step",
+            r"analyzing (?:the )?problem",
+            r"breaking down (?:the )?task",
+            r"let me (?:check|verify|validate)",
+        ],
+        "MetaGPT": [
+            r"moving to implementation phase",
+            r"switching context",
+            r"proceeding to",
+            r"transitioning from .+ to",
+        ],
+        "AutoGen": [
+            r"delegating to",
+            r"coordinating with",
+            r"checking with",
+        ],
+        "default": [
+            r"as (?:you )?(?:requested|asked)",
+            r"to address your (?:question|request)",
+            r"focusing on (?:the|your)",
+        ],
+    }
+
     def __init__(
         self,
         drift_threshold: float = 0.70,  # Balanced for MAST: reduce FPR while maintaining recall
         min_turns_for_analysis: int = 3,
         window_size: int = 5,
         require_strong_evidence: bool = False,  # Disabled for MAST recall (was True)
+        framework: Optional[str] = None,
     ):
         self.drift_threshold = drift_threshold
         self.min_turns_for_analysis = min_turns_for_analysis
         self.window_size = window_size
         self.require_strong_evidence = require_strong_evidence
+        self.framework = framework
         self._embedder = None
 
     @property
@@ -1012,6 +1050,10 @@ class TurnAwareDerailmentDetector(EmbeddingMixin, TurnAwareDetector):
             # Skip drift check for code responses to code tasks
             if is_code_task and self._is_code_response(agent_turn.content):
                 continue  # Code response to code task - don't flag as drift
+
+            # Phase 1: Skip drift check for benign patterns (legitimate role transitions)
+            if self._is_benign_pattern(agent_turn.content):
+                continue  # Benign framework pattern - not derailment
 
             drift_score, coverage = self._compute_topic_drift(
                 initial_task, agent_turn.content
@@ -1147,6 +1189,22 @@ class TurnAwareDerailmentDetector(EmbeddingMixin, TurnAwareDetector):
         }
         return {w for w in words if len(w) > 2 and w not in stopwords}
 
+    def _is_benign_pattern(self, content: str) -> bool:
+        """Phase 1: Check if content contains benign framework-specific patterns."""
+        content_lower = content.lower()
+
+        # Get patterns for this framework (or default)
+        framework_key = self.framework if self.framework in self.BENIGN_PATTERNS else "default"
+        patterns = self.BENIGN_PATTERNS.get(framework_key, [])
+        patterns.extend(self.BENIGN_PATTERNS["default"])  # Always include default patterns
+
+        # Check if any benign pattern matches
+        import re
+        for pattern in patterns:
+            if re.search(pattern, content_lower):
+                return True
+        return False
+
     def _is_code_task(self, task: str) -> bool:
         """Check if the task is asking for code."""
         code_keywords = [
@@ -1214,11 +1272,15 @@ class TurnAwareDerailmentDetector(EmbeddingMixin, TurnAwareDetector):
         """Detect if agent responses are progressively drifting.
 
         Enhanced with batch embedding analysis (v2.0).
+        Phase 1: Skip benign patterns.
         """
         # Filter turns for analysis
         turns_to_analyze = []
         for turn in agent_turns:
             if is_code_task and self._is_code_response(turn.content):
+                continue
+            # Phase 1: Skip benign patterns
+            if self._is_benign_pattern(turn.content):
                 continue
             turns_to_analyze.append(turn)
 
