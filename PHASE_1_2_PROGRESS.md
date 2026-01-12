@@ -1,14 +1,14 @@
-# MAST Accuracy Improvement: Progress Report (Phases 1-3)
+# MAST Accuracy Improvement: Progress Report (Phases 1-4)
 
 ## Summary
 
-Successfully completed **Phase 1** (quick wins), **Phase 2** (semantic enhancements), and **Phase 3** (LLM verification expansion). The MAO Testing Platform now uses semantic similarity analysis via EmbeddingMixin combined with selective LLM verification for optimal accuracy.
+Successfully completed **Phase 1** (quick wins), **Phase 2** (semantic enhancements), **Phase 3** (LLM verification expansion), and **Phase 4** (few-shot learning). The MAO Testing Platform now uses semantic similarity analysis via EmbeddingMixin, selective LLM verification with conversation timeline context, and few-shot in-context learning from MAST embeddings for optimal accuracy.
 
 **Current Status:**
 - Phase 1: ✅ COMPLETE (Threshold tuning & pattern whitelisting)
 - Phase 2: ✅ COMPLETE (Semantic analysis for 5 failure modes)
 - Phase 3: ✅ COMPLETE (LLM verification expanded, conversation timeline added)
-- Phase 4: ⏸️ PENDING (Few-shot learning with embeddings)
+- Phase 4: ✅ COMPLETE (Few-shot learning with MASTTraceEmbedding)
 
 ---
 
@@ -267,6 +267,117 @@ BENIGN_PATTERNS = {
 
 ---
 
+## Phase 4: Few-Shot Learning with Embeddings (COMPLETE)
+
+**Goal:** 62-70% → 75-80% F1
+**Strategy:** Few-shot in-context learning using MAST trace embeddings
+
+### Implementation
+
+#### 1. MASTTraceEmbedding Database Model (✅)
+
+**Created:** `backend/app/storage/models.py` (lines 473-607)
+
+**Features:**
+- `task_embedding`: Vector(1024) for pgvector similarity search
+- `ground_truth_failures`: JSONB with F1-F14 annotations from MAST dataset
+- `framework`: String for framework-specific filtering (ChatDev, MetaGPT, etc.)
+- `task_description`: Full task text for few-shot prompt context
+- `conversation_summary`: Brief conversation summary for context
+
+**Key Methods:**
+- `find_similar_traces()`: Classmethod using pgvector cosine_distance
+  - Filters by failure mode (ground_truth_failures[F1] == true)
+  - Optional framework filtering
+  - Configurable k (number of examples) and min_similarity threshold
+  - Returns ordered by similarity (highest first)
+- `formatted_example()`: Formats trace as few-shot prompt section
+
+**Commit:** `5030d26d` - "Phase 4: Add MASTTraceEmbedding model and population script"
+
+#### 2. Alembic Migration 005 (✅)
+
+**File:** `backend/app/storage/migrations/versions/005_add_mast_trace_embeddings.py`
+
+**Changes:**
+- Creates `mast_trace_embeddings` table with Vector(1024) column
+- Indexes: trace_id (unique), framework, created_at
+- pgvector ivfflat index for fast cosine similarity search (lists=100)
+- Ensures pgvector extension is installed
+
+**Run Migration:**
+```bash
+cd backend && alembic upgrade head
+```
+
+**Commit:** `5030d26d` (same as model)
+
+#### 3. Population Script (✅)
+
+**File:** `benchmarks/scripts/populate_mast_embeddings.py`
+
+**Features:**
+- Reads MAST dataset JSON (dev or test sets)
+- Extracts task descriptions and ground truth failures
+- Generates embeddings using e5-large-v2 (1024 dimensions)
+- Batch processing (default: 50 traces per batch)
+- Supports `--clear-existing` to repopulate
+- Supports `--dry-run` for testing
+
+**Usage:**
+```bash
+# Populate from dev set
+python benchmarks/scripts/populate_mast_embeddings.py \
+    --dataset data/mast_dev_869.json \
+    --batch-size 50
+
+# Clear and repopulate
+python benchmarks/scripts/populate_mast_embeddings.py \
+    --dataset data/mast_dev_869.json \
+    --clear-existing
+```
+
+**Commit:** `5030d26d` (same as model and migration)
+
+#### 4. Few-Shot LLM Integration (✅)
+
+**File:** `backend/app/detection/mast_llm_judge.py`
+
+**Method Added:** `_retrieve_few_shot_examples()` (lines 652-720)
+- Queries MASTTraceEmbedding.find_similar_traces()
+- Retrieves k=2 similar traces with ground truth for failure mode
+- Uses min_similarity=0.65 threshold
+- Formats examples with Ground Truth labels
+- Graceful fallback on database errors
+
+**Integration:** Modified `evaluate()` method (lines 1141-1154)
+- Attempts few-shot retrieval when RAG examples unavailable
+- Falls back after RAG retrieval fails or returns no results
+- Logs retrieval attempts for monitoring
+- Reuses existing `rag_examples` parameter in `_build_prompt()`
+
+**Expected Impact:**
+- Better LLM calibration through in-context examples
+- Improved detection of nuanced failure patterns
+- +5-10% accuracy improvement on MAST benchmark
+
+**Commit:** `e74269e3` - "Phase 4: Add few-shot learning to LLM prompts"
+
+### Phase 4 Expected Results
+
+**Target:** Overall F1 ≥ 70% (dev set), ≥68% (test set)
+
+**Key Improvements:**
+- F1 (Specification): 42-48% → 55-65% (few-shot examples for requirement matching)
+- F3 (Coordination): 38-42% → 50-58% (examples of coordination patterns)
+- F6 (Reset): 25-35% → 35-45% (contextual reset detection)
+- F9 (Role Usurpation): 20-30% → 30-40% (role boundary examples)
+- F14 (Completion): 15-22% → 25-35% (confidence calibration)
+
+**Next:** Run Phase 4 evaluation on test set to validate final accuracy
+
+---
+
 ## Next Steps
 
 ### Phase 2 Completion
@@ -321,21 +432,56 @@ BENIGN_PATTERNS = {
 - `backend/app/detection/turn_aware.py`:
   - Lines 1535-1844: F1 semantic matching
   - Lines 1382-1656: F3/F5 coordination & semantic loops
+  - Lines 2800-3206: F9 Role Usurpation semantic analysis
+  - Lines 3475-3766: F13 Quality Gate Bypass semantic detection
+  - Lines 3769-4003: F14 Completion Misjudgment confidence detection
+
+### Phase 3
+- `backend/app/detection/hybrid_pipeline.py` (lines 83-96):
+  - Expanded llm_verify_modes to include F6, F7, F9, F14
+- `backend/app/detection/mast_llm_judge.py`:
+  - Lines 598-650: _generate_timeline() method
+  - Lines 691-699, 779: Timeline integration in prompts
+  - Line 344: Added F9 to HIGH_STAKES_FAILURE_MODES
+
+### Phase 4
+- `backend/app/storage/models.py` (lines 473-607):
+  - MASTTraceEmbedding model with pgvector support
+  - find_similar_traces() classmethod
+  - formatted_example() method
+- `backend/app/storage/migrations/versions/005_add_mast_trace_embeddings.py`:
+  - Alembic migration for embeddings table
+  - pgvector ivfflat index setup
+- `benchmarks/scripts/populate_mast_embeddings.py`:
+  - Embedding population script
+- `backend/app/detection/mast_llm_judge.py`:
+  - Lines 652-720: _retrieve_few_shot_examples() method
+  - Lines 1141-1154: Few-shot integration in evaluate()
 
 ### Evaluation
-- `benchmarks/evaluation/test_mast_conversation.py` (existing, ready to use)
+- `benchmarks/evaluation/test_mast_conversation.py` (--hybrid flag for LLM verification)
 - `data/mast_dev_869.json` (dev set)
-- `data/mast_test_373.json` (test set - DO NOT USE until Phase 4)
+- `data/mast_test_373.json` (test set - for final Phase 4 validation)
 
 ---
 
 ## Git Commits
 
+### Phase 1
 1. `8adb9161` - Phase 1 complete: dataset split and threshold tuning
+
+### Phase 2
 2. `4c8eea1a` - Phase 2: Enhance F1 detector with semantic matching
 3. `4777d7db` - Phase 2: Enhance F3/F5 Loop detector with semantic and coordination loops
 4. `92e27536` - Phase 1 & 2: Progress report and status update
 5. `6b2021ba` - Phase 2: Enhance F9, F13, F14 detectors with semantic analysis
+
+### Phase 3
+6. `910f42f8` - Phase 3: Expand LLM verification and add conversation timeline
+
+### Phase 4
+7. `5030d26d` - Phase 4: Add MASTTraceEmbedding model and population script
+8. `e74269e3` - Phase 4: Add few-shot learning to LLM prompts
 
 **Branch:** main
 **Remote:** https://github.com/tn-pisama/mao-testing-research.git
@@ -364,18 +510,34 @@ BENIGN_PATTERNS = {
 
 ## Conclusion
 
-Phases 1 and 2 have laid a strong foundation for MAST accuracy improvement through:
-1. Strategic threshold tuning and pattern recognition
-2. Semantic similarity analysis via embeddings
-3. Framework-specific adaptation
-4. Conversation-based detection (vs state-based)
+All 4 phases successfully completed, implementing a comprehensive accuracy improvement pipeline:
 
-The codebase is now positioned for Phase 3 (LLM verification) and Phase 4 (few-shot learning) to reach the 70%+ F1 target.
+1. **Phase 1 (Quick Wins):** Strategic threshold tuning and pattern whitelisting
+   - Reduced false positives through framework-specific thresholds
+   - Added benign pattern detection for F6, F12
 
-**Estimated Timeline:**
-- Phase 2 completion: 1-2 days
-- Phase 3: 3-5 days
-- Phase 4: 5-7 days
-- **Total to 70% F1: 10-14 days**
+2. **Phase 2 (Semantic Analysis):** EmbeddingMixin integration for conversation understanding
+   - Semantic requirement matching (F1)
+   - Coordination and semantic loop detection (F3/F5)
+   - Role inference and boundary detection (F9)
+   - Bypass and confidence detection (F13, F14)
 
-**Current Status:** ✅ On track for 70%+ F1 achievement
+3. **Phase 3 (LLM Verification):** Hybrid pipeline with selective LLM verification
+   - Expanded from 5 to 9 LLM-verified modes
+   - Conversation timeline for high-level context
+   - Tiered model selection (sonnet-4 vs sonnet-4-thinking)
+   - Cost optimization (target ≤$0.05/trace)
+
+4. **Phase 4 (Few-Shot Learning):** In-context learning with MAST embeddings
+   - MASTTraceEmbedding model with pgvector
+   - Similarity-based example retrieval
+   - Automatic fallback when RAG unavailable
+   - 2 examples per mode for calibration
+
+**Architecture Stack:**
+- Pattern Detection (fast, free) → Semantic Analysis (embeddings) → LLM Verification (selective, paid) → Few-Shot Learning (calibration)
+
+**Next:** Run final evaluation on test set to validate 70%+ F1 achievement
+
+**Status:** ✅ All 4 phases implementation COMPLETE
+**Target:** 70%+ F1 on MAST benchmark (≥68% on held-out test set)
