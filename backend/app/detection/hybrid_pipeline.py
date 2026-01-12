@@ -82,12 +82,17 @@ class HybridPipelineConfig:
 
     # Which failure modes to send to LLM for verification
     # (only high-FPR modes benefit from LLM verification)
+    # Phase 3: Expanded to include semantic modes (F6, F7, F9, F14)
     llm_verify_modes: List[str] = field(default_factory=lambda: [
         "F1",   # Specification Violation - 60% FPR
         "F3",   # Coordination Failure - 10% FPR
+        "F6",   # Conversation Reset - NEW, semantic
+        "F7",   # Context Neglect - NEW, semantic
         "F8",   # Step Repetition - 20% FPR
+        "F9",   # Role Usurpation - NEW, semantic
         "F12",  # Resource Limit - 20% FPR
         "F13",  # Stalling - 10% FPR
+        "F14",  # Completion Misjudgment - NEW, semantic
     ])
 
     # Enable/disable LLM verification

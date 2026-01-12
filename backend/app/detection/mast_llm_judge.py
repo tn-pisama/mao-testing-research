@@ -341,7 +341,7 @@ HIGH_STAKES_MODEL_KEY = "sonnet-4-thinking"
 
 # Failure modes that benefit from extended thinking (higher accuracy needed)
 # Based on benchmark results: these modes have higher complexity and ambiguity
-HIGH_STAKES_FAILURE_MODES = {"F6", "F8"}  # State Corruption, Task Derailment
+HIGH_STAKES_FAILURE_MODES = {"F6", "F8", "F9"}  # State Corruption, Task Derailment, Role Usurpation (Phase 3)
 
 
 def get_model_for_failure_mode(failure_mode: str) -> str:
@@ -595,6 +595,60 @@ class MASTLLMJudge:
                 del self._cache[k]
         self._cache[cache_key] = result
 
+    def _generate_timeline(self, full_conversation: str, sample_every: int = 5) -> str:
+        """Generate a conversation timeline by sampling turns.
+
+        Phase 3 Enhancement: Provides high-level flow context to LLM.
+
+        Args:
+            full_conversation: Full conversation text
+            sample_every: Sample every Nth turn (default: 5)
+
+        Returns:
+            Formatted timeline string
+        """
+        if not full_conversation:
+            return ""
+
+        lines = full_conversation.split('\n')
+        timeline_entries = []
+
+        # Extract turn-like patterns (various formats)
+        turn_count = 0
+        for i, line in enumerate(lines):
+            line_lower = line.lower().strip()
+
+            # Detect turn markers (various formats)
+            is_turn = (
+                line_lower.startswith('turn ') or
+                line_lower.startswith('agent:') or
+                line_lower.startswith('user:') or
+                line_lower.startswith('[agent') or
+                line_lower.startswith('[user') or
+                (i > 0 and len(line) > 20 and not line.startswith(' '))  # Likely new turn
+            )
+
+            if is_turn:
+                turn_count += 1
+
+                # Sample every Nth turn
+                if turn_count % sample_every == 0 or turn_count <= 3:  # Always include first 3
+                    # Get preview of content (next few lines or rest of current line)
+                    preview = line[:120].replace('\n', ' ').strip()
+                    if len(line) > 120:
+                        preview += "..."
+
+                    timeline_entries.append(f"Turn {turn_count}: {preview}")
+
+                    # Limit timeline to 30 entries
+                    if len(timeline_entries) >= 30:
+                        break
+
+        if not timeline_entries:
+            return ""
+
+        return "\n".join(timeline_entries)
+
     def _build_prompt(
         self,
         failure_mode: MASTFailureMode,
@@ -608,6 +662,8 @@ class MASTLLMJudge:
         knowledge_context: str = "",
     ) -> str:
         """Build the judge prompt with few-shot examples and enhanced context.
+
+        Phase 3 Enhancement: Now includes conversation timeline for better context.
 
         Args:
             rag_examples: Pre-formatted RAG examples from retrieval service
@@ -631,6 +687,16 @@ class MASTLLMJudge:
         coordination_str = ""
         if coordination_events:
             coordination_str = "\n**Coordination Events:**\n" + "\n".join(f"  - {e}" for e in coordination_events[:10])
+
+        # Phase 3: Generate conversation timeline for high-level context
+        timeline_str = ""
+        if full_conversation:
+            timeline = self._generate_timeline(full_conversation, sample_every=5)
+            if timeline:
+                timeline_str = f"""
+**Conversation Timeline (sampled every 5 turns):**
+{timeline}
+"""
 
         # Include full conversation for better context
         # Claude Opus 4.5 supports 200K tokens (~600K chars), so we can send much more
@@ -710,6 +776,7 @@ Use these examples to calibrate your judgment. Pay special attention to:
 {events_str}
 {interactions_str}
 {coordination_str}
+{timeline_str}
 {conversation_section}
 ---
 
