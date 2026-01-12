@@ -1379,17 +1379,21 @@ class TurnAwareDerailmentDetector(EmbeddingMixin, TurnAwareDetector):
         return {"detected": False}
 
 
-class TurnAwareLoopDetector(TurnAwareDetector):
+class TurnAwareLoopDetector(EmbeddingMixin, TurnAwareDetector):
     """Detects F5: Infinite Loop / Repetitive Behavior across conversation turns.
 
     Analyzes conversation for:
-    1. Repetitive agent responses
+    1. Repetitive agent responses (exact + semantic)
     2. Cyclic conversation patterns
-    3. Stuck loops where same content repeats
+    3. Coordination loops (A→B→A→B in multi-agent)
+    4. Stuck loops where same content repeats
+
+    Phase 2 Enhancement: Uses semantic similarity to detect loops where content
+    is paraphrased but semantically identical (e.g., "let me try again" vs "I'll attempt once more").
     """
 
     name = "TurnAwareLoopDetector"
-    version = "1.0"
+    version = "2.0"  # Phase 2: Enhanced with semantic loop detection
     supported_failure_modes = ["F5"]
 
     def __init__(
@@ -1460,6 +1464,27 @@ class TurnAwareLoopDetector(TurnAwareDetector):
             })
             affected_turns.extend(cyclic_pattern["turns"])
 
+        # Phase 2: Check for coordination loops (A→B→A→B in multi-agent)
+        coord_loop = self._detect_coordination_loop(agent_turns)
+        if coord_loop["detected"]:
+            loop_issues.append({
+                "type": "coordination_loop",
+                "agent_sequence": coord_loop["sequence"],
+                "turns": coord_loop["turns"],
+                "description": f"Coordination loop: agents alternating without progress",
+            })
+            affected_turns.extend(coord_loop["turns"])
+
+        # Phase 2: Check for semantic loops (paraphrased repetition)
+        semantic_loop = self._detect_semantic_loop(agent_turns)
+        if semantic_loop["detected"]:
+            loop_issues.append({
+                "type": "semantic_loop",
+                "turns": semantic_loop["turns"],
+                "description": f"Semantic loop: {semantic_loop['count']} semantically similar responses",
+            })
+            affected_turns.extend(semantic_loop["turns"])
+
         if not loop_issues:
             return TurnAwareDetectionResult(
                 detected=False,
@@ -1528,6 +1553,105 @@ class TurnAwareLoopDetector(TurnAwareDetector):
                             "cycle_length": cycle_len,
                             "turns": affected_turns,
                         }
+
+        return {"detected": False}
+
+    def _detect_coordination_loop(
+        self,
+        agent_turns: List[TurnSnapshot],
+    ) -> Dict[str, Any]:
+        """Detect coordination loops (A→B→A→B pattern) in multi-agent systems.
+
+        Phase 2: Identifies when two or more agents alternate without making progress.
+        Common in multi-agent coordination failures.
+
+        Args:
+            agent_turns: List of agent turns
+
+        Returns:
+            Dict with detection result, agent sequence, and affected turns
+        """
+        if len(agent_turns) < 4:
+            return {"detected": False}
+
+        # Get agent ID sequence
+        agent_sequence = [t.participant_id for t in agent_turns]
+
+        # Check for A→B→A→B pattern (2-agent loop)
+        for i in range(len(agent_sequence) - 3):
+            if (agent_sequence[i] == agent_sequence[i + 2] and
+                agent_sequence[i + 1] == agent_sequence[i + 3] and
+                agent_sequence[i] != agent_sequence[i + 1]):
+                # Found A→B→A→B loop
+                return {
+                    "detected": True,
+                    "sequence": agent_sequence[i:i + 4],
+                    "turns": [agent_turns[i + j].turn_number for j in range(4)],
+                }
+
+        # Check for A→B→C→A→B→C pattern (3-agent loop)
+        for i in range(len(agent_sequence) - 5):
+            if (agent_sequence[i] == agent_sequence[i + 3] and
+                agent_sequence[i + 1] == agent_sequence[i + 4] and
+                agent_sequence[i + 2] == agent_sequence[i + 5] and
+                len(set(agent_sequence[i:i + 3])) == 3):
+                # Found A→B→C→A→B→C loop
+                return {
+                    "detected": True,
+                    "sequence": agent_sequence[i:i + 6],
+                    "turns": [agent_turns[i + j].turn_number for j in range(6)],
+                }
+
+        return {"detected": False}
+
+    def _detect_semantic_loop(
+        self,
+        agent_turns: List[TurnSnapshot],
+        similarity_threshold: float = 0.92,
+    ) -> Dict[str, Any]:
+        """Detect semantic loops using embeddings.
+
+        Phase 2: Identifies when agents repeat semantically similar content even if
+        worded differently (e.g., "let me try again" vs "I'll attempt once more").
+
+        Args:
+            agent_turns: List of agent turns
+            similarity_threshold: Minimum similarity to consider a semantic loop (0.92)
+
+        Returns:
+            Dict with detection result, turn numbers, and count
+        """
+        if not self.embedder or len(agent_turns) < 3:
+            return {"detected": False}
+
+        try:
+            # Get content from all agent turns (limited to 200 chars for embedding)
+            contents = [t.content[:200] for t in agent_turns]
+
+            # Find semantically similar consecutive turns
+            similar_pairs = []
+            for i in range(len(contents) - 1):
+                similarity = self.semantic_similarity(contents[i], contents[i + 1])
+                if similarity >= similarity_threshold:
+                    similar_pairs.append((i, i + 1, similarity))
+
+            # Check if we have at least 2 consecutive similar pairs (3+ turns)
+            if len(similar_pairs) >= 2:
+                affected_turn_indices = set()
+                for i, j, _ in similar_pairs:
+                    affected_turn_indices.add(i)
+                    affected_turn_indices.add(j)
+
+                affected_turn_numbers = [agent_turns[i].turn_number for i in sorted(affected_turn_indices)]
+
+                return {
+                    "detected": True,
+                    "turns": affected_turn_numbers,
+                    "count": len(affected_turn_indices),
+                }
+
+        except Exception as e:
+            logger.debug(f"Semantic loop detection failed: {e}")
 
         return {"detected": False}
 
