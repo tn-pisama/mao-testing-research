@@ -1,0 +1,220 @@
+{
+  "name": "Content Pipeline (Multi-Agent)",
+  "nodes": [
+    {
+      "parameters": {
+        "httpMethod": "POST",
+        "path": "content-pipeline",
+        "responseMode": "responseNode",
+        "options": {}
+      },
+      "id": "webhook-trigger",
+      "name": "Webhook Trigger",
+      "type": "n8n-nodes-base.webhook",
+      "typeVersion": 1,
+      "position": [250, 400],
+      "webhookId": "content-pipeline-webhook"
+    },
+    {
+      "parameters": {
+        "model": "claude-3-5-haiku-20241022",
+        "options": {
+          "temperature": 0.7,
+          "maxTokens": 1500,
+          "systemMessage": "You are a research specialist in a content creation team. Your role:\n1. Analyze the topic and identify key facts, statistics, and insights\n2. Organize findings by relevance and credibility\n3. Provide structured research notes for the writer\n\nOutput format: JSON with {key_points: [], sources: [], insights: []}"
+        }
+      },
+      "id": "researcher-agent",
+      "name": "Researcher Agent",
+      "type": "@n8n/n8n-nodes-langchain.lmChatAnthropic",
+      "typeVersion": 1,
+      "position": [500, 400],
+      "credentials": {
+        "anthropicApi": {
+          "id": "anthropic_credentials",
+          "name": "Anthropic API"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "jsCode": "// Extract research data from researcher agent\nconst research = $input.first().json;\nlet researchData;\n\ntry {\n  const text = research.text || research.content || JSON.stringify(research);\n  // Try to parse JSON from response\n  const jsonMatch = text.match(/\\{[\\s\\S]*\\}/);\n  if (jsonMatch) {\n    researchData = JSON.parse(jsonMatch[0]);\n  } else {\n    researchData = {\n      key_points: [text.substring(0, 500)],\n      sources: [],\n      insights: []\n    };\n  }\n} catch {\n  researchData = {\n    key_points: ['Research data extraction failed'],\n    sources: [],\n    insights: []\n  };\n}\n\nreturn {\n  topic: $('Webhook Trigger').item.json.body.topic,\n  audience: $('Webhook Trigger').item.json.body.audience,\n  format: $('Webhook Trigger').item.json.body.format,\n  research: researchData,\n  researcher_tokens: research.usage?.total_tokens || 0\n};"
+      },
+      "id": "extract-research",
+      "name": "Extract Research Data",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [750, 400]
+    },
+    {
+      "parameters": {
+        "model": "claude-3-5-haiku-20241022",
+        "options": {
+          "temperature": 0.8,
+          "maxTokens": 2000,
+          "systemMessage": "You are a professional writer in a content creation team. Given research notes:\n1. Create an engaging narrative that flows naturally\n2. Adapt tone and complexity for the target audience\n3. Structure content according to the specified format\n4. Integrate research insights seamlessly\n\nExplain your writing approach briefly, then provide the content."
+        }
+      },
+      "id": "writer-agent",
+      "name": "Writer Agent",
+      "type": "@n8n/n8n-nodes-langchain.lmChatAnthropic",
+      "typeVersion": 1,
+      "position": [1000, 400],
+      "credentials": {
+        "anthropicApi": {
+          "id": "anthropic_credentials",
+          "name": "Anthropic API"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "model": "claude-3-5-haiku-20241022",
+        "options": {
+          "temperature": 0.3,
+          "maxTokens": 1500,
+          "systemMessage": "You are an editor reviewing content. Check for:\n1. Clarity and coherence\n2. Audience appropriateness\n3. Factual accuracy based on research\n4. Grammar and style\n\nProvide: edited_content, changes_made[], quality_score (0-100)\nOutput as JSON."
+        }
+      },
+      "id": "editor-agent",
+      "name": "Editor Agent",
+      "type": "@n8n/n8n-nodes-langchain.lmChatAnthropic",
+      "typeVersion": 1,
+      "position": [1250, 400],
+      "credentials": {
+        "anthropicApi": {
+          "id": "anthropic_credentials",
+          "name": "Anthropic API"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "jsCode": "// Final processing - aggregate all agent outputs\nconst editorResponse = $input.first().json;\nlet editorData;\n\ntry {\n  const text = editorResponse.text || editorResponse.content || JSON.stringify(editorResponse);\n  const jsonMatch = text.match(/\\{[\\s\\S]*\\}/);\n  if (jsonMatch) {\n    editorData = JSON.parse(jsonMatch[0]);\n  } else {\n    editorData = {\n      edited_content: text,\n      changes_made: [],\n      quality_score: 75\n    };\n  }\n} catch {\n  editorData = {\n    edited_content: editorResponse.text || 'Processing error',\n    changes_made: [],\n    quality_score: 70\n  };\n}\n\nconst extractData = $('Extract Research Data').first().json;\nconst writerData = $('Writer Agent').first().json;\n\nreturn {\n  topic: extractData.topic,\n  final_content: editorData.edited_content,\n  quality_score: editorData.quality_score,\n  changes_made: editorData.changes_made,\n  pipeline_stats: {\n    researcher_tokens: extractData.researcher_tokens,\n    writer_tokens: writerData.usage?.total_tokens || 0,\n    editor_tokens: editorResponse.usage?.total_tokens || 0,\n    total_agents: 3\n  },\n  timestamp: new Date().toISOString()\n};"
+      },
+      "id": "final-processing",
+      "name": "Final Processing",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [1500, 400]
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "={{ $env.MAO_WEBHOOK_URL || 'http://localhost:8000/api/v1/n8n/webhook' }}",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            {
+              "name": "X-MAO-API-Key",
+              "value": "={{ $env.MAO_API_KEY }}"
+            },
+            {
+              "name": "Content-Type",
+              "value": "application/json"
+            }
+          ]
+        },
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={\n  \"executionId\": \"{{ $execution.id }}\",\n  \"workflowId\": \"{{ $workflow.id }}\",\n  \"workflowName\": \"{{ $workflow.name }}\",\n  \"mode\": \"webhook\",\n  \"startedAt\": \"{{ $execution.startedAt }}\",\n  \"status\": \"success\",\n  \"data\": {\n    \"resultData\": {\n      \"runData\": {\n        \"Researcher Agent\": [{\n          \"source\": [{\"type\": \"@n8n/n8n-nodes-langchain.lmChatAnthropic\"}],\n          \"executionTime\": 2000,\n          \"parameters\": {\"model\": \"claude-3-5-haiku-20241022\"},\n          \"data\": {\"main\": [[{\"usage\": {\"total_tokens\": {{ $json.pipeline_stats.researcher_tokens }}}}]]}\n        }],\n        \"Writer Agent\": [{\n          \"source\": [{\"type\": \"@n8n/n8n-nodes-langchain.lmChatAnthropic\"}],\n          \"executionTime\": 2500,\n          \"parameters\": {\"model\": \"claude-3-5-haiku-20241022\"},\n          \"data\": {\"main\": [[{\"usage\": {\"total_tokens\": {{ $json.pipeline_stats.writer_tokens }}}}]]}\n        }],\n        \"Editor Agent\": [{\n          \"source\": [{\"type\": \"@n8n/n8n-nodes-langchain.lmChatAnthropic\"}],\n          \"executionTime\": 1800,\n          \"parameters\": {\"model\": \"claude-3-5-haiku-20241022\"},\n          \"data\": {\"main\": [[{\"usage\": {\"total_tokens\": {{ $json.pipeline_stats.editor_tokens }}}}]]}\n        }]\n      }\n    }\n  }\n}",
+        "options": {}
+      },
+      "id": "send-to-mao",
+      "name": "Send to MAO",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4,
+      "position": [1750, 550]
+    },
+    {
+      "parameters": {
+        "respondWith": "json",
+        "responseBody": "={{ JSON.stringify($json) }}"
+      },
+      "id": "respond",
+      "name": "Send Response",
+      "type": "n8n-nodes-base.respondToWebhook",
+      "typeVersion": 1,
+      "position": [1750, 400]
+    }
+  ],
+  "connections": {
+    "Webhook Trigger": {
+      "main": [
+        [
+          {
+            "node": "Researcher Agent",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Researcher Agent": {
+      "main": [
+        [
+          {
+            "node": "Extract Research Data",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Extract Research Data": {
+      "main": [
+        [
+          {
+            "node": "Writer Agent",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Writer Agent": {
+      "main": [
+        [
+          {
+            "node": "Editor Agent",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Editor Agent": {
+      "main": [
+        [
+          {
+            "node": "Final Processing",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Final Processing": {
+      "main": [
+        [
+          {
+            "node": "Send Response",
+            "type": "main",
+            "index": 0
+          },
+          {
+            "node": "Send to MAO",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "settings": {
+    "executionOrder": "v1"
+  },
+  "meta": {
+    "description": "Multi-agent content pipeline: Researcher → Writer → Editor using Claude 3.5 Haiku."
+  }
+}

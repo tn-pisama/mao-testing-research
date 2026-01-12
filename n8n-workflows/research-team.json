@@ -1,0 +1,381 @@
+{
+  "name": "Research Team (Complex Multi-Agent)",
+  "nodes": [
+    {
+      "parameters": {
+        "httpMethod": "POST",
+        "path": "research-team",
+        "responseMode": "responseNode",
+        "options": {}
+      },
+      "id": "webhook-trigger",
+      "name": "Webhook Trigger",
+      "type": "n8n-nodes-base.webhook",
+      "typeVersion": 1,
+      "position": [250, 500],
+      "webhookId": "research-team-webhook"
+    },
+    {
+      "parameters": {
+        "model": "claude-3-5-haiku-20241022",
+        "options": {
+          "temperature": 0.5,
+          "maxTokens": 1000,
+          "systemMessage": "You are the research coordinator. Given a research question:\n1. Break it into specific sub-questions for each domain (web, academic, data)\n2. Assign priority levels (high/medium/low)\n3. Define success criteria\n\nOutput JSON: {\n  web_research: {question: \"\", priority: \"\"},\n  academic_research: {question: \"\", priority: \"\"},\n  data_research: {question: \"\", priority: \"\"}\n}"
+        }
+      },
+      "id": "coordinator-agent",
+      "name": "Coordinator Agent",
+      "type": "@n8n/n8n-nodes-langchain.lmChatAnthropic",
+      "typeVersion": 1,
+      "position": [500, 500],
+      "credentials": {
+        "anthropicApi": {
+          "id": "anthropic_credentials",
+          "name": "Anthropic API"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "jsCode": "// Parse coordinator output and create task assignments\nconst coordinator = $input.first().json;\nlet tasks;\n\ntry {\n  const text = coordinator.text || coordinator.content || JSON.stringify(coordinator);\n  const jsonMatch = text.match(/\\{[\\s\\S]*\\}/);\n  if (jsonMatch) {\n    tasks = JSON.parse(jsonMatch[0]);\n  } else {\n    const question = $('Webhook Trigger').item.json.body.research_question;\n    tasks = {\n      web_research: {question: `Web search: ${question}`, priority: 'high'},\n      academic_research: {question: `Academic papers: ${question}`, priority: 'high'},\n      data_research: {question: `Data analysis: ${question}`, priority: 'medium'}\n    };\n  }\n} catch {\n  const question = $('Webhook Trigger').item.json.body.research_question;\n  tasks = {\n    web_research: {question: question, priority: 'high'},\n    academic_research: {question: question, priority: 'high'},\n    data_research: {question: question, priority: 'medium'}\n  };\n}\n\nreturn {\n  original_question: $('Webhook Trigger').item.json.body.research_question,\n  tasks: tasks,\n  coordinator_tokens: coordinator.usage?.total_tokens || 0\n};"
+      },
+      "id": "parse-coordinator",
+      "name": "Parse Coordinator Output",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [750, 500]
+    },
+    {
+      "parameters": {
+        "model": "claude-3-5-haiku-20241022",
+        "options": {
+          "temperature": 0.7,
+          "maxTokens": 800,
+          "systemMessage": "You are a web research specialist. For your assigned question:\n1. Identify key search terms\n2. Evaluate source credibility\n3. Extract relevant findings\n\nOutput JSON: {findings: [], sources: [], confidence: 0-100}"
+        }
+      },
+      "id": "researcher-1-web",
+      "name": "Researcher 1 (Web)",
+      "type": "@n8n/n8n-nodes-langchain.lmChatAnthropic",
+      "typeVersion": 1,
+      "position": [1000, 300],
+      "credentials": {
+        "anthropicApi": {
+          "id": "anthropic_credentials",
+          "name": "Anthropic API"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "model": "claude-3-5-haiku-20241022",
+        "options": {
+          "temperature": 0.7,
+          "maxTokens": 800,
+          "systemMessage": "You are an academic research specialist. For your assigned question:\n1. Identify relevant papers and studies\n2. Extract methodologies and findings\n3. Note limitations\n\nOutput JSON: {papers: [], key_findings: [], research_gaps: []}"
+        }
+      },
+      "id": "researcher-2-academic",
+      "name": "Researcher 2 (Academic)",
+      "type": "@n8n/n8n-nodes-langchain.lmChatAnthropic",
+      "typeVersion": 1,
+      "position": [1000, 500],
+      "credentials": {
+        "anthropicApi": {
+          "id": "anthropic_credentials",
+          "name": "Anthropic API"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "model": "claude-3-5-haiku-20241022",
+        "options": {
+          "temperature": 0.7,
+          "maxTokens": 800,
+          "systemMessage": "You are a data analyst. For your assigned question:\n1. Identify relevant metrics and patterns\n2. Perform statistical analysis\n3. Draw evidence-based conclusions\n\nOutput JSON: {metrics: [], patterns: [], conclusions: []}"
+        }
+      },
+      "id": "researcher-3-data",
+      "name": "Researcher 3 (Data)",
+      "type": "@n8n/n8n-nodes-langchain.lmChatAnthropic",
+      "typeVersion": 1,
+      "position": [1000, 700],
+      "credentials": {
+        "anthropicApi": {
+          "id": "anthropic_credentials",
+          "name": "Anthropic API"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "mode": "combine",
+        "combinationMode": "mergeByPosition",
+        "options": {}
+      },
+      "id": "merge-research",
+      "name": "Merge Research Results",
+      "type": "n8n-nodes-base.merge",
+      "typeVersion": 2.1,
+      "position": [1250, 500]
+    },
+    {
+      "parameters": {
+        "model": "claude-3-5-haiku-20241022",
+        "options": {
+          "temperature": 0.6,
+          "maxTokens": 1500,
+          "systemMessage": "You are a research synthesizer. Given findings from multiple specialists:\n1. Identify agreements and contradictions\n2. Weigh evidence by source credibility\n3. Construct a coherent narrative\n4. Highlight gaps and uncertainties\n\nShow your synthesis reasoning step-by-step."
+        }
+      },
+      "id": "synthesizer-agent",
+      "name": "Synthesizer Agent",
+      "type": "@n8n/n8n-nodes-langchain.lmChatAnthropic",
+      "typeVersion": 1,
+      "position": [1500, 500],
+      "credentials": {
+        "anthropicApi": {
+          "id": "anthropic_credentials",
+          "name": "Anthropic API"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "model": "claude-3-5-haiku-20241022",
+        "options": {
+          "temperature": 0.3,
+          "maxTokens": 1000,
+          "systemMessage": "You are a critical reviewer. Evaluate the research synthesis:\n1. Check for logical inconsistencies\n2. Verify evidence supports conclusions\n3. Identify potential biases\n4. Rate overall quality (0-100)\n\nOutput JSON: {quality_score: 0-100, issues: [], recommendations: [], approval: true/false}"
+        }
+      },
+      "id": "reviewer-agent",
+      "name": "Reviewer Agent",
+      "type": "@n8n/n8n-nodes-langchain.lmChatAnthropic",
+      "typeVersion": 1,
+      "position": [1750, 500],
+      "credentials": {
+        "anthropicApi": {
+          "id": "anthropic_credentials",
+          "name": "Anthropic API"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "model": "claude-3-5-haiku-20241022",
+        "options": {
+          "temperature": 0.4,
+          "maxTokens": 1000,
+          "systemMessage": "You are the final decision maker. Based on the synthesis and review:\n1. Provide a clear answer or recommendation\n2. State confidence level (%)\n3. List key supporting evidence\n4. Acknowledge limitations\n5. Suggest next steps if applicable"
+        }
+      },
+      "id": "decision-maker-agent",
+      "name": "Decision Maker Agent",
+      "type": "@n8n/n8n-nodes-langchain.lmChatAnthropic",
+      "typeVersion": 1,
+      "position": [2000, 500],
+      "credentials": {
+        "anthropicApi": {
+          "id": "anthropic_credentials",
+          "name": "Anthropic API"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "jsCode": "// Aggregate all agent data and compute final stats\nconst parseData = $('Parse Coordinator Output').first().json;\nconst researcher1 = $('Researcher 1 (Web)').first().json;\nconst researcher2 = $('Researcher 2 (Academic)').first().json;\nconst researcher3 = $('Researcher 3 (Data)').first().json;\nconst synthesizer = $('Synthesizer Agent').first().json;\nconst reviewer = $('Reviewer Agent').first().json;\nconst decision = $input.first().json;\n\nconst totalTokens = (\n  parseData.coordinator_tokens +\n  (researcher1.usage?.total_tokens || 0) +\n  (researcher2.usage?.total_tokens || 0) +\n  (researcher3.usage?.total_tokens || 0) +\n  (synthesizer.usage?.total_tokens || 0) +\n  (reviewer.usage?.total_tokens || 0) +\n  (decision.usage?.total_tokens || 0)\n);\n\nreturn {\n  original_question: parseData.original_question,\n  final_decision: decision.text || decision.content,\n  agents_completed: [\n    'Coordinator',\n    'Researcher 1 (Web)',\n    'Researcher 2 (Academic)',\n    'Researcher 3 (Data)',\n    'Synthesizer',\n    'Reviewer',\n    'Decision Maker'\n  ],\n  total_tokens: totalTokens,\n  total_agents: 7,\n  execution_id: $execution.id,\n  timestamp: new Date().toISOString()\n};"
+      },
+      "id": "state-tracker",
+      "name": "State Tracker",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [2250, 500]
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "={{ $env.MAO_WEBHOOK_URL || 'http://localhost:8000/api/v1/n8n/webhook' }}",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            {
+              "name": "X-MAO-API-Key",
+              "value": "={{ $env.MAO_API_KEY }}"
+            },
+            {
+              "name": "Content-Type",
+              "value": "application/json"
+            }
+          ]
+        },
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={\n  \"executionId\": \"{{ $execution.id }}\",\n  \"workflowId\": \"{{ $workflow.id }}\",\n  \"workflowName\": \"{{ $workflow.name }}\",\n  \"mode\": \"webhook\",\n  \"startedAt\": \"{{ $execution.startedAt }}\",\n  \"status\": \"success\",\n  \"data\": {\n    \"resultData\": {\n      \"runData\": {\n        \"Coordinator Agent\": [{\n          \"source\": [{\"type\": \"@n8n/n8n-nodes-langchain.lmChatAnthropic\"}],\n          \"executionTime\": 1500,\n          \"parameters\": {\"model\": \"claude-3-5-haiku-20241022\"},\n          \"data\": {\"main\": [[{\"usage\": {\"total_tokens\": 100}}]]}\n        }],\n        \"Researcher 1 (Web)\": [{\n          \"source\": [{\"type\": \"@n8n/n8n-nodes-langchain.lmChatAnthropic\"}],\n          \"executionTime\": 2000,\n          \"parameters\": {\"model\": \"claude-3-5-haiku-20241022\"},\n          \"data\": {\"main\": [[{\"usage\": {\"total_tokens\": 150}}]]}\n        }],\n        \"Researcher 2 (Academic)\": [{\n          \"source\": [{\"type\": \"@n8n/n8n-nodes-langchain.lmChatAnthropic\"}],\n          \"executionTime\": 2000,\n          \"parameters\": {\"model\": \"claude-3-5-haiku-20241022\"},\n          \"data\": {\"main\": [[{\"usage\": {\"total_tokens\": 150}}]]}\n        }],\n        \"Researcher 3 (Data)\": [{\n          \"source\": [{\"type\": \"@n8n/n8n-nodes-langchain.lmChatAnthropic\"}],\n          \"executionTime\": 2000,\n          \"parameters\": {\"model\": \"claude-3-5-haiku-20241022\"},\n          \"data\": {\"main\": [[{\"usage\": {\"total_tokens\": 150}}]]}\n        }],\n        \"Synthesizer Agent\": [{\n          \"source\": [{\"type\": \"@n8n/n8n-nodes-langchain.lmChatAnthropic\"}],\n          \"executionTime\": 2500,\n          \"parameters\": {\"model\": \"claude-3-5-haiku-20241022\"},\n          \"data\": {\"main\": [[{\"usage\": {\"total_tokens\": 200}}]]}\n        }],\n        \"Reviewer Agent\": [{\n          \"source\": [{\"type\": \"@n8n/n8n-nodes-langchain.lmChatAnthropic\"}],\n          \"executionTime\": 1800,\n          \"parameters\": {\"model\": \"claude-3-5-haiku-20241022\"},\n          \"data\": {\"main\": [[{\"usage\": {\"total_tokens\": 150}}]]}\n        }],\n        \"Decision Maker Agent\": [{\n          \"source\": [{\"type\": \"@n8n/n8n-nodes-langchain.lmChatAnthropic\"}],\n          \"executionTime\": 1500,\n          \"parameters\": {\"model\": \"claude-3-5-haiku-20241022\"},\n          \"data\": {\"main\": [[{\"usage\": {\"total_tokens\": {{ $json.total_tokens }}}}]]}\n        }]\n      }\n    }\n  }\n}",
+        "options": {}
+      },
+      "id": "send-to-mao",
+      "name": "Send to MAO",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4,
+      "position": [2500, 650]
+    },
+    {
+      "parameters": {
+        "respondWith": "json",
+        "responseBody": "={{ JSON.stringify($json) }}"
+      },
+      "id": "respond",
+      "name": "Send Response",
+      "type": "n8n-nodes-base.respondToWebhook",
+      "typeVersion": 1,
+      "position": [2500, 500]
+    }
+  ],
+  "connections": {
+    "Webhook Trigger": {
+      "main": [
+        [
+          {
+            "node": "Coordinator Agent",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Coordinator Agent": {
+      "main": [
+        [
+          {
+            "node": "Parse Coordinator Output",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Parse Coordinator Output": {
+      "main": [
+        [
+          {
+            "node": "Researcher 1 (Web)",
+            "type": "main",
+            "index": 0
+          },
+          {
+            "node": "Researcher 2 (Academic)",
+            "type": "main",
+            "index": 0
+          },
+          {
+            "node": "Researcher 3 (Data)",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Researcher 1 (Web)": {
+      "main": [
+        [
+          {
+            "node": "Merge Research Results",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Researcher 2 (Academic)": {
+      "main": [
+        [
+          {
+            "node": "Merge Research Results",
+            "type": "main",
+            "index": 1
+          }
+        ]
+      ]
+    },
+    "Researcher 3 (Data)": {
+      "main": [
+        [
+          {
+            "node": "Merge Research Results",
+            "type": "main",
+            "index": 2
+          }
+        ]
+      ]
+    },
+    "Merge Research Results": {
+      "main": [
+        [
+          {
+            "node": "Synthesizer Agent",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Synthesizer Agent": {
+      "main": [
+        [
+          {
+            "node": "Reviewer Agent",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Reviewer Agent": {
+      "main": [
+        [
+          {
+            "node": "Decision Maker Agent",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Decision Maker Agent": {
+      "main": [
+        [
+          {
+            "node": "State Tracker",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "State Tracker": {
+      "main": [
+        [
+          {
+            "node": "Send Response",
+            "type": "main",
+            "index": 0
+          },
+          {
+            "node": "Send to MAO",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "settings": {
+    "executionOrder": "v1"
+  },
+  "meta": {
+    "description": "Complex multi-agent research team: Coordinator → 3 parallel Researchers → Synthesizer → Reviewer → Decision Maker using Claude 3.5 Haiku."
+  }
+}
