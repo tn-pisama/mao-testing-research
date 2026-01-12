@@ -2582,7 +2582,7 @@ class TurnAwareOutputValidationDetector(EmbeddingMixin, TurnAwareDetector):
     """
 
     name = "TurnAwareOutputValidationDetector"
-    version = "2.0"  # Semantic enhancement
+    version = "2.1"  # Phase 1: Framework-specific completion signals
     supported_failure_modes = ["F12"]
 
     # Validation failure indicators
@@ -2609,9 +2609,49 @@ class TurnAwareOutputValidationDetector(EmbeddingMixin, TurnAwareDetector):
         "runtime error", "compile error", "execution failed",
     ]
 
-    def __init__(self, min_turns: int = 2, min_issues_to_flag: int = 2):
+    # Phase 1: Framework-specific completion signals (indicators of successful completion)
+    COMPLETION_SIGNALS = {
+        "ChatDev": [
+            r"task (?:is )?completed",
+            r"successfully (?:completed|finished|delivered)",
+            r"project (?:is )?complete",
+            r"deliverables? (?:ready|complete)",
+            r"all requirements? met",
+            r"passed (?:all )?tests?",
+        ],
+        "AG2": [
+            r"(?:task|problem) solved",
+            r"answer (?:is|:)",
+            r"final (?:answer|result|solution)",
+            r"conclude that",
+            r"therefore",
+            r"in conclusion",
+        ],
+        "MetaGPT": [
+            r"implementation complete",
+            r"code (?:is )?ready",
+            r"deliverable complete",
+            r"phase complete",
+        ],
+        "Magentic": [
+            r"result returned",
+            r"function completed",
+            r"output generated",
+        ],
+        "default": [
+            r"completed successfully",
+            r"task (?:is )?done",
+            r"finished",
+            r"ready (?:for|to)",
+            r"here (?:is|are) (?:the|your)",
+            r"i'?ve completed",
+        ],
+    }
+
+    def __init__(self, min_turns: int = 2, min_issues_to_flag: int = 2, framework: Optional[str] = None):
         self.min_turns = min_turns
         self.min_issues_to_flag = min_issues_to_flag  # Balanced: was 3, now 2
+        self.framework = framework
 
     def detect(
         self,
@@ -2658,8 +2698,17 @@ class TurnAwareOutputValidationDetector(EmbeddingMixin, TurnAwareDetector):
         for issue in code_issues:
             affected_turns.extend(issue.get("turns", []))
 
+        # Phase 1: Check for completion signals that indicate successful output
+        has_completion_signal = self._has_completion_signals(turns)
+        if has_completion_signal:
+            # If we have strong completion signals, be more lenient
+            # Allow 1 more issue before flagging (reduce false positives)
+            min_issues = self.min_issues_to_flag + 1
+        else:
+            min_issues = self.min_issues_to_flag
+
         # Require multiple issues to reduce false positives
-        if len(issues) < self.min_issues_to_flag:
+        if len(issues) < min_issues:
             return TurnAwareDetectionResult(
                 detected=False,
                 severity=TurnAwareSeverity.NONE,
@@ -2693,6 +2742,25 @@ class TurnAwareOutputValidationDetector(EmbeddingMixin, TurnAwareDetector):
             ),
             detector_name=self.name,
         )
+
+    def _has_completion_signals(self, turns: List[TurnSnapshot]) -> bool:
+        """Phase 1: Check if conversation contains framework-specific completion signals."""
+        # Get patterns for this framework (or default)
+        framework_key = self.framework if self.framework in self.COMPLETION_SIGNALS else "default"
+        patterns = self.COMPLETION_SIGNALS.get(framework_key, [])
+        patterns.extend(self.COMPLETION_SIGNALS["default"])  # Always include default patterns
+
+        # Check last few agent turns for completion signals
+        agent_turns = [t for t in turns if t.participant_type == "agent"]
+        last_turns = agent_turns[-3:] if len(agent_turns) >= 3 else agent_turns
+
+        import re
+        for turn in last_turns:
+            content_lower = turn.content.lower()
+            for pattern in patterns:
+                if re.search(pattern, content_lower):
+                    return True
+        return False
 
     def _detect_validation_failures(self, turns: List[TurnSnapshot]) -> list:
         """Detect explicit validation failures."""
