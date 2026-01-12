@@ -649,6 +649,76 @@ class MASTLLMJudge:
 
         return "\n".join(timeline_entries)
 
+    def _retrieve_few_shot_examples(
+        self,
+        failure_mode: MASTFailureMode,
+        task: str,
+        framework: str = None,
+        k: int = 2
+    ) -> str:
+        """
+        Retrieve few-shot examples from MAST trace embeddings.
+
+        Phase 4 Enhancement: Uses pgvector similarity search to find
+        relevant MAST traces with ground truth annotations as in-context examples.
+
+        Args:
+            failure_mode: MAST failure mode to find examples for
+            task: Task description to match against
+            framework: Optional framework filter (ChatDev, MetaGPT, etc.)
+            k: Number of examples to retrieve (default: 2)
+
+        Returns:
+            Formatted string with few-shot examples, or empty string if unavailable
+        """
+        try:
+            from sqlalchemy import create_engine
+            from sqlalchemy.orm import sessionmaker
+            from app.config import get_settings
+            from app.storage.models import MASTTraceEmbedding
+
+            # Create database session
+            settings = get_settings()
+            engine = create_engine(settings.database_url)
+            Session = sessionmaker(bind=engine)
+            session = Session()
+
+            try:
+                # Find similar traces
+                similar_traces = MASTTraceEmbedding.find_similar_traces(
+                    session=session,
+                    query_task=task,
+                    failure_mode=failure_mode.value,
+                    framework=framework,
+                    k=k,
+                    min_similarity=0.65  # Lower threshold for Phase 4
+                )
+
+                if not similar_traces:
+                    logger.debug(f"No few-shot examples found for {failure_mode.value}")
+                    return ""
+
+                # Format examples
+                examples = []
+                for i, trace in enumerate(similar_traces, 1):
+                    example = f"""
+### Example {i} (Ground Truth: {failure_mode.value})
+{trace.formatted_example()}
+"""
+                    examples.append(example.strip())
+
+                formatted = "\n\n".join(examples)
+
+                logger.info(f"Retrieved {len(similar_traces)} few-shot examples for {failure_mode.value}")
+                return formatted
+
+            finally:
+                session.close()
+
+        except Exception as e:
+            logger.warning(f"Could not retrieve few-shot examples: {e}")
+            return ""
+
     def _build_prompt(
         self,
         failure_mode: MASTFailureMode,
@@ -1067,6 +1137,21 @@ Important guidelines:
                     )
             except Exception as e:
                 logger.warning(f"RAG retrieval failed: {e}")
+
+        # Phase 4: If no RAG examples available, try few-shot from MAST embeddings
+        if not rag_examples_str:
+            try:
+                few_shot_examples = self._retrieve_few_shot_examples(
+                    failure_mode=failure_mode,
+                    task=task,
+                    framework=None,  # Could extract from metadata if available
+                    k=2  # Retrieve 2 similar examples
+                )
+                if few_shot_examples:
+                    rag_examples_str = few_shot_examples
+                    logger.debug(f"Using few-shot examples from MAST embeddings for {failure_mode.value}")
+            except Exception as e:
+                logger.warning(f"Few-shot retrieval failed: {e}")
 
         # Build prompt with enhanced context, RAG examples, and knowledge context
         prompt = self._build_prompt(
