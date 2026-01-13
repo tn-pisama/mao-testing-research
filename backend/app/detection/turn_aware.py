@@ -2362,7 +2362,7 @@ class TurnAwareResourceMisallocationDetector(TurnAwareDetector):
     def __init__(
         self,
         min_turns: int = 2,
-        min_issues_to_flag: int = 3,  # Balanced: was 5 (too strict), now 3
+        min_issues_to_flag: int = 2,  # Lowered for better recall (was 3)
     ):
         self.min_turns = min_turns
         self.min_issues_to_flag = min_issues_to_flag

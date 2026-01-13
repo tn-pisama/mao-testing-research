@@ -58,7 +58,7 @@ class CommunicationBreakdownDetector:
     
     def __init__(
         self,
-        intent_threshold: float = 0.4,
+        intent_threshold: float = 0.55,  # Raised for better accuracy (was 0.4)
         check_format: bool = True,
         check_ambiguity: bool = True,
     ):
