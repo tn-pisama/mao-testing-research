@@ -1,0 +1,348 @@
+{
+  "name": "Real-Time Fact Checker",
+  "nodes": [
+    {
+      "parameters": {
+        "httpMethod": "POST",
+        "path": "fact-check",
+        "responseMode": "responseNode",
+        "options": {}
+      },
+      "id": "webhook-trigger",
+      "name": "Webhook Trigger",
+      "type": "n8n-nodes-base.webhook",
+      "typeVersion": 1,
+      "position": [0, 400],
+      "webhookId": "fact-check-webhook"
+    },
+    {
+      "parameters": {
+        "promptType": "define",
+        "text": "=You are a claim extraction specialist. Extract all verifiable factual claims from this content.\n\nContent to analyze:\n\"{{ $json.body.content }}\"\n\nVerification depth: {{ $json.body.verification_depth || 'normal' }}\n\nExtract claims that can be verified with external sources. Ignore opinions and subjective statements.\n\nRespond with JSON:\n{\n  \"claims\": [\n    {\n      \"id\": 1,\n      \"text\": \"exact claim text\",\n      \"type\": \"statistic|fact|date|quote|definition\",\n      \"verifiability\": \"high|medium|low\",\n      \"key_entities\": [\"entity1\", \"entity2\"]\n    }\n  ],\n  \"total_claims\": number,\n  \"content_type\": \"news|social|academic|other\"\n}",
+        "options": {
+          "temperature": 0.2,
+          "maxTokens": 800
+        }
+      },
+      "id": "claim-extractor",
+      "name": "Claim Extractor Agent",
+      "type": "@n8n/n8n-nodes-langchain.lmChatAnthropic",
+      "typeVersion": 1,
+      "position": [250, 400],
+      "credentials": {
+        "anthropicApi": {
+          "id": "1KM50Mcms9JticwF",
+          "name": "Anthropic API"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "jsCode": "// Parse extracted claims\nconst response = $input.first().json;\nconst webhookInput = $('Webhook Trigger').first().json.body;\n\nlet claimsData;\ntry {\n  const text = response.text || response.content || JSON.stringify(response);\n  const jsonMatch = text.match(/\\{[\\s\\S]*\\}/);\n  claimsData = jsonMatch ? JSON.parse(jsonMatch[0]) : { claims: [] };\n} catch (e) {\n  claimsData = { claims: [], error: e.message };\n}\n\nreturn {\n  claims: claimsData.claims || [],\n  totalClaims: claimsData.total_claims || 0,\n  contentType: claimsData.content_type || 'other',\n  originalContent: webhookInput.content,\n  verificationDepth: webhookInput.verification_depth || 'normal',\n  requireCitations: webhookInput.require_citations !== false,\n  extractorTokens: response.usage?.total_tokens || 0\n};"
+      },
+      "id": "parse-claims",
+      "name": "Parse Claims",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [500, 400]
+    },
+    {
+      "parameters": {
+        "promptType": "define",
+        "text": "=You are a search query specialist. Generate effective search queries to verify these claims.\n\nClaims to verify:\n{{ JSON.stringify($json.claims, null, 2) }}\n\nFor each claim, generate 2-3 search queries that would help verify it.\n\nRespond with JSON:\n{\n  \"queries\": [\n    {\n      \"claim_id\": 1,\n      \"queries\": [\"search query 1\", \"search query 2\"],\n      \"wikipedia_titles\": [\"potential_article_title\"],\n      \"expected_sources\": [\"wikipedia\", \"news\", \"official\"]\n    }\n  ]\n}",
+        "options": {
+          "temperature": 0.3,
+          "maxTokens": 600
+        }
+      },
+      "id": "query-generator",
+      "name": "Query Generator Agent",
+      "type": "@n8n/n8n-nodes-langchain.lmChatAnthropic",
+      "typeVersion": 1,
+      "position": [750, 400],
+      "credentials": {
+        "anthropicApi": {
+          "id": "1KM50Mcms9JticwF",
+          "name": "Anthropic API"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "jsCode": "// Parse queries and prepare for verification\nconst response = $input.first().json;\nconst claimsData = $('Parse Claims').first().json;\n\nlet queriesData;\ntry {\n  const text = response.text || response.content || JSON.stringify(response);\n  const jsonMatch = text.match(/\\{[\\s\\S]*\\}/);\n  queriesData = jsonMatch ? JSON.parse(jsonMatch[0]) : { queries: [] };\n} catch (e) {\n  queriesData = { queries: [] };\n}\n\n// Merge claims with queries\nconst claimsWithQueries = claimsData.claims.map((claim, i) => {\n  const queryInfo = queriesData.queries?.find(q => q.claim_id === claim.id) || {};\n  return {\n    ...claim,\n    search_queries: queryInfo.queries || [claim.text],\n    wikipedia_titles: queryInfo.wikipedia_titles || [],\n    index: i\n  };\n});\n\nreturn {\n  claims: claimsWithQueries,\n  totalClaims: claimsData.totalClaims,\n  originalContent: claimsData.originalContent,\n  requireCitations: claimsData.requireCitations,\n  extractorTokens: claimsData.extractorTokens,\n  queryTokens: response.usage?.total_tokens || 0\n};"
+      },
+      "id": "prepare-verification",
+      "name": "Prepare Verification",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [1000, 400]
+    },
+    {
+      "parameters": {
+        "jsCode": "// Split claims for parallel verification\nconst data = $input.first().json;\nconst claims = data.claims || [];\n\n// Create items for each claim (max 5 to avoid overwhelming APIs)\nconst items = claims.slice(0, 5).map(claim => ({\n  json: {\n    claim: claim,\n    originalContent: data.originalContent,\n    requireCitations: data.requireCitations\n  }\n}));\n\nreturn items.length > 0 ? items : [{ json: { claim: null } }];"
+      },
+      "id": "split-claims",
+      "name": "Split Claims",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [1250, 400]
+    },
+    {
+      "parameters": {
+        "url": "=https://en.wikipedia.org/api/rest_v1/page/summary/{{ encodeURIComponent($json.claim?.wikipedia_titles?.[0] || $json.claim?.key_entities?.[0] || 'Information') }}",
+        "options": {
+          "timeout": 5000
+        }
+      },
+      "id": "fetch-wikipedia",
+      "name": "Fetch Wikipedia",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4,
+      "position": [1500, 300]
+    },
+    {
+      "parameters": {
+        "url": "=https://api.duckduckgo.com/?q={{ encodeURIComponent($json.claim?.search_queries?.[0] || $json.claim?.text || 'fact check') }}&format=json&no_html=1",
+        "options": {
+          "timeout": 5000
+        }
+      },
+      "id": "fetch-duckduckgo",
+      "name": "Fetch DuckDuckGo",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4,
+      "position": [1500, 500]
+    },
+    {
+      "parameters": {
+        "jsCode": "// Aggregate source data for this claim\nconst wikiData = $('Fetch Wikipedia').first().json;\nconst ddgData = $('Fetch DuckDuckGo').first().json;\nconst claimData = $('Split Claims').first().json;\n\nreturn {\n  claim: claimData.claim,\n  sources: {\n    wikipedia: {\n      title: wikiData?.title || 'Not found',\n      extract: wikiData?.extract || '',\n      url: wikiData?.content_urls?.desktop?.page || null,\n      found: !!wikiData?.extract\n    },\n    duckduckgo: {\n      abstract: ddgData?.Abstract || '',\n      abstractSource: ddgData?.AbstractSource || '',\n      abstractURL: ddgData?.AbstractURL || '',\n      relatedTopics: (ddgData?.RelatedTopics || []).slice(0, 3).map(t => t.Text || ''),\n      found: !!ddgData?.Abstract\n    }\n  },\n  requireCitations: claimData.requireCitations\n};"
+      },
+      "id": "aggregate-sources",
+      "name": "Aggregate Sources",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [1750, 400]
+    },
+    {
+      "parameters": {
+        "promptType": "define",
+        "text": "=You are a fact verification specialist. Verify this claim against the provided sources.\n\nClaim to verify:\nID: {{ $json.claim?.id }}\nText: \"{{ $json.claim?.text }}\"\nType: {{ $json.claim?.type }}\n\nSources found:\n\nWikipedia:\n- Title: {{ $json.sources.wikipedia.title }}\n- Extract: {{ $json.sources.wikipedia.extract }}\n- URL: {{ $json.sources.wikipedia.url }}\n\nDuckDuckGo:\n- Abstract: {{ $json.sources.duckduckgo.abstract }}\n- Source: {{ $json.sources.duckduckgo.abstractSource }}\n- Related: {{ $json.sources.duckduckgo.relatedTopics.join(', ') }}\n\nVerify the claim and respond with JSON:\n{\n  \"claim_id\": {{ $json.claim?.id || 0 }},\n  \"original_claim\": \"claim text\",\n  \"verdict\": \"TRUE|MOSTLY_TRUE|MIXED|MOSTLY_FALSE|FALSE|UNVERIFIABLE\",\n  \"accuracy_score\": 0-100,\n  \"supporting_evidence\": [\"evidence1\"],\n  \"contradicting_evidence\": [\"evidence1\"],\n  \"citations\": [\n    {\n      \"source\": \"Wikipedia|DuckDuckGo\",\n      \"url\": \"source_url\",\n      \"relevant_quote\": \"quote supporting verdict\",\n      \"supports_claim\": true|false|\"partial\"\n    }\n  ],\n  \"correction\": \"corrected statement if claim is false\",\n  \"confidence\": \"high|medium|low\"\n}\n\nIMPORTANT: Only cite sources that actually exist in the provided data. Do not fabricate citations.",
+        "options": {
+          "temperature": 0.2,
+          "maxTokens": 800
+        }
+      },
+      "id": "verification-agent",
+      "name": "Verification Agent",
+      "type": "@n8n/n8n-nodes-langchain.lmChatAnthropic",
+      "typeVersion": 1,
+      "position": [2000, 400],
+      "credentials": {
+        "anthropicApi": {
+          "id": "1KM50Mcms9JticwF",
+          "name": "Anthropic API"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "jsCode": "// Parse verification result\nconst response = $input.first().json;\nconst sourceData = $('Aggregate Sources').first().json;\n\nlet verificationData;\ntry {\n  const text = response.text || response.content || JSON.stringify(response);\n  const jsonMatch = text.match(/\\{[\\s\\S]*\\}/);\n  verificationData = jsonMatch ? JSON.parse(jsonMatch[0]) : { verdict: 'UNVERIFIABLE' };\n} catch (e) {\n  verificationData = { verdict: 'UNVERIFIABLE', error: e.message };\n}\n\nreturn {\n  verification: verificationData,\n  claim: sourceData.claim,\n  sources: sourceData.sources,\n  tokens: response.usage?.total_tokens || 0\n};"
+      },
+      "id": "parse-verification",
+      "name": "Parse Verification",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [2250, 400]
+    },
+    {
+      "parameters": {
+        "mode": "combine",
+        "combineBy": "combineAll",
+        "options": {}
+      },
+      "id": "merge-verifications",
+      "name": "Merge Verifications",
+      "type": "n8n-nodes-base.merge",
+      "typeVersion": 2,
+      "position": [2500, 400]
+    },
+    {
+      "parameters": {
+        "jsCode": "// Aggregate all verification results\nconst items = $input.all();\nconst prepData = $('Prepare Verification').first().json;\n\nconst verifications = items.map(item => item.json.verification).filter(v => v);\nconst totalVerificationTokens = items.reduce((sum, item) => sum + (item.json.tokens || 0), 0);\n\nreturn {\n  verifications: verifications,\n  totalClaims: prepData.totalClaims,\n  originalContent: prepData.originalContent,\n  extractorTokens: prepData.extractorTokens,\n  queryTokens: prepData.queryTokens,\n  verificationTokens: totalVerificationTokens\n};"
+      },
+      "id": "aggregate-verifications",
+      "name": "Aggregate Verifications",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [2750, 400]
+    },
+    {
+      "parameters": {
+        "promptType": "define",
+        "text": "=You are a cross-reference specialist checking for contradictions and inconsistencies.\n\nVerification results to review:\n{{ JSON.stringify($json.verifications, null, 2) }}\n\nOriginal content:\n\"{{ $json.originalContent }}\"\n\nCheck for:\n1. Contradictions between sources for the same claim\n2. Inconsistencies between related claims\n3. Claims that conflict with each other\n4. Missing context that changes meaning\n\nRespond with JSON:\n{\n  \"contradictions_found\": [\n    {\n      \"claim_ids\": [1, 2],\n      \"description\": \"nature of contradiction\",\n      \"severity\": \"high|medium|low\"\n    }\n  ],\n  \"inconsistencies\": [\"inconsistency1\"],\n  \"missing_context\": [\"context issue1\"],\n  \"overall_coherence_score\": 0-100,\n  \"recommendations\": [\"recommendation1\"]\n}",
+        "options": {
+          "temperature": 0.3,
+          "maxTokens": 600
+        }
+      },
+      "id": "cross-reference-agent",
+      "name": "Cross-Reference Agent",
+      "type": "@n8n/n8n-nodes-langchain.lmChatAnthropic",
+      "typeVersion": 1,
+      "position": [3000, 400],
+      "credentials": {
+        "anthropicApi": {
+          "id": "1KM50Mcms9JticwF",
+          "name": "Anthropic API"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "jsCode": "// Parse cross-reference results\nconst response = $input.first().json;\nconst aggData = $('Aggregate Verifications').first().json;\n\nlet crossRefData;\ntry {\n  const text = response.text || response.content || JSON.stringify(response);\n  const jsonMatch = text.match(/\\{[\\s\\S]*\\}/);\n  crossRefData = jsonMatch ? JSON.parse(jsonMatch[0]) : { contradictions_found: [] };\n} catch (e) {\n  crossRefData = { contradictions_found: [], error: e.message };\n}\n\nreturn {\n  verifications: aggData.verifications,\n  crossReference: crossRefData,\n  totalClaims: aggData.totalClaims,\n  originalContent: aggData.originalContent,\n  extractorTokens: aggData.extractorTokens,\n  queryTokens: aggData.queryTokens,\n  verificationTokens: aggData.verificationTokens,\n  crossRefTokens: response.usage?.total_tokens || 0\n};"
+      },
+      "id": "parse-cross-ref",
+      "name": "Parse Cross-Reference",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [3250, 400]
+    },
+    {
+      "parameters": {
+        "promptType": "define",
+        "text": "=You are a report generator creating the final fact-check report.\n\nVerification results:\n{{ JSON.stringify($json.verifications, null, 2) }}\n\nCross-reference analysis:\n{{ JSON.stringify($json.crossReference, null, 2) }}\n\nOriginal content:\n\"{{ $json.originalContent }}\"\n\nCreate a comprehensive fact-check report. Calculate overall accuracy score based on individual claim verdicts.\n\nRespond with JSON:\n{\n  \"overall_accuracy_score\": 0-100,\n  \"verdict_summary\": {\n    \"true\": number,\n    \"mostly_true\": number,\n    \"mixed\": number,\n    \"mostly_false\": number,\n    \"false\": number,\n    \"unverifiable\": number\n  },\n  \"executive_summary\": \"2-3 sentence summary of findings\",\n  \"key_findings\": [\"finding1\", \"finding2\"],\n  \"corrections_needed\": [\"correction1\"],\n  \"sources_consulted\": [\"Wikipedia\", \"DuckDuckGo\"],\n  \"reliability_assessment\": \"high|medium|low\",\n  \"recommendations\": [\"recommendation1\"]\n}",
+        "options": {
+          "temperature": 0.4,
+          "maxTokens": 800
+        }
+      },
+      "id": "report-generator",
+      "name": "Report Generator Agent",
+      "type": "@n8n/n8n-nodes-langchain.lmChatAnthropic",
+      "typeVersion": 1,
+      "position": [3500, 400],
+      "credentials": {
+        "anthropicApi": {
+          "id": "1KM50Mcms9JticwF",
+          "name": "Anthropic API"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "jsCode": "// Format final output\nconst response = $input.first().json;\nconst crossRefData = $('Parse Cross-Reference').first().json;\n\nlet reportData;\ntry {\n  const text = response.text || response.content || JSON.stringify(response);\n  const jsonMatch = text.match(/\\{[\\s\\S]*\\}/);\n  reportData = jsonMatch ? JSON.parse(jsonMatch[0]) : { overall_accuracy_score: 50 };\n} catch (e) {\n  reportData = { overall_accuracy_score: 50, error: e.message };\n}\n\nconst reportTokens = response.usage?.total_tokens || 0;\n\nreturn {\n  fact_check_report: {\n    overall_accuracy_score: reportData.overall_accuracy_score,\n    verdict_summary: reportData.verdict_summary,\n    executive_summary: reportData.executive_summary,\n    key_findings: reportData.key_findings,\n    corrections_needed: reportData.corrections_needed,\n    reliability_assessment: reportData.reliability_assessment,\n    recommendations: reportData.recommendations,\n    claims_analyzed: crossRefData.totalClaims,\n    claims: crossRefData.verifications\n  },\n  contradictions_found: crossRefData.crossReference?.contradictions_found || [],\n  sources_consulted: reportData.sources_consulted || ['Wikipedia', 'DuckDuckGo'],\n  agent_stats: {\n    claim_extractor_tokens: crossRefData.extractorTokens,\n    query_generator_tokens: crossRefData.queryTokens,\n    verification_agent_tokens: crossRefData.verificationTokens,\n    cross_reference_tokens: crossRefData.crossRefTokens,\n    report_generator_tokens: reportTokens,\n    total_tokens: crossRefData.extractorTokens + crossRefData.queryTokens + crossRefData.verificationTokens + crossRefData.crossRefTokens + reportTokens,\n    total_agents: 6\n  },\n  execution_id: $execution.id,\n  workflow_id: $workflow.id,\n  timestamp: new Date().toISOString()\n};"
+      },
+      "id": "format-output",
+      "name": "Format Output",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [3750, 400]
+    },
+    {
+      "parameters": {
+        "respondWith": "json",
+        "responseBody": "={{ JSON.stringify($json) }}",
+        "options": {}
+      },
+      "id": "send-response",
+      "name": "Send Response",
+      "type": "n8n-nodes-base.respondToWebhook",
+      "typeVersion": 1,
+      "position": [4000, 300]
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "={{ $env.MAO_WEBHOOK_URL || 'http://localhost:8000/api/v1/n8n/webhook' }}",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            {
+              "name": "X-MAO-API-Key",
+              "value": "={{ $env.MAO_API_KEY }}"
+            },
+            {
+              "name": "Content-Type",
+              "value": "application/json"
+            }
+          ]
+        },
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={\n  \"executionId\": \"{{ $execution.id }}\",\n  \"workflowId\": \"{{ $workflow.id }}\",\n  \"workflowName\": \"{{ $workflow.name }}\",\n  \"mode\": \"webhook\",\n  \"startedAt\": \"{{ $now.toISO() }}\",\n  \"status\": \"success\",\n  \"data\": {\n    \"resultData\": {\n      \"runData\": {\n        \"Claim Extractor Agent\": [{\"source\": [{\"type\": \"@n8n/n8n-nodes-langchain.lmChatAnthropic\"}], \"data\": {\"main\": [[{\"usage\": {\"total_tokens\": {{ $json.agent_stats.claim_extractor_tokens }}}}]]}}],\n        \"Query Generator Agent\": [{\"source\": [{\"type\": \"@n8n/n8n-nodes-langchain.lmChatAnthropic\"}], \"data\": {\"main\": [[{\"usage\": {\"total_tokens\": {{ $json.agent_stats.query_generator_tokens }}}}]]}}],\n        \"Verification Agent\": [{\"source\": [{\"type\": \"@n8n/n8n-nodes-langchain.lmChatAnthropic\"}], \"data\": {\"main\": [[{\"usage\": {\"total_tokens\": {{ $json.agent_stats.verification_agent_tokens }}}}]]}}],\n        \"Cross-Reference Agent\": [{\"source\": [{\"type\": \"@n8n/n8n-nodes-langchain.lmChatAnthropic\"}], \"data\": {\"main\": [[{\"usage\": {\"total_tokens\": {{ $json.agent_stats.cross_reference_tokens }}}}]]}}],\n        \"Report Generator Agent\": [{\"source\": [{\"type\": \"@n8n/n8n-nodes-langchain.lmChatAnthropic\"}], \"data\": {\"main\": [[{\"usage\": {\"total_tokens\": {{ $json.agent_stats.report_generator_tokens }}}}]]}}]\n      }\n    }\n  }\n}",
+        "options": {}
+      },
+      "id": "send-to-mao",
+      "name": "Send to MAO",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4,
+      "position": [4000, 500]
+    }
+  ],
+  "connections": {
+    "Webhook Trigger": {
+      "main": [[{"node": "Claim Extractor Agent", "type": "main", "index": 0}]]
+    },
+    "Claim Extractor Agent": {
+      "main": [[{"node": "Parse Claims", "type": "main", "index": 0}]]
+    },
+    "Parse Claims": {
+      "main": [[{"node": "Query Generator Agent", "type": "main", "index": 0}]]
+    },
+    "Query Generator Agent": {
+      "main": [[{"node": "Prepare Verification", "type": "main", "index": 0}]]
+    },
+    "Prepare Verification": {
+      "main": [[{"node": "Split Claims", "type": "main", "index": 0}]]
+    },
+    "Split Claims": {
+      "main": [
+        [
+          {"node": "Fetch Wikipedia", "type": "main", "index": 0},
+          {"node": "Fetch DuckDuckGo", "type": "main", "index": 0}
+        ]
+      ]
+    },
+    "Fetch Wikipedia": {
+      "main": [[{"node": "Aggregate Sources", "type": "main", "index": 0}]]
+    },
+    "Fetch DuckDuckGo": {
+      "main": [[{"node": "Aggregate Sources", "type": "main", "index": 1}]]
+    },
+    "Aggregate Sources": {
+      "main": [[{"node": "Verification Agent", "type": "main", "index": 0}]]
+    },
+    "Verification Agent": {
+      "main": [[{"node": "Parse Verification", "type": "main", "index": 0}]]
+    },
+    "Parse Verification": {
+      "main": [[{"node": "Merge Verifications", "type": "main", "index": 0}]]
+    },
+    "Merge Verifications": {
+      "main": [[{"node": "Aggregate Verifications", "type": "main", "index": 0}]]
+    },
+    "Aggregate Verifications": {
+      "main": [[{"node": "Cross-Reference Agent", "type": "main", "index": 0}]]
+    },
+    "Cross-Reference Agent": {
+      "main": [[{"node": "Parse Cross-Reference", "type": "main", "index": 0}]]
+    },
+    "Parse Cross-Reference": {
+      "main": [[{"node": "Report Generator Agent", "type": "main", "index": 0}]]
+    },
+    "Report Generator Agent": {
+      "main": [[{"node": "Format Output", "type": "main", "index": 0}]]
+    },
+    "Format Output": {
+      "main": [
+        [
+          {"node": "Send Response", "type": "main", "index": 0},
+          {"node": "Send to MAO", "type": "main", "index": 0}
+        ]
+      ]
+    }
+  },
+  "settings": {
+    "executionOrder": "v1"
+  }
+}

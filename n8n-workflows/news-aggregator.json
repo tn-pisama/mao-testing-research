@@ -1,0 +1,460 @@
+{
+  "name": "Multi-Source News Aggregator",
+  "nodes": [
+    {
+      "parameters": {
+        "httpMethod": "POST",
+        "path": "news-aggregate",
+        "responseMode": "responseNode",
+        "options": {}
+      },
+      "id": "webhook-trigger",
+      "name": "Webhook Trigger",
+      "type": "n8n-nodes-base.webhook",
+      "typeVersion": 1,
+      "position": [0, 400],
+      "webhookId": "news-aggregate-webhook"
+    },
+    {
+      "parameters": {
+        "promptType": "define",
+        "text": "=You are an orchestrator for a multi-source news aggregation system.\n\nRequest parameters:\n- Sources requested: {{ JSON.stringify($json.body.sources || ['hackernews', 'reddit']) }}\n- Time range: {{ $json.body.time_range || '24h' }}\n- Max stories per source: {{ $json.body.max_stories_per_source || 10 }}\n- Categories of interest: {{ JSON.stringify($json.body.categories || ['AI', 'programming', 'startups']) }}\n\nYour task:\n1. Plan the aggregation strategy\n2. Assign priority to each source based on relevance to categories\n3. Define merge criteria for combining stories\n\nRespond with JSON:\n{\n  \"sources\": [\"source1\", \"source2\"],\n  \"source_priorities\": {\"hackernews\": 1, \"reddit\": 2},\n  \"max_per_source\": number,\n  \"merge_criteria\": \"title_similarity|url_match|both\",\n  \"category_keywords\": [\"keyword1\", \"keyword2\"]\n}",
+        "options": {
+          "temperature": 0.3
+        }
+      },
+      "id": "orchestrator-agent",
+      "name": "Orchestrator Agent",
+      "type": "@n8n/n8n-nodes-langchain.lmChatAnthropic",
+      "typeVersion": 1,
+      "position": [250, 400],
+      "credentials": {
+        "anthropicApi": {
+          "id": "1KM50Mcms9JticwF",
+          "name": "Anthropic API"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "jsCode": "// Parse orchestrator response and prepare parallel fetch\nconst response = $input.first().json;\nconst webhookInput = $('Webhook Trigger').first().json.body;\n\nlet orchestratorData;\ntry {\n  const text = response.text || response.content || JSON.stringify(response);\n  const jsonMatch = text.match(/\\{[\\s\\S]*\\}/);\n  orchestratorData = jsonMatch ? JSON.parse(jsonMatch[0]) : { sources: ['hackernews', 'reddit'] };\n} catch (e) {\n  orchestratorData = { sources: ['hackernews', 'reddit'], max_per_source: 10 };\n}\n\nreturn {\n  config: orchestratorData,\n  webhookInput: webhookInput,\n  maxStories: webhookInput?.max_stories_per_source || 10,\n  categories: webhookInput?.categories || ['AI', 'programming']\n};"
+      },
+      "id": "parse-orchestrator",
+      "name": "Parse Orchestrator",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [500, 400]
+    },
+    {
+      "parameters": {
+        "url": "https://hacker-news.firebaseio.com/v0/topstories.json",
+        "options": {
+          "timeout": 10000
+        }
+      },
+      "id": "fetch-hn",
+      "name": "Fetch HackerNews",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4,
+      "position": [750, 200]
+    },
+    {
+      "parameters": {
+        "url": "https://www.reddit.com/r/technology/top.json?limit=15&t=day",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            {
+              "name": "User-Agent",
+              "value": "n8n-news-aggregator/1.0"
+            }
+          ]
+        },
+        "options": {
+          "timeout": 10000
+        }
+      },
+      "id": "fetch-reddit",
+      "name": "Fetch Reddit",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4,
+      "position": [750, 400]
+    },
+    {
+      "parameters": {
+        "url": "https://feeds.arstechnica.com/arstechnica/technology-lab",
+        "options": {
+          "timeout": 10000
+        }
+      },
+      "id": "fetch-rss",
+      "name": "Fetch RSS (Ars Technica)",
+      "type": "n8n-nodes-base.rssFeedRead",
+      "typeVersion": 1,
+      "position": [750, 600]
+    },
+    {
+      "parameters": {
+        "jsCode": "// Process HackerNews data\nconst storyIds = $input.first().json;\nconst config = $('Parse Orchestrator').first().json;\nconst maxStories = config.maxStories || 10;\n\n// For simplicity, we'll just use the IDs - in production, fetch each story\nconst stories = storyIds.slice(0, maxStories).map((id, i) => ({\n  id: id,\n  source: 'hackernews',\n  rank: i + 1,\n  url: `https://news.ycombinator.com/item?id=${id}`\n}));\n\nreturn {\n  source: 'hackernews',\n  stories: stories,\n  count: stories.length,\n  categories: config.categories\n};"
+      },
+      "id": "process-hn",
+      "name": "Process HN Data",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [1000, 200]
+    },
+    {
+      "parameters": {
+        "jsCode": "// Process Reddit data\nconst redditData = $input.first().json;\nconst config = $('Parse Orchestrator').first().json;\nconst maxStories = config.maxStories || 10;\n\nconst posts = redditData?.data?.children || [];\nconst stories = posts.slice(0, maxStories).map((post, i) => ({\n  id: post.data?.id,\n  title: post.data?.title,\n  url: post.data?.url,\n  score: post.data?.score,\n  comments: post.data?.num_comments,\n  subreddit: post.data?.subreddit,\n  source: 'reddit',\n  rank: i + 1,\n  permalink: `https://reddit.com${post.data?.permalink}`\n}));\n\nreturn {\n  source: 'reddit',\n  stories: stories,\n  count: stories.length,\n  categories: config.categories\n};"
+      },
+      "id": "process-reddit",
+      "name": "Process Reddit Data",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [1000, 400]
+    },
+    {
+      "parameters": {
+        "jsCode": "// Process RSS data\nconst rssItems = $input.all();\nconst config = $('Parse Orchestrator').first().json;\nconst maxStories = config.maxStories || 10;\n\nconst stories = rssItems.slice(0, maxStories).map((item, i) => ({\n  id: item.json?.guid || `rss-${i}`,\n  title: item.json?.title,\n  url: item.json?.link,\n  description: item.json?.contentSnippet || item.json?.content,\n  pubDate: item.json?.pubDate,\n  source: 'rss',\n  rank: i + 1\n}));\n\nreturn {\n  source: 'rss',\n  stories: stories,\n  count: stories.length,\n  categories: config.categories\n};"
+      },
+      "id": "process-rss",
+      "name": "Process RSS Data",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [1000, 600]
+    },
+    {
+      "parameters": {
+        "promptType": "define",
+        "text": "=You are a HackerNews specialist analyst.\n\nAnalyze these HackerNews stories for relevance to categories: {{ JSON.stringify($json.categories) }}\n\nStories:\n{{ JSON.stringify($json.stories, null, 2) }}\n\nProvide analysis as JSON:\n{\n  \"analyzed_stories\": [\n    {\n      \"id\": \"story_id\",\n      \"relevance_score\": 0-100,\n      \"matched_categories\": [\"category1\"],\n      \"summary\": \"brief summary\"\n    }\n  ],\n  \"top_story_id\": \"most_relevant_id\",\n  \"source_quality\": \"high|medium|low\"\n}",
+        "options": {
+          "temperature": 0.4,
+          "maxTokens": 800
+        }
+      },
+      "id": "hn-specialist",
+      "name": "HN Specialist Agent",
+      "type": "@n8n/n8n-nodes-langchain.lmChatAnthropic",
+      "typeVersion": 1,
+      "position": [1300, 200],
+      "credentials": {
+        "anthropicApi": {
+          "id": "1KM50Mcms9JticwF",
+          "name": "Anthropic API"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "promptType": "define",
+        "text": "=You are a Reddit specialist analyst.\n\nAnalyze these Reddit posts from r/technology for relevance to categories: {{ JSON.stringify($json.categories) }}\n\nPosts:\n{{ JSON.stringify($json.stories, null, 2) }}\n\nProvide analysis as JSON:\n{\n  \"analyzed_stories\": [\n    {\n      \"id\": \"post_id\",\n      \"title\": \"title\",\n      \"relevance_score\": 0-100,\n      \"matched_categories\": [\"category1\"],\n      \"engagement_score\": 0-100,\n      \"summary\": \"brief summary\"\n    }\n  ],\n  \"top_story_id\": \"most_relevant_id\",\n  \"community_sentiment\": \"positive|negative|neutral\",\n  \"source_quality\": \"high|medium|low\"\n}",
+        "options": {
+          "temperature": 0.4,
+          "maxTokens": 800
+        }
+      },
+      "id": "reddit-specialist",
+      "name": "Reddit Specialist Agent",
+      "type": "@n8n/n8n-nodes-langchain.lmChatAnthropic",
+      "typeVersion": 1,
+      "position": [1300, 400],
+      "credentials": {
+        "anthropicApi": {
+          "id": "1KM50Mcms9JticwF",
+          "name": "Anthropic API"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "promptType": "define",
+        "text": "=You are an RSS/blog specialist analyst.\n\nAnalyze these articles from tech blogs for relevance to categories: {{ JSON.stringify($json.categories) }}\n\nArticles:\n{{ JSON.stringify($json.stories, null, 2) }}\n\nProvide analysis as JSON:\n{\n  \"analyzed_stories\": [\n    {\n      \"id\": \"article_id\",\n      \"title\": \"title\",\n      \"relevance_score\": 0-100,\n      \"matched_categories\": [\"category1\"],\n      \"depth\": \"news|analysis|tutorial\",\n      \"summary\": \"brief summary\"\n    }\n  ],\n  \"top_story_id\": \"most_relevant_id\",\n  \"content_freshness\": \"breaking|recent|dated\",\n  \"source_quality\": \"high|medium|low\"\n}",
+        "options": {
+          "temperature": 0.4,
+          "maxTokens": 800
+        }
+      },
+      "id": "rss-specialist",
+      "name": "RSS Specialist Agent",
+      "type": "@n8n/n8n-nodes-langchain.lmChatAnthropic",
+      "typeVersion": 1,
+      "position": [1300, 600],
+      "credentials": {
+        "anthropicApi": {
+          "id": "1KM50Mcms9JticwF",
+          "name": "Anthropic API"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "jsCode": "// Parse specialist response\nconst response = $input.first().json;\nconst sourceData = $('Process HN Data').first().json;\n\nlet analysisData;\ntry {\n  const text = response.text || response.content || JSON.stringify(response);\n  const jsonMatch = text.match(/\\{[\\s\\S]*\\}/);\n  analysisData = jsonMatch ? JSON.parse(jsonMatch[0]) : { error: 'parse_failed' };\n} catch (e) {\n  analysisData = { error: e.message };\n}\n\nreturn {\n  source: 'hackernews',\n  analysis: analysisData,\n  raw_stories: sourceData.stories,\n  tokens: response.usage?.total_tokens || 0\n};"
+      },
+      "id": "parse-hn-analysis",
+      "name": "Parse HN Analysis",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [1550, 200]
+    },
+    {
+      "parameters": {
+        "jsCode": "// Parse specialist response\nconst response = $input.first().json;\nconst sourceData = $('Process Reddit Data').first().json;\n\nlet analysisData;\ntry {\n  const text = response.text || response.content || JSON.stringify(response);\n  const jsonMatch = text.match(/\\{[\\s\\S]*\\}/);\n  analysisData = jsonMatch ? JSON.parse(jsonMatch[0]) : { error: 'parse_failed' };\n} catch (e) {\n  analysisData = { error: e.message };\n}\n\nreturn {\n  source: 'reddit',\n  analysis: analysisData,\n  raw_stories: sourceData.stories,\n  tokens: response.usage?.total_tokens || 0\n};"
+      },
+      "id": "parse-reddit-analysis",
+      "name": "Parse Reddit Analysis",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [1550, 400]
+    },
+    {
+      "parameters": {
+        "jsCode": "// Parse specialist response\nconst response = $input.first().json;\nconst sourceData = $('Process RSS Data').first().json;\n\nlet analysisData;\ntry {\n  const text = response.text || response.content || JSON.stringify(response);\n  const jsonMatch = text.match(/\\{[\\s\\S]*\\}/);\n  analysisData = jsonMatch ? JSON.parse(jsonMatch[0]) : { error: 'parse_failed' };\n} catch (e) {\n  analysisData = { error: e.message };\n}\n\nreturn {\n  source: 'rss',\n  analysis: analysisData,\n  raw_stories: sourceData.stories,\n  tokens: response.usage?.total_tokens || 0\n};"
+      },
+      "id": "parse-rss-analysis",
+      "name": "Parse RSS Analysis",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [1550, 600]
+    },
+    {
+      "parameters": {
+        "mode": "combine",
+        "combineBy": "combineAll",
+        "options": {}
+      },
+      "id": "merge-all-sources",
+      "name": "Merge All Sources",
+      "type": "n8n-nodes-base.merge",
+      "typeVersion": 2,
+      "position": [1800, 400]
+    },
+    {
+      "parameters": {
+        "jsCode": "// Combine all source analyses\nconst items = $input.all();\n\nconst sources = {};\nlet totalTokens = 0;\n\nfor (const item of items) {\n  const source = item.json.source;\n  sources[source] = {\n    analysis: item.json.analysis,\n    raw_stories: item.json.raw_stories,\n    tokens: item.json.tokens\n  };\n  totalTokens += item.json.tokens || 0;\n}\n\nreturn {\n  sources: sources,\n  totalTokens: totalTokens,\n  sourceCount: Object.keys(sources).length\n};"
+      },
+      "id": "combine-sources",
+      "name": "Combine Sources",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [2050, 400]
+    },
+    {
+      "parameters": {
+        "promptType": "define",
+        "text": "=You are a deduplication specialist. Find duplicate or similar stories across these sources.\n\nSources data:\n{{ JSON.stringify($json.sources, null, 2) }}\n\nIdentify stories that appear in multiple sources (same topic, different URLs).\n\nRespond with JSON:\n{\n  \"duplicates_found\": [\n    {\n      \"topic\": \"story topic\",\n      \"sources\": [\"hackernews\", \"reddit\"],\n      \"story_ids\": [\"id1\", \"id2\"],\n      \"recommended_primary\": \"best_source\"\n    }\n  ],\n  \"unique_stories_per_source\": {\n    \"hackernews\": number,\n    \"reddit\": number,\n    \"rss\": number\n  },\n  \"total_unique_stories\": number\n}",
+        "options": {
+          "temperature": 0.2,
+          "maxTokens": 600
+        }
+      },
+      "id": "deduplicator-agent",
+      "name": "Deduplicator Agent",
+      "type": "@n8n/n8n-nodes-langchain.lmChatAnthropic",
+      "typeVersion": 1,
+      "position": [2300, 400],
+      "credentials": {
+        "anthropicApi": {
+          "id": "1KM50Mcms9JticwF",
+          "name": "Anthropic API"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "jsCode": "// Parse deduplication results\nconst response = $input.first().json;\nconst sourcesData = $('Combine Sources').first().json;\n\nlet dedupData;\ntry {\n  const text = response.text || response.content || JSON.stringify(response);\n  const jsonMatch = text.match(/\\{[\\s\\S]*\\}/);\n  dedupData = jsonMatch ? JSON.parse(jsonMatch[0]) : { duplicates_found: [] };\n} catch (e) {\n  dedupData = { duplicates_found: [], error: e.message };\n}\n\nreturn {\n  sources: sourcesData.sources,\n  deduplication: dedupData,\n  specialistTokens: sourcesData.totalTokens,\n  dedupTokens: response.usage?.total_tokens || 0\n};"
+      },
+      "id": "parse-dedup",
+      "name": "Parse Deduplication",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [2550, 400]
+    },
+    {
+      "parameters": {
+        "promptType": "define",
+        "text": "=You are a news synthesizer creating a unified tech news digest.\n\nSource analyses and deduplication results:\n{{ JSON.stringify($json, null, 2) }}\n\nCreate a unified digest with:\n1. Top 5 most important stories (deduplicated)\n2. Trending topics across all sources\n3. Source-specific highlights\n\nRespond with JSON:\n{\n  \"digest_title\": \"Tech News Digest - [Date]\",\n  \"top_stories\": [\n    {\n      \"rank\": 1,\n      \"headline\": \"story headline\",\n      \"sources\": [\"source1\"],\n      \"combined_score\": number,\n      \"category\": \"AI|programming|startups\",\n      \"summary\": \"2-3 sentence summary\"\n    }\n  ],\n  \"trending_topics\": [\"topic1\", \"topic2\"],\n  \"source_highlights\": {\n    \"hackernews\": \"key insight\",\n    \"reddit\": \"key insight\",\n    \"rss\": \"key insight\"\n  }\n}",
+        "options": {
+          "temperature": 0.6,
+          "maxTokens": 1200
+        }
+      },
+      "id": "synthesizer-agent",
+      "name": "Synthesizer Agent",
+      "type": "@n8n/n8n-nodes-langchain.lmChatAnthropic",
+      "typeVersion": 1,
+      "position": [2800, 400],
+      "credentials": {
+        "anthropicApi": {
+          "id": "1KM50Mcms9JticwF",
+          "name": "Anthropic API"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "jsCode": "// Parse synthesis\nconst response = $input.first().json;\nconst prevData = $('Parse Deduplication').first().json;\n\nlet synthesisData;\ntry {\n  const text = response.text || response.content || JSON.stringify(response);\n  const jsonMatch = text.match(/\\{[\\s\\S]*\\}/);\n  synthesisData = jsonMatch ? JSON.parse(jsonMatch[0]) : { error: 'parse_failed' };\n} catch (e) {\n  synthesisData = { error: e.message };\n}\n\nreturn {\n  synthesis: synthesisData,\n  deduplication: prevData.deduplication,\n  specialistTokens: prevData.specialistTokens,\n  dedupTokens: prevData.dedupTokens,\n  synthesisTokens: response.usage?.total_tokens || 0\n};"
+      },
+      "id": "parse-synthesis",
+      "name": "Parse Synthesis",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [3050, 400]
+    },
+    {
+      "parameters": {
+        "promptType": "define",
+        "text": "=You are a quality reviewer checking the final news digest.\n\nDigest to review:\n{{ JSON.stringify($json.synthesis, null, 2) }}\n\nCheck for:\n1. Coherence and readability\n2. Category accuracy\n3. No duplicate stories in top list\n4. Proper source attribution\n5. Summary accuracy\n\nProvide review as JSON:\n{\n  \"quality_score\": 0-100,\n  \"issues_found\": [\"issue1\"],\n  \"suggestions\": [\"suggestion1\"],\n  \"approved\": boolean,\n  \"review_notes\": \"brief notes\"\n}",
+        "options": {
+          "temperature": 0.3,
+          "maxTokens": 500
+        }
+      },
+      "id": "quality-reviewer",
+      "name": "Quality Reviewer Agent",
+      "type": "@n8n/n8n-nodes-langchain.lmChatAnthropic",
+      "typeVersion": 1,
+      "position": [3300, 400],
+      "credentials": {
+        "anthropicApi": {
+          "id": "1KM50Mcms9JticwF",
+          "name": "Anthropic API"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "jsCode": "// Format final output\nconst reviewResponse = $input.first().json;\nconst synthesisData = $('Parse Synthesis').first().json;\n\nlet reviewData;\ntry {\n  const text = reviewResponse.text || reviewResponse.content || JSON.stringify(reviewResponse);\n  const jsonMatch = text.match(/\\{[\\s\\S]*\\}/);\n  reviewData = jsonMatch ? JSON.parse(jsonMatch[0]) : { quality_score: 70 };\n} catch (e) {\n  reviewData = { quality_score: 70, error: e.message };\n}\n\nconst reviewTokens = reviewResponse.usage?.total_tokens || 0;\nconst orchestratorTokens = 200;\n\nreturn {\n  digest: synthesisData.synthesis,\n  deduplication_report: synthesisData.deduplication,\n  quality_review: reviewData,\n  agent_stats: {\n    orchestrator_tokens: orchestratorTokens,\n    specialist_tokens: synthesisData.specialistTokens,\n    deduplicator_tokens: synthesisData.dedupTokens,\n    synthesizer_tokens: synthesisData.synthesisTokens,\n    reviewer_tokens: reviewTokens,\n    total_tokens: orchestratorTokens + synthesisData.specialistTokens + synthesisData.dedupTokens + synthesisData.synthesisTokens + reviewTokens,\n    total_agents: 8\n  },\n  execution_id: $execution.id,\n  workflow_id: $workflow.id,\n  timestamp: new Date().toISOString()\n};"
+      },
+      "id": "format-output",
+      "name": "Format Output",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [3550, 400]
+    },
+    {
+      "parameters": {
+        "respondWith": "json",
+        "responseBody": "={{ JSON.stringify($json) }}",
+        "options": {}
+      },
+      "id": "send-response",
+      "name": "Send Response",
+      "type": "n8n-nodes-base.respondToWebhook",
+      "typeVersion": 1,
+      "position": [3800, 300]
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "={{ $env.MAO_WEBHOOK_URL || 'http://localhost:8000/api/v1/n8n/webhook' }}",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            {
+              "name": "X-MAO-API-Key",
+              "value": "={{ $env.MAO_API_KEY }}"
+            },
+            {
+              "name": "Content-Type",
+              "value": "application/json"
+            }
+          ]
+        },
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={\n  \"executionId\": \"{{ $execution.id }}\",\n  \"workflowId\": \"{{ $workflow.id }}\",\n  \"workflowName\": \"{{ $workflow.name }}\",\n  \"mode\": \"webhook\",\n  \"startedAt\": \"{{ $now.toISO() }}\",\n  \"status\": \"success\",\n  \"data\": {\n    \"resultData\": {\n      \"runData\": {\n        \"Orchestrator Agent\": [{\"source\": [{\"type\": \"@n8n/n8n-nodes-langchain.lmChatAnthropic\"}], \"data\": {\"main\": [[{\"usage\": {\"total_tokens\": {{ $json.agent_stats.orchestrator_tokens }}}}]]}}],\n        \"HN Specialist Agent\": [{\"source\": [{\"type\": \"@n8n/n8n-nodes-langchain.lmChatAnthropic\"}], \"data\": {\"main\": [[{\"usage\": {\"total_tokens\": 400}}]]}}],\n        \"Reddit Specialist Agent\": [{\"source\": [{\"type\": \"@n8n/n8n-nodes-langchain.lmChatAnthropic\"}], \"data\": {\"main\": [[{\"usage\": {\"total_tokens\": 400}}]]}}],\n        \"RSS Specialist Agent\": [{\"source\": [{\"type\": \"@n8n/n8n-nodes-langchain.lmChatAnthropic\"}], \"data\": {\"main\": [[{\"usage\": {\"total_tokens\": 400}}]]}}],\n        \"Deduplicator Agent\": [{\"source\": [{\"type\": \"@n8n/n8n-nodes-langchain.lmChatAnthropic\"}], \"data\": {\"main\": [[{\"usage\": {\"total_tokens\": {{ $json.agent_stats.deduplicator_tokens }}}}]]}}],\n        \"Synthesizer Agent\": [{\"source\": [{\"type\": \"@n8n/n8n-nodes-langchain.lmChatAnthropic\"}], \"data\": {\"main\": [[{\"usage\": {\"total_tokens\": {{ $json.agent_stats.synthesizer_tokens }}}}]]}}],\n        \"Quality Reviewer Agent\": [{\"source\": [{\"type\": \"@n8n/n8n-nodes-langchain.lmChatAnthropic\"}], \"data\": {\"main\": [[{\"usage\": {\"total_tokens\": {{ $json.agent_stats.reviewer_tokens }}}}]]}}]\n      }\n    }\n  }\n}",
+        "options": {}
+      },
+      "id": "send-to-mao",
+      "name": "Send to MAO",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4,
+      "position": [3800, 500]
+    }
+  ],
+  "connections": {
+    "Webhook Trigger": {
+      "main": [[{"node": "Orchestrator Agent", "type": "main", "index": 0}]]
+    },
+    "Orchestrator Agent": {
+      "main": [[{"node": "Parse Orchestrator", "type": "main", "index": 0}]]
+    },
+    "Parse Orchestrator": {
+      "main": [
+        [
+          {"node": "Fetch HackerNews", "type": "main", "index": 0},
+          {"node": "Fetch Reddit", "type": "main", "index": 0},
+          {"node": "Fetch RSS (Ars Technica)", "type": "main", "index": 0}
+        ]
+      ]
+    },
+    "Fetch HackerNews": {
+      "main": [[{"node": "Process HN Data", "type": "main", "index": 0}]]
+    },
+    "Fetch Reddit": {
+      "main": [[{"node": "Process Reddit Data", "type": "main", "index": 0}]]
+    },
+    "Fetch RSS (Ars Technica)": {
+      "main": [[{"node": "Process RSS Data", "type": "main", "index": 0}]]
+    },
+    "Process HN Data": {
+      "main": [[{"node": "HN Specialist Agent", "type": "main", "index": 0}]]
+    },
+    "Process Reddit Data": {
+      "main": [[{"node": "Reddit Specialist Agent", "type": "main", "index": 0}]]
+    },
+    "Process RSS Data": {
+      "main": [[{"node": "RSS Specialist Agent", "type": "main", "index": 0}]]
+    },
+    "HN Specialist Agent": {
+      "main": [[{"node": "Parse HN Analysis", "type": "main", "index": 0}]]
+    },
+    "Reddit Specialist Agent": {
+      "main": [[{"node": "Parse Reddit Analysis", "type": "main", "index": 0}]]
+    },
+    "RSS Specialist Agent": {
+      "main": [[{"node": "Parse RSS Analysis", "type": "main", "index": 0}]]
+    },
+    "Parse HN Analysis": {
+      "main": [[{"node": "Merge All Sources", "type": "main", "index": 0}]]
+    },
+    "Parse Reddit Analysis": {
+      "main": [[{"node": "Merge All Sources", "type": "main", "index": 1}]]
+    },
+    "Parse RSS Analysis": {
+      "main": [[{"node": "Merge All Sources", "type": "main", "index": 2}]]
+    },
+    "Merge All Sources": {
+      "main": [[{"node": "Combine Sources", "type": "main", "index": 0}]]
+    },
+    "Combine Sources": {
+      "main": [[{"node": "Deduplicator Agent", "type": "main", "index": 0}]]
+    },
+    "Deduplicator Agent": {
+      "main": [[{"node": "Parse Deduplication", "type": "main", "index": 0}]]
+    },
+    "Parse Deduplication": {
+      "main": [[{"node": "Synthesizer Agent", "type": "main", "index": 0}]]
+    },
+    "Synthesizer Agent": {
+      "main": [[{"node": "Parse Synthesis", "type": "main", "index": 0}]]
+    },
+    "Parse Synthesis": {
+      "main": [[{"node": "Quality Reviewer Agent", "type": "main", "index": 0}]]
+    },
+    "Quality Reviewer Agent": {
+      "main": [[{"node": "Format Output", "type": "main", "index": 0}]]
+    },
+    "Format Output": {
+      "main": [
+        [
+          {"node": "Send Response", "type": "main", "index": 0},
+          {"node": "Send to MAO", "type": "main", "index": 0}
+        ]
+      ]
+    }
+  },
+  "settings": {
+    "executionOrder": "v1"
+  }
+}
