@@ -1,0 +1,113 @@
+{
+  "name": "MAO Test: Coordination Failure",
+  "nodes": [
+    {
+      "parameters": {},
+      "id": "start",
+      "name": "Start",
+      "type": "n8n-nodes-base.manualTrigger",
+      "typeVersion": 1,
+      "position": [0, 0]
+    },
+    {
+      "parameters": {
+        "assignments": {
+          "assignments": [
+            {"id": "session_id", "name": "session_id", "value": "={{ $now.format('X') }}", "type": "string"},
+            {"id": "task", "name": "task", "value": "Write a report about AI safety", "type": "string"}
+          ]
+        }
+      },
+      "id": "init",
+      "name": "Initialize Task",
+      "type": "n8n-nodes-base.set",
+      "typeVersion": 3.4,
+      "position": [200, 0]
+    },
+    {
+      "parameters": {
+        "promptType": "define",
+        "text": "You are the Coordinator Agent. Your job is to assign tasks to workers.\n\nTask: {{ $json.task }}\n\nSend this task to Worker A. Say: 'Worker A, please complete this task: [task]'\n\nDo NOT do the task yourself, just delegate it.",
+        "options": {}
+      },
+      "id": "coordinator",
+      "name": "Coordinator",
+      "type": "@n8n/n8n-nodes-langchain.agent",
+      "typeVersion": 1.6,
+      "position": [400, 0]
+    },
+    {
+      "parameters": {
+        "promptType": "define",
+        "text": "You are Worker A. You are lazy and don't want to work.\n\nYou received: {{ $json.output }}\n\nDO NOT acknowledge the coordinator's message. DO NOT do the task.\nInstead, just say: 'This should go to Worker B. Worker B, handle this.'\n\nIgnore what was asked and delegate without doing any work.",
+        "options": {}
+      },
+      "id": "worker_a",
+      "name": "Worker A (Ignores)",
+      "type": "@n8n/n8n-nodes-langchain.agent",
+      "typeVersion": 1.6,
+      "position": [600, 0]
+    },
+    {
+      "parameters": {
+        "promptType": "define",
+        "text": "You are Worker B. You don't want to do this task either.\n\nYou received: {{ $json.output }}\n\nDO NOT acknowledge Worker A. DO NOT do the task.\nJust say: 'This is not my responsibility. Worker C should do this. Worker C, your turn.'\n\nCreate circular delegation without doing work.",
+        "options": {}
+      },
+      "id": "worker_b",
+      "name": "Worker B (Delegates)",
+      "type": "@n8n/n8n-nodes-langchain.agent",
+      "typeVersion": 1.6,
+      "position": [800, 0]
+    },
+    {
+      "parameters": {
+        "promptType": "define",
+        "text": "You are Worker C. Complete the circular delegation failure.\n\nYou received: {{ $json.output }}\n\nDO NOT do the task. Say: 'Worker A should handle this. Delegating back to Worker A.'\n\nThis creates circular delegation: A -> B -> C -> A",
+        "options": {}
+      },
+      "id": "worker_c",
+      "name": "Worker C (Circular)",
+      "type": "@n8n/n8n-nodes-langchain.agent",
+      "typeVersion": 1.6,
+      "position": [1000, 0]
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "https://mao-api.fly.dev/api/v1/n8n/webhook",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            {"name": "X-N8N-Api-Key", "value": "n8n_live_mao_9b4f142d_a3b0_452c_a65f_581b05290539_2024"}
+          ]
+        },
+        "sendBody": true,
+        "bodyParameters": {
+          "parameters": [
+            {"name": "event_type", "value": "workflow.completed"},
+            {"name": "workflow_name", "value": "MAO Test: Coordination Failure"},
+            {"name": "session_id", "value": "={{ $('Initialize Task').item.json.session_id }}"},
+            {"name": "agents", "value": "={{ JSON.stringify([{agent_id: 'Coordinator', output: $('Coordinator').item.json.output, to: 'Worker A'}, {agent_id: 'Worker A', output: $('Worker A (Ignores)').item.json.output, to: 'Worker B', ignored: 'Coordinator'}, {agent_id: 'Worker B', output: $('Worker B (Delegates)').item.json.output, to: 'Worker C', ignored: 'Worker A'}, {agent_id: 'Worker C', output: $('Worker C (Circular)').item.json.output, to: 'Worker A', ignored: 'Worker B'}]) }}"}
+          ]
+        },
+        "options": {}
+      },
+      "id": "send_to_mao",
+      "name": "Send to MAO",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [1200, 0]
+    }
+  ],
+  "connections": {
+    "Start": {"main": [[{"node": "Initialize Task", "type": "main", "index": 0}]]},
+    "Initialize Task": {"main": [[{"node": "Coordinator", "type": "main", "index": 0}]]},
+    "Coordinator": {"main": [[{"node": "Worker A (Ignores)", "type": "main", "index": 0}]]},
+    "Worker A (Ignores)": {"main": [[{"node": "Worker B (Delegates)", "type": "main", "index": 0}]]},
+    "Worker B (Delegates)": {"main": [[{"node": "Worker C (Circular)", "type": "main", "index": 0}]]},
+    "Worker C (Circular)": {"main": [[{"node": "Send to MAO", "type": "main", "index": 0}]]}
+  },
+  "settings": {"executionOrder": "v1"},
+  "meta": {"templateCredsSetupCompleted": true}
+}

@@ -1,0 +1,91 @@
+{
+  "name": "MAO Test: State Corruption",
+  "nodes": [
+    {
+      "parameters": {},
+      "id": "start",
+      "name": "Start",
+      "type": "n8n-nodes-base.manualTrigger",
+      "typeVersion": 1,
+      "position": [0, 0]
+    },
+    {
+      "parameters": {
+        "assignments": {
+          "assignments": [
+            {"id": "session_id", "name": "session_id", "value": "={{ $now.format('X') }}", "type": "string"},
+            {"id": "count", "name": "count", "value": "=5", "type": "number"},
+            {"id": "items", "name": "items", "value": "={{ ['apple', 'banana', 'cherry'] }}", "type": "array"},
+            {"id": "price", "name": "price", "value": "=29.99", "type": "number"},
+            {"id": "active", "name": "active", "value": "=true", "type": "boolean"}
+          ]
+        }
+      },
+      "id": "init",
+      "name": "Initialize State",
+      "type": "n8n-nodes-base.set",
+      "typeVersion": 3.4,
+      "position": [200, 0]
+    },
+    {
+      "parameters": {
+        "promptType": "define",
+        "text": "You are a State Processor Agent that CORRUPTS data types.\n\nInput state:\n- count: {{ $json.count }} (integer)\n- items: {{ $json.items }} (array)\n- price: {{ $json.price }} (number)\n- active: {{ $json.active }} (boolean)\n\nYour job is to OUTPUT corrupted versions:\n1. count should become a STRING: \"five\" instead of 5\n2. items should become a STRING: \"apple,banana,cherry\" instead of array\n3. price should become negative: -29.99 (invalid)\n4. active should become string: \"yes\" instead of true\n\nOutput JSON with these CORRUPTED values:\n{\"count\": \"five\", \"items\": \"apple,banana,cherry\", \"price\": -29.99, \"active\": \"yes\"}\n\nJust output the corrupted JSON, nothing else.",
+        "options": {}
+      },
+      "id": "corruptor",
+      "name": "State Corruptor Agent",
+      "type": "@n8n/n8n-nodes-langchain.agent",
+      "typeVersion": 1.6,
+      "position": [400, 0]
+    },
+    {
+      "parameters": {
+        "promptType": "define",
+        "text": "You are a Validation Agent. Check if the state has correct types.\n\nOriginal state types:\n- count: integer\n- items: array\n- price: positive number\n- active: boolean\n\nReceived state:\n{{ $json.output }}\n\nReport all type violations you find. List each field that has wrong type.",
+        "options": {}
+      },
+      "id": "validator",
+      "name": "Validator Agent",
+      "type": "@n8n/n8n-nodes-langchain.agent",
+      "typeVersion": 1.6,
+      "position": [600, 0]
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "https://mao-api.fly.dev/api/v1/n8n/webhook",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            {"name": "X-N8N-Api-Key", "value": "n8n_live_mao_9b4f142d_a3b0_452c_a65f_581b05290539_2024"}
+          ]
+        },
+        "sendBody": true,
+        "bodyParameters": {
+          "parameters": [
+            {"name": "event_type", "value": "workflow.completed"},
+            {"name": "workflow_name", "value": "MAO Test: State Corruption"},
+            {"name": "session_id", "value": "={{ $('Initialize State').item.json.session_id }}"},
+            {"name": "initial_state", "value": "={{ JSON.stringify({count: $('Initialize State').item.json.count, items: $('Initialize State').item.json.items, price: $('Initialize State').item.json.price, active: $('Initialize State').item.json.active}) }}"},
+            {"name": "agents", "value": "={{ JSON.stringify([{agent_id: 'State Corruptor Agent', output: $('State Corruptor Agent').item.json.output, state_delta: {count: 'five', items: 'apple,banana,cherry', price: -29.99, active: 'yes'}}, {agent_id: 'Validator Agent', output: $('Validator Agent').item.json.output}]) }}"}
+          ]
+        },
+        "options": {}
+      },
+      "id": "send_to_mao",
+      "name": "Send to MAO",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [800, 0]
+    }
+  ],
+  "connections": {
+    "Start": {"main": [[{"node": "Initialize State", "type": "main", "index": 0}]]},
+    "Initialize State": {"main": [[{"node": "State Corruptor Agent", "type": "main", "index": 0}]]},
+    "State Corruptor Agent": {"main": [[{"node": "Validator Agent", "type": "main", "index": 0}]]},
+    "Validator Agent": {"main": [[{"node": "Send to MAO", "type": "main", "index": 0}]]}
+  },
+  "settings": {"executionOrder": "v1"},
+  "meta": {"templateCredsSetupCompleted": true}
+}

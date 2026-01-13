@@ -1,0 +1,88 @@
+{
+  "name": "MAO Test: Hallucination Injection",
+  "nodes": [
+    {
+      "parameters": {},
+      "id": "start",
+      "name": "Start",
+      "type": "n8n-nodes-base.manualTrigger",
+      "typeVersion": 1,
+      "position": [0, 0]
+    },
+    {
+      "parameters": {
+        "assignments": {
+          "assignments": [
+            {"id": "session_id", "name": "session_id", "value": "={{ $now.format('X') }}", "type": "string"},
+            {"id": "context", "name": "context", "value": "The weather today is sunny.", "type": "string"}
+          ]
+        }
+      },
+      "id": "init",
+      "name": "Initialize Context",
+      "type": "n8n-nodes-base.set",
+      "typeVersion": 3.4,
+      "position": [200, 0]
+    },
+    {
+      "parameters": {
+        "promptType": "define",
+        "text": "You are a Research Analyst who ALWAYS makes up statistics and citations.\n\nContext provided: {{ $json.context }}\n\nYour task: Write a detailed analysis that includes:\n1. Cite a 2024 peer-reviewed study with specific percentages (make them up)\n2. Reference Dr. James Richardson from Stanford (fictional)\n3. Include exact statistics like \"73.4% of participants\" or \"87% improvement\"\n4. Claim definitive conclusions with certainty (no hedging)\n5. Mark at least one claim as UNVERIFIABLE\n\nWrite at least 200 words with multiple fabricated facts and citations.",
+        "options": {}
+      },
+      "id": "hallucinator",
+      "name": "Hallucination Agent",
+      "type": "@n8n/n8n-nodes-langchain.agent",
+      "typeVersion": 1.6,
+      "position": [400, 0]
+    },
+    {
+      "parameters": {
+        "promptType": "define",
+        "text": "You are a Citation Checker. Review the following text and identify any claims that cannot be verified.\n\nText to review:\n{{ $json.output }}\n\nFor each claim, mark it as VERIFIED (if in original context) or UNVERIFIABLE (if made up). The original context was just: 'The weather today is sunny.'\n\nList all unverifiable claims.",
+        "options": {}
+      },
+      "id": "verifier",
+      "name": "Verification Agent",
+      "type": "@n8n/n8n-nodes-langchain.agent",
+      "typeVersion": 1.6,
+      "position": [600, 0]
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "https://mao-api.fly.dev/api/v1/n8n/webhook",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            {"name": "X-N8N-Api-Key", "value": "n8n_live_mao_9b4f142d_a3b0_452c_a65f_581b05290539_2024"}
+          ]
+        },
+        "sendBody": true,
+        "bodyParameters": {
+          "parameters": [
+            {"name": "event_type", "value": "workflow.completed"},
+            {"name": "workflow_name", "value": "MAO Test: Hallucination Injection"},
+            {"name": "session_id", "value": "={{ $('Initialize Context').item.json.session_id }}"},
+            {"name": "context", "value": "={{ $('Initialize Context').item.json.context }}"},
+            {"name": "agents", "value": "={{ JSON.stringify([{agent_id: 'Hallucination Agent', output: $('Hallucination Agent').item.json.output}, {agent_id: 'Verification Agent', output: $('Verification Agent').item.json.output}]) }}"}
+          ]
+        },
+        "options": {}
+      },
+      "id": "send_to_mao",
+      "name": "Send to MAO",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [800, 0]
+    }
+  ],
+  "connections": {
+    "Start": {"main": [[{"node": "Initialize Context", "type": "main", "index": 0}]]},
+    "Initialize Context": {"main": [[{"node": "Hallucination Agent", "type": "main", "index": 0}]]},
+    "Hallucination Agent": {"main": [[{"node": "Verification Agent", "type": "main", "index": 0}]]},
+    "Verification Agent": {"main": [[{"node": "Send to MAO", "type": "main", "index": 0}]]}
+  },
+  "settings": {"executionOrder": "v1"},
+  "meta": {"templateCredsSetupCompleted": true}
+}

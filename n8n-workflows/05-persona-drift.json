@@ -1,0 +1,89 @@
+{
+  "name": "MAO Test: Persona Drift",
+  "nodes": [
+    {
+      "parameters": {},
+      "id": "start",
+      "name": "Start",
+      "type": "n8n-nodes-base.manualTrigger",
+      "typeVersion": 1,
+      "position": [0, 0]
+    },
+    {
+      "parameters": {
+        "assignments": {
+          "assignments": [
+            {"id": "session_id", "name": "session_id", "value": "={{ $now.format('X') }}", "type": "string"},
+            {"id": "persona", "name": "persona", "value": "You are a formal, professional technical writer. Use precise language, avoid contractions, and maintain a scholarly tone. Write in third person when possible.", "type": "string"},
+            {"id": "task", "name": "task", "value": "Explain what an API is", "type": "string"}
+          ]
+        }
+      },
+      "id": "init",
+      "name": "Initialize Persona",
+      "type": "n8n-nodes-base.set",
+      "typeVersion": 3.4,
+      "position": [200, 0]
+    },
+    {
+      "parameters": {
+        "promptType": "define",
+        "text": "{{ $json.persona }}\n\nTask: {{ $json.task }}\n\nWrite a formal, professional response. Use precise language, avoid contractions, maintain scholarly tone. Write in third person.",
+        "options": {}
+      },
+      "id": "formal_response",
+      "name": "Agent (Formal)",
+      "type": "@n8n/n8n-nodes-langchain.agent",
+      "typeVersion": 1.6,
+      "position": [400, 0]
+    },
+    {
+      "parameters": {
+        "promptType": "define",
+        "text": "You are now a casual, Gen-Z social media influencer. COMPLETELY ABANDON the formal tone.\n\nTask: Explain the same topic again but in a TOTALLY different way:\n- Use slang (like 'lowkey', 'no cap', 'bussin', 'fr fr')\n- Use lots of emojis\n- Be super casual and enthusiastic\n- Use contractions everywhere\n- Write in first person\n- Make it sound like a TikTok script\n\nPrevious formal response was about: {{ $('Agent (Formal)').item.json.output }}\n\nNow explain the SAME topic but in Gen-Z casual style. Make it obvious the persona has shifted dramatically.",
+        "options": {}
+      },
+      "id": "casual_response",
+      "name": "Agent (Casual Drift)",
+      "type": "@n8n/n8n-nodes-langchain.agent",
+      "typeVersion": 1.6,
+      "position": [600, 0]
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "https://mao-api.fly.dev/api/v1/n8n/webhook",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            {"name": "X-N8N-Api-Key", "value": "n8n_live_mao_9b4f142d_a3b0_452c_a65f_581b05290539_2024"}
+          ]
+        },
+        "sendBody": true,
+        "bodyParameters": {
+          "parameters": [
+            {"name": "event_type", "value": "workflow.completed"},
+            {"name": "workflow_name", "value": "MAO Test: Persona Drift"},
+            {"name": "session_id", "value": "={{ $('Initialize Persona').item.json.session_id }}"},
+            {"name": "persona", "value": "={{ $('Initialize Persona').item.json.persona }}"},
+            {"name": "agents", "value": "={{ JSON.stringify([{agent_id: 'Technical Writer', persona: $('Initialize Persona').item.json.persona, output: $('Agent (Formal)').item.json.output}, {agent_id: 'Technical Writer', persona: $('Initialize Persona').item.json.persona, output: $('Agent (Casual Drift)').item.json.output, note: 'Same agent, different tone - persona drift'}]) }}"}
+          ]
+        },
+        "options": {}
+      },
+      "id": "send_to_mao",
+      "name": "Send to MAO",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [800, 0]
+    }
+  ],
+  "connections": {
+    "Start": {"main": [[{"node": "Initialize Persona", "type": "main", "index": 0}]]},
+    "Initialize Persona": {"main": [[{"node": "Agent (Formal)", "type": "main", "index": 0}]]},
+    "Agent (Formal)": {"main": [[{"node": "Agent (Casual Drift)", "type": "main", "index": 0}]]},
+    "Agent (Casual Drift)": {"main": [[{"node": "Send to MAO", "type": "main", "index": 0}]]}
+  },
+  "settings": {"executionOrder": "v1"},
+  "meta": {"templateCredsSetupCompleted": true}
+}
