@@ -20,10 +20,14 @@ Version History:
   - JavaScript deprecated patterns (var, arguments.callee)
   - General deprecated API patterns
   - Improved word count tolerance handling
+- v1.3: FPR reduction:
+  - Semantic coverage using embeddings (reduces keyword false positives)
+  - Reformulation detection (task restatement vs violation)
+  - Stricter thresholds (coverage 0.80→0.65, ambiguity 3→4)
 """
 
 # Detector version for tracking
-DETECTOR_VERSION = "1.2"
+DETECTOR_VERSION = "1.3"
 DETECTOR_NAME = "SpecificationMismatchDetector"
 
 import logging
@@ -140,21 +144,33 @@ class SpecificationMismatchDetector:
     # v1.1: Tolerance for approximate numeric constraints (percentage)
     NUMERIC_TOLERANCE = 0.10  # 10% tolerance
 
+    # v1.3: Reformulation indicators - task restatement, not violation
+    REFORMULATION_INDICATORS = [
+        r"(?:task|goal|objective|mission):\s*",
+        r"(?:working on|implementing|building|creating|developing)\s+",
+        r"(?:as requested|as specified|as mentioned|as described|per request)",
+        r"(?:proceeding with|starting|beginning|initiating)\s+",
+        r"(?:the following|this involves|this includes|this requires)",
+        r"(?:i will|i'll|let me|going to)\s+(?:implement|create|build|develop)",
+        r"(?:here's|here is)\s+(?:the|my|a)\s+(?:plan|approach|solution)",
+    ]
+
     # Phase 1: Framework-specific thresholds to reduce false positives
+    # v1.3: Lowered coverage thresholds (stricter about flagging)
     FRAMEWORK_THRESHOLDS = {
-        "ChatDev": {"spec_coverage": 0.75, "ambiguity_threshold": 4},
-        "MetaGPT": {"spec_coverage": 0.80, "ambiguity_threshold": 3},
-        "AG2": {"spec_coverage": 0.85, "ambiguity_threshold": 3},
-        "Magentic": {"spec_coverage": 0.80, "ambiguity_threshold": 3},
-        "AutoGen": {"spec_coverage": 0.85, "ambiguity_threshold": 3},
-        "LangGraph": {"spec_coverage": 0.80, "ambiguity_threshold": 3},
-        "default": {"spec_coverage": 0.80, "ambiguity_threshold": 3},
+        "ChatDev": {"spec_coverage": 0.60, "ambiguity_threshold": 5},
+        "MetaGPT": {"spec_coverage": 0.65, "ambiguity_threshold": 4},
+        "AG2": {"spec_coverage": 0.70, "ambiguity_threshold": 4},
+        "Magentic": {"spec_coverage": 0.65, "ambiguity_threshold": 4},
+        "AutoGen": {"spec_coverage": 0.70, "ambiguity_threshold": 4},
+        "LangGraph": {"spec_coverage": 0.65, "ambiguity_threshold": 4},
+        "default": {"spec_coverage": 0.65, "ambiguity_threshold": 4},
     }
 
     def __init__(
         self,
-        coverage_threshold: float = 0.80,  # Phase 1: Increased from 0.7 to 0.8
-        ambiguity_threshold: int = 3,
+        coverage_threshold: float = 0.65,  # v1.3: Lowered from 0.80 (stricter)
+        ambiguity_threshold: int = 4,  # v1.3: Raised from 3
         framework: Optional[str] = None,
     ):
         self.framework = framework
@@ -219,6 +235,64 @@ class SpecificationMismatchDetector:
             constraints.extend(matches)
         
         return [c.strip() for c in constraints if len(c.strip()) > 3]
+
+    def _is_task_reformulation(self, text: str) -> bool:
+        """
+        v1.3: Detect if text is reformulating/restating the task rather than violating it.
+
+        This reduces false positives from agents that restate the task before working on it.
+        """
+        text_lower = text.lower()
+        for pattern in self.REFORMULATION_INDICATORS:
+            if re.search(pattern, text_lower, re.IGNORECASE):
+                return True
+        return False
+
+    def _semantic_coverage(
+        self,
+        requirements: list[str],
+        spec_text: str,
+        threshold: float = 0.75,
+    ) -> tuple[float, list[str]]:
+        """
+        v1.3: Compute semantic coverage using embeddings.
+
+        This improves on keyword matching by detecting semantic equivalence,
+        e.g., "implement login" matches "build authentication system".
+
+        Falls back to keyword matching if embeddings unavailable.
+        """
+        if not requirements:
+            return 1.0, []
+
+        try:
+            from app.core.embeddings import get_embedder
+
+            embedder = get_embedder()
+            if not embedder:
+                return self._compute_coverage(requirements, spec_text)
+
+            # Embed the specification text as passage
+            spec_embedding = embedder.encode(spec_text[:8000], is_query=False)
+
+            covered = 0
+            missing = []
+
+            for req in requirements:
+                # Embed requirement as query
+                req_embedding = embedder.encode(req, is_query=True)
+                similarity = embedder.similarity(req_embedding, spec_embedding)
+
+                if similarity >= threshold:
+                    covered += 1
+                else:
+                    missing.append(req)
+
+            return covered / len(requirements), missing
+
+        except Exception as e:
+            logger.debug(f"Semantic coverage fallback to keywords: {e}")
+            return self._compute_coverage(requirements, spec_text)
 
     def _detect_requested_language(self, intent: str) -> Optional[str]:
         """v1.1: Detect which programming language was requested."""
@@ -356,9 +430,13 @@ class SpecificationMismatchDetector:
         intent_constraints = self._extract_constraints(user_intent)
         all_requirements = intent_requirements + intent_constraints
 
-        coverage, missing = self._compute_coverage(all_requirements, task_specification)
+        # v1.3: Use semantic coverage (with fallback to keyword matching)
+        coverage, missing = self._semantic_coverage(all_requirements, task_specification)
 
         ambiguities = self._detect_ambiguities(task_specification)
+
+        # v1.3: Check if task_specification is a reformulation (not a violation)
+        is_reformulation = self._is_task_reformulation(task_specification)
 
         mismatch_type = None
         detected = False
@@ -410,7 +488,8 @@ class SpecificationMismatchDetector:
 
         # v1.1: If numeric constraint is met, don't flag based on coverage/ambiguity
         # (the primary requirement was satisfied)
-        if not numeric_constraint_met:
+        # v1.3: Also skip if this is a reformulation of the task (not a violation)
+        if not numeric_constraint_met and not is_reformulation:
             if coverage < self.coverage_threshold and not detected:
                 detected = True
                 mismatch_type = MismatchType.MISSING_REQUIREMENT

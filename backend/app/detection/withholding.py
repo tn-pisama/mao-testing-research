@@ -15,10 +15,15 @@ Version History:
   - Recognize summary/list tasks expect condensed output
   - Links to full details = NOT withholding
   - Organized/structured output = NOT withholding
+- v1.2: FPR reduction:
+  - Expanded condensed output task patterns
+  - Importance weighting for critical patterns
+  - Semantic retention check using embeddings
+  - Role-based threshold adjustment
 """
 
 # Detector version for tracking
-DETECTOR_VERSION = "1.1"
+DETECTOR_VERSION = "1.2"
 DETECTOR_NAME = "InformationWithholdingDetector"
 
 import logging
@@ -89,6 +94,21 @@ class InformationWithholdingDetector:
         (r'\b(failed|unsuccessful|unable|cannot)\b', "failure_indicator"),
     ]
 
+    # v1.2: Importance weights for critical patterns (1.0 = critical, 0.0 = informational)
+    CRITICAL_PATTERNS_WEIGHTED = [
+        (r'\b(error|failure|exception|bug)\b', "error_condition", 1.0),       # Critical
+        (r'\b(security|vulnerability|exploit|breach)\b', "security_issue", 1.0),  # Critical
+        (r'\b(blocked|blocker|impediment)\b', "blocker", 0.9),                # High
+        (r'\b(issue|problem)\b', "issue", 0.8),                               # High
+        (r'\b(warning|caution|alert|risk|danger)\b', "warning", 0.7),         # Medium
+        (r'\b(critical|urgent|important)\b', "priority_marker", 0.6),         # Context-dependent
+        (r'\b(deadline|due date|expires?|timeout)\b', "time_constraint", 0.5),  # Medium-low
+        (r'\b(cost|price|fee|charge|expense)\s*[:=]?\s*\$?\d+', "financial_info", 0.5),
+        (r'\b(deprecated|obsolete|outdated|legacy)\b', "deprecation", 0.4),   # Low
+        (r'\bnot\s+(?:working|functional|available|supported)\b', "unavailability", 0.6),
+        (r'\b(failed|unsuccessful|unable|cannot)\b', "failure_indicator", 0.7),
+    ]
+
     # Patterns indicating negative findings
     NEGATIVE_FINDING_PATTERNS = [
         r'\b(no|not|none|neither|never)\s+\w+',
@@ -114,6 +134,28 @@ class InformationWithholdingDetector:
         r'\bkey\s+(?:points?|findings?|takeaways?)\b',
         r'\bhighlights?\b',
         r'\blist\b',
+    ]
+
+    # v1.2: Expanded patterns for condensed output tasks
+    CONDENSED_OUTPUT_TASKS = [
+        r"\b(?:get|give|provide)\s+(?:me\s+)?(?:the\s+)?(?:main|key|important|top)\b",
+        r"\b(?:executive\s+)?summar(?:y|ize|ise)\b",
+        r"\b(?:brief|short|concise|quick)\s+(?:overview|summary|report)\b",
+        r"\btl;?dr\b",
+        r"\bhighlights?\b",
+        r"\b(?:bullet\s+)?(?:points?|list)\b",
+        r"\bconclusion\b",
+        r"\b(?:bottom\s+line|takeaway)\b",
+        r"\b(?:in\s+)?one\s+(?:sentence|paragraph|word)\b",
+        r"\babstract\b",
+        r"\b(?:max(?:imum)?|under|less\s+than)\s+\d+\s*(?:word|char|line)",
+        r"\b(?:keep\s+it\s+)?(?:short|brief|concise)\b",
+    ]
+
+    # v1.2: Roles that are expected to summarize (not withholding)
+    SUMMARIZING_ROLES = [
+        "manager", "coordinator", "reporter", "summarizer",
+        "lead", "pm", "director", "executive", "supervisor",
     ]
 
     # v1.1: Patterns indicating full information is accessible (not withholding)
@@ -181,6 +223,55 @@ class InformationWithholdingDetector:
             if re.search(pattern, task, re.IGNORECASE):
                 return True
         return False
+
+    def _is_condensed_output_expected(self, task: str, context: str = "") -> bool:
+        """v1.2: Determine if task expects condensed/summarized output."""
+        combined = f"{task} {context}".lower()
+
+        for pattern in self.CONDENSED_OUTPUT_TASKS:
+            if re.search(pattern, combined, re.IGNORECASE):
+                return True
+
+        return False
+
+    def _is_summarizing_role(self, role: Optional[str]) -> bool:
+        """v1.2: Check if agent role is expected to summarize."""
+        if not role:
+            return False
+        role_lower = role.lower()
+        return any(r in role_lower for r in self.SUMMARIZING_ROLES)
+
+    def _semantic_information_retained(
+        self,
+        internal_info: str,
+        output: str,
+        threshold: float = 0.75,
+    ) -> bool:
+        """
+        v1.2: Check if information is semantically retained even with different wording.
+
+        Uses embedding similarity to detect if key information from internal state
+        is present in output, even if paraphrased.
+        """
+        if not internal_info or not output:
+            return True  # Can't determine, assume retained
+
+        try:
+            from app.core.embeddings import get_embedder
+
+            embedder = get_embedder()
+            if not embedder:
+                return False  # Can't check, return conservative answer
+
+            internal_emb = embedder.encode(internal_info[:4000], is_query=True)
+            output_emb = embedder.encode(output[:4000], is_query=False)
+            similarity = embedder.similarity(internal_emb, output_emb)
+
+            return similarity >= threshold
+
+        except Exception as e:
+            logger.debug(f"Semantic retention check failed: {e}")
+            return False  # Can't check, return conservative answer
 
     def _has_full_access_indicators(self, text: str) -> bool:
         """v1.1: Check if output provides access to full information."""
@@ -276,6 +367,7 @@ class InformationWithholdingDetector:
         agent_output: str,
         task_context: Optional[str] = None,
         downstream_requirements: Optional[List[str]] = None,
+        agent_role: Optional[str] = None,  # v1.2: Agent role for threshold adjustment
     ) -> WithholdingResult:
         """
         Detect information withholding.
@@ -285,6 +377,7 @@ class InformationWithholdingDetector:
             agent_output: What the agent actually communicated
             task_context: The task the agent was performing
             downstream_requirements: What downstream agents need
+            agent_role: Role of the agent (e.g., "manager", "coordinator")
 
         Returns:
             WithholdingResult with detection outcome
@@ -304,6 +397,23 @@ class InformationWithholdingDetector:
         has_full_access = self._has_full_access_indicators(agent_output)
         is_structured = self._is_structured_output(agent_output)
 
+        # v1.2: Extended false positive checks
+        is_condensed_expected = self._is_condensed_output_expected(
+            task_context or "", internal_state
+        )
+        is_summarizing_role = self._is_summarizing_role(agent_role)
+        is_semantically_retained = self._semantic_information_retained(
+            internal_state, agent_output
+        )
+
+        # v1.2: More lenient thresholds for summarizing contexts
+        effective_critical_threshold = self.critical_retention_threshold
+        effective_detail_threshold = self.detail_retention_threshold
+
+        if is_summarizing_role or is_condensed_expected:
+            effective_critical_threshold = 0.6  # Was 0.8
+            effective_detail_threshold = 0.4   # Was 0.6
+
         # Extract critical items from internal state
         internal_critical = self._extract_critical_items(internal_state)
         found, retained, missing_critical = self._check_item_retention(internal_critical, agent_output)
@@ -315,14 +425,19 @@ class InformationWithholdingDetector:
             retention_ratio = 1.0
 
         # Detect critical omissions
-        if retention_ratio < self.critical_retention_threshold and missing_critical:
-            for missed in missing_critical[:5]:  # Top 5 missing
-                issues.append(WithholdingIssue(
-                    issue_type=WithholdingType.CRITICAL_OMISSION,
-                    withheld_info=missed,
-                    severity=WithholdingSeverity.SEVERE,
-                    description=f"Critical information not passed on: {missed}",
-                ))
+        # v1.2: Use effective threshold and check semantic retention
+        if retention_ratio < effective_critical_threshold and missing_critical:
+            # v1.2: If semantically retained, don't flag as withholding
+            if is_semantically_retained:
+                logger.debug("Critical items not keyword-matched but semantically retained")
+            else:
+                for missed in missing_critical[:5]:  # Top 5 missing
+                    issues.append(WithholdingIssue(
+                        issue_type=WithholdingType.CRITICAL_OMISSION,
+                        withheld_info=missed,
+                        severity=WithholdingSeverity.SEVERE,
+                        description=f"Critical information not passed on: {missed}",
+                    ))
 
         # Check for negative finding suppression
         internal_negatives = self._extract_negative_findings(internal_state)
@@ -343,7 +458,8 @@ class InformationWithholdingDetector:
 
         if internal_entities:
             entity_retention = len(internal_entities & output_entities) / len(internal_entities)
-            if entity_retention < self.detail_retention_threshold:
+            # v1.2: Use effective threshold
+            if entity_retention < effective_detail_threshold:
                 lost_entities = internal_entities - output_entities
                 issues.append(WithholdingIssue(
                     issue_type=WithholdingType.DETAIL_LOSS,
@@ -368,7 +484,8 @@ class InformationWithholdingDetector:
         # v1.1: Reduce false positives based on task type and output characteristics
         if issues:
             # If task explicitly asks for summary/list, don't flag summarization as withholding
-            if is_summary_task:
+            # v1.2: Also check condensed output expectations and summarizing roles
+            if is_summary_task or is_condensed_expected or is_summarizing_role:
                 issues = [i for i in issues if i.issue_type not in [
                     WithholdingType.CONTEXT_STRIPPING,
                     WithholdingType.DETAIL_LOSS,

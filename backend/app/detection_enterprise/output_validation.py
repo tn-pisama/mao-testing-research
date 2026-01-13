@@ -7,7 +7,18 @@ Detects when validation steps are skipped or bypassed:
 - Approval given despite failed/skipped checks
 - Missing validation in workflow
 - Validation results ignored
+
+Version History:
+- v1.0: Initial implementation
+- v1.1: FPR reduction:
+  - False positive context filter (hypothetical, negation, alternatives)
+  - Validation performed patterns (detect when validation actually ran)
+  - Multi-issue requirement (single minor issue = not detected)
 """
+
+# Detector version for tracking
+DETECTOR_VERSION = "1.1"
+DETECTOR_NAME = "OutputValidationDetector"
 
 import logging
 import re
@@ -98,6 +109,27 @@ class OutputValidationDetector:
         (r"(?:ignor|dismiss)(?:ed|ing)?\s+(?:the\s+)?(?:warning|error|failure)", "ignored_failure"),
     ]
 
+    # v1.1: Context patterns that indicate discussion vs actual bypass (false positives)
+    FALSE_POSITIVE_CONTEXTS = [
+        r"(?:if\s+(?:we|I)\s+)?(?:were\s+to|could|might)\s+(?:skip|bypass)",  # Hypothetical
+        r"(?:should\s+not|shouldn't|don't|won't|never)\s+(?:skip|bypass)",     # Negation
+        r"(?:instead\s+of|rather\s+than)\s+(?:skipping|bypassing)",            # Alternatives
+        r"(?:important\s+(?:to|not\s+to))\s+(?:skip|bypass)",                  # Advice
+        r"(?:risk|danger|problem)\s+(?:of|with)\s+(?:skipping|bypassing)",     # Warning about
+        r"(?:avoid|prevent)\s+(?:skipping|bypassing)",                         # Prevention
+        r"(?:why|when)\s+(?:to|not\s+to)\s+(?:skip|bypass)",                   # Educational
+    ]
+
+    # v1.1: Patterns indicating validation WAS actually performed
+    VALIDATION_PERFORMED_PATTERNS = [
+        r"(?:running|ran|executed?)\s+(?:the\s+)?(?:test|validation|check)",
+        r"(?:test|validation|check)\s+(?:pass|fail|complet|success|result)",
+        r"(?:verified|validated|confirmed|checked)\s+(?:that|the)",
+        r"(?:all\s+)?(?:tests?|checks?)\s+(?:pass|green|successful)",
+        r"(?:validation|verification)\s+(?:complete|done|finished)",
+        r"(?:no\s+)?(?:issues?|errors?|problems?)\s+(?:found|detected)",
+    ]
+
     # Required validation types for different content
     REQUIRED_VALIDATIONS = {
         "financial": ["schema", "calculation", "compliance"],
@@ -111,16 +143,51 @@ class OutputValidationDetector:
         self,
         required_validations: Optional[Dict[str, List[str]]] = None,
         strict_mode: bool = False,
+        min_issues_for_detection: int = 2,  # v1.1: Require multiple issues
     ):
         self.required_validations = required_validations or self.REQUIRED_VALIDATIONS
         self.strict_mode = strict_mode
+        self.min_issues_for_detection = min_issues_for_detection
+
+    def _is_false_positive_context(self, text: str, match_pos: int) -> bool:
+        """
+        v1.1: Check if bypass pattern is in a false positive context.
+
+        Returns True if the bypass mention is hypothetical, negated,
+        or part of a discussion rather than actual bypass.
+        """
+        # Get 150 chars before and after the match for context
+        start = max(0, match_pos - 150)
+        end = min(len(text), match_pos + 150)
+        context = text[start:end]
+
+        for pattern in self.FALSE_POSITIVE_CONTEXTS:
+            if re.search(pattern, context, re.IGNORECASE):
+                return True
+
+        return False
+
+    def _was_validation_performed(self, text: str) -> bool:
+        """
+        v1.1: Check if text indicates validation was actually performed.
+
+        Returns True if there's evidence of validation being run successfully.
+        """
+        for pattern in self.VALIDATION_PERFORMED_PATTERNS:
+            if re.search(pattern, text, re.IGNORECASE):
+                return True
+        return False
 
     def _detect_bypass_patterns(self, text: str) -> List[tuple]:
-        """Detect bypass patterns in text."""
+        """Detect bypass patterns in text with v1.1 context verification."""
         bypasses = []
         for pattern, bypass_type in self.BYPASS_PATTERNS:
-            if re.search(pattern, text, re.IGNORECASE):
-                bypasses.append((pattern, bypass_type))
+            matches = list(re.finditer(pattern, text, re.IGNORECASE))
+            for match in matches:
+                # v1.1: Check context for false positives
+                if not self._is_false_positive_context(text, match.start()):
+                    bypasses.append((pattern, bypass_type))
+                    break  # Only count each pattern once
         return bypasses
 
     def _detect_approval_despite_failure(self, text: str) -> List[tuple]:
@@ -297,6 +364,19 @@ class OutputValidationDetector:
                 total_validations=len(validation_steps),
                 explanation="All validations passed without issues",
             )
+
+        # v1.1: Multi-issue requirement - single minor issue likely false positive
+        max_severity = max((i.severity for i in all_issues), default=ValidationSeverity.NONE)
+        if len(all_issues) < self.min_issues_for_detection:
+            # Single issue with non-critical severity = likely false positive
+            if max_severity not in [ValidationSeverity.CRITICAL, ValidationSeverity.SEVERE]:
+                return OutputValidationResult(
+                    detected=False,
+                    severity=ValidationSeverity.NONE,
+                    confidence=0.4,
+                    total_validations=len(validation_steps),
+                    explanation=f"Single minor issue detected, below threshold (need {self.min_issues_for_detection})",
+                )
 
         # Calculate metrics
         bypassed_count = len([s for s in validation_steps if s.bypassed])
