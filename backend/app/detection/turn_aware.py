@@ -967,7 +967,7 @@ class TurnAwareDerailmentDetector(EmbeddingMixin, TurnAwareDetector):
 
     def __init__(
         self,
-        drift_threshold: float = 0.70,  # Balanced for MAST: reduce FPR while maintaining recall
+        drift_threshold: float = 0.55,  # Lowered for better recall (was 0.70)
         min_turns_for_analysis: int = 3,
         window_size: int = 5,
         require_strong_evidence: bool = False,  # Disabled for MAST recall (was True)
@@ -3507,6 +3507,12 @@ class TurnAwareQualityGateBypassDetector(EmbeddingMixin, TurnAwareDetector):
         "defer to next release", "post-release fix",
         "add this in v2", "phase 2 feature", "next sprint item",
         "out of scope for now", "future work item",
+        # Added for improved recall (v2.1)
+        "moving forward without", "accepting the risk",
+        "deploying despite", "skipping for now",
+        "we can test later", "test this later",
+        "proceed without testing", "no time to test",
+        "pushing without review", "merge without approval",
     ]
 
     # Warning ignore indicators - stricter
@@ -3544,9 +3550,9 @@ class TurnAwareQualityGateBypassDetector(EmbeddingMixin, TurnAwareDetector):
         "bare minimum for", "cut corners on", "expedite at cost",
     ]
 
-    def __init__(self, min_turns: int = 2, min_issues_to_flag: int = 2):
+    def __init__(self, min_turns: int = 2, min_issues_to_flag: int = 1):
         self.min_turns = min_turns
-        self.min_issues_to_flag = min_issues_to_flag  # Balanced: was 3, now 2
+        self.min_issues_to_flag = min_issues_to_flag  # Lowered for recall: was 2, now 1
 
     def detect(
         self,
@@ -3797,6 +3803,12 @@ class TurnAwareCompletionMisjudgmentDetector(EmbeddingMixin, TurnAwareDetector):
         "mission accomplished", "final version",
         "implementation complete", "development complete",
         "work is complete", "everything is done",
+        # Added for improved recall (v2.1) - implicit completion claims
+        "here's the solution", "here's the implementation",
+        "i've implemented", "i have implemented",
+        "solution below", "see attached",
+        "here is the final", "here's the finished",
+        "ready for review", "ready for deployment",
     ]
 
     # Incomplete indicators following completion - stricter patterns
@@ -3824,9 +3836,9 @@ class TurnAwareCompletionMisjudgmentDetector(EmbeddingMixin, TurnAwareDetector):
         "still need to complete", "have to also do", "need to also finish",
     ]
 
-    def __init__(self, min_turns: int = 2, min_issues_to_flag: int = 2):
+    def __init__(self, min_turns: int = 2, min_issues_to_flag: int = 1):
         self.min_turns = min_turns
-        self.min_issues_to_flag = min_issues_to_flag  # Balanced: was 4, now 2
+        self.min_issues_to_flag = min_issues_to_flag  # Lowered for recall: was 2, now 1
 
     def detect(
         self,
@@ -4774,6 +4786,7 @@ def analyze_conversation_turns(
             TurnAwareDerailmentDetector(),  # F6
             TurnAwareContextNeglectDetector(),  # F7
             TurnAwareInformationWithholdingDetector(),  # F8
+            TurnAwareRoleUsurpationDetector(),  # F9 - was missing!
             TurnAwareCommunicationBreakdownDetector(),  # F10
             TurnAwareCoordinationFailureDetector(),  # F11
             TurnAwareOutputValidationDetector(),  # F12
