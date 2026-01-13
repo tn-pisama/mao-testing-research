@@ -154,7 +154,7 @@ class InformationWithholdingDetector:
 
     # v1.2: Roles that are expected to summarize (not withholding)
     SUMMARIZING_ROLES = [
-        "manager", "coordinator", "reporter", "summarizer",
+        "manager", "coordinator", "reporter", "summarizer", "summary",
         "lead", "pm", "director", "executive", "supervisor",
     ]
 
