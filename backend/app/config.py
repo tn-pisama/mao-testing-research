@@ -245,6 +245,7 @@ class FeatureFlags(BaseSettings):
     class Config:
         env_prefix = "FEATURE_"
         env_file = ".env"
+        extra = "ignore"  # Ignore non-FEATURE_ prefixed env vars
 
 
 class Settings(BaseSettings):
