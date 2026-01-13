@@ -319,13 +319,38 @@
     },
     {
       "parameters": {
-        "jsCode": "// Placeholder for MAO telemetry - enable when MAO backend is running\n// This node is disabled to avoid errors when no MAO instance is available\nreturn $input.first().json;"
+        "jsCode": "// Prepare MAO Payload for HN Analyzer\nconst formatOutput = $input.first().json;\n\nconst maoPayload = {\n  executionId: $execution.id,\n  workflowId: $workflow.id,\n  workflowName: $workflow.name,\n  mode: 'production',\n  startedAt: new Date().toISOString(),\n  status: 'success',\n  data: {\n    resultData: {\n      runData: {}\n    }\n  }\n};\n\n// HN Analyzer agents\nconst agents = ['Coordinator Agent', 'Comment Analyzer Agent', 'Safety Scanner Agent', 'Summarizer Agent'];\nfor (const name of agents) {\n  try {\n    const nodeData = $(name).first().json;\n    maoPayload.data.resultData.runData[name] = [{\n      source: [{type: '@n8n/n8n-nodes-langchain.agent'}],\n      executionTime: 1000,\n      parameters: { model: 'claude-3-5-haiku-20241022' },\n      data: { main: [[{ json: nodeData }]] }\n    }];\n  } catch (e) {}\n}\n\nreturn { ...formatOutput, maoPayload };"
       },
-      "id": "send-to-mao",
-      "name": "Send to MAO (Disabled)",
+      "id": "prepare-mao-payload",
+      "name": "Prepare MAO Payload",
       "type": "n8n-nodes-base.code",
       "typeVersion": 2,
       "position": [3350, 400]
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "https://mao-api.onrender.com/api/v1/n8n/webhook",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            {"name": "Content-Type", "value": "application/json"},
+            {"name": "X-MAO-Timestamp", "value": "={{ Date.now() }}"}
+          ]
+        },
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={{ JSON.stringify($json.maoPayload) }}",
+        "options": {
+          "timeout": 10000
+        }
+      },
+      "id": "send-to-mao",
+      "name": "Send to MAO",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4,
+      "position": [3550, 400],
+      "continueOnFail": true
     }
   ],
   "connections": {
@@ -585,7 +610,18 @@
             "index": 0
           },
           {
-            "node": "Send to MAO (Disabled)",
+            "node": "Prepare MAO Payload",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Prepare MAO Payload": {
+      "main": [
+        [
+          {
+            "node": "Send to MAO",
             "type": "main",
             "index": 0
           }
