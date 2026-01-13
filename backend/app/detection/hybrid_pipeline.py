@@ -24,8 +24,10 @@ from .mast_llm_judge import (
     JudgmentResult,
     get_cost_tracker,
     get_model_for_failure_mode,
+    LOW_STAKES_MODEL_KEY,
     DEFAULT_MODEL_KEY,
     HIGH_STAKES_MODEL_KEY,
+    LOW_STAKES_FAILURE_MODES,
     HIGH_STAKES_FAILURE_MODES,
 )
 from .task_extractors import (
@@ -101,12 +103,15 @@ class HybridPipelineConfig:
     # Maximum LLM cost per trace (USD)
     max_llm_cost_per_trace: float = 0.10
 
-    # Tiered model selection (based on benchmark results)
-    # Default: sonnet-4 (97.1% accuracy, $0.48/100 judgments)
-    # High-stakes: sonnet-4-thinking (99.0% accuracy, $1.66/100 judgments)
+    # 3-Tier model selection (based on benchmark results claude_comparison_20260111)
+    # Low-stakes: haiku-3.5 ($0.11/100 judgments, 97.1% accuracy)
+    # Default: sonnet-4 ($0.48/100 judgments, 97.1% accuracy)
+    # High-stakes: sonnet-4-thinking ($1.66/100 judgments, 99.0% accuracy)
     use_tiered_models: bool = True
+    low_stakes_model_key: str = LOW_STAKES_MODEL_KEY
     default_model_key: str = DEFAULT_MODEL_KEY
     high_stakes_model_key: str = HIGH_STAKES_MODEL_KEY
+    low_stakes_modes: List[str] = field(default_factory=lambda: list(LOW_STAKES_FAILURE_MODES))
     high_stakes_modes: List[str] = field(default_factory=lambda: list(HIGH_STAKES_FAILURE_MODES))
 
 

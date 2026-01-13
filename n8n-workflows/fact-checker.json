@@ -17,6 +17,33 @@
     },
     {
       "parameters": {
+        "rule": {
+          "interval": [{"field": "hours", "hoursInterval": 1}]
+        }
+      },
+      "id": "schedule-trigger",
+      "name": "Hourly Trigger",
+      "type": "n8n-nodes-base.scheduleTrigger",
+      "typeVersion": 1.2,
+      "position": [0, 600]
+    },
+    {
+      "parameters": {
+        "assignments": {
+          "assignments": [
+            {"id": "body", "name": "body", "type": "object", "value": "={\"content\": \"Claude AI was created by Anthropic. Python is the most popular programming language. The first iPhone was released in 2007.\", \"verification_depth\": \"thorough\", \"require_citations\": true}"}
+          ]
+        },
+        "options": {}
+      },
+      "id": "set-defaults",
+      "name": "Set Defaults",
+      "type": "n8n-nodes-base.set",
+      "typeVersion": 3.4,
+      "position": [200, 600]
+    },
+    {
+      "parameters": {
         "promptType": "define",
         "text": "=You are a claim extraction specialist. Extract all verifiable factual claims from this content.\n\nContent to analyze:\n\"{{ $json.body.content }}\"\n\nVerification depth: {{ $json.body.verification_depth || 'normal' }}\n\nExtract claims that can be verified with external sources. Ignore opinions and subjective statements.\n\nRespond with JSON:\n{\n  \"claims\": [\n    {\n      \"id\": 1,\n      \"text\": \"exact claim text\",\n      \"type\": \"statistic|fact|date|quote|definition\",\n      \"verifiability\": \"high|medium|low\",\n      \"key_entities\": [\"entity1\", \"entity2\"]\n    }\n  ],\n  \"total_claims\": number,\n  \"content_type\": \"news|social|academic|other\"\n}",
         "options": {}
@@ -343,6 +370,12 @@
   ],
   "connections": {
     "Webhook Trigger": {
+      "main": [[{"node": "Claim Extractor Agent", "type": "main", "index": 0}]]
+    },
+    "Hourly Trigger": {
+      "main": [[{"node": "Set Defaults", "type": "main", "index": 0}]]
+    },
+    "Set Defaults": {
       "main": [[{"node": "Claim Extractor Agent", "type": "main", "index": 0}]]
     },
     "Claim Extractor LM": {

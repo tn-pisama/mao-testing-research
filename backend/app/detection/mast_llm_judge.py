@@ -250,11 +250,18 @@ class JudgmentResult:
 
 @dataclass
 class JudgeCostTracker:
-    """Tracks cumulative costs for LLM judge calls."""
+    """Tracks cumulative costs for LLM judge calls with per-tier breakdown."""
     total_calls: int = 0
     cached_calls: int = 0
     total_tokens: int = 0
     total_cost_usd: float = 0.0
+    # Per-tier tracking for cost analysis
+    haiku_calls: int = 0
+    haiku_cost: float = 0.0
+    sonnet_calls: int = 0
+    sonnet_cost: float = 0.0
+    sonnet_thinking_calls: int = 0
+    sonnet_thinking_cost: float = 0.0
 
     def record(self, result: JudgmentResult):
         self.total_calls += 1
@@ -263,6 +270,26 @@ class JudgeCostTracker:
         else:
             self.total_tokens += result.tokens_used
             self.total_cost_usd += result.cost_usd
+            # Track per-tier costs
+            model = result.model_used.lower()
+            if "haiku" in model:
+                self.haiku_calls += 1
+                self.haiku_cost += result.cost_usd
+            elif "thinking" in model or "extended" in model:
+                self.sonnet_thinking_calls += 1
+                self.sonnet_thinking_cost += result.cost_usd
+            else:
+                self.sonnet_calls += 1
+                self.sonnet_cost += result.cost_usd
+
+    def get_tier_summary(self) -> dict:
+        """Get cost breakdown by tier."""
+        return {
+            "haiku": {"calls": self.haiku_calls, "cost": self.haiku_cost},
+            "sonnet": {"calls": self.sonnet_calls, "cost": self.sonnet_cost},
+            "sonnet_thinking": {"calls": self.sonnet_thinking_calls, "cost": self.sonnet_thinking_cost},
+            "total": {"calls": self.total_calls, "cost": self.total_cost_usd},
+        }
 
 
 # Global cost tracker
@@ -333,23 +360,44 @@ CLAUDE_MODELS: Dict[str, ClaudeModelConfig] = {
     ),
 }
 
+# 3-Tier Model Selection for Cost Optimization
+# Benchmark results (claude_comparison_20260111): All achieve 97%+ accuracy
+
+# Low-stakes model - haiku-3.5 at $0.0011/judgment (5x cheaper than sonnet)
+LOW_STAKES_MODEL_KEY = "haiku-3.5"
+
 # Default model - sonnet-4 provides 97.1% accuracy at 80% lower cost than opus
 DEFAULT_MODEL_KEY = "sonnet-4"
 
 # High-stakes model for critical failure modes - achieves 99.0% accuracy
 HIGH_STAKES_MODEL_KEY = "sonnet-4-thinking"
 
-# Failure modes that benefit from extended thinking (higher accuracy needed)
+# Low-stakes modes - high pattern accuracy, simple behavioral checks
+# Based on benchmark: 100% accuracy with pattern-based detection
+LOW_STAKES_FAILURE_MODES = {"F3", "F7", "F11", "F12", "F14"}
+
+# High-stakes modes - complex semantic analysis required
 # Based on benchmark results: these modes have higher complexity and ambiguity
-HIGH_STAKES_FAILURE_MODES = {"F6", "F8", "F9"}  # State Corruption, Task Derailment, Role Usurpation (Phase 3)
+HIGH_STAKES_FAILURE_MODES = {"F6", "F8", "F9"}  # Task Derailment, Info Withholding, Role Usurpation
+
+# Default tier (sonnet-4): F1, F2, F4, F5, F10, F13 - moderate complexity
 
 
 def get_model_for_failure_mode(failure_mode: str) -> str:
     """
-    Select optimal model based on failure mode.
+    Select optimal model based on failure mode complexity (3-tier).
 
-    High-stakes modes (F6, F8) use sonnet-4-thinking for 99% accuracy.
-    Standard modes use sonnet-4 for 97.1% accuracy at lower cost.
+    Tier 1 (Low-stakes): haiku-3.5 for F3, F7, F11, F12, F14
+        - $0.0011/judgment, 97.1% accuracy
+        - High pattern accuracy, simple behavioral checks
+
+    Tier 2 (Default): sonnet-4 for F1, F2, F4, F5, F10, F13
+        - $0.0048/judgment, 97.1% accuracy
+        - Moderate semantic complexity
+
+    Tier 3 (High-stakes): sonnet-4-thinking for F6, F8, F9
+        - $0.0163/judgment, 99.0% accuracy
+        - Complex semantic analysis with extended thinking
 
     Args:
         failure_mode: MAST failure mode code (e.g., "F6", "F8")
@@ -357,8 +405,11 @@ def get_model_for_failure_mode(failure_mode: str) -> str:
     Returns:
         Model key to use for detection
     """
-    if failure_mode in HIGH_STAKES_FAILURE_MODES:
+    mode = failure_mode.upper()
+    if mode in HIGH_STAKES_FAILURE_MODES:
         return HIGH_STAKES_MODEL_KEY
+    elif mode in LOW_STAKES_FAILURE_MODES:
+        return LOW_STAKES_MODEL_KEY
     return DEFAULT_MODEL_KEY
 
 

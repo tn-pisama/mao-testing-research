@@ -17,6 +17,33 @@
     },
     {
       "parameters": {
+        "rule": {
+          "interval": [{"field": "hours", "hoursInterval": 1}]
+        }
+      },
+      "id": "schedule-trigger",
+      "name": "Hourly Trigger",
+      "type": "n8n-nodes-base.scheduleTrigger",
+      "typeVersion": 1.2,
+      "position": [0, 600]
+    },
+    {
+      "parameters": {
+        "assignments": {
+          "assignments": [
+            {"id": "body", "name": "body", "type": "object", "value": "={\"sources\": [\"hackernews\", \"reddit\", \"rss\"], \"time_range\": \"24h\", \"max_stories_per_source\": 5, \"categories\": [\"AI\", \"programming\"]}"}
+          ]
+        },
+        "options": {}
+      },
+      "id": "set-defaults",
+      "name": "Set Defaults",
+      "type": "n8n-nodes-base.set",
+      "typeVersion": 3.4,
+      "position": [200, 600]
+    },
+    {
+      "parameters": {
         "promptType": "define",
         "text": "=You are an orchestrator for a multi-source news aggregation system.\n\nRequest parameters:\n- Sources requested: {{ JSON.stringify($json.body.sources || ['hackernews', 'reddit']) }}\n- Time range: {{ $json.body.time_range || '24h' }}\n- Max stories per source: {{ $json.body.max_stories_per_source || 10 }}\n- Categories of interest: {{ JSON.stringify($json.body.categories || ['AI', 'programming', 'startups']) }}\n\nYour task:\n1. Plan the aggregation strategy\n2. Assign priority to each source based on relevance to categories\n3. Define merge criteria for combining stories\n\nRespond with JSON:\n{\n  \"sources\": [\"source1\", \"source2\"],\n  \"source_priorities\": {\"hackernews\": 1, \"reddit\": 2},\n  \"max_per_source\": number,\n  \"merge_criteria\": \"title_similarity|url_match|both\",\n  \"category_keywords\": [\"keyword1\", \"keyword2\"]\n}",
         "options": {}
@@ -438,6 +465,12 @@
   ],
   "connections": {
     "Webhook Trigger": {
+      "main": [[{"node": "Orchestrator Agent", "type": "main", "index": 0}]]
+    },
+    "Hourly Trigger": {
+      "main": [[{"node": "Set Defaults", "type": "main", "index": 0}]]
+    },
+    "Set Defaults": {
       "main": [[{"node": "Orchestrator Agent", "type": "main", "index": 0}]]
     },
     "Orchestrator LM": {

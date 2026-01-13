@@ -17,6 +17,33 @@
     },
     {
       "parameters": {
+        "rule": {
+          "interval": [{"field": "hours", "hoursInterval": 1}]
+        }
+      },
+      "id": "schedule-trigger",
+      "name": "Hourly Trigger",
+      "type": "n8n-nodes-base.scheduleTrigger",
+      "typeVersion": 1.2,
+      "position": [0, 500]
+    },
+    {
+      "parameters": {
+        "assignments": {
+          "assignments": [
+            {"id": "body", "name": "body", "type": "object", "value": "={\"story_type\": \"top\", \"max_comments\": 10, \"focus_areas\": [\"sentiment\", \"toxicity\"]}"}
+          ]
+        },
+        "options": {}
+      },
+      "id": "set-defaults",
+      "name": "Set Defaults",
+      "type": "n8n-nodes-base.set",
+      "typeVersion": 3.4,
+      "position": [200, 500]
+    },
+    {
+      "parameters": {
         "promptType": "define",
         "text": "=You are a coordinator for analyzing HackerNews discussions.\n\nInput request:\n- Story type: {{ $json.body.story_type || 'top' }}\n- Max comments to analyze: {{ $json.body.max_comments || 10 }}\n- Focus areas: {{ JSON.stringify($json.body.focus_areas || ['sentiment', 'topics']) }}\n\nYour task:\n1. Confirm the analysis parameters\n2. Set priority level (high/medium/low) based on comment count\n3. Define specific analysis criteria for the focus areas\n\nRespond with a JSON object:\n{\n  \"story_type\": \"top|new|best\",\n  \"max_comments\": number,\n  \"priority\": \"high|medium|low\",\n  \"analysis_criteria\": {\n    \"sentiment\": \"criteria...\",\n    \"topics\": \"criteria...\"\n  }\n}",
         "options": {}
@@ -303,6 +330,28 @@
   ],
   "connections": {
     "Webhook Trigger": {
+      "main": [
+        [
+          {
+            "node": "Coordinator Agent",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Hourly Trigger": {
+      "main": [
+        [
+          {
+            "node": "Set Defaults",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Set Defaults": {
       "main": [
         [
           {
