@@ -12,6 +12,10 @@ from app.core.rate_limit import check_rate_limit
 from app.ingestion.otel import otel_parser
 from app.ingestion.buffer import AsyncBuffer, BufferConfig, BackpressureController
 from app.detection.loop import loop_detector, StateSnapshot
+from app.detection.hallucination import hallucination_detector
+from app.detection.corruption import corruption_detector, StateSnapshot as CorruptionSnapshot
+from app.detection.persona import persona_scorer, Agent
+from app.detection.coordination import coordination_analyzer, Message
 from app.core.security import sanitize_text
 from app.api.v1.schemas import (
     TraceIngestRequest,
@@ -247,8 +251,9 @@ async def analyze_trace(
     tenant_id: str = Depends(get_current_tenant),
     db: AsyncSession = Depends(get_db),
 ):
+    """Run all detection algorithms on a trace and store results."""
     await set_tenant_context(db, tenant_id)
-    
+
     result = await db.execute(
         select(State).where(
             State.trace_id == trace_id,
@@ -256,10 +261,13 @@ async def analyze_trace(
         ).order_by(State.sequence_num)
     )
     states = result.scalars().all()
-    
+
     if not states:
         raise HTTPException(status_code=404, detail="No states found for trace")
-    
+
+    detections = []
+
+    # 1. Loop Detection
     state_snapshots = [
         StateSnapshot(
             agent_id=s.agent_id,
@@ -269,10 +277,8 @@ async def analyze_trace(
         )
         for s in states
     ]
-    
+
     loop_result = loop_detector.detect_loop(state_snapshots)
-    
-    detections = []
     if loop_result.detected:
         detection = Detection(
             tenant_id=UUID(tenant_id),
@@ -292,7 +298,182 @@ async def analyze_trace(
             "confidence": loop_result.confidence,
             "method": loop_result.method,
         })
-    
+
+    # 2. Hallucination Detection (on each agent output)
+    for s in states:
+        output_text = ""
+        if isinstance(s.state_delta, dict):
+            output = s.state_delta.get("output", [])
+            if isinstance(output, list) and output:
+                first_item = output[0] if output else {}
+                if isinstance(first_item, dict):
+                    json_content = first_item.get("json", {})
+                    if isinstance(json_content, dict):
+                        output_text = json_content.get("output", str(json_content))
+                    else:
+                        output_text = str(json_content)
+
+        if output_text and len(output_text) > 50:
+            halluc_result = hallucination_detector.detect_hallucination(output_text)
+            if halluc_result.detected:
+                detection = Detection(
+                    tenant_id=UUID(tenant_id),
+                    trace_id=trace_id,
+                    state_id=s.id,
+                    detection_type="hallucination",
+                    confidence=int(halluc_result.confidence * 100),
+                    method=halluc_result.hallucination_type or "general",
+                    details={
+                        "grounding_score": halluc_result.grounding_score,
+                        "evidence": halluc_result.evidence[:3] if halluc_result.evidence else [],
+                        "agent_id": s.agent_id,
+                    },
+                )
+                db.add(detection)
+                detections.append({
+                    "type": "hallucination",
+                    "confidence": halluc_result.confidence,
+                    "method": halluc_result.hallucination_type,
+                    "agent_id": s.agent_id,
+                })
+
+    # 3. State Corruption Detection (comparing sequential states)
+    from datetime import datetime
+    for i in range(1, len(states)):
+        prev_state = states[i-1]
+        curr_state = states[i]
+
+        prev_snapshot = CorruptionSnapshot(
+            state_delta=prev_state.state_delta or {},
+            agent_id=prev_state.agent_id or "unknown",
+            timestamp=prev_state.created_at or datetime.utcnow(),
+        )
+        curr_snapshot = CorruptionSnapshot(
+            state_delta=curr_state.state_delta or {},
+            agent_id=curr_state.agent_id or "unknown",
+            timestamp=curr_state.created_at or datetime.utcnow(),
+        )
+
+        corruption_result = corruption_detector.detect_corruption_with_confidence(
+            prev_snapshot, curr_snapshot
+        )
+        if corruption_result.detected and corruption_result.confidence > 0.5:
+            detection = Detection(
+                tenant_id=UUID(tenant_id),
+                trace_id=trace_id,
+                state_id=curr_state.id,
+                detection_type="state_corruption",
+                confidence=int(corruption_result.confidence * 100),
+                method=corruption_result.max_severity,
+                details={
+                    "issue_count": corruption_result.issue_count,
+                    "issues": [
+                        {"type": i.issue_type, "message": i.message, "severity": i.severity}
+                        for i in corruption_result.issues[:3]
+                    ],
+                    "agent_id": curr_state.agent_id,
+                },
+            )
+            db.add(detection)
+            detections.append({
+                "type": "state_corruption",
+                "confidence": corruption_result.confidence,
+                "method": corruption_result.max_severity,
+                "agent_id": curr_state.agent_id,
+            })
+
+    # 4. Persona Drift Detection (for Safety Scanner and similar agents)
+    safety_agents = [s for s in states if s.agent_id and "safety" in s.agent_id.lower()]
+    for s in safety_agents:
+        agent = Agent(
+            id=s.agent_id,
+            persona_description="Safety Scanner: Analyze content for security risks and harmful content",
+            allowed_actions=["analyze", "flag", "report"],
+        )
+        output_text = ""
+        if isinstance(s.state_delta, dict):
+            output = s.state_delta.get("output", [])
+            if isinstance(output, list) and output:
+                first_item = output[0] if output else {}
+                if isinstance(first_item, dict):
+                    json_content = first_item.get("json", {})
+                    if isinstance(json_content, dict):
+                        output_text = json_content.get("output", str(json_content))
+                    else:
+                        output_text = str(json_content)
+
+        if output_text and len(output_text) > 50:
+            persona_result = persona_scorer.score_consistency(agent, output_text)
+            if not persona_result.consistent or persona_result.drift_detected:
+                detection = Detection(
+                    tenant_id=UUID(tenant_id),
+                    trace_id=trace_id,
+                    state_id=s.id,
+                    detection_type="persona_drift",
+                    confidence=int(persona_result.confidence * 100),
+                    method=persona_result.method,
+                    details={
+                        "score": persona_result.score,
+                        "drift_magnitude": persona_result.drift_magnitude,
+                        "issues": persona_result.issues[:3] if persona_result.issues else [],
+                        "agent_id": s.agent_id,
+                    },
+                )
+                db.add(detection)
+                detections.append({
+                    "type": "persona_drift",
+                    "confidence": persona_result.confidence,
+                    "method": persona_result.method,
+                    "agent_id": s.agent_id,
+                })
+
+    # 5. Coordination Analysis (for multi-agent workflows)
+    agent_ids = list(set(s.agent_id for s in states if s.agent_id))
+    if len(agent_ids) > 2:
+        messages = []
+        for i, s in enumerate(states):
+            if i > 0 and states[i-1].agent_id != s.agent_id:
+                msg = Message(
+                    from_agent=states[i-1].agent_id or "unknown",
+                    to_agent=s.agent_id or "unknown",
+                    content=str(s.state_delta)[:500],
+                    timestamp=float(i),
+                    acknowledged=True,
+                )
+                messages.append(msg)
+
+        if messages:
+            coord_result = coordination_analyzer.analyze_coordination_with_confidence(
+                messages, agent_ids
+            )
+            if coord_result.detected and coord_result.confidence > 0.5:
+                detection = Detection(
+                    tenant_id=UUID(tenant_id),
+                    trace_id=trace_id,
+                    state_id=states[-1].id if states else None,
+                    detection_type="coordination_failure",
+                    confidence=int(coord_result.confidence * 100),
+                    method="multi_agent_analysis",
+                    details={
+                        "issue_count": coord_result.issue_count,
+                        "issues": [
+                            {"type": i.issue_type, "message": i.message, "severity": i.severity}
+                            for i in coord_result.issues[:3]
+                        ],
+                        "metrics": coord_result.metrics,
+                    },
+                )
+                db.add(detection)
+                detections.append({
+                    "type": "coordination_failure",
+                    "confidence": coord_result.confidence,
+                    "issue_count": coord_result.issue_count,
+                })
+
     await db.commit()
-    
-    return {"detections": detections, "analyzed_states": len(states)}
+
+    return {
+        "detections": detections,
+        "analyzed_states": len(states),
+        "detection_types_run": ["loop", "hallucination", "corruption", "persona", "coordination"],
+    }
