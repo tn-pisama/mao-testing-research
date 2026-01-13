@@ -335,6 +335,7 @@
         "headerParameters": {
           "parameters": [
             {"name": "Content-Type", "value": "application/json"},
+            {"name": "X-MAO-API-Key", "value": "mao_demo_key_12345"},
             {"name": "X-MAO-Timestamp", "value": "={{ Date.now() }}"}
           ]
         },

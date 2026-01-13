@@ -1,14 +1,13 @@
 from datetime import datetime, timedelta
 from typing import Optional
 from jose import JWTError, jwt
-from passlib.context import CryptContext
+import bcrypt
 from fastapi import Depends, HTTPException, status
 from fastapi.security import HTTPBearer, HTTPAuthorizationCredentials
 from pydantic import BaseModel
 from app.config import get_settings
 
 settings = get_settings()
-pwd_context = CryptContext(schemes=["bcrypt"], deprecated="auto")
 security = HTTPBearer()
 
 
@@ -23,11 +22,13 @@ class Token(BaseModel):
 
 
 def verify_api_key(plain_key: str, hashed_key: str) -> bool:
-    return pwd_context.verify(plain_key, hashed_key)
+    """Verify API key using bcrypt."""
+    return bcrypt.checkpw(plain_key.encode("utf-8"), hashed_key.encode("utf-8"))
 
 
 def hash_api_key(key: str) -> str:
-    return pwd_context.hash(key)
+    """Hash API key using bcrypt."""
+    return bcrypt.hashpw(key.encode("utf-8"), bcrypt.gensalt()).decode("utf-8")
 
 
 def create_access_token(tenant_id: str, expires_delta: Optional[timedelta] = None) -> str:
