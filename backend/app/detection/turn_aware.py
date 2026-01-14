@@ -3714,7 +3714,7 @@ class TurnAwareQualityGateBypassDetector(EmbeddingMixin, TurnAwareDetector):
     """
 
     name = "TurnAwareQualityGateBypassDetector"
-    version = "2.0"  # Semantic enhancement
+    version = "2.1"  # Added rubber-stamp verification detection
     supported_failure_modes = ["F13"]
 
     # Bypass indicators - made more specific to reduce FPs
@@ -3773,6 +3773,31 @@ class TurnAwareQualityGateBypassDetector(EmbeddingMixin, TurnAwareDetector):
         "bare minimum for", "cut corners on", "expedite at cost",
     ]
 
+    # Verifier role indicators (v2.1 - rubber-stamp detection)
+    VERIFIER_ROLE_INDICATORS = [
+        "verifier", "validator", "reviewer", "checker", "qa",
+        "agent_verifier", "verify_agent", "verification",
+    ]
+
+    # Rubber-stamp verification patterns (weak verification without rigor)
+    # Note: Removed patterns that can indicate other failure modes (F12, F14)
+    RUBBER_STAMP_PATTERNS = [
+        # Explicit rubber-stamping without checking
+        "looks correct without", "seems correct but",
+        "looks good to me", "lgtm",
+        # Acceptance without evidence
+        "approve without review", "skip verification",
+        "no review needed", "verification not required",
+        "skip the check", "bypass the review",
+    ]
+
+    # Weak verification phrases (verification claimed but no substance)
+    WEAK_VERIFICATION_PHRASES = [
+        "verified", "validation complete", "check complete",
+        "review complete", "qa passed", "looks good",
+        "all good", "approved", "accepted",
+    ]
+
     def __init__(self, min_turns: int = 2, min_issues_to_flag: int = 1):
         self.min_turns = min_turns
         self.min_issues_to_flag = min_issues_to_flag  # Lowered for recall: was 2, now 1
@@ -3822,8 +3847,28 @@ class TurnAwareQualityGateBypassDetector(EmbeddingMixin, TurnAwareDetector):
         for issue in rush_issues:
             affected_turns.extend(issue.get("turns", []))
 
-        # Require minimum issues to reduce false positives
-        if len(issues) < self.min_issues_to_flag:
+        # 5. Check for rubber-stamp verification (v2.1)
+        rubber_stamp_issues = self._detect_rubber_stamp_verification(turns)
+        issues.extend(rubber_stamp_issues)
+        for issue in rubber_stamp_issues:
+            affected_turns.extend(issue.get("turns", []))
+
+        # 6. Check for absent verification (v2.1)
+        absent_issues = self._detect_absent_verification(turns)
+        issues.extend(absent_issues)
+        for issue in absent_issues:
+            affected_turns.extend(issue.get("turns", []))
+
+        # Require at least one strong evidence issue for detection
+        # Semantic-only evidence or weak_verification alone is too prone to false positives
+        strong_types = {"bypass", "warning_ignore", "rush", "rubber_stamp", "absent_verification"}
+        has_strong_evidence = any(
+            issue.get("type") in strong_types and issue.get("method") != "semantic"
+            for issue in issues
+        )
+
+        # Require minimum issues AND strong evidence to reduce false positives
+        if len(issues) < self.min_issues_to_flag or not has_strong_evidence:
             return TurnAwareDetectionResult(
                 detected=False,
                 severity=TurnAwareSeverity.NONE,
@@ -3900,7 +3945,7 @@ class TurnAwareQualityGateBypassDetector(EmbeddingMixin, TurnAwareDetector):
                 similarities = self.batch_semantic_similarity(turn.content[:300], bypass_patterns)
                 if similarities:
                     max_sim = max(similarities)
-                    if max_sim >= 0.70:  # High similarity = likely bypass
+                    if max_sim >= 0.80:  # High similarity = likely bypass (raised from 0.70)
                         issues.append({
                             "type": "bypass",
                             "turns": [turn.turn_number],
@@ -3967,7 +4012,7 @@ class TurnAwareQualityGateBypassDetector(EmbeddingMixin, TurnAwareDetector):
                 similarities = self.batch_semantic_similarity(turn.content[:300], missing_patterns)
                 if similarities:
                     max_sim = max(similarities)
-                    if max_sim >= 0.68:  # Slightly lower threshold for missing quality
+                    if max_sim >= 0.78:  # Raised threshold to reduce FPs (was 0.68)
                         issues.append({
                             "type": "missing_quality",
                             "turns": [turn.turn_number],
@@ -3993,6 +4038,174 @@ class TurnAwareQualityGateBypassDetector(EmbeddingMixin, TurnAwareDetector):
                     })
                     break
         return issues[:2]
+
+    def _detect_rubber_stamp_verification(self, turns: List[TurnSnapshot]) -> list:
+        """Detect superficial/rubber-stamp verification (v2.1).
+
+        This addresses the MAST F13 pattern where:
+        - A Verifier role exists but does weak verification
+        - Verification just confirms consensus without rigorous checking
+        - No actual validation logic or error detection performed
+
+        Returns:
+            List of issues with rubber-stamp verification patterns
+        """
+        issues = []
+
+        # First, check if there's a verifier role in the conversation
+        has_verifier_role = False
+        verifier_turns = []
+
+        for turn in turns:
+            content_lower = turn.content.lower()
+            participant_lower = (turn.participant_id or "").lower()
+
+            # Check if this is a verifier role
+            is_verifier = False
+            for indicator in self.VERIFIER_ROLE_INDICATORS:
+                if indicator in participant_lower or f"name': '{indicator}" in content_lower:
+                    is_verifier = True
+                    has_verifier_role = True
+                    break
+
+            if is_verifier:
+                verifier_turns.append(turn)
+
+        # If no explicit verifier, look for verification-like turns
+        if not verifier_turns:
+            for turn in turns:
+                content_lower = turn.content.lower()
+                if any(phrase in content_lower for phrase in self.WEAK_VERIFICATION_PHRASES):
+                    verifier_turns.append(turn)
+
+        # Check verifier turns for rubber-stamp patterns
+        for turn in verifier_turns:
+            content_lower = turn.content.lower()
+
+            # Check for rubber-stamp patterns
+            for pattern in self.RUBBER_STAMP_PATTERNS:
+                if pattern in content_lower:
+                    # Check if there's actual verification logic
+                    has_substance = self._has_verification_substance(turn.content)
+
+                    if not has_substance:
+                        issues.append({
+                            "type": "rubber_stamp",
+                            "turns": [turn.turn_number],
+                            "pattern": pattern,
+                            "description": f"Rubber-stamp verification: '{pattern}' without rigorous checking",
+                        })
+                        break  # One issue per turn
+
+        # Also detect when verification is claimed but no evidence provided
+        for turn in turns:
+            content_lower = turn.content.lower()
+
+            # Check for weak verification without substance
+            for phrase in self.WEAK_VERIFICATION_PHRASES:
+                if phrase in content_lower:
+                    # Skip if already flagged
+                    if any(turn.turn_number in issue.get("turns", []) for issue in issues):
+                        continue
+
+                    has_substance = self._has_verification_substance(turn.content)
+                    if not has_substance:
+                        issues.append({
+                            "type": "weak_verification",
+                            "turns": [turn.turn_number],
+                            "phrase": phrase,
+                            "description": f"Weak verification claimed: '{phrase}' without evidence",
+                        })
+                        break
+
+        return issues[:3]  # Limit to avoid false positives
+
+    def _detect_absent_verification(self, turns: List[TurnSnapshot]) -> list:
+        """Detect complete absence of verification in completed traces (v2.1).
+
+        F13 is often about verification NOT happening at all, not explicit bypass.
+        This detects when a task is completed without any verification step.
+        """
+        issues = []
+
+        # Check if there's a completion claim
+        completion_patterns = [
+            "task complete", "done", "finished", "all done",
+            "solution_found", "final answer", "implementation complete",
+            "here's the solution", "problem solved", "mission accomplished",
+        ]
+
+        # Verification-related keywords that should appear somewhere
+        verification_keywords = [
+            "test", "verify", "validate", "check", "review",
+            "confirm", "ensure", "assert", "evaluate", "examine",
+        ]
+
+        has_completion = False
+        has_verification = False
+
+        for turn in turns:
+            content_lower = turn.content.lower()
+
+            # Check for completion
+            for pattern in completion_patterns:
+                if pattern in content_lower:
+                    has_completion = True
+                    break
+
+            # Check for verification keywords
+            for keyword in verification_keywords:
+                if keyword in content_lower:
+                    has_verification = True
+                    break
+
+        # If completed without verification keywords, flag it
+        if has_completion and not has_verification:
+            issues.append({
+                "type": "absent_verification",
+                "turns": [turns[-1].turn_number] if turns else [],
+                "description": "Task completed without any verification/testing mentioned",
+            })
+
+        return issues
+
+    def _has_verification_substance(self, content: str) -> bool:
+        """Check if verification content has substantive checking.
+
+        Substantive verification includes:
+        - Error detection/correction
+        - Mathematical or logical validation
+        - Test execution results
+        - Specific issue identification
+
+        Returns:
+            True if verification has substance, False if rubber-stamp
+        """
+        content_lower = content.lower()
+
+        # Indicators of substantive verification
+        substance_indicators = [
+            # Error detection
+            "error found", "bug detected", "issue identified", "problem found",
+            "incorrect", "wrong", "mistake", "flaw", "defect",
+            # Logical validation
+            "because", "since", "therefore", "thus", "hence",
+            "the reason is", "this is because", "due to",
+            # Mathematical validation
+            "calculation shows", "computed as", "evaluates to",
+            "=", "equals", "results in",
+            # Test execution
+            "test passed", "test failed", "execution result",
+            "output shows", "returns", "produces",
+            # Specific issue identification
+            "specifically", "in particular", "notably",
+            "line ", "function ", "variable ",
+        ]
+
+        substance_count = sum(1 for ind in substance_indicators if ind in content_lower)
+
+        # Require at least 2 substance indicators for real verification
+        return substance_count >= 2
 
 
 class TurnAwareCompletionMisjudgmentDetector(EmbeddingMixin, TurnAwareDetector):
