@@ -322,12 +322,12 @@ class TurnAwareContextNeglectDetector(EmbeddingMixin, TurnAwareDetector):
 
     def __init__(
         self,
-        utilization_threshold: float = 0.03,  # Lower threshold for better MAST recall
+        utilization_threshold: float = 0.08,  # Raised from 0.03 to reduce FPs (16.2% FPR)
         min_context_length: int = 40,  # Reduced to catch shorter context issues
         check_user_instructions: bool = True,
         check_tool_outputs: bool = True,
         require_explicit_neglect: bool = False,  # Enable implicit detection for F7
-        min_issues_to_flag: int = 1,  # Lowered for MAST recall: was 2, now 1
+        min_issues_to_flag: int = 2,  # Raised from 1 to reduce FPs
     ):
         self.utilization_threshold = utilization_threshold
         self.min_context_length = min_context_length
@@ -1399,7 +1399,7 @@ class TurnAwareLoopDetector(EmbeddingMixin, TurnAwareDetector):
     def __init__(
         self,
         repetition_threshold: float = 0.9,
-        min_repetitions: int = 2,  # Balanced: was 3, now 2 for better recall
+        min_repetitions: int = 3,  # Raised from 2 to reduce FPs (18.3% FPR)
     ):
         self.repetition_threshold = repetition_threshold
         self.min_repetitions = min_repetitions
@@ -1694,7 +1694,7 @@ class TurnAwareSpecificationMismatchDetector(EmbeddingMixin, TurnAwareDetector):
     def __init__(
         self,
         min_requirement_terms: int = 2,
-        coverage_threshold: float = 0.4,
+        coverage_threshold: float = 0.55,  # Raised from 0.40 to reduce FPs (41% FPR)
     ):
         self.min_requirement_terms = min_requirement_terms
         self.coverage_threshold = coverage_threshold
@@ -1874,7 +1874,7 @@ class TurnAwareSpecificationMismatchDetector(EmbeddingMixin, TurnAwareDetector):
         self,
         requirements: set,
         agent_content: str,
-        similarity_threshold: float = 0.75
+        similarity_threshold: float = 0.82  # Raised from 0.75 to reduce FPs
     ) -> dict:
         """Use embeddings to check if requirements are semantically met.
 
@@ -1884,7 +1884,7 @@ class TurnAwareSpecificationMismatchDetector(EmbeddingMixin, TurnAwareDetector):
         Args:
             requirements: Set of requirement keywords/phrases
             agent_content: Agent output text to check
-            similarity_threshold: Minimum similarity score to consider a match (0.75 based on MAST research)
+            similarity_threshold: Minimum similarity score to consider a match (0.82, raised from 0.75)
 
         Returns:
             Dict with covered/uncovered requirements and coverage ratio
@@ -2827,8 +2827,10 @@ class TurnAwareInformationWithholdingDetector(EmbeddingMixin, TurnAwareDetector)
     def __init__(
         self,
         min_turns: int = 2,  # Lowered from 3 for better MAST recall
+        min_issues_to_flag: int = 2,  # Added to reduce FPs (18.2% FPR)
     ):
         self.min_turns = min_turns
+        self.min_issues_to_flag = min_issues_to_flag
 
     def detect(
         self,
@@ -2873,13 +2875,13 @@ class TurnAwareInformationWithholdingDetector(EmbeddingMixin, TurnAwareDetector)
         for issue in ignored:
             affected_turns.extend(issue.get("turns", []))
 
-        if not issues:
+        if len(issues) < self.min_issues_to_flag:
             return TurnAwareDetectionResult(
                 detected=False,
                 severity=TurnAwareSeverity.NONE,
                 confidence=0.8,
                 failure_mode=None,
-                explanation="No information withholding detected",
+                explanation=f"Insufficient evidence ({len(issues)} issues < {self.min_issues_to_flag} required)",
                 detector_name=self.name,
             )
 
@@ -2932,7 +2934,7 @@ class TurnAwareInformationWithholdingDetector(EmbeddingMixin, TurnAwareDetector)
                         similarity = self.semantic_similarity(content, next_turn.content)
 
                         if similarity >= 0:  # Embeddings available
-                            if similarity >= 0.4:  # Response related to question
+                            if similarity >= 0.5:  # Raised from 0.4 to reduce FPs
                                 response_density = self.compute_information_density(next_turn.content)
                                 if response_density >= 0.3:  # Substantive response
                                     answered = True
@@ -3513,9 +3515,9 @@ class TurnAwareOutputValidationDetector(EmbeddingMixin, TurnAwareDetector):
         ],
     }
 
-    def __init__(self, min_turns: int = 2, min_issues_to_flag: int = 2, framework: Optional[str] = None):
+    def __init__(self, min_turns: int = 2, min_issues_to_flag: int = 3, framework: Optional[str] = None):
         self.min_turns = min_turns
-        self.min_issues_to_flag = min_issues_to_flag  # Balanced: was 3, now 2
+        self.min_issues_to_flag = min_issues_to_flag  # Raised to 3 to reduce FPs (17.8% FPR)
         self.framework = framework
 
     def detect(
@@ -4012,7 +4014,7 @@ class TurnAwareQualityGateBypassDetector(EmbeddingMixin, TurnAwareDetector):
                 similarities = self.batch_semantic_similarity(turn.content[:300], missing_patterns)
                 if similarities:
                     max_sim = max(similarities)
-                    if max_sim >= 0.78:  # Raised threshold to reduce FPs (was 0.68)
+                    if max_sim >= 0.85:  # Raised from 0.78 to further reduce FPs
                         issues.append({
                             "type": "missing_quality",
                             "turns": [turn.turn_number],
