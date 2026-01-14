@@ -27,7 +27,7 @@ Version History:
 """
 
 # Detector version for tracking
-DETECTOR_VERSION = "1.3"
+DETECTOR_VERSION = "1.4"
 DETECTOR_NAME = "SpecificationMismatchDetector"
 
 import logging
@@ -155,6 +155,30 @@ class SpecificationMismatchDetector:
         r"(?:here's|here is)\s+(?:the|my|a)\s+(?:plan|approach|solution)",
     ]
 
+    # v1.4: Bonus/extra feature indicators - additions beyond requirements, not violations
+    # These patterns indicate the agent completed the core task AND added extras
+    BONUS_FEATURE_PATTERNS = [
+        r"(?:also|additionally|as a bonus|bonus)\s+(?:added|included|implemented)",
+        r"(?:extra|additional)\s+(?:feature|functionality|enhancement)",
+        r"(?:i also|i've also|we also)\s+(?:added|included|implemented|created)",
+        r"(?:went ahead|took the liberty)\s+(?:and|to)\s+(?:add|include)",
+        r"(?:while i was at it|while working on this)",
+        r"(?:for good measure|for convenience|for better ux)",
+        r"(?:future-proofing|future proof|extensibility)",
+        r"(?:nice to have|optional enhancement)",
+        r"(?:beyond the requirements|exceeding requirements)",
+    ]
+
+    # v1.4: Benign scope expansion patterns - NOT violations
+    BENIGN_EXPANSION_PATTERNS = [
+        r"(?:error handling|validation|edge case|edge-case)",
+        r"(?:logging|monitoring|observability)",
+        r"(?:unit test|test coverage|integration test)",
+        r"(?:documentation|docstring|readme|comment)",
+        r"(?:type hint|typing|annotation)",
+        r"(?:security|sanitization|input validation)",
+    ]
+
     # Phase 1: Framework-specific thresholds to reduce false positives
     # v1.3: Lowered coverage thresholds (stricter about flagging)
     FRAMEWORK_THRESHOLDS = {
@@ -244,6 +268,32 @@ class SpecificationMismatchDetector:
         """
         text_lower = text.lower()
         for pattern in self.REFORMULATION_INDICATORS:
+            if re.search(pattern, text_lower, re.IGNORECASE):
+                return True
+        return False
+
+    def _has_bonus_features(self, text: str) -> bool:
+        """
+        v1.4: Detect if text indicates bonus/extra features were added.
+
+        This reduces false positives when agents complete the task AND add extras.
+        Adding error handling, tests, docs, etc. shouldn't be flagged as violations.
+        """
+        text_lower = text.lower()
+        for pattern in self.BONUS_FEATURE_PATTERNS:
+            if re.search(pattern, text_lower, re.IGNORECASE):
+                return True
+        return False
+
+    def _has_benign_expansion(self, text: str) -> bool:
+        """
+        v1.4: Detect if text contains benign scope expansions.
+
+        Patterns like adding error handling, tests, or documentation are
+        generally helpful and shouldn't trigger specification mismatch.
+        """
+        text_lower = text.lower()
+        for pattern in self.BENIGN_EXPANSION_PATTERNS:
             if re.search(pattern, text_lower, re.IGNORECASE):
                 return True
         return False
@@ -438,6 +488,10 @@ class SpecificationMismatchDetector:
         # v1.3: Check if task_specification is a reformulation (not a violation)
         is_reformulation = self._is_task_reformulation(task_specification)
 
+        # v1.4: Check for bonus features or benign expansions (not violations)
+        has_bonus = self._has_bonus_features(task_specification)
+        has_benign_expansion = self._has_benign_expansion(task_specification)
+
         mismatch_type = None
         detected = False
         code_issues = []
@@ -489,7 +543,14 @@ class SpecificationMismatchDetector:
         # v1.1: If numeric constraint is met, don't flag based on coverage/ambiguity
         # (the primary requirement was satisfied)
         # v1.3: Also skip if this is a reformulation of the task (not a violation)
-        if not numeric_constraint_met and not is_reformulation:
+        # v1.4: Also skip if bonus features or benign expansion AND coverage is reasonable
+        skip_coverage_check = (
+            numeric_constraint_met or
+            is_reformulation or
+            (has_bonus and coverage >= 0.5) or  # Bonus features with decent coverage
+            (has_benign_expansion and coverage >= 0.5)  # Benign expansion with decent coverage
+        )
+        if not skip_coverage_check:
             if coverage < self.coverage_threshold and not detected:
                 detected = True
                 mismatch_type = MismatchType.MISSING_REQUIREMENT

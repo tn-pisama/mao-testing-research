@@ -35,7 +35,7 @@ import numpy as np
 logger = logging.getLogger(__name__)
 
 # Detector version for tracking
-DETECTOR_VERSION = "1.4"
+DETECTOR_VERSION = "1.5"
 DETECTOR_NAME = "TaskDerailmentDetector"
 
 # v1.3: Semantic clusters for related task concepts
@@ -88,6 +88,52 @@ CONTENT_TYPE_PATTERNS = {
     "code": ["def ", "function ", "class ", "import ", "const ", "let ", "var ", "return ", "if ", "for ", "while "],
 }
 
+# v1.5: Framework-specific benign patterns
+# These patterns are common in multi-agent frameworks and should not be flagged
+FRAMEWORK_BENIGN_PATTERNS = {
+    "AG2": [
+        r"\b(?:tool_code|tool_result|human_input)\b",
+        r"\b(?:terminate|TERMINATE)\b",  # AG2 termination signal
+        r"\b(?:groupchat|speaker_selection)\b",
+        r"\b(?:UserProxy|AssistantAgent|ConversableAgent)\b",
+    ],
+    "MetaGPT": [
+        r"\b(?:ProductManager|Architect|ProjectManager|Engineer|QAEngineer)\b",
+        r"\b(?:WriteDesign|WritePRD|WriteCode|WriteTest)\b",
+        r"\b(?:Message|ActionOutput|RoleReactMode)\b",
+        r"\b(?:memory|working_memory|recovered)\b",
+    ],
+    "ChatDev": [
+        r"\b(?:CEO|CTO|CPO|Programmer|Reviewer|Designer|Tester)\b",
+        r"\b(?:PhaseType|ChatChain|RolePlay)\b",
+        r"\b(?:software_info|chat_env)\b",
+    ],
+    "Camel": [
+        r"\b(?:AI_USER|AI_ASSISTANT|TASK_SPECIFIER)\b",
+        r"\b(?:role_playing|inception_prompt)\b",
+        r"\b(?:SystemMessage|ChatMessage)\b",
+    ],
+    "LangGraph": [
+        r"\b(?:StateGraph|MessageGraph|CompiledGraph)\b",
+        r"\b(?:add_node|add_edge|add_conditional_edges)\b",
+        r"\b(?:START|END|should_continue)\b",
+    ],
+    "CrewAI": [
+        r"\b(?:Agent|Task|Crew|Process)\b",
+        r"\b(?:backstory|goal|expected_output)\b",
+        r"\b(?:sequential|hierarchical)\b",
+    ],
+}
+
+# v1.5: Common agent coordination patterns (benign)
+COORDINATION_PATTERNS = [
+    r"\b(?:delegating to|handing off to|passing to|coordinating with)\b",
+    r"\b(?:agent \d+|step \d+|phase \d+)\b",
+    r"\b(?:my role|my task|assigned to me)\b",
+    r"\b(?:waiting for|blocked on|depends on)\b",
+    r"\b(?:reporting back|returning result|providing feedback)\b",
+]
+
 
 class DerailmentSeverity(str, Enum):
     NONE = "none"
@@ -126,12 +172,14 @@ class TaskDerailmentDetector:
         min_output_length: int = 20,
         confidence_scaling: float = 1.0,
         task_coverage_threshold: float = 0.5,  # Minimum task term coverage to consider task addressed
+        framework: Optional[str] = None,  # v1.5: Framework for benign pattern matching
     ):
         self.similarity_threshold = similarity_threshold
         self.drift_threshold = drift_threshold
         self.min_output_length = min_output_length
         self.confidence_scaling = confidence_scaling
         self.task_coverage_threshold = task_coverage_threshold
+        self.framework = framework
         self._embedder = None
     
     def _calibrate_confidence(
@@ -166,6 +214,28 @@ class TaskDerailmentDetector:
                 logger.warning("EmbeddingService not available, using fallback")
                 self._embedder = "fallback"
         return self._embedder
+
+    def _has_framework_benign_pattern(self, text: str) -> bool:
+        """
+        v1.5: Check if text contains framework-specific benign patterns.
+
+        Multi-agent frameworks often have coordination messages that may
+        look like derailment but are actually normal operation.
+        """
+        import re
+
+        # Check framework-specific patterns
+        if self.framework and self.framework in FRAMEWORK_BENIGN_PATTERNS:
+            for pattern in FRAMEWORK_BENIGN_PATTERNS[self.framework]:
+                if re.search(pattern, text, re.IGNORECASE):
+                    return True
+
+        # Check general coordination patterns
+        for pattern in COORDINATION_PATTERNS:
+            if re.search(pattern, text, re.IGNORECASE):
+                return True
+
+        return False
 
     def _compute_similarity(self, text1: str, text2: str) -> float:
         embedder = self._get_embedder()
@@ -493,17 +563,24 @@ class TaskDerailmentDetector:
         # This prevents over-detection when agent completes task + adds helpful info
         task_addressed = self._is_task_addressed(task, output, task_coverage)
 
+        # v1.5: Check for framework-specific benign patterns
+        has_framework_benign = self._has_framework_benign_pattern(output)
+
         # Detection logic:
         # 1. Task substitution is always a derailment (wrong task entirely)
         # 2. Research focus mismatch is a derailment (wrong aspect)
-        # 3. If task is addressed, only flag for severe cases
-        # 4. Otherwise, use standard thresholds
+        # 3. Framework benign patterns exempt from detection (coordination)
+        # 4. If task is addressed, only flag for severe cases
+        # 5. Otherwise, use standard thresholds
         if substitution_detected:
             # v1.2: Task substitution is a clear derailment
             detected = True
         elif focus_mismatch:
             # v1.4: Research focus mismatch is a derailment
             detected = True
+        elif has_framework_benign and task_addressed:
+            # v1.5: Framework coordination with task addressed - not derailment
+            detected = False
         elif task_addressed:
             # Task is addressed - only flag for severe cases (completely unrelated output)
             detected = similarity < 0.1  # Very strict threshold when task is addressed
@@ -521,6 +598,8 @@ class TaskDerailmentDetector:
             "substitution_description": substitution_desc,
             "focus_mismatch_detected": focus_mismatch,
             "focus_mismatch_description": focus_desc,
+            "framework_benign_pattern": has_framework_benign,  # v1.5
+            "framework": self.framework,  # v1.5
             "similarity_threshold": self.similarity_threshold,
             "drift_threshold": self.drift_threshold,
             "task_coverage_threshold": self.task_coverage_threshold,

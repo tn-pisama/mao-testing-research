@@ -1,5 +1,20 @@
+"""
+Loop Detection for Multi-Agent Systems (MAST F8)
+=================================================
+
+Detects infinite loops and repetitive patterns in agent behavior.
+
+Version History:
+- v1.0: Initial implementation with structural, hash, and semantic detection
+- v1.1: Added semantic clustering for paraphrased loops
+- v1.2: Added summary/recap whitelisting to reduce false positives
+  - Agents summarizing their work shouldn't be flagged as loops
+  - Recap/review patterns are benign repetition
+"""
+
 import hashlib
 import json
+import re
 from dataclasses import dataclass
 from typing import List, Optional
 import numpy as np
@@ -7,7 +22,33 @@ from sklearn.cluster import KMeans
 from app.config import get_settings, get_framework_thresholds, get_tenant_thresholds, FrameworkThresholds
 from app.core.embeddings import get_embedder
 
+# Detector version
+DETECTOR_VERSION = "1.2"
+
 settings = get_settings()
+
+# v1.2: Summary/recap patterns that indicate benign repetition, not loops
+SUMMARY_WHITELIST_PATTERNS = [
+    r"\b(?:to summarize|in summary|summarizing|to recap|recapping)\b",
+    r"\b(?:so far|thus far|up to this point|at this point)\b",
+    r"\b(?:what we've done|what i've done|what has been done)\b",
+    r"\b(?:reviewing|let me review|to review)\b",
+    r"\b(?:accomplishments|completed so far|progress report)\b",
+    r"\b(?:status update|current status|where we are)\b",
+    r"\b(?:here's what|here is what)\s+(?:we've|i've|has been)\b",
+    r"\b(?:quick recap|brief summary|overview of)\b",
+    r"\b(?:wrapping up|to wrap up|in conclusion)\b",
+    r"\b(?:let me go over|going over what)\b",
+]
+
+# v1.2: Progress reporting patterns
+PROGRESS_WHITELIST_PATTERNS = [
+    r"\b(?:step \d+ of \d+|task \d+ of \d+)\b",
+    r"\b(?:phase \d+|iteration \d+|round \d+)\b",
+    r"\b(?:checkpoint|milestone|progress)\b",
+    r"\b(?:moving on to|proceeding to|next up)\b",
+    r"\b(?:completed step \d+|finished step \d+)\b",
+]
 
 
 @dataclass
@@ -94,6 +135,37 @@ class MultiLevelLoopDetector:
         if self._embedder is None:
             self._embedder = get_embedder()
         return self._embedder
+
+    def _is_summary_or_progress(self, text: str) -> bool:
+        """
+        v1.2: Check if text is a summary/recap or progress report.
+
+        These patterns indicate benign repetition (agent reviewing work)
+        rather than an actual loop.
+        """
+        text_lower = text.lower()
+
+        for pattern in SUMMARY_WHITELIST_PATTERNS:
+            if re.search(pattern, text_lower):
+                return True
+
+        for pattern in PROGRESS_WHITELIST_PATTERNS:
+            if re.search(pattern, text_lower):
+                return True
+
+        return False
+
+    def _has_summary_pattern_in_window(self, states: List["StateSnapshot"]) -> bool:
+        """
+        v1.2: Check if any state in the window contains summary patterns.
+
+        If the recent window contains summary/recap language, the repetition
+        might be benign rather than a loop.
+        """
+        for state in states[-5:]:  # Check last 5 states
+            if self._is_summary_or_progress(state.content):
+                return True
+        return False
     
     def _calibrate_confidence(
         self,
@@ -121,6 +193,11 @@ class MultiLevelLoopDetector:
     def detect_loop(self, states: List[StateSnapshot]) -> LoopDetectionResult:
         if len(states) < 3:
             return LoopDetectionResult(detected=False, confidence=0.0, method=None, cost=0.0, framework=self.framework)
+
+        # v1.2: Check for summary patterns that indicate benign repetition
+        if self._has_summary_pattern_in_window(states):
+            # Don't immediately return - but we'll reduce confidence later if loop detected
+            pass
 
         current = states[-1]
         window = states[-self.window_size:-1] if len(states) > self.window_size else states[:-1]
@@ -208,6 +285,17 @@ class MultiLevelLoopDetector:
                 similarities.append((i, sim))
 
             high_sim_matches = [(i, sim) for i, sim in similarities if sim > self.semantic_threshold]
+
+            # v1.2: If current state is a summary/recap, don't flag as loop
+            if self._is_summary_or_progress(current.content):
+                return LoopDetectionResult(
+                    detected=False,
+                    confidence=0.0,
+                    method=None,
+                    cost=0.0,
+                    framework=self.framework,
+                    evidence={"summary_pattern_detected": True},
+                )
 
             if len(high_sim_matches) >= self.min_matches_for_loop:
                 first_match_idx = high_sim_matches[0][0]
