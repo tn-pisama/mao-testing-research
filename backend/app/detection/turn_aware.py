@@ -192,6 +192,145 @@ class EmbeddingMixin:
 
         return min(1.0, density)
 
+    def contrastive_similarity(
+        self,
+        anchor: str,
+        positive: str,
+        negative: str,
+        mode: Optional[str] = None,
+    ) -> Dict[str, Any]:
+        """Compute contrastive similarity using triplet comparison.
+
+        Uses TRACE framework approach: anchor should be more similar to
+        positive than to negative by a margin.
+
+        Args:
+            anchor: Reference text (e.g., the trace being analyzed)
+            positive: Example of expected behavior
+            negative: Example of failure/anomaly
+            mode: MAST failure mode for model selection
+
+        Returns:
+            Dict with similarity scores and classification
+        """
+        if not self.embedder:
+            return {"available": False}
+
+        try:
+            result = self.embedder.compute_contrastive_score(
+                anchor=anchor,
+                positive=positive,
+                negative=negative,
+            )
+            result["available"] = True
+
+            # Classify based on which example is closer
+            if result["pos_sim"] > result["neg_sim"]:
+                result["classification"] = "normal"
+                result["confidence"] = result["margin_score"]
+            else:
+                result["classification"] = "anomaly"
+                result["confidence"] = -result["margin_score"]
+
+            return result
+        except Exception as e:
+            logger.debug(f"Contrastive similarity failed: {e}")
+            return {"available": False, "error": str(e)}
+
+    def batch_semantic_drift(
+        self,
+        reference: str,
+        responses: List[str],
+        window_size: int = 3,
+        threshold: float = EMBEDDING_SIMILARITY_THRESHOLD,
+    ) -> Dict[str, Any]:
+        """Detect semantic drift using efficient batch processing.
+
+        Optimized for long traces by:
+        1. Using sliding window for local drift detection
+        2. Computing trend line for progressive drift
+        3. Identifying sudden drift points
+
+        Args:
+            reference: Original task/context text
+            responses: List of agent responses in order
+            window_size: Size of sliding window for local analysis
+            threshold: Similarity threshold for drift detection
+
+        Returns:
+            Dict with comprehensive drift analysis
+        """
+        if not self.embedder or not responses:
+            return {"available": False}
+
+        try:
+            # Get similarities using parent method
+            similarities = self.batch_semantic_similarity(reference, responses)
+            if not similarities:
+                return {"available": False}
+
+            n = len(similarities)
+
+            # Find drift points (sudden drops)
+            drift_points = []
+            for i in range(1, n):
+                if similarities[i-1] - similarities[i] > 0.15:  # 15% drop
+                    drift_points.append({
+                        "index": i,
+                        "drop": similarities[i-1] - similarities[i],
+                        "before": similarities[i-1],
+                        "after": similarities[i],
+                    })
+
+            # Sliding window analysis
+            window_avgs = []
+            for i in range(n - window_size + 1):
+                window = similarities[i:i + window_size]
+                window_avgs.append(sum(window) / len(window))
+
+            # Compute trend (linear regression slope)
+            if n >= 3:
+                x = list(range(n))
+                x_mean = sum(x) / n
+                y_mean = sum(similarities) / n
+                numerator = sum((x[i] - x_mean) * (similarities[i] - y_mean) for i in range(n))
+                denominator = sum((x[i] - x_mean) ** 2 for i in range(n))
+                slope = numerator / denominator if denominator != 0 else 0
+            else:
+                slope = 0
+
+            # Classify drift severity
+            avg_sim = sum(similarities) / n
+            drifted_count = sum(1 for s in similarities if s < threshold)
+
+            if slope < -0.05 and drifted_count > n // 2:
+                severity = "severe"
+            elif slope < -0.02 or drifted_count > n // 3:
+                severity = "moderate"
+            elif drifted_count > 0:
+                severity = "mild"
+            else:
+                severity = "none"
+
+            return {
+                "available": True,
+                "similarities": similarities,
+                "avg_similarity": avg_sim,
+                "min_similarity": min(similarities),
+                "max_similarity": max(similarities),
+                "trend_slope": slope,
+                "drift_points": drift_points,
+                "window_averages": window_avgs,
+                "drifted_count": drifted_count,
+                "drifted_indices": [i for i, s in enumerate(similarities) if s < threshold],
+                "severity": severity,
+                "progressive_drift": slope < -0.02,
+                "sudden_drift": len(drift_points) > 0,
+            }
+        except Exception as e:
+            logger.debug(f"Batch semantic drift failed: {e}")
+            return {"available": False, "error": str(e)}
+
 
 class TurnAwareSeverity(str, Enum):
     """Severity levels for turn-aware detections."""

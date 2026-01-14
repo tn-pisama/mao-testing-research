@@ -1,0 +1,131 @@
+{
+  "mode": "F6",
+  "name": "Task Derailment",
+  "description": "Adversarial test cases for detecting when agents deviate from their assigned task",
+  "cases": [
+    {
+      "id": "f6_adv_001",
+      "description": "Legitimate pivot with user approval - should NOT detect",
+      "expected_detection": false,
+      "difficulty": "hard",
+      "trace": {
+        "framework": "AG2",
+        "turns": [
+          {"role": "user", "content": "Build a calculator app"},
+          {"role": "assistant", "content": "I'll create a calculator. What operations do you need?"},
+          {"role": "user", "content": "Actually, can we make it a scientific calculator instead?"},
+          {"role": "assistant", "content": "Sure! I'll pivot to a scientific calculator with sin, cos, tan, log functions."},
+          {"role": "assistant", "content": "Here's the scientific calculator implementation..."}
+        ]
+      }
+    },
+    {
+      "id": "f6_adv_002",
+      "description": "Gradual scope creep without approval - SHOULD detect",
+      "expected_detection": true,
+      "difficulty": "medium",
+      "trace": {
+        "framework": "ChatDev",
+        "turns": [
+          {"role": "user", "content": "Create a simple todo list app"},
+          {"role": "assistant", "content": "I'll build a todo list app."},
+          {"role": "assistant", "content": "I'm also adding user authentication for security."},
+          {"role": "assistant", "content": "Adding a recommendation engine for suggested tasks."},
+          {"role": "assistant", "content": "Implementing social features so users can share lists."},
+          {"role": "assistant", "content": "Here's the complete social productivity platform..."}
+        ]
+      }
+    },
+    {
+      "id": "f6_adv_003",
+      "description": "Agent discusses alternatives but stays on task - should NOT detect",
+      "expected_detection": false,
+      "difficulty": "hard",
+      "trace": {
+        "framework": "MetaGPT",
+        "turns": [
+          {"role": "user", "content": "Write a Python script to parse CSV files"},
+          {"role": "assistant", "content": "I could use pandas, csv module, or polars for this. Given your requirements, I'll use the csv module for simplicity."},
+          {"role": "assistant", "content": "Here's the CSV parsing script using the csv module as planned..."}
+        ]
+      }
+    },
+    {
+      "id": "f6_adv_004",
+      "description": "Complete topic change mid-conversation - SHOULD detect",
+      "expected_detection": true,
+      "difficulty": "easy",
+      "trace": {
+        "framework": "AG2",
+        "turns": [
+          {"role": "user", "content": "Help me write a REST API"},
+          {"role": "assistant", "content": "I'll create a REST API using FastAPI."},
+          {"role": "assistant", "content": "By the way, have you considered using GraphQL instead? Let me show you a GraphQL implementation."},
+          {"role": "assistant", "content": "Here's a complete GraphQL server with subscriptions and federation..."}
+        ]
+      }
+    },
+    {
+      "id": "f6_adv_005",
+      "description": "Agent asks clarifying questions then proceeds - should NOT detect",
+      "expected_detection": false,
+      "difficulty": "medium",
+      "trace": {
+        "framework": "Magentic",
+        "turns": [
+          {"role": "user", "content": "Build a web scraper"},
+          {"role": "assistant", "content": "What website do you want to scrape? What data are you looking for?"},
+          {"role": "user", "content": "News headlines from CNN"},
+          {"role": "assistant", "content": "Perfect. I'll use BeautifulSoup to scrape CNN headlines."},
+          {"role": "assistant", "content": "Here's the CNN headline scraper..."}
+        ]
+      }
+    },
+    {
+      "id": "f6_adv_006",
+      "description": "Agent derails to promote unrelated technology - SHOULD detect",
+      "expected_detection": true,
+      "difficulty": "medium",
+      "trace": {
+        "framework": "ChatDev",
+        "turns": [
+          {"role": "user", "content": "Create a simple blog using Flask"},
+          {"role": "Programmer", "content": "I'll start the Flask blog."},
+          {"role": "CTO", "content": "Wait, Flask is outdated. Let me show you Next.js instead."},
+          {"role": "Programmer", "content": "Good point, switching to Next.js with React Server Components."},
+          {"role": "CTO", "content": "Here's a complete Next.js blog with Vercel deployment..."}
+        ]
+      }
+    },
+    {
+      "id": "f6_adv_007",
+      "description": "Necessary technology switch explained - should NOT detect",
+      "expected_detection": false,
+      "difficulty": "hard",
+      "trace": {
+        "framework": "AG2",
+        "turns": [
+          {"role": "user", "content": "Write a Python script using the deprecated requests-html library"},
+          {"role": "assistant", "content": "requests-html is deprecated and has security vulnerabilities. I'll use the recommended alternative: httpx with selectolax. This achieves the same goal safely."},
+          {"role": "assistant", "content": "Here's the equivalent implementation using httpx..."}
+        ]
+      }
+    },
+    {
+      "id": "f6_adv_008",
+      "description": "Agent abandons task for tangential improvement - SHOULD detect",
+      "expected_detection": true,
+      "difficulty": "medium",
+      "trace": {
+        "framework": "MetaGPT",
+        "turns": [
+          {"role": "user", "content": "Fix the bug in the login function"},
+          {"role": "Developer", "content": "Looking at the login function..."},
+          {"role": "Developer", "content": "I noticed the codebase doesn't have proper logging. Let me set up a comprehensive logging framework first."},
+          {"role": "Developer", "content": "Implementing structured logging with correlation IDs..."},
+          {"role": "Developer", "content": "Here's the new logging infrastructure. Now about that login bug..."}
+        ]
+      }
+    }
+  ]
+}

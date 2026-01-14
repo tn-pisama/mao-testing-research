@@ -1,0 +1,128 @@
+{
+  "mode": "F14",
+  "name": "Completion Misjudgment",
+  "description": "Adversarial test cases for detecting when agents incorrectly claim task completion",
+  "cases": [
+    {
+      "id": "f14_adv_001",
+      "description": "Premature completion claim with missing features - SHOULD detect",
+      "expected_detection": true,
+      "difficulty": "easy",
+      "trace": {
+        "framework": "AG2",
+        "turns": [
+          {"role": "user", "content": "Build a REST API with authentication, rate limiting, and logging"},
+          {"role": "assistant", "content": "I'll create the REST API."},
+          {"role": "assistant", "content": "Here's the API with basic CRUD endpoints."},
+          {"role": "assistant", "content": "Task complete! The REST API is ready."}
+        ]
+      }
+    },
+    {
+      "id": "f14_adv_002",
+      "description": "All requirements explicitly addressed - should NOT detect",
+      "expected_detection": false,
+      "difficulty": "medium",
+      "trace": {
+        "framework": "MetaGPT",
+        "turns": [
+          {"role": "user", "content": "Create a login form with email validation and password strength check"},
+          {"role": "Developer", "content": "Building the login form..."},
+          {"role": "Developer", "content": "Added email validation using regex pattern for standard email format."},
+          {"role": "Developer", "content": "Implemented password strength: min 8 chars, uppercase, lowercase, number, special char."},
+          {"role": "Developer", "content": "Task complete. Login form ready with email validation and password strength indicator."}
+        ]
+      }
+    },
+    {
+      "id": "f14_adv_003",
+      "description": "Uncertain completion language - SHOULD detect",
+      "expected_detection": true,
+      "difficulty": "medium",
+      "trace": {
+        "framework": "ChatDev",
+        "turns": [
+          {"role": "Programmer", "content": "I've implemented most of the features."},
+          {"role": "Programmer", "content": "I think it should work for the basic cases."},
+          {"role": "Programmer", "content": "Probably done, I guess. Should be good enough."}
+        ]
+      }
+    },
+    {
+      "id": "f14_adv_004",
+      "description": "Explicit partial completion acknowledged - should NOT detect",
+      "expected_detection": false,
+      "difficulty": "hard",
+      "trace": {
+        "framework": "AG2",
+        "turns": [
+          {"role": "user", "content": "Implement the entire checkout flow"},
+          {"role": "assistant", "content": "I've implemented the cart and payment selection steps."},
+          {"role": "assistant", "content": "Partial completion: Cart and payment selection are done. Still pending: shipping address form and order confirmation page. Shall I continue?"}
+        ]
+      }
+    },
+    {
+      "id": "f14_adv_005",
+      "description": "Code has obvious bugs but claimed complete - SHOULD detect",
+      "expected_detection": true,
+      "difficulty": "medium",
+      "trace": {
+        "framework": "MetaGPT",
+        "turns": [
+          {"role": "Developer", "content": "def calculate_total(items):\n    total = 0\n    for item in items\n        total += item.price\n    return total"},
+          {"role": "Developer", "content": "Task complete! The calculate_total function is ready for production."}
+        ]
+      }
+    },
+    {
+      "id": "f14_adv_006",
+      "description": "Thorough verification before completion claim - should NOT detect",
+      "expected_detection": false,
+      "difficulty": "medium",
+      "trace": {
+        "framework": "ChatDev",
+        "turns": [
+          {"role": "Programmer", "content": "Implementation done. Let me verify against requirements:"},
+          {"role": "Programmer", "content": "1. User registration - Implemented with email verification"},
+          {"role": "Programmer", "content": "2. Password reset - Implemented with secure token"},
+          {"role": "Programmer", "content": "3. Session management - Implemented with JWT, 1hr expiry"},
+          {"role": "Tester", "content": "All test cases pass. Verified each requirement."},
+          {"role": "Programmer", "content": "Task complete. All requirements verified and tested."}
+        ]
+      }
+    },
+    {
+      "id": "f14_adv_007",
+      "description": "Completion claim but error in output - SHOULD detect",
+      "expected_detection": true,
+      "difficulty": "easy",
+      "trace": {
+        "framework": "AG2",
+        "turns": [
+          {"role": "assistant", "content": "Writing the data processing script..."},
+          {"role": "assistant", "content": "Error: ModuleNotFoundError: No module named 'pandas'"},
+          {"role": "assistant", "content": "Task complete! Your data processing script is ready to use."}
+        ]
+      }
+    },
+    {
+      "id": "f14_adv_008",
+      "description": "Complex task with clear completion criteria met - should NOT detect",
+      "expected_detection": false,
+      "difficulty": "hard",
+      "trace": {
+        "framework": "Magentic",
+        "turns": [
+          {"role": "user", "content": "Create a CLI tool that: 1) Accepts JSON input, 2) Validates against schema, 3) Outputs formatted report"},
+          {"role": "assistant", "content": "Building the CLI tool with three components..."},
+          {"role": "assistant", "content": "1. JSON input handler: Reads from file or stdin, handles malformed JSON gracefully."},
+          {"role": "assistant", "content": "2. Schema validator: Uses jsonschema library, reports all validation errors."},
+          {"role": "assistant", "content": "3. Report formatter: Generates human-readable and JSON output formats."},
+          {"role": "assistant", "content": "Demo: ./tool --input data.json --schema schema.json --format table\nOutput: Validation passed. 3 records processed."},
+          {"role": "assistant", "content": "Task complete. All three requirements implemented and demonstrated."}
+        ]
+      }
+    }
+  ]
+}

@@ -153,6 +153,109 @@ class EmbeddingService:
         _ = self.encode("warmup text for model initialization")
         logger.info("Embedding model warmed up")
 
+    def compute_contrastive_score(
+        self,
+        anchor: str,
+        positive: str,
+        negative: str,
+        margin: float = 0.2,
+    ) -> Dict[str, float]:
+        """Compute contrastive score for triplet (anchor, positive, negative).
+
+        Based on TRACE framework research showing +21.3% improvement with
+        contrastive embeddings. Uses triplet margin loss formulation.
+
+        Args:
+            anchor: The query/reference text
+            positive: Text that should be similar to anchor
+            negative: Text that should be dissimilar to anchor
+            margin: Minimum desired margin between positive and negative
+
+        Returns:
+            Dict with scores: pos_sim, neg_sim, margin_score, triplet_valid
+        """
+        try:
+            anchor_emb = self.encode(anchor, is_query=True)
+            pos_emb = self.encode(positive, is_query=False)
+            neg_emb = self.encode(negative, is_query=False)
+
+            pos_sim = self.similarity(anchor_emb, pos_emb)
+            neg_sim = self.similarity(anchor_emb, neg_emb)
+
+            # Triplet margin: pos should be closer than neg by at least margin
+            margin_score = pos_sim - neg_sim
+            triplet_valid = margin_score >= margin
+
+            return {
+                "pos_sim": float(pos_sim),
+                "neg_sim": float(neg_sim),
+                "margin_score": float(margin_score),
+                "triplet_valid": triplet_valid,
+                "contrastive_score": max(0.0, min(1.0, (margin_score + 1) / 2)),
+            }
+        except Exception as e:
+            logger.error(f"Contrastive score computation failed: {e}")
+            return {
+                "pos_sim": 0.0,
+                "neg_sim": 0.0,
+                "margin_score": 0.0,
+                "triplet_valid": False,
+                "contrastive_score": 0.5,
+            }
+
+    def batch_encode_chunked(
+        self,
+        texts: List[str],
+        max_chars_per_text: int = 8000,
+        batch_size: int = 16,
+    ) -> np.ndarray:
+        """Encode long texts by chunking and averaging embeddings.
+
+        Optimized for MAST traces averaging 49K chars. Chunks long texts,
+        embeds each chunk, and returns weighted average.
+
+        Args:
+            texts: List of texts to encode (can be very long)
+            max_chars_per_text: Max chars before chunking (default 8K for E5)
+            batch_size: Batch size for encoding
+
+        Returns:
+            Array of embeddings, one per input text
+        """
+        all_embeddings = []
+
+        for text in texts:
+            if len(text) <= max_chars_per_text:
+                emb = self.encode(text, is_query=False)
+                all_embeddings.append(emb)
+            else:
+                # Chunk the text with overlap
+                chunks = []
+                chunk_size = max_chars_per_text
+                overlap = chunk_size // 4  # 25% overlap
+
+                start = 0
+                while start < len(text):
+                    end = min(start + chunk_size, len(text))
+                    chunks.append(text[start:end])
+                    start = end - overlap if end < len(text) else end
+
+                # Encode all chunks
+                chunk_embeddings = self.encode(
+                    chunks, is_query=False, batch_size=batch_size
+                )
+
+                # Weight by chunk length and average
+                weights = np.array([len(c) for c in chunks], dtype=np.float32)
+                weights = weights / weights.sum()
+                avg_emb = np.average(chunk_embeddings, axis=0, weights=weights)
+
+                # Normalize
+                avg_emb = avg_emb / np.linalg.norm(avg_emb)
+                all_embeddings.append(avg_emb)
+
+        return np.array(all_embeddings)
+
 
 def get_embedder() -> EmbeddingService:
     return EmbeddingService.get_instance()
@@ -398,6 +501,95 @@ class EmbeddingEnsemble:
     def available_providers(self) -> set:
         """Get set of available embedding providers."""
         return self._available_providers.copy()
+
+    def compute_contrastive_score(
+        self,
+        anchor: str,
+        positive: str,
+        negative: str,
+        mode: Optional[str] = None,
+        margin: float = 0.2,
+    ) -> Dict[str, Any]:
+        """Compute contrastive score using mode-specific embedding model.
+
+        Uses the best embedding model for the given MAST failure mode.
+
+        Args:
+            anchor: The query/reference text
+            positive: Text that should be similar to anchor
+            negative: Text that should be dissimilar to anchor
+            mode: MAST failure mode (F1-F14) for model selection
+            margin: Minimum desired margin between positive and negative
+
+        Returns:
+            Dict with scores and provider used
+        """
+        provider = self.get_provider_for_mode(mode) if mode else "e5"
+
+        try:
+            anchor_emb = self.encode(anchor, mode=mode, provider=provider)
+            pos_emb = self.encode(positive, mode=mode, provider=provider)
+            neg_emb = self.encode(negative, mode=mode, provider=provider)
+
+            # Compute cosine similarities
+            def cosine_sim(a, b):
+                norm_a = np.linalg.norm(a)
+                norm_b = np.linalg.norm(b)
+                if norm_a == 0 or norm_b == 0:
+                    return 0.0
+                return float(np.dot(a, b) / (norm_a * norm_b))
+
+            pos_sim = cosine_sim(anchor_emb, pos_emb)
+            neg_sim = cosine_sim(anchor_emb, neg_emb)
+            margin_score = pos_sim - neg_sim
+
+            return {
+                "pos_sim": pos_sim,
+                "neg_sim": neg_sim,
+                "margin_score": margin_score,
+                "triplet_valid": margin_score >= margin,
+                "contrastive_score": max(0.0, min(1.0, (margin_score + 1) / 2)),
+                "provider": provider,
+                "mode": mode,
+            }
+        except Exception as e:
+            logger.error(f"Ensemble contrastive score failed: {e}")
+            return {
+                "pos_sim": 0.0,
+                "neg_sim": 0.0,
+                "margin_score": 0.0,
+                "triplet_valid": False,
+                "contrastive_score": 0.5,
+                "provider": provider,
+                "mode": mode,
+                "error": str(e),
+            }
+
+    def batch_encode_texts(
+        self,
+        texts: List[str],
+        mode: Optional[str] = None,
+        max_chars: int = 8000,
+    ) -> List[np.ndarray]:
+        """Batch encode multiple texts with chunking for long content.
+
+        Args:
+            texts: List of texts to encode
+            mode: MAST failure mode for model selection
+            max_chars: Max chars before truncation (API models have limits)
+
+        Returns:
+            List of embedding vectors
+        """
+        provider = self.get_provider_for_mode(mode) if mode else "e5"
+
+        # For API providers, truncate to avoid token limits
+        if provider != "e5":
+            texts = [t[:max_chars] if len(t) > max_chars else t for t in texts]
+            return [self.encode(t, mode=mode, provider=provider) for t in texts]
+
+        # For E5, use the chunked encoding from EmbeddingService
+        return list(self.e5_service.batch_encode_chunked(texts, max_chars))
 
     @classmethod
     def get_instance(cls) -> "EmbeddingEnsemble":

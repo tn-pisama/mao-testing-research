@@ -5,8 +5,12 @@ or false negatives. Based on Anthropic's "Demystifying evals" article recommenda
 to create harder cases when detection accuracy approaches saturation.
 
 Files:
+- f6_derailment_adversarial.json: Edge cases for Task Derailment (F6) detector
 - f8_loop_adversarial.json: Edge cases for Infinite Loop (F8) detector
+- f9_usurpation_adversarial.json: Edge cases for Role Usurpation (F9) detector
 - f12_resource_adversarial.json: Edge cases for Resource Overflow (F12) detector
+- f13_quality_gate_adversarial.json: Edge cases for Quality Gate Bypass (F13) detector
+- f14_completion_adversarial.json: Edge cases for Completion Misjudgment (F14) detector
 """
 
 import json
@@ -20,14 +24,18 @@ def load_adversarial_cases(mode: str) -> list[dict[str, Any]]:
     """Load adversarial test cases for a specific failure mode.
 
     Args:
-        mode: Failure mode (e.g., 'F8', 'F12')
+        mode: Failure mode (e.g., 'F6', 'F8', 'F9', 'F12', 'F13', 'F14')
 
     Returns:
         List of test case dicts, or empty list if no adversarial cases exist
     """
     mode_to_file = {
+        "F6": "f6_derailment_adversarial.json",
         "F8": "f8_loop_adversarial.json",
+        "F9": "f9_usurpation_adversarial.json",
         "F12": "f12_resource_adversarial.json",
+        "F13": "f13_quality_gate_adversarial.json",
+        "F14": "f14_completion_adversarial.json",
     }
 
     filename = mode_to_file.get(mode)
@@ -50,8 +58,12 @@ def get_all_adversarial_cases() -> dict[str, list[dict[str, Any]]]:
         Dict mapping mode to list of test cases
     """
     return {
+        "F6": load_adversarial_cases("F6"),
         "F8": load_adversarial_cases("F8"),
+        "F9": load_adversarial_cases("F9"),
         "F12": load_adversarial_cases("F12"),
+        "F13": load_adversarial_cases("F13"),
+        "F14": load_adversarial_cases("F14"),
     }
 
 
