@@ -2,19 +2,38 @@
   "name": "MAO Test: Hallucination Injection",
   "nodes": [
     {
-      "parameters": {},
+      "parameters": {
+        "path": "mao-hallucination-injection",
+        "responseMode": "lastNode",
+        "options": {},
+        "httpMethod": "POST"
+      },
       "id": "start",
-      "name": "Start",
-      "type": "n8n-nodes-base.manualTrigger",
-      "typeVersion": 1,
-      "position": [0, 0]
+      "name": "Webhook",
+      "type": "n8n-nodes-base.webhook",
+      "typeVersion": 2,
+      "position": [
+        0,
+        0
+      ],
+      "webhookId": "mao-hallucination-injection"
     },
     {
       "parameters": {
         "assignments": {
           "assignments": [
-            {"id": "session_id", "name": "session_id", "value": "={{ $now.format('X') }}", "type": "string"},
-            {"id": "context", "name": "context", "value": "The weather today is sunny.", "type": "string"}
+            {
+              "id": "session_id",
+              "name": "session_id",
+              "value": "={{ $now.format('X') }}",
+              "type": "string"
+            },
+            {
+              "id": "context",
+              "name": "context",
+              "value": "The weather today is sunny.",
+              "type": "string"
+            }
           ]
         }
       },
@@ -22,7 +41,10 @@
       "name": "Initialize Context",
       "type": "n8n-nodes-base.set",
       "typeVersion": 3.4,
-      "position": [200, 0]
+      "position": [
+        200,
+        0
+      ]
     },
     {
       "parameters": {
@@ -34,7 +56,10 @@
       "name": "Hallucination Agent",
       "type": "@n8n/n8n-nodes-langchain.agent",
       "typeVersion": 1.6,
-      "position": [400, 0]
+      "position": [
+        400,
+        0
+      ]
     },
     {
       "parameters": {
@@ -46,7 +71,10 @@
       "name": "Verification Agent",
       "type": "@n8n/n8n-nodes-langchain.agent",
       "typeVersion": 1.6,
-      "position": [600, 0]
+      "position": [
+        600,
+        0
+      ]
     },
     {
       "parameters": {
@@ -55,17 +83,35 @@
         "sendHeaders": true,
         "headerParameters": {
           "parameters": [
-            {"name": "X-N8N-Api-Key", "value": "n8n_live_mao_9b4f142d_a3b0_452c_a65f_581b05290539_2024"}
+            {
+              "name": "X-N8N-Api-Key",
+              "value": "n8n_live_mao_9b4f142d_a3b0_452c_a65f_581b05290539_2024"
+            }
           ]
         },
         "sendBody": true,
         "bodyParameters": {
           "parameters": [
-            {"name": "event_type", "value": "workflow.completed"},
-            {"name": "workflow_name", "value": "MAO Test: Hallucination Injection"},
-            {"name": "session_id", "value": "={{ $('Initialize Context').item.json.session_id }}"},
-            {"name": "context", "value": "={{ $('Initialize Context').item.json.context }}"},
-            {"name": "agents", "value": "={{ JSON.stringify([{agent_id: 'Hallucination Agent', output: $('Hallucination Agent').item.json.output}, {agent_id: 'Verification Agent', output: $('Verification Agent').item.json.output}]) }}"}
+            {
+              "name": "event_type",
+              "value": "workflow.completed"
+            },
+            {
+              "name": "workflow_name",
+              "value": "MAO Test: Hallucination Injection"
+            },
+            {
+              "name": "session_id",
+              "value": "={{ $('Initialize Context').item.json.session_id }}"
+            },
+            {
+              "name": "context",
+              "value": "={{ $('Initialize Context').item.json.context }}"
+            },
+            {
+              "name": "agents",
+              "value": "={{ JSON.stringify([{agent_id: 'Hallucination Agent', output: $('Hallucination Agent').item.json.output}, {agent_id: 'Verification Agent', output: $('Verification Agent').item.json.output}]) }}"
+            }
           ]
         },
         "options": {}
@@ -74,15 +120,59 @@
       "name": "Send to MAO",
       "type": "n8n-nodes-base.httpRequest",
       "typeVersion": 4.2,
-      "position": [800, 0]
+      "position": [
+        800,
+        0
+      ]
     }
   ],
   "connections": {
-    "Start": {"main": [[{"node": "Initialize Context", "type": "main", "index": 0}]]},
-    "Initialize Context": {"main": [[{"node": "Hallucination Agent", "type": "main", "index": 0}]]},
-    "Hallucination Agent": {"main": [[{"node": "Verification Agent", "type": "main", "index": 0}]]},
-    "Verification Agent": {"main": [[{"node": "Send to MAO", "type": "main", "index": 0}]]}
+    "Webhook": {
+      "main": [
+        [
+          {
+            "node": "Initialize Context",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Initialize Context": {
+      "main": [
+        [
+          {
+            "node": "Hallucination Agent",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Hallucination Agent": {
+      "main": [
+        [
+          {
+            "node": "Verification Agent",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Verification Agent": {
+      "main": [
+        [
+          {
+            "node": "Send to MAO",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
   },
-  "settings": {"executionOrder": "v1"},
-  "meta": {"templateCredsSetupCompleted": true}
+  "settings": {
+    "executionOrder": "v1"
+  }
 }

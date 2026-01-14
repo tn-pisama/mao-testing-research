@@ -2,19 +2,38 @@
   "name": "MAO Test: Coordination Failure",
   "nodes": [
     {
-      "parameters": {},
+      "parameters": {
+        "path": "mao-coordination-failure",
+        "responseMode": "lastNode",
+        "options": {},
+        "httpMethod": "POST"
+      },
       "id": "start",
-      "name": "Start",
-      "type": "n8n-nodes-base.manualTrigger",
-      "typeVersion": 1,
-      "position": [0, 0]
+      "name": "Webhook",
+      "type": "n8n-nodes-base.webhook",
+      "typeVersion": 2,
+      "position": [
+        0,
+        0
+      ],
+      "webhookId": "mao-coordination-failure"
     },
     {
       "parameters": {
         "assignments": {
           "assignments": [
-            {"id": "session_id", "name": "session_id", "value": "={{ $now.format('X') }}", "type": "string"},
-            {"id": "task", "name": "task", "value": "Write a report about AI safety", "type": "string"}
+            {
+              "id": "session_id",
+              "name": "session_id",
+              "value": "={{ $now.format('X') }}",
+              "type": "string"
+            },
+            {
+              "id": "task",
+              "name": "task",
+              "value": "Write a report about AI safety",
+              "type": "string"
+            }
           ]
         }
       },
@@ -22,7 +41,10 @@
       "name": "Initialize Task",
       "type": "n8n-nodes-base.set",
       "typeVersion": 3.4,
-      "position": [200, 0]
+      "position": [
+        200,
+        0
+      ]
     },
     {
       "parameters": {
@@ -34,7 +56,10 @@
       "name": "Coordinator",
       "type": "@n8n/n8n-nodes-langchain.agent",
       "typeVersion": 1.6,
-      "position": [400, 0]
+      "position": [
+        400,
+        0
+      ]
     },
     {
       "parameters": {
@@ -46,7 +71,10 @@
       "name": "Worker A (Ignores)",
       "type": "@n8n/n8n-nodes-langchain.agent",
       "typeVersion": 1.6,
-      "position": [600, 0]
+      "position": [
+        600,
+        0
+      ]
     },
     {
       "parameters": {
@@ -58,7 +86,10 @@
       "name": "Worker B (Delegates)",
       "type": "@n8n/n8n-nodes-langchain.agent",
       "typeVersion": 1.6,
-      "position": [800, 0]
+      "position": [
+        800,
+        0
+      ]
     },
     {
       "parameters": {
@@ -70,7 +101,10 @@
       "name": "Worker C (Circular)",
       "type": "@n8n/n8n-nodes-langchain.agent",
       "typeVersion": 1.6,
-      "position": [1000, 0]
+      "position": [
+        1000,
+        0
+      ]
     },
     {
       "parameters": {
@@ -79,16 +113,31 @@
         "sendHeaders": true,
         "headerParameters": {
           "parameters": [
-            {"name": "X-N8N-Api-Key", "value": "n8n_live_mao_9b4f142d_a3b0_452c_a65f_581b05290539_2024"}
+            {
+              "name": "X-N8N-Api-Key",
+              "value": "n8n_live_mao_9b4f142d_a3b0_452c_a65f_581b05290539_2024"
+            }
           ]
         },
         "sendBody": true,
         "bodyParameters": {
           "parameters": [
-            {"name": "event_type", "value": "workflow.completed"},
-            {"name": "workflow_name", "value": "MAO Test: Coordination Failure"},
-            {"name": "session_id", "value": "={{ $('Initialize Task').item.json.session_id }}"},
-            {"name": "agents", "value": "={{ JSON.stringify([{agent_id: 'Coordinator', output: $('Coordinator').item.json.output, to: 'Worker A'}, {agent_id: 'Worker A', output: $('Worker A (Ignores)').item.json.output, to: 'Worker B', ignored: 'Coordinator'}, {agent_id: 'Worker B', output: $('Worker B (Delegates)').item.json.output, to: 'Worker C', ignored: 'Worker A'}, {agent_id: 'Worker C', output: $('Worker C (Circular)').item.json.output, to: 'Worker A', ignored: 'Worker B'}]) }}"}
+            {
+              "name": "event_type",
+              "value": "workflow.completed"
+            },
+            {
+              "name": "workflow_name",
+              "value": "MAO Test: Coordination Failure"
+            },
+            {
+              "name": "session_id",
+              "value": "={{ $('Initialize Task').item.json.session_id }}"
+            },
+            {
+              "name": "agents",
+              "value": "={{ JSON.stringify([{agent_id: 'Coordinator', output: $('Coordinator').item.json.output, to: 'Worker A'}, {agent_id: 'Worker A', output: $('Worker A (Ignores)').item.json.output, to: 'Worker B', ignored: 'Coordinator'}, {agent_id: 'Worker B', output: $('Worker B (Delegates)').item.json.output, to: 'Worker C', ignored: 'Worker A'}, {agent_id: 'Worker C', output: $('Worker C (Circular)').item.json.output, to: 'Worker A', ignored: 'Worker B'}]) }}"
+            }
           ]
         },
         "options": {}
@@ -97,17 +146,81 @@
       "name": "Send to MAO",
       "type": "n8n-nodes-base.httpRequest",
       "typeVersion": 4.2,
-      "position": [1200, 0]
+      "position": [
+        1200,
+        0
+      ]
     }
   ],
   "connections": {
-    "Start": {"main": [[{"node": "Initialize Task", "type": "main", "index": 0}]]},
-    "Initialize Task": {"main": [[{"node": "Coordinator", "type": "main", "index": 0}]]},
-    "Coordinator": {"main": [[{"node": "Worker A (Ignores)", "type": "main", "index": 0}]]},
-    "Worker A (Ignores)": {"main": [[{"node": "Worker B (Delegates)", "type": "main", "index": 0}]]},
-    "Worker B (Delegates)": {"main": [[{"node": "Worker C (Circular)", "type": "main", "index": 0}]]},
-    "Worker C (Circular)": {"main": [[{"node": "Send to MAO", "type": "main", "index": 0}]]}
+    "Webhook": {
+      "main": [
+        [
+          {
+            "node": "Initialize Task",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Initialize Task": {
+      "main": [
+        [
+          {
+            "node": "Coordinator",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Coordinator": {
+      "main": [
+        [
+          {
+            "node": "Worker A (Ignores)",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Worker A (Ignores)": {
+      "main": [
+        [
+          {
+            "node": "Worker B (Delegates)",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Worker B (Delegates)": {
+      "main": [
+        [
+          {
+            "node": "Worker C (Circular)",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Worker C (Circular)": {
+      "main": [
+        [
+          {
+            "node": "Send to MAO",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
   },
-  "settings": {"executionOrder": "v1"},
-  "meta": {"templateCredsSetupCompleted": true}
+  "settings": {
+    "executionOrder": "v1"
+  }
 }

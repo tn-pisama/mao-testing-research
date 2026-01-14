@@ -2,20 +2,44 @@
   "name": "MAO Test: Loop Injection",
   "nodes": [
     {
-      "parameters": {},
+      "parameters": {
+        "path": "mao-loop-injection",
+        "responseMode": "lastNode",
+        "options": {},
+        "httpMethod": "POST"
+      },
       "id": "start",
-      "name": "Start",
-      "type": "n8n-nodes-base.manualTrigger",
-      "typeVersion": 1,
-      "position": [0, 0]
+      "name": "Webhook",
+      "type": "n8n-nodes-base.webhook",
+      "typeVersion": 2,
+      "position": [
+        0,
+        0
+      ],
+      "webhookId": "mao-loop-injection"
     },
     {
       "parameters": {
         "assignments": {
           "assignments": [
-            {"id": "session_id", "name": "session_id", "value": "={{ $now.format('X') }}", "type": "string"},
-            {"id": "iteration", "name": "iteration", "value": "=0", "type": "number"},
-            {"id": "question", "name": "question", "value": "What is the capital of France?", "type": "string"}
+            {
+              "id": "session_id",
+              "name": "session_id",
+              "value": "={{ $now.format('X') }}",
+              "type": "string"
+            },
+            {
+              "id": "iteration",
+              "name": "iteration",
+              "value": "=0",
+              "type": "number"
+            },
+            {
+              "id": "question",
+              "name": "question",
+              "value": "What is the capital of France?",
+              "type": "string"
+            }
           ]
         }
       },
@@ -23,7 +47,10 @@
       "name": "Initialize State",
       "type": "n8n-nodes-base.set",
       "typeVersion": 3.4,
-      "position": [200, 0]
+      "position": [
+        200,
+        0
+      ]
     },
     {
       "parameters": {
@@ -35,7 +62,33 @@
       "name": "Agent A (Ask 1)",
       "type": "@n8n/n8n-nodes-langchain.agent",
       "typeVersion": 1.6,
-      "position": [400, 0]
+      "position": [
+        400,
+        0
+      ]
+    },
+    {
+      "parameters": {
+        "model": "claude-3-5-haiku-20241022",
+        "options": {
+          "temperature": 0.2,
+          "maxTokens": 200
+        }
+      },
+      "id": "lm_a1",
+      "name": "LM A1",
+      "type": "@n8n/n8n-nodes-langchain.lmChatAnthropic",
+      "typeVersion": 1.2,
+      "position": [
+        400,
+        200
+      ],
+      "credentials": {
+        "anthropicApi": {
+          "id": "1KM50Mcms9JticwF",
+          "name": "Anthropic API"
+        }
+      }
     },
     {
       "parameters": {
@@ -47,7 +100,33 @@
       "name": "Agent B (Respond 1)",
       "type": "@n8n/n8n-nodes-langchain.agent",
       "typeVersion": 1.6,
-      "position": [600, 0]
+      "position": [
+        600,
+        0
+      ]
+    },
+    {
+      "parameters": {
+        "model": "claude-3-5-haiku-20241022",
+        "options": {
+          "temperature": 0.2,
+          "maxTokens": 200
+        }
+      },
+      "id": "lm_b1",
+      "name": "LM B1",
+      "type": "@n8n/n8n-nodes-langchain.lmChatAnthropic",
+      "typeVersion": 1.2,
+      "position": [
+        600,
+        200
+      ],
+      "credentials": {
+        "anthropicApi": {
+          "id": "1KM50Mcms9JticwF",
+          "name": "Anthropic API"
+        }
+      }
     },
     {
       "parameters": {
@@ -59,7 +138,33 @@
       "name": "Agent A (Ask 2)",
       "type": "@n8n/n8n-nodes-langchain.agent",
       "typeVersion": 1.6,
-      "position": [800, 0]
+      "position": [
+        800,
+        0
+      ]
+    },
+    {
+      "parameters": {
+        "model": "claude-3-5-haiku-20241022",
+        "options": {
+          "temperature": 0.2,
+          "maxTokens": 200
+        }
+      },
+      "id": "lm_a2",
+      "name": "LM A2",
+      "type": "@n8n/n8n-nodes-langchain.lmChatAnthropic",
+      "typeVersion": 1.2,
+      "position": [
+        800,
+        200
+      ],
+      "credentials": {
+        "anthropicApi": {
+          "id": "1KM50Mcms9JticwF",
+          "name": "Anthropic API"
+        }
+      }
     },
     {
       "parameters": {
@@ -71,7 +176,33 @@
       "name": "Agent B (Respond 2)",
       "type": "@n8n/n8n-nodes-langchain.agent",
       "typeVersion": 1.6,
-      "position": [1000, 0]
+      "position": [
+        1000,
+        0
+      ]
+    },
+    {
+      "parameters": {
+        "model": "claude-3-5-haiku-20241022",
+        "options": {
+          "temperature": 0.2,
+          "maxTokens": 200
+        }
+      },
+      "id": "lm_b2",
+      "name": "LM B2",
+      "type": "@n8n/n8n-nodes-langchain.lmChatAnthropic",
+      "typeVersion": 1.2,
+      "position": [
+        1000,
+        200
+      ],
+      "credentials": {
+        "anthropicApi": {
+          "id": "1KM50Mcms9JticwF",
+          "name": "Anthropic API"
+        }
+      }
     },
     {
       "parameters": {
@@ -83,7 +214,33 @@
       "name": "Agent A (Ask 3)",
       "type": "@n8n/n8n-nodes-langchain.agent",
       "typeVersion": 1.6,
-      "position": [1200, 0]
+      "position": [
+        1200,
+        0
+      ]
+    },
+    {
+      "parameters": {
+        "model": "claude-3-5-haiku-20241022",
+        "options": {
+          "temperature": 0.2,
+          "maxTokens": 200
+        }
+      },
+      "id": "lm_a3",
+      "name": "LM A3",
+      "type": "@n8n/n8n-nodes-langchain.lmChatAnthropic",
+      "typeVersion": 1.2,
+      "position": [
+        1200,
+        200
+      ],
+      "credentials": {
+        "anthropicApi": {
+          "id": "1KM50Mcms9JticwF",
+          "name": "Anthropic API"
+        }
+      }
     },
     {
       "parameters": {
@@ -95,7 +252,33 @@
       "name": "Agent B (Respond 3)",
       "type": "@n8n/n8n-nodes-langchain.agent",
       "typeVersion": 1.6,
-      "position": [1400, 0]
+      "position": [
+        1400,
+        0
+      ]
+    },
+    {
+      "parameters": {
+        "model": "claude-3-5-haiku-20241022",
+        "options": {
+          "temperature": 0.2,
+          "maxTokens": 200
+        }
+      },
+      "id": "lm_b3",
+      "name": "LM B3",
+      "type": "@n8n/n8n-nodes-langchain.lmChatAnthropic",
+      "typeVersion": 1.2,
+      "position": [
+        1400,
+        200
+      ],
+      "credentials": {
+        "anthropicApi": {
+          "id": "1KM50Mcms9JticwF",
+          "name": "Anthropic API"
+        }
+      }
     },
     {
       "parameters": {
@@ -104,16 +287,31 @@
         "sendHeaders": true,
         "headerParameters": {
           "parameters": [
-            {"name": "X-N8N-Api-Key", "value": "n8n_live_mao_9b4f142d_a3b0_452c_a65f_581b05290539_2024"}
+            {
+              "name": "X-N8N-Api-Key",
+              "value": "n8n_live_mao_9b4f142d_a3b0_452c_a65f_581b05290539_2024"
+            }
           ]
         },
         "sendBody": true,
         "bodyParameters": {
           "parameters": [
-            {"name": "event_type", "value": "workflow.completed"},
-            {"name": "workflow_name", "value": "MAO Test: Loop Injection"},
-            {"name": "session_id", "value": "={{ $('Initialize State').item.json.session_id }}"},
-            {"name": "agents", "value": "={{ JSON.stringify([{agent_id: 'Agent A', outputs: [$('Agent A (Ask 1)').item.json.output, $('Agent A (Ask 2)').item.json.output, $('Agent A (Ask 3)').item.json.output]}, {agent_id: 'Agent B', outputs: [$('Agent B (Respond 1)').item.json.output, $('Agent B (Respond 2)').item.json.output, $('Agent B (Respond 3)').item.json.output]}]) }}"}
+            {
+              "name": "event_type",
+              "value": "workflow.completed"
+            },
+            {
+              "name": "workflow_name",
+              "value": "MAO Test: Loop Injection"
+            },
+            {
+              "name": "session_id",
+              "value": "={{ $('Initialize State').item.json.session_id }}"
+            },
+            {
+              "name": "agents",
+              "value": "={{ JSON.stringify([{agent_id: 'Agent A', outputs: [$('Agent A (Ask 1)').item.json.output, $('Agent A (Ask 2)').item.json.output, $('Agent A (Ask 3)').item.json.output]}, {agent_id: 'Agent B', outputs: [$('Agent B (Respond 1)').item.json.output, $('Agent B (Respond 2)').item.json.output, $('Agent B (Respond 3)').item.json.output]}]) }}"
+            }
           ]
         },
         "options": {}
@@ -122,19 +320,169 @@
       "name": "Send to MAO",
       "type": "n8n-nodes-base.httpRequest",
       "typeVersion": 4.2,
-      "position": [1600, 0]
+      "position": [
+        1600,
+        0
+      ]
     }
   ],
   "connections": {
-    "Start": {"main": [[{"node": "Initialize State", "type": "main", "index": 0}]]},
-    "Initialize State": {"main": [[{"node": "Agent A (Ask 1)", "type": "main", "index": 0}]]},
-    "Agent A (Ask 1)": {"main": [[{"node": "Agent B (Respond 1)", "type": "main", "index": 0}]]},
-    "Agent B (Respond 1)": {"main": [[{"node": "Agent A (Ask 2)", "type": "main", "index": 0}]]},
-    "Agent A (Ask 2)": {"main": [[{"node": "Agent B (Respond 2)", "type": "main", "index": 0}]]},
-    "Agent B (Respond 2)": {"main": [[{"node": "Agent A (Ask 3)", "type": "main", "index": 0}]]},
-    "Agent A (Ask 3)": {"main": [[{"node": "Agent B (Respond 3)", "type": "main", "index": 0}]]},
-    "Agent B (Respond 3)": {"main": [[{"node": "Send to MAO", "type": "main", "index": 0}]]}
+    "Webhook": {
+      "main": [
+        [
+          {
+            "node": "Initialize State",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Initialize State": {
+      "main": [
+        [
+          {
+            "node": "Agent A (Ask 1)",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "LM A1": {
+      "ai_languageModel": [
+        [
+          {
+            "node": "Agent A (Ask 1)",
+            "type": "ai_languageModel",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Agent A (Ask 1)": {
+      "main": [
+        [
+          {
+            "node": "Agent B (Respond 1)",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "LM B1": {
+      "ai_languageModel": [
+        [
+          {
+            "node": "Agent B (Respond 1)",
+            "type": "ai_languageModel",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Agent B (Respond 1)": {
+      "main": [
+        [
+          {
+            "node": "Agent A (Ask 2)",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "LM A2": {
+      "ai_languageModel": [
+        [
+          {
+            "node": "Agent A (Ask 2)",
+            "type": "ai_languageModel",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Agent A (Ask 2)": {
+      "main": [
+        [
+          {
+            "node": "Agent B (Respond 2)",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "LM B2": {
+      "ai_languageModel": [
+        [
+          {
+            "node": "Agent B (Respond 2)",
+            "type": "ai_languageModel",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Agent B (Respond 2)": {
+      "main": [
+        [
+          {
+            "node": "Agent A (Ask 3)",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "LM A3": {
+      "ai_languageModel": [
+        [
+          {
+            "node": "Agent A (Ask 3)",
+            "type": "ai_languageModel",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Agent A (Ask 3)": {
+      "main": [
+        [
+          {
+            "node": "Agent B (Respond 3)",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "LM B3": {
+      "ai_languageModel": [
+        [
+          {
+            "node": "Agent B (Respond 3)",
+            "type": "ai_languageModel",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Agent B (Respond 3)": {
+      "main": [
+        [
+          {
+            "node": "Send to MAO",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
   },
-  "settings": {"executionOrder": "v1"},
-  "meta": {"templateCredsSetupCompleted": true}
+  "settings": {
+    "executionOrder": "v1"
+  }
 }

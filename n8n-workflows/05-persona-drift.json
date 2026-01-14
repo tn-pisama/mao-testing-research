@@ -2,20 +2,44 @@
   "name": "MAO Test: Persona Drift",
   "nodes": [
     {
-      "parameters": {},
+      "parameters": {
+        "path": "mao-persona-drift",
+        "responseMode": "lastNode",
+        "options": {},
+        "httpMethod": "POST"
+      },
       "id": "start",
-      "name": "Start",
-      "type": "n8n-nodes-base.manualTrigger",
-      "typeVersion": 1,
-      "position": [0, 0]
+      "name": "Webhook",
+      "type": "n8n-nodes-base.webhook",
+      "typeVersion": 2,
+      "position": [
+        0,
+        0
+      ],
+      "webhookId": "mao-persona-drift"
     },
     {
       "parameters": {
         "assignments": {
           "assignments": [
-            {"id": "session_id", "name": "session_id", "value": "={{ $now.format('X') }}", "type": "string"},
-            {"id": "persona", "name": "persona", "value": "You are a formal, professional technical writer. Use precise language, avoid contractions, and maintain a scholarly tone. Write in third person when possible.", "type": "string"},
-            {"id": "task", "name": "task", "value": "Explain what an API is", "type": "string"}
+            {
+              "id": "session_id",
+              "name": "session_id",
+              "value": "={{ $now.format('X') }}",
+              "type": "string"
+            },
+            {
+              "id": "persona",
+              "name": "persona",
+              "value": "You are a formal, professional technical writer. Use precise language, avoid contractions, and maintain a scholarly tone. Write in third person when possible.",
+              "type": "string"
+            },
+            {
+              "id": "task",
+              "name": "task",
+              "value": "Explain what an API is",
+              "type": "string"
+            }
           ]
         }
       },
@@ -23,7 +47,10 @@
       "name": "Initialize Persona",
       "type": "n8n-nodes-base.set",
       "typeVersion": 3.4,
-      "position": [200, 0]
+      "position": [
+        200,
+        0
+      ]
     },
     {
       "parameters": {
@@ -35,7 +62,10 @@
       "name": "Agent (Formal)",
       "type": "@n8n/n8n-nodes-langchain.agent",
       "typeVersion": 1.6,
-      "position": [400, 0]
+      "position": [
+        400,
+        0
+      ]
     },
     {
       "parameters": {
@@ -47,7 +77,10 @@
       "name": "Agent (Casual Drift)",
       "type": "@n8n/n8n-nodes-langchain.agent",
       "typeVersion": 1.6,
-      "position": [600, 0]
+      "position": [
+        600,
+        0
+      ]
     },
     {
       "parameters": {
@@ -56,17 +89,35 @@
         "sendHeaders": true,
         "headerParameters": {
           "parameters": [
-            {"name": "X-N8N-Api-Key", "value": "n8n_live_mao_9b4f142d_a3b0_452c_a65f_581b05290539_2024"}
+            {
+              "name": "X-N8N-Api-Key",
+              "value": "n8n_live_mao_9b4f142d_a3b0_452c_a65f_581b05290539_2024"
+            }
           ]
         },
         "sendBody": true,
         "bodyParameters": {
           "parameters": [
-            {"name": "event_type", "value": "workflow.completed"},
-            {"name": "workflow_name", "value": "MAO Test: Persona Drift"},
-            {"name": "session_id", "value": "={{ $('Initialize Persona').item.json.session_id }}"},
-            {"name": "persona", "value": "={{ $('Initialize Persona').item.json.persona }}"},
-            {"name": "agents", "value": "={{ JSON.stringify([{agent_id: 'Technical Writer', persona: $('Initialize Persona').item.json.persona, output: $('Agent (Formal)').item.json.output}, {agent_id: 'Technical Writer', persona: $('Initialize Persona').item.json.persona, output: $('Agent (Casual Drift)').item.json.output, note: 'Same agent, different tone - persona drift'}]) }}"}
+            {
+              "name": "event_type",
+              "value": "workflow.completed"
+            },
+            {
+              "name": "workflow_name",
+              "value": "MAO Test: Persona Drift"
+            },
+            {
+              "name": "session_id",
+              "value": "={{ $('Initialize Persona').item.json.session_id }}"
+            },
+            {
+              "name": "persona",
+              "value": "={{ $('Initialize Persona').item.json.persona }}"
+            },
+            {
+              "name": "agents",
+              "value": "={{ JSON.stringify([{agent_id: 'Technical Writer', persona: $('Initialize Persona').item.json.persona, output: $('Agent (Formal)').item.json.output}, {agent_id: 'Technical Writer', persona: $('Initialize Persona').item.json.persona, output: $('Agent (Casual Drift)').item.json.output, note: 'Same agent, different tone - persona drift'}]) }}"
+            }
           ]
         },
         "options": {}
@@ -75,15 +126,59 @@
       "name": "Send to MAO",
       "type": "n8n-nodes-base.httpRequest",
       "typeVersion": 4.2,
-      "position": [800, 0]
+      "position": [
+        800,
+        0
+      ]
     }
   ],
   "connections": {
-    "Start": {"main": [[{"node": "Initialize Persona", "type": "main", "index": 0}]]},
-    "Initialize Persona": {"main": [[{"node": "Agent (Formal)", "type": "main", "index": 0}]]},
-    "Agent (Formal)": {"main": [[{"node": "Agent (Casual Drift)", "type": "main", "index": 0}]]},
-    "Agent (Casual Drift)": {"main": [[{"node": "Send to MAO", "type": "main", "index": 0}]]}
+    "Webhook": {
+      "main": [
+        [
+          {
+            "node": "Initialize Persona",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Initialize Persona": {
+      "main": [
+        [
+          {
+            "node": "Agent (Formal)",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Agent (Formal)": {
+      "main": [
+        [
+          {
+            "node": "Agent (Casual Drift)",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Agent (Casual Drift)": {
+      "main": [
+        [
+          {
+            "node": "Send to MAO",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
   },
-  "settings": {"executionOrder": "v1"},
-  "meta": {"templateCredsSetupCompleted": true}
+  "settings": {
+    "executionOrder": "v1"
+  }
 }
