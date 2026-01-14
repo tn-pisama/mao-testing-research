@@ -185,30 +185,33 @@ class TestLLMJudge:
         call_args = mock_client.post.call_args
         assert "api.openai.com" in call_args[0][0]
 
-    @patch("httpx.Client")
-    def test_judge_calls_anthropic_for_claude(self, mock_client_class):
+    @patch("app.enterprise.evals.llm_judge.Anthropic")
+    def test_judge_calls_anthropic_for_claude(self, mock_anthropic_class):
         """Should call Anthropic API for Claude models."""
+        # Create mock response matching Anthropic SDK response structure
+        mock_content_block = MagicMock()
+        mock_content_block.type = "text"
+        mock_content_block.text = '{"score": 0.9, "reasoning": "Excellent"}'
+
+        mock_usage = MagicMock()
+        mock_usage.input_tokens = 50
+        mock_usage.output_tokens = 30
+
         mock_response = MagicMock()
-        mock_response.status_code = 200
-        mock_response.json.return_value = {
-            "content": [{"text": '{"score": 0.9, "reasoning": "Excellent"}'}],
-            "usage": {"input_tokens": 50, "output_tokens": 30},
-        }
+        mock_response.content = [mock_content_block]
+        mock_response.usage = mock_usage
 
         mock_client = MagicMock()
-        mock_client.__enter__ = MagicMock(return_value=mock_client)
-        mock_client.__exit__ = MagicMock(return_value=False)
-        mock_client.post.return_value = mock_response
-        mock_client_class.return_value = mock_client
+        mock_client.messages.create.return_value = mock_response
+        mock_anthropic_class.return_value = mock_client
 
         judge = LLMJudge(model=JudgeModel.CLAUDE_HAIKU, api_key="test-key")
         result = judge.judge(EvalType.COHERENCE, "test output")
 
         assert result.score == 0.9
         assert result.model_used == "claude-3-5-haiku-20241022"
-        mock_client.post.assert_called_once()
-        call_args = mock_client.post.call_args
-        assert "api.anthropic.com" in call_args[0][0]
+        assert result.tokens_used == 80  # input + output
+        mock_client.messages.create.assert_called_once()
 
     @patch("httpx.Client")
     def test_judge_handles_api_error(self, mock_client_class):
@@ -521,21 +524,25 @@ class TestLLMJudgeIntegration:
         assert len(results) == 2
         assert all(r.passed for r in results.values())
 
-    @patch("httpx.Client")
-    def test_claude_model_workflow(self, mock_client_class):
+    @patch("app.enterprise.evals.llm_judge.Anthropic")
+    def test_claude_model_workflow(self, mock_anthropic_class):
         """Should work with Claude models."""
+        # Create mock response matching Anthropic SDK response structure
+        mock_content_block = MagicMock()
+        mock_content_block.type = "text"
+        mock_content_block.text = '{"score": 0.88, "reasoning": "Well-reasoned response"}'
+
+        mock_usage = MagicMock()
+        mock_usage.input_tokens = 80
+        mock_usage.output_tokens = 40
+
         mock_response = MagicMock()
-        mock_response.status_code = 200
-        mock_response.json.return_value = {
-            "content": [{"text": '{"score": 0.88, "reasoning": "Well-reasoned response"}'}],
-            "usage": {"input_tokens": 80, "output_tokens": 40},
-        }
+        mock_response.content = [mock_content_block]
+        mock_response.usage = mock_usage
 
         mock_client = MagicMock()
-        mock_client.__enter__ = MagicMock(return_value=mock_client)
-        mock_client.__exit__ = MagicMock(return_value=False)
-        mock_client.post.return_value = mock_response
-        mock_client_class.return_value = mock_client
+        mock_client.messages.create.return_value = mock_response
+        mock_anthropic_class.return_value = mock_client
 
         judge = LLMJudge(model=JudgeModel.CLAUDE_SONNET, api_key="test-key")
         scorer = LLMJudgeScorer(EvalType.HELPFULNESS, judge=judge)

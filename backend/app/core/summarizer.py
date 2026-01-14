@@ -24,6 +24,7 @@ from functools import lru_cache
 
 import httpx
 import tiktoken
+from anthropic import Anthropic, APIError
 
 logger = logging.getLogger(__name__)
 
@@ -99,6 +100,14 @@ class ConversationSummarizer:
         self.max_summary_tokens = max_summary_tokens
         self.cache_summaries = cache_summaries
         self._cache: Dict[str, SummarizationResult] = {}
+        self._anthropic_client: Optional[Anthropic] = None
+
+    @property
+    def anthropic_client(self) -> Anthropic:
+        """Lazy initialization of Anthropic client."""
+        if self._anthropic_client is None:
+            self._anthropic_client = Anthropic(api_key=self.api_key)
+        return self._anthropic_client
 
     def _get_cache_key(self, turns: List[Dict[str, Any]]) -> str:
         """Generate cache key from turn content hashes."""
@@ -242,36 +251,26 @@ Provide a structured summary that captures the conversation flow. Maximum {max_t
 SUMMARY:"""
 
     def _call_claude(self, prompt: str, max_tokens: int) -> str:
-        """Call Claude API for summarization."""
+        """Call Claude API for summarization using official SDK."""
         if not self.api_key:
             logger.warning("No Anthropic API key configured, using fallback summarization")
             return self._fallback_summarize(prompt)
 
         try:
-            with httpx.Client(timeout=60.0) as client:
-                response = client.post(
-                    "https://api.anthropic.com/v1/messages",
-                    headers={
-                        "x-api-key": self.api_key,
-                        "anthropic-version": "2023-06-01",
-                        "Content-Type": "application/json",
-                    },
-                    json={
-                        "model": HAIKU_MODEL,
-                        "max_tokens": max_tokens,
-                        "messages": [
-                            {"role": "user", "content": prompt},
-                        ],
-                    },
-                )
+            response = self.anthropic_client.messages.create(
+                model=HAIKU_MODEL,
+                max_tokens=max_tokens,
+                messages=[
+                    {"role": "user", "content": prompt},
+                ],
+            )
 
-                if response.status_code != 200:
-                    logger.error(f"Claude API error: {response.status_code} - {response.text}")
-                    return self._fallback_summarize(prompt)
+            # Extract text from response (SDK returns typed objects)
+            return response.content[0].text
 
-                data = response.json()
-                return data["content"][0]["text"]
-
+        except APIError as e:
+            logger.error(f"Claude API error: {e}")
+            return self._fallback_summarize(prompt)
         except Exception as e:
             logger.error(f"Claude API call failed: {e}")
             return self._fallback_summarize(prompt)

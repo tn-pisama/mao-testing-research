@@ -8,6 +8,8 @@ import os
 import httpx
 from enum import Enum
 
+from anthropic import Anthropic, APIError
+
 from .scorer import EvalResult, EvalType, BaseScorer
 
 
@@ -122,15 +124,23 @@ class LLMJudge:
         self.model = model
         self._api_key = api_key
         self._client = None
-    
+        self._anthropic_client: Optional[Anthropic] = None
+
     @property
     def api_key(self) -> str:
         if self._api_key:
             return self._api_key
-        
+
         if "claude" in self.model.value:
             return os.getenv("ANTHROPIC_API_KEY", "")
         return os.getenv("OPENAI_API_KEY", "")
+
+    @property
+    def anthropic_client(self) -> Anthropic:
+        """Lazy initialization of Anthropic client."""
+        if self._anthropic_client is None:
+            self._anthropic_client = Anthropic(api_key=self.api_key)
+        return self._anthropic_client
     
     def judge(
         self,
@@ -191,38 +201,39 @@ class LLMJudge:
             return self._parse_response(content, tokens)
     
     def _call_anthropic(self, prompt: str) -> JudgmentResult:
-        with httpx.Client(timeout=30.0) as client:
-            response = client.post(
-                "https://api.anthropic.com/v1/messages",
-                headers={
-                    "x-api-key": self.api_key,
-                    "anthropic-version": "2023-06-01",
-                    "Content-Type": "application/json",
-                },
-                json={
-                    "model": self.model.value,
-                    "max_tokens": 500,
-                    "messages": [
-                        {"role": "user", "content": prompt},
-                    ],
-                    "system": "You are an expert evaluator. Always respond in valid JSON.",
-                },
+        """Call Claude API using official SDK."""
+        try:
+            response = self.anthropic_client.messages.create(
+                model=self.model.value,
+                max_tokens=500,
+                messages=[
+                    {"role": "user", "content": prompt},
+                ],
+                system="You are an expert evaluator. Always respond in valid JSON.",
             )
-            
-            if response.status_code != 200:
-                return JudgmentResult(
-                    score=0.5,
-                    reasoning=f"API error: {response.status_code}",
-                    confidence=0.0,
-                    raw_response=response.text,
-                    model_used=self.model.value,
-                )
-            
-            data = response.json()
-            content = data["content"][0]["text"]
-            tokens = data.get("usage", {}).get("input_tokens", 0) + data.get("usage", {}).get("output_tokens", 0)
-            
+
+            # Extract content (SDK returns typed objects)
+            content = response.content[0].text
+            tokens = response.usage.input_tokens + response.usage.output_tokens
+
             return self._parse_response(content, tokens)
+
+        except APIError as e:
+            return JudgmentResult(
+                score=0.5,
+                reasoning=f"API error: {str(e)}",
+                confidence=0.0,
+                raw_response=str(e),
+                model_used=self.model.value,
+            )
+        except Exception as e:
+            return JudgmentResult(
+                score=0.5,
+                reasoning=f"API error: {str(e)}",
+                confidence=0.0,
+                raw_response=str(e),
+                model_used=self.model.value,
+            )
     
     def _parse_response(self, content: str, tokens: int) -> JudgmentResult:
         try:
