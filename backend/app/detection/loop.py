@@ -104,7 +104,7 @@ class MultiLevelLoopDetector:
     ) -> float:
         """Calibrate confidence based on evidence strength and detection method."""
         base_confidence = {
-            "structural": 0.85,
+            "structural": 0.96,
             "hash": 0.80,
             "semantic": 0.70,
             "semantic_clustering": 0.75,  # Slightly higher than basic semantic
@@ -112,8 +112,8 @@ class MultiLevelLoopDetector:
         
         length_factor = min(1.0, loop_length / 5)
         evidence_factor = evidence_strength
-        
-        calibrated = base_confidence * 0.4 + raw_score * 0.3 + length_factor * 0.15 + evidence_factor * 0.15
+
+        calibrated = base_confidence * 0.5 + raw_score * 0.25 + length_factor * 0.15 + evidence_factor * 0.10
         calibrated = min(0.99, calibrated * self.confidence_scaling)
         
         return round(calibrated, 4)
@@ -137,7 +137,7 @@ class MultiLevelLoopDetector:
             window_start = max(0, len(states) - self.window_size - 1)
             loop_start_index = window_start + first_match
             raw_score = len(structural_matches) / len(window)
-            evidence_strength = min(1.0, len(structural_matches) / 3)
+            evidence_strength = min(1.0, len(structural_matches) / 2)
 
             confidence = self._calibrate_confidence(
                 raw_score=raw_score,

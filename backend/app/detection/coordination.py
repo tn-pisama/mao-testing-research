@@ -35,7 +35,7 @@ class CoordinationAnalysisResult:
 class CoordinationAnalyzer:
     def __init__(self, confidence_scaling: float = 1.0):
         self.message_timeout_seconds = 30.0
-        self.max_back_forth_count = 5
+        self.max_back_forth_count = 3
         self.confidence_scaling = confidence_scaling
     
     def analyze_coordination(
@@ -159,11 +159,11 @@ class CoordinationAnalyzer:
         issue_factor = min(0.25, len(issues) * 0.05)
         
         ack_rate = metrics.get("acknowledgment_rate", 1.0)
-        health_factor = (1.0 - ack_rate) * 0.1
+        health_factor = (1.0 - ack_rate) * 0.15
         
         base_confidence = (
-            severity_weight * 0.40 +
-            raw_score * 0.25 +
+            severity_weight * 0.35 +
+            raw_score * 0.35 +
             diversity_factor * 0.15 +
             issue_factor +
             health_factor
