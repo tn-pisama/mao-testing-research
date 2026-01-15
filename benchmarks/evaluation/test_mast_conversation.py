@@ -236,6 +236,13 @@ def load_mast_data(
     if limit:
         records = records[:limit]
 
+    # Filter out extremely large traces that can hang embedding computation
+    MAX_TRACE_SIZE = 100_000  # 100KB limit per trace
+    original_count = len(records)
+    records = [r for r in records if len(json.dumps(r)) <= MAX_TRACE_SIZE]
+    if len(records) < original_count:
+        print(f"Filtered out {original_count - len(records)} traces exceeding {MAX_TRACE_SIZE:,} chars")
+
     return records
 
 
@@ -746,18 +753,24 @@ No, I clearly asked for USER data, not weather. There's been a communication bre
     return samples
 
 
-def conversation_to_snapshots(conv_trace: ConversationTrace) -> List[TurnSnapshot]:
+def conversation_to_snapshots(conv_trace: ConversationTrace, max_turns: int = 200) -> List[TurnSnapshot]:
     """Convert ConversationTrace to TurnSnapshots for detection.
 
     Args:
         conv_trace: Parsed conversation trace
+        max_turns: Maximum number of turns to process (default 200, for performance)
 
     Returns:
         List of TurnSnapshot objects
     """
     snapshots = []
 
-    for turn in conv_trace.turns:
+    # Limit turns to prevent O(n²) slowdowns on traces with thousands of items
+    turns = conv_trace.turns[:max_turns] if len(conv_trace.turns) > max_turns else conv_trace.turns
+    if len(conv_trace.turns) > max_turns:
+        print(f"Warning: Truncating trace from {len(conv_trace.turns)} to {max_turns} turns for performance")
+
+    for turn in turns:
         snapshot = TurnSnapshot(
             turn_number=turn.turn_number,
             participant_type=turn.role,
@@ -1113,22 +1126,140 @@ def evaluate_mast_dataset(
 
     total_turns = 0
 
-    # Evaluate each trace
-    for i, record in enumerate(records):
-        if verbose:
-            print(f"Processing trace {i+1}/{len(records)}...")
+    # Preload embedding model for better performance
+    print("Preloading embedding model...")
+    try:
+        from app.core.embeddings import EmbeddingService
+        EmbeddingService.preload()
+        print("Embedding model preloaded successfully")
+    except Exception as e:
+        print(f"Warning: Could not preload embedding model: {e}")
 
-        trace_result = evaluate_trace(
-            record,
-            importer,
-            target_mode,
-            verbose,
-            use_hybrid=use_hybrid,
-            hybrid_pipeline=hybrid_pipeline,
-            use_full_llm=use_full_llm,
-            full_llm_detector=full_llm_detector,
-        )
+    # Evaluate traces - choose strategy based on workload type
+    # Pattern-only = CPU-bound (embeddings) → Sequential is faster (no GIL contention)
+    # Hybrid/LLM = I/O-bound (API calls) → Threads provide true parallelism
 
+    trace_results = []
+
+    if use_hybrid or use_full_llm:
+        # I/O-bound mode: Use ThreadPoolExecutor for parallel API calls
+        from concurrent.futures import ThreadPoolExecutor, as_completed
+        import threading
+
+        max_workers = 4  # Limited parallelism for API rate limits
+        completed_count = 0
+        completed_lock = threading.Lock()
+
+        def process_trace(record_with_index):
+            """Process a single trace (for parallel execution)."""
+            idx, record = record_with_index
+            return idx, evaluate_trace(
+                record,
+                importer,
+                target_mode,
+                False,  # Disable verbose for parallel processing
+                use_hybrid=use_hybrid,
+                hybrid_pipeline=hybrid_pipeline,
+                use_full_llm=use_full_llm,
+                full_llm_detector=full_llm_detector,
+            )
+
+        print(f"Processing {len(records)} traces with {max_workers} workers (I/O-bound mode)...")
+
+        with ThreadPoolExecutor(max_workers=max_workers) as executor:
+            futures = {executor.submit(process_trace, (i, r)): i for i, r in enumerate(records)}
+
+            for future in as_completed(futures):
+                idx, trace_result = future.result()
+                trace_results.append((idx, trace_result))
+
+                with completed_lock:
+                    completed_count += 1
+                    if completed_count % 10 == 0 or completed_count == len(records):
+                        print(f"Progress: {completed_count}/{len(records)} traces ({100*completed_count/len(records):.1f}%)")
+
+        # Sort results by original index
+        trace_results.sort(key=lambda x: x[0])
+
+    else:
+        # CPU-bound mode: Sequential processing (faster due to no GIL contention)
+        print(f"Processing {len(records)} traces sequentially (CPU-bound mode)...")
+        import sys
+        import signal
+        import gc
+
+        # Timeout mechanism for slow traces
+        TRACE_TIMEOUT_SECONDS = 180  # 3 minute timeout per trace (increased for memory-limited envs)
+
+        class TraceTimeout(Exception):
+            pass
+
+        def timeout_handler(signum, frame):
+            raise TraceTimeout(f"Trace timed out after {TRACE_TIMEOUT_SECONDS}s")
+
+        # Clear PyTorch cache to prevent memory accumulation
+        def clear_memory():
+            gc.collect()
+            try:
+                import torch
+                if torch.cuda.is_available():
+                    torch.cuda.empty_cache()
+            except ImportError:
+                pass
+
+        for i, record in enumerate(records):
+            # Always print per-trace progress to diagnose hangs
+            trace_id = record.get("trace_id", f"trace_{i}")
+            trace_size = len(json.dumps(record))
+            print(f"[{i+1}/{len(records)}] Starting trace {trace_id} ({trace_size:,} chars)...", flush=True)
+            sys.stdout.flush()
+
+            import time
+            start_time = time.time()
+
+            try:
+                # Set timeout alarm
+                signal.signal(signal.SIGALRM, timeout_handler)
+                signal.alarm(TRACE_TIMEOUT_SECONDS)
+
+                trace_result = evaluate_trace(
+                    record,
+                    importer,
+                    target_mode,
+                    verbose,
+                    use_hybrid=use_hybrid,
+                    hybrid_pipeline=hybrid_pipeline,
+                    use_full_llm=use_full_llm,
+                    full_llm_detector=full_llm_detector,
+                )
+
+                # Cancel alarm
+                signal.alarm(0)
+
+            except TraceTimeout as e:
+                signal.alarm(0)
+                trace_result = {
+                    "trace_id": trace_id,
+                    "framework": record.get("mas_name", "unknown"),
+                    "ground_truth": {},
+                    "detected": {},
+                    "detection_details": {},
+                    "parsed_turns": 0,
+                    "error": str(e),
+                }
+                print(f"[{i+1}/{len(records)}] TIMEOUT: {e}", flush=True)
+
+            trace_results.append((i, trace_result))
+
+            elapsed = time.time() - start_time
+            if not trace_result.get("error"):
+                print(f"[{i+1}/{len(records)}] Completed in {elapsed:.1f}s", flush=True)
+
+            # Clear memory between traces to prevent accumulation
+            clear_memory()
+
+    # Process all results (already ordered for sequential, sorted for parallel)
+    for idx, trace_result in trace_results:
         if trace_result["error"]:
             result.errors.append(f"{trace_result['trace_id']}: {trace_result['error']}")
             continue

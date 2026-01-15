@@ -6,6 +6,7 @@ Provides singleton access to embedding models with:
 - E5 instruction prefix support
 - Batch encoding optimization
 - Model caching
+- Disk-based embedding cache for repeated texts
 - Multi-model ensemble for best-in-class detection
 
 Ensemble Strategy (per failure mode):
@@ -15,10 +16,54 @@ Ensemble Strategy (per failure mode):
 - E5-large-instruct (1024d): F12-F14 (verification) - default
 """
 
+import hashlib
 import logging
 import os
 from typing import List, Union, Optional, Dict, Any
 import numpy as np
+
+# Disk-based embedding cache for performance
+_embedding_cache: Optional[Dict[str, np.ndarray]] = None
+_CACHE_DIR = "/tmp/mast_embeddings"
+_MAX_MEMORY_CACHE_SIZE = 5000  # Max entries in memory cache to prevent OOM
+
+
+class LRUCache:
+    """Simple LRU cache with size limit to prevent memory leaks."""
+
+    def __init__(self, max_size: int = _MAX_MEMORY_CACHE_SIZE):
+        from collections import OrderedDict
+        self._cache: "OrderedDict[str, np.ndarray]" = OrderedDict()
+        self._max_size = max_size
+
+    def __contains__(self, key: str) -> bool:
+        return key in self._cache
+
+    def __getitem__(self, key: str) -> np.ndarray:
+        # Move to end (most recently used)
+        self._cache.move_to_end(key)
+        return self._cache[key]
+
+    def __setitem__(self, key: str, value: np.ndarray) -> None:
+        if key in self._cache:
+            self._cache.move_to_end(key)
+        self._cache[key] = value
+        # Evict oldest entries if over limit
+        while len(self._cache) > self._max_size:
+            self._cache.popitem(last=False)
+
+
+def _get_embedding_cache():
+    """Get or create disk-based embedding cache."""
+    global _embedding_cache
+    if _embedding_cache is None:
+        try:
+            import diskcache
+            _embedding_cache = diskcache.Cache(_CACHE_DIR, size_limit=2 * 1024 * 1024 * 1024)  # 2GB limit
+        except ImportError:
+            # Fallback to LRU cache with size limit to prevent OOM
+            _embedding_cache = LRUCache(max_size=_MAX_MEMORY_CACHE_SIZE)
+    return _embedding_cache
 
 logger = logging.getLogger(__name__)
 
@@ -50,28 +95,47 @@ class EmbeddingService:
     _instance: Optional["EmbeddingService"] = None
     _model = None
     _model_name: Optional[str] = None
-    
+    _lock = None  # Will be initialized as RLock
+
+    @classmethod
+    def _get_lock(cls):
+        """Get or create the class-level lock (lazy to avoid import issues)."""
+        if cls._lock is None:
+            import threading
+            cls._lock = threading.RLock()
+        return cls._lock
+
     def __new__(cls):
-        if cls._instance is None:
-            cls._instance = super().__new__(cls)
+        # Thread-safe singleton creation
+        lock = cls._get_lock()
+        with lock:
+            if cls._instance is None:
+                cls._instance = super().__new__(cls)
         return cls._instance
-    
+
     @classmethod
     def get_instance(cls) -> "EmbeddingService":
-        if cls._instance is None:
-            cls._instance = cls()
+        lock = cls._get_lock()
+        with lock:
+            if cls._instance is None:
+                cls._instance = cls()
         return cls._instance
-    
+
     @classmethod
     def reset(cls):
-        cls._instance = None
-        cls._model = None
-        cls._model_name = None
-    
+        lock = cls._get_lock()
+        with lock:
+            cls._instance = None
+            cls._model = None
+            cls._model_name = None
+
     @property
     def model(self):
-        if self._model is None:
-            self._load_model()
+        # Thread-safe model loading
+        lock = self._get_lock()
+        with lock:
+            if self._model is None:
+                self._load_model()
         return self._model
     
     @property
@@ -82,13 +146,16 @@ class EmbeddingService:
     def _load_model(self):
         from sentence_transformers import SentenceTransformer
         from app.config import get_settings
-        
+        import torch
+
         settings = get_settings()
         self._model_name = settings.embedding_model
-        
-        logger.info(f"Loading embedding model: {self._model_name}")
-        self._model = SentenceTransformer(self._model_name)
-        logger.info(f"Embedding model loaded: {self._model_name} ({self.dimensions} dimensions)")
+
+        # Explicitly select device: prefer CUDA if available
+        device = "cuda" if torch.cuda.is_available() else "cpu"
+        logger.info(f"Loading embedding model: {self._model_name} on {device}")
+        self._model = SentenceTransformer(self._model_name, device=device)
+        logger.info(f"Embedding model loaded: {self._model_name} ({self.dimensions} dimensions) on {device}")
     
     def _should_use_prefix(self) -> bool:
         from app.config import get_settings
@@ -152,6 +219,135 @@ class EmbeddingService:
         logger.info("Warming up embedding model...")
         _ = self.encode("warmup text for model initialization")
         logger.info("Embedding model warmed up")
+
+    @classmethod
+    def preload(cls, model_name: Optional[str] = None) -> "EmbeddingService":
+        """Preload model into memory before evaluation starts.
+
+        Call this at the start of batch processing to avoid lazy loading
+        overhead during individual trace processing.
+
+        Args:
+            model_name: Optional model name override
+
+        Returns:
+            Preloaded EmbeddingService instance
+        """
+        instance = cls.get_instance()
+        logger.info("Preloading embedding model...")
+        _ = instance.model  # Trigger load
+        instance.warmup()  # Warm up the model
+        logger.info(f"Embedding model preloaded: {instance._model_name}")
+        return instance
+
+    def encode_cached(
+        self,
+        text: str,
+        is_query: bool = False,
+        normalize: bool = True,
+    ) -> np.ndarray:
+        """Encode text with disk-based caching for repeated texts.
+
+        Uses MD5 hash of text as cache key. Cache is shared across runs.
+
+        Args:
+            text: Text to encode
+            is_query: Whether this is a query (for prefix)
+            normalize: Whether to normalize embeddings
+
+        Returns:
+            Embedding vector (from cache or freshly computed)
+        """
+        cache = _get_embedding_cache()
+
+        # Create cache key from text content and encoding parameters
+        cache_key = hashlib.md5(
+            f"{text}|{is_query}|{normalize}|{self._model_name}".encode()
+        ).hexdigest()
+
+        # Try to get from cache
+        if cache_key in cache:
+            cached = cache[cache_key]
+            if isinstance(cached, np.ndarray):
+                return cached
+            # Handle diskcache returning bytes
+            return np.frombuffer(cached, dtype=np.float32)
+
+        # Compute embedding
+        embedding = self.encode(text, is_query=is_query, normalize=normalize)
+
+        # Store in cache
+        try:
+            cache[cache_key] = embedding
+        except Exception as e:
+            logger.debug(f"Cache write failed: {e}")
+
+        return embedding
+
+    def encode_batch_cached(
+        self,
+        texts: List[str],
+        is_query: bool = False,
+        batch_size: int = 32,
+        normalize: bool = True,
+    ) -> np.ndarray:
+        """Encode batch of texts with caching for repeated texts.
+
+        Checks cache for each text, only computes embeddings for cache misses.
+
+        Args:
+            texts: List of texts to encode
+            is_query: Whether these are queries
+            batch_size: Batch size for encoding misses
+            normalize: Whether to normalize
+
+        Returns:
+            Array of embeddings
+        """
+        cache = _get_embedding_cache()
+        results = [None] * len(texts)
+        to_encode = []
+        to_encode_indices = []
+
+        # Check cache for each text
+        for i, text in enumerate(texts):
+            cache_key = hashlib.md5(
+                f"{text}|{is_query}|{normalize}|{self._model_name}".encode()
+            ).hexdigest()
+
+            if cache_key in cache:
+                cached = cache[cache_key]
+                if isinstance(cached, np.ndarray):
+                    results[i] = cached
+                else:
+                    results[i] = np.frombuffer(cached, dtype=np.float32)
+            else:
+                to_encode.append(text)
+                to_encode_indices.append(i)
+
+        # Encode cache misses in batch
+        if to_encode:
+            new_embeddings = self.encode(
+                to_encode,
+                is_query=is_query,
+                batch_size=batch_size,
+                normalize=normalize,
+            )
+
+            # Store in cache and results
+            for j, idx in enumerate(to_encode_indices):
+                emb = new_embeddings[j] if len(to_encode) > 1 else new_embeddings
+                results[idx] = emb
+
+                cache_key = hashlib.md5(
+                    f"{to_encode[j]}|{is_query}|{normalize}|{self._model_name}".encode()
+                ).hexdigest()
+                try:
+                    cache[cache_key] = emb
+                except Exception as e:
+                    logger.debug(f"Cache write failed: {e}")
+
+        return np.array(results)
 
     def compute_contrastive_score(
         self,

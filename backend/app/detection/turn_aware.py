@@ -66,16 +66,27 @@ class EmbeddingMixin:
     """
 
     _embedder = None
+    _embedder_lock = None  # Class-level lock for thread safety
+
+    @classmethod
+    def _get_embedder_lock(cls):
+        """Get or create the class-level lock for embedder initialization."""
+        if cls._embedder_lock is None:
+            import threading
+            cls._embedder_lock = threading.RLock()
+        return cls._embedder_lock
 
     @property
     def embedder(self):
-        """Lazy-load embedding service."""
-        if self._embedder is None and _check_embedding_available():
-            try:
-                from app.core.embeddings import get_embedder
-                self._embedder = get_embedder()
-            except Exception:
-                pass
+        """Lazy-load embedding service (thread-safe)."""
+        lock = self._get_embedder_lock()
+        with lock:
+            if self._embedder is None and _check_embedding_available():
+                try:
+                    from app.core.embeddings import get_embedder
+                    self._embedder = get_embedder()
+                except Exception:
+                    pass
         return self._embedder
 
     def semantic_similarity(self, text1: str, text2: str) -> float:
@@ -1184,7 +1195,8 @@ class TurnAwareDerailmentDetector(EmbeddingMixin, TurnAwareDetector):
         affected_turns = []
         high_drift_count = 0
 
-        # Check each agent response for task alignment
+        # OPTIMIZATION: Pre-filter turns and use batch similarity computation
+        turns_to_check = []
         for agent_turn in agent_turns:
             # Skip drift check for code responses to code tasks
             if is_code_task and self._is_code_response(agent_turn.content):
@@ -1194,38 +1206,88 @@ class TurnAwareDerailmentDetector(EmbeddingMixin, TurnAwareDetector):
             if self._is_benign_pattern(agent_turn.content):
                 continue  # Benign framework pattern - not derailment
 
-            drift_score, coverage = self._compute_topic_drift(
-                initial_task, agent_turn.content
-            )
+            turns_to_check.append(agent_turn)
 
-            if drift_score > self.drift_threshold:
-                high_drift_count += 1
-                # Only add as issue if NOT requiring strong evidence
-                # OR if we have multiple high-drift turns
-                if not self.require_strong_evidence:
-                    derailment_issues.append({
-                        "type": "topic_drift",
-                        "turn": agent_turn.turn_number,
-                        "drift_score": drift_score,
-                        "coverage": coverage,
-                        "description": f"Agent turn {agent_turn.turn_number} drifted from task (drift={drift_score:.2f})",
-                    })
-                    affected_turns.append(agent_turn.turn_number)
+        # OPTIMIZATION: Compute drift scores in batch using batch_semantic_similarity
+        similarities = []  # Initialize for progressive drift check
+        if turns_to_check and self.embedder:
+            turn_contents = [t.content for t in turns_to_check]
+            similarities = self.batch_semantic_similarity(initial_task, turn_contents)
+
+            if similarities:
+                # Process batch results
+                for i, (agent_turn, sim) in enumerate(zip(turns_to_check, similarities)):
+                    drift_score = 1.0 - sim
+                    coverage = sim
+
+                    if drift_score > self.drift_threshold:
+                        high_drift_count += 1
+                        if not self.require_strong_evidence:
+                            derailment_issues.append({
+                                "type": "topic_drift",
+                                "turn": agent_turn.turn_number,
+                                "drift_score": drift_score,
+                                "coverage": coverage,
+                                "description": f"Agent turn {agent_turn.turn_number} drifted from task (drift={drift_score:.2f})",
+                            })
+                            affected_turns.append(agent_turn.turn_number)
+            else:
+                # Fallback to per-turn if batch fails
+                for agent_turn in turns_to_check:
+                    drift_score, coverage = self._compute_topic_drift(
+                        initial_task, agent_turn.content
+                    )
+                    if drift_score > self.drift_threshold:
+                        high_drift_count += 1
+                        if not self.require_strong_evidence:
+                            derailment_issues.append({
+                                "type": "topic_drift",
+                                "turn": agent_turn.turn_number,
+                                "drift_score": drift_score,
+                                "coverage": coverage,
+                                "description": f"Agent turn {agent_turn.turn_number} drifted from task (drift={drift_score:.2f})",
+                            })
+                            affected_turns.append(agent_turn.turn_number)
+        else:
+            # No turns to check or no embedder - use keyword fallback per turn
+            for agent_turn in turns_to_check:
+                drift_score, coverage = self._compute_topic_drift(
+                    initial_task, agent_turn.content, use_embeddings=False
+                )
+                if drift_score > self.drift_threshold:
+                    high_drift_count += 1
+                    if not self.require_strong_evidence:
+                        derailment_issues.append({
+                            "type": "topic_drift",
+                            "turn": agent_turn.turn_number,
+                            "drift_score": drift_score,
+                            "coverage": coverage,
+                            "description": f"Agent turn {agent_turn.turn_number} drifted from task (drift={drift_score:.2f})",
+                        })
+                        affected_turns.append(agent_turn.turn_number)
 
         # Check for progressive drift (getting worse over time)
+        # OPTIMIZATION: Use pre-computed similarities to avoid re-encoding
         progressive_drift = {"detected": False}
-        if len(agent_turns) >= 3:
+        if len(turns_to_check) >= 3 and similarities:
+            # Use pre-computed similarities from batch_semantic_similarity above
+            progressive_drift = self._detect_progressive_drift_from_similarities(
+                turns_to_check, similarities
+            )
+        elif len(agent_turns) >= 3 and not similarities:
+            # Fallback only if no batch similarities were computed
             progressive_drift = self._detect_progressive_drift(
                 initial_task, agent_turns, is_code_task
             )
-            if progressive_drift["detected"]:
-                derailment_issues.append({
-                    "type": "progressive_drift",
-                    "turn": progressive_drift["worst_turn"],
-                    "description": "Agent responses progressively drifting from task",
-                    "drift_progression": progressive_drift["drift_scores"],
-                })
-                affected_turns.append(progressive_drift["worst_turn"])
+        # Handle progressive drift detection result (from either path)
+        if progressive_drift["detected"]:
+            derailment_issues.append({
+                "type": "progressive_drift",
+                "turn": progressive_drift["worst_turn"],
+                "description": "Agent responses progressively drifting from task",
+                "drift_progression": progressive_drift.get("drift_scores", []),
+            })
+            affected_turns.append(progressive_drift["worst_turn"])
 
         # Check for task substitution (strongest signal)
         task_substitution = self._detect_task_substitution(
@@ -1481,6 +1543,47 @@ class TurnAwareDerailmentDetector(EmbeddingMixin, TurnAwareDetector):
             }
 
         return {"detected": False, "method": "keyword"}
+
+    def _detect_progressive_drift_from_similarities(
+        self,
+        turns: List[TurnSnapshot],
+        similarities: List[float],
+    ) -> Dict[str, Any]:
+        """Detect progressive drift using pre-computed similarities.
+
+        OPTIMIZATION: This avoids re-encoding texts that were already encoded
+        in the main detect() method's batch_semantic_similarity call.
+        """
+        if len(similarities) < 3 or len(turns) != len(similarities):
+            return {"detected": False}
+
+        # Build drift scores from pre-computed similarities
+        drift_scores = [
+            {"turn": t.turn_number, "drift": 1.0 - sim, "similarity": sim}
+            for t, sim in zip(turns, similarities)
+        ]
+
+        # Check for progressive drift (similarity decreasing over time)
+        mid = len(similarities) // 2
+        first_half = similarities[:mid]
+        second_half = similarities[mid:]
+        first_avg = sum(first_half) / len(first_half) if first_half else 0
+        second_avg = sum(second_half) / len(second_half) if second_half else 0
+
+        # 10% degradation threshold for progressive drift
+        if second_avg < first_avg - 0.1:
+            min_idx = similarities.index(min(similarities))
+            worst_turn = turns[min_idx].turn_number
+
+            return {
+                "detected": True,
+                "worst_turn": worst_turn,
+                "drift_scores": drift_scores,
+                "avg_similarity": sum(similarities) / len(similarities),
+                "method": "embedding_precomputed",
+            }
+
+        return {"detected": False, "method": "embedding_precomputed"}
 
     def _detect_task_substitution(
         self,
@@ -2036,22 +2139,35 @@ class TurnAwareSpecificationMismatchDetector(EmbeddingMixin, TurnAwareDetector):
             # Chunk agent output for better semantic matching
             output_chunks = self._chunk_output(agent_content, max_len=500)
 
+            # OPTIMIZATION: Pre-encode all passages ONCE instead of per-requirement
+            # This reduces O(n*m) to O(n+m) embedding calls
+            passage_embs = self.embedder.encode_passages(output_chunks) if output_chunks else None
+            if passage_embs is None or len(passage_embs) == 0:
+                return self._keyword_requirement_matching(requirements, agent_content)
+
             covered = set()
             uncovered = set()
 
-            # For each requirement, find best matching chunk
+            # For each requirement, compute similarity with pre-encoded passages
             for req in requirements:
-                # Compute similarity with all chunks
-                similarities = self.batch_semantic_similarity(req, output_chunks)
+                try:
+                    query_emb = self.embedder.encode_query(req)
+                    similarities = self.embedder.batch_similarity(query_emb, passage_embs)
 
-                if similarities:
-                    best_match = max(similarities) if similarities else 0.0
-                    if best_match >= similarity_threshold:
-                        covered.add(req)
+                    if similarities is not None and len(similarities) > 0:
+                        best_match = float(max(similarities))
+                        if best_match >= similarity_threshold:
+                            covered.add(req)
+                        else:
+                            uncovered.add(req)
                     else:
-                        uncovered.add(req)
-                else:
-                    # No similarities computed, fall back to keyword
+                        # Fallback to keyword
+                        if req in agent_content.lower():
+                            covered.add(req)
+                        else:
+                            uncovered.add(req)
+                except Exception:
+                    # Fallback to keyword for this requirement
                     if req in agent_content.lower():
                         covered.add(req)
                     else:
