@@ -4,7 +4,12 @@ from abc import ABC, abstractmethod
 from dataclasses import dataclass, field
 from typing import Dict, Any, List, Optional, Callable
 from datetime import datetime
+import logging
 import uuid
+
+import httpx
+
+logger = logging.getLogger(__name__)
 
 
 @dataclass
@@ -61,6 +66,61 @@ class BaseFrameworkTracer(ABC):
         self.current_trace_id: Optional[str] = None
         self.span_stack: List[str] = []
         self._callbacks: List[Callable[[Span], None]] = []
+        self._http_client: Optional[httpx.AsyncClient] = None
+
+    async def __aenter__(self) -> "BaseFrameworkTracer":
+        """Enter async context manager."""
+        return self
+
+    async def __aexit__(self, exc_type, exc_val, exc_tb) -> None:
+        """Exit async context manager, flushing traces."""
+        await self.flush()
+        await self.close()
+
+    async def _get_client(self) -> httpx.AsyncClient:
+        """Get or create HTTP client."""
+        if self._http_client is None:
+            self._http_client = httpx.AsyncClient(timeout=30.0)
+        return self._http_client
+
+    async def flush(self, api_key: Optional[str] = None) -> bool:
+        """Send all collected traces to the MAO backend.
+
+        Args:
+            api_key: Optional API key for authentication
+
+        Returns:
+            True if all traces were sent successfully, False otherwise.
+        """
+        if not self.traces:
+            return True
+
+        client = await self._get_client()
+        headers = {"Content-Type": "application/json"}
+        if api_key:
+            headers["X-MAO-API-Key"] = api_key
+
+        try:
+            for trace_id, trace in list(self.traces.items()):
+                response = await client.post(
+                    f"{self.endpoint}/api/v1/traces",
+                    json=trace.to_dict(),
+                    headers=headers,
+                )
+                if response.status_code in (200, 201):
+                    del self.traces[trace_id]
+                else:
+                    logger.warning(f"Failed to send trace {trace_id}: {response.status_code}")
+            return len(self.traces) == 0
+        except Exception as e:
+            logger.error(f"Failed to flush traces: {e}")
+            return False
+
+    async def close(self) -> None:
+        """Close the HTTP client."""
+        if self._http_client:
+            await self._http_client.aclose()
+            self._http_client = None
     
     def start_trace(self, metadata: Optional[Dict[str, Any]] = None) -> str:
         """Start a new trace."""

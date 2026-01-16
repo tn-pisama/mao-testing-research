@@ -98,9 +98,7 @@ class SemanticKernelTracer(BaseFrameworkTracer):
                 raise
         
         async def traced_invoke_prompt(prompt_template, *args, **kwargs):
-            if original_invoke_prompt is None:
-                raise NotImplementedError("invoke_prompt not available")
-            
+            # Note: This function is only assigned if original_invoke_prompt exists
             span_id = tracer.start_span(
                 name="sk.invoke_prompt",
                 attributes={
@@ -123,9 +121,7 @@ class SemanticKernelTracer(BaseFrameworkTracer):
                 raise
         
         async def traced_invoke_stream(function, *args, **kwargs):
-            if original_invoke_stream is None:
-                raise NotImplementedError("invoke_stream not available")
-            
+            # Note: This function is only assigned if original_invoke_stream exists
             plugin_name = getattr(function, 'plugin_name', 'unknown')
             function_name = getattr(function, 'name', str(function))
             
