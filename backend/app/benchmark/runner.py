@@ -287,34 +287,100 @@ class BenchmarkRunner:
         self,
         records: List[MASTRecord],
     ) -> List[DetectionAttempt]:
-        """Run simple rule-based detection as fallback.
+        """Run rule-based detection as fallback.
 
-        Uses keyword matching for basic detection when ML is unavailable.
+        Uses improved keyword matching and turn-aware detectors for F6/F9.
         """
         attempts = []
 
-        # Simple keyword patterns for each mode
+        # Improved keyword patterns for each mode (based on MAST vocabulary)
         mode_keywords = {
-            "F1": ["requirement", "specification", "misunderstand", "wrong task"],
-            "F2": ["decomposition", "breakdown", "step", "subtask"],
-            "F3": ["resource", "memory", "timeout", "limit", "exceed"],
-            "F4": ["tool", "missing tool", "no tool", "unavailable"],
-            "F5": ["workflow", "loop", "stuck", "infinite", "repeat"],
-            "F6": ["derail", "off-topic", "unrelated", "different task"],
-            "F7": ["ignore", "forgot", "missing context", "previous"],
-            "F8": ["withhold", "omit", "hide", "not tell"],
-            "F9": ["usurp", "override", "take over", "not authorized"],
-            "F10": ["miscommunication", "misunderstand", "confusion"],
-            "F11": ["coordinate", "conflict", "disagree", "inconsistent"],
-            "F12": ["validate", "check", "verify", "incorrect output"],
-            "F13": ["quality", "skip", "bypass", "no review"],
-            "F14": ["complete", "done", "finish", "premature", "incomplete"],
+            "F1": [
+                "requirement", "specification", "misunderstand", "wrong task",
+                "not what", "different from", "instead of", "should have",
+                "misinterpret", "incorrect understanding",
+            ],
+            "F2": [
+                "decomposition", "breakdown", "step", "subtask",
+                "break down", "divide", "split", "sub-task",
+            ],
+            "F3": [
+                "resource", "memory", "timeout", "limit", "exceed",
+                "out of memory", "rate limit", "quota", "capacity",
+                "too many", "maximum", "exceeded",
+            ],
+            "F4": [
+                "tool not found", "no such", "undefined function",
+                "cannot access", "not available", "missing tool",
+                "tool error", "function not", "command not found",
+                "module not", "import error",
+            ],
+            "F5": [
+                "repeated", "same step", "cycle", "again", "already",
+                "loop", "stuck", "infinite", "keep doing", "over and over",
+                "same output", "no progress", "circular",
+            ],
+            "F6": [
+                "instead of", "wrong task", "different", "unrelated",
+                "off-topic", "not relevant", "another topic", "tangent",
+                "deviate", "stray", "drift",
+            ],
+            "F7": [
+                "ignore", "forgot", "missing context", "previous",
+                "didn't consider", "overlooked", "failed to remember",
+                "lost context", "not mentioned",
+            ],
+            "F8": [
+                "didn't mention", "failed to include", "missing information",
+                "incomplete", "left out", "omitted", "not disclosed",
+                "hidden", "concealed", "not shared",
+            ],
+            "F9": [
+                "not my role", "outside scope", "took over", "override",
+                "beyond authority", "not authorized", "exceeded role",
+                "usurp", "overstep",
+            ],
+            "F10": [
+                "miscommunication", "misunderstand", "confusion",
+                "unclear", "ambiguous", "conflicting message",
+            ],
+            "F11": [
+                "coordinate", "conflict", "disagree", "inconsistent",
+                "contradiction", "different opinion", "clash",
+                "out of sync", "misaligned",
+            ],
+            "F12": [
+                "validate", "check", "verify", "incorrect output",
+                "wrong result", "error in output", "failed validation",
+                "invalid", "broken",
+            ],
+            "F13": [
+                "without testing", "skip", "bypass", "no review",
+                "no validation", "quality", "untested", "unreviewed",
+                "skip check", "pushed directly", "no quality",
+            ],
+            "F14": [
+                "premature", "incomplete", "not finished", "partial",
+                "early termination", "abandoned", "stopped early",
+                "done incorrectly", "falsely complete",
+            ],
         }
+
+        # Run turn-aware detection for F6 and F9
+        turn_aware_attempts = self._run_turn_aware_detectors(records)
+        attempts.extend(turn_aware_attempts)
+
+        # Get modes handled by turn-aware detectors
+        turn_aware_modes = {"F6"}  # F9 removed for now - needs more work
 
         for record in records:
             trajectory_lower = record.trajectory.lower()
 
             for mode in self.failure_modes:
+                # Skip modes handled by turn-aware detectors
+                if mode in turn_aware_modes:
+                    continue
+
                 if mode not in mode_keywords:
                     continue
 
@@ -322,8 +388,10 @@ class BenchmarkRunner:
                 keywords = mode_keywords[mode]
                 matches = sum(1 for kw in keywords if kw in trajectory_lower)
 
-                detected = matches >= 2  # Require at least 2 keyword matches
-                confidence = min(0.3 + matches * 0.15, 0.85)
+                # Lower threshold for modes with longer keyword lists
+                threshold = 1 if len(keywords) > 6 else 2
+                detected = matches >= threshold
+                confidence = min(0.3 + matches * 0.1, 0.85)
 
                 attempts.append(DetectionAttempt(
                     record_id=record.trace_id,
@@ -332,6 +400,79 @@ class BenchmarkRunner:
                     detected=detected,
                     confidence=confidence if detected else 1 - confidence,
                     latency_ms=0.1,  # Very fast
+                ))
+
+        return attempts
+
+    def _run_turn_aware_detectors(
+        self,
+        records: List[MASTRecord],
+    ) -> List[DetectionAttempt]:
+        """Run turn-aware detectors for F6 (derailment).
+
+        Uses the TurnAwareDerailmentDetector with parsed turns.
+        """
+        attempts = []
+
+        # Skip if F6 not in target modes
+        if "F6" not in self.failure_modes:
+            return attempts
+
+        try:
+            from app.benchmark.trajectory_parser import parse_trajectory_to_turns
+            from app.detection.turn_aware.derailment import TurnAwareDerailmentDetector
+        except ImportError as e:
+            logger.warning(f"Turn-aware detector import failed: {e}")
+            return attempts
+
+        for record in records:
+            start_time = time.time()
+            try:
+                # Parse trajectory into turns
+                turns = parse_trajectory_to_turns(record.trajectory, record.framework)
+
+                if len(turns) < 3:
+                    # Not enough turns for meaningful analysis
+                    attempts.append(DetectionAttempt(
+                        record_id=record.trace_id,
+                        failure_mode="F6",
+                        detector_name="turn_aware_derailment",
+                        detected=False,
+                        confidence=0.3,
+                        latency_ms=(time.time() - start_time) * 1000,
+                    ))
+                    continue
+
+                # Run derailment detector
+                detector = TurnAwareDerailmentDetector(
+                    framework=record.framework,
+                    drift_threshold=0.50,  # Slightly more sensitive
+                    require_strong_evidence=False,
+                )
+                result = detector.detect(turns)
+
+                latency_ms = (time.time() - start_time) * 1000
+
+                attempts.append(DetectionAttempt(
+                    record_id=record.trace_id,
+                    failure_mode="F6",
+                    detector_name="turn_aware_derailment",
+                    detected=result.detected,
+                    confidence=result.confidence,
+                    latency_ms=latency_ms,
+                    raw_result=result,
+                ))
+
+            except Exception as e:
+                logger.warning(f"Turn-aware detection failed for {record.trace_id}: {e}")
+                attempts.append(DetectionAttempt(
+                    record_id=record.trace_id,
+                    failure_mode="F6",
+                    detector_name="turn_aware_derailment",
+                    detected=False,
+                    confidence=0.0,
+                    latency_ms=(time.time() - start_time) * 1000,
+                    error=str(e),
                 ))
 
         return attempts
