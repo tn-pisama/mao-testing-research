@@ -68,7 +68,7 @@ class MultiTaskDetector:
 
     def _extract_text(self, record: Dict) -> str:
         """Extract text from record."""
-        trajectory = record.get("trace", {}).get("trajectory", "")
+        trajectory = record.get("trace", {}).get("trajectory", "") or ""
         return trajectory[:15000]
 
     def _get_labels(self, record: Dict) -> Dict[str, bool]:

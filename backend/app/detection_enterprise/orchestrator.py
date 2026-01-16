@@ -22,9 +22,9 @@ from app.detection.injection import InjectionDetector
 from app.detection.withholding import InformationWithholdingDetector
 from app.detection.derailment import TaskDerailmentDetector
 from app.detection.completion import CompletionMisjudgmentDetector
-from app.detection.tool_provision import ToolProvisionDetector
-from app.detection.grounding import GroundingDetector, GroundingSeverity
-from app.detection.retrieval_quality import RetrievalQualityDetector, RetrievalSeverity
+from app.detection_enterprise.tool_provision import ToolProvisionDetector
+from app.detection_enterprise.grounding import GroundingDetector, GroundingSeverity
+from app.detection_enterprise.retrieval_quality import RetrievalQualityDetector, RetrievalSeverity
 
 
 settings = get_settings()
