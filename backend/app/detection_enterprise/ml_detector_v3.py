@@ -161,6 +161,8 @@ class MultiTaskDetector:
 
             for i in range(0, len(indices), self.batch_size):
                 batch_idx = indices[i:i + self.batch_size]
+                if len(batch_idx) < 2:  # Skip batches too small for BatchNorm
+                    continue
                 X_batch = X_train_t[batch_idx]
                 y_batch = y_train_t[batch_idx]
 

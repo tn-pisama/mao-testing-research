@@ -15,3 +15,6 @@ build/
 htmlcov/
 .mypy_cache/
 .DS_Store
+# ML models (too large for git)
+*.pkl
+mast_ml_model.pkl
