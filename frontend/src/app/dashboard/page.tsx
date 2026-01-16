@@ -5,9 +5,9 @@ export const dynamic = 'force-dynamic'
 import { useState } from 'react'
 import { Upload, Wifi, WifiOff } from 'lucide-react'
 import { Layout } from '@/components/common/Layout'
-import { LoopAnalyticsCard } from '@/components/detection/LoopAnalyticsCard'
-import { CostAnalyticsCard } from '@/components/detection/CostAnalyticsCard'
-import { RecentDetectionsCard } from '@/components/detection/RecentDetectionsCard'
+import { LoopAnalyticsCard } from '@/components/dashboard/LoopAnalyticsCard'
+import { CostAnalyticsCard } from '@/components/dashboard/CostAnalyticsCard'
+import { RecentDetectionsCard } from '@/components/dashboard/RecentDetectionsCard'
 import { TraceStatusCard } from '@/components/traces/TraceStatusCard'
 import { Button } from '@/components/ui/Button'
 import { ImportModal } from '@/components/import'
@@ -72,26 +72,26 @@ export default function DashboardPage() {
             </Button>
             <Button
               onClick={() => setShowImportModal(true)}
-              leftIcon={<Upload size={16} />}
             >
+              <Upload size={16} className="mr-2" />
               Import Historical Data
             </Button>
           </div>
         </div>
-        
+
         <div className="grid lg:grid-cols-2 gap-6 mb-6">
           <LoopAnalyticsCard data={loopAnalytics} isLoading={false} />
           <CostAnalyticsCard data={costAnalytics} isLoading={false} />
         </div>
 
         <div className="grid lg:grid-cols-2 gap-6">
-          <RecentDetectionsCard 
-            detections={detections} 
-            isLoading={false} 
+          <RecentDetectionsCard
+            detections={detections}
+            isLoading={false}
           />
-          <TraceStatusCard 
-            traces={traces} 
-            isLoading={false} 
+          <TraceStatusCard
+            traces={traces}
+            isLoading={false}
           />
         </div>
       </div>
