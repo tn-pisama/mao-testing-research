@@ -1395,9 +1395,10 @@ class TurnAwareDerailmentDetector(EmbeddingMixin, TurnAwareDetector):
         content_lower = content.lower()
 
         # Get patterns for this framework (or default)
+        # BUGFIX: Use list concatenation to avoid mutating class-level dictionary values
+        # which caused unbounded list growth and exponential slowdown
         framework_key = self.framework if self.framework in self.BENIGN_PATTERNS else "default"
-        patterns = self.BENIGN_PATTERNS.get(framework_key, [])
-        patterns.extend(self.BENIGN_PATTERNS["default"])  # Always include default patterns
+        patterns = self.BENIGN_PATTERNS.get(framework_key, []) + self.BENIGN_PATTERNS["default"]
 
         # Check if any benign pattern matches
         import re
@@ -3868,9 +3869,10 @@ class TurnAwareOutputValidationDetector(EmbeddingMixin, TurnAwareDetector):
     def _has_completion_signals(self, turns: List[TurnSnapshot]) -> bool:
         """Phase 1: Check if conversation contains framework-specific completion signals."""
         # Get patterns for this framework (or default)
+        # BUGFIX: Use list concatenation to avoid mutating class-level dictionary values
+        # which caused unbounded list growth and exponential slowdown
         framework_key = self.framework if self.framework in self.COMPLETION_SIGNALS else "default"
-        patterns = self.COMPLETION_SIGNALS.get(framework_key, [])
-        patterns.extend(self.COMPLETION_SIGNALS["default"])  # Always include default patterns
+        patterns = self.COMPLETION_SIGNALS.get(framework_key, []) + self.COMPLETION_SIGNALS["default"]
 
         # Check last few agent turns for completion signals
         agent_turns = [t for t in turns if t.participant_type == "agent"]
