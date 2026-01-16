@@ -10,13 +10,17 @@ Improvements:
 7. Label smoothing (v3.2)
 8. Cross-validation threshold optimization (v3.2)
 9. Self-attention on embeddings (v3.2)
+10. Reproducibility with configurable random seeds (v3.3)
+11. Multi-run training with averaging for robust evaluation (v3.3)
 
 Target: 72%+ macro F1
 """
 
 import json
 import logging
+import os
 import pickle
+import random
 from dataclasses import dataclass, field
 from pathlib import Path
 from typing import Any, Dict, List, Optional, Tuple
@@ -24,6 +28,35 @@ from typing import Any, Dict, List, Optional, Tuple
 import numpy as np
 
 logger = logging.getLogger(__name__)
+
+
+def set_random_seeds(seed: int) -> None:
+    """Set random seeds for reproducibility across all libraries.
+
+    Sets seeds for:
+    - Python's random module
+    - NumPy
+    - PyTorch (CPU and CUDA/MPS)
+    - Environment variable for hash seed
+    """
+    random.seed(seed)
+    np.random.seed(seed)
+    os.environ['PYTHONHASHSEED'] = str(seed)
+
+    try:
+        import torch
+        torch.manual_seed(seed)
+        if torch.cuda.is_available():
+            torch.cuda.manual_seed(seed)
+            torch.cuda.manual_seed_all(seed)
+            # For full reproducibility (may impact performance)
+            torch.backends.cudnn.deterministic = True
+            torch.backends.cudnn.benchmark = False
+        if hasattr(torch.backends, 'mps') and torch.backends.mps.is_available():
+            # MPS doesn't have the same seed control, but manual_seed helps
+            pass
+    except ImportError:
+        pass
 
 
 def _create_focal_loss(alpha: float = 0.25, gamma: float = 2.0, smoothing: float = 0.0):
@@ -164,6 +197,7 @@ class MultiTaskDetector:
         use_attention: bool = False,   # Optional: set True for self-attention on embeddings
         attention_heads: int = 8,
         cv_folds: int = 1,  # Optional: set to 5 for CV threshold optimization
+        random_seed: Optional[int] = 42,  # Seed for reproducibility (None for random)
     ):
         self.embedding_model = embedding_model
         self.hidden_dims = hidden_dims
@@ -178,6 +212,7 @@ class MultiTaskDetector:
         self.use_attention = use_attention
         self.attention_heads = attention_heads
         self.cv_folds = cv_folds
+        self.random_seed = random_seed
 
         self._embedder = None
         self.model = None
@@ -222,6 +257,11 @@ class MultiTaskDetector:
         from sklearn.preprocessing import StandardScaler
         from sklearn.metrics import f1_score
 
+        # Set random seeds for reproducibility
+        if self.random_seed is not None:
+            set_random_seeds(self.random_seed)
+            logger.info(f"Random seed set to {self.random_seed}")
+
         # Get embeddings
         logger.info(f"Computing embeddings for {len(records)} records...")
         texts = [self._extract_text(r) for r in records]
@@ -233,7 +273,7 @@ class MultiTaskDetector:
 
         # Split
         X_train, X_test, y_train, y_test = train_test_split(
-            embeddings, y, test_size=test_split, random_state=42
+            embeddings, y, test_size=test_split, random_state=self.random_seed
         )
 
         # Scale
@@ -373,7 +413,7 @@ class MultiTaskDetector:
         if self.cv_folds > 1:
             logger.info(f"Optimizing thresholds with {self.cv_folds}-fold CV...")
             from sklearn.model_selection import KFold
-            kf = KFold(n_splits=self.cv_folds, shuffle=True, random_state=42)
+            kf = KFold(n_splits=self.cv_folds, shuffle=True, random_state=self.random_seed)
 
             # Collect best thresholds from each fold
             fold_thresholds = {mode: [] for mode in FAILURE_MODES}
@@ -436,6 +476,160 @@ class MultiTaskDetector:
 
         self.is_trained = True
         return results
+
+    @classmethod
+    def train_multirun(
+        cls,
+        records: List[Dict],
+        num_runs: int = 5,
+        base_seed: int = 42,
+        test_split: float = 0.2,
+        **detector_kwargs,
+    ) -> Dict[str, Any]:
+        """Train detector multiple times with different seeds and aggregate results.
+
+        This provides more robust evaluation by averaging metrics across runs,
+        accounting for variance from random initialization and data splits.
+
+        Args:
+            records: Training data records
+            num_runs: Number of training runs with different seeds
+            base_seed: Starting seed (runs use base_seed, base_seed+1, ...)
+            test_split: Fraction of data for test set
+            **detector_kwargs: Additional arguments for MultiTaskDetector
+
+        Returns:
+            Dict containing:
+            - run_results: List of results from each run
+            - aggregated: Aggregated metrics with mean, std, and confidence intervals
+            - best_run: Index of the best run by macro F1
+            - seeds_used: List of seeds used for each run
+        """
+        logger.info(f"Starting multi-run training with {num_runs} runs (base_seed={base_seed})")
+
+        run_results = []
+        seeds_used = []
+        best_f1 = 0.0
+        best_run_idx = 0
+        best_detector = None
+
+        for run_idx in range(num_runs):
+            seed = base_seed + run_idx
+            seeds_used.append(seed)
+
+            logger.info(f"\n{'='*60}")
+            logger.info(f"Run {run_idx + 1}/{num_runs} (seed={seed})")
+            logger.info("=" * 60)
+
+            # Create and train detector with this seed
+            detector = cls(random_seed=seed, **detector_kwargs)
+            result = detector.train(records, test_split=test_split)
+
+            run_results.append(result)
+
+            # Track best model
+            macro_f1 = result["overall"]["macro_f1"]
+            if macro_f1 > best_f1:
+                best_f1 = macro_f1
+                best_run_idx = run_idx
+                best_detector = detector
+
+            logger.info(f"Run {run_idx + 1} Macro F1: {macro_f1:.4f}")
+
+        # Aggregate results across runs
+        aggregated = cls._aggregate_multirun_results(run_results, seeds_used)
+
+        logger.info(f"\n{'='*60}")
+        logger.info("MULTI-RUN SUMMARY")
+        logger.info("=" * 60)
+        logger.info(f"Runs: {num_runs}, Seeds: {seeds_used[0]}-{seeds_used[-1]}")
+        logger.info(f"Macro F1: {aggregated['overall']['macro_f1_mean']:.4f} "
+                   f"± {aggregated['overall']['macro_f1_std']:.4f}")
+        logger.info(f"95% CI: [{aggregated['overall']['macro_f1_ci_lower']:.4f}, "
+                   f"{aggregated['overall']['macro_f1_ci_upper']:.4f}]")
+        logger.info(f"Best run: {best_run_idx + 1} with F1={best_f1:.4f}")
+
+        return {
+            "run_results": run_results,
+            "aggregated": aggregated,
+            "best_run": best_run_idx,
+            "best_detector": best_detector,
+            "seeds_used": seeds_used,
+            "num_runs": num_runs,
+        }
+
+    @staticmethod
+    def _aggregate_multirun_results(
+        run_results: List[Dict[str, Any]],
+        seeds_used: List[int],
+    ) -> Dict[str, Any]:
+        """Aggregate results from multiple training runs.
+
+        Computes mean, std, min, max, and 95% confidence intervals for each metric.
+        """
+        # Collect per-mode metrics across runs
+        mode_metrics: Dict[str, Dict[str, List[float]]] = {}
+        macro_f1s = []
+
+        for result in run_results:
+            macro_f1s.append(result["overall"]["macro_f1"])
+
+            for mode, metrics in result["modes"].items():
+                if mode not in mode_metrics:
+                    mode_metrics[mode] = {"precision": [], "recall": [], "f1": []}
+                for metric_name in ["precision", "recall", "f1"]:
+                    if metric_name in metrics:
+                        mode_metrics[mode][metric_name].append(metrics[metric_name])
+
+        # Compute aggregated statistics
+        def compute_stats(values: List[float]) -> Dict[str, float]:
+            """Compute mean, std, min, max, and 95% CI."""
+            arr = np.array(values)
+            mean = float(np.mean(arr))
+            std = float(np.std(arr, ddof=1)) if len(arr) > 1 else 0.0
+            n = len(arr)
+            # 95% CI using t-distribution approximation (t ≈ 2 for small samples)
+            ci_margin = 2.0 * std / np.sqrt(n) if n > 1 else 0.0
+            return {
+                "mean": mean,
+                "std": std,
+                "min": float(np.min(arr)),
+                "max": float(np.max(arr)),
+                "ci_lower": mean - ci_margin,
+                "ci_upper": mean + ci_margin,
+                "values": values,
+            }
+
+        aggregated = {
+            "modes": {},
+            "overall": {},
+            "seeds_used": seeds_used,
+        }
+
+        # Per-mode aggregated metrics
+        for mode, metrics in mode_metrics.items():
+            aggregated["modes"][mode] = {}
+            for metric_name, values in metrics.items():
+                if values:
+                    stats = compute_stats(values)
+                    aggregated["modes"][mode][f"{metric_name}_mean"] = stats["mean"]
+                    aggregated["modes"][mode][f"{metric_name}_std"] = stats["std"]
+                    aggregated["modes"][mode][f"{metric_name}_min"] = stats["min"]
+                    aggregated["modes"][mode][f"{metric_name}_max"] = stats["max"]
+                    aggregated["modes"][mode][f"{metric_name}_ci_lower"] = stats["ci_lower"]
+                    aggregated["modes"][mode][f"{metric_name}_ci_upper"] = stats["ci_upper"]
+
+        # Overall aggregated metrics
+        overall_stats = compute_stats(macro_f1s)
+        aggregated["overall"]["macro_f1_mean"] = overall_stats["mean"]
+        aggregated["overall"]["macro_f1_std"] = overall_stats["std"]
+        aggregated["overall"]["macro_f1_min"] = overall_stats["min"]
+        aggregated["overall"]["macro_f1_max"] = overall_stats["max"]
+        aggregated["overall"]["macro_f1_ci_lower"] = overall_stats["ci_lower"]
+        aggregated["overall"]["macro_f1_ci_upper"] = overall_stats["ci_upper"]
+        aggregated["overall"]["macro_f1_values"] = macro_f1s
+
+        return aggregated
 
     def predict_batch(self, records: List[Dict]) -> List[Dict[str, bool]]:
         """Predict for batch of records using per-mode thresholds."""

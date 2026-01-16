@@ -4,6 +4,7 @@ Usage:
     python -m app.benchmark.cli run data.jsonl -o report.md
     python -m app.benchmark.cli stats data.jsonl
     python -m app.benchmark.cli train-model data.jsonl -o model.pkl
+    python -m app.benchmark.cli train-multirun data.jsonl --num-runs 5
 """
 
 import logging
@@ -311,6 +312,195 @@ def train_model(
 
     except Exception as e:
         click.echo(f"Training failed: {e}", err=True)
+        sys.exit(1)
+
+
+@cli.command("train-multirun")
+@click.argument("data_path", type=click.Path(exists=True))
+@click.option(
+    "--output", "-o",
+    default="ml_model_multirun.pkl",
+    help="Output model path (saves best model)",
+)
+@click.option(
+    "--num-runs", "-n",
+    default=5,
+    help="Number of training runs with different seeds",
+)
+@click.option(
+    "--base-seed",
+    default=42,
+    help="Starting random seed (runs use base_seed, base_seed+1, ...)",
+)
+@click.option(
+    "--epochs",
+    default=50,
+    help="Training epochs per run",
+)
+@click.option(
+    "--test-split",
+    default=0.2,
+    help="Test split ratio",
+)
+@click.option(
+    "--batch-size",
+    default=32,
+    help="Batch size for training",
+)
+@click.option(
+    "--use-attention/--no-attention",
+    default=False,
+    help="Use self-attention on embeddings",
+)
+@click.option(
+    "--cv-folds",
+    default=1,
+    help="Cross-validation folds for threshold optimization",
+)
+@click.option(
+    "--label-smoothing",
+    default=0.0,
+    help="Label smoothing for confidence regularization",
+)
+@click.option(
+    "--report", "-r",
+    default=None,
+    help="Optional JSON report output path",
+)
+@click.option("--verbose", "-v", is_flag=True, help="Verbose output")
+def train_multirun(
+    data_path: str,
+    output: str,
+    num_runs: int,
+    base_seed: int,
+    epochs: int,
+    test_split: float,
+    batch_size: int,
+    use_attention: bool,
+    cv_folds: int,
+    label_smoothing: float,
+    report: Optional[str],
+    verbose: bool,
+):
+    """Train ML detector multiple times with different seeds for robust evaluation.
+
+    This provides more reliable metrics by averaging across multiple runs,
+    accounting for variance from random initialization and data splits.
+
+    DATA_PATH: Path to MAST training data
+
+    Examples:
+        # Basic 5-run training
+        python -m app.benchmark.cli train-multirun data.jsonl --num-runs 5
+
+        # With all options
+        python -m app.benchmark.cli train-multirun data.jsonl \\
+            --num-runs 10 --base-seed 0 --epochs 100 --use-attention \\
+            -o best_model.pkl -r multirun_report.json
+    """
+    import json
+    setup_logging(verbose)
+
+    click.echo(f"Loading training data from {data_path}...")
+
+    loader = MASTDataLoader(Path(data_path))
+    count = loader.load()
+    click.echo(f"Loaded {count:,} records")
+
+    # Convert records to dict format expected by ML detector
+    records = []
+    for record in loader:
+        records.append({
+            "trace": {"trajectory": record.trajectory},
+            "mast_annotation": record.raw_annotations,
+        })
+
+    click.echo("")
+    click.echo("=" * 60)
+    click.echo(f"MULTI-RUN TRAINING: {num_runs} runs")
+    click.echo(f"Seeds: {base_seed} to {base_seed + num_runs - 1}")
+    click.echo(f"Epochs: {epochs}, Batch size: {batch_size}")
+    click.echo(f"Attention: {use_attention}, CV folds: {cv_folds}")
+    click.echo("=" * 60)
+    click.echo("")
+
+    try:
+        from app.detection_enterprise.ml_detector_v3 import MultiTaskDetector
+
+        result = MultiTaskDetector.train_multirun(
+            records=records,
+            num_runs=num_runs,
+            base_seed=base_seed,
+            test_split=test_split,
+            epochs=epochs,
+            batch_size=batch_size,
+            use_attention=use_attention,
+            cv_folds=cv_folds,
+            label_smoothing=label_smoothing,
+        )
+
+        # Print summary
+        aggregated = result["aggregated"]
+        click.echo("")
+        click.echo("=" * 60)
+        click.echo("FINAL RESULTS")
+        click.echo("=" * 60)
+        click.echo("")
+        click.echo(f"Macro F1: {aggregated['overall']['macro_f1_mean']:.4f} "
+                   f"± {aggregated['overall']['macro_f1_std']:.4f}")
+        click.echo(f"95% CI:   [{aggregated['overall']['macro_f1_ci_lower']:.4f}, "
+                   f"{aggregated['overall']['macro_f1_ci_upper']:.4f}]")
+        click.echo(f"Range:    [{aggregated['overall']['macro_f1_min']:.4f}, "
+                   f"{aggregated['overall']['macro_f1_max']:.4f}]")
+        click.echo("")
+        click.echo(f"Best run: {result['best_run'] + 1} (seed={result['seeds_used'][result['best_run']]})")
+        click.echo("")
+
+        # Per-mode results
+        click.echo("PER-MODE RESULTS (mean ± std):")
+        click.echo("-" * 50)
+        for mode, metrics in sorted(aggregated["modes"].items()):
+            f1_mean = metrics.get("f1_mean", 0)
+            f1_std = metrics.get("f1_std", 0)
+            click.echo(f"  {mode}: F1 = {f1_mean:.3f} ± {f1_std:.3f}")
+        click.echo("")
+
+        # Save best model
+        best_detector = result["best_detector"]
+        if best_detector:
+            import pickle
+            with open(output, "wb") as f:
+                pickle.dump(best_detector, f)
+            click.echo(f"Best model saved to {output}")
+
+        # Save report if requested
+        if report:
+            # Prepare serializable report
+            report_data = {
+                "num_runs": num_runs,
+                "base_seed": base_seed,
+                "seeds_used": result["seeds_used"],
+                "best_run": result["best_run"],
+                "aggregated": aggregated,
+                "run_results": result["run_results"],
+                "config": {
+                    "epochs": epochs,
+                    "batch_size": batch_size,
+                    "test_split": test_split,
+                    "use_attention": use_attention,
+                    "cv_folds": cv_folds,
+                    "label_smoothing": label_smoothing,
+                },
+            }
+            with open(report, "w") as f:
+                json.dump(report_data, f, indent=2)
+            click.echo(f"Report saved to {report}")
+
+    except Exception as e:
+        import traceback
+        click.echo(f"Training failed: {e}", err=True)
+        if verbose:
+            traceback.print_exc()
         sys.exit(1)
 
 
