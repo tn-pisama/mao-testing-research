@@ -1,7 +1,6 @@
 """E2E test configuration and fixtures."""
 
 import pytest
-import asyncio
 from typing import Dict, Any
 
 from app.healing import SelfHealingEngine
@@ -14,13 +13,9 @@ from .fixtures import (
 from .utils import WorkflowRunner, MetricsCollector
 
 
-@pytest.fixture(scope="session")
-def event_loop():
-    """Session-scoped event loop."""
-    loop = asyncio.new_event_loop()
-    asyncio.set_event_loop(loop)
-    yield loop
-    loop.close()
+# Note: No custom event_loop fixture needed - pytest-asyncio auto mode handles it
+# For session-scoped async fixtures, use @pytest.fixture(scope="session") with loop_scope="session"
+# marker on the test class if needed.
 
 
 @pytest.fixture

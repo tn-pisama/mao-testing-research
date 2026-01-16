@@ -5,16 +5,15 @@ os.environ.setdefault("DATABASE_URL", "postgresql+asyncpg://mao:mao@localhost:54
 os.environ.setdefault("REDIS_URL", "redis://localhost:6379")
 
 import pytest
-import asyncio
+import pytest_asyncio
 import re
 from typing import Any, Dict
+from unittest.mock import MagicMock, AsyncMock
+from uuid import uuid4
 
 
-@pytest.fixture(scope="function")
-def event_loop():
-    loop = asyncio.new_event_loop()
-    yield loop
-    loop.close()
+# Note: No custom event_loop fixture needed - pytest-asyncio auto mode handles it
+# (configured in pytest.ini with asyncio_mode = auto)
 
 
 SENSITIVE_PATTERNS = [
@@ -102,3 +101,172 @@ def test_trace_id():
     """Generate a unique trace ID for testing."""
     import uuid
     return str(uuid.uuid4())
+
+
+# =============================================================================
+# N8n and API Test Fixtures
+# =============================================================================
+
+
+@pytest_asyncio.fixture
+async def n8n_test_client():
+    """
+    Async client with mocked database for n8n webhook tests.
+
+    Provides proper setup/teardown to avoid event loop cleanup issues.
+    Yields (client, mock_db, mock_tenant) tuple.
+    """
+    from unittest.mock import patch
+    from httpx import AsyncClient, ASGITransport
+    from app.main import app
+    from app.storage.database import get_db
+    from app.core.auth import get_current_tenant
+
+    mock_tenant = MagicMock()
+    mock_tenant.id = uuid4()
+    mock_tenant.name = "Test Tenant"
+
+    mock_api_key = MagicMock()
+    mock_api_key.key_prefix = "mao_testkey1"
+    mock_api_key.key_hash = "hashed_key"
+    mock_api_key.tenant_id = mock_tenant.id
+
+    call_count = [0]
+    def create_mock_result():
+        call_count[0] += 1
+        mock_result = MagicMock()
+        if call_count[0] == 1:
+            mock_result.scalar_one_or_none.return_value = mock_api_key
+        elif call_count[0] == 2:
+            mock_result.scalar_one_or_none.return_value = mock_tenant
+        else:
+            mock_result.scalar_one_or_none.return_value = None
+            mock_result.scalar_one.return_value = mock_tenant
+            mock_result.scalars.return_value.all.return_value = []
+        return mock_result
+
+    mock_db = MagicMock()
+    mock_db.execute = AsyncMock(side_effect=lambda *a, **k: create_mock_result())
+    mock_db.add = MagicMock()
+    mock_db.flush = AsyncMock()
+    mock_db.commit = AsyncMock()
+
+    # Use sync lambda returns instead of async generators to avoid event loop issues
+    def override_get_db():
+        return mock_db
+
+    def override_get_tenant():
+        return str(mock_tenant.id)
+
+    # Apply test overrides
+    app.dependency_overrides[get_db] = override_get_db
+    app.dependency_overrides[get_current_tenant] = override_get_tenant
+
+    # Mock rate limiter to avoid Redis connection issues
+    mock_rate_limiter = MagicMock()
+    mock_rate_limiter.check_rate_limit = AsyncMock(return_value=True)
+    mock_rate_limiter.get_remaining = AsyncMock(return_value=1000)
+    mock_rate_limiter.close = AsyncMock()
+
+    try:
+        with patch('app.main.rate_limiter', mock_rate_limiter):
+            async with AsyncClient(transport=ASGITransport(app=app), base_url="http://test") as client:
+                yield client, mock_db, mock_tenant
+    finally:
+        # Remove only the overrides we added (not the whole dict)
+        app.dependency_overrides.pop(get_db, None)
+        app.dependency_overrides.pop(get_current_tenant, None)
+
+
+@pytest_asyncio.fixture
+async def n8n_workflow_client():
+    """
+    Async client for n8n workflow management tests (register, list workflows).
+
+    Uses separate mock setup for workflow-related endpoints.
+    """
+    from unittest.mock import patch
+    from httpx import AsyncClient, ASGITransport
+    from datetime import datetime, timezone
+    from app.main import app
+    from app.storage.database import get_db
+    from app.core.auth import get_current_tenant
+
+    mock_tenant_id = str(uuid4())
+
+    mock_workflow = MagicMock()
+    mock_workflow.id = uuid4()
+    mock_workflow.workflow_id = "wf-test-123"
+    mock_workflow.workflow_name = "Test Workflow"
+    mock_workflow.registered_at = datetime.now(timezone.utc)
+    mock_workflow.webhook_secret = "test_secret"
+
+    mock_result = MagicMock()
+    mock_result.scalar_one.return_value = mock_workflow
+    mock_result.scalars.return_value.all.return_value = [mock_workflow]
+
+    mock_db = MagicMock()
+    mock_db.execute = AsyncMock(return_value=mock_result)
+    mock_db.add = MagicMock()
+    mock_db.flush = AsyncMock()
+    mock_db.commit = AsyncMock()
+
+    # Use sync returns instead of async generators
+    def override_get_db():
+        return mock_db
+
+    def override_get_tenant():
+        return mock_tenant_id
+
+    app.dependency_overrides[get_db] = override_get_db
+    app.dependency_overrides[get_current_tenant] = override_get_tenant
+
+    # Mock rate limiter to avoid Redis connection issues
+    mock_rate_limiter = MagicMock()
+    mock_rate_limiter.check_rate_limit = AsyncMock(return_value=True)
+    mock_rate_limiter.get_remaining = AsyncMock(return_value=1000)
+    mock_rate_limiter.close = AsyncMock()
+
+    try:
+        with patch('app.main.rate_limiter', mock_rate_limiter):
+            async with AsyncClient(transport=ASGITransport(app=app), base_url="http://test") as client:
+                yield client, mock_db, mock_workflow
+    finally:
+        app.dependency_overrides.pop(get_db, None)
+        app.dependency_overrides.pop(get_current_tenant, None)
+
+
+@pytest_asyncio.fixture
+async def api_test_client():
+    """
+    Async client for general API tests with mocked database.
+    """
+    from unittest.mock import patch
+    from httpx import AsyncClient, ASGITransport
+    from app.main import app
+    from app.storage.database import get_db
+
+    mock_db = MagicMock()
+    mock_db.add = MagicMock()
+    mock_db.commit = AsyncMock()
+    mock_db.refresh = AsyncMock()
+    mock_db.execute = AsyncMock()
+
+    # Use sync return instead of async generator
+    def override_get_db():
+        return mock_db
+
+    app.dependency_overrides[get_db] = override_get_db
+
+    # Mock rate limiter to avoid Redis connection issues
+    mock_rate_limiter = MagicMock()
+    mock_rate_limiter.check_rate_limit = AsyncMock(return_value=True)
+    mock_rate_limiter.get_remaining = AsyncMock(return_value=1000)
+    mock_rate_limiter.close = AsyncMock()
+
+    try:
+        with patch('app.main.rate_limiter', mock_rate_limiter):
+            async with AsyncClient(transport=ASGITransport(app=app), base_url="http://test") as client:
+                yield client, mock_db
+    finally:
+        app.dependency_overrides.pop(get_db, None)

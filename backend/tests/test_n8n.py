@@ -250,203 +250,100 @@ async def mock_db_n8n_client():
 
 class TestN8nWebhook:
     @pytest.mark.asyncio
-    @pytest.mark.skip(reason="Event loop cleanup issue when run with other tests")
-    async def test_webhook_creates_trace(self):
-        from app.storage.database import get_db
-        from app.core.auth import get_current_tenant
-        
-        mock_tenant = MagicMock()
-        mock_tenant.id = uuid4()
-        mock_tenant.name = "Test Tenant"
-        
-        mock_api_key = MagicMock()
-        mock_api_key.key_prefix = "mao_testkey1"
-        mock_api_key.key_hash = "hashed_key"
-        mock_api_key.tenant_id = mock_tenant.id
-        
-        call_count = [0]
-        def create_mock_result():
-            call_count[0] += 1
-            mock_result = MagicMock()
-            if call_count[0] == 1:
-                mock_result.scalar_one_or_none.return_value = mock_api_key
-            elif call_count[0] == 2:
-                mock_result.scalar_one_or_none.return_value = mock_tenant
-            else:
-                mock_result.scalar_one_or_none.return_value = None
-            return mock_result
-        
-        mock_db = MagicMock()
-        mock_db.execute = AsyncMock(side_effect=lambda *a, **k: create_mock_result())
-        mock_db.add = MagicMock()
-        mock_db.flush = AsyncMock()
-        mock_db.commit = AsyncMock()
-        
-        async def override_get_db():
-            yield mock_db
-        
-        async def override_get_tenant():
-            return str(mock_tenant.id)
-        
-        app.dependency_overrides[get_db] = override_get_db
-        app.dependency_overrides[get_current_tenant] = override_get_tenant
-        try:
-            with patch('app.core.auth.verify_api_key', return_value=True):
-                async with AsyncClient(transport=ASGITransport(app=app), base_url="http://test") as client:
-                    payload = {
-                        "executionId": "exec-123",
-                        "workflowId": "wf-456",
-                        "workflowName": "Test Workflow",
-                        "mode": "manual",
-                        "startedAt": "2024-01-01T00:00:00Z",
-                        "finishedAt": "2024-01-01T00:00:05Z",
-                        "status": "success",
-                        "data": {"resultData": {"runData": {"Node1": [{"executionTime": 100}]}}}
-                    }
-                    
-                    response = await client.post(
-                        "/api/v1/n8n/webhook",
-                        json=payload,
-                        headers={"X-MAO-API-Key": "mao_testkey123"},
-                    )
-                    
-                    assert response.status_code == 200
-                    data = response.json()
-                    assert data["success"] is True
-                    assert "trace_id" in data
-        finally:
-            app.dependency_overrides.clear()
-    
-    @pytest.mark.asyncio
-    @pytest.mark.skip(reason="Event loop cleanup issue when run with other tests")
-    async def test_webhook_invalid_api_key(self):
-        async with AsyncClient(transport=ASGITransport(app=app), base_url="http://test") as client:
+    async def test_webhook_creates_trace(self, n8n_test_client):
+        """Test that n8n webhook creates a trace successfully."""
+        client, mock_db, mock_tenant = n8n_test_client
+
+        with patch('app.core.auth.verify_api_key', return_value=True):
             payload = {
                 "executionId": "exec-123",
                 "workflowId": "wf-456",
-                "workflowName": "Test",
+                "workflowName": "Test Workflow",
+                "mode": "manual",
                 "startedAt": "2024-01-01T00:00:00Z",
+                "finishedAt": "2024-01-01T00:00:05Z",
                 "status": "success",
+                "data": {"resultData": {"runData": {"Node1": [{"executionTime": 100}]}}}
             }
-            
+
             response = await client.post(
                 "/api/v1/n8n/webhook",
                 json=payload,
-                headers={"X-MAO-API-Key": "invalid-key"},
+                headers={"X-MAO-API-Key": "mao_testkey123"},
             )
-            
-            assert response.status_code == 401
-    
+
+            assert response.status_code == 200
+            data = response.json()
+            assert data["success"] is True
+            assert "trace_id" in data
+
     @pytest.mark.asyncio
-    @pytest.mark.skip(reason="Event loop cleanup issue when run with other tests")
-    async def test_webhook_missing_api_key(self):
-        async with AsyncClient(transport=ASGITransport(app=app), base_url="http://test") as client:
-            payload = {
-                "executionId": "exec-123",
-                "workflowId": "wf-456",
-                "startedAt": "2024-01-01T00:00:00Z",
-            }
-            
-            response = await client.post(
-                "/api/v1/n8n/webhook",
-                json=payload,
-            )
-            
-            assert response.status_code == 422
+    async def test_webhook_invalid_api_key(self, n8n_test_client):
+        """Test that invalid API key returns 401."""
+        client, _, _ = n8n_test_client
+
+        payload = {
+            "executionId": "exec-123",
+            "workflowId": "wf-456",
+            "workflowName": "Test",
+            "startedAt": "2024-01-01T00:00:00Z",
+            "status": "success",
+        }
+
+        response = await client.post(
+            "/api/v1/n8n/webhook",
+            json=payload,
+            headers={"X-MAO-API-Key": "invalid-key"},
+        )
+
+        assert response.status_code == 401
+
+    @pytest.mark.asyncio
+    async def test_webhook_missing_api_key(self, n8n_test_client):
+        """Test that missing API key returns 422."""
+        client, _, _ = n8n_test_client
+
+        payload = {
+            "executionId": "exec-123",
+            "workflowId": "wf-456",
+            "startedAt": "2024-01-01T00:00:00Z",
+        }
+
+        response = await client.post(
+            "/api/v1/n8n/webhook",
+            json=payload,
+        )
+
+        assert response.status_code == 422
 
 
 class TestN8nWorkflowManagement:
     @pytest.mark.asyncio
-    @pytest.mark.skip(reason="Event loop cleanup issue when run with other tests")
-    async def test_register_workflow(self):
-        from app.storage.database import get_db
-        from app.core.auth import get_current_tenant
-        from datetime import timezone
-        
-        mock_tenant_id = str(uuid4())
-        
-        mock_workflow = MagicMock()
-        mock_workflow.id = uuid4()
-        mock_workflow.workflow_id = "wf-test-123"
-        mock_workflow.workflow_name = "Test Workflow"
-        mock_workflow.registered_at = datetime.now(timezone.utc)
-        mock_workflow.webhook_secret = "test_secret"
-        
-        mock_result = MagicMock()
-        mock_result.scalar_one.return_value = mock_workflow
-        
-        mock_db = MagicMock()
-        mock_db.execute = AsyncMock(return_value=mock_result)
-        mock_db.add = MagicMock()
-        mock_db.flush = AsyncMock()
-        mock_db.commit = AsyncMock()
-        
-        async def override_get_db():
-            yield mock_db
-        
-        async def override_get_tenant():
-            return mock_tenant_id
-        
-        app.dependency_overrides[get_db] = override_get_db
-        app.dependency_overrides[get_current_tenant] = override_get_tenant
-        
-        try:
-            async with AsyncClient(transport=ASGITransport(app=app), base_url="http://test") as client:
-                response = await client.post(
-                    "/api/v1/n8n/workflows",
-                    json={"workflow_id": "wf-test-123", "workflow_name": "Test Workflow"},
-                    headers={"Authorization": "Bearer test-token"},
-                )
-            
-            assert response.status_code == 200
-            data = response.json()
-            assert data["workflow_id"] == "wf-test-123"
-            assert "webhook_url" in data
-        finally:
-            app.dependency_overrides.clear()
-    
+    async def test_register_workflow(self, n8n_workflow_client):
+        """Test that workflow registration succeeds."""
+        client, mock_db, mock_workflow = n8n_workflow_client
+
+        response = await client.post(
+            "/api/v1/n8n/workflows",
+            json={"workflow_id": "wf-test-123", "workflow_name": "Test Workflow"},
+            headers={"Authorization": "Bearer test-token"},
+        )
+
+        assert response.status_code == 200
+        data = response.json()
+        assert data["workflow_id"] == "wf-test-123"
+        assert "webhook_url" in data
+
     @pytest.mark.asyncio
-    @pytest.mark.skip(reason="Event loop cleanup issue when run with other tests")
-    async def test_list_workflows(self):
-        from app.storage.database import get_db
-        from app.core.auth import get_current_tenant
-        from datetime import timezone
-        
-        mock_tenant_id = str(uuid4())
-        
-        mock_workflow = MagicMock()
-        mock_workflow.id = uuid4()
-        mock_workflow.workflow_id = "wf-list-1"
-        mock_workflow.workflow_name = "Test Workflow"
-        mock_workflow.registered_at = datetime.now(timezone.utc)
-        
-        mock_result = MagicMock()
-        mock_result.scalars.return_value.all.return_value = [mock_workflow]
-        
-        mock_db = MagicMock()
-        mock_db.execute = AsyncMock(return_value=mock_result)
-        mock_db.add = MagicMock()
-        mock_db.flush = AsyncMock()
-        mock_db.commit = AsyncMock()
-        
-        async def override_get_db():
-            yield mock_db
-        
-        async def override_get_tenant():
-            return mock_tenant_id
-        
-        app.dependency_overrides[get_db] = override_get_db
-        app.dependency_overrides[get_current_tenant] = override_get_tenant
-        
-        try:
-            async with AsyncClient(transport=ASGITransport(app=app), base_url="http://test") as client:
-                response = await client.get(
-                    "/api/v1/n8n/workflows",
-                    headers={"Authorization": "Bearer test-token"},
-                )
-            
-            assert response.status_code == 200
-            data = response.json()
-            assert isinstance(data, list)
-        finally:
-            app.dependency_overrides.clear()
+    async def test_list_workflows(self, n8n_workflow_client):
+        """Test that workflow listing returns a list."""
+        client, mock_db, mock_workflow = n8n_workflow_client
+
+        response = await client.get(
+            "/api/v1/n8n/workflows",
+            headers={"Authorization": "Bearer test-token"},
+        )
+
+        assert response.status_code == 200
+        data = response.json()
+        assert isinstance(data, list)
