@@ -9,7 +9,8 @@ from uuid import UUID, uuid4
 from datetime import datetime
 
 from app.storage.database import get_db, set_tenant_context
-from app.storage.models import Detection, HealingRecord, N8nConnection, Trace
+from app.storage.models import Detection, HealingRecord, N8nConnection, Trace, WorkflowVersion
+from sqlalchemy import func, desc
 from app.core.auth import get_current_tenant
 from app.core.encryption import encrypt_value, decrypt_value
 from app.fixes import FixGenerator, LoopFixGenerator, CorruptionFixGenerator, PersonaFixGenerator, DeadlockFixGenerator
@@ -292,7 +293,11 @@ async def rollback_healing(
     tenant_id: str = Depends(get_current_tenant),
     db: AsyncSession = Depends(get_db),
 ):
-    """Rollback an applied healing fix."""
+    """Rollback an applied healing fix.
+
+    If the healing was applied to an n8n workflow, this will restore
+    the original workflow configuration in n8n.
+    """
     await set_tenant_context(db, tenant_id)
 
     result = await db.execute(
@@ -316,9 +321,65 @@ async def rollback_healing(
         raise HTTPException(status_code=400, detail="Healing already rolled back")
 
     previous_status = healing.status
+    n8n_rolled_back = False
 
-    # Restore original state to detection if possible
-    if healing.original_state:
+    # If this was an n8n fix, actually push the rollback to n8n
+    if healing.original_state and healing.workflow_id and healing.n8n_connection_id:
+        conn_result = await db.execute(
+            select(N8nConnection).where(N8nConnection.id == healing.n8n_connection_id)
+        )
+        connection = conn_result.scalar_one_or_none()
+
+        if connection:
+            api_key = decrypt_value(connection.api_key_encrypted)
+
+            try:
+                async with N8nApiClient(
+                    instance_url=connection.instance_url,
+                    api_key=api_key,
+                ) as client:
+                    # Filter original_state to only include fields n8n accepts
+                    original = healing.original_state
+                    update_payload = {
+                        "name": original.get("name"),
+                        "nodes": original.get("nodes", []),
+                        "connections": original.get("connections", {}),
+                        "settings": original.get("settings", {}),
+                    }
+                    await client.update_workflow(healing.workflow_id, update_payload)
+                    n8n_rolled_back = True
+
+                # Create version record for rollback
+                version_result = await db.execute(
+                    select(func.coalesce(func.max(WorkflowVersion.version_number), 0))
+                    .where(
+                        WorkflowVersion.tenant_id == UUID(tenant_id),
+                        WorkflowVersion.workflow_id == healing.workflow_id,
+                    )
+                )
+                next_version = version_result.scalar() + 1
+
+                version = WorkflowVersion(
+                    id=uuid4(),
+                    tenant_id=UUID(tenant_id),
+                    workflow_id=healing.workflow_id,
+                    connection_id=connection.id,
+                    version_number=next_version,
+                    workflow_snapshot=healing.original_state,
+                    healing_id=healing.id,
+                    change_type="rollback",
+                    change_description="Rolled back applied fix to original state",
+                )
+                db.add(version)
+
+            except N8nApiError as e:
+                raise HTTPException(
+                    status_code=500,
+                    detail=f"Failed to rollback workflow in n8n: {e.message}"
+                )
+
+    # Restore original state to detection if possible (for non-n8n healings)
+    if healing.original_state and not n8n_rolled_back:
         detection_result = await db.execute(
             select(Detection).where(Detection.id == healing.detection_id)
         )
@@ -332,16 +393,22 @@ async def rollback_healing(
     healing.status = "rolled_back"
     healing.rolled_back_at = datetime.utcnow()
     healing.rollback_available = False
+    if healing.deployment_stage:
+        healing.deployment_stage = "rolled_back"
 
     await db.commit()
     await db.refresh(healing)
+
+    message = "Healing has been rolled back."
+    if n8n_rolled_back:
+        message = "Healing has been rolled back. Original workflow restored in n8n."
 
     return RollbackResponse(
         healing_id=str(healing.id),
         rolled_back=True,
         previous_status=previous_status,
         current_status=healing.status,
-        message="Healing has been rolled back. Manual changes may still need to be reverted.",
+        message=message,
     )
 
 
@@ -687,15 +754,17 @@ async def test_n8n_connection(
 class ApplyFixToN8nRequest(BaseModel):
     connection_id: UUID
     dry_run: bool = True
+    stage: bool = False  # If true, apply but keep workflow deactivated for testing
 
 
 class ApplyFixToN8nResponse(BaseModel):
-    status: str  # "preview", "applied", "failed"
+    status: str  # "preview", "applied", "staged", "failed"
     healing_id: Optional[str] = None
     fix: Optional[Dict[str, Any]] = None
     diff: Optional[Dict[str, Any]] = None
     backup_commit: Optional[str] = None
     workflow_version: Optional[int] = None
+    deployment_stage: Optional[str] = None  # "staged", "promoted", "rejected"
     error: Optional[str] = None
 
 
@@ -824,12 +893,22 @@ async def apply_fix_to_n8n(
                 modified_workflow,
             )
 
-            # Create healing record
+            # Determine status based on staging
+            if request.stage:
+                # Deactivate workflow for staged testing
+                await client.deactivate_workflow(workflow_id)
+                status = "staged"
+                deployment_stage = "staged"
+            else:
+                status = "applied"
+                deployment_stage = None
+
+            # Create healing record with n8n workflow tracking
             healing = HealingRecord(
                 id=uuid4(),
                 tenant_id=UUID(tenant_id),
                 detection_id=detection_id,
-                status="applied",
+                status=status,
                 fix_type=selected_fix.fix_type.value,
                 fix_id=selected_fix.id,
                 fix_suggestions=[f.to_dict() for f in fixes],
@@ -842,24 +921,54 @@ async def apply_fix_to_n8n(
                 original_state=current_workflow,
                 rollback_available=True,
                 started_at=datetime.utcnow(),
-                completed_at=datetime.utcnow(),
+                completed_at=datetime.utcnow() if not request.stage else None,
+                # n8n workflow tracking for staged deployment
+                workflow_id=workflow_id,
+                n8n_connection_id=connection.id,
+                deployment_stage=deployment_stage,
+                staged_at=datetime.utcnow() if request.stage else None,
             )
 
             db.add(healing)
 
-            # Mark detection as addressed
-            detection.validated = True
+            # Create version record
+            version_result = await db.execute(
+                select(func.coalesce(func.max(WorkflowVersion.version_number), 0))
+                .where(
+                    WorkflowVersion.tenant_id == UUID(tenant_id),
+                    WorkflowVersion.workflow_id == workflow_id,
+                )
+            )
+            next_version = version_result.scalar() + 1
+
+            version = WorkflowVersion(
+                id=uuid4(),
+                tenant_id=UUID(tenant_id),
+                workflow_id=workflow_id,
+                connection_id=connection.id,
+                version_number=next_version,
+                workflow_snapshot=current_workflow,  # Store original before fix
+                healing_id=healing.id,
+                change_type="staged" if request.stage else "fix_applied",
+                change_description=f"Applied {selected_fix.fix_type.value}: {selected_fix.description}",
+            )
+            db.add(version)
+
+            # Mark detection as addressed (only if not staging)
+            if not request.stage:
+                detection.validated = True
             detection.details = {
                 **(detection.details or {}),
                 "healed_by": str(healing.id),
                 "healed_at": datetime.utcnow().isoformat(),
                 "healed_via_n8n": True,
+                "staged": request.stage,
             }
 
             await db.commit()
 
             return ApplyFixToN8nResponse(
-                status="applied",
+                status=status,
                 healing_id=str(healing.id),
                 fix={
                     "type": selected_fix.fix_type.value,
@@ -868,6 +977,7 @@ async def apply_fix_to_n8n(
                 },
                 diff=diff,
                 workflow_version=updated_workflow.get("versionId"),
+                deployment_stage=deployment_stage,
             )
 
     except N8nApiError as e:
@@ -948,3 +1058,431 @@ return items;
                 )
 
     return modified
+
+
+# ============================================================================
+# Staged Deployment: Promote, Reject, Rollback
+# ============================================================================
+
+
+class PromoteResponse(BaseModel):
+    healing_id: str
+    status: str
+    deployment_stage: str
+    workflow_id: str
+    message: str
+
+
+@router.post("/{healing_id}/promote", response_model=PromoteResponse)
+async def promote_staged_fix(
+    healing_id: UUID,
+    tenant_id: str = Depends(get_current_tenant),
+    db: AsyncSession = Depends(get_db),
+):
+    """
+    Promote a staged fix by activating the workflow.
+
+    This endpoint activates a workflow that was previously staged (deactivated)
+    after applying a fix, allowing it to run in production.
+    """
+    await set_tenant_context(db, tenant_id)
+
+    result = await db.execute(
+        select(HealingRecord).where(
+            HealingRecord.id == healing_id,
+            HealingRecord.tenant_id == UUID(tenant_id),
+        )
+    )
+    healing = result.scalar_one_or_none()
+
+    if not healing:
+        raise HTTPException(status_code=404, detail="Healing record not found")
+
+    if healing.deployment_stage != "staged":
+        raise HTTPException(
+            status_code=400,
+            detail=f"Cannot promote: healing is not staged (current stage: {healing.deployment_stage})"
+        )
+
+    if not healing.workflow_id or not healing.n8n_connection_id:
+        raise HTTPException(
+            status_code=400,
+            detail="Cannot promote: missing workflow or connection information"
+        )
+
+    # Get connection
+    conn_result = await db.execute(
+        select(N8nConnection).where(N8nConnection.id == healing.n8n_connection_id)
+    )
+    connection = conn_result.scalar_one_or_none()
+
+    if not connection:
+        raise HTTPException(status_code=404, detail="n8n connection not found")
+
+    # Activate the workflow
+    api_key = decrypt_value(connection.api_key_encrypted)
+
+    try:
+        async with N8nApiClient(
+            instance_url=connection.instance_url,
+            api_key=api_key,
+        ) as client:
+            await client.activate_workflow(healing.workflow_id)
+
+    except N8nApiError as e:
+        raise HTTPException(
+            status_code=500,
+            detail=f"Failed to activate workflow: {e.message}"
+        )
+
+    # Update healing record
+    healing.deployment_stage = "promoted"
+    healing.promoted_at = datetime.utcnow()
+    healing.status = "applied"
+    healing.completed_at = datetime.utcnow()
+
+    # Create version record
+    version_result = await db.execute(
+        select(func.coalesce(func.max(WorkflowVersion.version_number), 0))
+        .where(
+            WorkflowVersion.tenant_id == UUID(tenant_id),
+            WorkflowVersion.workflow_id == healing.workflow_id,
+        )
+    )
+    next_version = version_result.scalar() + 1
+
+    # Get current workflow state for version snapshot
+    try:
+        async with N8nApiClient(
+            instance_url=connection.instance_url,
+            api_key=api_key,
+        ) as client:
+            current_workflow = await client.get_workflow(healing.workflow_id)
+    except N8nApiError:
+        current_workflow = {}  # Fallback if we can't get current state
+
+    version = WorkflowVersion(
+        id=uuid4(),
+        tenant_id=UUID(tenant_id),
+        workflow_id=healing.workflow_id,
+        connection_id=connection.id,
+        version_number=next_version,
+        workflow_snapshot=current_workflow,
+        healing_id=healing.id,
+        change_type="promoted",
+        change_description="Promoted staged fix to production",
+    )
+    db.add(version)
+
+    # Mark detection as fully validated
+    detection_result = await db.execute(
+        select(Detection).where(Detection.id == healing.detection_id)
+    )
+    detection = detection_result.scalar_one_or_none()
+    if detection:
+        detection.validated = True
+
+    await db.commit()
+
+    return PromoteResponse(
+        healing_id=str(healing.id),
+        status="applied",
+        deployment_stage="promoted",
+        workflow_id=healing.workflow_id,
+        message="Staged fix promoted to production. Workflow is now active.",
+    )
+
+
+class RejectResponse(BaseModel):
+    healing_id: str
+    status: str
+    deployment_stage: str
+    workflow_id: str
+    rolled_back: bool
+    message: str
+
+
+@router.post("/{healing_id}/reject", response_model=RejectResponse)
+async def reject_staged_fix(
+    healing_id: UUID,
+    tenant_id: str = Depends(get_current_tenant),
+    db: AsyncSession = Depends(get_db),
+):
+    """
+    Reject a staged fix by rolling back to the original workflow and reactivating.
+
+    This endpoint restores the original workflow configuration and activates it,
+    effectively undoing the staged fix.
+    """
+    await set_tenant_context(db, tenant_id)
+
+    result = await db.execute(
+        select(HealingRecord).where(
+            HealingRecord.id == healing_id,
+            HealingRecord.tenant_id == UUID(tenant_id),
+        )
+    )
+    healing = result.scalar_one_or_none()
+
+    if not healing:
+        raise HTTPException(status_code=404, detail="Healing record not found")
+
+    if healing.deployment_stage != "staged":
+        raise HTTPException(
+            status_code=400,
+            detail=f"Cannot reject: healing is not staged (current stage: {healing.deployment_stage})"
+        )
+
+    if not healing.original_state:
+        raise HTTPException(
+            status_code=400,
+            detail="Cannot reject: no original state available for rollback"
+        )
+
+    if not healing.workflow_id or not healing.n8n_connection_id:
+        raise HTTPException(
+            status_code=400,
+            detail="Cannot reject: missing workflow or connection information"
+        )
+
+    # Get connection
+    conn_result = await db.execute(
+        select(N8nConnection).where(N8nConnection.id == healing.n8n_connection_id)
+    )
+    connection = conn_result.scalar_one_or_none()
+
+    if not connection:
+        raise HTTPException(status_code=404, detail="n8n connection not found")
+
+    # Restore original workflow and activate
+    api_key = decrypt_value(connection.api_key_encrypted)
+
+    try:
+        async with N8nApiClient(
+            instance_url=connection.instance_url,
+            api_key=api_key,
+        ) as client:
+            # Filter original_state to only include fields n8n accepts
+            original = healing.original_state
+            update_payload = {
+                "name": original.get("name"),
+                "nodes": original.get("nodes", []),
+                "connections": original.get("connections", {}),
+                "settings": original.get("settings", {}),
+            }
+            await client.update_workflow(healing.workflow_id, update_payload)
+            await client.activate_workflow(healing.workflow_id)
+
+    except N8nApiError as e:
+        raise HTTPException(
+            status_code=500,
+            detail=f"Failed to restore workflow: {e.message}"
+        )
+
+    # Update healing record
+    healing.deployment_stage = "rejected"
+    healing.status = "rolled_back"
+    healing.rolled_back_at = datetime.utcnow()
+    healing.rollback_available = False
+
+    # Create version record
+    version_result = await db.execute(
+        select(func.coalesce(func.max(WorkflowVersion.version_number), 0))
+        .where(
+            WorkflowVersion.tenant_id == UUID(tenant_id),
+            WorkflowVersion.workflow_id == healing.workflow_id,
+        )
+    )
+    next_version = version_result.scalar() + 1
+
+    version = WorkflowVersion(
+        id=uuid4(),
+        tenant_id=UUID(tenant_id),
+        workflow_id=healing.workflow_id,
+        connection_id=connection.id,
+        version_number=next_version,
+        workflow_snapshot=healing.original_state,
+        healing_id=healing.id,
+        change_type="rejected",
+        change_description="Rejected staged fix and restored original workflow",
+    )
+    db.add(version)
+
+    await db.commit()
+
+    return RejectResponse(
+        healing_id=str(healing.id),
+        status="rolled_back",
+        deployment_stage="rejected",
+        workflow_id=healing.workflow_id,
+        rolled_back=True,
+        message="Staged fix rejected. Original workflow restored and activated.",
+    )
+
+
+# ============================================================================
+# Version History
+# ============================================================================
+
+
+class WorkflowVersionResponse(BaseModel):
+    id: str
+    version_number: int
+    change_type: str
+    change_description: Optional[str]
+    healing_id: Optional[str]
+    created_at: str
+
+
+class VersionHistoryResponse(BaseModel):
+    workflow_id: str
+    connection_id: str
+    versions: List[WorkflowVersionResponse]
+    total: int
+
+
+@router.get("/versions/{workflow_id}", response_model=VersionHistoryResponse)
+async def get_workflow_versions(
+    workflow_id: str,
+    connection_id: UUID,
+    limit: int = Query(20, ge=1, le=100),
+    tenant_id: str = Depends(get_current_tenant),
+    db: AsyncSession = Depends(get_db),
+):
+    """Get version history for a workflow."""
+    await set_tenant_context(db, tenant_id)
+
+    result = await db.execute(
+        select(WorkflowVersion)
+        .where(
+            WorkflowVersion.tenant_id == UUID(tenant_id),
+            WorkflowVersion.workflow_id == workflow_id,
+            WorkflowVersion.connection_id == connection_id,
+        )
+        .order_by(desc(WorkflowVersion.version_number))
+        .limit(limit)
+    )
+    versions = result.scalars().all()
+
+    count_result = await db.execute(
+        select(func.count(WorkflowVersion.id))
+        .where(
+            WorkflowVersion.tenant_id == UUID(tenant_id),
+            WorkflowVersion.workflow_id == workflow_id,
+        )
+    )
+    total = count_result.scalar()
+
+    return VersionHistoryResponse(
+        workflow_id=workflow_id,
+        connection_id=str(connection_id),
+        versions=[
+            WorkflowVersionResponse(
+                id=str(v.id),
+                version_number=v.version_number,
+                change_type=v.change_type,
+                change_description=v.change_description,
+                healing_id=str(v.healing_id) if v.healing_id else None,
+                created_at=v.created_at.isoformat() if v.created_at else "",
+            )
+            for v in versions
+        ],
+        total=total,
+    )
+
+
+class RestoreVersionResponse(BaseModel):
+    version_id: str
+    workflow_id: str
+    restored_from_version: int
+    new_version_number: int
+    message: str
+
+
+@router.post("/versions/{version_id}/restore", response_model=RestoreVersionResponse)
+async def restore_version(
+    version_id: UUID,
+    tenant_id: str = Depends(get_current_tenant),
+    db: AsyncSession = Depends(get_db),
+):
+    """Restore workflow to a specific version."""
+    await set_tenant_context(db, tenant_id)
+
+    result = await db.execute(
+        select(WorkflowVersion).where(
+            WorkflowVersion.id == version_id,
+            WorkflowVersion.tenant_id == UUID(tenant_id),
+        )
+    )
+    version = result.scalar_one_or_none()
+
+    if not version:
+        raise HTTPException(status_code=404, detail="Version not found")
+
+    if not version.workflow_snapshot:
+        raise HTTPException(status_code=400, detail="No workflow snapshot available for this version")
+
+    # Get connection
+    conn_result = await db.execute(
+        select(N8nConnection).where(N8nConnection.id == version.connection_id)
+    )
+    connection = conn_result.scalar_one_or_none()
+
+    if not connection:
+        raise HTTPException(status_code=404, detail="n8n connection not found")
+
+    # Restore workflow
+    api_key = decrypt_value(connection.api_key_encrypted)
+
+    try:
+        async with N8nApiClient(
+            instance_url=connection.instance_url,
+            api_key=api_key,
+        ) as client:
+            snapshot = version.workflow_snapshot
+            update_payload = {
+                "name": snapshot.get("name"),
+                "nodes": snapshot.get("nodes", []),
+                "connections": snapshot.get("connections", {}),
+                "settings": snapshot.get("settings", {}),
+            }
+            await client.update_workflow(version.workflow_id, update_payload)
+
+    except N8nApiError as e:
+        raise HTTPException(
+            status_code=500,
+            detail=f"Failed to restore workflow: {e.message}"
+        )
+
+    # Create new version record
+    version_result = await db.execute(
+        select(func.coalesce(func.max(WorkflowVersion.version_number), 0))
+        .where(
+            WorkflowVersion.tenant_id == UUID(tenant_id),
+            WorkflowVersion.workflow_id == version.workflow_id,
+        )
+    )
+    next_version = version_result.scalar() + 1
+
+    new_version = WorkflowVersion(
+        id=uuid4(),
+        tenant_id=UUID(tenant_id),
+        workflow_id=version.workflow_id,
+        connection_id=version.connection_id,
+        version_number=next_version,
+        workflow_snapshot=version.workflow_snapshot,
+        healing_id=None,
+        change_type="restored",
+        change_description=f"Restored from version {version.version_number}",
+    )
+    db.add(new_version)
+
+    await db.commit()
+
+    return RestoreVersionResponse(
+        version_id=str(version_id),
+        workflow_id=version.workflow_id,
+        restored_from_version=version.version_number,
+        new_version_number=next_version,
+        message=f"Workflow restored to version {version.version_number}",
+    )

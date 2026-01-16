@@ -494,11 +494,45 @@ class HealingRecord(Base):
     # Error tracking
     error_message = Column(Text, nullable=True)
 
+    # n8n workflow tracking (for staged deployment)
+    workflow_id = Column(String(255), nullable=True)  # n8n workflow ID
+    n8n_connection_id = Column(UUID(as_uuid=True), ForeignKey("n8n_connections.id"), nullable=True)
+    deployment_stage = Column(String(32), nullable=True)  # staged, promoted, rejected
+    staged_at = Column(DateTime(timezone=True), nullable=True)
+    promoted_at = Column(DateTime(timezone=True), nullable=True)
+
     __table_args__ = (
         Index("idx_healing_tenant", "tenant_id"),
         Index("idx_healing_detection", "detection_id"),
         Index("idx_healing_status", "status"),
         Index("idx_healing_created", "created_at"),
+        Index("idx_healing_workflow", "workflow_id"),
+        Index("idx_healing_connection", "n8n_connection_id"),
+        Index("idx_healing_stage", "deployment_stage"),
+    )
+
+
+class WorkflowVersion(Base):
+    """Version history for n8n workflows modified by self-healing."""
+    __tablename__ = "workflow_versions"
+
+    id = Column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
+    tenant_id = Column(UUID(as_uuid=True), ForeignKey("tenants.id"), nullable=False)
+    workflow_id = Column(String(255), nullable=False)  # n8n workflow ID
+    connection_id = Column(UUID(as_uuid=True), ForeignKey("n8n_connections.id"), nullable=False)
+    version_number = Column(Integer, nullable=False)  # Incrementing per workflow
+    workflow_snapshot = Column(JSONB, nullable=False)  # Full workflow JSON
+    healing_id = Column(UUID(as_uuid=True), ForeignKey("healing_records.id"), nullable=True)
+    change_type = Column(String(32), nullable=False)  # fix_applied, rollback, promoted, rejected, restored
+    change_description = Column(Text, nullable=True)
+    created_at = Column(DateTime(timezone=True), server_default=func.now())
+
+    __table_args__ = (
+        Index("idx_wv_tenant", "tenant_id"),
+        Index("idx_wv_workflow", "workflow_id"),
+        Index("idx_wv_connection", "connection_id"),
+        Index("idx_wv_healing", "healing_id"),
+        UniqueConstraint("tenant_id", "workflow_id", "version_number", name="uq_workflow_version_number"),
     )
 
 
