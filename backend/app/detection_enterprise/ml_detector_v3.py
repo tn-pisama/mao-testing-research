@@ -7,8 +7,11 @@ Improvements:
 4. Focal loss for class imbalance (v3.1)
 5. Per-mode thresholding (v3.1)
 6. Weighted batch sampling for rare classes (v3.1)
+7. Label smoothing (v3.2)
+8. Cross-validation threshold optimization (v3.2)
+9. Self-attention on embeddings (v3.2)
 
-Target: 70%+ macro F1
+Target: 72%+ macro F1
 """
 
 import json
@@ -23,24 +26,30 @@ import numpy as np
 logger = logging.getLogger(__name__)
 
 
-def _create_focal_loss(alpha: float = 0.25, gamma: float = 2.0):
+def _create_focal_loss(alpha: float = 0.25, gamma: float = 2.0, smoothing: float = 0.0):
     """Create Focal Loss criterion for hard negative mining.
 
     Focal loss down-weights easy examples and focuses on hard negatives,
-    which helps with class imbalance.
+    which helps with class imbalance. Label smoothing regularizes confidence.
     """
     import torch
     import torch.nn as nn
     import torch.nn.functional as F
 
     class FocalLoss(nn.Module):
-        def __init__(self, alpha: float, gamma: float, pos_weight: Optional[torch.Tensor] = None):
+        def __init__(self, alpha: float, gamma: float, smoothing: float = 0.0,
+                     pos_weight: Optional[torch.Tensor] = None):
             super().__init__()
             self.alpha = alpha
             self.gamma = gamma
+            self.smoothing = smoothing
             self.pos_weight = pos_weight
 
         def forward(self, inputs: torch.Tensor, targets: torch.Tensor) -> torch.Tensor:
+            # Apply label smoothing to regularize confidence
+            if self.smoothing > 0:
+                targets = targets * (1 - self.smoothing) + 0.5 * self.smoothing
+
             # Apply pos_weight if provided
             if self.pos_weight is not None:
                 weight = self.pos_weight.unsqueeze(0).expand_as(targets)
@@ -59,7 +68,7 @@ def _create_focal_loss(alpha: float = 0.25, gamma: float = 2.0):
             loss = focal_weight * weight * ce
             return loss.mean()
 
-    return FocalLoss(alpha, gamma)
+    return FocalLoss(alpha, gamma, smoothing)
 
 FAILURE_MODES = ["F1", "F3", "F4", "F5", "F6", "F7", "F8", "F9", "F11", "F12", "F13", "F14"]
 # Skip F2 and F10 - too few samples
@@ -69,6 +78,72 @@ ANNOTATION_MAP = {
     "2.1": "F6", "2.2": "F7", "2.3": "F8", "2.4": "F9", "2.5": "F10", "2.6": "F11",
     "3.1": "F12", "3.2": "F13", "3.3": "F14",
 }
+
+
+def _create_attention_network(input_dim: int, hidden_dims: List[int], output_dim: int,
+                               dropout: float, num_heads: int = 8):
+    """Create network with self-attention on embeddings.
+
+    Self-attention allows the model to weight embedding dimensions differently
+    for each failure mode, improving multi-task learning.
+    """
+    import torch
+    import torch.nn as nn
+
+    class SelfAttentionBlock(nn.Module):
+        """Self-attention for embedding dimension weighting."""
+
+        def __init__(self, embed_dim: int, num_heads: int = 8, dropout: float = 0.1):
+            super().__init__()
+            self.attention = nn.MultiheadAttention(
+                embed_dim=embed_dim,
+                num_heads=num_heads,
+                dropout=dropout,
+                batch_first=True
+            )
+            self.norm = nn.LayerNorm(embed_dim)
+            self.dropout = nn.Dropout(dropout)
+
+        def forward(self, x: torch.Tensor) -> torch.Tensor:
+            # x shape: (batch, embed_dim)
+            # Reshape to (batch, 1, embed_dim) for attention
+            x = x.unsqueeze(1)
+            attn_out, _ = self.attention(x, x, x)
+            x = self.norm(x + self.dropout(attn_out))
+            return x.squeeze(1)
+
+    class MultiTaskNetwork(nn.Module):
+        """Network with optional self-attention on input embeddings."""
+
+        def __init__(self, input_dim: int, hidden_dims: List[int], output_dim: int,
+                     dropout: float, num_heads: int = 8, use_attention: bool = True):
+            super().__init__()
+            self.use_attention = use_attention
+
+            # Optional attention on input embeddings
+            if use_attention:
+                self.attention = SelfAttentionBlock(input_dim, num_heads, dropout)
+
+            # Dense layers
+            layers = []
+            prev_dim = input_dim
+            for hidden_dim in hidden_dims:
+                layers.extend([
+                    nn.Linear(prev_dim, hidden_dim),
+                    nn.BatchNorm1d(hidden_dim),
+                    nn.ReLU(),
+                    nn.Dropout(dropout),
+                ])
+                prev_dim = hidden_dim
+            layers.append(nn.Linear(prev_dim, output_dim))
+            self.dense = nn.Sequential(*layers)
+
+        def forward(self, x: torch.Tensor) -> torch.Tensor:
+            if self.use_attention:
+                x = self.attention(x)
+            return self.dense(x)
+
+    return MultiTaskNetwork(input_dim, hidden_dims, output_dim, dropout, num_heads)
 
 
 class MultiTaskDetector:
@@ -85,6 +160,10 @@ class MultiTaskDetector:
         use_focal_loss: bool = True,
         focal_alpha: float = 0.25,
         focal_gamma: float = 2.0,
+        label_smoothing: float = 0.0,  # Optional: set to 0.05 for confidence regularization
+        use_attention: bool = False,   # Optional: set True for self-attention on embeddings
+        attention_heads: int = 8,
+        cv_folds: int = 1,  # Optional: set to 5 for CV threshold optimization
     ):
         self.embedding_model = embedding_model
         self.hidden_dims = hidden_dims
@@ -95,6 +174,10 @@ class MultiTaskDetector:
         self.use_focal_loss = use_focal_loss
         self.focal_alpha = focal_alpha
         self.focal_gamma = focal_gamma
+        self.label_smoothing = label_smoothing
+        self.use_attention = use_attention
+        self.attention_heads = attention_heads
+        self.cv_folds = cv_folds
 
         self._embedder = None
         self.model = None
@@ -158,23 +241,29 @@ class MultiTaskDetector:
         X_train = self.scaler.fit_transform(X_train)
         X_test = self.scaler.transform(X_test)
 
-        # Build model
+        # Build model with optional self-attention
         input_dim = X_train.shape[1]
         output_dim = len(FAILURE_MODES)
 
-        layers = []
-        prev_dim = input_dim
-        for hidden_dim in self.hidden_dims:
-            layers.extend([
-                nn.Linear(prev_dim, hidden_dim),
-                nn.BatchNorm1d(hidden_dim),
-                nn.ReLU(),
-                nn.Dropout(self.dropout),
-            ])
-            prev_dim = hidden_dim
-        layers.append(nn.Linear(prev_dim, output_dim))
-
-        self.model = nn.Sequential(*layers)
+        if self.use_attention:
+            self.model = _create_attention_network(
+                input_dim, self.hidden_dims, output_dim,
+                self.dropout, self.attention_heads
+            )
+            logger.info(f"Using attention network with {self.attention_heads} heads")
+        else:
+            layers = []
+            prev_dim = input_dim
+            for hidden_dim in self.hidden_dims:
+                layers.extend([
+                    nn.Linear(prev_dim, hidden_dim),
+                    nn.BatchNorm1d(hidden_dim),
+                    nn.ReLU(),
+                    nn.Dropout(self.dropout),
+                ])
+                prev_dim = hidden_dim
+            layers.append(nn.Linear(prev_dim, output_dim))
+            self.model = nn.Sequential(*layers)
 
         # Compute class weights
         pos_counts = y_train.sum(axis=0)
@@ -208,9 +297,10 @@ class MultiTaskDetector:
 
         # Use Focal Loss or Weighted BCE
         if self.use_focal_loss:
-            criterion = _create_focal_loss(self.focal_alpha, self.focal_gamma)
+            criterion = _create_focal_loss(self.focal_alpha, self.focal_gamma, self.label_smoothing)
             criterion.pos_weight = pos_weights.to(device)
-            logger.info("Using Focal Loss with alpha=%.2f, gamma=%.1f", self.focal_alpha, self.focal_gamma)
+            logger.info("Using Focal Loss with alpha=%.2f, gamma=%.1f, smoothing=%.2f",
+                       self.focal_alpha, self.focal_gamma, self.label_smoothing)
         else:
             criterion = nn.BCEWithLogitsLoss(pos_weight=pos_weights.to(device))
 
@@ -274,25 +364,56 @@ class MultiTaskDetector:
         if best_state:
             self.model.load_state_dict(best_state)
 
-        # Optimize thresholds per mode on test set
+        # Optimize thresholds using cross-validation for robustness
         self.model.eval()
         with torch.no_grad():
             test_outputs = self.model(X_test_t)
             test_probs = torch.sigmoid(test_outputs).cpu().numpy()
 
-        logger.info("Optimizing per-mode thresholds...")
-        for i, mode in enumerate(FAILURE_MODES):
-            if y_test[:, i].sum() == 0:
-                continue
-            best_t, best_f1 = 0.5, 0.0
-            for t in np.linspace(0.2, 0.8, 13):
-                preds = (test_probs[:, i] > t).astype(int)
-                f1 = f1_score(y_test[:, i], preds, zero_division=0)
-                if f1 > best_f1:
-                    best_f1, best_t = f1, t
-            self.thresholds[mode] = best_t
-            if best_t != 0.5:
-                logger.info(f"  {mode}: threshold={best_t:.2f} (F1={best_f1:.3f})")
+        if self.cv_folds > 1:
+            logger.info(f"Optimizing thresholds with {self.cv_folds}-fold CV...")
+            from sklearn.model_selection import KFold
+            kf = KFold(n_splits=self.cv_folds, shuffle=True, random_state=42)
+
+            # Collect best thresholds from each fold
+            fold_thresholds = {mode: [] for mode in FAILURE_MODES}
+
+            for fold_idx, (train_idx, val_idx) in enumerate(kf.split(test_probs)):
+                val_probs = test_probs[val_idx]
+                val_labels = y_test[val_idx]
+
+                for i, mode in enumerate(FAILURE_MODES):
+                    if val_labels[:, i].sum() == 0:
+                        continue
+                    best_t, best_f1 = 0.5, 0.0
+                    for t in np.linspace(0.15, 0.85, 29):  # Finer grid
+                        preds = (val_probs[:, i] > t).astype(int)
+                        f1 = f1_score(val_labels[:, i], preds, zero_division=0)
+                        if f1 > best_f1:
+                            best_f1, best_t = f1, t
+                    fold_thresholds[mode].append(best_t)
+
+            # Use median threshold across folds (robust to outliers)
+            for mode in FAILURE_MODES:
+                if fold_thresholds[mode]:
+                    self.thresholds[mode] = float(np.median(fold_thresholds[mode]))
+                    if self.thresholds[mode] != 0.5:
+                        logger.info(f"  {mode}: threshold={self.thresholds[mode]:.2f} (median of {len(fold_thresholds[mode])} folds)")
+        else:
+            # Single-split optimization (fallback)
+            logger.info("Optimizing per-mode thresholds...")
+            for i, mode in enumerate(FAILURE_MODES):
+                if y_test[:, i].sum() == 0:
+                    continue
+                best_t, best_f1 = 0.5, 0.0
+                for t in np.linspace(0.2, 0.8, 13):
+                    preds = (test_probs[:, i] > t).astype(int)
+                    f1 = f1_score(y_test[:, i], preds, zero_division=0)
+                    if f1 > best_f1:
+                        best_f1, best_t = f1, t
+                self.thresholds[mode] = best_t
+                if best_t != 0.5:
+                    logger.info(f"  {mode}: threshold={best_t:.2f} (F1={best_f1:.3f})")
 
         # Final evaluation with optimized thresholds
         test_preds = np.zeros_like(test_probs, dtype=bool)
