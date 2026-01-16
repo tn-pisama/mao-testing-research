@@ -3,15 +3,17 @@
 from fastapi import APIRouter, Depends, HTTPException, Query
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy import select
-from pydantic import BaseModel
+from pydantic import BaseModel, Field
 from typing import List, Optional, Dict, Any
 from uuid import UUID, uuid4
 from datetime import datetime
 
 from app.storage.database import get_db, set_tenant_context
-from app.storage.models import Detection, HealingRecord
+from app.storage.models import Detection, HealingRecord, N8nConnection, Trace
 from app.core.auth import get_current_tenant
+from app.core.encryption import encrypt_value, decrypt_value
 from app.fixes import FixGenerator, LoopFixGenerator, CorruptionFixGenerator, PersonaFixGenerator, DeadlockFixGenerator
+from app.integrations.n8n_client import N8nApiClient, N8nApiError, N8nWorkflowDiff
 
 router = APIRouter(prefix="/healing", tags=["healing"])
 
@@ -485,3 +487,464 @@ async def complete_healing(
         created_at=healing.created_at,
         error_message=healing.error_message,
     )
+
+
+# ============================================================================
+# n8n Connection Management
+# ============================================================================
+
+
+class N8nConnectionCreateRequest(BaseModel):
+    name: str = Field(..., min_length=1, max_length=255)
+    instance_url: str = Field(..., min_length=1, max_length=512)
+    api_key: str = Field(..., min_length=1)
+
+
+class N8nConnectionResponse(BaseModel):
+    id: str
+    name: str
+    instance_url: str
+    is_active: bool
+    last_verified_at: Optional[datetime]
+    last_error: Optional[str]
+    created_at: datetime
+    updated_at: datetime
+
+
+class N8nConnectionListResponse(BaseModel):
+    items: List[N8nConnectionResponse]
+    total: int
+
+
+@router.post("/n8n/connections", response_model=N8nConnectionResponse)
+async def create_n8n_connection(
+    request: N8nConnectionCreateRequest,
+    tenant_id: str = Depends(get_current_tenant),
+    db: AsyncSession = Depends(get_db),
+):
+    """
+    Create a new n8n connection for this tenant.
+
+    The API key is encrypted before storage.
+    """
+    await set_tenant_context(db, tenant_id)
+
+    # Encrypt the API key
+    encrypted_key = encrypt_value(request.api_key)
+
+    # Create connection record
+    connection = N8nConnection(
+        id=uuid4(),
+        tenant_id=UUID(tenant_id),
+        name=request.name,
+        instance_url=request.instance_url.rstrip("/"),
+        api_key_encrypted=encrypted_key,
+        is_active=True,
+    )
+
+    # Test the connection
+    try:
+        async with N8nApiClient(
+            instance_url=connection.instance_url,
+            api_key=request.api_key,
+        ) as client:
+            if await client.test_connection():
+                connection.last_verified_at = datetime.utcnow()
+            else:
+                connection.last_error = "Connection test failed"
+    except N8nApiError as e:
+        connection.last_error = str(e)
+
+    db.add(connection)
+    await db.commit()
+    await db.refresh(connection)
+
+    return N8nConnectionResponse(
+        id=str(connection.id),
+        name=connection.name,
+        instance_url=connection.instance_url,
+        is_active=connection.is_active,
+        last_verified_at=connection.last_verified_at,
+        last_error=connection.last_error,
+        created_at=connection.created_at,
+        updated_at=connection.updated_at,
+    )
+
+
+@router.get("/n8n/connections", response_model=N8nConnectionListResponse)
+async def list_n8n_connections(
+    tenant_id: str = Depends(get_current_tenant),
+    db: AsyncSession = Depends(get_db),
+):
+    """List all n8n connections for this tenant."""
+    await set_tenant_context(db, tenant_id)
+
+    result = await db.execute(
+        select(N8nConnection).where(
+            N8nConnection.tenant_id == UUID(tenant_id)
+        ).order_by(N8nConnection.created_at.desc())
+    )
+    connections = result.scalars().all()
+
+    return N8nConnectionListResponse(
+        items=[
+            N8nConnectionResponse(
+                id=str(c.id),
+                name=c.name,
+                instance_url=c.instance_url,
+                is_active=c.is_active,
+                last_verified_at=c.last_verified_at,
+                last_error=c.last_error,
+                created_at=c.created_at,
+                updated_at=c.updated_at,
+            )
+            for c in connections
+        ],
+        total=len(connections),
+    )
+
+
+@router.delete("/n8n/connections/{connection_id}")
+async def delete_n8n_connection(
+    connection_id: UUID,
+    tenant_id: str = Depends(get_current_tenant),
+    db: AsyncSession = Depends(get_db),
+):
+    """Delete an n8n connection."""
+    await set_tenant_context(db, tenant_id)
+
+    result = await db.execute(
+        select(N8nConnection).where(
+            N8nConnection.id == connection_id,
+            N8nConnection.tenant_id == UUID(tenant_id),
+        )
+    )
+    connection = result.scalar_one_or_none()
+
+    if not connection:
+        raise HTTPException(status_code=404, detail="Connection not found")
+
+    await db.delete(connection)
+    await db.commit()
+
+    return {"message": "Connection deleted"}
+
+
+@router.post("/n8n/connections/{connection_id}/test")
+async def test_n8n_connection(
+    connection_id: UUID,
+    tenant_id: str = Depends(get_current_tenant),
+    db: AsyncSession = Depends(get_db),
+):
+    """Test an n8n connection."""
+    await set_tenant_context(db, tenant_id)
+
+    result = await db.execute(
+        select(N8nConnection).where(
+            N8nConnection.id == connection_id,
+            N8nConnection.tenant_id == UUID(tenant_id),
+        )
+    )
+    connection = result.scalar_one_or_none()
+
+    if not connection:
+        raise HTTPException(status_code=404, detail="Connection not found")
+
+    # Decrypt API key and test
+    api_key = decrypt_value(connection.api_key_encrypted)
+
+    try:
+        async with N8nApiClient(
+            instance_url=connection.instance_url,
+            api_key=api_key,
+        ) as client:
+            success = await client.test_connection()
+
+        if success:
+            connection.last_verified_at = datetime.utcnow()
+            connection.last_error = None
+        else:
+            connection.last_error = "Connection test failed"
+
+        await db.commit()
+
+        return {
+            "success": success,
+            "message": "Connection verified" if success else "Connection test failed",
+        }
+
+    except N8nApiError as e:
+        connection.last_error = str(e)
+        await db.commit()
+        raise HTTPException(status_code=502, detail=f"n8n API error: {e}")
+
+
+# ============================================================================
+# Apply Fix to n8n
+# ============================================================================
+
+
+class ApplyFixToN8nRequest(BaseModel):
+    connection_id: UUID
+    dry_run: bool = True
+
+
+class ApplyFixToN8nResponse(BaseModel):
+    status: str  # "preview", "applied", "failed"
+    healing_id: Optional[str] = None
+    fix: Optional[Dict[str, Any]] = None
+    diff: Optional[Dict[str, Any]] = None
+    backup_commit: Optional[str] = None
+    workflow_version: Optional[int] = None
+    error: Optional[str] = None
+
+
+@router.post("/apply-to-n8n/{detection_id}", response_model=ApplyFixToN8nResponse)
+async def apply_fix_to_n8n(
+    detection_id: UUID,
+    request: ApplyFixToN8nRequest,
+    tenant_id: str = Depends(get_current_tenant),
+    db: AsyncSession = Depends(get_db),
+):
+    """
+    Apply a recommended fix to an n8n workflow.
+
+    Steps:
+    1. Get detection and associated trace
+    2. Get fix recommendation
+    3. Connect to n8n instance via API
+    4. If dry_run: return diff preview
+    5. If not dry_run: apply fix, return result
+    """
+    await set_tenant_context(db, tenant_id)
+
+    # Get the detection
+    result = await db.execute(
+        select(Detection).where(
+            Detection.id == detection_id,
+            Detection.tenant_id == UUID(tenant_id),
+        )
+    )
+    detection = result.scalar_one_or_none()
+
+    if not detection:
+        raise HTTPException(status_code=404, detail="Detection not found")
+
+    # Get the trace to find workflow ID
+    trace_result = await db.execute(
+        select(Trace).where(Trace.id == detection.trace_id)
+    )
+    trace = trace_result.scalar_one_or_none()
+
+    if not trace:
+        raise HTTPException(status_code=404, detail="Associated trace not found")
+
+    # Get workflow ID from trace session_id (n8n execution ID format)
+    # The workflow ID should be in the trace metadata or session
+    workflow_id = trace.session_id
+
+    # Get the n8n connection
+    conn_result = await db.execute(
+        select(N8nConnection).where(
+            N8nConnection.id == request.connection_id,
+            N8nConnection.tenant_id == UUID(tenant_id),
+        )
+    )
+    connection = conn_result.scalar_one_or_none()
+
+    if not connection:
+        raise HTTPException(status_code=404, detail="n8n connection not found")
+
+    if not connection.is_active:
+        raise HTTPException(status_code=400, detail="n8n connection is not active")
+
+    # Generate fix suggestions
+    detection_dict = {
+        "id": str(detection.id),
+        "detection_type": detection.detection_type,
+        "method": detection.method,
+        "details": detection.details,
+    }
+
+    generator = get_fix_generator()
+    fixes = generator.generate_fixes(detection_dict, context={"framework": "n8n"})
+
+    if not fixes:
+        return ApplyFixToN8nResponse(
+            status="failed",
+            error="No fix suggestions available for this detection type",
+        )
+
+    selected_fix = fixes[0]
+
+    # Decrypt API key and connect to n8n
+    api_key = decrypt_value(connection.api_key_encrypted)
+
+    try:
+        async with N8nApiClient(
+            instance_url=connection.instance_url,
+            api_key=api_key,
+        ) as client:
+            # Get current workflow
+            try:
+                current_workflow = await client.get_workflow(workflow_id)
+            except N8nApiError as e:
+                if e.status_code == 404:
+                    raise HTTPException(
+                        status_code=404,
+                        detail=f"Workflow {workflow_id} not found in n8n"
+                    )
+                raise
+
+            # Apply fix to workflow (generate modified version)
+            modified_workflow = _apply_fix_to_workflow(
+                current_workflow,
+                selected_fix.to_dict(),
+                detection.detection_type,
+            )
+
+            # Generate diff
+            diff = N8nWorkflowDiff.generate_diff(current_workflow, modified_workflow)
+
+            if request.dry_run:
+                # Return preview only
+                return ApplyFixToN8nResponse(
+                    status="preview",
+                    fix={
+                        "type": selected_fix.fix_type.value,
+                        "description": selected_fix.description,
+                        "confidence": selected_fix.confidence.value,
+                    },
+                    diff=diff,
+                )
+
+            # Apply the fix
+            updated_workflow = await client.update_workflow(
+                workflow_id,
+                modified_workflow,
+            )
+
+            # Create healing record
+            healing = HealingRecord(
+                id=uuid4(),
+                tenant_id=UUID(tenant_id),
+                detection_id=detection_id,
+                status="applied",
+                fix_type=selected_fix.fix_type.value,
+                fix_id=selected_fix.id,
+                fix_suggestions=[f.to_dict() for f in fixes],
+                applied_fixes={
+                    "workflow_id": workflow_id,
+                    "connection_id": str(connection.id),
+                    "fix_applied": selected_fix.to_dict(),
+                    "diff": diff,
+                },
+                original_state=current_workflow,
+                rollback_available=True,
+                started_at=datetime.utcnow(),
+                completed_at=datetime.utcnow(),
+            )
+
+            db.add(healing)
+
+            # Mark detection as addressed
+            detection.validated = True
+            detection.details = {
+                **(detection.details or {}),
+                "healed_by": str(healing.id),
+                "healed_at": datetime.utcnow().isoformat(),
+                "healed_via_n8n": True,
+            }
+
+            await db.commit()
+
+            return ApplyFixToN8nResponse(
+                status="applied",
+                healing_id=str(healing.id),
+                fix={
+                    "type": selected_fix.fix_type.value,
+                    "description": selected_fix.description,
+                    "confidence": selected_fix.confidence.value,
+                },
+                diff=diff,
+                workflow_version=updated_workflow.get("versionId"),
+            )
+
+    except N8nApiError as e:
+        return ApplyFixToN8nResponse(
+            status="failed",
+            error=f"n8n API error: {e.message}",
+        )
+
+
+def _apply_fix_to_workflow(
+    workflow: Dict[str, Any],
+    fix: Dict[str, Any],
+    detection_type: str,
+) -> Dict[str, Any]:
+    """
+    Apply a fix to a workflow configuration.
+
+    This modifies the workflow based on the fix type and detection type.
+    """
+    import copy
+    modified = copy.deepcopy(workflow)
+
+    fix_type = fix.get("fix_type", "")
+    nodes = modified.get("nodes", [])
+
+    if detection_type == "infinite_loop":
+        # Add loop breaker - find any Loop node and add maxIterations
+        for node in nodes:
+            if node.get("type") == "n8n-nodes-base.loop" or "loop" in node.get("name", "").lower():
+                if "parameters" not in node:
+                    node["parameters"] = {}
+                # Set max iterations to prevent infinite loops
+                node["parameters"]["maxIterations"] = fix.get("max_iterations", 100)
+
+        # Add a global execution timeout if not present
+        if "settings" not in modified:
+            modified["settings"] = {}
+        if "executionTimeout" not in modified["settings"]:
+            modified["settings"]["executionTimeout"] = fix.get("timeout_seconds", 300)
+
+    elif detection_type == "state_corruption":
+        # Add data validation node at the start
+        validation_node = {
+            "name": "MAO_DataValidator",
+            "type": "n8n-nodes-base.function",
+            "typeVersion": 1,
+            "position": [50, 200],
+            "parameters": {
+                "functionCode": """
+// MAO Auto-generated validation
+const items = $input.all();
+for (const item of items) {
+    if (!item.json || typeof item.json !== 'object') {
+        throw new Error('Invalid data structure detected');
+    }
+}
+return items;
+"""
+            }
+        }
+        nodes.insert(0, validation_node)
+
+    elif detection_type == "coordination_failure":
+        # Add error handling wrapper
+        if "settings" not in modified:
+            modified["settings"] = {}
+        modified["settings"]["errorWorkflow"] = fix.get("error_workflow_id", "")
+
+    elif detection_type == "persona_drift":
+        # Add system prompt reinforcement for AI nodes
+        for node in nodes:
+            if "openai" in node.get("type", "").lower() or "anthropic" in node.get("type", "").lower():
+                if "parameters" not in node:
+                    node["parameters"] = {}
+                existing_prompt = node["parameters"].get("systemMessage", "")
+                node["parameters"]["systemMessage"] = (
+                    existing_prompt + "\n\n[IMPORTANT: Maintain consistent tone and persona throughout.]"
+                )
+
+    return modified

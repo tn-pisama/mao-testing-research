@@ -314,6 +314,38 @@ class N8nWorkflow(Base):
     )
 
 
+class N8nConnection(Base):
+    """
+    Stores n8n instance connection credentials per tenant.
+
+    Each tenant can have multiple n8n connections (e.g., dev, staging, prod).
+    API keys are stored encrypted for security.
+    """
+    __tablename__ = "n8n_connections"
+
+    id = Column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
+    tenant_id = Column(UUID(as_uuid=True), ForeignKey("tenants.id"), nullable=False)
+
+    # Connection details
+    name = Column(String(255), nullable=False)  # e.g., "Production n8n", "Dev n8n"
+    instance_url = Column(String(512), nullable=False)  # e.g., "https://my-n8n.example.com"
+    api_key_encrypted = Column(Text, nullable=False)  # Encrypted API key
+
+    # Status
+    is_active = Column(Boolean, default=True)
+    last_verified_at = Column(DateTime(timezone=True), nullable=True)
+    last_error = Column(Text, nullable=True)
+
+    # Timestamps
+    created_at = Column(DateTime(timezone=True), server_default=func.now())
+    updated_at = Column(DateTime(timezone=True), server_default=func.now(), onupdate=func.now())
+
+    __table_args__ = (
+        Index("idx_n8n_connections_tenant", "tenant_id"),
+        UniqueConstraint("tenant_id", "name", name="uq_n8n_connection_name"),
+    )
+
+
 class ConversationTurn(Base):
     """Represents a single turn in a multi-turn conversation trace."""
     __tablename__ = "conversation_turns"
