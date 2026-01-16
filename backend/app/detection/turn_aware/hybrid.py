@@ -61,7 +61,7 @@ class LLMDerailmentDetector:
     def judge(self):
         """Lazy-load the LLM judge."""
         if self._judge is None:
-            from ..mast_llm_judge import MASTLLMJudge
+            from ..llm_judge import MASTLLMJudge
             self._judge = MASTLLMJudge(api_key=self.api_key)
         return self._judge
 
@@ -155,7 +155,7 @@ class LLMDerailmentDetector:
 
         # Call LLM judge
         try:
-            from ..mast_llm_judge import MASTFailureMode
+            from ..llm_judge import MASTFailureMode
 
             result = self.judge.evaluate(
                 failure_mode=MASTFailureMode.F6,
