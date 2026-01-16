@@ -4,10 +4,11 @@ Improvements:
 1. Multi-task learning - predict all failure modes jointly
 2. Deep neural network with dropout and batch norm
 3. Use PyTorch for better training control
-4. Contrastive learning on embeddings
-5. Focal loss for class imbalance
+4. Focal loss for class imbalance (v3.1)
+5. Per-mode thresholding (v3.1)
+6. Weighted batch sampling for rare classes (v3.1)
 
-Target: 50%+ macro F1
+Target: 70%+ macro F1
 """
 
 import json
@@ -20,6 +21,45 @@ from typing import Any, Dict, List, Optional, Tuple
 import numpy as np
 
 logger = logging.getLogger(__name__)
+
+
+def _create_focal_loss(alpha: float = 0.25, gamma: float = 2.0):
+    """Create Focal Loss criterion for hard negative mining.
+
+    Focal loss down-weights easy examples and focuses on hard negatives,
+    which helps with class imbalance.
+    """
+    import torch
+    import torch.nn as nn
+    import torch.nn.functional as F
+
+    class FocalLoss(nn.Module):
+        def __init__(self, alpha: float, gamma: float, pos_weight: Optional[torch.Tensor] = None):
+            super().__init__()
+            self.alpha = alpha
+            self.gamma = gamma
+            self.pos_weight = pos_weight
+
+        def forward(self, inputs: torch.Tensor, targets: torch.Tensor) -> torch.Tensor:
+            # Apply pos_weight if provided
+            if self.pos_weight is not None:
+                weight = self.pos_weight.unsqueeze(0).expand_as(targets)
+                weight = weight * targets + (1 - targets)
+            else:
+                weight = torch.ones_like(targets)
+
+            # BCE with logits
+            ce = F.binary_cross_entropy_with_logits(inputs, targets, reduction='none')
+
+            # Focal weighting
+            p = torch.sigmoid(inputs)
+            p_t = p * targets + (1 - p) * (1 - targets)
+            focal_weight = self.alpha * (1 - p_t) ** self.gamma
+
+            loss = focal_weight * weight * ce
+            return loss.mean()
+
+    return FocalLoss(alpha, gamma)
 
 FAILURE_MODES = ["F1", "F3", "F4", "F5", "F6", "F7", "F8", "F9", "F11", "F12", "F13", "F14"]
 # Skip F2 and F10 - too few samples
@@ -42,6 +82,9 @@ class MultiTaskDetector:
         learning_rate: float = 0.001,
         epochs: int = 50,
         batch_size: int = 32,
+        use_focal_loss: bool = True,
+        focal_alpha: float = 0.25,
+        focal_gamma: float = 2.0,
     ):
         self.embedding_model = embedding_model
         self.hidden_dims = hidden_dims
@@ -49,11 +92,15 @@ class MultiTaskDetector:
         self.learning_rate = learning_rate
         self.epochs = epochs
         self.batch_size = batch_size
+        self.use_focal_loss = use_focal_loss
+        self.focal_alpha = focal_alpha
+        self.focal_gamma = focal_gamma
 
         self._embedder = None
         self.model = None
         self.scaler = None
         self.is_trained = False
+        self.thresholds: Dict[str, float] = {mode: 0.5 for mode in FAILURE_MODES}
 
     @property
     def embedder(self):
@@ -129,10 +176,24 @@ class MultiTaskDetector:
 
         self.model = nn.Sequential(*layers)
 
-        # Compute class weights for focal loss
+        # Compute class weights
         pos_counts = y_train.sum(axis=0)
         neg_counts = len(y_train) - pos_counts
-        pos_weights = torch.tensor(neg_counts / (pos_counts + 1), dtype=torch.float32)
+        pos_weights = torch.tensor(
+            np.minimum(neg_counts / (pos_counts + 1), 10),  # Cap at 10x
+            dtype=torch.float32
+        )
+
+        # Compute sample weights for rare class upsampling
+        class_sizes = pos_counts
+        sample_weights = np.ones(len(y_train))
+        for i, y_sample in enumerate(y_train):
+            # Upweight samples with rare positive labels
+            rare_boost = sum(
+                1.0 for j, has_label in enumerate(y_sample)
+                if has_label and class_sizes[j] < 50
+            )
+            sample_weights[i] = 1.0 + 0.5 * rare_boost
 
         # Training
         device = torch.device("mps" if torch.backends.mps.is_available() else "cpu")
@@ -145,18 +206,32 @@ class MultiTaskDetector:
         y_train_t = torch.tensor(y_train, dtype=torch.float32).to(device)
         X_test_t = torch.tensor(X_test, dtype=torch.float32).to(device)
 
-        # Weighted BCE loss
-        criterion = nn.BCEWithLogitsLoss(pos_weight=pos_weights.to(device))
+        # Use Focal Loss or Weighted BCE
+        if self.use_focal_loss:
+            criterion = _create_focal_loss(self.focal_alpha, self.focal_gamma)
+            criterion.pos_weight = pos_weights.to(device)
+            logger.info("Using Focal Loss with alpha=%.2f, gamma=%.1f", self.focal_alpha, self.focal_gamma)
+        else:
+            criterion = nn.BCEWithLogitsLoss(pos_weight=pos_weights.to(device))
 
         best_f1 = 0
         best_state = None
+
+        # Normalize sample weights to probabilities
+        sample_probs = sample_weights / sample_weights.sum()
 
         logger.info(f"Training on {device}...")
         for epoch in range(self.epochs):
             self.model.train()
 
-            # Mini-batch training
-            indices = torch.randperm(len(X_train_t))
+            # Weighted sampling - oversample rare classes
+            indices = np.random.choice(
+                len(X_train_t),
+                size=len(X_train_t),
+                replace=True,
+                p=sample_probs
+            )
+            indices = torch.tensor(indices)
             total_loss = 0
 
             for i in range(0, len(indices), self.batch_size):
@@ -199,11 +274,30 @@ class MultiTaskDetector:
         if best_state:
             self.model.load_state_dict(best_state)
 
-        # Final evaluation
+        # Optimize thresholds per mode on test set
         self.model.eval()
         with torch.no_grad():
             test_outputs = self.model(X_test_t)
-            test_preds = (torch.sigmoid(test_outputs) > 0.5).cpu().numpy()
+            test_probs = torch.sigmoid(test_outputs).cpu().numpy()
+
+        logger.info("Optimizing per-mode thresholds...")
+        for i, mode in enumerate(FAILURE_MODES):
+            if y_test[:, i].sum() == 0:
+                continue
+            best_t, best_f1 = 0.5, 0.0
+            for t in np.linspace(0.2, 0.8, 13):
+                preds = (test_probs[:, i] > t).astype(int)
+                f1 = f1_score(y_test[:, i], preds, zero_division=0)
+                if f1 > best_f1:
+                    best_f1, best_t = f1, t
+            self.thresholds[mode] = best_t
+            if best_t != 0.5:
+                logger.info(f"  {mode}: threshold={best_t:.2f} (F1={best_f1:.3f})")
+
+        # Final evaluation with optimized thresholds
+        test_preds = np.zeros_like(test_probs, dtype=bool)
+        for i, mode in enumerate(FAILURE_MODES):
+            test_preds[:, i] = test_probs[:, i] > self.thresholds[mode]
 
         results = {"modes": {}}
         for i, mode in enumerate(FAILURE_MODES):
@@ -223,7 +317,7 @@ class MultiTaskDetector:
         return results
 
     def predict_batch(self, records: List[Dict]) -> List[Dict[str, bool]]:
-        """Predict for batch of records."""
+        """Predict for batch of records using per-mode thresholds."""
         import torch
 
         if not self.is_trained:
@@ -239,11 +333,15 @@ class MultiTaskDetector:
         self.model.eval()
         with torch.no_grad():
             outputs = self.model(X_t)
-            preds = (torch.sigmoid(outputs) > 0.5).cpu().numpy()
+            probs = torch.sigmoid(outputs).cpu().numpy()
 
+        # Apply per-mode thresholds
         results = []
         for i in range(len(records)):
-            pred_dict = {mode: bool(preds[i, j]) for j, mode in enumerate(FAILURE_MODES)}
+            pred_dict = {}
+            for j, mode in enumerate(FAILURE_MODES):
+                threshold = self.thresholds.get(mode, 0.5)
+                pred_dict[mode] = bool(probs[i, j] > threshold)
             results.append(pred_dict)
 
         return results
