@@ -6,3 +6,6 @@ export type { CardProps, CardHeaderProps, CardTitleProps, CardDescriptionProps, 
 
 export { Badge } from './Badge'
 export type { BadgeProps } from './Badge'
+
+export { Tooltip, TermTooltip, getPlainEnglishTitle, getPlainEnglishStatus } from './Tooltip'
+export type { TooltipProps, TermTooltipProps } from './Tooltip'

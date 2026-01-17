@@ -13,6 +13,7 @@ import {
 import { Card, CardContent } from '../ui/Card'
 import { Badge } from '../ui/Badge'
 import { Button } from '../ui/Button'
+import { TermTooltip, getPlainEnglishTitle } from '../ui/Tooltip'
 import { FixPreviewModal } from '../healing/FixPreviewModal'
 import type { Detection, N8nConnection, WorkflowDiff } from '@/lib/api'
 
@@ -111,11 +112,11 @@ export function FailureCard({
                 </div>
                 <div>
                   <p className="text-sm font-medium text-white">
-                    {detection.detection_type.replace(/_/g, ' ')}
+                    {getPlainEnglishTitle(detection.detection_type)}
                   </p>
                   <p className="text-xs text-slate-500">
-                    Trace: {detection.trace_id.slice(0, 8)}...
-                    {detection.method && ` | via ${detection.method.replace(/_/g, ' ')}`}
+                    Workflow run: {detection.trace_id.slice(0, 8)}...
+                    {detection.method && ` | detected by ${detection.method.replace(/_/g, ' ')}`}
                   </p>
                 </div>
               </div>
@@ -123,9 +124,11 @@ export function FailureCard({
                 <Badge variant={severityStyle.variant} size="sm">
                   {severityStyle.label}
                 </Badge>
-                <span className="text-xs text-slate-500">
-                  {Math.round(detection.confidence * 100)}% confidence
-                </span>
+                <TermTooltip term="confidence">
+                  <span className="text-xs text-slate-500">
+                    {Math.round(detection.confidence * 100)}% certain
+                  </span>
+                </TermTooltip>
                 <div className="flex items-center gap-1 text-xs text-slate-500">
                   <Clock size={12} />
                   {formatTime(detection.created_at)}
@@ -138,40 +141,42 @@ export function FailureCard({
           {/* Expanded Content */}
           {isExpanded && (
             <div className="border-t border-slate-700 p-4 space-y-4">
-              {/* Explanation */}
-              {detection.explanation && (
-                <div>
-                  <p className="text-xs text-slate-500 mb-1">Explanation</p>
-                  <p className="text-sm text-slate-300">{detection.explanation}</p>
-                </div>
-              )}
-
-              {/* Business Impact */}
+              {/* Business Impact - FIRST for non-technical users */}
               {detection.business_impact && (
                 <div className="bg-amber-500/10 border border-amber-500/20 rounded-lg p-3">
-                  <p className="text-xs text-amber-400 mb-1">Business Impact</p>
+                  <p className="text-xs text-amber-400 mb-1">Why This Matters</p>
                   <p className="text-sm text-amber-300">{detection.business_impact}</p>
                 </div>
               )}
 
-              {/* Suggested Action */}
+              {/* Suggested Action - What they can do about it */}
               {detection.suggested_action && (
                 <div className="bg-blue-500/10 border border-blue-500/20 rounded-lg p-3">
-                  <p className="text-xs text-blue-400 mb-1">Suggested Action</p>
+                  <p className="text-xs text-blue-400 mb-1">What You Can Do</p>
                   <p className="text-sm text-blue-300">{detection.suggested_action}</p>
                 </div>
               )}
 
-              {/* Details */}
-              {detection.details && Object.keys(detection.details).length > 0 && (
+              {/* Explanation - More details */}
+              {detection.explanation && (
                 <div>
-                  <p className="text-xs text-slate-500 mb-2">Details</p>
-                  <div className="bg-slate-800/50 rounded-lg p-3">
+                  <p className="text-xs text-slate-500 mb-1">What Happened</p>
+                  <p className="text-sm text-slate-300">{detection.explanation}</p>
+                </div>
+              )}
+
+              {/* Technical Details - Hidden by default for non-technical users */}
+              {detection.details && Object.keys(detection.details).length > 0 && (
+                <details className="group">
+                  <summary className="text-xs text-slate-500 cursor-pointer hover:text-slate-400">
+                    Technical Details (click to expand)
+                  </summary>
+                  <div className="mt-2 bg-slate-800/50 rounded-lg p-3">
                     <pre className="text-xs text-slate-400 overflow-x-auto">
                       {JSON.stringify(detection.details, null, 2)}
                     </pre>
                   </div>
-                </div>
+                </details>
               )}
 
               {/* Actions */}
@@ -193,7 +198,7 @@ export function FailureCard({
                   leftIcon={<ExternalLink size={14} />}
                   onClick={() => window.open(`/traces/${detection.trace_id}`, '_blank')}
                 >
-                  View Trace
+                  View Workflow Run
                 </Button>
               </div>
             </div>

@@ -16,6 +16,7 @@ import {
 import { Card, CardHeader, CardTitle, CardContent } from '../ui/Card'
 import { Badge } from '../ui/Badge'
 import { Button } from '../ui/Button'
+import { TermTooltip, getPlainEnglishTitle } from '../ui/Tooltip'
 import type { DiagnoseResult, DiagnoseDetection } from '@/lib/api'
 
 interface DiagnosisResultsProps {
@@ -24,10 +25,10 @@ interface DiagnosisResultsProps {
 }
 
 const severityConfig = {
-  critical: { label: 'Critical', variant: 'error' as const, color: 'text-red-400', bg: 'bg-red-500/20' },
-  high: { label: 'High', variant: 'warning' as const, color: 'text-orange-400', bg: 'bg-orange-500/20' },
-  medium: { label: 'Medium', variant: 'info' as const, color: 'text-amber-400', bg: 'bg-amber-500/20' },
-  low: { label: 'Low', variant: 'default' as const, color: 'text-slate-400', bg: 'bg-slate-500/20' },
+  critical: { label: 'Urgent', description: 'Needs immediate attention', variant: 'error' as const, color: 'text-red-400', bg: 'bg-red-500/20' },
+  high: { label: 'Important', description: 'Should fix soon', variant: 'warning' as const, color: 'text-orange-400', bg: 'bg-orange-500/20' },
+  medium: { label: 'Worth Fixing', description: 'Can cause issues over time', variant: 'info' as const, color: 'text-amber-400', bg: 'bg-amber-500/20' },
+  low: { label: 'Minor', description: 'Small improvement opportunity', variant: 'default' as const, color: 'text-slate-400', bg: 'bg-slate-500/20' },
 }
 
 const categoryIcons: Record<string, React.ComponentType<{ size?: number; className?: string }>> = {
@@ -35,6 +36,14 @@ const categoryIcons: Record<string, React.ComponentType<{ size?: number; classNa
   state_corruption: AlertTriangle,
   persona_drift: Zap,
   coordination_deadlock: XCircle,
+}
+
+// Plain English category names
+const categoryNames: Record<string, string> = {
+  infinite_loop: 'Running Forever',
+  state_corruption: 'Data Scrambled',
+  persona_drift: 'AI Changed',
+  coordination_deadlock: 'Steps Stuck',
 }
 
 function DetectionItem({ detection }: { detection: DiagnoseDetection }) {
@@ -55,17 +64,25 @@ function DetectionItem({ detection }: { detection: DiagnoseDetection }) {
               <Icon size={16} className={severityStyle.color} />
             </div>
             <div>
-              <p className="text-sm font-medium text-white">{detection.title}</p>
-              <p className="text-xs text-slate-500">{detection.category.replace(/_/g, ' ')}</p>
+              <p className="text-sm font-medium text-white">
+                {getPlainEnglishTitle(detection.category) || detection.title}
+              </p>
+              <p className="text-xs text-slate-500">
+                {categoryNames[detection.category] || detection.category.replace(/_/g, ' ')}
+              </p>
             </div>
           </div>
           <div className="flex items-center gap-2">
-            <Badge variant={severityStyle.variant} size="sm">
-              {severityStyle.label}
-            </Badge>
-            <span className="text-xs text-slate-500">
-              {Math.round(detection.confidence * 100)}%
-            </span>
+            <TermTooltip term={detection.category}>
+              <Badge variant={severityStyle.variant} size="sm">
+                {severityStyle.label}
+              </Badge>
+            </TermTooltip>
+            <TermTooltip term="confidence">
+              <span className="text-xs text-slate-500">
+                {Math.round(detection.confidence * 100)}% certain
+              </span>
+            </TermTooltip>
             {isExpanded ? <ChevronUp size={14} /> : <ChevronDown size={14} />}
           </div>
         </div>
@@ -73,45 +90,61 @@ function DetectionItem({ detection }: { detection: DiagnoseDetection }) {
 
       {isExpanded && (
         <div className="border-t border-slate-700 p-3 space-y-3 bg-slate-800/30">
-          <p className="text-sm text-slate-300">{detection.description}</p>
+          {/* What happened - plain explanation */}
+          <div>
+            <p className="text-xs text-slate-500 mb-1">What Happened</p>
+            <p className="text-sm text-slate-300">{detection.description}</p>
+          </div>
 
+          {/* What you can do about it */}
           {detection.suggested_fix && (
             <div className="bg-blue-500/10 border border-blue-500/20 rounded-lg p-3">
-              <p className="text-xs text-blue-400 mb-1">Suggested Fix</p>
+              <p className="text-xs text-blue-400 mb-1">How to Fix This</p>
               <p className="text-sm text-blue-300">{detection.suggested_fix}</p>
             </div>
           )}
 
-          {detection.evidence && detection.evidence.length > 0 && (
-            <div>
-              <p className="text-xs text-slate-500 mb-2">Evidence</p>
-              <div className="space-y-1">
-                {detection.evidence.map((ev, idx) => (
-                  <div
-                    key={idx}
-                    className="text-xs text-slate-400 bg-slate-800/50 px-2 py-1 rounded"
-                  >
-                    {typeof ev === 'string' ? ev : JSON.stringify(ev)}
+          {/* Technical details - hidden by default */}
+          {((detection.evidence && detection.evidence.length > 0) ||
+            (detection.affected_spans && detection.affected_spans.length > 0)) && (
+            <details className="group">
+              <summary className="text-xs text-slate-500 cursor-pointer hover:text-slate-400">
+                Technical Details (click to expand)
+              </summary>
+              <div className="mt-2 space-y-3">
+                {detection.evidence && detection.evidence.length > 0 && (
+                  <div>
+                    <p className="text-xs text-slate-500 mb-2">Evidence</p>
+                    <div className="space-y-1">
+                      {detection.evidence.map((ev, idx) => (
+                        <div
+                          key={idx}
+                          className="text-xs text-slate-400 bg-slate-800/50 px-2 py-1 rounded"
+                        >
+                          {typeof ev === 'string' ? ev : JSON.stringify(ev)}
+                        </div>
+                      ))}
+                    </div>
                   </div>
-                ))}
-              </div>
-            </div>
-          )}
+                )}
 
-          {detection.affected_spans && detection.affected_spans.length > 0 && (
-            <div>
-              <p className="text-xs text-slate-500 mb-1">Affected Spans</p>
-              <div className="flex flex-wrap gap-1">
-                {detection.affected_spans.map((span, idx) => (
-                  <span
-                    key={idx}
-                    className="text-xs text-slate-400 bg-slate-700 px-2 py-0.5 rounded"
-                  >
-                    {span}
-                  </span>
-                ))}
+                {detection.affected_spans && detection.affected_spans.length > 0 && (
+                  <div>
+                    <p className="text-xs text-slate-500 mb-1">Affected Steps</p>
+                    <div className="flex flex-wrap gap-1">
+                      {detection.affected_spans.map((span, idx) => (
+                        <span
+                          key={idx}
+                          className="text-xs text-slate-400 bg-slate-700 px-2 py-0.5 rounded"
+                        >
+                          {span}
+                        </span>
+                      ))}
+                    </div>
+                  </div>
+                )}
               </div>
-            </div>
+            </details>
           )}
         </div>
       )}
@@ -138,54 +171,60 @@ export function DiagnosisResults({ result, onApplyAutoFix }: DiagnosisResultsPro
       <Card>
         <CardHeader>
           <div className="flex items-center justify-between">
-            <CardTitle>Diagnosis Results</CardTitle>
+            <CardTitle>Workflow Analysis</CardTitle>
             <Badge
               variant={result.has_failures ? 'error' : 'success'}
               size="sm"
             >
-              {result.has_failures ? `${result.failure_count} Failures` : 'No Failures'}
+              {result.has_failures ? `${result.failure_count} Problems Found` : 'All Good!'}
             </Badge>
           </div>
         </CardHeader>
         <CardContent>
           <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
             <div>
-              <p className="text-xs text-slate-500 mb-1">Trace ID</p>
+              <TermTooltip term="trace">
+                <p className="text-xs text-slate-500 mb-1">Workflow Run ID</p>
+              </TermTooltip>
               <p className="text-sm text-white font-mono">{result.trace_id.slice(0, 12)}...</p>
             </div>
             <div>
-              <p className="text-xs text-slate-500 mb-1">Total Spans</p>
+              <TermTooltip term="span">
+                <p className="text-xs text-slate-500 mb-1">Total Steps</p>
+              </TermTooltip>
               <p className="text-sm text-white">{result.total_spans}</p>
             </div>
             <div>
-              <p className="text-xs text-slate-500 mb-1">Error Spans</p>
+              <p className="text-xs text-slate-500 mb-1">Steps with Errors</p>
               <p className="text-sm text-white">{result.error_spans}</p>
             </div>
             <div>
-              <p className="text-xs text-slate-500 mb-1">Detection Time</p>
+              <p className="text-xs text-slate-500 mb-1">Analysis Time</p>
               <p className="text-sm text-white">{result.detection_time_ms}ms</p>
             </div>
           </div>
 
           {result.detectors_run && result.detectors_run.length > 0 && (
-            <div className="mt-4">
-              <p className="text-xs text-slate-500 mb-2">Detectors Run</p>
-              <div className="flex flex-wrap gap-1">
+            <details className="mt-4 group">
+              <summary className="text-xs text-slate-500 cursor-pointer hover:text-slate-400">
+                Checks Performed ({result.detectors_run.length})
+              </summary>
+              <div className="mt-2 flex flex-wrap gap-1">
                 {result.detectors_run.map((detector, idx) => (
                   <span
                     key={idx}
                     className="text-xs text-slate-400 bg-slate-700 px-2 py-0.5 rounded"
                   >
-                    {detector}
+                    {detector.replace(/_/g, ' ')}
                   </span>
                 ))}
               </div>
-            </div>
+            </details>
           )}
         </CardContent>
       </Card>
 
-      {/* Root Cause */}
+      {/* Root Cause - Why this is happening */}
       {result.root_cause_explanation && (
         <Card>
           <CardContent className="p-4">
@@ -194,7 +233,7 @@ export function DiagnosisResults({ result, onApplyAutoFix }: DiagnosisResultsPro
                 <AlertTriangle size={20} className="text-red-400" />
               </div>
               <div>
-                <p className="text-sm font-medium text-white mb-1">Root Cause</p>
+                <p className="text-sm font-medium text-white mb-1">Why This Is Happening</p>
                 <p className="text-sm text-slate-300">{result.root_cause_explanation}</p>
               </div>
             </div>
@@ -202,7 +241,7 @@ export function DiagnosisResults({ result, onApplyAutoFix }: DiagnosisResultsPro
         </Card>
       )}
 
-      {/* Auto-Fix Preview */}
+      {/* Auto-Fix Preview - We can fix this for you */}
       {result.self_healing_available && result.auto_fix_preview && (
         <Card className="border-green-500/30">
           <CardContent className="p-4">
@@ -212,15 +251,17 @@ export function DiagnosisResults({ result, onApplyAutoFix }: DiagnosisResultsPro
                   <Sparkles size={20} className="text-green-400" />
                 </div>
                 <div>
-                  <p className="text-sm font-medium text-green-400 mb-1">Auto-Fix Available</p>
+                  <p className="text-sm font-medium text-green-400 mb-1">We Can Fix This For You</p>
                   <p className="text-sm text-slate-300 mb-2">{result.auto_fix_preview.description}</p>
                   <div className="flex items-center gap-4 text-xs">
                     <span className="text-slate-500">
-                      Action: <span className="text-slate-300">{result.auto_fix_preview.action}</span>
+                      What we'll do: <span className="text-slate-300">{result.auto_fix_preview.action}</span>
                     </span>
-                    <span className="text-slate-500">
-                      Confidence: <span className="text-slate-300">{Math.round(result.auto_fix_preview.confidence * 100)}%</span>
-                    </span>
+                    <TermTooltip term="confidence">
+                      <span className="text-slate-500">
+                        {Math.round(result.auto_fix_preview.confidence * 100)}% certain this will work
+                      </span>
+                    </TermTooltip>
                   </div>
                 </div>
               </div>
@@ -232,7 +273,7 @@ export function DiagnosisResults({ result, onApplyAutoFix }: DiagnosisResultsPro
                   isLoading={isApplying}
                   leftIcon={isApplying ? <Loader2 className="animate-spin" size={14} /> : <Sparkles size={14} />}
                 >
-                  Apply Fix
+                  Fix This Now
                 </Button>
               )}
             </div>
@@ -240,11 +281,11 @@ export function DiagnosisResults({ result, onApplyAutoFix }: DiagnosisResultsPro
         </Card>
       )}
 
-      {/* Detections List */}
+      {/* Detections List - Problems we found */}
       {result.all_detections && result.all_detections.length > 0 && (
         <Card>
           <CardHeader>
-            <CardTitle>All Detections ({result.all_detections.length})</CardTitle>
+            <CardTitle>Problems Found ({result.all_detections.length})</CardTitle>
           </CardHeader>
           <CardContent>
             <div className="space-y-2">
@@ -256,14 +297,14 @@ export function DiagnosisResults({ result, onApplyAutoFix }: DiagnosisResultsPro
         </Card>
       )}
 
-      {/* No Failures State */}
+      {/* No Failures State - Everything is working */}
       {!result.has_failures && (
         <Card>
           <CardContent className="p-8 text-center">
             <CheckCircle2 size={48} className="mx-auto mb-4 text-green-400 opacity-50" />
-            <p className="text-lg font-medium text-white mb-2">No Failures Detected</p>
+            <p className="text-lg font-medium text-white mb-2">Everything Looks Good!</p>
             <p className="text-sm text-slate-400">
-              The trace analysis completed successfully with no issues found.
+              We analyzed your workflow and found no problems. Nice work!
             </p>
           </CardContent>
         </Card>

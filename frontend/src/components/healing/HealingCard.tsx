@@ -17,6 +17,7 @@ import {
 import { Card, CardContent } from '../ui/Card'
 import { Badge } from '../ui/Badge'
 import { Button } from '../ui/Button'
+import { TermTooltip, getPlainEnglishStatus } from '../ui/Tooltip'
 import type { HealingRecord } from '@/lib/api'
 
 interface HealingCardProps {
@@ -28,20 +29,20 @@ interface HealingCardProps {
 }
 
 const statusConfig = {
-  pending: { label: 'Pending', variant: 'warning' as const, icon: Clock },
-  in_progress: { label: 'In Progress', variant: 'info' as const, icon: Loader2 },
-  staged: { label: 'Staged', variant: 'warning' as const, icon: AlertTriangle },
-  applied: { label: 'Applied', variant: 'success' as const, icon: CheckCircle2 },
-  failed: { label: 'Failed', variant: 'error' as const, icon: XCircle },
-  rolled_back: { label: 'Rolled Back', variant: 'default' as const, icon: RotateCcw },
-  rejected: { label: 'Rejected', variant: 'error' as const, icon: X },
+  pending: { label: 'Waiting', description: 'Fix is being prepared', variant: 'warning' as const, icon: Clock },
+  in_progress: { label: 'Working on it', description: 'Fix is being applied', variant: 'info' as const, icon: Loader2 },
+  staged: { label: 'Ready to test', description: 'Test it before going live', variant: 'warning' as const, icon: AlertTriangle },
+  applied: { label: 'Fixed!', description: 'The fix is active', variant: 'success' as const, icon: CheckCircle2 },
+  failed: { label: 'Couldn\'t fix', description: 'Something went wrong', variant: 'error' as const, icon: XCircle },
+  rolled_back: { label: 'Undone', description: 'Fix was removed', variant: 'default' as const, icon: RotateCcw },
+  rejected: { label: 'Not applied', description: 'Fix was declined', variant: 'error' as const, icon: X },
 }
 
 const deploymentStageConfig = {
-  staged: { label: 'Staged for Testing', color: 'text-amber-400 bg-amber-500/20' },
-  promoted: { label: 'Promoted to Production', color: 'text-green-400 bg-green-500/20' },
-  rejected: { label: 'Rejected', color: 'text-red-400 bg-red-500/20' },
-  rolled_back: { label: 'Rolled Back', color: 'text-slate-400 bg-slate-500/20' },
+  staged: { label: 'Ready to test', description: 'Fix is prepared but not live yet', color: 'text-amber-400 bg-amber-500/20' },
+  promoted: { label: 'Live', description: 'Fix is active in your workflow', color: 'text-green-400 bg-green-500/20' },
+  rejected: { label: 'Not applied', description: 'Fix was declined after review', color: 'text-red-400 bg-red-500/20' },
+  rolled_back: { label: 'Undone', description: 'Fix was removed and workflow restored', color: 'text-slate-400 bg-slate-500/20' },
 }
 
 function formatTime(isoString: string | null): string {
@@ -162,16 +163,22 @@ export function HealingCard({
         {/* Expanded Content */}
         {isExpanded && (
           <div className="border-t border-slate-700 p-4 space-y-4">
-            {/* Details Grid */}
-            <div className="grid grid-cols-2 md:grid-cols-4 gap-4 text-sm">
-              <div>
-                <p className="text-slate-500 text-xs mb-1">Status</p>
-                <p className="text-white">{status.label}</p>
+            {/* Status explanation for non-technical users */}
+            <div className="bg-slate-800/50 rounded-lg p-3 mb-4">
+              <div className="flex items-center gap-2 mb-1">
+                <StatusIcon size={16} className={
+                  healing.status === 'applied' ? 'text-green-400' :
+                  healing.status === 'staged' ? 'text-amber-400' :
+                  healing.status === 'failed' || healing.status === 'rejected' ? 'text-red-400' :
+                  'text-slate-400'
+                } />
+                <p className="text-sm font-medium text-white">{status.label}</p>
               </div>
-              <div>
-                <p className="text-slate-500 text-xs mb-1">Fix ID</p>
-                <p className="text-white font-mono text-xs">{healing.fix_id || 'N/A'}</p>
-              </div>
+              <p className="text-xs text-slate-400">{status.description}</p>
+            </div>
+
+            {/* Timeline - simple view of what happened */}
+            <div className="grid grid-cols-2 gap-4 text-sm">
               <div>
                 <p className="text-slate-500 text-xs mb-1">Started</p>
                 <p className="text-white">{formatTime(healing.started_at)}</p>
@@ -182,43 +189,35 @@ export function HealingCard({
               </div>
             </div>
 
-            {/* Staged Deployment Info */}
+            {/* Testing Status - for staged deployments */}
             {healing.deployment_stage && (
-              <div className="bg-slate-800/50 rounded-lg p-3">
-                <p className="text-xs text-slate-500 mb-2">Staged Deployment</p>
-                <div className="grid grid-cols-2 gap-4 text-sm">
-                  <div>
-                    <p className="text-slate-400">Stage</p>
-                    <p className="text-white">{healing.deployment_stage}</p>
-                  </div>
+              <div className={`rounded-lg p-3 ${deploymentStage?.color || 'bg-slate-500/20'}`}>
+                <p className="text-xs mb-1">Current Status</p>
+                <p className="text-sm font-medium">{deploymentStage?.label}</p>
+                <p className="text-xs opacity-80 mt-1">{deploymentStage?.description}</p>
+                <div className="grid grid-cols-2 gap-4 text-xs mt-2 opacity-70">
                   {healing.staged_at && (
-                    <div>
-                      <p className="text-slate-400">Staged At</p>
-                      <p className="text-white">{formatTime(healing.staged_at)}</p>
-                    </div>
+                    <div>Ready to test: {formatTime(healing.staged_at)}</div>
                   )}
                   {healing.promoted_at && (
-                    <div>
-                      <p className="text-slate-400">Promoted At</p>
-                      <p className="text-white">{formatTime(healing.promoted_at)}</p>
-                    </div>
+                    <div>Went live: {formatTime(healing.promoted_at)}</div>
                   )}
                 </div>
               </div>
             )}
 
-            {/* Error Message */}
+            {/* Error Message - explain what went wrong */}
             {healing.error_message && (
               <div className="bg-red-500/10 border border-red-500/20 rounded-lg p-3">
-                <p className="text-xs text-red-400 mb-1">Error</p>
+                <p className="text-xs text-red-400 mb-1">What Went Wrong</p>
                 <p className="text-sm text-red-300">{healing.error_message}</p>
               </div>
             )}
 
-            {/* Fix Suggestions */}
+            {/* Fix Suggestions - what we can do */}
             {healing.fix_suggestions && healing.fix_suggestions.length > 0 && (
               <div className="space-y-2">
-                <p className="text-xs text-slate-500">Fix Suggestions</p>
+                <p className="text-xs text-slate-500">Available Fixes</p>
                 {healing.fix_suggestions.map((suggestion, idx) => (
                   <div
                     key={suggestion.id || idx}
@@ -226,15 +225,34 @@ export function HealingCard({
                   >
                     <div className="flex items-center justify-between mb-2">
                       <p className="text-sm font-medium text-white">{suggestion.title}</p>
-                      <Badge variant="info" size="sm">
-                        {suggestion.confidence}
-                      </Badge>
+                      <TermTooltip term="confidence">
+                        <Badge variant="info" size="sm">
+                          {suggestion.confidence}
+                        </Badge>
+                      </TermTooltip>
                     </div>
                     <p className="text-xs text-slate-400">{suggestion.description}</p>
                   </div>
                 ))}
               </div>
             )}
+
+            {/* Technical details - collapsed by default */}
+            <details className="group">
+              <summary className="text-xs text-slate-500 cursor-pointer hover:text-slate-400">
+                Technical Details (click to expand)
+              </summary>
+              <div className="mt-2 grid grid-cols-2 gap-4 text-xs">
+                <div>
+                  <p className="text-slate-500">Fix ID</p>
+                  <p className="text-white font-mono">{healing.fix_id || 'N/A'}</p>
+                </div>
+                <div>
+                  <p className="text-slate-500">Workflow ID</p>
+                  <p className="text-white font-mono">{healing.workflow_id || 'N/A'}</p>
+                </div>
+              </div>
+            </details>
 
             {/* Actions */}
             <div className="flex items-center gap-2 pt-2 border-t border-slate-700">
@@ -247,7 +265,7 @@ export function HealingCard({
                     isLoading={isPromoting}
                     leftIcon={<Play size={14} />}
                   >
-                    Promote
+                    Make it Live
                   </Button>
                   <Button
                     variant="danger"
@@ -256,7 +274,7 @@ export function HealingCard({
                     isLoading={isRejecting}
                     leftIcon={<X size={14} />}
                   >
-                    Reject
+                    Don't Apply
                   </Button>
                 </>
               )}
@@ -268,7 +286,7 @@ export function HealingCard({
                   isLoading={isRollingBack}
                   leftIcon={<RotateCcw size={14} />}
                 >
-                  Rollback
+                  Undo This Fix
                 </Button>
               )}
               <Button
@@ -277,7 +295,7 @@ export function HealingCard({
                 leftIcon={<ExternalLink size={14} />}
                 onClick={() => window.open(`/detections/${healing.detection_id}`, '_blank')}
               >
-                View Detection
+                View Problem
               </Button>
             </div>
           </div>
