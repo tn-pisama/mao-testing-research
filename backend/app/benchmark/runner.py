@@ -128,6 +128,7 @@ class BenchmarkRunner:
         loader: MASTDataLoader,
         failure_modes: Optional[List[str]] = None,
         batch_size: int = 32,
+        api_key: Optional[str] = None,
     ):
         """Initialize benchmark runner.
 
@@ -135,10 +136,13 @@ class BenchmarkRunner:
             loader: MASTDataLoader with loaded data
             failure_modes: List of modes to benchmark (default: all)
             batch_size: Batch size for ML detector
+            api_key: Anthropic API key for LLM detection
         """
+        import os
         self.loader = loader
         self.failure_modes = failure_modes or ALL_FAILURE_MODES
         self.batch_size = batch_size
+        self._api_key = api_key or os.getenv("ANTHROPIC_API_KEY")
 
         # Detector instances (lazy loaded)
         self._ml_detector = None
@@ -149,6 +153,7 @@ class BenchmarkRunner:
         progress_callback: Optional[Callable[[int, int], None]] = None,
         use_ml_detector: bool = True,
         use_llm_detector: bool = False,
+        use_hybrid_detector: bool = False,
         llm_model: str = "haiku",
         llm_modes: Optional[List[str]] = None,
         max_llm_records: Optional[int] = None,
@@ -159,6 +164,7 @@ class BenchmarkRunner:
             progress_callback: Optional callback(processed, total) for progress
             use_ml_detector: Whether to use ML detector (requires training)
             use_llm_detector: Whether to use LLM detector for semantic modes
+            use_hybrid_detector: Whether to use hybrid turn-aware + LLM detection
             llm_model: LLM model to use ('haiku', 'sonnet', 'opus')
             llm_modes: Failure modes for LLM detection (default: F6,F8,F9,F13)
             max_llm_records: Maximum records for LLM detection (cost control)
@@ -205,8 +211,8 @@ class BenchmarkRunner:
             if progress_callback:
                 progress_callback(result.processed_records, result.total_records)
 
-        # Run LLM detection if enabled
-        if use_llm_detector and llm_detection_modes:
+        # Run LLM detection if enabled (but not if hybrid is enabled - hybrid handles semantic modes)
+        if use_llm_detector and llm_detection_modes and not use_hybrid_detector:
             logger.info(f"Running LLM detection ({llm_model}) for {len(llm_detection_modes)} modes...")
             try:
                 llm_attempts = self._run_llm_detection(
@@ -220,6 +226,23 @@ class BenchmarkRunner:
             except Exception as e:
                 logger.error(f"LLM detection failed: {e}")
                 result.errors.append(f"LLM detection: {str(e)}")
+
+        # Run hybrid detection if enabled (turn-aware + LLM escalation)
+        if use_hybrid_detector:
+            hybrid_modes = llm_modes if llm_modes else ["F6", "F8", "F9", "F13"]
+            hybrid_modes = [m for m in hybrid_modes if m in self.failure_modes]
+            logger.info(f"Running hybrid detection for modes: {hybrid_modes}")
+            try:
+                hybrid_attempts = self._run_hybrid_detection(
+                    records,
+                    modes=hybrid_modes,
+                    llm_escalation=bool(self._api_key),
+                )
+                result.attempts.extend(hybrid_attempts)
+                logger.info(f"Hybrid detection complete: {len(hybrid_attempts)} attempts")
+            except Exception as e:
+                logger.error(f"Hybrid detection failed: {e}")
+                result.errors.append(f"Hybrid detection: {str(e)}")
 
         # Count detections
         result.total_detections = sum(1 for a in result.attempts if a.detected)
@@ -583,15 +606,13 @@ class BenchmarkRunner:
         use_few_shot: bool,
     ) -> List[DetectionAttempt]:
         """Async implementation of LLM detection."""
-        import os
         from anthropic import AsyncAnthropic
 
-        api_key = os.getenv("ANTHROPIC_API_KEY")
-        if not api_key:
+        if not self._api_key:
             logger.error("ANTHROPIC_API_KEY not set, skipping LLM detection")
             return []
 
-        client = AsyncAnthropic(api_key=api_key)
+        client = AsyncAnthropic(api_key=self._api_key)
 
         # Model selection
         model_map = {
@@ -880,6 +901,284 @@ Respond in JSON format:
             latency_ms=latency_ms,
             error="No retrieval context in MAST data",
         )
+
+    def _run_hybrid_detection(
+        self,
+        records: List[MASTRecord],
+        modes: Optional[List[str]] = None,
+        llm_escalation: bool = True,
+    ) -> List[DetectionAttempt]:
+        """Run hybrid detection: Turn-aware first, LLM escalation for ambiguous.
+
+        This method uses a two-phase approach:
+        1. Run turn-aware detectors (fast, free) on all records
+        2. If confidence is ambiguous (0.40-0.85), escalate to LLM
+
+        Args:
+            records: List of MASTRecord to process
+            modes: Failure modes to process (default: F6, F8, F9, F13)
+            llm_escalation: Whether to escalate ambiguous cases to LLM
+
+        Returns:
+            List of DetectionAttempt for all processed modes
+        """
+        if modes is None:
+            modes = list(LLM_SEMANTIC_MODES)
+
+        # Filter to only requested modes that are in our target list
+        modes = [m for m in modes if m in self.failure_modes]
+        if not modes:
+            return []
+
+        # Import turn-aware detectors
+        try:
+            from app.detection.turn_aware.derailment import TurnAwareDerailmentDetector
+            from app.detection.turn_aware.withholding import TurnAwareInformationWithholdingDetector
+            from app.detection.turn_aware.role_usurpation import TurnAwareRoleUsurpationDetector
+            from app.detection.turn_aware.quality_gate import TurnAwareQualityGateBypassDetector
+        except ImportError as e:
+            logger.error(f"Turn-aware detectors not available: {e}")
+            return []
+
+        # Initialize detectors
+        TURN_AWARE_DETECTORS = {
+            "F6": TurnAwareDerailmentDetector(),
+            "F8": TurnAwareInformationWithholdingDetector(),
+            "F9": TurnAwareRoleUsurpationDetector(),
+            "F13": TurnAwareQualityGateBypassDetector(),
+        }
+
+        HIGH_THRESHOLD = 0.85  # Accept directly
+        LOW_THRESHOLD = 0.40   # Reject directly
+
+        attempts = []
+        llm_queue = []  # Queue for LLM escalation
+
+        for record in records:
+            # Parse trajectory into turn snapshots
+            turns = self._parse_to_turn_snapshots(record)
+            if not turns:
+                logger.warning(f"No turns parsed for {record.trace_id}")
+                continue
+
+            metadata = {
+                "task_description": record.task,
+                "framework": record.framework,
+                "trace_id": record.trace_id,
+            }
+
+            for mode in modes:
+                if mode not in record.ground_truth:
+                    continue
+
+                detector = TURN_AWARE_DETECTORS.get(mode)
+                if not detector:
+                    continue
+
+                # Phase 1: Turn-aware detection (fast, free)
+                start = time.time()
+                try:
+                    result = detector.detect(turns=turns, conversation_metadata=metadata)
+                    latency = (time.time() - start) * 1000
+
+                    # Confidence routing
+                    if result.confidence >= HIGH_THRESHOLD:
+                        # High confidence - accept directly
+                        attempts.append(DetectionAttempt(
+                            record_id=record.trace_id,
+                            failure_mode=mode,
+                            detector_name="hybrid_turn_aware_accept",
+                            detected=result.detected,
+                            confidence=result.confidence,
+                            latency_ms=latency,
+                        ))
+                    elif result.confidence < LOW_THRESHOLD:
+                        # Low confidence - reject directly
+                        attempts.append(DetectionAttempt(
+                            record_id=record.trace_id,
+                            failure_mode=mode,
+                            detector_name="hybrid_turn_aware_reject",
+                            detected=False,
+                            confidence=1.0 - result.confidence,
+                            latency_ms=latency,
+                        ))
+                    else:
+                        # Ambiguous (0.40-0.85) - queue for LLM
+                        if llm_escalation and self._api_key:
+                            llm_queue.append((record, mode, result, latency))
+                        else:
+                            # No LLM available, use turn-aware result
+                            attempts.append(DetectionAttempt(
+                                record_id=record.trace_id,
+                                failure_mode=mode,
+                                detector_name="hybrid_turn_aware_ambiguous",
+                                detected=result.detected,
+                                confidence=result.confidence,
+                                latency_ms=latency,
+                            ))
+
+                except Exception as e:
+                    latency = (time.time() - start) * 1000
+                    logger.warning(f"Turn-aware detection failed for {record.trace_id}/{mode}: {e}")
+                    attempts.append(DetectionAttempt(
+                        record_id=record.trace_id,
+                        failure_mode=mode,
+                        detector_name="hybrid_error",
+                        detected=False,
+                        confidence=0.0,
+                        latency_ms=latency,
+                        error=str(e),
+                    ))
+
+        # Phase 2: LLM escalation for ambiguous cases
+        if llm_queue and self._api_key:
+            logger.info(f"Escalating {len(llm_queue)} ambiguous cases to LLM...")
+            try:
+                llm_results = self._run_llm_escalation(llm_queue)
+                attempts.extend(llm_results)
+            except Exception as e:
+                logger.error(f"LLM escalation failed: {e}")
+                # Fall back to turn-aware results for ambiguous cases
+                for record, mode, result, latency in llm_queue:
+                    attempts.append(DetectionAttempt(
+                        record_id=record.trace_id,
+                        failure_mode=mode,
+                        detector_name="hybrid_escalation_failed",
+                        detected=result.detected,
+                        confidence=result.confidence,
+                        latency_ms=latency,
+                        error=str(e),
+                    ))
+
+        return attempts
+
+    def _run_llm_escalation(
+        self,
+        queue: List[Tuple[MASTRecord, str, Any, float]],
+    ) -> List[DetectionAttempt]:
+        """Run LLM detection for ambiguous cases from hybrid pipeline.
+
+        Args:
+            queue: List of (record, mode, turn_aware_result, pattern_latency)
+
+        Returns:
+            List of DetectionAttempt with LLM verification
+        """
+        try:
+            loop = asyncio.get_event_loop()
+        except RuntimeError:
+            loop = asyncio.new_event_loop()
+            asyncio.set_event_loop(loop)
+
+        return loop.run_until_complete(self._run_llm_escalation_async(queue))
+
+    async def _run_llm_escalation_async(
+        self,
+        queue: List[Tuple[MASTRecord, str, Any, float]],
+    ) -> List[DetectionAttempt]:
+        """Async LLM escalation for ambiguous cases."""
+        from anthropic import AsyncAnthropic
+
+        if not self._api_key:
+            return []
+
+        client = AsyncAnthropic(api_key=self._api_key)
+        model_id = "claude-3-5-haiku-20241022"  # Use Haiku for cost efficiency
+
+        # Get few-shot examples
+        few_shot_examples = {}
+        try:
+            from app.benchmark.few_shot_bank import MAST_FEW_SHOT_EXAMPLES
+            few_shot_examples = MAST_FEW_SHOT_EXAMPLES
+        except ImportError:
+            pass
+
+        attempts = []
+        for record, mode, turn_aware_result, pattern_latency in queue:
+            start_time = time.time()
+            try:
+                prompt = self._build_llm_prompt(
+                    record, mode, few_shot_examples.get(mode, {})
+                )
+                response = await client.messages.create(
+                    model=model_id,
+                    max_tokens=1000,
+                    messages=[{"role": "user", "content": prompt}],
+                )
+                content = response.content[0].text
+                detected, confidence, reasoning = self._parse_llm_response(content)
+                latency = (time.time() - start_time) * 1000
+
+                # Combine turn-aware pattern latency with LLM latency
+                total_latency = pattern_latency + latency
+
+                # Confidence boost if LLM confirms, penalty if rejects
+                if detected == turn_aware_result.detected:
+                    final_confidence = min(0.95, confidence + 0.1)
+                else:
+                    final_confidence = confidence  # Trust LLM verdict
+
+                attempts.append(DetectionAttempt(
+                    record_id=record.trace_id,
+                    failure_mode=mode,
+                    detector_name="hybrid_llm_verified",
+                    detected=detected,
+                    confidence=final_confidence,
+                    latency_ms=total_latency,
+                    raw_result={"llm_reasoning": reasoning[:300]},
+                ))
+
+            except Exception as e:
+                latency = (time.time() - start_time) * 1000
+                logger.warning(f"LLM escalation failed for {record.trace_id}/{mode}: {e}")
+                # Fall back to turn-aware result
+                attempts.append(DetectionAttempt(
+                    record_id=record.trace_id,
+                    failure_mode=mode,
+                    detector_name="hybrid_llm_fallback",
+                    detected=turn_aware_result.detected,
+                    confidence=turn_aware_result.confidence,
+                    latency_ms=pattern_latency + latency,
+                    error=str(e),
+                ))
+
+        return attempts
+
+    def _parse_to_turn_snapshots(self, record: MASTRecord) -> List:
+        """Convert MAST trajectory to TurnSnapshot list.
+
+        Args:
+            record: MASTRecord with trajectory
+
+        Returns:
+            List of TurnSnapshot for turn-aware detection
+        """
+        try:
+            from app.benchmark.trajectory_parser import parse_trajectory_to_turns
+            from app.detection.turn_aware._base import TurnSnapshot
+        except ImportError as e:
+            logger.error(f"Failed to import turn-aware modules: {e}")
+            return []
+
+        # Use existing parser to extract turns
+        parsed_turns = parse_trajectory_to_turns(record.trajectory, record.framework)
+        if not parsed_turns:
+            return []
+
+        snapshots = []
+        accumulated = ""
+        for i, turn in enumerate(parsed_turns):
+            accumulated += f"\n{turn.participant_id}: {turn.content}"
+            snapshots.append(TurnSnapshot(
+                turn_number=i,
+                participant_type=turn.participant_type or "agent",
+                participant_id=turn.participant_id,
+                content=turn.content,
+                accumulated_context=accumulated[:50000],  # Limit context size
+                accumulated_tokens=len(accumulated.split()),
+            ))
+
+        return snapshots
 
     def train_ml_detector(
         self,

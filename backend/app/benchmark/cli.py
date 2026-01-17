@@ -102,6 +102,16 @@ def cli():
     help="Maximum records for LLM detection (cost control)",
 )
 @click.option(
+    "--hybrid/--no-hybrid",
+    default=False,
+    help="Use hybrid turn-aware + LLM detection for semantic modes (F6,F8,F9,F13)",
+)
+@click.option(
+    "--api-key",
+    envvar="ANTHROPIC_API_KEY",
+    help="Anthropic API key for LLM/hybrid detection",
+)
+@click.option(
     "--verbose", "-v",
     is_flag=True,
     help="Verbose output",
@@ -120,6 +130,8 @@ def run(
     llm_model: str,
     llm_modes: Optional[str],
     max_llm_records: Optional[int],
+    hybrid: bool,
+    api_key: Optional[str],
     verbose: bool,
 ):
     """Run MAST benchmark.
@@ -171,6 +183,7 @@ def run(
         loader=loader,
         failure_modes=failure_modes,
         batch_size=batch_size,
+        api_key=api_key,
     )
 
     # Train if requested
@@ -202,10 +215,17 @@ def run(
         if max_llm_records:
             click.echo(f"  Max records for LLM: {max_llm_records}")
 
+    # Show hybrid detection info
+    if hybrid:
+        click.echo(f"Hybrid detection enabled (turn-aware + LLM escalation)")
+        click.echo(f"  Modes: {llm_modes_list or ['F6', 'F8', 'F9', 'F13']}")
+        click.echo(f"  API key: {'set' if api_key else 'NOT SET (turn-aware only)'}")
+
     result = runner.run(
         progress_callback=progress_callback,
         use_ml_detector=use_ml,
         use_llm_detector=llm,
+        use_hybrid_detector=hybrid,
         llm_model=llm_model,
         llm_modes=llm_modes_list,
         max_llm_records=max_llm_records,
