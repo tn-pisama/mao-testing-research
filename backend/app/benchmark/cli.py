@@ -80,6 +80,28 @@ def cli():
     help="Batch size for ML detector",
 )
 @click.option(
+    "--llm/--no-llm",
+    default=False,
+    help="Use LLM (Claude) for semantic failure mode detection (F6,F8,F9,F13)",
+)
+@click.option(
+    "--llm-model",
+    type=click.Choice(["haiku", "sonnet", "opus"]),
+    default="haiku",
+    help="LLM model to use (haiku=fast/cheap, sonnet=balanced, opus=best)",
+)
+@click.option(
+    "--llm-modes",
+    default=None,
+    help="Comma-separated modes for LLM detection (default: F6,F8,F9,F13)",
+)
+@click.option(
+    "--max-llm-records",
+    default=None,
+    type=int,
+    help="Maximum records for LLM detection (cost control)",
+)
+@click.option(
     "--verbose", "-v",
     is_flag=True,
     help="Verbose output",
@@ -94,6 +116,10 @@ def run(
     train: bool,
     epochs: int,
     batch_size: int,
+    llm: bool,
+    llm_model: str,
+    llm_modes: Optional[str],
+    max_llm_records: Optional[int],
     verbose: bool,
 ):
     """Run MAST benchmark.
@@ -101,9 +127,17 @@ def run(
     DATA_PATH: Path to MAST data file (JSONL or JSON format)
 
     Examples:
-        python -m app.benchmark.cli run fixtures/mast/data.jsonl -o report.md
-        python -m app.benchmark.cli run data.jsonl --framework ChatDev
-        python -m app.benchmark.cli run data.jsonl --modes F1,F7,F12 --train
+        # Basic rule-based benchmark
+        python -m app.benchmark.cli run data.jsonl --no-ml -o report.md
+
+        # With LLM detection for semantic modes
+        python -m app.benchmark.cli run data.jsonl --no-ml --llm -o llm_report.md
+
+        # LLM with specific modes and model
+        python -m app.benchmark.cli run data.jsonl --no-ml --llm --llm-model sonnet --llm-modes F6,F9
+
+        # Cost-controlled LLM run
+        python -m app.benchmark.cli run data.jsonl --no-ml --llm --max-llm-records 50
     """
     setup_logging(verbose)
 
@@ -157,9 +191,24 @@ def run(
             pct = processed / total * 100
             click.echo(f"\rProgress: {processed:,}/{total:,} ({pct:.1f}%)", nl=False)
 
+    # Parse LLM modes if specified
+    llm_modes_list = None
+    if llm_modes:
+        llm_modes_list = [m.strip().upper() for m in llm_modes.split(",")]
+
+    # Show LLM detection info
+    if llm:
+        click.echo(f"LLM detection enabled: model={llm_model}, modes={llm_modes_list or 'F6,F8,F9,F13'}")
+        if max_llm_records:
+            click.echo(f"  Max records for LLM: {max_llm_records}")
+
     result = runner.run(
         progress_callback=progress_callback,
         use_ml_detector=use_ml,
+        use_llm_detector=llm,
+        llm_model=llm_model,
+        llm_modes=llm_modes_list,
+        max_llm_records=max_llm_records,
     )
     click.echo()  # Newline after progress
     click.echo(f"Processed {result.processed_records:,} records, "

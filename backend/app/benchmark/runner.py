@@ -1,8 +1,9 @@
 """Benchmark runner for executing detectors on MAST data.
 
-Runs ML-based and rule-based detectors on MAST traces and collects results.
+Runs ML-based, rule-based, and LLM-based detectors on MAST traces and collects results.
 """
 
+import asyncio
 import logging
 import time
 from dataclasses import dataclass, field
@@ -10,9 +11,19 @@ from datetime import datetime
 from typing import Any, Callable, Dict, List, Optional, Tuple
 from uuid import uuid4
 
-from app.benchmark.mast_loader import ALL_FAILURE_MODES, MASTDataLoader, MASTRecord
+from app.benchmark.mast_loader import (
+    ALL_FAILURE_MODES,
+    FAILURE_MODE_NAMES,
+    MASTDataLoader,
+    MASTRecord,
+)
 
 logger = logging.getLogger(__name__)
+
+# Semantic failure modes that benefit from LLM-based detection
+# These are modes where keyword matching fundamentally fails because
+# failures are structural/behavioral rather than linguistic
+LLM_SEMANTIC_MODES = {"F6", "F8", "F9", "F13"}
 
 
 @dataclass
@@ -137,12 +148,20 @@ class BenchmarkRunner:
         self,
         progress_callback: Optional[Callable[[int, int], None]] = None,
         use_ml_detector: bool = True,
+        use_llm_detector: bool = False,
+        llm_model: str = "haiku",
+        llm_modes: Optional[List[str]] = None,
+        max_llm_records: Optional[int] = None,
     ) -> BenchmarkResult:
         """Run full benchmark.
 
         Args:
             progress_callback: Optional callback(processed, total) for progress
             use_ml_detector: Whether to use ML detector (requires training)
+            use_llm_detector: Whether to use LLM detector for semantic modes
+            llm_model: LLM model to use ('haiku', 'sonnet', 'opus')
+            llm_modes: Failure modes for LLM detection (default: F6,F8,F9,F13)
+            max_llm_records: Maximum records for LLM detection (cost control)
 
         Returns:
             BenchmarkResult with all attempts and ground truths
@@ -159,7 +178,14 @@ class BenchmarkRunner:
         for record in records:
             result.ground_truths[record.trace_id] = record.ground_truth
 
-        # Process in batches
+        # Determine which modes to handle with LLM vs rule-based
+        llm_detection_modes = set()
+        if use_llm_detector:
+            llm_detection_modes = set(llm_modes) if llm_modes else LLM_SEMANTIC_MODES
+            llm_detection_modes = llm_detection_modes & set(self.failure_modes)
+            logger.info(f"Using LLM detection for modes: {llm_detection_modes}")
+
+        # Process in batches (for rule-based/ML detection)
         for i in range(0, len(records), self.batch_size):
             batch = records[i:i + self.batch_size]
 
@@ -167,6 +193,7 @@ class BenchmarkRunner:
                 batch_attempts = self._process_batch(
                     batch,
                     use_ml_detector=use_ml_detector,
+                    skip_modes=llm_detection_modes,  # Skip LLM modes in batch
                 )
                 result.attempts.extend(batch_attempts)
                 result.processed_records += len(batch)
@@ -178,6 +205,22 @@ class BenchmarkRunner:
             if progress_callback:
                 progress_callback(result.processed_records, result.total_records)
 
+        # Run LLM detection if enabled
+        if use_llm_detector and llm_detection_modes:
+            logger.info(f"Running LLM detection ({llm_model}) for {len(llm_detection_modes)} modes...")
+            try:
+                llm_attempts = self._run_llm_detection(
+                    records,
+                    llm_modes=list(llm_detection_modes),
+                    model=llm_model,
+                    max_records=max_llm_records,
+                )
+                result.attempts.extend(llm_attempts)
+                logger.info(f"LLM detection complete: {len(llm_attempts)} attempts")
+            except Exception as e:
+                logger.error(f"LLM detection failed: {e}")
+                result.errors.append(f"LLM detection: {str(e)}")
+
         # Count detections
         result.total_detections = sum(1 for a in result.attempts if a.detected)
         result.completed_at = datetime.utcnow()
@@ -188,32 +231,35 @@ class BenchmarkRunner:
         self,
         records: List[MASTRecord],
         use_ml_detector: bool = True,
+        skip_modes: Optional[set] = None,
     ) -> List[DetectionAttempt]:
         """Process a batch of records.
 
         Args:
             records: List of MASTRecord to process
             use_ml_detector: Whether to use ML detector
+            skip_modes: Modes to skip (handled by LLM detection)
 
         Returns:
             List of DetectionAttempt for all modes and records
         """
+        skip_modes = skip_modes or set()
         attempts = []
 
         # Run ML detector in batch mode for F1-F14
         if use_ml_detector:
-            ml_attempts = self._run_ml_detector_batch(records)
+            ml_attempts = self._run_ml_detector_batch(records, skip_modes)
             attempts.extend(ml_attempts)
         else:
             # Run rule-based detection for F1-F14
-            rule_attempts = self._run_rule_based_batch(records)
+            rule_attempts = self._run_rule_based_batch(records, skip_modes)
             attempts.extend(rule_attempts)
 
         # Run enterprise detectors for F15, F16
         for record in records:
             for mode in self.failure_modes:
-                # Skip modes already handled
-                if mode in [f"F{i}" for i in range(1, 15)]:
+                # Skip modes already handled or being handled by LLM
+                if mode in [f"F{i}" for i in range(1, 15)] or mode in skip_modes:
                     continue
 
                 # Run appropriate enterprise detector (F15, F16)
@@ -226,15 +272,18 @@ class BenchmarkRunner:
     def _run_ml_detector_batch(
         self,
         records: List[MASTRecord],
+        skip_modes: Optional[set] = None,
     ) -> List[DetectionAttempt]:
         """Run ML detector on batch of records.
 
         Args:
             records: List of records to process
+            skip_modes: Modes to skip (handled by LLM detection)
 
         Returns:
             List of DetectionAttempt for F1-F14
         """
+        skip_modes = skip_modes or set()
         attempts = []
 
         # Check if ML detector is available
@@ -249,7 +298,7 @@ class BenchmarkRunner:
         # Check if trained
         if not self._ml_detector.is_trained:
             logger.warning("ML detector not trained, using rule-based detection")
-            return self._run_rule_based_batch(records)
+            return self._run_rule_based_batch(records, skip_modes)
 
         # Prepare batch input
         batch_input = [
@@ -265,7 +314,7 @@ class BenchmarkRunner:
 
             for record, preds in zip(records, predictions):
                 for mode, detected in preds.items():
-                    if mode not in self.failure_modes:
+                    if mode not in self.failure_modes or mode in skip_modes:
                         continue
 
                     attempts.append(DetectionAttempt(
@@ -279,18 +328,20 @@ class BenchmarkRunner:
 
         except Exception as e:
             logger.error(f"ML detector batch failed: {e}")
-            return self._run_rule_based_batch(records)
+            return self._run_rule_based_batch(records, skip_modes)
 
         return attempts
 
     def _run_rule_based_batch(
         self,
         records: List[MASTRecord],
+        skip_modes: Optional[set] = None,
     ) -> List[DetectionAttempt]:
         """Run rule-based detection as fallback.
 
         Uses improved keyword matching and turn-aware detectors for F6/F9.
         """
+        skip_modes = skip_modes or set()
         attempts = []
 
         # Improved keyword patterns for each mode (based on MAST vocabulary)
@@ -366,9 +417,10 @@ class BenchmarkRunner:
             ],
         }
 
-        # Run turn-aware detection for F6 and F9
-        turn_aware_attempts = self._run_turn_aware_detectors(records)
-        attempts.extend(turn_aware_attempts)
+        # Run turn-aware detection for F6 (unless skipped for LLM)
+        if "F6" not in skip_modes:
+            turn_aware_attempts = self._run_turn_aware_detectors(records)
+            attempts.extend(turn_aware_attempts)
 
         # Get modes handled by turn-aware detectors
         turn_aware_modes = {"F6"}  # F9 removed for now - needs more work
@@ -377,8 +429,8 @@ class BenchmarkRunner:
             trajectory_lower = record.trajectory.lower()
 
             for mode in self.failure_modes:
-                # Skip modes handled by turn-aware detectors
-                if mode in turn_aware_modes:
+                # Skip modes handled by turn-aware detectors or LLM
+                if mode in turn_aware_modes or mode in skip_modes:
                     continue
 
                 if mode not in mode_keywords:
@@ -476,6 +528,262 @@ class BenchmarkRunner:
                 ))
 
         return attempts
+
+    def _run_llm_detection(
+        self,
+        records: List[MASTRecord],
+        llm_modes: Optional[List[str]] = None,
+        model: str = "haiku",
+        max_records: Optional[int] = None,
+        use_few_shot: bool = True,
+    ) -> List[DetectionAttempt]:
+        """Run LLM-based detection for semantic failure modes.
+
+        Uses Claude to analyze trajectories for failure modes that keyword
+        matching cannot detect (structural/behavioral failures).
+
+        Args:
+            records: List of records to process
+            llm_modes: Failure modes to use LLM for (default: F6, F8, F9, F13)
+            model: Model to use ('haiku', 'sonnet', 'opus')
+            max_records: Maximum records to process (for cost control)
+            use_few_shot: Include few-shot examples in prompt
+
+        Returns:
+            List of DetectionAttempt for LLM-detected modes
+        """
+        if llm_modes is None:
+            llm_modes = list(LLM_SEMANTIC_MODES)
+
+        # Filter to only modes in our target list
+        llm_modes = [m for m in llm_modes if m in self.failure_modes]
+        if not llm_modes:
+            return []
+
+        # Apply record limit if specified
+        if max_records:
+            records = records[:max_records]
+
+        # Run async detection
+        try:
+            loop = asyncio.get_event_loop()
+        except RuntimeError:
+            loop = asyncio.new_event_loop()
+            asyncio.set_event_loop(loop)
+
+        return loop.run_until_complete(
+            self._run_llm_detection_async(records, llm_modes, model, use_few_shot)
+        )
+
+    async def _run_llm_detection_async(
+        self,
+        records: List[MASTRecord],
+        llm_modes: List[str],
+        model: str,
+        use_few_shot: bool,
+    ) -> List[DetectionAttempt]:
+        """Async implementation of LLM detection."""
+        import os
+        from anthropic import AsyncAnthropic
+
+        api_key = os.getenv("ANTHROPIC_API_KEY")
+        if not api_key:
+            logger.error("ANTHROPIC_API_KEY not set, skipping LLM detection")
+            return []
+
+        client = AsyncAnthropic(api_key=api_key)
+
+        # Model selection
+        model_map = {
+            "haiku": "claude-3-5-haiku-20241022",
+            "sonnet": "claude-sonnet-4-20250514",
+            "opus": "claude-opus-4-20250514",
+        }
+        model_id = model_map.get(model, model_map["haiku"])
+
+        # Get few-shot examples if enabled
+        few_shot_examples = {}
+        if use_few_shot:
+            try:
+                from app.benchmark.few_shot_bank import MAST_FEW_SHOT_EXAMPLES
+                few_shot_examples = MAST_FEW_SHOT_EXAMPLES
+            except ImportError:
+                logger.warning("Few-shot bank not available, proceeding without examples")
+
+        attempts = []
+        total = len(records) * len(llm_modes)
+        processed = 0
+
+        for record in records:
+            for mode in llm_modes:
+                # Skip if mode not in ground truth
+                if mode not in record.ground_truth:
+                    continue
+
+                start_time = time.time()
+
+                try:
+                    # Build prompt
+                    prompt = self._build_llm_prompt(
+                        record, mode, few_shot_examples.get(mode, {})
+                    )
+
+                    # Call Claude
+                    response = await client.messages.create(
+                        model=model_id,
+                        max_tokens=1000,
+                        messages=[{"role": "user", "content": prompt}],
+                    )
+
+                    # Parse response
+                    content = response.content[0].text
+                    detected, confidence, reasoning = self._parse_llm_response(content)
+
+                    latency_ms = (time.time() - start_time) * 1000
+
+                    attempts.append(DetectionAttempt(
+                        record_id=record.trace_id,
+                        failure_mode=mode,
+                        detector_name=f"llm_{model}",
+                        detected=detected,
+                        confidence=confidence,
+                        latency_ms=latency_ms,
+                        raw_result={"reasoning": reasoning[:500]},
+                    ))
+
+                    processed += 1
+                    if processed % 10 == 0:
+                        logger.info(f"LLM detection progress: {processed}/{total}")
+
+                except Exception as e:
+                    latency_ms = (time.time() - start_time) * 1000
+                    logger.warning(f"LLM detection failed for {record.trace_id}/{mode}: {e}")
+                    attempts.append(DetectionAttempt(
+                        record_id=record.trace_id,
+                        failure_mode=mode,
+                        detector_name=f"llm_{model}",
+                        detected=False,
+                        confidence=0.0,
+                        latency_ms=latency_ms,
+                        error=str(e),
+                    ))
+
+        return attempts
+
+    def _build_llm_prompt(
+        self,
+        record: MASTRecord,
+        mode: str,
+        few_shot: Dict[str, Any],
+    ) -> str:
+        """Build LLM prompt for failure mode detection."""
+        mode_name = FAILURE_MODE_NAMES.get(mode, mode)
+
+        # Mode-specific definitions
+        mode_definitions = {
+            "F6": """Task Derailment occurs when an agent deviates from the intended objective
+or focus of the task, pursuing unrelated work or losing track of the original goal.
+Signs include: implementing different features than requested, working on tangential
+problems, or shifting focus mid-task to unrelated concerns.""",
+            "F8": """Information Withholding occurs when an agent fails to share or communicate
+important data or insights that could impact decision-making. Signs include: having
+relevant information but not mentioning it, hiding errors, or failing to communicate
+important findings to other agents.""",
+            "F9": """Role Usurpation occurs when an agent acts outside their designated role
+or takes over responsibilities assigned to another agent. Signs include: a CEO writing
+code, a tester making design decisions, or any agent performing tasks outside their
+defined role boundaries.""",
+            "F13": """Quality Gate Bypass occurs when testing, review, or validation steps
+are skipped, inadequate, or shallow. Signs include: tests that don't verify actual
+requirements, reviews that rubber-stamp without examination, or pushing code without
+proper quality checks.""",
+        }
+
+        definition = mode_definitions.get(mode, f"Failure mode {mode}: {mode_name}")
+
+        # Build few-shot section
+        few_shot_section = ""
+        if few_shot:
+            examples = []
+            for pos in few_shot.get("positive", [])[:2]:
+                examples.append(f"""
+**Example of {mode} (YES):**
+Task: {pos.get('task', 'N/A')}
+Trajectory snippet: {pos.get('trajectory_snippet', 'N/A')[:500]}
+Why: {pos.get('explanation', 'This is a clear example of this failure mode.')}
+""")
+            for neg in few_shot.get("negative", [])[:1]:
+                examples.append(f"""
+**Example of NOT {mode} (NO):**
+Task: {neg.get('task', 'N/A')}
+Trajectory snippet: {neg.get('trajectory_snippet', 'N/A')[:500]}
+Why: {neg.get('explanation', 'This does not exhibit this failure mode.')}
+""")
+            if examples:
+                few_shot_section = "\n## Reference Examples\n" + "\n".join(examples)
+
+        # Truncate trajectory to fit context
+        trajectory = record.trajectory[:80000]  # ~100K chars max
+
+        prompt = f"""You are an expert evaluator of multi-agent AI systems. Your task is to
+determine if a trace exhibits failure mode {mode} ({mode_name}).
+
+## Failure Mode Definition
+
+{definition}
+{few_shot_section}
+
+## Trace to Evaluate
+
+**Task/Goal:** {record.task[:1000]}
+
+**Framework:** {record.framework}
+
+**Agent Trajectory:**
+```
+{trajectory}
+```
+
+## Your Evaluation
+
+Does this trace exhibit failure mode {mode} ({mode_name})?
+
+Respond in JSON format:
+```json
+{{
+  "verdict": "YES" or "NO",
+  "confidence": <0.0-1.0>,
+  "reasoning": "<brief explanation citing specific evidence>"
+}}
+```
+"""
+        return prompt
+
+    def _parse_llm_response(self, content: str) -> Tuple[bool, float, str]:
+        """Parse LLM response into (detected, confidence, reasoning)."""
+        import json
+        import re
+
+        # Try to extract JSON
+        json_match = re.search(r'\{[^{}]*"verdict"[^{}]*\}', content, re.DOTALL)
+        if json_match:
+            try:
+                parsed = json.loads(json_match.group())
+                verdict = parsed.get("verdict", "").upper()
+                confidence = float(parsed.get("confidence", 0.5))
+                reasoning = parsed.get("reasoning", "")
+                return verdict == "YES", confidence, reasoning
+            except (json.JSONDecodeError, ValueError):
+                pass
+
+        # Fallback: keyword detection
+        content_upper = content.upper()
+        if '"YES"' in content_upper or "VERDICT: YES" in content_upper:
+            return True, 0.7, content[:500]
+        elif '"NO"' in content_upper or "VERDICT: NO" in content_upper:
+            return False, 0.7, content[:500]
+
+        return False, 0.5, content[:500]
 
     def _run_enterprise_detector(
         self,
