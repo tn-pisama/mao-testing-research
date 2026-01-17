@@ -1,0 +1,519 @@
+'use client'
+
+export const dynamic = 'force-dynamic'
+
+import { useState, useEffect, useCallback } from 'react'
+import { Layout } from '@/components/common/Layout'
+import { useSafeAuth as useAuth } from '@/hooks/useSafeAuth'
+import { useTenant } from '@/hooks/useTenant'
+import { Tabs, TabsList, TabsTrigger, TabsContent } from '@/components/ui/Tabs'
+import { HealingDashboard } from '@/components/healing/HealingDashboard'
+import { VersionHistory } from '@/components/healing/VersionHistory'
+import { RollbackConfirmModal } from '@/components/healing/RollbackConfirmModal'
+import {
+  createApiClient,
+  HealingRecord,
+  N8nConnection,
+  WorkflowVersion
+} from '@/lib/api'
+import {
+  Sparkles,
+  Settings,
+  GitBranch,
+  AlertTriangle,
+  Plus,
+  Trash2,
+  CheckCircle2,
+  XCircle,
+  Loader2,
+  RefreshCw,
+  ExternalLink
+} from 'lucide-react'
+import { Button } from '@/components/ui/Button'
+import { Card, CardHeader, CardTitle, CardContent } from '@/components/ui/Card'
+import { Badge } from '@/components/ui/Badge'
+
+export default function HealingPage() {
+  const { getToken } = useAuth()
+  const { tenantId } = useTenant()
+
+  const [activeTab, setActiveTab] = useState('healings')
+  const [isLoading, setIsLoading] = useState(true)
+  const [error, setError] = useState<string | null>(null)
+
+  // Data
+  const [healings, setHealings] = useState<HealingRecord[]>([])
+  const [connections, setConnections] = useState<N8nConnection[]>([])
+  const [versions, setVersions] = useState<WorkflowVersion[]>([])
+  const [selectedWorkflowId, setSelectedWorkflowId] = useState<string>('')
+  const [selectedConnectionId, setSelectedConnectionId] = useState<string>('')
+
+  // Modals
+  const [showAddConnection, setShowAddConnection] = useState(false)
+  const [rollbackModal, setRollbackModal] = useState<{
+    isOpen: boolean
+    healingId: string
+    workflowId?: string
+    fixType?: string
+  }>({ isOpen: false, healingId: '' })
+
+  // Form state for add connection
+  const [newConnection, setNewConnection] = useState({
+    name: '',
+    instance_url: '',
+    api_key: ''
+  })
+  const [isAddingConnection, setIsAddingConnection] = useState(false)
+  const [testingConnection, setTestingConnection] = useState<string | null>(null)
+  const [deletingConnection, setDeletingConnection] = useState<string | null>(null)
+
+  const fetchData = useCallback(async () => {
+    if (!tenantId) return
+
+    setIsLoading(true)
+    setError(null)
+
+    try {
+      const token = await getToken()
+      const api = createApiClient(token, tenantId)
+
+      const [healingsRes, connectionsRes] = await Promise.all([
+        api.listHealingRecords({ perPage: 50 }).catch(() => ({ items: [], total: 0, page: 1, per_page: 50 })),
+        api.listN8nConnections().catch(() => ({ items: [], total: 0 }))
+      ])
+
+      setHealings(healingsRes.items || [])
+      setConnections(connectionsRes.items || [])
+    } catch (err) {
+      console.error('Failed to fetch healing data:', err)
+      setError('Failed to load healing data')
+    } finally {
+      setIsLoading(false)
+    }
+  }, [tenantId, getToken])
+
+  useEffect(() => {
+    fetchData()
+  }, [fetchData])
+
+  const fetchVersions = useCallback(async () => {
+    if (!tenantId || !selectedWorkflowId || !selectedConnectionId) {
+      setVersions([])
+      return
+    }
+
+    try {
+      const token = await getToken()
+      const api = createApiClient(token, tenantId)
+      const res = await api.getWorkflowVersions(selectedWorkflowId, selectedConnectionId)
+      setVersions(res.versions || [])
+    } catch (err) {
+      console.error('Failed to fetch versions:', err)
+      setVersions([])
+    }
+  }, [tenantId, selectedWorkflowId, selectedConnectionId, getToken])
+
+  useEffect(() => {
+    if (activeTab === 'history') {
+      fetchVersions()
+    }
+  }, [activeTab, fetchVersions])
+
+  // Healing actions
+  const handlePromote = async (healingId: string) => {
+    if (!tenantId) return
+    try {
+      const token = await getToken()
+      const api = createApiClient(token, tenantId)
+      await api.promoteHealing(healingId)
+      await fetchData()
+    } catch (err) {
+      console.error('Failed to promote:', err)
+    }
+  }
+
+  const handleReject = async (healingId: string) => {
+    if (!tenantId) return
+    try {
+      const token = await getToken()
+      const api = createApiClient(token, tenantId)
+      await api.rejectHealing(healingId)
+      await fetchData()
+    } catch (err) {
+      console.error('Failed to reject:', err)
+    }
+  }
+
+  const handleRollback = async (healingId: string) => {
+    const healing = healings.find(h => h.id === healingId)
+    setRollbackModal({
+      isOpen: true,
+      healingId,
+      workflowId: healing?.workflow_id,
+      fixType: healing?.fix_type
+    })
+  }
+
+  const confirmRollback = async () => {
+    if (!tenantId) return
+    try {
+      const token = await getToken()
+      const api = createApiClient(token, tenantId)
+      await api.rollbackHealing(rollbackModal.healingId)
+      setRollbackModal({ isOpen: false, healingId: '' })
+      await fetchData()
+    } catch (err) {
+      console.error('Failed to rollback:', err)
+    }
+  }
+
+  const handleRestoreVersion = async (versionId: string) => {
+    if (!tenantId) return
+    try {
+      const token = await getToken()
+      const api = createApiClient(token, tenantId)
+      await api.restoreVersion(versionId)
+      await fetchVersions()
+      await fetchData()
+    } catch (err) {
+      console.error('Failed to restore version:', err)
+    }
+  }
+
+  // Connection actions
+  const handleAddConnection = async () => {
+    if (!tenantId || !newConnection.name || !newConnection.instance_url || !newConnection.api_key) return
+
+    setIsAddingConnection(true)
+    try {
+      const token = await getToken()
+      const api = createApiClient(token, tenantId)
+      await api.createN8nConnection(newConnection)
+      setNewConnection({ name: '', instance_url: '', api_key: '' })
+      setShowAddConnection(false)
+      await fetchData()
+    } catch (err) {
+      console.error('Failed to add connection:', err)
+    } finally {
+      setIsAddingConnection(false)
+    }
+  }
+
+  const handleTestConnection = async (connectionId: string) => {
+    if (!tenantId) return
+    setTestingConnection(connectionId)
+    try {
+      const token = await getToken()
+      const api = createApiClient(token, tenantId)
+      await api.testN8nConnection(connectionId)
+      await fetchData()
+    } catch (err) {
+      console.error('Failed to test connection:', err)
+    } finally {
+      setTestingConnection(null)
+    }
+  }
+
+  const handleDeleteConnection = async (connectionId: string) => {
+    if (!tenantId) return
+    setDeletingConnection(connectionId)
+    try {
+      const token = await getToken()
+      const api = createApiClient(token, tenantId)
+      await api.deleteN8nConnection(connectionId)
+      await fetchData()
+    } catch (err) {
+      console.error('Failed to delete connection:', err)
+    } finally {
+      setDeletingConnection(null)
+    }
+  }
+
+  // Get unique workflow IDs from healings for version history
+  const workflowIds = [...new Set(healings.filter(h => h.workflow_id).map(h => h.workflow_id!))]
+
+  return (
+    <Layout>
+      <div className="p-6">
+        {/* Header */}
+        <div className="flex items-center justify-between mb-6">
+          <div className="flex items-center gap-3">
+            <div className="p-2 bg-purple-500/20 rounded-lg">
+              <Sparkles size={24} className="text-purple-400" />
+            </div>
+            <div>
+              <h1 className="text-2xl font-bold text-white">Self-Healing</h1>
+              <p className="text-sm text-slate-400">
+                Manage automated fixes and staged deployments for n8n workflows
+              </p>
+            </div>
+          </div>
+          <Button
+            variant="ghost"
+            onClick={fetchData}
+            leftIcon={<RefreshCw size={16} />}
+          >
+            Refresh
+          </Button>
+        </div>
+
+        {/* Error Banner */}
+        {error && (
+          <div className="mb-6 p-4 bg-red-500/10 border border-red-500/20 rounded-xl flex items-center gap-3">
+            <AlertTriangle size={20} className="text-red-400" />
+            <p className="text-sm text-red-300">{error}</p>
+          </div>
+        )}
+
+        {/* Tabs */}
+        <Tabs value={activeTab} onValueChange={setActiveTab}>
+          <TabsList className="mb-6">
+            <TabsTrigger value="healings">
+              <Sparkles size={14} className="mr-2" />
+              Healings
+            </TabsTrigger>
+            <TabsTrigger value="connections">
+              <Settings size={14} className="mr-2" />
+              n8n Connections
+            </TabsTrigger>
+            <TabsTrigger value="history">
+              <GitBranch size={14} className="mr-2" />
+              Version History
+            </TabsTrigger>
+          </TabsList>
+
+          {/* Healings Tab */}
+          <TabsContent value="healings">
+            <HealingDashboard
+              healings={healings}
+              isLoading={isLoading}
+              onPromote={handlePromote}
+              onReject={handleReject}
+              onRollback={handleRollback}
+              onRefresh={fetchData}
+            />
+          </TabsContent>
+
+          {/* Connections Tab */}
+          <TabsContent value="connections">
+            <div className="space-y-4">
+              <div className="flex items-center justify-between">
+                <h2 className="text-lg font-semibold text-white">n8n Connections</h2>
+                <Button
+                  variant="primary"
+                  size="sm"
+                  onClick={() => setShowAddConnection(true)}
+                  leftIcon={<Plus size={14} />}
+                >
+                  Add Connection
+                </Button>
+              </div>
+
+              {isLoading ? (
+                <Card>
+                  <CardContent className="p-4">
+                    <div className="animate-pulse space-y-3">
+                      {[1, 2].map(i => (
+                        <div key={i} className="h-16 bg-slate-700 rounded-lg" />
+                      ))}
+                    </div>
+                  </CardContent>
+                </Card>
+              ) : connections.length === 0 ? (
+                <Card>
+                  <CardContent className="p-8 text-center text-slate-400">
+                    <Settings size={32} className="mx-auto mb-3 opacity-50" />
+                    <p className="text-sm">No n8n connections configured</p>
+                    <p className="text-xs text-slate-500 mt-1">
+                      Add a connection to apply fixes to your n8n workflows
+                    </p>
+                    <Button
+                      variant="primary"
+                      size="sm"
+                      className="mt-4"
+                      onClick={() => setShowAddConnection(true)}
+                      leftIcon={<Plus size={14} />}
+                    >
+                      Add Connection
+                    </Button>
+                  </CardContent>
+                </Card>
+              ) : (
+                <div className="space-y-3">
+                  {connections.map(conn => (
+                    <Card key={conn.id}>
+                      <CardContent className="p-4">
+                        <div className="flex items-center justify-between">
+                          <div className="flex items-center gap-3">
+                            <div className={`p-2 rounded-lg ${conn.is_active ? 'bg-green-500/20' : 'bg-slate-500/20'}`}>
+                              {conn.is_active
+                                ? <CheckCircle2 size={20} className="text-green-400" />
+                                : <XCircle size={20} className="text-slate-400" />
+                              }
+                            </div>
+                            <div>
+                              <p className="text-sm font-medium text-white">{conn.name}</p>
+                              <p className="text-xs text-slate-400">{conn.instance_url}</p>
+                              {conn.last_error && (
+                                <p className="text-xs text-red-400 mt-1">{conn.last_error}</p>
+                              )}
+                            </div>
+                          </div>
+                          <div className="flex items-center gap-2">
+                            <Badge variant={conn.is_active ? 'success' : 'default'} size="sm">
+                              {conn.is_active ? 'Active' : 'Inactive'}
+                            </Badge>
+                            <Button
+                              variant="ghost"
+                              size="sm"
+                              onClick={() => handleTestConnection(conn.id)}
+                              isLoading={testingConnection === conn.id}
+                            >
+                              Test
+                            </Button>
+                            <Button
+                              variant="ghost"
+                              size="sm"
+                              onClick={() => window.open(conn.instance_url, '_blank')}
+                              leftIcon={<ExternalLink size={14} />}
+                            >
+                              Open
+                            </Button>
+                            <Button
+                              variant="danger"
+                              size="sm"
+                              onClick={() => handleDeleteConnection(conn.id)}
+                              isLoading={deletingConnection === conn.id}
+                              leftIcon={<Trash2 size={14} />}
+                            >
+                              Delete
+                            </Button>
+                          </div>
+                        </div>
+                      </CardContent>
+                    </Card>
+                  ))}
+                </div>
+              )}
+
+              {/* Add Connection Modal */}
+              {showAddConnection && (
+                <div className="fixed inset-0 z-50 flex items-center justify-center">
+                  <div className="absolute inset-0 bg-black/60" onClick={() => setShowAddConnection(false)} />
+                  <div className="relative bg-slate-900 border border-slate-700 rounded-xl p-6 w-full max-w-md">
+                    <h3 className="text-lg font-semibold text-white mb-4">Add n8n Connection</h3>
+                    <div className="space-y-4">
+                      <div>
+                        <label className="text-sm text-slate-400 mb-1 block">Name</label>
+                        <input
+                          type="text"
+                          value={newConnection.name}
+                          onChange={(e) => setNewConnection({ ...newConnection, name: e.target.value })}
+                          placeholder="Production n8n"
+                          className="w-full px-3 py-2 bg-slate-800 border border-slate-700 rounded-lg text-white text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
+                        />
+                      </div>
+                      <div>
+                        <label className="text-sm text-slate-400 mb-1 block">Instance URL</label>
+                        <input
+                          type="text"
+                          value={newConnection.instance_url}
+                          onChange={(e) => setNewConnection({ ...newConnection, instance_url: e.target.value })}
+                          placeholder="https://your-instance.app.n8n.cloud"
+                          className="w-full px-3 py-2 bg-slate-800 border border-slate-700 rounded-lg text-white text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
+                        />
+                      </div>
+                      <div>
+                        <label className="text-sm text-slate-400 mb-1 block">API Key</label>
+                        <input
+                          type="password"
+                          value={newConnection.api_key}
+                          onChange={(e) => setNewConnection({ ...newConnection, api_key: e.target.value })}
+                          placeholder="n8n_api_..."
+                          className="w-full px-3 py-2 bg-slate-800 border border-slate-700 rounded-lg text-white text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
+                        />
+                      </div>
+                    </div>
+                    <div className="flex justify-end gap-2 mt-6">
+                      <Button variant="ghost" onClick={() => setShowAddConnection(false)}>
+                        Cancel
+                      </Button>
+                      <Button
+                        variant="primary"
+                        onClick={handleAddConnection}
+                        isLoading={isAddingConnection}
+                        disabled={!newConnection.name || !newConnection.instance_url || !newConnection.api_key}
+                      >
+                        Add Connection
+                      </Button>
+                    </div>
+                  </div>
+                </div>
+              )}
+            </div>
+          </TabsContent>
+
+          {/* Version History Tab */}
+          <TabsContent value="history">
+            <div className="space-y-4">
+              <div className="flex items-center gap-4">
+                <div className="flex-1">
+                  <label className="text-sm text-slate-400 mb-1 block">Workflow ID</label>
+                  <select
+                    value={selectedWorkflowId}
+                    onChange={(e) => setSelectedWorkflowId(e.target.value)}
+                    className="w-full px-3 py-2 bg-slate-800 border border-slate-700 rounded-lg text-white text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
+                  >
+                    <option value="">Select a workflow...</option>
+                    {workflowIds.map(id => (
+                      <option key={id} value={id}>{id}</option>
+                    ))}
+                  </select>
+                </div>
+                <div className="flex-1">
+                  <label className="text-sm text-slate-400 mb-1 block">Connection</label>
+                  <select
+                    value={selectedConnectionId}
+                    onChange={(e) => setSelectedConnectionId(e.target.value)}
+                    className="w-full px-3 py-2 bg-slate-800 border border-slate-700 rounded-lg text-white text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
+                  >
+                    <option value="">Select a connection...</option>
+                    {connections.map(conn => (
+                      <option key={conn.id} value={conn.id}>{conn.name}</option>
+                    ))}
+                  </select>
+                </div>
+              </div>
+
+              {selectedWorkflowId && selectedConnectionId ? (
+                <VersionHistory
+                  versions={versions}
+                  workflowId={selectedWorkflowId}
+                  onRestore={handleRestoreVersion}
+                  isLoading={false}
+                />
+              ) : (
+                <Card>
+                  <CardContent className="p-8 text-center text-slate-400">
+                    <GitBranch size={32} className="mx-auto mb-3 opacity-50" />
+                    <p className="text-sm">Select a workflow and connection to view version history</p>
+                  </CardContent>
+                </Card>
+              )}
+            </div>
+          </TabsContent>
+        </Tabs>
+      </div>
+
+      {/* Rollback Confirmation Modal */}
+      <RollbackConfirmModal
+        isOpen={rollbackModal.isOpen}
+        onClose={() => setRollbackModal({ isOpen: false, healingId: '' })}
+        onConfirm={confirmRollback}
+        healingId={rollbackModal.healingId}
+        workflowId={rollbackModal.workflowId}
+        fixType={rollbackModal.fixType}
+      />
+    </Layout>
+  )
+}

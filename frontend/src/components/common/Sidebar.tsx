@@ -16,6 +16,7 @@ import {
   Shield,
   GitBranch,
   Box,
+  Sparkles,
 } from 'lucide-react'
 
 interface NavItem {
@@ -29,6 +30,7 @@ const mainNavItems: NavItem[] = [
   { label: 'Dashboard', href: '/dashboard', icon: LayoutDashboard },
   { label: 'Traces', href: '/traces', icon: Activity },
   { label: 'Detections', href: '/detections', icon: AlertTriangle },
+  { label: 'Healing', href: '/healing', icon: Sparkles },
   { label: 'Benchmarks', href: '/benchmarks', icon: BarChart3 },
 ]
 
