@@ -11,7 +11,8 @@ import {
   ChevronUp,
   Zap,
   Activity,
-  Loader2
+  Loader2,
+  type LucideIcon
 } from 'lucide-react'
 import { Card, CardHeader, CardTitle, CardContent } from '../ui/Card'
 import { Badge } from '../ui/Badge'
@@ -31,7 +32,7 @@ const severityConfig = {
   low: { label: 'Minor', description: 'Small improvement opportunity', variant: 'default' as const, color: 'text-slate-400', bg: 'bg-slate-500/20' },
 }
 
-const categoryIcons: Record<string, React.ComponentType<{ size?: number; className?: string }>> = {
+const categoryIcons: Record<string, LucideIcon> = {
   infinite_loop: Activity,
   state_corruption: AlertTriangle,
   persona_drift: Zap,
