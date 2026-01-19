@@ -48,8 +48,8 @@ htmlcov/
 # Vercel
 .vercel
 
-# Scraped traces (large data files)
-traces/
+# Scraped traces (large data files) - only at root level
+/traces/
 
 # macOS
 .DS_Store
