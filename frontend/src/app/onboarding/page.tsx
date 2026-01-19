@@ -13,7 +13,8 @@ import {
   Play,
   Copy,
   Check,
-  ExternalLink
+  ExternalLink,
+  type LucideIcon
 } from 'lucide-react'
 import { Card, CardContent } from '@/components/ui/Card'
 import { Button } from '@/components/ui/Button'
@@ -22,7 +23,7 @@ interface Step {
   id: number
   title: string
   description: string
-  icon: React.ComponentType<{ size?: number; className?: string }>
+  icon: LucideIcon
 }
 
 const steps: Step[] = [
