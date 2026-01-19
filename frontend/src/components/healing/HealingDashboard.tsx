@@ -7,7 +7,8 @@ import {
   Clock,
   XCircle,
   AlertTriangle,
-  RefreshCw
+  RefreshCw,
+  type LucideIcon
 } from 'lucide-react'
 import { Card, CardContent } from '../ui/Card'
 import { Button } from '../ui/Button'
@@ -28,7 +29,7 @@ interface HealingDashboardProps {
 interface StatsCardProps {
   title: string
   value: number
-  icon: React.ComponentType<{ size?: number; className?: string }>
+  icon: LucideIcon
   color: string
 }
 
