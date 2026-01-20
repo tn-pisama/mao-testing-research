@@ -14,10 +14,14 @@ import {
   Copy,
   Check,
   ExternalLink,
+  GitBranch,
+  Code2,
+  Users,
   type LucideIcon
 } from 'lucide-react'
 import { Card, CardContent } from '@/components/ui/Card'
 import { Button } from '@/components/ui/Button'
+import { useUserPreferences, type UserType } from '@/lib/user-preferences'
 
 interface Step {
   id: number
@@ -29,24 +33,30 @@ interface Step {
 const steps: Step[] = [
   {
     id: 1,
+    title: 'Who Are You?',
+    description: 'Help us customize your experience',
+    icon: Users
+  },
+  {
+    id: 2,
     title: 'Welcome',
     description: 'Let\'s set up your workflow monitoring in just a few minutes',
     icon: Shield
   },
   {
-    id: 2,
+    id: 3,
     title: 'Connect Your n8n',
     description: 'Link your n8n instance so we can help fix problems automatically',
     icon: Link2
   },
   {
-    id: 3,
+    id: 4,
     title: 'Add Monitoring',
     description: 'Add a simple node to your n8n workflow to send us data',
     icon: Zap
   },
   {
-    id: 4,
+    id: 5,
     title: 'You\'re Ready!',
     description: 'Start monitoring your workflows and let us find and fix issues',
     icon: Play
@@ -74,6 +84,78 @@ function CopyButton({ text }: { text: string }) {
         <Copy size={16} className="text-slate-400" />
       )}
     </button>
+  )
+}
+
+function StepUserType({
+  selectedType,
+  onSelect
+}: {
+  selectedType: UserType
+  onSelect: (type: UserType) => void
+}) {
+  return (
+    <div className="space-y-6">
+      <div className="text-center">
+        <Users size={64} className="mx-auto mb-4 text-blue-500" />
+        <h2 className="text-2xl font-bold text-white mb-2">How do you build automations?</h2>
+        <p className="text-slate-400 max-w-md mx-auto">
+          This helps us show you the right features and use language you'll understand.
+        </p>
+      </div>
+
+      <div className="grid md:grid-cols-2 gap-6 max-w-2xl mx-auto mt-8">
+        <button
+          onClick={() => onSelect('n8n_user')}
+          className={`text-left p-6 rounded-xl border-2 transition-all ${
+            selectedType === 'n8n_user'
+              ? 'border-blue-500 bg-blue-500/10'
+              : 'border-slate-700 hover:border-slate-600 bg-slate-800/50'
+          }`}
+        >
+          <div className="w-14 h-14 bg-amber-500/20 rounded-xl flex items-center justify-center mb-4">
+            <GitBranch size={28} className="text-amber-400" />
+          </div>
+          <h3 className="text-lg font-semibold text-white mb-2">n8n / Visual Workflows</h3>
+          <p className="text-sm text-slate-400 mb-4">
+            I use n8n, Dify, Flowise, or similar visual automation tools.
+            I prefer simple interfaces and don't write much code.
+          </p>
+          <div className="flex flex-wrap gap-2">
+            <span className="text-xs bg-slate-700 text-slate-300 px-2 py-1 rounded">n8n</span>
+            <span className="text-xs bg-slate-700 text-slate-300 px-2 py-1 rounded">Dify</span>
+            <span className="text-xs bg-slate-700 text-slate-300 px-2 py-1 rounded">Flowise</span>
+          </div>
+        </button>
+
+        <button
+          onClick={() => onSelect('developer')}
+          className={`text-left p-6 rounded-xl border-2 transition-all ${
+            selectedType === 'developer'
+              ? 'border-blue-500 bg-blue-500/10'
+              : 'border-slate-700 hover:border-slate-600 bg-slate-800/50'
+          }`}
+        >
+          <div className="w-14 h-14 bg-green-500/20 rounded-xl flex items-center justify-center mb-4">
+            <Code2 size={28} className="text-green-400" />
+          </div>
+          <h3 className="text-lg font-semibold text-white mb-2">Developer / Code-first</h3>
+          <p className="text-sm text-slate-400 mb-4">
+            I build AI agents with code using frameworks like LangGraph, AutoGen, or CrewAI.
+            I'm comfortable with APIs and debugging.
+          </p>
+          <div className="flex flex-wrap gap-2">
+            <span className="text-xs bg-slate-700 text-slate-300 px-2 py-1 rounded">LangGraph</span>
+            <span className="text-xs bg-slate-700 text-slate-300 px-2 py-1 rounded">AutoGen</span>
+            <span className="text-xs bg-slate-700 text-slate-300 px-2 py-1 rounded">CrewAI</span>
+          </div>
+        </button>
+      </div>
+
+      <p className="text-center text-xs text-slate-500 mt-6">
+        You can always change this later in Settings
+      </p>
+    </div>
   )
 }
 
@@ -314,9 +396,21 @@ function StepComplete() {
 
 export default function OnboardingPage() {
   const router = useRouter()
+  const { setUserType, preferences } = useUserPreferences()
   const [currentStep, setCurrentStep] = useState(1)
+  const [selectedUserType, setSelectedUserType] = useState<UserType>(preferences.userType)
+
+  const handleUserTypeSelect = (type: UserType) => {
+    setSelectedUserType(type)
+    setUserType(type)
+  }
 
   const handleNext = () => {
+    // On step 1, require user type selection
+    if (currentStep === 1 && !selectedUserType) {
+      return
+    }
+
     if (currentStep < steps.length) {
       setCurrentStep(currentStep + 1)
     } else {
@@ -331,23 +425,32 @@ export default function OnboardingPage() {
   }
 
   const handleSkip = () => {
+    // If skipping without selecting user type, default to n8n_user for simplest experience
+    if (!selectedUserType) {
+      setUserType('n8n_user')
+    }
     router.push('/dashboard')
   }
 
   const renderStepContent = () => {
     switch (currentStep) {
       case 1:
-        return <StepWelcome />
+        return <StepUserType selectedType={selectedUserType} onSelect={handleUserTypeSelect} />
       case 2:
-        return <StepConnectN8n />
+        return <StepWelcome />
       case 3:
-        return <StepAddMonitoring />
+        return <StepConnectN8n />
       case 4:
+        return <StepAddMonitoring />
+      case 5:
         return <StepComplete />
       default:
-        return <StepWelcome />
+        return <StepUserType selectedType={selectedUserType} onSelect={handleUserTypeSelect} />
     }
   }
+
+  // Disable next button on step 1 if no user type selected
+  const isNextDisabled = currentStep === 1 && !selectedUserType
 
   return (
     <div className="min-h-screen bg-slate-950 flex flex-col">
@@ -426,6 +529,7 @@ export default function OnboardingPage() {
           <Button
             variant="primary"
             onClick={handleNext}
+            disabled={isNextDisabled}
             rightIcon={<ArrowRight size={16} />}
           >
             {currentStep === steps.length ? 'Go to Dashboard' : 'Continue'}

@@ -2,6 +2,7 @@
 
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
 import { useState, Component, ReactNode } from 'react'
+import { UserPreferencesProvider } from '@/lib/user-preferences'
 
 interface ErrorBoundaryState {
   hasError: boolean
@@ -60,7 +61,9 @@ export function Providers({ children }: { children: React.ReactNode }) {
 
   return (
     <ErrorBoundary>
-      <QueryClientProvider client={queryClient}>{children}</QueryClientProvider>
+      <QueryClientProvider client={queryClient}>
+        <UserPreferencesProvider>{children}</UserPreferencesProvider>
+      </QueryClientProvider>
     </ErrorBoundary>
   )
 }

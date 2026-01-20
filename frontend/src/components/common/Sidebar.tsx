@@ -7,40 +7,56 @@ import {
   LayoutDashboard,
   Activity,
   AlertTriangle,
+  AlertCircle,
   BarChart3,
   Users,
   Settings,
   Code2,
-  FileText,
   Zap,
   Shield,
   GitBranch,
   Box,
   Sparkles,
+  Wrench,
 } from 'lucide-react'
+import { useUserPreferences } from '@/lib/user-preferences'
 
 interface NavItem {
   label: string
   href: string
   icon: React.ElementType
   badge?: string
+  advancedOnly?: boolean  // Only show for developers or when developer mode is on
 }
 
-const mainNavItems: NavItem[] = [
+// n8n user sees simplified navigation with friendly terminology
+const n8nNavItems: NavItem[] = [
+  { label: 'Dashboard', href: '/dashboard', icon: LayoutDashboard },
+  { label: 'My Workflows', href: '/n8n', icon: GitBranch },
+  { label: 'Problems Found', href: '/detections', icon: AlertCircle },
+  { label: 'Fixes', href: '/healing', icon: Wrench },
+]
+
+// Developer sees full navigation
+const developerMainItems: NavItem[] = [
   { label: 'Dashboard', href: '/dashboard', icon: LayoutDashboard },
   { label: 'Traces', href: '/traces', icon: Activity },
   { label: 'Detections', href: '/detections', icon: AlertTriangle },
   { label: 'Healing', href: '/healing', icon: Sparkles },
-  { label: 'Benchmarks', href: '/benchmarks', icon: BarChart3 },
+  { label: 'Benchmarks', href: '/benchmarks', icon: BarChart3, advancedOnly: true },
 ]
 
-const agentNavItems: NavItem[] = [
+const developerAgentItems: NavItem[] = [
   { label: 'Agents', href: '/agents', icon: Users },
-  { label: 'Workflows', href: '/workflows', icon: GitBranch },
+  { label: 'n8n Workflows', href: '/n8n', icon: GitBranch },
   { label: 'Tools', href: '/tools', icon: Zap },
 ]
 
-const settingsNavItems: NavItem[] = [
+const n8nSettingsItems: NavItem[] = [
+  { label: 'Settings', href: '/settings', icon: Settings },
+]
+
+const developerSettingsItems: NavItem[] = [
   { label: 'API Keys', href: '/settings/api-keys', icon: Code2 },
   { label: 'Integrations', href: '/settings/integrations', icon: Box },
   { label: 'Settings', href: '/settings', icon: Settings },
@@ -53,6 +69,7 @@ interface SidebarProps {
 
 export function Sidebar({ isCollapsed = false, onToggle }: SidebarProps) {
   const pathname = usePathname()
+  const { isN8nUser, showAdvancedFeatures, preferences } = useUserPreferences()
 
   const NavLink = ({ item }: { item: NavItem }) => {
     const isActive = pathname === item.href || pathname?.startsWith(item.href + '/')
@@ -83,18 +100,28 @@ export function Sidebar({ isCollapsed = false, onToggle }: SidebarProps) {
     )
   }
 
-  const NavSection = ({ title, items }: { title?: string; items: NavItem[] }) => (
-    <div className="space-y-1">
-      {title && !isCollapsed && (
-        <div className="px-3 py-2 text-xs font-semibold text-slate-500 uppercase tracking-wider">
-          {title}
-        </div>
-      )}
-      {items.map((item) => (
-        <NavLink key={item.href} item={item} />
-      ))}
-    </div>
-  )
+  const NavSection = ({ title, items }: { title?: string; items: NavItem[] }) => {
+    // Filter out advanced-only items if user doesn't have access
+    const filteredItems = items.filter(item => !item.advancedOnly || showAdvancedFeatures)
+
+    if (filteredItems.length === 0) return null
+
+    return (
+      <div className="space-y-1">
+        {title && !isCollapsed && (
+          <div className="px-3 py-2 text-xs font-semibold text-slate-500 uppercase tracking-wider">
+            {title}
+          </div>
+        )}
+        {filteredItems.map((item) => (
+          <NavLink key={item.href} item={item} />
+        ))}
+      </div>
+    )
+  }
+
+  // Determine which navigation to show based on user type
+  const isSimplifiedView = isN8nUser && !showAdvancedFeatures
 
   return (
     <aside
@@ -108,24 +135,46 @@ export function Sidebar({ isCollapsed = false, onToggle }: SidebarProps) {
         <Link href="/" className="flex items-center gap-2">
           <Shield className="h-8 w-8 text-blue-500" />
           {!isCollapsed && (
-            <span className="text-xl font-bold text-white">MAO Testing</span>
+            <span className="text-xl font-bold text-white">
+              {isSimplifiedView ? 'Workflow Guard' : 'MAO Testing'}
+            </span>
           )}
         </Link>
       </div>
 
-      {/* Navigation */}
+      {/* Navigation - conditional based on user type */}
       <nav className="flex-1 overflow-y-auto p-4 space-y-6">
-        <NavSection items={mainNavItems} />
-        <NavSection title="Agents" items={agentNavItems} />
-        <NavSection title="Settings" items={settingsNavItems} />
+        {isSimplifiedView ? (
+          <>
+            {/* Simplified n8n user navigation */}
+            <NavSection items={n8nNavItems} />
+            <NavSection title="Settings" items={n8nSettingsItems} />
+          </>
+        ) : (
+          <>
+            {/* Full developer navigation */}
+            <NavSection items={developerMainItems} />
+            <NavSection title="Agents & Workflows" items={developerAgentItems} />
+            <NavSection title="Settings" items={developerSettingsItems} />
+          </>
+        )}
       </nav>
 
       {/* Footer */}
       <div className="p-4 border-t border-slate-800">
         {!isCollapsed && (
           <div className="text-xs text-slate-500">
-            <div>MAO Testing Platform</div>
-            <div>v1.0.0</div>
+            {isSimplifiedView ? (
+              <>
+                <div>Workflow Guard</div>
+                <div className="text-slate-600">Powered by MAO</div>
+              </>
+            ) : (
+              <>
+                <div>MAO Testing Platform</div>
+                <div>v1.0.0</div>
+              </>
+            )}
           </div>
         )}
       </div>
