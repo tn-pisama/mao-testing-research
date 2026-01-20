@@ -320,8 +320,10 @@ class TestImportTrace:
     def test_import_with_explicit_format(self):
         """Test importing with explicit format."""
         content = json.dumps([
-            {"run_type": "llm", "id": "1", "name": "test"}
+            {"id": "1", "name": "test", "type": "llm"}
         ])
 
-        trace = import_trace(content, "langsmith")
-        assert trace.source_format == "langsmith"
+        # Use 'raw' format which is always available (langsmith requires otel_ingestion feature flag)
+        # The generic alias maps to RawJSONImporter which reports source_format as "raw"
+        trace = import_trace(content, "raw")
+        assert trace.source_format == "raw"

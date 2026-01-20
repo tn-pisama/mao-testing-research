@@ -941,7 +941,7 @@ class TestRegressionIntegration:
 
     def test_imports_from_module(self):
         """Test all components importable from module."""
-        from app.regression import (
+        from app.enterprise.regression import (
             model_fingerprinter,
             BaselineStore,
             DriftDetector,
