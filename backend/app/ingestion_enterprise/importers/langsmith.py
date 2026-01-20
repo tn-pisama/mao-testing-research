@@ -10,7 +10,7 @@ from datetime import datetime
 from typing import Any, Dict, Iterator, List, Optional
 
 from app.ingestion.universal_trace import UniversalSpan, UniversalTrace, SpanType, SpanStatus
-from .base import BaseImporter
+from app.ingestion.importers.base import BaseImporter
 
 
 class LangSmithImporter(BaseImporter):

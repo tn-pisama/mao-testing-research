@@ -10,7 +10,7 @@ Comprehensive tests for the 4 MAST failure mode detectors:
 """
 
 import pytest
-from app.detection.tool_provision import (
+from app.detection_enterprise.tool_provision import (
     tool_provision_detector,
     ToolProvisionDetector,
     ToolProvisionResult,
@@ -24,7 +24,7 @@ from app.detection.withholding import (
     WithholdingSeverity,
     WithholdingType,
 )
-from app.detection.quality_gate import (
+from app.detection_enterprise.quality_gate import (
     quality_gate_detector,
     QualityGateDetector,
     QualityGateResult,

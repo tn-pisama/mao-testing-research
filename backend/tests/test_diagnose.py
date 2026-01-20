@@ -8,7 +8,7 @@ from app.ingestion.universal_trace import UniversalSpan, UniversalTrace, SpanTyp
 from app.ingestion.importers import import_trace, detect_format
 from app.ingestion.importers.raw_json import RawJSONImporter
 from app.ingestion_enterprise.importers.langsmith import LangSmithImporter
-from app.detection.orchestrator import DetectionOrchestrator, DetectionCategory, Severity
+from app.detection_enterprise.orchestrator import DetectionOrchestrator, DetectionCategory, Severity
 
 
 class TestUniversalSpan:

@@ -4,7 +4,7 @@ import pytest
 import tempfile
 from pathlib import Path
 
-from app.detection.golden_dataset import (
+from app.detection_enterprise.golden_dataset import (
     GoldenDataset,
     GoldenDatasetEntry,
     create_default_golden_dataset,

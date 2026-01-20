@@ -7,9 +7,9 @@ from datetime import datetime, timedelta
 from unittest.mock import MagicMock, AsyncMock, patch
 import asyncio
 
-from app.integrations import SemanticKernelTracer, BaseFrameworkTracer
-from app.integrations.base import Span, Trace
-from app.integrations.semantic_kernel import create_semantic_kernel_tracer
+from app.enterprise.integrations import SemanticKernelTracer, BaseFrameworkTracer
+from app.enterprise.integrations.base import Span, Trace
+from app.enterprise.integrations.semantic_kernel import create_semantic_kernel_tracer
 
 
 # =============================================================================
@@ -664,14 +664,14 @@ class TestModuleImports:
 
     def test_import_from_integrations_module(self):
         """Test that all exports are importable from integrations module."""
-        from app.integrations import SemanticKernelTracer, BaseFrameworkTracer
+        from app.enterprise.integrations import SemanticKernelTracer, BaseFrameworkTracer
 
         assert SemanticKernelTracer is not None
         assert BaseFrameworkTracer is not None
 
     def test_import_from_base_module(self):
         """Test importing from base module."""
-        from app.integrations.base import Span, Trace, BaseFrameworkTracer
+        from app.enterprise.integrations.base import Span, Trace, BaseFrameworkTracer
 
         assert Span is not None
         assert Trace is not None
@@ -679,7 +679,7 @@ class TestModuleImports:
 
     def test_import_from_semantic_kernel_module(self):
         """Test importing from semantic_kernel module."""
-        from app.integrations.semantic_kernel import (
+        from app.enterprise.integrations.semantic_kernel import (
             SemanticKernelTracer,
             create_semantic_kernel_tracer,
         )
