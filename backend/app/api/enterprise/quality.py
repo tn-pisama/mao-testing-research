@@ -1,7 +1,13 @@
 """Quality assessment API endpoints."""
 
 from typing import Optional, List
-from fastapi import APIRouter, HTTPException, Depends
+from uuid import UUID
+from datetime import datetime
+import time
+
+from fastapi import APIRouter, HTTPException, Depends, Path, Query
+from sqlalchemy.ext.asyncio import AsyncSession
+from sqlalchemy import select, func
 from pydantic import BaseModel, Field
 
 from app.enterprise.quality import (
@@ -12,6 +18,8 @@ from app.enterprise.quality import (
     Severity,
 )
 from app.core.auth import get_current_tenant
+from app.storage.database import get_db, set_tenant_context
+from app.storage.models import WorkflowQualityAssessment, Trace
 
 router = APIRouter(prefix="/quality", tags=["quality"])
 
@@ -280,3 +288,261 @@ async def list_quality_dimensions():
             "F": "0-39% - Failing",
         },
     }
+
+
+# Persistence models
+class StoredAssessmentResponse(BaseModel):
+    """Response for a stored quality assessment."""
+    id: str
+    workflow_id: Optional[str]
+    workflow_name: Optional[str]
+    trace_id: Optional[str]
+    overall_score: int
+    overall_grade: str
+    agent_scores: List[dict]
+    orchestration_score: dict
+    improvements: List[dict]
+    complexity_metrics: dict
+    total_issues: int
+    critical_issues_count: int
+    source: str
+    assessment_time_ms: Optional[int]
+    summary: Optional[str]
+    created_at: datetime
+
+
+class AssessmentListResponse(BaseModel):
+    """Response for listing assessments."""
+    assessments: List[StoredAssessmentResponse]
+    total: int
+    page: int
+    page_size: int
+
+
+class AssessAndSaveRequest(BaseModel):
+    """Request to assess and save workflow quality."""
+    workflow_json: dict = Field(..., description="The n8n workflow JSON")
+    trace_id: Optional[str] = Field(default=None, description="Optional trace ID to link assessment")
+    max_suggestions: int = Field(default=10, ge=1, le=50)
+    use_llm_analysis: bool = Field(default=False)
+
+
+# Persistence endpoints
+
+@router.get("/tenants/{tenant_id}/assessments", response_model=AssessmentListResponse)
+async def list_assessments(
+    tenant_id: UUID = Path(...),
+    page: int = Query(1, ge=1),
+    page_size: int = Query(20, ge=1, le=100),
+    workflow_id: Optional[str] = Query(None),
+    min_grade: Optional[str] = Query(None),
+    db: AsyncSession = Depends(get_db),
+    tenant=Depends(get_current_tenant),
+):
+    """List quality assessments for a tenant with pagination and filtering."""
+    await set_tenant_context(db, str(tenant_id))
+
+    # Build query
+    query = select(WorkflowQualityAssessment).where(
+        WorkflowQualityAssessment.tenant_id == tenant_id
+    )
+
+    if workflow_id:
+        query = query.where(WorkflowQualityAssessment.workflow_id == workflow_id)
+
+    if min_grade:
+        # Grade ordering: A+, A, B+, B, C+, C, D, F
+        grade_order = ["A+", "A", "B+", "B", "C+", "C", "D", "F"]
+        if min_grade in grade_order:
+            min_index = grade_order.index(min_grade)
+            valid_grades = grade_order[:min_index + 1]
+            query = query.where(WorkflowQualityAssessment.overall_grade.in_(valid_grades))
+
+    # Count total
+    count_query = select(func.count()).select_from(query.subquery())
+    total_result = await db.execute(count_query)
+    total = total_result.scalar() or 0
+
+    # Paginate
+    offset = (page - 1) * page_size
+    query = query.order_by(WorkflowQualityAssessment.created_at.desc()).offset(offset).limit(page_size)
+
+    result = await db.execute(query)
+    assessments = result.scalars().all()
+
+    return AssessmentListResponse(
+        assessments=[
+            StoredAssessmentResponse(
+                id=str(a.id),
+                workflow_id=a.workflow_id,
+                workflow_name=a.workflow_name,
+                trace_id=str(a.trace_id) if a.trace_id else None,
+                overall_score=a.overall_score,
+                overall_grade=a.overall_grade,
+                agent_scores=a.agent_scores or [],
+                orchestration_score=a.orchestration_score or {},
+                improvements=a.improvements or [],
+                complexity_metrics=a.complexity_metrics or {},
+                total_issues=a.total_issues,
+                critical_issues_count=a.critical_issues_count,
+                source=a.source,
+                assessment_time_ms=a.assessment_time_ms,
+                summary=a.summary,
+                created_at=a.created_at,
+            )
+            for a in assessments
+        ],
+        total=total,
+        page=page,
+        page_size=page_size,
+    )
+
+
+@router.get("/tenants/{tenant_id}/assessments/{assessment_id}", response_model=StoredAssessmentResponse)
+async def get_assessment(
+    tenant_id: UUID = Path(...),
+    assessment_id: UUID = Path(...),
+    db: AsyncSession = Depends(get_db),
+    tenant=Depends(get_current_tenant),
+):
+    """Get a specific quality assessment by ID."""
+    await set_tenant_context(db, str(tenant_id))
+
+    result = await db.execute(
+        select(WorkflowQualityAssessment).where(
+            WorkflowQualityAssessment.id == assessment_id,
+            WorkflowQualityAssessment.tenant_id == tenant_id,
+        )
+    )
+    assessment = result.scalar_one_or_none()
+
+    if not assessment:
+        raise HTTPException(status_code=404, detail="Assessment not found")
+
+    return StoredAssessmentResponse(
+        id=str(assessment.id),
+        workflow_id=assessment.workflow_id,
+        workflow_name=assessment.workflow_name,
+        trace_id=str(assessment.trace_id) if assessment.trace_id else None,
+        overall_score=assessment.overall_score,
+        overall_grade=assessment.overall_grade,
+        agent_scores=assessment.agent_scores or [],
+        orchestration_score=assessment.orchestration_score or {},
+        improvements=assessment.improvements or [],
+        complexity_metrics=assessment.complexity_metrics or {},
+        total_issues=assessment.total_issues,
+        critical_issues_count=assessment.critical_issues_count,
+        source=assessment.source,
+        assessment_time_ms=assessment.assessment_time_ms,
+        summary=assessment.summary,
+        created_at=assessment.created_at,
+    )
+
+
+@router.get("/tenants/{tenant_id}/assessments/by-trace/{trace_id}", response_model=StoredAssessmentResponse)
+async def get_assessment_by_trace(
+    tenant_id: UUID = Path(...),
+    trace_id: UUID = Path(...),
+    db: AsyncSession = Depends(get_db),
+    tenant=Depends(get_current_tenant),
+):
+    """Get quality assessment linked to a specific trace."""
+    await set_tenant_context(db, str(tenant_id))
+
+    result = await db.execute(
+        select(WorkflowQualityAssessment).where(
+            WorkflowQualityAssessment.trace_id == trace_id,
+            WorkflowQualityAssessment.tenant_id == tenant_id,
+        ).order_by(WorkflowQualityAssessment.created_at.desc())
+    )
+    assessment = result.scalar_one_or_none()
+
+    if not assessment:
+        raise HTTPException(status_code=404, detail="No assessment found for this trace")
+
+    return StoredAssessmentResponse(
+        id=str(assessment.id),
+        workflow_id=assessment.workflow_id,
+        workflow_name=assessment.workflow_name,
+        trace_id=str(assessment.trace_id) if assessment.trace_id else None,
+        overall_score=assessment.overall_score,
+        overall_grade=assessment.overall_grade,
+        agent_scores=assessment.agent_scores or [],
+        orchestration_score=assessment.orchestration_score or {},
+        improvements=assessment.improvements or [],
+        complexity_metrics=assessment.complexity_metrics or {},
+        total_issues=assessment.total_issues,
+        critical_issues_count=assessment.critical_issues_count,
+        source=assessment.source,
+        assessment_time_ms=assessment.assessment_time_ms,
+        summary=assessment.summary,
+        created_at=assessment.created_at,
+    )
+
+
+@router.post("/tenants/{tenant_id}/assess-and-save", response_model=StoredAssessmentResponse)
+async def assess_and_save(
+    request: AssessAndSaveRequest,
+    tenant_id: UUID = Path(...),
+    db: AsyncSession = Depends(get_db),
+    tenant=Depends(get_current_tenant),
+):
+    """
+    Assess workflow quality and save the results to the database.
+
+    This combines assessment with persistence for workflows submitted via API.
+    """
+    await set_tenant_context(db, str(tenant_id))
+
+    try:
+        start_time = time.time()
+        assessor = QualityAssessor(use_llm_judge=request.use_llm_analysis)
+
+        report = assessor.assess_workflow(
+            workflow=request.workflow_json,
+            max_suggestions=request.max_suggestions,
+        )
+        assessment_time_ms = int((time.time() - start_time) * 1000)
+
+        # Create assessment record
+        assessment = WorkflowQualityAssessment(
+            tenant_id=tenant_id,
+            trace_id=UUID(request.trace_id) if request.trace_id else None,
+            workflow_id=report.workflow_id,
+            workflow_name=report.workflow_name,
+            overall_score=int(report.overall_score * 100),
+            overall_grade=report.overall_grade,
+            agent_scores=[a.to_dict() for a in report.agent_scores],
+            orchestration_score=report.orchestration_score.to_dict(),
+            improvements=[i.to_dict() for i in report.improvements],
+            complexity_metrics=report.orchestration_score.complexity_metrics.to_dict() if report.orchestration_score.complexity_metrics else {},
+            total_issues=report.total_issues,
+            critical_issues_count=report.critical_issues_count,
+            source="api",
+            assessment_time_ms=assessment_time_ms,
+            summary=report.summary,
+        )
+        db.add(assessment)
+        await db.commit()
+        await db.refresh(assessment)
+
+        return StoredAssessmentResponse(
+            id=str(assessment.id),
+            workflow_id=assessment.workflow_id,
+            workflow_name=assessment.workflow_name,
+            trace_id=str(assessment.trace_id) if assessment.trace_id else None,
+            overall_score=assessment.overall_score,
+            overall_grade=assessment.overall_grade,
+            agent_scores=assessment.agent_scores or [],
+            orchestration_score=assessment.orchestration_score or {},
+            improvements=assessment.improvements or [],
+            complexity_metrics=assessment.complexity_metrics or {},
+            total_issues=assessment.total_issues,
+            critical_issues_count=assessment.critical_issues_count,
+            source=assessment.source,
+            assessment_time_ms=assessment.assessment_time_ms,
+            summary=assessment.summary,
+            created_at=assessment.created_at,
+        )
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"Assessment failed: {str(e)}")

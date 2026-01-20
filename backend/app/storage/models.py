@@ -536,6 +536,56 @@ class WorkflowVersion(Base):
     )
 
 
+class WorkflowQualityAssessment(Base):
+    """
+    Stores quality assessments for n8n workflows.
+
+    Tracks agent quality scores, orchestration quality, and improvement suggestions
+    for workflows analyzed by the quality assessment system.
+    """
+    __tablename__ = "workflow_quality_assessments"
+
+    id = Column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
+    tenant_id = Column(UUID(as_uuid=True), ForeignKey("tenants.id"), nullable=False)
+    trace_id = Column(UUID(as_uuid=True), ForeignKey("traces.id"), nullable=True)
+
+    # Workflow identification
+    workflow_id = Column(String(255), nullable=True, index=True)
+    workflow_name = Column(String(255), nullable=True)
+
+    # Overall scores
+    overall_score = Column(Integer, nullable=False)  # 0-100
+    overall_grade = Column(String(2), nullable=False)  # A+, A, B+, B, C+, C, D, F
+
+    # Detailed scores (JSONB)
+    agent_scores = Column(JSONB, nullable=False)  # List of agent quality scores
+    orchestration_score = Column(JSONB, nullable=False)  # Orchestration quality details
+    improvements = Column(JSONB, nullable=False)  # List of improvement suggestions
+
+    # Metrics
+    complexity_metrics = Column(JSONB, default=dict)  # node_count, agent_count, etc.
+    total_issues = Column(Integer, default=0)
+    critical_issues_count = Column(Integer, default=0)
+
+    # Source and timing
+    source = Column(String(50), nullable=False, default="api")  # api, webhook, manual
+    assessment_time_ms = Column(Integer, nullable=True)
+
+    # Summary
+    summary = Column(Text, nullable=True)
+
+    # Timestamps
+    created_at = Column(DateTime(timezone=True), server_default=func.now())
+
+    __table_args__ = (
+        Index("idx_quality_tenant", "tenant_id"),
+        Index("idx_quality_workflow", "workflow_id"),
+        Index("idx_quality_trace", "trace_id"),
+        Index("idx_quality_tenant_created", "tenant_id", "created_at"),
+        Index("idx_quality_grade", "overall_grade"),
+    )
+
+
 class MASTTraceEmbedding(Base):
     """
     MAST benchmark trace embeddings for few-shot learning.

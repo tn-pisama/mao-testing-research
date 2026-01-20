@@ -1,17 +1,22 @@
-from fastapi import APIRouter, Depends, HTTPException, Request, Header
+from fastapi import APIRouter, Depends, HTTPException, Request, Header, BackgroundTasks
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy import select, insert
 from sqlalchemy.dialects.postgresql import insert as pg_insert
-from typing import Optional, List
+from typing import Optional, List, Any
 from uuid import UUID
 from datetime import datetime
+import time
+import logging
 from pydantic import BaseModel, Field
 
-from app.storage.database import get_db, set_tenant_context
-from app.storage.models import Trace, State, N8nWorkflow, WebhookNonce, Tenant
+from app.storage.database import get_db, set_tenant_context, async_session_maker
+from app.storage.models import Trace, State, N8nWorkflow, WebhookNonce, Tenant, WorkflowQualityAssessment
 from app.core.auth import get_current_tenant
 from app.core.n8n_security import verify_webhook_signature, redact_sensitive_data
 from app.ingestion.n8n_parser import n8n_parser
+from app.config import get_settings
+
+logger = logging.getLogger(__name__)
 
 router = APIRouter(prefix="/n8n", tags=["n8n"])
 
@@ -25,6 +30,8 @@ class N8nWebhookPayload(BaseModel):
     finishedAt: Optional[str] = None
     status: str = "success"
     data: dict = Field(default_factory=dict)
+    # Optional workflow definition for quality assessment
+    workflow: Optional[dict] = Field(default=None, description="Full workflow JSON for quality assessment")
 
 
 class N8nWebhookResponse(BaseModel):
@@ -32,6 +39,7 @@ class N8nWebhookResponse(BaseModel):
     trace_id: str
     states_created: int
     message: str = "Execution received"
+    quality_assessment_triggered: bool = False
 
 
 class N8nWorkflowRegisterRequest(BaseModel):
@@ -53,17 +61,67 @@ async def verify_nonce(nonce: str, timestamp: int, db: AsyncSession) -> bool:
     )
     if result.scalar_one_or_none():
         raise HTTPException(status_code=401, detail="Replay attack detected")
-    
+
     await db.execute(
         insert(WebhookNonce).values(nonce=nonce, timestamp=timestamp)
     )
     return True
 
 
+async def assess_workflow_quality_task(
+    tenant_id: str,
+    trace_id: str,
+    workflow_json: dict,
+    workflow_id: str,
+    workflow_name: str,
+):
+    """Background task to assess workflow quality and store results."""
+    try:
+        from app.enterprise.quality import QualityAssessor
+
+        start_time = time.time()
+        assessor = QualityAssessor(use_llm_judge=False)
+        report = assessor.assess_workflow(workflow_json, max_suggestions=10)
+        assessment_time_ms = int((time.time() - start_time) * 1000)
+
+        # Store assessment in database
+        async with async_session_maker() as db:
+            await set_tenant_context(db, tenant_id)
+
+            assessment = WorkflowQualityAssessment(
+                tenant_id=UUID(tenant_id),
+                trace_id=UUID(trace_id),
+                workflow_id=workflow_id,
+                workflow_name=workflow_name or report.workflow_name,
+                overall_score=int(report.overall_score * 100),
+                overall_grade=report.overall_grade,
+                agent_scores=[a.to_dict() for a in report.agent_scores],
+                orchestration_score=report.orchestration_score.to_dict(),
+                improvements=[i.to_dict() for i in report.improvements],
+                complexity_metrics=report.orchestration_score.complexity_metrics.to_dict() if report.orchestration_score.complexity_metrics else {},
+                total_issues=report.total_issues,
+                critical_issues_count=report.critical_issues_count,
+                source="webhook",
+                assessment_time_ms=assessment_time_ms,
+                summary=report.summary,
+            )
+            db.add(assessment)
+            await db.commit()
+
+            logger.info(
+                f"Quality assessment completed for workflow {workflow_id}: "
+                f"score={report.overall_score:.1%}, grade={report.overall_grade}, "
+                f"issues={report.total_issues}"
+            )
+    except Exception as e:
+        logger.error(f"Quality assessment failed for workflow {workflow_id}: {e}")
+
+
 @router.post("/webhook", response_model=N8nWebhookResponse)
 async def receive_n8n_webhook(
     request: Request,
     payload: N8nWebhookPayload,
+    background_tasks: BackgroundTasks,
     x_mao_api_key: str = Header(..., alias="X-MAO-API-Key"),
     x_mao_signature: Optional[str] = Header(None, alias="X-MAO-Signature"),
     x_mao_timestamp: Optional[str] = Header(None, alias="X-MAO-Timestamp"),
@@ -147,12 +205,27 @@ async def receive_n8n_webhook(
         db.add(db_state)
     
     await db.commit()
-    
+
+    # Trigger quality assessment if workflow definition is provided and feature is enabled
+    quality_assessment_triggered = False
+    settings = get_settings()
+    if payload.workflow and settings.features.is_enabled("quality_assessment"):
+        background_tasks.add_task(
+            assess_workflow_quality_task,
+            tenant_id=tenant_id,
+            trace_id=str(trace.id),
+            workflow_json=payload.workflow,
+            workflow_id=payload.workflowId,
+            workflow_name=payload.workflowName,
+        )
+        quality_assessment_triggered = True
+
     return N8nWebhookResponse(
         success=True,
         trace_id=str(trace.id),
         states_created=len(states),
         message=f"Execution {execution.id} imported successfully",
+        quality_assessment_triggered=quality_assessment_triggered,
     )
 
 
