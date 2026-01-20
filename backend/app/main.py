@@ -33,7 +33,7 @@ settings = get_settings()
 enterprise_routers_loaded = False
 if settings.features.enterprise_enabled:
     try:
-        from app.api.enterprise import evals, chaos, testing, replay, regression, diagnose
+        from app.api.enterprise import evals, chaos, testing, replay, regression, diagnose, quality
         enterprise_routers_loaded = True
     except ImportError as e:
         import logging
@@ -144,6 +144,8 @@ if enterprise_routers_loaded:
         app.include_router(replay.router, prefix="/api/v1/tenants/{tenant_id}", tags=["enterprise"])
     if settings.features.is_enabled("ml_detection"):
         app.include_router(diagnose.router, prefix="/api/v1", tags=["enterprise"])  # Agent Forensics
+    if settings.features.is_enabled("quality_assessment"):
+        app.include_router(quality.router, prefix="/api/v1", tags=["enterprise"])  # Quality Assessment
 
 FastAPIInstrumentor.instrument_app(app)
 

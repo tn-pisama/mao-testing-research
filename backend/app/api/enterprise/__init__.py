@@ -9,6 +9,7 @@ Feature flags required:
 - regression_testing: Regression and testing endpoints
 - advanced_evals: Evaluation endpoints
 - ml_detection: Diagnose/forensics endpoints
+- quality_assessment: Quality assessment endpoints
 """
 
 # Enterprise routers are imported directly in main.py when needed
@@ -21,4 +22,5 @@ __all__ = [
     "testing",
     "diagnose",
     "evals",
+    "quality",
 ]

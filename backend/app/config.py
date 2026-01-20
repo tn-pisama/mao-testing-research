@@ -230,6 +230,10 @@ class FeatureFlags(BaseSettings):
         default=False,
         description="Compliance audit logging"
     )
+    quality_assessment: bool = Field(
+        default=False,
+        description="Quality assessment for n8n workflows and agents"
+    )
 
     def is_enabled(self, feature: str) -> bool:
         """Check if a specific feature is enabled.

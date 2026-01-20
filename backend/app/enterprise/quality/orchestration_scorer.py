@@ -1,0 +1,658 @@
+"""Orchestration quality scorer with complexity metrics."""
+
+from collections import defaultdict
+from typing import Dict, Any, List, Optional, Set, Tuple
+from .models import (
+    OrchestrationQualityScore,
+    DimensionScore,
+    ComplexityMetrics,
+    OrchestrationDimension,
+)
+from .agent_scorer import AI_NODE_TYPES
+
+
+# Orchestration pattern thresholds
+PATTERN_THRESHOLDS = {
+    "linear": {"max_nodes": 10, "max_depth": 3, "expected_coupling": 0.2},
+    "parallel": {"max_branches": 5, "max_depth": 4, "expected_coupling": 0.3},
+    "conditional": {"max_depth": 4, "max_branches": 3, "expected_coupling": 0.4},
+    "pipeline": {"max_stages": 7, "max_depth": 5, "expected_coupling": 0.5},
+    "loop": {"max_iterations": 10, "max_depth": 4, "expected_coupling": 0.6},
+}
+
+# Node types that indicate observability
+OBSERVABILITY_NODE_TYPES = {
+    "n8n-nodes-base.set",  # Can be used for checkpoints
+    "n8n-nodes-base.code",  # Can contain logging
+    "n8n-nodes-base.httpRequest",  # Can send to monitoring
+    "n8n-nodes-base.errorTrigger",
+    "n8n-nodes-base.noOp",
+}
+
+# Best practice config flags
+BEST_PRACTICE_FLAGS = {
+    "retryOnFail": True,
+    "continueOnFail": True,
+    "timeout": True,
+}
+
+
+class OrchestrationQualityScorer:
+    """
+    Scores workflow architecture quality across five dimensions:
+    1. Data Flow Clarity - Explicit vs implicit state passing
+    2. Complexity Management - Node count vs task complexity
+    3. Agent Coupling - Independence vs interdependence balance
+    4. Observability - Checkpoints, logging, monitoring
+    5. Best Practices - Retry, timeout, rate limiting
+    """
+
+    def score_orchestration(
+        self,
+        workflow: Dict[str, Any],
+        execution_history: Optional[List[Dict[str, Any]]] = None,
+    ) -> OrchestrationQualityScore:
+        """Score workflow orchestration quality across all dimensions."""
+        workflow_id = workflow.get("id", "unknown")
+        workflow_name = workflow.get("name", "Unnamed Workflow")
+
+        # Calculate complexity metrics
+        complexity_metrics = self._calculate_complexity_metrics(workflow)
+
+        # Detect orchestration pattern
+        detected_pattern = self._detect_pattern(workflow, complexity_metrics)
+
+        dimensions: List[DimensionScore] = []
+
+        # Score each dimension
+        dimensions.append(self._score_data_flow_clarity(workflow))
+        dimensions.append(self._score_complexity_management(workflow, complexity_metrics, detected_pattern))
+        dimensions.append(self._score_agent_coupling(workflow, complexity_metrics))
+        dimensions.append(self._score_observability(workflow))
+        dimensions.append(self._score_best_practices(workflow))
+
+        # Calculate overall score
+        total_weight = sum(d.weight for d in dimensions)
+        overall_score = sum(d.score * d.weight for d in dimensions) / total_weight if total_weight > 0 else 0.0
+
+        # Collect issues
+        all_issues = []
+        critical_issues = []
+        for dim in dimensions:
+            all_issues.extend(dim.issues)
+            if dim.score < 0.4:
+                critical_issues.extend(dim.issues[:1])
+
+        return OrchestrationQualityScore(
+            workflow_id=workflow_id,
+            workflow_name=workflow_name,
+            overall_score=overall_score,
+            dimensions=dimensions,
+            complexity_metrics=complexity_metrics,
+            issues_count=len(all_issues),
+            critical_issues=critical_issues,
+            detected_pattern=detected_pattern,
+        )
+
+    def _calculate_complexity_metrics(self, workflow: Dict[str, Any]) -> ComplexityMetrics:
+        """Calculate various complexity metrics for the workflow."""
+        nodes = workflow.get("nodes", [])
+        connections = workflow.get("connections", {})
+
+        # Count nodes by type
+        node_count = len(nodes)
+        agent_count = sum(1 for n in nodes if n.get("type") in AI_NODE_TYPES)
+        ai_node_ratio = agent_count / node_count if node_count > 0 else 0.0
+
+        # Count connections
+        connection_count = 0
+        for node_conns in connections.values():
+            if isinstance(node_conns, dict):
+                for output_type, targets in node_conns.items():
+                    if isinstance(targets, list):
+                        connection_count += len(targets)
+
+        # Calculate depth and branching
+        max_depth, parallel_branches, conditional_branches = self._analyze_graph_structure(workflow)
+
+        # Calculate cyclomatic complexity: E - N + 2P
+        # E = edges, N = nodes, P = connected components (assume 1)
+        cyclomatic_complexity = connection_count - node_count + 2
+
+        # Calculate coupling ratio
+        coupling_ratio = self._calculate_coupling_ratio(workflow)
+
+        return ComplexityMetrics(
+            node_count=node_count,
+            agent_count=agent_count,
+            connection_count=connection_count,
+            max_depth=max_depth,
+            cyclomatic_complexity=max(cyclomatic_complexity, 1),
+            coupling_ratio=coupling_ratio,
+            ai_node_ratio=ai_node_ratio,
+            parallel_branches=parallel_branches,
+            conditional_branches=conditional_branches,
+        )
+
+    def _analyze_graph_structure(self, workflow: Dict[str, Any]) -> Tuple[int, int, int]:
+        """Analyze graph structure for depth and branching."""
+        nodes = workflow.get("nodes", [])
+        connections = workflow.get("connections", {})
+
+        if not nodes:
+            return 0, 0, 0
+
+        # Build adjacency list
+        node_ids = {n.get("name", n.get("id")): i for i, n in enumerate(nodes)}
+        adj: Dict[str, List[str]] = defaultdict(list)
+        in_degree: Dict[str, int] = defaultdict(int)
+
+        for source_name, node_conns in connections.items():
+            if isinstance(node_conns, dict):
+                for output_type, targets in node_conns.items():
+                    if isinstance(targets, list):
+                        for target_list in targets:
+                            if isinstance(target_list, list):
+                                for target in target_list:
+                                    if isinstance(target, dict):
+                                        target_name = target.get("node", "")
+                                        adj[source_name].append(target_name)
+                                        in_degree[target_name] += 1
+
+        # Find start nodes (in_degree = 0)
+        all_nodes = set(n.get("name", n.get("id")) for n in nodes)
+        start_nodes = [n for n in all_nodes if in_degree.get(n, 0) == 0]
+
+        if not start_nodes:
+            start_nodes = list(all_nodes)[:1]
+
+        # BFS for max depth
+        max_depth = 0
+        visited: Set[str] = set()
+        queue: List[Tuple[str, int]] = [(n, 0) for n in start_nodes]
+
+        while queue:
+            node, depth = queue.pop(0)
+            if node in visited:
+                continue
+            visited.add(node)
+            max_depth = max(max_depth, depth)
+
+            for neighbor in adj.get(node, []):
+                if neighbor not in visited:
+                    queue.append((neighbor, depth + 1))
+
+        # Count parallel branches (nodes with multiple outgoing edges)
+        parallel_branches = sum(1 for n, targets in adj.items() if len(targets) > 1)
+
+        # Count conditional branches (IF nodes or switch nodes)
+        conditional_branches = sum(
+            1 for n in nodes
+            if any(kw in n.get("type", "").lower() for kw in ["if", "switch", "filter"])
+        )
+
+        return max_depth, parallel_branches, conditional_branches
+
+    def _calculate_coupling_ratio(self, workflow: Dict[str, Any]) -> float:
+        """Calculate agent coupling ratio based on direct connections."""
+        nodes = workflow.get("nodes", [])
+        connections = workflow.get("connections", {})
+
+        agent_nodes = [n for n in nodes if n.get("type") in AI_NODE_TYPES]
+        if len(agent_nodes) < 2:
+            return 0.0
+
+        agent_names = {n.get("name", n.get("id")) for n in agent_nodes}
+
+        # Count agent-to-agent connections
+        agent_connections = 0
+        possible_connections = len(agent_nodes) * (len(agent_nodes) - 1)
+
+        for source_name, node_conns in connections.items():
+            if source_name not in agent_names:
+                continue
+
+            if isinstance(node_conns, dict):
+                for output_type, targets in node_conns.items():
+                    if isinstance(targets, list):
+                        for target_list in targets:
+                            if isinstance(target_list, list):
+                                for target in target_list:
+                                    if isinstance(target, dict):
+                                        target_name = target.get("node", "")
+                                        if target_name in agent_names:
+                                            agent_connections += 1
+
+        return agent_connections / possible_connections if possible_connections > 0 else 0.0
+
+    def _detect_pattern(self, workflow: Dict[str, Any], metrics: ComplexityMetrics) -> str:
+        """Detect the primary orchestration pattern."""
+        nodes = workflow.get("nodes", [])
+
+        # Check for loop pattern (loop/iterate nodes)
+        has_loops = any(
+            "loop" in n.get("type", "").lower() or "iterate" in n.get("type", "").lower()
+            for n in nodes
+        )
+        if has_loops:
+            return "loop"
+
+        # Check for parallel pattern (merge nodes or high parallel branches)
+        has_merge = any("merge" in n.get("type", "").lower() for n in nodes)
+        if has_merge or metrics.parallel_branches >= 2:
+            return "parallel"
+
+        # Check for conditional pattern
+        if metrics.conditional_branches >= 2:
+            return "conditional"
+
+        # Check for pipeline (deep, sequential)
+        if metrics.max_depth >= 4 and metrics.parallel_branches <= 1:
+            return "pipeline"
+
+        # Default to linear
+        return "linear"
+
+    def _score_data_flow_clarity(self, workflow: Dict[str, Any]) -> DimensionScore:
+        """
+        Score data flow clarity.
+
+        Checks for:
+        - Explicit parameter passing vs global state
+        - Clear input/output contracts
+        - Variable naming clarity
+        """
+        issues = []
+        suggestions = []
+        evidence = {}
+        score = 0.7  # Default reasonable score
+
+        nodes = workflow.get("nodes", [])
+        connections = workflow.get("connections", {})
+
+        # Check for explicit connections
+        total_nodes = len(nodes)
+        connected_nodes = len(connections)
+        evidence["total_nodes"] = total_nodes
+        evidence["nodes_with_connections"] = connected_nodes
+
+        if total_nodes > 0:
+            connection_coverage = connected_nodes / total_nodes
+            evidence["connection_coverage"] = connection_coverage
+
+            if connection_coverage < 0.5:
+                issues.append("Many nodes have no explicit connections")
+                suggestions.append("Ensure all nodes have clear input/output connections")
+                score -= 0.2
+
+        # Check for Set/Code nodes that might be passing implicit state
+        state_manipulation_nodes = sum(
+            1 for n in nodes
+            if n.get("type") in ["n8n-nodes-base.set", "n8n-nodes-base.code"]
+        )
+        evidence["state_manipulation_nodes"] = state_manipulation_nodes
+
+        if state_manipulation_nodes > total_nodes * 0.3:
+            issues.append("High ratio of state manipulation nodes")
+            suggestions.append("Consider reducing implicit state passing")
+            score -= 0.15
+
+        # Check for descriptive node names
+        generic_names = sum(
+            1 for n in nodes
+            if any(
+                generic in n.get("name", "").lower()
+                for generic in ["node", "unnamed", "set", "code"]
+            )
+        )
+        evidence["generic_node_names"] = generic_names
+
+        if generic_names > total_nodes * 0.3:
+            issues.append(f"{generic_names} nodes have generic/unclear names")
+            suggestions.append("Use descriptive names for nodes to clarify data flow")
+            score -= 0.1
+
+        # Boost for well-structured workflows
+        if connection_coverage > 0.8 and generic_names < total_nodes * 0.2:
+            score += 0.2
+
+        return DimensionScore(
+            dimension=OrchestrationDimension.DATA_FLOW_CLARITY.value,
+            score=min(max(score, 0.0), 1.0),
+            issues=issues,
+            evidence=evidence,
+            suggestions=suggestions,
+        )
+
+    def _score_complexity_management(
+        self,
+        workflow: Dict[str, Any],
+        metrics: ComplexityMetrics,
+        pattern: str,
+    ) -> DimensionScore:
+        """
+        Score complexity management.
+
+        Checks for:
+        - Appropriate node count for pattern
+        - Manageable depth
+        - Reasonable cyclomatic complexity
+        """
+        issues = []
+        suggestions = []
+        evidence = {
+            "pattern": pattern,
+            "node_count": metrics.node_count,
+            "cyclomatic_complexity": metrics.cyclomatic_complexity,
+            "max_depth": metrics.max_depth,
+        }
+        score = 1.0
+
+        thresholds = PATTERN_THRESHOLDS.get(pattern, PATTERN_THRESHOLDS["linear"])
+
+        # Check node count
+        max_nodes = thresholds.get("max_nodes", 10)
+        if metrics.node_count > max_nodes:
+            score -= 0.2
+            issues.append(f"Workflow has {metrics.node_count} nodes (recommended max: {max_nodes} for {pattern} pattern)")
+            suggestions.append("Consider breaking into sub-workflows")
+
+        # Check depth
+        max_depth = thresholds.get("max_depth", 5)
+        if metrics.max_depth > max_depth:
+            score -= 0.2
+            issues.append(f"Workflow depth ({metrics.max_depth}) exceeds recommended ({max_depth})")
+            suggestions.append("Flatten deep nesting or extract sub-workflows")
+
+        # Check cyclomatic complexity
+        if metrics.cyclomatic_complexity > 10:
+            score -= 0.2
+            issues.append(f"High cyclomatic complexity ({metrics.cyclomatic_complexity})")
+            suggestions.append("Reduce branching to improve maintainability")
+        elif metrics.cyclomatic_complexity > 5:
+            score -= 0.1
+
+        # Check agent count relative to total
+        if metrics.agent_count > 8:
+            score -= 0.15
+            issues.append(f"Many agents ({metrics.agent_count}) may be hard to coordinate")
+            suggestions.append("Consider consolidating agent responsibilities")
+
+        return DimensionScore(
+            dimension=OrchestrationDimension.COMPLEXITY_MANAGEMENT.value,
+            score=max(score, 0.0),
+            issues=issues,
+            evidence=evidence,
+            suggestions=suggestions,
+        )
+
+    def _score_agent_coupling(
+        self,
+        workflow: Dict[str, Any],
+        metrics: ComplexityMetrics,
+    ) -> DimensionScore:
+        """
+        Score agent coupling/independence.
+
+        Checks for:
+        - Direct agent-to-agent coupling
+        - Shared state dependencies
+        - Single points of failure
+        """
+        issues = []
+        suggestions = []
+        evidence = {
+            "coupling_ratio": metrics.coupling_ratio,
+            "agent_count": metrics.agent_count,
+        }
+        score = 1.0
+
+        if metrics.agent_count < 2:
+            return DimensionScore(
+                dimension=OrchestrationDimension.AGENT_COUPLING.value,
+                score=0.9,  # Single agent workflows are fine
+                issues=issues,
+                evidence=evidence,
+                suggestions=suggestions,
+            )
+
+        # Check coupling ratio
+        if metrics.coupling_ratio > 0.7:
+            score -= 0.3
+            issues.append("High agent coupling may cause cascading failures")
+            suggestions.append("Add intermediate processing nodes between agents")
+        elif metrics.coupling_ratio > 0.5:
+            score -= 0.15
+            suggestions.append("Consider reducing direct agent dependencies")
+
+        # Check for agent chains (A -> B -> C -> D pattern)
+        nodes = workflow.get("nodes", [])
+        connections = workflow.get("connections", {})
+        agent_names = {n.get("name") for n in nodes if n.get("type") in AI_NODE_TYPES}
+
+        chain_length = self._detect_agent_chain_length(connections, agent_names)
+        evidence["max_agent_chain"] = chain_length
+
+        if chain_length > 4:
+            score -= 0.2
+            issues.append(f"Long agent chain ({chain_length} agents in sequence)")
+            suggestions.append("Add checkpoints or fan-out to reduce chain dependencies")
+
+        return DimensionScore(
+            dimension=OrchestrationDimension.AGENT_COUPLING.value,
+            score=max(score, 0.0),
+            issues=issues,
+            evidence=evidence,
+            suggestions=suggestions,
+        )
+
+    def _detect_agent_chain_length(
+        self,
+        connections: Dict[str, Any],
+        agent_names: Set[str],
+    ) -> int:
+        """Detect the longest chain of consecutive agents."""
+        if not agent_names:
+            return 0
+
+        # Build agent-only adjacency
+        agent_adj: Dict[str, List[str]] = defaultdict(list)
+
+        for source_name, node_conns in connections.items():
+            if source_name not in agent_names:
+                continue
+
+            if isinstance(node_conns, dict):
+                for output_type, targets in node_conns.items():
+                    if isinstance(targets, list):
+                        for target_list in targets:
+                            if isinstance(target_list, list):
+                                for target in target_list:
+                                    if isinstance(target, dict):
+                                        target_name = target.get("node", "")
+                                        if target_name in agent_names:
+                                            agent_adj[source_name].append(target_name)
+
+        # DFS for longest path
+        max_chain = 0
+        visited: Set[str] = set()
+
+        def dfs(node: str, depth: int):
+            nonlocal max_chain
+            max_chain = max(max_chain, depth)
+            visited.add(node)
+
+            for neighbor in agent_adj.get(node, []):
+                if neighbor not in visited:
+                    dfs(neighbor, depth + 1)
+
+            visited.remove(node)
+
+        for start in agent_names:
+            dfs(start, 1)
+
+        return max_chain
+
+    def _score_observability(self, workflow: Dict[str, Any]) -> DimensionScore:
+        """
+        Score observability coverage.
+
+        Checks for:
+        - Checkpoint nodes
+        - Logging/monitoring nodes
+        - Error handling paths
+        - State inspection points
+        """
+        issues = []
+        suggestions = []
+        evidence = {}
+        score = 0.5  # Start at middle
+
+        nodes = workflow.get("nodes", [])
+        total_nodes = len(nodes)
+
+        if total_nodes == 0:
+            return DimensionScore(
+                dimension=OrchestrationDimension.OBSERVABILITY.value,
+                score=0.0,
+                issues=["Empty workflow"],
+                evidence=evidence,
+                suggestions=suggestions,
+            )
+
+        # Check for observability nodes
+        observability_nodes = sum(
+            1 for n in nodes
+            if n.get("type") in OBSERVABILITY_NODE_TYPES
+        )
+        evidence["observability_nodes"] = observability_nodes
+
+        obs_ratio = observability_nodes / total_nodes
+        if obs_ratio >= 0.2:
+            score += 0.2
+        elif obs_ratio == 0:
+            issues.append("No checkpoint or logging nodes")
+            suggestions.append("Add Set nodes as checkpoints for debugging")
+            score -= 0.2
+
+        # Check for HTTP nodes that might be monitoring webhooks
+        http_nodes = [n for n in nodes if n.get("type") == "n8n-nodes-base.httpRequest"]
+        monitoring_webhooks = sum(
+            1 for n in http_nodes
+            if any(kw in str(n.get("parameters", {})).lower() for kw in ["webhook", "monitor", "log", "mao"])
+        )
+        evidence["monitoring_webhooks"] = monitoring_webhooks
+
+        if monitoring_webhooks > 0:
+            score += 0.15
+
+        # Check for error trigger nodes
+        error_triggers = sum(
+            1 for n in nodes
+            if "error" in n.get("type", "").lower()
+        )
+        evidence["error_triggers"] = error_triggers
+
+        if error_triggers > 0:
+            score += 0.15
+        else:
+            suggestions.append("Add error trigger node for failure alerting")
+
+        # Check agent nodes have alwaysOutputData
+        agent_nodes = [n for n in nodes if n.get("type") in AI_NODE_TYPES]
+        agents_with_output = sum(1 for n in agent_nodes if n.get("alwaysOutputData", False))
+        evidence["agents_with_always_output"] = agents_with_output
+
+        if agent_nodes and agents_with_output == len(agent_nodes):
+            score += 0.1
+        elif agent_nodes and agents_with_output == 0:
+            suggestions.append("Enable 'Always Output Data' on agent nodes for debugging")
+
+        return DimensionScore(
+            dimension=OrchestrationDimension.OBSERVABILITY.value,
+            score=min(max(score, 0.0), 1.0),
+            issues=issues,
+            evidence=evidence,
+            suggestions=suggestions,
+        )
+
+    def _score_best_practices(self, workflow: Dict[str, Any]) -> DimensionScore:
+        """
+        Score adherence to best practices.
+
+        Checks for:
+        - Retry configurations
+        - Timeout settings
+        - Rate limiting considerations
+        - Idempotency markers
+        """
+        issues = []
+        suggestions = []
+        evidence = {}
+        score = 0.5
+
+        nodes = workflow.get("nodes", [])
+        ai_nodes = [n for n in nodes if n.get("type") in AI_NODE_TYPES]
+
+        if not ai_nodes:
+            return DimensionScore(
+                dimension=OrchestrationDimension.BEST_PRACTICES.value,
+                score=0.8,  # Non-AI workflows have fewer requirements
+                issues=issues,
+                evidence=evidence,
+                suggestions=suggestions,
+            )
+
+        # Check retry settings on AI nodes
+        nodes_with_retry = 0
+        nodes_with_timeout = 0
+        nodes_with_continue = 0
+
+        for node in ai_nodes:
+            params = node.get("parameters", {})
+            options = params.get("options", {})
+
+            if options.get("retryOnFail") or node.get("retryOnFail"):
+                nodes_with_retry += 1
+            if options.get("timeout") or params.get("timeout"):
+                nodes_with_timeout += 1
+            if node.get("continueOnFail"):
+                nodes_with_continue += 1
+
+        evidence["ai_nodes"] = len(ai_nodes)
+        evidence["nodes_with_retry"] = nodes_with_retry
+        evidence["nodes_with_timeout"] = nodes_with_timeout
+        evidence["nodes_with_continue_on_fail"] = nodes_with_continue
+
+        # Score based on coverage
+        if len(ai_nodes) > 0:
+            retry_coverage = nodes_with_retry / len(ai_nodes)
+            timeout_coverage = nodes_with_timeout / len(ai_nodes)
+            continue_coverage = nodes_with_continue / len(ai_nodes)
+
+            score += retry_coverage * 0.15
+            score += timeout_coverage * 0.15
+            score += continue_coverage * 0.1
+
+            if retry_coverage < 0.5:
+                issues.append("Most AI nodes lack retry configuration")
+                suggestions.append("Enable retry on fail for LLM calls")
+
+            if timeout_coverage < 0.5:
+                issues.append("Most AI nodes lack timeout configuration")
+                suggestions.append("Add timeouts to prevent hanging executions")
+
+        # Check workflow-level settings
+        settings = workflow.get("settings", {})
+        if settings.get("saveManualExecutions"):
+            score += 0.05
+        if settings.get("saveDataErrorExecution") == "all":
+            score += 0.05
+
+        return DimensionScore(
+            dimension=OrchestrationDimension.BEST_PRACTICES.value,
+            score=min(score, 1.0),
+            issues=issues,
+            evidence=evidence,
+            suggestions=suggestions,
+        )
