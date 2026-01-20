@@ -15,6 +15,9 @@ from typing import Any, Optional
 
 from .baseline import Baseline, BaselineEntry, baseline_store
 
+# Use centralized embedding service (e5-large-v2) instead of legacy MiniLM
+from app.core.embeddings import EmbeddingService
+
 logger = logging.getLogger(__name__)
 
 
@@ -67,38 +70,27 @@ class DriftDetector:
         self.semantic_threshold = semantic_threshold
         self.latency_threshold_pct = latency_threshold_pct
         self.token_threshold_pct = token_threshold_pct
-        self._embedder = None
+        self._embedding_service = None
 
-    def _get_embedder(self):
-        if self._embedder is None:
-            try:
-                from sentence_transformers import SentenceTransformer
-                self._embedder = SentenceTransformer("all-MiniLM-L6-v2")
-            except ImportError:
-                self._embedder = "fallback"
-        return self._embedder
+    def _get_embedding_service(self) -> EmbeddingService:
+        """Get the centralized embedding service (lazy load)."""
+        if self._embedding_service is None:
+            self._embedding_service = EmbeddingService.get_instance()
+        return self._embedding_service
 
     def _compute_similarity(self, text1: str, text2: str) -> float:
+        """Compute semantic similarity using centralized e5-large-v2 embeddings."""
         if not text1 or not text2:
             return 0.0 if text1 != text2 else 1.0
-        
-        embedder = self._get_embedder()
-        
-        if embedder == "fallback":
-            words1 = set(text1.lower().split())
-            words2 = set(text2.lower().split())
-            if not words1 or not words2:
-                return 0.0
-            return len(words1 & words2) / len(words1 | words2)
-        
+
         try:
-            import numpy as np
-            embeddings = embedder.encode([text1, text2])
-            similarity = np.dot(embeddings[0], embeddings[1]) / (
-                np.linalg.norm(embeddings[0]) * np.linalg.norm(embeddings[1])
-            )
-            return float(similarity)
-        except:
+            service = self._get_embedding_service()
+            # Encode both texts and compute cosine similarity
+            embeddings = service.encode([text1, text2], normalize=True)
+            return float(service.similarity(embeddings[0], embeddings[1]))
+        except Exception as e:
+            # Fallback to Jaccard similarity if embedding service unavailable
+            logger.warning(f"Embedding service unavailable, using Jaccard fallback: {e}")
             words1 = set(text1.lower().split())
             words2 = set(text2.lower().split())
             if not words1 or not words2:

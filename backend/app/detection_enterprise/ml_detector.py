@@ -9,7 +9,7 @@ Approach:
 3. Use ensemble of classifiers with calibrated probabilities
 
 Features:
-- Text embeddings (sentence-transformers)
+- Text embeddings (e5-large-v2 via centralized EmbeddingService)
 - Structural features (turn counts, participant patterns)
 - Pattern features (repetition, topic drift indicators)
 - Lexical features (TF-IDF on key terms)
@@ -23,6 +23,9 @@ from pathlib import Path
 from typing import Any, Dict, List, Optional, Tuple
 
 import numpy as np
+
+# Use centralized embedding service (e5-large-v2) instead of legacy MiniLM
+from app.core.embeddings import EmbeddingService
 
 logger = logging.getLogger(__name__)
 
@@ -78,20 +81,24 @@ class FeatureExtractor:
 
     def __init__(self, use_embeddings: bool = True):
         self.use_embeddings = use_embeddings
-        self._embedder = None
+        self._embedding_service = None
+
+    @property
+    def embedding_service(self) -> Optional[EmbeddingService]:
+        """Lazy-load centralized embedding service (e5-large-v2)."""
+        if self._embedding_service is None and self.use_embeddings:
+            try:
+                self._embedding_service = EmbeddingService.get_instance()
+                logger.info(f"Using centralized embedding service (e5-large-v2, {self._embedding_service.dimensions}d)")
+            except Exception as e:
+                logger.warning(f"Embedding service not available: {e}")
+                self.use_embeddings = False
+        return self._embedding_service
 
     @property
     def embedder(self):
-        """Lazy-load embedding model."""
-        if self._embedder is None and self.use_embeddings:
-            try:
-                from sentence_transformers import SentenceTransformer
-                self._embedder = SentenceTransformer('all-MiniLM-L6-v2')
-                logger.info("Loaded sentence-transformers model")
-            except ImportError:
-                logger.warning("sentence-transformers not available")
-                self.use_embeddings = False
-        return self._embedder
+        """Backward-compatible alias for embedding_service."""
+        return self.embedding_service
 
     def extract_features(self, record: Dict[str, Any]) -> TraceFeatures:
         """Extract features from a MAST record.
@@ -146,29 +153,32 @@ class FeatureExtractor:
         return features
 
     def compute_embeddings(self, features_list: List[TraceFeatures]) -> None:
-        """Compute embeddings for a batch of features.
+        """Compute embeddings for a batch of features using e5-large-v2.
 
         Args:
             features_list: List of TraceFeatures to update with embeddings
         """
-        if not self.use_embeddings or not self.embedder:
+        if not self.use_embeddings or not self.embedding_service:
             return
 
-        # Batch encode texts
-        texts = [f.full_text[:8000] for f in features_list]  # Truncate for model
+        # Batch encode texts (truncate for model context window)
+        texts = [f.full_text[:8000] for f in features_list]
         tasks = [f.task_text[:1000] for f in features_list]
 
-        logger.info(f"Computing embeddings for {len(texts)} traces...")
+        logger.info(f"Computing embeddings for {len(texts)} traces using e5-large-v2...")
 
-        text_embeddings = self.embedder.encode(
+        # Use centralized embedding service with batch encoding
+        text_embeddings = self.embedding_service.encode(
             texts,
-            show_progress_bar=True,
-            convert_to_numpy=True
+            batch_size=32,
+            show_progress=True,
+            normalize=True,
         )
-        task_embeddings = self.embedder.encode(
+        task_embeddings = self.embedding_service.encode(
             tasks,
-            show_progress_bar=False,
-            convert_to_numpy=True
+            batch_size=32,
+            show_progress=False,
+            normalize=True,
         )
 
         for i, features in enumerate(features_list):
