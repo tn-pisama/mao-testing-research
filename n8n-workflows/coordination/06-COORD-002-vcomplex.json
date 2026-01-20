@@ -1,0 +1,197 @@
+{
+  "name": "COORD-002 VComplex: Selective Broadcast Loss",
+  "nodes": [
+    {
+      "parameters": {
+        "path": "coord-002-vcomplex",
+        "responseMode": "lastNode",
+        "options": {},
+        "httpMethod": "POST"
+      },
+      "id": "webhook",
+      "name": "Webhook",
+      "type": "n8n-nodes-base.webhook",
+      "typeVersion": 2,
+      "position": [0, 0],
+      "webhookId": "coord-002-vcomplex"
+    },
+    {
+      "parameters": {
+        "assignments": {
+          "assignments": [
+            {"id": "session_id", "name": "session_id", "value": "={{ $now.format('X') }}-coord002-vcomplex", "type": "string"},
+            {"id": "broadcast", "name": "broadcast", "value": "{\"type\": \"system_alert\", \"message\": \"Emergency: System maintenance in 5 minutes\", \"recipients\": [\"agent_1\", \"agent_2\", \"agent_3\", \"agent_4\"]}", "type": "string"}
+          ]
+        }
+      },
+      "id": "init",
+      "name": "Initialize",
+      "type": "n8n-nodes-base.set",
+      "typeVersion": 3.4,
+      "position": [200, 0]
+    },
+    {
+      "parameters": {
+        "promptType": "define",
+        "text": "You are the Broadcaster. Send emergency alert to all 4 agents.\n\nOutput: {\"agent\": \"broadcaster\", \"action\": \"broadcast\", \"message\": \"Emergency: System maintenance in 5 minutes\", \"sent_to\": [\"agent_1\", \"agent_2\", \"agent_3\", \"agent_4\"], \"all_sent\": true}",
+        "options": {}
+      },
+      "id": "broadcaster",
+      "name": "Broadcaster",
+      "type": "@n8n/n8n-nodes-langchain.agent",
+      "typeVersion": 1.6,
+      "position": [400, 0]
+    },
+    {
+      "parameters": {
+        "model": "claude-3-5-haiku-20241022",
+        "options": {"temperature": 0, "maxTokens": 100}
+      },
+      "id": "lm_b",
+      "name": "LM B",
+      "type": "@n8n/n8n-nodes-langchain.lmChatAnthropic",
+      "typeVersion": 1.2,
+      "position": [400, 200],
+      "credentials": {"anthropicApi": {"id": "1KM50Mcms9JticwF", "name": "Anthropic API"}}
+    },
+    {
+      "parameters": {
+        "promptType": "define",
+        "text": "You are Agent 1. You received the broadcast.\n\nOutput: {\"agent\": \"agent_1\", \"received\": true, \"message\": \"Emergency: System maintenance in 5 minutes\", \"acknowledged\": true}",
+        "options": {}
+      },
+      "id": "agent_1",
+      "name": "Agent 1 (Got It)",
+      "type": "@n8n/n8n-nodes-langchain.agent",
+      "typeVersion": 1.6,
+      "position": [600, -150]
+    },
+    {
+      "parameters": {
+        "model": "claude-3-5-haiku-20241022",
+        "options": {"temperature": 0, "maxTokens": 100}
+      },
+      "id": "lm_1",
+      "name": "LM 1",
+      "type": "@n8n/n8n-nodes-langchain.lmChatAnthropic",
+      "typeVersion": 1.2,
+      "position": [600, 50],
+      "credentials": {"anthropicApi": {"id": "1KM50Mcms9JticwF", "name": "Anthropic API"}}
+    },
+    {
+      "parameters": {
+        "promptType": "define",
+        "text": "You are Agent 2. You DID NOT receive the broadcast.\n\nOutput: {\"agent\": \"agent_2\", \"received\": false, \"inbox\": \"empty\", \"unaware_of_maintenance\": true}",
+        "options": {}
+      },
+      "id": "agent_2",
+      "name": "Agent 2 (Missed)",
+      "type": "@n8n/n8n-nodes-langchain.agent",
+      "typeVersion": 1.6,
+      "position": [600, 100]
+    },
+    {
+      "parameters": {
+        "model": "claude-3-5-haiku-20241022",
+        "options": {"temperature": 0, "maxTokens": 100}
+      },
+      "id": "lm_2",
+      "name": "LM 2",
+      "type": "@n8n/n8n-nodes-langchain.lmChatAnthropic",
+      "typeVersion": 1.2,
+      "position": [600, 300],
+      "credentials": {"anthropicApi": {"id": "1KM50Mcms9JticwF", "name": "Anthropic API"}}
+    },
+    {
+      "parameters": {
+        "promptType": "define",
+        "text": "You are Agent 3. You received the broadcast.\n\nOutput: {\"agent\": \"agent_3\", \"received\": true, \"message\": \"Emergency: System maintenance in 5 minutes\", \"acknowledged\": true}",
+        "options": {}
+      },
+      "id": "agent_3",
+      "name": "Agent 3 (Got It)",
+      "type": "@n8n/n8n-nodes-langchain.agent",
+      "typeVersion": 1.6,
+      "position": [600, 350]
+    },
+    {
+      "parameters": {
+        "model": "claude-3-5-haiku-20241022",
+        "options": {"temperature": 0, "maxTokens": 100}
+      },
+      "id": "lm_3",
+      "name": "LM 3",
+      "type": "@n8n/n8n-nodes-langchain.lmChatAnthropic",
+      "typeVersion": 1.2,
+      "position": [600, 550],
+      "credentials": {"anthropicApi": {"id": "1KM50Mcms9JticwF", "name": "Anthropic API"}}
+    },
+    {
+      "parameters": {
+        "promptType": "define",
+        "text": "You are Agent 4. You DID NOT receive the broadcast.\n\nOutput: {\"agent\": \"agent_4\", \"received\": false, \"inbox\": \"empty\", \"unaware_of_maintenance\": true}",
+        "options": {}
+      },
+      "id": "agent_4",
+      "name": "Agent 4 (Missed)",
+      "type": "@n8n/n8n-nodes-langchain.agent",
+      "typeVersion": 1.6,
+      "position": [600, 600]
+    },
+    {
+      "parameters": {
+        "model": "claude-3-5-haiku-20241022",
+        "options": {"temperature": 0, "maxTokens": 100}
+      },
+      "id": "lm_4",
+      "name": "LM 4",
+      "type": "@n8n/n8n-nodes-langchain.lmChatAnthropic",
+      "typeVersion": 1.2,
+      "position": [600, 800],
+      "credentials": {"anthropicApi": {"id": "1KM50Mcms9JticwF", "name": "Anthropic API"}}
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "https://mao-api.fly.dev/api/v1/n8n/webhook",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [{"name": "X-N8N-Api-Key", "value": "mao_pmNhfBRfqd5G_YHubK0Jqk9ZHB6ItITkHFYP4ISns9c"}]
+        },
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={\n  \"event_type\": \"workflow.completed\",\n  \"workflow_name\": \"COORD-002 VComplex: Selective Broadcast Loss\",\n  \"session_id\": \"{{ $('Initialize').item.json.session_id }}\",\n  \"failure_mode\": \"COORD-002\",\n  \"complexity\": \"very_complex\",\n  \"expected_detection\": \"message_loss\",\n  \"coordination_tracking\": {\n    \"broadcast\": {{ $('Initialize').item.json.broadcast }},\n    \"broadcaster\": \"{{ $('Broadcaster').item.json.output }}\",\n    \"agent_1\": \"{{ $('Agent 1 (Got It)').item.json.output }}\",\n    \"agent_2\": \"{{ $('Agent 2 (Missed)').item.json.output }}\",\n    \"agent_3\": \"{{ $('Agent 3 (Got It)').item.json.output }}\",\n    \"agent_4\": \"{{ $('Agent 4 (Missed)').item.json.output }}\",\n    \"intended_recipients\": 4,\n    \"actual_recipients\": 2,\n    \"selective_loss\": true,\n    \"missed_agents\": [\"agent_2\", \"agent_4\"]\n  },\n  \"agents\": [\n    {\"agent_id\": \"broadcaster\", \"role\": \"sender\", \"outputs\": [\"{{ $('Broadcaster').item.json.output }}\"]},\n    {\"agent_id\": \"agent_1\", \"role\": \"recipient\", \"outputs\": [\"{{ $('Agent 1 (Got It)').item.json.output }}\"]},\n    {\"agent_id\": \"agent_2\", \"role\": \"recipient\", \"outputs\": [\"{{ $('Agent 2 (Missed)').item.json.output }}\"]},\n    {\"agent_id\": \"agent_3\", \"role\": \"recipient\", \"outputs\": [\"{{ $('Agent 3 (Got It)').item.json.output }}\"]},\n    {\"agent_id\": \"agent_4\", \"role\": \"recipient\", \"outputs\": [\"{{ $('Agent 4 (Missed)').item.json.output }}\"]}\n  ]\n}",
+        "options": {}
+      },
+      "id": "send_to_mao",
+      "name": "Send to MAO",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [800, 200]
+    }
+  ],
+  "connections": {
+    "Webhook": {"main": [[{"node": "Initialize", "type": "main", "index": 0}]]},
+    "Initialize": {"main": [[{"node": "Broadcaster", "type": "main", "index": 0}]]},
+    "LM B": {"ai_languageModel": [[{"node": "Broadcaster", "type": "ai_languageModel", "index": 0}]]},
+    "Broadcaster": {"main": [[{"node": "Agent 1 (Got It)", "type": "main", "index": 0}, {"node": "Agent 2 (Missed)", "type": "main", "index": 0}, {"node": "Agent 3 (Got It)", "type": "main", "index": 0}, {"node": "Agent 4 (Missed)", "type": "main", "index": 0}]]},
+    "LM 1": {"ai_languageModel": [[{"node": "Agent 1 (Got It)", "type": "ai_languageModel", "index": 0}]]},
+    "LM 2": {"ai_languageModel": [[{"node": "Agent 2 (Missed)", "type": "ai_languageModel", "index": 0}]]},
+    "LM 3": {"ai_languageModel": [[{"node": "Agent 3 (Got It)", "type": "ai_languageModel", "index": 0}]]},
+    "LM 4": {"ai_languageModel": [[{"node": "Agent 4 (Missed)", "type": "ai_languageModel", "index": 0}]]},
+    "Agent 1 (Got It)": {"main": [[{"node": "Send to MAO", "type": "main", "index": 0}]]},
+    "Agent 2 (Missed)": {"main": [[{"node": "Send to MAO", "type": "main", "index": 0}]]},
+    "Agent 3 (Got It)": {"main": [[{"node": "Send to MAO", "type": "main", "index": 0}]]},
+    "Agent 4 (Missed)": {"main": [[{"node": "Send to MAO", "type": "main", "index": 0}]]}
+  },
+  "settings": {"executionOrder": "v1"},
+  "meta": {
+    "mast_failure_mode": "COORD-002",
+    "mast_category": "COORDINATION",
+    "complexity": "very_complex",
+    "description": "Broadcast message reaches some agents but not others",
+    "expected_detection": "Broadcast acknowledgment tracking detects selective delivery failure",
+    "agents": 5,
+    "nodes": 6
+  }
+}

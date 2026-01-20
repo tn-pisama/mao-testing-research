@@ -1,0 +1,38 @@
+{
+  "name": "RESOURCE-002 Simple: Single Operation Timeout",
+  "nodes": [
+    {
+      "parameters": {"path": "resource-002-simple", "responseMode": "lastNode", "options": {}, "httpMethod": "POST"},
+      "id": "webhook", "name": "Webhook", "type": "n8n-nodes-base.webhook", "typeVersion": 2, "position": [0, 0], "webhookId": "resource-002-simple"
+    },
+    {
+      "parameters": {"assignments": {"assignments": [{"id": "session_id", "name": "session_id", "value": "={{ $now.format('X') }}-resource002-simple", "type": "string"}, {"id": "timeout_limit", "name": "timeout_limit", "value": "3000", "type": "number"}]}},
+      "id": "init", "name": "Initialize", "type": "n8n-nodes-base.set", "typeVersion": 3.4, "position": [200, 0]
+    },
+    {
+      "parameters": {"url": "https://httpbin.org/delay/10", "options": {"timeout": 3000}},
+      "id": "slow_api", "name": "Slow API Call", "type": "n8n-nodes-base.httpRequest", "typeVersion": 4.2, "position": [400, 0], "continueOnFail": true
+    },
+    {
+      "parameters": {"promptType": "define", "text": "You are the Timeout Handler. The API call to httpbin.org/delay/10 timed out after 3 seconds.\n\nTimeout limit: 3000ms\nActual response time: >10000ms (would have been)\nStatus: TIMEOUT\n\nOutput: {\"operation\": \"api_call\", \"url\": \"httpbin.org/delay/10\", \"timeout_limit_ms\": 3000, \"status\": \"TIMEOUT\", \"error\": \"ETIMEDOUT\"}", "options": {}},
+      "id": "handler", "name": "Timeout Handler", "type": "@n8n/n8n-nodes-langchain.agent", "typeVersion": 1.6, "position": [600, 0]
+    },
+    {
+      "parameters": {"model": "claude-3-5-haiku-20241022", "options": {"temperature": 0, "maxTokens": 100}},
+      "id": "lm", "name": "LM", "type": "@n8n/n8n-nodes-langchain.lmChatAnthropic", "typeVersion": 1.2, "position": [600, 200], "credentials": {"anthropicApi": {"id": "1KM50Mcms9JticwF", "name": "Anthropic API"}}
+    },
+    {
+      "parameters": {"method": "POST", "url": "https://mao-api.fly.dev/api/v1/n8n/webhook", "sendHeaders": true, "headerParameters": {"parameters": [{"name": "X-N8N-Api-Key", "value": "mao_pmNhfBRfqd5G_YHubK0Jqk9ZHB6ItITkHFYP4ISns9c"}]}, "sendBody": true, "specifyBody": "json", "jsonBody": "={\n  \"event_type\": \"workflow.completed\",\n  \"workflow_name\": \"RESOURCE-002 Simple: Single Operation Timeout\",\n  \"session_id\": \"{{ $('Initialize').item.json.session_id }}\",\n  \"failure_mode\": \"RESOURCE-002\",\n  \"complexity\": \"simple\",\n  \"expected_detection\": \"timeout\",\n  \"resource_tracking\": {\n    \"timeout_limit_ms\": {{ $('Initialize').item.json.timeout_limit }},\n    \"handler_output\": \"{{ $('Timeout Handler').item.json.output }}\",\n    \"timeout_type\": \"single_operation\"\n  },\n  \"agents\": [\n    {\"agent_id\": \"handler\", \"outputs\": [\"{{ $('Timeout Handler').item.json.output }}\"]}\n  ]\n}", "options": {}},
+      "id": "send_to_mao", "name": "Send to MAO", "type": "n8n-nodes-base.httpRequest", "typeVersion": 4.2, "position": [800, 0]
+    }
+  ],
+  "connections": {
+    "Webhook": {"main": [[{"node": "Initialize", "type": "main", "index": 0}]]},
+    "Initialize": {"main": [[{"node": "Slow API Call", "type": "main", "index": 0}]]},
+    "Slow API Call": {"main": [[{"node": "Timeout Handler", "type": "main", "index": 0}]]},
+    "LM": {"ai_languageModel": [[{"node": "Timeout Handler", "type": "ai_languageModel", "index": 0}]]},
+    "Timeout Handler": {"main": [[{"node": "Send to MAO", "type": "main", "index": 0}]]}
+  },
+  "settings": {"executionOrder": "v1"},
+  "meta": {"mast_failure_mode": "RESOURCE-002", "mast_category": "RESOURCE", "complexity": "simple", "description": "Single API call exceeds timeout limit", "expected_detection": "Operation timeout detection", "agents": 1, "nodes": 4, "real_apis": ["HTTPBin"]}
+}

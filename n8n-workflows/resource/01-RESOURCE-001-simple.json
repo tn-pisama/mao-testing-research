@@ -1,0 +1,33 @@
+{
+  "name": "RESOURCE-001 Simple: Verbose Response",
+  "nodes": [
+    {
+      "parameters": {"path": "resource-001-simple", "responseMode": "lastNode", "options": {}, "httpMethod": "POST"},
+      "id": "webhook", "name": "Webhook", "type": "n8n-nodes-base.webhook", "typeVersion": 2, "position": [0, 0], "webhookId": "resource-001-simple"
+    },
+    {
+      "parameters": {"assignments": {"assignments": [{"id": "session_id", "name": "session_id", "value": "={{ $now.format('X') }}-resource001-simple", "type": "string"}, {"id": "expected_tokens", "name": "expected_tokens", "value": "100", "type": "number"}]}},
+      "id": "init", "name": "Initialize", "type": "n8n-nodes-base.set", "typeVersion": 3.4, "position": [200, 0]
+    },
+    {
+      "parameters": {"promptType": "define", "text": "You are an assistant asked a simple question: \"What is 2+2?\"\n\nYou respond with extreme verbosity:\n\n\"Ah, what a wonderful mathematical question! Let me provide a comprehensive exploration of this fundamental arithmetic operation. The question '2+2' represents the addition of two integers, each having the value of two. In the base-10 decimal system that we commonly use, when we combine or add these two quantities together, we perform what mathematicians call 'summation' or 'addition'. The process involves taking the first quantity (2) and incrementing it by the second quantity (also 2), resulting in a new value. This operation can be visualized using various methods: counting on fingers, using an abacus, drawing tally marks, or employing mental arithmetic. The result of this particular calculation is...\"\n\n(continues for 500+ more tokens)\n\nOutput: {\"question\": \"2+2\", \"answer\": \"4\", \"tokens_used\": 650, \"expected_tokens\": 10, \"token_explosion_ratio\": 65}", "options": {}},
+      "id": "verbose_agent", "name": "Verbose Agent", "type": "@n8n/n8n-nodes-langchain.agent", "typeVersion": 1.6, "position": [400, 0]
+    },
+    {
+      "parameters": {"model": "claude-3-5-haiku-20241022", "options": {"temperature": 0, "maxTokens": 200}},
+      "id": "lm", "name": "LM", "type": "@n8n/n8n-nodes-langchain.lmChatAnthropic", "typeVersion": 1.2, "position": [400, 200], "credentials": {"anthropicApi": {"id": "1KM50Mcms9JticwF", "name": "Anthropic API"}}
+    },
+    {
+      "parameters": {"method": "POST", "url": "https://mao-api.fly.dev/api/v1/n8n/webhook", "sendHeaders": true, "headerParameters": {"parameters": [{"name": "X-N8N-Api-Key", "value": "mao_pmNhfBRfqd5G_YHubK0Jqk9ZHB6ItITkHFYP4ISns9c"}]}, "sendBody": true, "specifyBody": "json", "jsonBody": "={\n  \"event_type\": \"workflow.completed\",\n  \"workflow_name\": \"RESOURCE-001 Simple: Verbose Response\",\n  \"session_id\": \"{{ $('Initialize').item.json.session_id }}\",\n  \"failure_mode\": \"RESOURCE-001\",\n  \"complexity\": \"simple\",\n  \"expected_detection\": \"token_explosion\",\n  \"resource_tracking\": {\n    \"expected_tokens\": {{ $('Initialize').item.json.expected_tokens }},\n    \"agent_output\": \"{{ $('Verbose Agent').item.json.output }}\",\n    \"explosion_type\": \"single_response_verbosity\"\n  },\n  \"agents\": [\n    {\"agent_id\": \"verbose_agent\", \"outputs\": [\"{{ $('Verbose Agent').item.json.output }}\"]}\n  ]\n}", "options": {}},
+      "id": "send_to_mao", "name": "Send to MAO", "type": "n8n-nodes-base.httpRequest", "typeVersion": 4.2, "position": [600, 0]
+    }
+  ],
+  "connections": {
+    "Webhook": {"main": [[{"node": "Initialize", "type": "main", "index": 0}]]},
+    "Initialize": {"main": [[{"node": "Verbose Agent", "type": "main", "index": 0}]]},
+    "LM": {"ai_languageModel": [[{"node": "Verbose Agent", "type": "ai_languageModel", "index": 0}]]},
+    "Verbose Agent": {"main": [[{"node": "Send to MAO", "type": "main", "index": 0}]]}
+  },
+  "settings": {"executionOrder": "v1"},
+  "meta": {"mast_failure_mode": "RESOURCE-001", "mast_category": "RESOURCE", "complexity": "simple", "description": "Single agent outputs extremely verbose response for simple question", "expected_detection": "Token explosion detection via response length analysis", "agents": 1, "nodes": 3}
+}

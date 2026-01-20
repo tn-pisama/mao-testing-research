@@ -1,0 +1,119 @@
+{
+  "name": "COORD-001 Simple: Missing Acknowledgment",
+  "nodes": [
+    {
+      "parameters": {
+        "path": "coord-001-simple",
+        "responseMode": "lastNode",
+        "options": {},
+        "httpMethod": "POST"
+      },
+      "id": "webhook",
+      "name": "Webhook",
+      "type": "n8n-nodes-base.webhook",
+      "typeVersion": 2,
+      "position": [0, 0],
+      "webhookId": "coord-001-simple"
+    },
+    {
+      "parameters": {
+        "assignments": {
+          "assignments": [
+            {"id": "session_id", "name": "session_id", "value": "={{ $now.format('X') }}-coord001-simple", "type": "string"},
+            {"id": "task", "name": "task", "value": "{\"id\": \"task-123\", \"description\": \"Process customer order\", \"status\": \"pending\"}", "type": "string"}
+          ]
+        }
+      },
+      "id": "init",
+      "name": "Initialize",
+      "type": "n8n-nodes-base.set",
+      "typeVersion": 3.4,
+      "position": [200, 0]
+    },
+    {
+      "parameters": {
+        "promptType": "define",
+        "text": "You are Agent A. Hand off task-123 to Agent B.\n\nOutput: {\"action\": \"handoff\", \"from\": \"A\", \"to\": \"B\", \"task_id\": \"task-123\", \"message\": \"Please process this customer order\", \"awaiting_ack\": true}",
+        "options": {}
+      },
+      "id": "agent_a",
+      "name": "Agent A Handoff",
+      "type": "@n8n/n8n-nodes-langchain.agent",
+      "typeVersion": 1.6,
+      "position": [400, 0]
+    },
+    {
+      "parameters": {
+        "model": "claude-3-5-haiku-20241022",
+        "options": {"temperature": 0, "maxTokens": 100}
+      },
+      "id": "lm_a",
+      "name": "LM A",
+      "type": "@n8n/n8n-nodes-langchain.lmChatAnthropic",
+      "typeVersion": 1.2,
+      "position": [400, 200],
+      "credentials": {"anthropicApi": {"id": "1KM50Mcms9JticwF", "name": "Anthropic API"}}
+    },
+    {
+      "parameters": {
+        "promptType": "define",
+        "text": "You are Agent B. You receive task but DO NOT acknowledge it.\n\nOutput: {\"action\": \"received\", \"agent\": \"B\", \"task_id\": \"task-123\", \"acknowledged\": false, \"reason\": \"forgot to send acknowledgment\"}",
+        "options": {}
+      },
+      "id": "agent_b",
+      "name": "Agent B No Ack",
+      "type": "@n8n/n8n-nodes-langchain.agent",
+      "typeVersion": 1.6,
+      "position": [600, 0]
+    },
+    {
+      "parameters": {
+        "model": "claude-3-5-haiku-20241022",
+        "options": {"temperature": 0, "maxTokens": 100}
+      },
+      "id": "lm_b",
+      "name": "LM B",
+      "type": "@n8n/n8n-nodes-langchain.lmChatAnthropic",
+      "typeVersion": 1.2,
+      "position": [600, 200],
+      "credentials": {"anthropicApi": {"id": "1KM50Mcms9JticwF", "name": "Anthropic API"}}
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "https://mao-api.fly.dev/api/v1/n8n/webhook",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [{"name": "X-N8N-Api-Key", "value": "mao_pmNhfBRfqd5G_YHubK0Jqk9ZHB6ItITkHFYP4ISns9c"}]
+        },
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={\n  \"event_type\": \"workflow.completed\",\n  \"workflow_name\": \"COORD-001 Simple: Missing Acknowledgment\",\n  \"session_id\": \"{{ $('Initialize').item.json.session_id }}\",\n  \"failure_mode\": \"COORD-001\",\n  \"complexity\": \"simple\",\n  \"expected_detection\": \"handoff_failure\",\n  \"coordination_tracking\": {\n    \"task\": {{ $('Initialize').item.json.task }},\n    \"handoff\": \"{{ $('Agent A Handoff').item.json.output }}\",\n    \"receiver\": \"{{ $('Agent B No Ack').item.json.output }}\",\n    \"ack_received\": false,\n    \"failure_type\": \"missing_acknowledgment\"\n  },\n  \"agents\": [\n    {\"agent_id\": \"agent_a\", \"role\": \"sender\", \"outputs\": [\"{{ $('Agent A Handoff').item.json.output }}\"]},\n    {\"agent_id\": \"agent_b\", \"role\": \"receiver\", \"outputs\": [\"{{ $('Agent B No Ack').item.json.output }}\"]}\n  ]\n}",
+        "options": {}
+      },
+      "id": "send_to_mao",
+      "name": "Send to MAO",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [800, 0]
+    }
+  ],
+  "connections": {
+    "Webhook": {"main": [[{"node": "Initialize", "type": "main", "index": 0}]]},
+    "Initialize": {"main": [[{"node": "Agent A Handoff", "type": "main", "index": 0}]]},
+    "LM A": {"ai_languageModel": [[{"node": "Agent A Handoff", "type": "ai_languageModel", "index": 0}]]},
+    "Agent A Handoff": {"main": [[{"node": "Agent B No Ack", "type": "main", "index": 0}]]},
+    "LM B": {"ai_languageModel": [[{"node": "Agent B No Ack", "type": "ai_languageModel", "index": 0}]]},
+    "Agent B No Ack": {"main": [[{"node": "Send to MAO", "type": "main", "index": 0}]]}
+  },
+  "settings": {"executionOrder": "v1"},
+  "meta": {
+    "mast_failure_mode": "COORD-001",
+    "mast_category": "COORDINATION",
+    "complexity": "simple",
+    "description": "Task handed off but never acknowledged by receiving agent",
+    "expected_detection": "Handoff tracking detects missing acknowledgment",
+    "agents": 2,
+    "nodes": 3
+  }
+}

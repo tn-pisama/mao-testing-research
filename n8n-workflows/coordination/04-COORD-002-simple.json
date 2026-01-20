@@ -1,0 +1,118 @@
+{
+  "name": "COORD-002 Simple: Message Not Received",
+  "nodes": [
+    {
+      "parameters": {
+        "path": "coord-002-simple",
+        "responseMode": "lastNode",
+        "options": {},
+        "httpMethod": "POST"
+      },
+      "id": "webhook",
+      "name": "Webhook",
+      "type": "n8n-nodes-base.webhook",
+      "typeVersion": 2,
+      "position": [0, 0],
+      "webhookId": "coord-002-simple"
+    },
+    {
+      "parameters": {
+        "assignments": {
+          "assignments": [
+            {"id": "session_id", "name": "session_id", "value": "={{ $now.format('X') }}-coord002-simple", "type": "string"}
+          ]
+        }
+      },
+      "id": "init",
+      "name": "Initialize",
+      "type": "n8n-nodes-base.set",
+      "typeVersion": 3.4,
+      "position": [200, 0]
+    },
+    {
+      "parameters": {
+        "promptType": "define",
+        "text": "You are the Sender. Send a critical message to Receiver.\n\nOutput: {\"agent\": \"sender\", \"action\": \"send\", \"message\": \"Critical update: system status changed\", \"message_id\": \"msg-001\", \"sent\": true}",
+        "options": {}
+      },
+      "id": "sender",
+      "name": "Sender",
+      "type": "@n8n/n8n-nodes-langchain.agent",
+      "typeVersion": 1.6,
+      "position": [400, 0]
+    },
+    {
+      "parameters": {
+        "model": "claude-3-5-haiku-20241022",
+        "options": {"temperature": 0, "maxTokens": 100}
+      },
+      "id": "lm_s",
+      "name": "LM S",
+      "type": "@n8n/n8n-nodes-langchain.lmChatAnthropic",
+      "typeVersion": 1.2,
+      "position": [400, 200],
+      "credentials": {"anthropicApi": {"id": "1KM50Mcms9JticwF", "name": "Anthropic API"}}
+    },
+    {
+      "parameters": {
+        "promptType": "define",
+        "text": "You are the Receiver. You never received the message.\n\nOutput: {\"agent\": \"receiver\", \"action\": \"check_inbox\", \"message_id\": \"msg-001\", \"received\": false, \"inbox_empty\": true}",
+        "options": {}
+      },
+      "id": "receiver",
+      "name": "Receiver (Empty)",
+      "type": "@n8n/n8n-nodes-langchain.agent",
+      "typeVersion": 1.6,
+      "position": [600, 0]
+    },
+    {
+      "parameters": {
+        "model": "claude-3-5-haiku-20241022",
+        "options": {"temperature": 0, "maxTokens": 100}
+      },
+      "id": "lm_r",
+      "name": "LM R",
+      "type": "@n8n/n8n-nodes-langchain.lmChatAnthropic",
+      "typeVersion": 1.2,
+      "position": [600, 200],
+      "credentials": {"anthropicApi": {"id": "1KM50Mcms9JticwF", "name": "Anthropic API"}}
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "https://mao-api.fly.dev/api/v1/n8n/webhook",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [{"name": "X-N8N-Api-Key", "value": "mao_pmNhfBRfqd5G_YHubK0Jqk9ZHB6ItITkHFYP4ISns9c"}]
+        },
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={\n  \"event_type\": \"workflow.completed\",\n  \"workflow_name\": \"COORD-002 Simple: Message Not Received\",\n  \"session_id\": \"{{ $('Initialize').item.json.session_id }}\",\n  \"failure_mode\": \"COORD-002\",\n  \"complexity\": \"simple\",\n  \"expected_detection\": \"message_loss\",\n  \"coordination_tracking\": {\n    \"sender\": \"{{ $('Sender').item.json.output }}\",\n    \"receiver\": \"{{ $('Receiver (Empty)').item.json.output }}\",\n    \"message_sent\": true,\n    \"message_received\": false,\n    \"message_lost\": true\n  },\n  \"agents\": [\n    {\"agent_id\": \"sender\", \"role\": \"message_sender\", \"outputs\": [\"{{ $('Sender').item.json.output }}\"]},\n    {\"agent_id\": \"receiver\", \"role\": \"message_receiver\", \"outputs\": [\"{{ $('Receiver (Empty)').item.json.output }}\"]}\n  ]\n}",
+        "options": {}
+      },
+      "id": "send_to_mao",
+      "name": "Send to MAO",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [800, 0]
+    }
+  ],
+  "connections": {
+    "Webhook": {"main": [[{"node": "Initialize", "type": "main", "index": 0}]]},
+    "Initialize": {"main": [[{"node": "Sender", "type": "main", "index": 0}]]},
+    "LM S": {"ai_languageModel": [[{"node": "Sender", "type": "ai_languageModel", "index": 0}]]},
+    "Sender": {"main": [[{"node": "Receiver (Empty)", "type": "main", "index": 0}]]},
+    "LM R": {"ai_languageModel": [[{"node": "Receiver (Empty)", "type": "ai_languageModel", "index": 0}]]},
+    "Receiver (Empty)": {"main": [[{"node": "Send to MAO", "type": "main", "index": 0}]]}
+  },
+  "settings": {"executionOrder": "v1"},
+  "meta": {
+    "mast_failure_mode": "COORD-002",
+    "mast_category": "COORDINATION",
+    "complexity": "simple",
+    "description": "Message sent but never received by target agent",
+    "expected_detection": "Send/receive tracking detects missing message",
+    "agents": 2,
+    "nodes": 3
+  }
+}

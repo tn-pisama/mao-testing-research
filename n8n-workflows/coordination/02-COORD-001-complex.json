@@ -1,0 +1,158 @@
+{
+  "name": "COORD-001 Complex: Chain Handoff Failure",
+  "nodes": [
+    {
+      "parameters": {
+        "path": "coord-001-complex",
+        "responseMode": "lastNode",
+        "options": {},
+        "httpMethod": "POST"
+      },
+      "id": "webhook",
+      "name": "Webhook",
+      "type": "n8n-nodes-base.webhook",
+      "typeVersion": 2,
+      "position": [0, 0],
+      "webhookId": "coord-001-complex"
+    },
+    {
+      "parameters": {
+        "assignments": {
+          "assignments": [
+            {"id": "session_id", "name": "session_id", "value": "={{ $now.format('X') }}-coord001-complex", "type": "string"},
+            {"id": "task", "name": "task", "value": "{\"id\": \"task-456\", \"pipeline\": [\"collector\", \"processor\", \"validator\", \"publisher\"]}", "type": "string"}
+          ]
+        }
+      },
+      "id": "init",
+      "name": "Initialize",
+      "type": "n8n-nodes-base.set",
+      "typeVersion": 3.4,
+      "position": [200, 0]
+    },
+    {
+      "parameters": {
+        "url": "https://jsonplaceholder.typicode.com/posts/1",
+        "options": {}
+      },
+      "id": "fetch",
+      "name": "Fetch Data",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [400, 0]
+    },
+    {
+      "parameters": {
+        "promptType": "define",
+        "text": "You are the Collector. Collect data and pass to Processor.\n\nOutput: {\"agent\": \"collector\", \"action\": \"handoff\", \"to\": \"processor\", \"data\": \"collected_data\", \"handoff_success\": true}",
+        "options": {}
+      },
+      "id": "collector",
+      "name": "Collector",
+      "type": "@n8n/n8n-nodes-langchain.agent",
+      "typeVersion": 1.6,
+      "position": [600, 0]
+    },
+    {
+      "parameters": {
+        "model": "claude-3-5-haiku-20241022",
+        "options": {"temperature": 0, "maxTokens": 100}
+      },
+      "id": "lm_1",
+      "name": "LM 1",
+      "type": "@n8n/n8n-nodes-langchain.lmChatAnthropic",
+      "typeVersion": 1.2,
+      "position": [600, 200],
+      "credentials": {"anthropicApi": {"id": "1KM50Mcms9JticwF", "name": "Anthropic API"}}
+    },
+    {
+      "parameters": {
+        "promptType": "define",
+        "text": "You are the Processor. Receive from Collector, DROP the task, don't pass to Validator.\n\nOutput: {\"agent\": \"processor\", \"action\": \"received\", \"from\": \"collector\", \"handoff_to_validator\": false, \"dropped\": true, \"reason\": \"internal_error\"}",
+        "options": {}
+      },
+      "id": "processor",
+      "name": "Processor (Drops)",
+      "type": "@n8n/n8n-nodes-langchain.agent",
+      "typeVersion": 1.6,
+      "position": [800, 0]
+    },
+    {
+      "parameters": {
+        "model": "claude-3-5-haiku-20241022",
+        "options": {"temperature": 0, "maxTokens": 100}
+      },
+      "id": "lm_2",
+      "name": "LM 2",
+      "type": "@n8n/n8n-nodes-langchain.lmChatAnthropic",
+      "typeVersion": 1.2,
+      "position": [800, 200],
+      "credentials": {"anthropicApi": {"id": "1KM50Mcms9JticwF", "name": "Anthropic API"}}
+    },
+    {
+      "parameters": {
+        "promptType": "define",
+        "text": "You are the Validator. Wait for handoff from Processor.\n\nOutput: {\"agent\": \"validator\", \"action\": \"waiting\", \"received_from_processor\": false, \"timeout\": true, \"task_lost\": true}",
+        "options": {}
+      },
+      "id": "validator",
+      "name": "Validator (Never Gets)",
+      "type": "@n8n/n8n-nodes-langchain.agent",
+      "typeVersion": 1.6,
+      "position": [1000, 0]
+    },
+    {
+      "parameters": {
+        "model": "claude-3-5-haiku-20241022",
+        "options": {"temperature": 0, "maxTokens": 100}
+      },
+      "id": "lm_3",
+      "name": "LM 3",
+      "type": "@n8n/n8n-nodes-langchain.lmChatAnthropic",
+      "typeVersion": 1.2,
+      "position": [1000, 200],
+      "credentials": {"anthropicApi": {"id": "1KM50Mcms9JticwF", "name": "Anthropic API"}}
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "https://mao-api.fly.dev/api/v1/n8n/webhook",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [{"name": "X-N8N-Api-Key", "value": "mao_pmNhfBRfqd5G_YHubK0Jqk9ZHB6ItITkHFYP4ISns9c"}]
+        },
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={\n  \"event_type\": \"workflow.completed\",\n  \"workflow_name\": \"COORD-001 Complex: Chain Handoff Failure\",\n  \"session_id\": \"{{ $('Initialize').item.json.session_id }}\",\n  \"failure_mode\": \"COORD-001\",\n  \"complexity\": \"complex\",\n  \"expected_detection\": \"handoff_failure\",\n  \"coordination_tracking\": {\n    \"pipeline\": {{ $('Initialize').item.json.task }},\n    \"collector\": \"{{ $('Collector').item.json.output }}\",\n    \"processor\": \"{{ $('Processor (Drops)').item.json.output }}\",\n    \"validator\": \"{{ $('Validator (Never Gets)').item.json.output }}\",\n    \"chain_broken_at\": \"processor\",\n    \"downstream_starved\": [\"validator\", \"publisher\"]\n  },\n  \"agents\": [\n    {\"agent_id\": \"collector\", \"role\": \"data_collector\", \"outputs\": [\"{{ $('Collector').item.json.output }}\"]},\n    {\"agent_id\": \"processor\", \"role\": \"data_processor\", \"outputs\": [\"{{ $('Processor (Drops)').item.json.output }}\"]},\n    {\"agent_id\": \"validator\", \"role\": \"data_validator\", \"outputs\": [\"{{ $('Validator (Never Gets)').item.json.output }}\"]}\n  ]\n}",
+        "options": {}
+      },
+      "id": "send_to_mao",
+      "name": "Send to MAO",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [1200, 0]
+    }
+  ],
+  "connections": {
+    "Webhook": {"main": [[{"node": "Initialize", "type": "main", "index": 0}]]},
+    "Initialize": {"main": [[{"node": "Fetch Data", "type": "main", "index": 0}]]},
+    "Fetch Data": {"main": [[{"node": "Collector", "type": "main", "index": 0}]]},
+    "LM 1": {"ai_languageModel": [[{"node": "Collector", "type": "ai_languageModel", "index": 0}]]},
+    "Collector": {"main": [[{"node": "Processor (Drops)", "type": "main", "index": 0}]]},
+    "LM 2": {"ai_languageModel": [[{"node": "Processor (Drops)", "type": "ai_languageModel", "index": 0}]]},
+    "Processor (Drops)": {"main": [[{"node": "Validator (Never Gets)", "type": "main", "index": 0}]]},
+    "LM 3": {"ai_languageModel": [[{"node": "Validator (Never Gets)", "type": "ai_languageModel", "index": 0}]]},
+    "Validator (Never Gets)": {"main": [[{"node": "Send to MAO", "type": "main", "index": 0}]]}
+  },
+  "settings": {"executionOrder": "v1"},
+  "meta": {
+    "mast_failure_mode": "COORD-001",
+    "mast_category": "COORDINATION",
+    "complexity": "complex",
+    "description": "Multi-stage pipeline where middle agent drops the task",
+    "expected_detection": "Pipeline tracking detects broken handoff chain",
+    "agents": 3,
+    "nodes": 5,
+    "real_apis": ["JSONPlaceholder"]
+  }
+}

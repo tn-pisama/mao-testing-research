@@ -1,0 +1,43 @@
+{
+  "name": "COORD-004 Simple: Priority Queue Violation",
+  "nodes": [
+    {
+      "parameters": {"path": "coord-004-simple", "responseMode": "lastNode", "options": {}, "httpMethod": "POST"},
+      "id": "webhook", "name": "Webhook", "type": "n8n-nodes-base.webhook", "typeVersion": 2, "position": [0, 0], "webhookId": "coord-004-simple"
+    },
+    {
+      "parameters": {"assignments": {"assignments": [{"id": "session_id", "name": "session_id", "value": "={{ $now.format('X') }}-coord004-simple", "type": "string"}]}},
+      "id": "init", "name": "Initialize", "type": "n8n-nodes-base.set", "typeVersion": 3.4, "position": [200, 0]
+    },
+    {
+      "parameters": {"promptType": "define", "text": "You are a Task Queue. You have these tasks:\n- LOW priority: Generate report (arrived first)\n- URGENT priority: Process critical payment (arrived second)\n\nProcess LOW task first (queue violation!).\n\nOutput: {\"queue\": \"task_queue\", \"processing\": \"low_priority_report\", \"waiting\": \"urgent_payment\", \"violation\": true}", "options": {}},
+      "id": "queue", "name": "Task Queue", "type": "@n8n/n8n-nodes-langchain.agent", "typeVersion": 1.6, "position": [400, 0]
+    },
+    {
+      "parameters": {"model": "claude-3-5-haiku-20241022", "options": {"temperature": 0, "maxTokens": 100}},
+      "id": "lm_q", "name": "LM Q", "type": "@n8n/n8n-nodes-langchain.lmChatAnthropic", "typeVersion": 1.2, "position": [400, 200], "credentials": {"anthropicApi": {"id": "1KM50Mcms9JticwF", "name": "Anthropic API"}}
+    },
+    {
+      "parameters": {"promptType": "define", "text": "You are the Urgent Task (critical payment). You are WAITING behind a low-priority task.\n\nOutput: {\"task\": \"urgent_payment\", \"priority\": \"URGENT\", \"status\": \"blocked\", \"blocked_by\": \"low_priority_report\", \"wait_time_ms\": 5000}", "options": {}},
+      "id": "urgent", "name": "Urgent Task Blocked", "type": "@n8n/n8n-nodes-langchain.agent", "typeVersion": 1.6, "position": [600, 0]
+    },
+    {
+      "parameters": {"model": "claude-3-5-haiku-20241022", "options": {"temperature": 0, "maxTokens": 100}},
+      "id": "lm_u", "name": "LM U", "type": "@n8n/n8n-nodes-langchain.lmChatAnthropic", "typeVersion": 1.2, "position": [600, 200], "credentials": {"anthropicApi": {"id": "1KM50Mcms9JticwF", "name": "Anthropic API"}}
+    },
+    {
+      "parameters": {"method": "POST", "url": "https://mao-api.fly.dev/api/v1/n8n/webhook", "sendHeaders": true, "headerParameters": {"parameters": [{"name": "X-N8N-Api-Key", "value": "mao_pmNhfBRfqd5G_YHubK0Jqk9ZHB6ItITkHFYP4ISns9c"}]}, "sendBody": true, "specifyBody": "json", "jsonBody": "={\n  \"event_type\": \"workflow.completed\",\n  \"workflow_name\": \"COORD-004 Simple: Priority Queue Violation\",\n  \"session_id\": \"{{ $('Initialize').item.json.session_id }}\",\n  \"failure_mode\": \"COORD-004\",\n  \"complexity\": \"simple\",\n  \"expected_detection\": \"priority_inversion\",\n  \"coordination_tracking\": {\n    \"queue_state\": \"{{ $('Task Queue').item.json.output }}\",\n    \"urgent_task\": \"{{ $('Urgent Task Blocked').item.json.output }}\",\n    \"inversion_type\": \"queue_order_violation\"\n  },\n  \"agents\": [\n    {\"agent_id\": \"queue\", \"role\": \"scheduler\", \"outputs\": [\"{{ $('Task Queue').item.json.output }}\"]},\n    {\"agent_id\": \"urgent_task\", \"role\": \"high_priority\", \"outputs\": [\"{{ $('Urgent Task Blocked').item.json.output }}\"]}\n  ]\n}", "options": {}},
+      "id": "send_to_mao", "name": "Send to MAO", "type": "n8n-nodes-base.httpRequest", "typeVersion": 4.2, "position": [800, 0]
+    }
+  ],
+  "connections": {
+    "Webhook": {"main": [[{"node": "Initialize", "type": "main", "index": 0}]]},
+    "Initialize": {"main": [[{"node": "Task Queue", "type": "main", "index": 0}]]},
+    "LM Q": {"ai_languageModel": [[{"node": "Task Queue", "type": "ai_languageModel", "index": 0}]]},
+    "Task Queue": {"main": [[{"node": "Urgent Task Blocked", "type": "main", "index": 0}]]},
+    "LM U": {"ai_languageModel": [[{"node": "Urgent Task Blocked", "type": "ai_languageModel", "index": 0}]]},
+    "Urgent Task Blocked": {"main": [[{"node": "Send to MAO", "type": "main", "index": 0}]]}
+  },
+  "settings": {"executionOrder": "v1"},
+  "meta": {"mast_failure_mode": "COORD-004", "mast_category": "COORDINATION", "complexity": "simple", "description": "Urgent task waiting behind low-priority task", "expected_detection": "Priority queue violation detection", "agents": 2, "nodes": 4}
+}

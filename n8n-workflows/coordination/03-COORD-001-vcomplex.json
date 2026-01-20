@@ -1,0 +1,197 @@
+{
+  "name": "COORD-001 VComplex: Round Robin Loss",
+  "nodes": [
+    {
+      "parameters": {
+        "path": "coord-001-vcomplex",
+        "responseMode": "lastNode",
+        "options": {},
+        "httpMethod": "POST"
+      },
+      "id": "webhook",
+      "name": "Webhook",
+      "type": "n8n-nodes-base.webhook",
+      "typeVersion": 2,
+      "position": [0, 0],
+      "webhookId": "coord-001-vcomplex"
+    },
+    {
+      "parameters": {
+        "assignments": {
+          "assignments": [
+            {"id": "session_id", "name": "session_id", "value": "={{ $now.format('X') }}-coord001-vcomplex", "type": "string"},
+            {"id": "tasks", "name": "tasks", "value": "[\"task-1\", \"task-2\", \"task-3\", \"task-4\", \"task-5\"]", "type": "string"}
+          ]
+        }
+      },
+      "id": "init",
+      "name": "Initialize",
+      "type": "n8n-nodes-base.set",
+      "typeVersion": 3.4,
+      "position": [200, 0]
+    },
+    {
+      "parameters": {
+        "promptType": "define",
+        "text": "You are the Dispatcher. Assign 5 tasks round-robin to 3 workers.\n\nOutput: {\"agent\": \"dispatcher\", \"assignments\": [{\"task\": \"task-1\", \"worker\": \"W1\"}, {\"task\": \"task-2\", \"worker\": \"W2\"}, {\"task\": \"task-3\", \"worker\": \"W3\"}, {\"task\": \"task-4\", \"worker\": \"W1\"}, {\"task\": \"task-5\", \"worker\": \"W2\"}], \"all_dispatched\": true}",
+        "options": {}
+      },
+      "id": "dispatcher",
+      "name": "Dispatcher",
+      "type": "@n8n/n8n-nodes-langchain.agent",
+      "typeVersion": 1.6,
+      "position": [400, 0]
+    },
+    {
+      "parameters": {
+        "model": "claude-3-5-haiku-20241022",
+        "options": {"temperature": 0, "maxTokens": 150}
+      },
+      "id": "lm_d",
+      "name": "LM D",
+      "type": "@n8n/n8n-nodes-langchain.lmChatAnthropic",
+      "typeVersion": 1.2,
+      "position": [400, 200],
+      "credentials": {"anthropicApi": {"id": "1KM50Mcms9JticwF", "name": "Anthropic API"}}
+    },
+    {
+      "parameters": {
+        "promptType": "define",
+        "text": "You are Worker 1. Process your assigned tasks.\n\nOutput: {\"agent\": \"W1\", \"received\": [\"task-1\", \"task-4\"], \"processed\": [\"task-1\"], \"dropped\": [\"task-4\"], \"reason\": \"queue_full\"}",
+        "options": {}
+      },
+      "id": "worker_1",
+      "name": "Worker 1",
+      "type": "@n8n/n8n-nodes-langchain.agent",
+      "typeVersion": 1.6,
+      "position": [600, -150]
+    },
+    {
+      "parameters": {
+        "model": "claude-3-5-haiku-20241022",
+        "options": {"temperature": 0, "maxTokens": 100}
+      },
+      "id": "lm_w1",
+      "name": "LM W1",
+      "type": "@n8n/n8n-nodes-langchain.lmChatAnthropic",
+      "typeVersion": 1.2,
+      "position": [600, 50],
+      "credentials": {"anthropicApi": {"id": "1KM50Mcms9JticwF", "name": "Anthropic API"}}
+    },
+    {
+      "parameters": {
+        "promptType": "define",
+        "text": "You are Worker 2. Process your assigned tasks.\n\nOutput: {\"agent\": \"W2\", \"received\": [\"task-2\"], \"processed\": [\"task-2\"], \"missing\": [\"task-5\"], \"reason\": \"never_received_task_5\"}",
+        "options": {}
+      },
+      "id": "worker_2",
+      "name": "Worker 2",
+      "type": "@n8n/n8n-nodes-langchain.agent",
+      "typeVersion": 1.6,
+      "position": [600, 100]
+    },
+    {
+      "parameters": {
+        "model": "claude-3-5-haiku-20241022",
+        "options": {"temperature": 0, "maxTokens": 100}
+      },
+      "id": "lm_w2",
+      "name": "LM W2",
+      "type": "@n8n/n8n-nodes-langchain.lmChatAnthropic",
+      "typeVersion": 1.2,
+      "position": [600, 300],
+      "credentials": {"anthropicApi": {"id": "1KM50Mcms9JticwF", "name": "Anthropic API"}}
+    },
+    {
+      "parameters": {
+        "promptType": "define",
+        "text": "You are Worker 3. Process your assigned tasks.\n\nOutput: {\"agent\": \"W3\", \"received\": [\"task-3\"], \"processed\": [\"task-3\"], \"complete\": true}",
+        "options": {}
+      },
+      "id": "worker_3",
+      "name": "Worker 3",
+      "type": "@n8n/n8n-nodes-langchain.agent",
+      "typeVersion": 1.6,
+      "position": [600, 350]
+    },
+    {
+      "parameters": {
+        "model": "claude-3-5-haiku-20241022",
+        "options": {"temperature": 0, "maxTokens": 100}
+      },
+      "id": "lm_w3",
+      "name": "LM W3",
+      "type": "@n8n/n8n-nodes-langchain.lmChatAnthropic",
+      "typeVersion": 1.2,
+      "position": [600, 550],
+      "credentials": {"anthropicApi": {"id": "1KM50Mcms9JticwF", "name": "Anthropic API"}}
+    },
+    {
+      "parameters": {
+        "promptType": "define",
+        "text": "Reconcile dispatched vs processed tasks.\n\nDispatched: task-1,2,3,4,5\nProcessed: task-1,2,3\nLost: task-4 (dropped by W1), task-5 (never received by W2)\n\nOutput: {\"reconciliation\": \"tasks_lost\", \"dispatched\": 5, \"processed\": 3, \"lost\": [\"task-4\", \"task-5\"], \"loss_rate\": \"40%\"}",
+        "options": {}
+      },
+      "id": "reconciler",
+      "name": "Reconciler",
+      "type": "@n8n/n8n-nodes-langchain.agent",
+      "typeVersion": 1.6,
+      "position": [800, 100]
+    },
+    {
+      "parameters": {
+        "model": "claude-3-5-haiku-20241022",
+        "options": {"temperature": 0, "maxTokens": 150}
+      },
+      "id": "lm_r",
+      "name": "LM R",
+      "type": "@n8n/n8n-nodes-langchain.lmChatAnthropic",
+      "typeVersion": 1.2,
+      "position": [800, 300],
+      "credentials": {"anthropicApi": {"id": "1KM50Mcms9JticwF", "name": "Anthropic API"}}
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "https://mao-api.fly.dev/api/v1/n8n/webhook",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [{"name": "X-N8N-Api-Key", "value": "mao_pmNhfBRfqd5G_YHubK0Jqk9ZHB6ItITkHFYP4ISns9c"}]
+        },
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={\n  \"event_type\": \"workflow.completed\",\n  \"workflow_name\": \"COORD-001 VComplex: Round Robin Loss\",\n  \"session_id\": \"{{ $('Initialize').item.json.session_id }}\",\n  \"failure_mode\": \"COORD-001\",\n  \"complexity\": \"very_complex\",\n  \"expected_detection\": \"handoff_failure\",\n  \"coordination_tracking\": {\n    \"tasks\": {{ $('Initialize').item.json.tasks }},\n    \"dispatcher\": \"{{ $('Dispatcher').item.json.output }}\",\n    \"worker_1\": \"{{ $('Worker 1').item.json.output }}\",\n    \"worker_2\": \"{{ $('Worker 2').item.json.output }}\",\n    \"worker_3\": \"{{ $('Worker 3').item.json.output }}\",\n    \"reconciliation\": \"{{ $('Reconciler').item.json.output }}\",\n    \"distribution_pattern\": \"round_robin\",\n    \"task_loss_detected\": true\n  },\n  \"agents\": [\n    {\"agent_id\": \"dispatcher\", \"role\": \"task_distributor\", \"outputs\": [\"{{ $('Dispatcher').item.json.output }}\"]},\n    {\"agent_id\": \"worker_1\", \"role\": \"worker\", \"outputs\": [\"{{ $('Worker 1').item.json.output }}\"]},\n    {\"agent_id\": \"worker_2\", \"role\": \"worker\", \"outputs\": [\"{{ $('Worker 2').item.json.output }}\"]},\n    {\"agent_id\": \"worker_3\", \"role\": \"worker\", \"outputs\": [\"{{ $('Worker 3').item.json.output }}\"]},\n    {\"agent_id\": \"reconciler\", \"role\": \"auditor\", \"outputs\": [\"{{ $('Reconciler').item.json.output }}\"]}\n  ]\n}",
+        "options": {}
+      },
+      "id": "send_to_mao",
+      "name": "Send to MAO",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [1000, 100]
+    }
+  ],
+  "connections": {
+    "Webhook": {"main": [[{"node": "Initialize", "type": "main", "index": 0}]]},
+    "Initialize": {"main": [[{"node": "Dispatcher", "type": "main", "index": 0}]]},
+    "LM D": {"ai_languageModel": [[{"node": "Dispatcher", "type": "ai_languageModel", "index": 0}]]},
+    "Dispatcher": {"main": [[{"node": "Worker 1", "type": "main", "index": 0}, {"node": "Worker 2", "type": "main", "index": 0}, {"node": "Worker 3", "type": "main", "index": 0}]]},
+    "LM W1": {"ai_languageModel": [[{"node": "Worker 1", "type": "ai_languageModel", "index": 0}]]},
+    "LM W2": {"ai_languageModel": [[{"node": "Worker 2", "type": "ai_languageModel", "index": 0}]]},
+    "LM W3": {"ai_languageModel": [[{"node": "Worker 3", "type": "ai_languageModel", "index": 0}]]},
+    "Worker 1": {"main": [[{"node": "Reconciler", "type": "main", "index": 0}]]},
+    "Worker 2": {"main": [[{"node": "Reconciler", "type": "main", "index": 0}]]},
+    "Worker 3": {"main": [[{"node": "Reconciler", "type": "main", "index": 0}]]},
+    "LM R": {"ai_languageModel": [[{"node": "Reconciler", "type": "ai_languageModel", "index": 0}]]},
+    "Reconciler": {"main": [[{"node": "Send to MAO", "type": "main", "index": 0}]]}
+  },
+  "settings": {"executionOrder": "v1"},
+  "meta": {
+    "mast_failure_mode": "COORD-001",
+    "mast_category": "COORDINATION",
+    "complexity": "very_complex",
+    "description": "Round-robin task distribution loses tasks due to queue overflow and delivery failure",
+    "expected_detection": "Task reconciliation detects dispatched vs processed discrepancy",
+    "agents": 5,
+    "nodes": 6
+  }
+}

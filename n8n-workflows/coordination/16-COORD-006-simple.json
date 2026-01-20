@@ -1,0 +1,43 @@
+{
+  "name": "COORD-006 Simple: High Message-to-Action Ratio",
+  "nodes": [
+    {
+      "parameters": {"path": "coord-006-simple", "responseMode": "lastNode", "options": {}, "httpMethod": "POST"},
+      "id": "webhook", "name": "Webhook", "type": "n8n-nodes-base.webhook", "typeVersion": 2, "position": [0, 0], "webhookId": "coord-006-simple"
+    },
+    {
+      "parameters": {"assignments": {"assignments": [{"id": "session_id", "name": "session_id", "value": "={{ $now.format('X') }}-coord006-simple", "type": "string"}, {"id": "task", "name": "task", "value": "increment_counter", "type": "string"}]}},
+      "id": "init", "name": "Initialize", "type": "n8n-nodes-base.set", "typeVersion": 3.4, "position": [200, 0]
+    },
+    {
+      "parameters": {"promptType": "define", "text": "You are Agent A. For the simple task of incrementing a counter:\n\nMessage 1: \"I will now begin the counter increment process.\"\nMessage 2: \"Confirming I received the increment request.\"\nMessage 3: \"Preparing to modify the counter value.\"\nMessage 4: \"Counter value identified.\"\nMessage 5: \"Incrementing counter from 0 to 1.\"\n\nOutput: {\"agent\": \"A\", \"messages_sent\": 5, \"action\": \"increment_counter\", \"result\": \"counter: 0 -> 1\", \"overhead_ratio\": \"5:1\"}", "options": {}},
+      "id": "agent_a", "name": "Agent A (Verbose)", "type": "@n8n/n8n-nodes-langchain.agent", "typeVersion": 1.6, "position": [400, 0]
+    },
+    {
+      "parameters": {"model": "claude-3-5-haiku-20241022", "options": {"temperature": 0, "maxTokens": 150}},
+      "id": "lm_a", "name": "LM A", "type": "@n8n/n8n-nodes-langchain.lmChatAnthropic", "typeVersion": 1.2, "position": [400, 200], "credentials": {"anthropicApi": {"id": "1KM50Mcms9JticwF", "name": "Anthropic API"}}
+    },
+    {
+      "parameters": {"promptType": "define", "text": "You are Agent B. Responding to A's messages:\n\nResponse 1: \"Acknowledged. I confirm your intention to increment.\"\nResponse 2: \"I confirm your confirmation of the request.\"\nResponse 3: \"Preparation status acknowledged.\"\nResponse 4: \"Counter identification confirmed.\"\nResponse 5: \"Increment operation verified.\"\n\nOutput: {\"agent\": \"B\", \"messages_received\": 5, \"messages_sent\": 5, \"useful_messages\": 1, \"overhead_ratio\": \"10:1\"}", "options": {}},
+      "id": "agent_b", "name": "Agent B (Also Verbose)", "type": "@n8n/n8n-nodes-langchain.agent", "typeVersion": 1.6, "position": [600, 0]
+    },
+    {
+      "parameters": {"model": "claude-3-5-haiku-20241022", "options": {"temperature": 0, "maxTokens": 150}},
+      "id": "lm_b", "name": "LM B", "type": "@n8n/n8n-nodes-langchain.lmChatAnthropic", "typeVersion": 1.2, "position": [600, 200], "credentials": {"anthropicApi": {"id": "1KM50Mcms9JticwF", "name": "Anthropic API"}}
+    },
+    {
+      "parameters": {"method": "POST", "url": "https://mao-api.fly.dev/api/v1/n8n/webhook", "sendHeaders": true, "headerParameters": {"parameters": [{"name": "X-N8N-Api-Key", "value": "mao_pmNhfBRfqd5G_YHubK0Jqk9ZHB6ItITkHFYP4ISns9c"}]}, "sendBody": true, "specifyBody": "json", "jsonBody": "={\n  \"event_type\": \"workflow.completed\",\n  \"workflow_name\": \"COORD-006 Simple: High Message-to-Action Ratio\",\n  \"session_id\": \"{{ $('Initialize').item.json.session_id }}\",\n  \"failure_mode\": \"COORD-006\",\n  \"complexity\": \"simple\",\n  \"expected_detection\": \"coordination_overhead\",\n  \"coordination_tracking\": {\n    \"task\": \"{{ $('Initialize').item.json.task }}\",\n    \"agent_a\": \"{{ $('Agent A (Verbose)').item.json.output }}\",\n    \"agent_b\": \"{{ $('Agent B (Also Verbose)').item.json.output }}\",\n    \"total_messages\": 10,\n    \"actual_actions\": 1,\n    \"overhead_ratio\": \"10:1\",\n    \"overhead_type\": \"excessive_verbosity\"\n  },\n  \"agents\": [\n    {\"agent_id\": \"agent_a\", \"outputs\": [\"{{ $('Agent A (Verbose)').item.json.output }}\"]},\n    {\"agent_id\": \"agent_b\", \"outputs\": [\"{{ $('Agent B (Also Verbose)').item.json.output }}\"]}\n  ]\n}", "options": {}},
+      "id": "send_to_mao", "name": "Send to MAO", "type": "n8n-nodes-base.httpRequest", "typeVersion": 4.2, "position": [800, 0]
+    }
+  ],
+  "connections": {
+    "Webhook": {"main": [[{"node": "Initialize", "type": "main", "index": 0}]]},
+    "Initialize": {"main": [[{"node": "Agent A (Verbose)", "type": "main", "index": 0}]]},
+    "LM A": {"ai_languageModel": [[{"node": "Agent A (Verbose)", "type": "ai_languageModel", "index": 0}]]},
+    "Agent A (Verbose)": {"main": [[{"node": "Agent B (Also Verbose)", "type": "main", "index": 0}]]},
+    "LM B": {"ai_languageModel": [[{"node": "Agent B (Also Verbose)", "type": "ai_languageModel", "index": 0}]]},
+    "Agent B (Also Verbose)": {"main": [[{"node": "Send to MAO", "type": "main", "index": 0}]]}
+  },
+  "settings": {"executionOrder": "v1"},
+  "meta": {"mast_failure_mode": "COORD-006", "mast_category": "COORDINATION", "complexity": "simple", "description": "10 messages exchanged for 1 simple action", "expected_detection": "Message-to-action ratio anomaly detection", "agents": 2, "nodes": 4}
+}
