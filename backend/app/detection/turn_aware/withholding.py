@@ -43,7 +43,7 @@ class TurnAwareInformationWithholdingDetector(EmbeddingMixin, TurnAwareDetector)
     """
 
     name = "TurnAwareInformationWithholdingDetector"
-    version = "2.0"  # Semantic enhancement
+    version = "2.1"  # Question word filtering for better precision
     supported_failure_modes = ["F8"]
 
     # Question indicators
@@ -53,17 +53,20 @@ class TurnAwareInformationWithholdingDetector(EmbeddingMixin, TurnAwareDetector)
         "tell me", "explain", "clarify", "which",
     ]
 
-    # Withholding indicators in responses - enhanced for MAST
+    # Withholding indicators in responses - balanced for precision/recall
+    # Removed: 'private' (matches code keywords like "private void")
+    # Keep some generic indicators but they need context from other checks
     WITHHOLDING_INDICATORS = [
         "can't share", "cannot disclose", "not allowed to",
-        "confidential", "private", "restricted",
-        "don't have that", "no information", "unknown",
+        "confidential", "restricted",
+        "don't have that", "no information",
         "not sure", "i don't know", "unclear",
-        # Added for better MAST recall
+        # Missing/incomplete but more specific
         "didn't provide", "didn't include", "didn't mention",
-        "missing", "not provided", "incomplete",
+        "not provided", "incomplete information",
         "omitted", "left out", "didn't answer",
-        "you didn't", "wasn't included", "should have",
+        "you didn't", "wasn't included",
+        "withholding", "refuse to share",
     ]
 
     # Missing context indicators
@@ -76,7 +79,7 @@ class TurnAwareInformationWithholdingDetector(EmbeddingMixin, TurnAwareDetector)
     def __init__(
         self,
         min_turns: int = 2,  # Lowered from 3 for better MAST recall
-        min_issues_to_flag: int = 2,  # Added to reduce FPs (18.2% FPR)
+        min_issues_to_flag: int = 3,  # Balanced for precision/recall
     ):
         self.min_turns = min_turns
         self.min_issues_to_flag = min_issues_to_flag
@@ -87,6 +90,7 @@ class TurnAwareInformationWithholdingDetector(EmbeddingMixin, TurnAwareDetector)
         conversation_metadata: Optional[Dict[str, Any]] = None,
     ) -> TurnAwareDetectionResult:
         """Detect information withholding issues."""
+        logger.debug(f"F8 Detector v{self.version} processing {len(turns)} turns")
         if len(turns) < self.min_turns:
             return TurnAwareDetectionResult(
                 detected=False,
@@ -165,46 +169,62 @@ class TurnAwareInformationWithholdingDetector(EmbeddingMixin, TurnAwareDetector)
         Enhanced with semantic similarity (v2.0):
         - Uses embedding similarity to check if response addresses question
         - Also checks information density of response
+
+        v2.1: Relaxed filtering - only skip obvious code blocks
         """
         issues = []
         for i, turn in enumerate(turns[:-1]):
             content = turn.content
-            # Check if this turn contains a question
-            if "?" in content:
-                # Look at next 2 turns for an answer
-                answered = False
-                answer_quality = "none"
+            content_lower = content.lower()
 
-                for j in range(i + 1, min(i + 3, len(turns))):
-                    next_turn = turns[j]
-                    # Different participant responding
-                    if next_turn.participant_id != turn.participant_id:
-                        # Check semantic relevance of response to question
-                        similarity = self.semantic_similarity(content, next_turn.content)
+            # Skip code blocks and log lines
+            if "```" in content:
+                continue
 
-                        if similarity >= 0:  # Embeddings available
-                            if similarity >= 0.5:  # Raised from 0.4 to reduce FPs
-                                response_density = self.compute_information_density(next_turn.content)
-                                if response_density >= 0.3:  # Substantive response
-                                    answered = True
-                                    answer_quality = "good"
-                                else:
-                                    answer_quality = "low_density"
-                                break
-                        else:
-                            # Fallback: length-based check
-                            if len(next_turn.content) > 50:
+            # Check if this turn contains a real question (not just "?")
+            if "?" not in content:
+                continue
+
+            # Must have question words to be a real question
+            question_words = ["what", "how", "why", "where", "when", "which", "who",
+                              "can you", "could you", "would you", "please", "tell me"]
+            if not any(qw in content_lower for qw in question_words):
+                continue
+
+            # Look at next 2 turns for an answer
+            answered = False
+            answer_quality = "none"
+
+            for j in range(i + 1, min(i + 3, len(turns))):
+                next_turn = turns[j]
+                # Different participant responding
+                if next_turn.participant_id != turn.participant_id:
+                    # Check semantic relevance of response to question
+                    similarity = self.semantic_similarity(content, next_turn.content)
+
+                    if similarity >= 0:  # Embeddings available
+                        if similarity >= 0.4:  # Balanced for recall
+                            response_density = self.compute_information_density(next_turn.content)
+                            if response_density >= 0.2:  # Balanced for recall
                                 answered = True
-                                answer_quality = "length_only"
-                                break
+                                answer_quality = "good"
+                            else:
+                                answer_quality = "low_density"
+                            break
+                    else:
+                        # Fallback: length-based check (raised threshold)
+                        if len(next_turn.content) > 100:
+                            answered = True
+                            answer_quality = "length_only"
+                            break
 
-                if not answered:
-                    issues.append({
-                        "type": "unanswered_question",
-                        "turns": [turn.turn_number],
-                        "description": "Question appears unanswered",
-                        "answer_quality": answer_quality,
-                    })
+            if not answered:
+                issues.append({
+                    "type": "unanswered_question",
+                    "turns": [turn.turn_number],
+                    "description": "Question appears unanswered",
+                    "answer_quality": answer_quality,
+                })
         return issues[:3]
 
     def _detect_withholding(self, turns: List[TurnSnapshot]) -> list:

@@ -144,6 +144,17 @@ class BenchmarkRunner:
         self.batch_size = batch_size
         self._api_key = api_key or os.getenv("ANTHROPIC_API_KEY")
 
+        # Load additional API keys for round-robin (if available)
+        self._api_keys: List[str] = []
+        if self._api_key:
+            self._api_keys.append(self._api_key)
+        for i in range(2, 10):  # Support up to 9 additional keys
+            key = os.getenv(f"ANTHROPIC_API_KEY_{i}")
+            if key:
+                self._api_keys.append(key)
+        if len(self._api_keys) > 1:
+            logger.info(f"Loaded {len(self._api_keys)} API keys for round-robin")
+
         # Detector instances (lazy loaded)
         self._ml_detector = None
         self._enterprise_detectors: Dict[str, Any] = {}
@@ -440,13 +451,12 @@ class BenchmarkRunner:
             ],
         }
 
-        # Run turn-aware detection for F6 (unless skipped for LLM)
-        if "F6" not in skip_modes:
-            turn_aware_attempts = self._run_turn_aware_detectors(records)
+        # Run turn-aware detection for semantic modes (unless skipped for LLM)
+        turn_aware_modes = {"F6", "F8"}  # Modes handled by turn-aware detectors
+        modes_to_run = [m for m in turn_aware_modes if m not in skip_modes]
+        if modes_to_run:
+            turn_aware_attempts = self._run_turn_aware_detectors(records, modes_to_run)
             attempts.extend(turn_aware_attempts)
-
-        # Get modes handled by turn-aware detectors
-        turn_aware_modes = {"F6"}  # F9 removed for now - needs more work
 
         for record in records:
             trajectory_lower = record.trajectory.lower()
@@ -482,23 +492,40 @@ class BenchmarkRunner:
     def _run_turn_aware_detectors(
         self,
         records: List[MASTRecord],
+        modes: Optional[List[str]] = None,
     ) -> List[DetectionAttempt]:
-        """Run turn-aware detectors for F6 (derailment).
+        """Run turn-aware detectors for semantic modes (F6, F8).
 
-        Uses the TurnAwareDerailmentDetector with parsed turns.
+        Uses turn-aware detectors with parsed conversation turns.
+
+        Args:
+            records: List of records to process
+            modes: List of modes to run (default: ['F6', 'F8'])
         """
-        attempts = []
+        if modes is None:
+            modes = ["F6", "F8"]
 
-        # Skip if F6 not in target modes
-        if "F6" not in self.failure_modes:
-            return attempts
+        # Filter to modes in target list
+        modes = [m for m in modes if m in self.failure_modes]
+        if not modes:
+            return []
+
+        attempts = []
 
         try:
             from app.benchmark.trajectory_parser import parse_trajectory_to_turns
             from app.detection.turn_aware.derailment import TurnAwareDerailmentDetector
+            from app.detection.turn_aware.withholding import TurnAwareInformationWithholdingDetector
         except ImportError as e:
             logger.warning(f"Turn-aware detector import failed: {e}")
             return attempts
+
+        # Initialize detectors
+        detectors = {}
+        if "F6" in modes:
+            detectors["F6"] = ("turn_aware_derailment", None)  # Created per-record with framework
+        if "F8" in modes:
+            detectors["F8"] = ("turn_aware_withholding", TurnAwareInformationWithholdingDetector())
 
         for record in records:
             start_time = time.time()
@@ -506,49 +533,71 @@ class BenchmarkRunner:
                 # Parse trajectory into turns
                 turns = parse_trajectory_to_turns(record.trajectory, record.framework)
 
-                if len(turns) < 3:
+                if len(turns) < 2:
                     # Not enough turns for meaningful analysis
-                    attempts.append(DetectionAttempt(
-                        record_id=record.trace_id,
-                        failure_mode="F6",
-                        detector_name="turn_aware_derailment",
-                        detected=False,
-                        confidence=0.3,
-                        latency_ms=(time.time() - start_time) * 1000,
-                    ))
+                    for mode in modes:
+                        detector_name = detectors[mode][0] if mode in detectors else f"turn_aware_{mode.lower()}"
+                        attempts.append(DetectionAttempt(
+                            record_id=record.trace_id,
+                            failure_mode=mode,
+                            detector_name=detector_name,
+                            detected=False,
+                            confidence=0.3,
+                            latency_ms=(time.time() - start_time) * 1000,
+                        ))
                     continue
 
-                # Run derailment detector
-                detector = TurnAwareDerailmentDetector(
-                    framework=record.framework,
-                    drift_threshold=0.50,  # Slightly more sensitive
-                    require_strong_evidence=False,
-                )
-                result = detector.detect(turns)
+                # Run each detector
+                for mode in modes:
+                    mode_start = time.time()
 
-                latency_ms = (time.time() - start_time) * 1000
+                    if mode == "F6":
+                        # Derailment detector (created per-record with framework)
+                        detector = TurnAwareDerailmentDetector(
+                            framework=record.framework,
+                            drift_threshold=0.50,
+                            require_strong_evidence=False,
+                        )
+                        result = detector.detect(turns)
+                        detector_name = "turn_aware_derailment"
 
-                attempts.append(DetectionAttempt(
-                    record_id=record.trace_id,
-                    failure_mode="F6",
-                    detector_name="turn_aware_derailment",
-                    detected=result.detected,
-                    confidence=result.confidence,
-                    latency_ms=latency_ms,
-                    raw_result=result,
-                ))
+                    elif mode == "F8":
+                        # Withholding detector
+                        detector = detectors["F8"][1]
+                        metadata = {
+                            "task_description": record.task,
+                            "framework": record.framework,
+                        }
+                        result = detector.detect(turns=turns, conversation_metadata=metadata)
+                        detector_name = "turn_aware_withholding"
+                    else:
+                        continue
+
+                    latency_ms = (time.time() - mode_start) * 1000
+
+                    attempts.append(DetectionAttempt(
+                        record_id=record.trace_id,
+                        failure_mode=mode,
+                        detector_name=detector_name,
+                        detected=result.detected,
+                        confidence=result.confidence,
+                        latency_ms=latency_ms,
+                        raw_result=result,
+                    ))
 
             except Exception as e:
                 logger.warning(f"Turn-aware detection failed for {record.trace_id}: {e}")
-                attempts.append(DetectionAttempt(
-                    record_id=record.trace_id,
-                    failure_mode="F6",
-                    detector_name="turn_aware_derailment",
-                    detected=False,
-                    confidence=0.0,
-                    latency_ms=(time.time() - start_time) * 1000,
-                    error=str(e),
-                ))
+                for mode in modes:
+                    detector_name = detectors.get(mode, (f"turn_aware_{mode.lower()}",))[0]
+                    attempts.append(DetectionAttempt(
+                        record_id=record.trace_id,
+                        failure_mode=mode,
+                        detector_name=detector_name,
+                        detected=False,
+                        confidence=0.0,
+                        latency_ms=(time.time() - start_time) * 1000,
+                        error=str(e),
+                    ))
 
         return attempts
 
@@ -1075,15 +1124,33 @@ Respond in JSON format:
     async def _run_llm_escalation_async(
         self,
         queue: List[Tuple[MASTRecord, str, Any, float]],
+        max_concurrent: int = 5,  # Concurrent requests per key
     ) -> List[DetectionAttempt]:
-        """Async LLM escalation for ambiguous cases."""
+        """Async LLM escalation for ambiguous cases with parallel processing.
+
+        Uses round-robin across multiple API keys for 4x throughput.
+
+        Args:
+            queue: List of (record, mode, turn_aware_result, pattern_latency)
+            max_concurrent: Maximum concurrent API requests per key
+
+        Returns:
+            List of DetectionAttempt with LLM verification
+        """
         from anthropic import AsyncAnthropic
 
-        if not self._api_key:
+        if not self._api_keys:
             return []
 
-        client = AsyncAnthropic(api_key=self._api_key)
+        # Create multiple clients for round-robin (one per API key)
+        clients = [AsyncAnthropic(api_key=key) for key in self._api_keys]
+        num_clients = len(clients)
         model_id = "claude-3-5-haiku-20241022"  # Use Haiku for cost efficiency
+
+        # Total concurrent = max_concurrent * num_keys
+        total_concurrent = max_concurrent * num_clients
+        semaphore = asyncio.Semaphore(total_concurrent)
+        logger.info(f"Using {num_clients} API keys with {total_concurrent} total concurrent requests")
 
         # Get few-shot examples
         few_shot_examples = {}
@@ -1093,56 +1160,62 @@ Respond in JSON format:
         except ImportError:
             pass
 
-        attempts = []
-        for record, mode, turn_aware_result, pattern_latency in queue:
-            start_time = time.time()
-            try:
-                prompt = self._build_llm_prompt(
-                    record, mode, few_shot_examples.get(mode, {})
-                )
-                response = await client.messages.create(
-                    model=model_id,
-                    max_tokens=1000,
-                    messages=[{"role": "user", "content": prompt}],
-                )
-                content = response.content[0].text
-                detected, confidence, reasoning = self._parse_llm_response(content)
-                latency = (time.time() - start_time) * 1000
+        async def process_one(item: Tuple[MASTRecord, str, Any, float], idx: int) -> DetectionAttempt:
+            """Process a single LLM escalation request with round-robin client."""
+            record, mode, turn_aware_result, pattern_latency = item
+            # Round-robin client selection based on index
+            client = clients[idx % num_clients]
+            async with semaphore:
+                start_time = time.time()
+                try:
+                    prompt = self._build_llm_prompt(
+                        record, mode, few_shot_examples.get(mode, {})
+                    )
+                    response = await client.messages.create(
+                        model=model_id,
+                        max_tokens=1000,
+                        messages=[{"role": "user", "content": prompt}],
+                    )
+                    content = response.content[0].text
+                    detected, confidence, reasoning = self._parse_llm_response(content)
+                    latency = (time.time() - start_time) * 1000
 
-                # Combine turn-aware pattern latency with LLM latency
-                total_latency = pattern_latency + latency
+                    # Combine turn-aware pattern latency with LLM latency
+                    total_latency = pattern_latency + latency
 
-                # Confidence boost if LLM confirms, penalty if rejects
-                if detected == turn_aware_result.detected:
-                    final_confidence = min(0.95, confidence + 0.1)
-                else:
-                    final_confidence = confidence  # Trust LLM verdict
+                    # Confidence boost if LLM confirms, penalty if rejects
+                    if detected == turn_aware_result.detected:
+                        final_confidence = min(0.95, confidence + 0.1)
+                    else:
+                        final_confidence = confidence  # Trust LLM verdict
 
-                attempts.append(DetectionAttempt(
-                    record_id=record.trace_id,
-                    failure_mode=mode,
-                    detector_name="hybrid_llm_verified",
-                    detected=detected,
-                    confidence=final_confidence,
-                    latency_ms=total_latency,
-                    raw_result={"llm_reasoning": reasoning[:300]},
-                ))
+                    return DetectionAttempt(
+                        record_id=record.trace_id,
+                        failure_mode=mode,
+                        detector_name="hybrid_llm_verified",
+                        detected=detected,
+                        confidence=final_confidence,
+                        latency_ms=total_latency,
+                        raw_result={"llm_reasoning": reasoning[:300]},
+                    )
 
-            except Exception as e:
-                latency = (time.time() - start_time) * 1000
-                logger.warning(f"LLM escalation failed for {record.trace_id}/{mode}: {e}")
-                # Fall back to turn-aware result
-                attempts.append(DetectionAttempt(
-                    record_id=record.trace_id,
-                    failure_mode=mode,
-                    detector_name="hybrid_llm_fallback",
-                    detected=turn_aware_result.detected,
-                    confidence=turn_aware_result.confidence,
-                    latency_ms=pattern_latency + latency,
-                    error=str(e),
-                ))
+                except Exception as e:
+                    latency = (time.time() - start_time) * 1000
+                    logger.warning(f"LLM escalation failed for {record.trace_id}/{mode}: {e}")
+                    # Fall back to turn-aware result
+                    return DetectionAttempt(
+                        record_id=record.trace_id,
+                        failure_mode=mode,
+                        detector_name="hybrid_llm_fallback",
+                        detected=turn_aware_result.detected,
+                        confidence=turn_aware_result.confidence,
+                        latency_ms=pattern_latency + latency,
+                        error=str(e),
+                    )
 
-        return attempts
+        logger.info(f"Escalating {len(queue)} cases to LLM (max {total_concurrent} concurrent)...")
+        results = await asyncio.gather(*[process_one(item, idx) for idx, item in enumerate(queue)])
+        return list(results)
 
     def _parse_to_turn_snapshots(self, record: MASTRecord) -> List:
         """Convert MAST trajectory to TurnSnapshot list.
