@@ -14,7 +14,7 @@ Usage:
 This script:
 1. Reads MAST dataset JSON
 2. Extracts task descriptions and ground truth failures
-3. Generates embeddings using e5-large-v2 (1024 dimensions)
+3. Generates embeddings using BGE-M3 (1024 dimensions)
 4. Stores in mast_trace_embeddings table with pgvector
 """
 
@@ -178,13 +178,14 @@ def populate_embeddings(
     # Load dataset
     traces = load_mast_dataset(dataset_path)
 
-    # Initialize embedder
-    logger.info("Initializing embedder (e5-large-v2)")
+    # Initialize embedder (uses configured model from settings - BGE-M3 by default)
+    logger.info("Initializing embedder (BGE-M3)")
     embedder = get_embedder()
 
-    # Connect to database
+    # Connect to database (convert async URL to sync for this script)
     settings = get_settings()
-    engine = create_engine(settings.database_url)
+    db_url = settings.database_url.replace("+asyncpg", "")  # Use psycopg2 (sync)
+    engine = create_engine(db_url)
     Session = sessionmaker(bind=engine)
     session = Session()
 

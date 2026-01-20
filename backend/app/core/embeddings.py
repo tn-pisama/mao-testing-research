@@ -460,6 +460,196 @@ def get_embedder() -> EmbeddingService:
     return EmbeddingService.get_instance()
 
 
+class FastEmbeddingService:
+    """
+    Fast embedding service using nomic-embed-text-v1.5 for runtime similarity.
+
+    Use this for latency-critical operations that don't need database retrieval.
+    Produces 768-dimensional embeddings (not compatible with stored 1024d embeddings).
+
+    Performance: ~2x faster than BGE-M3/E5-large-v2
+    Quality: 59.4 MTEB (vs 63.0 for BGE-M3)
+
+    Usage:
+        fast_embedder = FastEmbeddingService.get_instance()
+
+        # For queries (searching)
+        query_emb = fast_embedder.encode_query("What is the error?")
+
+        # For documents (being searched)
+        doc_emb = fast_embedder.encode_document("The error occurred in...")
+
+        # Similarity between two texts (runtime only)
+        similarity = fast_embedder.quick_similarity("query", "document")
+    """
+
+    _instance: Optional["FastEmbeddingService"] = None
+    _model = None
+    _lock = None
+
+    # nomic-embed supports 64-768 via Matryoshka, we use 768 for best quality
+    DIMENSIONS = 768
+    MODEL_NAME = "nomic-ai/nomic-embed-text-v1.5"
+
+    @classmethod
+    def _get_lock(cls):
+        if cls._lock is None:
+            import threading
+            cls._lock = threading.RLock()
+        return cls._lock
+
+    def __new__(cls):
+        lock = cls._get_lock()
+        with lock:
+            if cls._instance is None:
+                cls._instance = super().__new__(cls)
+        return cls._instance
+
+    @classmethod
+    def get_instance(cls) -> "FastEmbeddingService":
+        lock = cls._get_lock()
+        with lock:
+            if cls._instance is None:
+                cls._instance = cls()
+        return cls._instance
+
+    @classmethod
+    def reset(cls):
+        lock = cls._get_lock()
+        with lock:
+            cls._instance = None
+            cls._model = None
+
+    @property
+    def model(self):
+        lock = self._get_lock()
+        with lock:
+            if self._model is None:
+                self._load_model()
+        return self._model
+
+    @property
+    def dimensions(self) -> int:
+        return self.DIMENSIONS
+
+    def _load_model(self):
+        from sentence_transformers import SentenceTransformer
+        import torch
+
+        device = "cuda" if torch.cuda.is_available() else "cpu"
+        logger.info(f"Loading fast embedding model: {self.MODEL_NAME} on {device}")
+        self._model = SentenceTransformer(self.MODEL_NAME, trust_remote_code=True, device=device)
+        logger.info(f"Fast embedding model loaded: {self.MODEL_NAME} ({self.DIMENSIONS}d) on {device}")
+
+    def _add_prefix(self, text: str, prefix: str) -> str:
+        """Add nomic task prefix (search_query or search_document)."""
+        return f"{prefix}: {text}"
+
+    def encode_query(self, query: str, normalize: bool = True) -> np.ndarray:
+        """Encode a search query with 'search_query:' prefix."""
+        import torch.nn.functional as F
+        import torch
+
+        prefixed = self._add_prefix(query, "search_query")
+        embedding = self.model.encode(prefixed, convert_to_tensor=True)
+
+        # Apply layer norm before truncation (nomic recommendation)
+        embedding = F.layer_norm(embedding, normalized_shape=(embedding.shape[0],))
+        embedding = embedding[:self.DIMENSIONS]
+
+        if normalize:
+            embedding = F.normalize(embedding.unsqueeze(0), p=2, dim=1).squeeze(0)
+
+        return embedding.cpu().numpy()
+
+    def encode_document(self, document: str, normalize: bool = True) -> np.ndarray:
+        """Encode a document with 'search_document:' prefix."""
+        import torch.nn.functional as F
+        import torch
+
+        prefixed = self._add_prefix(document, "search_document")
+        embedding = self.model.encode(prefixed, convert_to_tensor=True)
+
+        # Apply layer norm before truncation (nomic recommendation)
+        embedding = F.layer_norm(embedding, normalized_shape=(embedding.shape[0],))
+        embedding = embedding[:self.DIMENSIONS]
+
+        if normalize:
+            embedding = F.normalize(embedding.unsqueeze(0), p=2, dim=1).squeeze(0)
+
+        return embedding.cpu().numpy()
+
+    def encode_batch(
+        self,
+        texts: List[str],
+        is_query: bool = False,
+        batch_size: int = 64,
+        normalize: bool = True,
+    ) -> np.ndarray:
+        """Batch encode texts with appropriate prefix."""
+        import torch.nn.functional as F
+        import torch
+
+        prefix = "search_query" if is_query else "search_document"
+        prefixed = [self._add_prefix(t, prefix) for t in texts]
+
+        embeddings = self.model.encode(
+            prefixed,
+            batch_size=batch_size,
+            convert_to_tensor=True,
+            show_progress_bar=False,
+        )
+
+        # Apply layer norm and truncation
+        embeddings = F.layer_norm(embeddings, normalized_shape=(embeddings.shape[1],))
+        embeddings = embeddings[:, :self.DIMENSIONS]
+
+        if normalize:
+            embeddings = F.normalize(embeddings, p=2, dim=1)
+
+        return embeddings.cpu().numpy()
+
+    def quick_similarity(self, text1: str, text2: str) -> float:
+        """
+        Compute similarity between two texts quickly.
+
+        Uses text1 as query and text2 as document for optimal retrieval performance.
+        This is for runtime comparisons only - not for database retrieval.
+        """
+        emb1 = self.encode_query(text1)
+        emb2 = self.encode_document(text2)
+
+        # Cosine similarity (embeddings are already normalized)
+        return float(np.dot(emb1, emb2))
+
+    def batch_similarity(
+        self,
+        query: str,
+        documents: List[str],
+    ) -> np.ndarray:
+        """
+        Compute similarity between a query and multiple documents.
+
+        Returns array of similarity scores (higher = more similar).
+        """
+        query_emb = self.encode_query(query)
+        doc_embs = self.encode_batch(documents, is_query=False)
+
+        # Cosine similarity (embeddings are already normalized)
+        return np.dot(doc_embs, query_emb)
+
+    def warmup(self):
+        """Warm up the model with a test encoding."""
+        logger.info("Warming up fast embedding model...")
+        _ = self.encode_query("warmup query")
+        logger.info("Fast embedding model warmed up")
+
+
+def get_fast_embedder() -> FastEmbeddingService:
+    """Get the fast embedding service (nomic-embed-text-v1.5, 768d)."""
+    return FastEmbeddingService.get_instance()
+
+
 class EmbeddingEnsemble:
     """
     Multi-model embedding ensemble for best-in-class MAST detection.
