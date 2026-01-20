@@ -24,8 +24,10 @@ import {
   Trash2,
   Sliders,
   ExternalLink,
+  Code2,
 } from 'lucide-react'
 import Link from 'next/link'
+import { useUserPreferences } from '@/lib/user-preferences'
 
 type SettingsTab = 'general' | 'api' | 'notifications' | 'detection' | 'integrations'
 
@@ -41,6 +43,7 @@ export default function SettingsPage() {
   const [activeTab, setActiveTab] = useState<SettingsTab>('general')
   const [showApiKey, setShowApiKey] = useState(false)
   const [saved, setSaved] = useState(false)
+  const { preferences, setDeveloperMode, setUserType, isN8nUser } = useUserPreferences()
 
   const handleSave = () => {
     setSaved(true)
@@ -133,6 +136,79 @@ export default function SettingsPage() {
                       className="w-32 px-3 py-2 rounded-lg bg-slate-900 border border-slate-700 text-white focus:outline-none focus:border-primary-500"
                     />
                   </SettingsField>
+                </SettingsSection>
+
+                <SettingsSection
+                  title="Experience Mode"
+                  description="Choose between simplified or full-featured interface"
+                >
+                  <div className="space-y-4">
+                    <SettingsField label="Your Role">
+                      <div className="flex gap-3">
+                        <button
+                          onClick={() => setUserType('n8n_user')}
+                          className={clsx(
+                            'flex-1 p-3 rounded-lg border-2 transition-all text-left',
+                            preferences.userType === 'n8n_user'
+                              ? 'border-primary-500 bg-primary-500/10'
+                              : 'border-slate-700 hover:border-slate-600'
+                          )}
+                        >
+                          <div className="text-sm font-medium text-white">n8n / Workflows</div>
+                          <div className="text-xs text-slate-400">Simplified, visual interface</div>
+                        </button>
+                        <button
+                          onClick={() => setUserType('developer')}
+                          className={clsx(
+                            'flex-1 p-3 rounded-lg border-2 transition-all text-left',
+                            preferences.userType === 'developer'
+                              ? 'border-primary-500 bg-primary-500/10'
+                              : 'border-slate-700 hover:border-slate-600'
+                          )}
+                        >
+                          <div className="text-sm font-medium text-white">Developer</div>
+                          <div className="text-xs text-slate-400">Full-featured, technical</div>
+                        </button>
+                      </div>
+                    </SettingsField>
+
+                    {isN8nUser && (
+                      <div className="p-4 rounded-lg bg-slate-900 border border-slate-700">
+                        <label className="flex items-start gap-3 cursor-pointer">
+                          <div className="relative mt-1">
+                            <input
+                              type="checkbox"
+                              checked={preferences.developerMode}
+                              onChange={(e) => setDeveloperMode(e.target.checked)}
+                              className="sr-only"
+                            />
+                            <div
+                              className={clsx(
+                                'w-10 h-6 rounded-full transition-colors',
+                                preferences.developerMode ? 'bg-primary-600' : 'bg-slate-700'
+                              )}
+                            />
+                            <div
+                              className={clsx(
+                                'absolute top-1 w-4 h-4 rounded-full bg-white transition-transform',
+                                preferences.developerMode ? 'translate-x-5' : 'translate-x-1'
+                              )}
+                            />
+                          </div>
+                          <div>
+                            <div className="text-sm font-medium text-white flex items-center gap-2">
+                              <Code2 size={16} />
+                              Developer Mode
+                            </div>
+                            <div className="text-xs text-slate-400">
+                              Show advanced features like Traces, Agents, and raw data views.
+                              Turn this on if you want access to technical debugging tools.
+                            </div>
+                          </div>
+                        </label>
+                      </div>
+                    )}
+                  </div>
                 </SettingsSection>
               </div>
             )}
