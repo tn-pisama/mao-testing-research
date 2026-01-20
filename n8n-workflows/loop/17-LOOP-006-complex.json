@@ -1,0 +1,185 @@
+{
+  "name": "LOOP-006 Complex: Failed Escalation Retry",
+  "nodes": [
+    {
+      "parameters": {
+        "path": "loop-006-complex",
+        "responseMode": "lastNode",
+        "options": {},
+        "httpMethod": "POST"
+      },
+      "id": "webhook",
+      "name": "Webhook",
+      "type": "n8n-nodes-base.webhook",
+      "typeVersion": 2,
+      "position": [0, 0],
+      "webhookId": "loop-006-complex"
+    },
+    {
+      "parameters": {
+        "assignments": {
+          "assignments": [
+            {"id": "session_id", "name": "session_id", "value": "={{ $now.format('X') }}-loop006-complex", "type": "string"},
+            {"id": "issue", "name": "issue", "value": "Account locked, need urgent access", "type": "string"}
+          ]
+        }
+      },
+      "id": "init",
+      "name": "Initialize",
+      "type": "n8n-nodes-base.set",
+      "typeVersion": 3.4,
+      "position": [200, 0]
+    },
+    {
+      "parameters": {
+        "url": "https://httpbin.org/status/503",
+        "options": {"timeout": 5000},
+        "onError": "continueRegularOutput"
+      },
+      "id": "escalate_api_1",
+      "name": "Escalate API 1",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [400, 0]
+    },
+    {
+      "parameters": {
+        "promptType": "define",
+        "text": "You are a support bot. Customer issue: \"{{ $('Initialize').item.json.issue }}\"\n\nThe escalation API returned an error. Say: \"I attempted to escalate your case but encountered a system issue. Let me try again...\"",
+        "options": {}
+      },
+      "id": "bot_1",
+      "name": "Bot Response 1",
+      "type": "@n8n/n8n-nodes-langchain.agent",
+      "typeVersion": 1.6,
+      "position": [600, 0]
+    },
+    {
+      "parameters": {
+        "model": "claude-3-5-haiku-20241022",
+        "options": {"temperature": 0.3, "maxTokens": 100}
+      },
+      "id": "lm_1",
+      "name": "LM 1",
+      "type": "@n8n/n8n-nodes-langchain.lmChatAnthropic",
+      "typeVersion": 1.2,
+      "position": [600, 200],
+      "credentials": {"anthropicApi": {"id": "1KM50Mcms9JticwF", "name": "Anthropic API"}}
+    },
+    {
+      "parameters": {
+        "url": "https://httpbin.org/status/503",
+        "options": {"timeout": 5000},
+        "onError": "continueRegularOutput"
+      },
+      "id": "escalate_api_2",
+      "name": "Escalate API 2",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [800, 0]
+    },
+    {
+      "parameters": {
+        "promptType": "define",
+        "text": "You are a support bot. The escalation API failed again.\n\nSay: \"The escalation system is temporarily unavailable. Please hold while I retry the escalation...\"",
+        "options": {}
+      },
+      "id": "bot_2",
+      "name": "Bot Response 2",
+      "type": "@n8n/n8n-nodes-langchain.agent",
+      "typeVersion": 1.6,
+      "position": [1000, 0]
+    },
+    {
+      "parameters": {
+        "model": "claude-3-5-haiku-20241022",
+        "options": {"temperature": 0.3, "maxTokens": 100}
+      },
+      "id": "lm_2",
+      "name": "LM 2",
+      "type": "@n8n/n8n-nodes-langchain.lmChatAnthropic",
+      "typeVersion": 1.2,
+      "position": [1000, 200],
+      "credentials": {"anthropicApi": {"id": "1KM50Mcms9JticwF", "name": "Anthropic API"}}
+    },
+    {
+      "parameters": {
+        "url": "https://httpbin.org/status/503",
+        "options": {"timeout": 5000},
+        "onError": "continueRegularOutput"
+      },
+      "id": "escalate_api_3",
+      "name": "Escalate API 3",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [1200, 0]
+    },
+    {
+      "parameters": {
+        "promptType": "define",
+        "text": "You are a support bot. Third escalation attempt also failed.\n\nSay: \"I apologize for the inconvenience. I'm attempting to escalate your case one more time...\"",
+        "options": {}
+      },
+      "id": "bot_3",
+      "name": "Bot Response 3",
+      "type": "@n8n/n8n-nodes-langchain.agent",
+      "typeVersion": 1.6,
+      "position": [1400, 0]
+    },
+    {
+      "parameters": {
+        "model": "claude-3-5-haiku-20241022",
+        "options": {"temperature": 0.3, "maxTokens": 100}
+      },
+      "id": "lm_3",
+      "name": "LM 3",
+      "type": "@n8n/n8n-nodes-langchain.lmChatAnthropic",
+      "typeVersion": 1.2,
+      "position": [1400, 200],
+      "credentials": {"anthropicApi": {"id": "1KM50Mcms9JticwF", "name": "Anthropic API"}}
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "https://mao-api.fly.dev/api/v1/n8n/webhook",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [{"name": "X-N8N-Api-Key", "value": "mao_pmNhfBRfqd5G_YHubK0Jqk9ZHB6ItITkHFYP4ISns9c"}]
+        },
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={\n  \"event_type\": \"workflow.completed\",\n  \"workflow_name\": \"LOOP-006 Complex: Failed Escalation Retry\",\n  \"session_id\": \"{{ $('Initialize').item.json.session_id }}\",\n  \"failure_mode\": \"LOOP-006\",\n  \"complexity\": \"complex\",\n  \"expected_detection\": \"escalation_loop\",\n  \"context\": {\n    \"issue\": \"{{ $('Initialize').item.json.issue }}\",\n    \"api_failures\": 3,\n    \"retry_pattern\": \"escalate -> fail -> retry (same approach)\"\n  },\n  \"agents\": [\n    {\n      \"agent_id\": \"support_bot\",\n      \"role\": \"automated_support\",\n      \"actions\": [\"escalate_api_call\", \"escalate_api_call\", \"escalate_api_call\"],\n      \"outputs\": [\n        \"{{ $('Bot Response 1').item.json.output }}\",\n        \"{{ $('Bot Response 2').item.json.output }}\",\n        \"{{ $('Bot Response 3').item.json.output }}\"\n      ]\n    }\n  ]\n}",
+        "options": {}
+      },
+      "id": "send_to_mao",
+      "name": "Send to MAO",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [1600, 0]
+    }
+  ],
+  "connections": {
+    "Webhook": {"main": [[{"node": "Initialize", "type": "main", "index": 0}]]},
+    "Initialize": {"main": [[{"node": "Escalate API 1", "type": "main", "index": 0}]]},
+    "Escalate API 1": {"main": [[{"node": "Bot Response 1", "type": "main", "index": 0}]]},
+    "LM 1": {"ai_languageModel": [[{"node": "Bot Response 1", "type": "ai_languageModel", "index": 0}]]},
+    "Bot Response 1": {"main": [[{"node": "Escalate API 2", "type": "main", "index": 0}]]},
+    "Escalate API 2": {"main": [[{"node": "Bot Response 2", "type": "main", "index": 0}]]},
+    "LM 2": {"ai_languageModel": [[{"node": "Bot Response 2", "type": "ai_languageModel", "index": 0}]]},
+    "Bot Response 2": {"main": [[{"node": "Escalate API 3", "type": "main", "index": 0}]]},
+    "Escalate API 3": {"main": [[{"node": "Bot Response 3", "type": "main", "index": 0}]]},
+    "LM 3": {"ai_languageModel": [[{"node": "Bot Response 3", "type": "ai_languageModel", "index": 0}]]},
+    "Bot Response 3": {"main": [[{"node": "Send to MAO", "type": "main", "index": 0}]]}
+  },
+  "settings": {"executionOrder": "v1"},
+  "meta": {
+    "mast_failure_mode": "LOOP-006",
+    "mast_category": "LOOP",
+    "complexity": "complex",
+    "description": "Support bot retries failed escalation with same approach repeatedly",
+    "expected_detection": "Escalation action without acknowledgment pattern",
+    "agents": 3,
+    "nodes": 6,
+    "real_apis": ["HTTPBin"]
+  }
+}

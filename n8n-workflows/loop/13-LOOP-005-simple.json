@@ -1,0 +1,197 @@
+{
+  "name": "LOOP-005 Simple: Conversation Circle",
+  "nodes": [
+    {
+      "parameters": {
+        "path": "loop-005-simple",
+        "responseMode": "lastNode",
+        "options": {},
+        "httpMethod": "POST"
+      },
+      "id": "webhook",
+      "name": "Webhook",
+      "type": "n8n-nodes-base.webhook",
+      "typeVersion": 2,
+      "position": [0, 0],
+      "webhookId": "loop-005-simple"
+    },
+    {
+      "parameters": {
+        "assignments": {
+          "assignments": [
+            {"id": "session_id", "name": "session_id", "value": "={{ $now.format('X') }}-loop005-simple", "type": "string"},
+            {"id": "user_question", "name": "user_question", "value": "What time does the store close?", "type": "string"}
+          ]
+        }
+      },
+      "id": "init",
+      "name": "Initialize",
+      "type": "n8n-nodes-base.set",
+      "typeVersion": 3.4,
+      "position": [200, 0]
+    },
+    {
+      "parameters": {
+        "promptType": "define",
+        "text": "User asks: \"{{ $('Initialize').item.json.user_question }}\"\n\nYou are a helpful assistant. Answer: \"The store closes at 9 PM.\"",
+        "options": {}
+      },
+      "id": "agent_answer_1",
+      "name": "Agent Answer 1",
+      "type": "@n8n/n8n-nodes-langchain.agent",
+      "typeVersion": 1.6,
+      "position": [400, 0]
+    },
+    {
+      "parameters": {
+        "model": "claude-3-5-haiku-20241022",
+        "options": {"temperature": 0.3, "maxTokens": 50}
+      },
+      "id": "lm_1",
+      "name": "LM 1",
+      "type": "@n8n/n8n-nodes-langchain.lmChatAnthropic",
+      "typeVersion": 1.2,
+      "position": [400, 200],
+      "credentials": {"anthropicApi": {"id": "1KM50Mcms9JticwF", "name": "Anthropic API"}}
+    },
+    {
+      "parameters": {
+        "promptType": "define",
+        "text": "Simulate user who didn't listen. Output: \"Sorry, what time does the store close again?\"",
+        "options": {}
+      },
+      "id": "user_repeat_1",
+      "name": "User Repeat 1",
+      "type": "@n8n/n8n-nodes-langchain.agent",
+      "typeVersion": 1.6,
+      "position": [600, 0]
+    },
+    {
+      "parameters": {
+        "model": "claude-3-5-haiku-20241022",
+        "options": {"temperature": 0, "maxTokens": 50}
+      },
+      "id": "lm_u1",
+      "name": "LM U1",
+      "type": "@n8n/n8n-nodes-langchain.lmChatAnthropic",
+      "typeVersion": 1.2,
+      "position": [600, 200],
+      "credentials": {"anthropicApi": {"id": "1KM50Mcms9JticwF", "name": "Anthropic API"}}
+    },
+    {
+      "parameters": {
+        "promptType": "define",
+        "text": "User asks the same question again about store closing time.\n\nAnswer: \"As I mentioned, the store closes at 9 PM.\"",
+        "options": {}
+      },
+      "id": "agent_answer_2",
+      "name": "Agent Answer 2",
+      "type": "@n8n/n8n-nodes-langchain.agent",
+      "typeVersion": 1.6,
+      "position": [800, 0]
+    },
+    {
+      "parameters": {
+        "model": "claude-3-5-haiku-20241022",
+        "options": {"temperature": 0.3, "maxTokens": 50}
+      },
+      "id": "lm_2",
+      "name": "LM 2",
+      "type": "@n8n/n8n-nodes-langchain.lmChatAnthropic",
+      "typeVersion": 1.2,
+      "position": [800, 200],
+      "credentials": {"anthropicApi": {"id": "1KM50Mcms9JticwF", "name": "Anthropic API"}}
+    },
+    {
+      "parameters": {
+        "promptType": "define",
+        "text": "Simulate user who still didn't catch it. Output: \"One more time - when does the store close?\"",
+        "options": {}
+      },
+      "id": "user_repeat_2",
+      "name": "User Repeat 2",
+      "type": "@n8n/n8n-nodes-langchain.agent",
+      "typeVersion": 1.6,
+      "position": [1000, 0]
+    },
+    {
+      "parameters": {
+        "model": "claude-3-5-haiku-20241022",
+        "options": {"temperature": 0, "maxTokens": 50}
+      },
+      "id": "lm_u2",
+      "name": "LM U2",
+      "type": "@n8n/n8n-nodes-langchain.lmChatAnthropic",
+      "typeVersion": 1.2,
+      "position": [1000, 200],
+      "credentials": {"anthropicApi": {"id": "1KM50Mcms9JticwF", "name": "Anthropic API"}}
+    },
+    {
+      "parameters": {
+        "promptType": "define",
+        "text": "User asks about closing time for the third time.\n\nAnswer: \"The store closes at 9 PM tonight.\"",
+        "options": {}
+      },
+      "id": "agent_answer_3",
+      "name": "Agent Answer 3",
+      "type": "@n8n/n8n-nodes-langchain.agent",
+      "typeVersion": 1.6,
+      "position": [1200, 0]
+    },
+    {
+      "parameters": {
+        "model": "claude-3-5-haiku-20241022",
+        "options": {"temperature": 0.3, "maxTokens": 50}
+      },
+      "id": "lm_3",
+      "name": "LM 3",
+      "type": "@n8n/n8n-nodes-langchain.lmChatAnthropic",
+      "typeVersion": 1.2,
+      "position": [1200, 200],
+      "credentials": {"anthropicApi": {"id": "1KM50Mcms9JticwF", "name": "Anthropic API"}}
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "https://mao-api.fly.dev/api/v1/n8n/webhook",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [{"name": "X-N8N-Api-Key", "value": "mao_pmNhfBRfqd5G_YHubK0Jqk9ZHB6ItITkHFYP4ISns9c"}]
+        },
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={\n  \"event_type\": \"workflow.completed\",\n  \"workflow_name\": \"LOOP-005 Simple: Conversation Circle\",\n  \"session_id\": \"{{ $('Initialize').item.json.session_id }}\",\n  \"failure_mode\": \"LOOP-005\",\n  \"complexity\": \"simple\",\n  \"expected_detection\": \"conversation_circle\",\n  \"context\": {\n    \"original_question\": \"{{ $('Initialize').item.json.user_question }}\",\n    \"topic_returned\": true,\n    \"resolution_achieved\": false\n  },\n  \"agents\": [\n    {\n      \"agent_id\": \"assistant\",\n      \"role\": \"support\",\n      \"outputs\": [\"{{ $('Agent Answer 1').item.json.output }}\", \"{{ $('Agent Answer 2').item.json.output }}\", \"{{ $('Agent Answer 3').item.json.output }}\"]\n    },\n    {\n      \"agent_id\": \"user_sim\",\n      \"role\": \"customer\",\n      \"outputs\": [\"{{ $('User Repeat 1').item.json.output }}\", \"{{ $('User Repeat 2').item.json.output }}\"]\n    }\n  ]\n}",
+        "options": {}
+      },
+      "id": "send_to_mao",
+      "name": "Send to MAO",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [1400, 0]
+    }
+  ],
+  "connections": {
+    "Webhook": {"main": [[{"node": "Initialize", "type": "main", "index": 0}]]},
+    "Initialize": {"main": [[{"node": "Agent Answer 1", "type": "main", "index": 0}]]},
+    "LM 1": {"ai_languageModel": [[{"node": "Agent Answer 1", "type": "ai_languageModel", "index": 0}]]},
+    "Agent Answer 1": {"main": [[{"node": "User Repeat 1", "type": "main", "index": 0}]]},
+    "LM U1": {"ai_languageModel": [[{"node": "User Repeat 1", "type": "ai_languageModel", "index": 0}]]},
+    "User Repeat 1": {"main": [[{"node": "Agent Answer 2", "type": "main", "index": 0}]]},
+    "LM 2": {"ai_languageModel": [[{"node": "Agent Answer 2", "type": "ai_languageModel", "index": 0}]]},
+    "Agent Answer 2": {"main": [[{"node": "User Repeat 2", "type": "main", "index": 0}]]},
+    "LM U2": {"ai_languageModel": [[{"node": "User Repeat 2", "type": "ai_languageModel", "index": 0}]]},
+    "User Repeat 2": {"main": [[{"node": "Agent Answer 3", "type": "main", "index": 0}]]},
+    "LM 3": {"ai_languageModel": [[{"node": "Agent Answer 3", "type": "ai_languageModel", "index": 0}]]},
+    "Agent Answer 3": {"main": [[{"node": "Send to MAO", "type": "main", "index": 0}]]}
+  },
+  "settings": {"executionOrder": "v1"},
+  "meta": {
+    "mast_failure_mode": "LOOP-005",
+    "mast_category": "LOOP",
+    "complexity": "simple",
+    "description": "Topic returns after resolution - user keeps asking same question",
+    "expected_detection": "Topic regression detection",
+    "agents": 2,
+    "nodes": 6
+  }
+}

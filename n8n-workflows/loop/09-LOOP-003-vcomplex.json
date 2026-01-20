@@ -1,0 +1,212 @@
+{
+  "name": "LOOP-003 VComplex: Multi-Agent Semantic Discussion Loop",
+  "nodes": [
+    {
+      "parameters": {
+        "path": "loop-003-vcomplex",
+        "responseMode": "lastNode",
+        "options": {},
+        "httpMethod": "POST"
+      },
+      "id": "webhook",
+      "name": "Webhook",
+      "type": "n8n-nodes-base.webhook",
+      "typeVersion": 2,
+      "position": [0, 0],
+      "webhookId": "loop-003-vcomplex"
+    },
+    {
+      "parameters": {
+        "assignments": {
+          "assignments": [
+            {"id": "session_id", "name": "session_id", "value": "={{ $now.format('X') }}-loop003-vcomplex", "type": "string"},
+            {"id": "topic", "name": "topic", "value": "Should we use microservices or monolith for our new project?", "type": "string"}
+          ]
+        }
+      },
+      "id": "init",
+      "name": "Initialize",
+      "type": "n8n-nodes-base.set",
+      "typeVersion": 3.4,
+      "position": [200, 0]
+    },
+    {
+      "parameters": {
+        "url": "https://hn.algolia.com/api/v1/search",
+        "sendQuery": true,
+        "queryParameters": {"parameters": [{"name": "query", "value": "microservices vs monolith"}, {"name": "hitsPerPage", "value": "3"}]},
+        "options": {}
+      },
+      "id": "research",
+      "name": "Research",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [400, 0]
+    },
+    {
+      "parameters": {
+        "promptType": "define",
+        "text": "You are Architect Alice in a technical discussion about: \"{{ $('Initialize').item.json.topic }}\"\n\nYou believe the answer depends on the specific context. State that both approaches have merits and the choice should be based on team size and project requirements.\n\nPhrase your response uniquely but the core message is: \"it depends on context\"",
+        "options": {}
+      },
+      "id": "alice_1",
+      "name": "Alice Round 1",
+      "type": "@n8n/n8n-nodes-langchain.agent",
+      "typeVersion": 1.6,
+      "position": [600, -100]
+    },
+    {
+      "parameters": {
+        "model": "claude-3-5-haiku-20241022",
+        "options": {"temperature": 0.7, "maxTokens": 200}
+      },
+      "id": "lm_alice_1",
+      "name": "LM Alice 1",
+      "type": "@n8n/n8n-nodes-langchain.lmChatAnthropic",
+      "typeVersion": 1.2,
+      "position": [600, 100],
+      "credentials": {"anthropicApi": {"id": "1KM50Mcms9JticwF", "name": "Anthropic API"}}
+    },
+    {
+      "parameters": {
+        "promptType": "define",
+        "text": "You are Developer Bob in a technical discussion about: \"{{ $('Initialize').item.json.topic }}\"\n\nAlice said it depends on context. You AGREE but phrase it differently. Say that team capability and scale requirements should drive the decision.\n\nYour core message is the same as Alice's: \"it depends\" - just word it your own way.",
+        "options": {}
+      },
+      "id": "bob_1",
+      "name": "Bob Round 1",
+      "type": "@n8n/n8n-nodes-langchain.agent",
+      "typeVersion": 1.6,
+      "position": [800, -100]
+    },
+    {
+      "parameters": {
+        "model": "claude-3-5-haiku-20241022",
+        "options": {"temperature": 0.8, "maxTokens": 200}
+      },
+      "id": "lm_bob_1",
+      "name": "LM Bob 1",
+      "type": "@n8n/n8n-nodes-langchain.lmChatAnthropic",
+      "typeVersion": 1.2,
+      "position": [800, 100],
+      "credentials": {"anthropicApi": {"id": "1KM50Mcms9JticwF", "name": "Anthropic API"}}
+    },
+    {
+      "parameters": {
+        "promptType": "define",
+        "text": "You are Tech Lead Carol in a discussion about: \"{{ $('Initialize').item.json.topic }}\"\n\nAlice and Bob both said it depends on context. You also agree - phrase the same conclusion (context-dependent choice) in your own technical vocabulary.\n\nCore message: \"the right architecture depends on specific factors\" - same meaning, different words.",
+        "options": {}
+      },
+      "id": "carol_1",
+      "name": "Carol Round 1",
+      "type": "@n8n/n8n-nodes-langchain.agent",
+      "typeVersion": 1.6,
+      "position": [1000, -100]
+    },
+    {
+      "parameters": {
+        "model": "claude-3-5-haiku-20241022",
+        "options": {"temperature": 0.7, "maxTokens": 200}
+      },
+      "id": "lm_carol_1",
+      "name": "LM Carol 1",
+      "type": "@n8n/n8n-nodes-langchain.lmChatAnthropic",
+      "typeVersion": 1.2,
+      "position": [1000, 100],
+      "credentials": {"anthropicApi": {"id": "1KM50Mcms9JticwF", "name": "Anthropic API"}}
+    },
+    {
+      "parameters": {
+        "promptType": "define",
+        "text": "You are Architect Alice again. Everyone agreed it depends on context, but you want to \"add nuance\".\n\nRestate that the decision depends on factors like team size, deployment complexity, and scaling needs. This is semantically the SAME as before, just elaborated differently.\n\nYou're essentially repeating the group's conclusion with fresh wording.",
+        "options": {}
+      },
+      "id": "alice_2",
+      "name": "Alice Round 2",
+      "type": "@n8n/n8n-nodes-langchain.agent",
+      "typeVersion": 1.6,
+      "position": [1200, -100]
+    },
+    {
+      "parameters": {
+        "model": "claude-3-5-haiku-20241022",
+        "options": {"temperature": 0.8, "maxTokens": 200}
+      },
+      "id": "lm_alice_2",
+      "name": "LM Alice 2",
+      "type": "@n8n/n8n-nodes-langchain.lmChatAnthropic",
+      "typeVersion": 1.2,
+      "position": [1200, 100],
+      "credentials": {"anthropicApi": {"id": "1KM50Mcms9JticwF", "name": "Anthropic API"}}
+    },
+    {
+      "parameters": {
+        "promptType": "define",
+        "text": "You are Developer Bob again. The discussion keeps circling back to \"it depends\".\n\nExpress the same conclusion one more time with different phrasing. Mention that there's no one-size-fits-all answer and each project needs individual assessment.\n\nSemantically identical to everyone else's points, just worded differently.",
+        "options": {}
+      },
+      "id": "bob_2",
+      "name": "Bob Round 2",
+      "type": "@n8n/n8n-nodes-langchain.agent",
+      "typeVersion": 1.6,
+      "position": [1400, -100]
+    },
+    {
+      "parameters": {
+        "model": "claude-3-5-haiku-20241022",
+        "options": {"temperature": 0.9, "maxTokens": 200}
+      },
+      "id": "lm_bob_2",
+      "name": "LM Bob 2",
+      "type": "@n8n/n8n-nodes-langchain.lmChatAnthropic",
+      "typeVersion": 1.2,
+      "position": [1400, 100],
+      "credentials": {"anthropicApi": {"id": "1KM50Mcms9JticwF", "name": "Anthropic API"}}
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "https://mao-api.fly.dev/api/v1/n8n/webhook",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [{"name": "X-N8N-Api-Key", "value": "mao_pmNhfBRfqd5G_YHubK0Jqk9ZHB6ItITkHFYP4ISns9c"}]
+        },
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={\n  \"event_type\": \"workflow.completed\",\n  \"workflow_name\": \"LOOP-003 VComplex: Multi-Agent Semantic Discussion Loop\",\n  \"session_id\": \"{{ $('Initialize').item.json.session_id }}\",\n  \"failure_mode\": \"LOOP-003\",\n  \"complexity\": \"very_complex\",\n  \"expected_detection\": \"semantic_loop\",\n  \"context\": {\n    \"topic\": \"{{ $('Initialize').item.json.topic }}\",\n    \"semantic_conclusion\": \"it depends on context/requirements\",\n    \"detection_method\": \"semantic clustering across multiple agents\"\n  },\n  \"agents\": [\n    {\n      \"agent_id\": \"alice\",\n      \"role\": \"architect\",\n      \"outputs\": [\"{{ $('Alice Round 1').item.json.output }}\", \"{{ $('Alice Round 2').item.json.output }}\"]\n    },\n    {\n      \"agent_id\": \"bob\",\n      \"role\": \"developer\",\n      \"outputs\": [\"{{ $('Bob Round 1').item.json.output }}\", \"{{ $('Bob Round 2').item.json.output }}\"]\n    },\n    {\n      \"agent_id\": \"carol\",\n      \"role\": \"tech_lead\",\n      \"outputs\": [\"{{ $('Carol Round 1').item.json.output }}\"]\n    }\n  ]\n}",
+        "options": {}
+      },
+      "id": "send_to_mao",
+      "name": "Send to MAO",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [1600, -100]
+    }
+  ],
+  "connections": {
+    "Webhook": {"main": [[{"node": "Initialize", "type": "main", "index": 0}]]},
+    "Initialize": {"main": [[{"node": "Research", "type": "main", "index": 0}]]},
+    "Research": {"main": [[{"node": "Alice Round 1", "type": "main", "index": 0}]]},
+    "LM Alice 1": {"ai_languageModel": [[{"node": "Alice Round 1", "type": "ai_languageModel", "index": 0}]]},
+    "Alice Round 1": {"main": [[{"node": "Bob Round 1", "type": "main", "index": 0}]]},
+    "LM Bob 1": {"ai_languageModel": [[{"node": "Bob Round 1", "type": "ai_languageModel", "index": 0}]]},
+    "Bob Round 1": {"main": [[{"node": "Carol Round 1", "type": "main", "index": 0}]]},
+    "LM Carol 1": {"ai_languageModel": [[{"node": "Carol Round 1", "type": "ai_languageModel", "index": 0}]]},
+    "Carol Round 1": {"main": [[{"node": "Alice Round 2", "type": "main", "index": 0}]]},
+    "LM Alice 2": {"ai_languageModel": [[{"node": "Alice Round 2", "type": "ai_languageModel", "index": 0}]]},
+    "Alice Round 2": {"main": [[{"node": "Bob Round 2", "type": "main", "index": 0}]]},
+    "LM Bob 2": {"ai_languageModel": [[{"node": "Bob Round 2", "type": "ai_languageModel", "index": 0}]]},
+    "Bob Round 2": {"main": [[{"node": "Send to MAO", "type": "main", "index": 0}]]}
+  },
+  "settings": {"executionOrder": "v1"},
+  "meta": {
+    "mast_failure_mode": "LOOP-003",
+    "mast_category": "LOOP",
+    "complexity": "very_complex",
+    "description": "Multi-agent discussion where all participants keep restating the same conclusion with different words",
+    "expected_detection": "Cross-agent semantic clustering detects conversation cycle",
+    "agents": 5,
+    "nodes": 11,
+    "real_apis": ["HackerNews Algolia"]
+  }
+}

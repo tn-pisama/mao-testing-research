@@ -1,0 +1,224 @@
+{
+  "name": "LOOP-004 VComplex: Cross-Agent Tool Cycle",
+  "nodes": [
+    {
+      "parameters": {
+        "path": "loop-004-vcomplex",
+        "responseMode": "lastNode",
+        "options": {},
+        "httpMethod": "POST"
+      },
+      "id": "webhook",
+      "name": "Webhook",
+      "type": "n8n-nodes-base.webhook",
+      "typeVersion": 2,
+      "position": [0, 0],
+      "webhookId": "loop-004-vcomplex"
+    },
+    {
+      "parameters": {
+        "assignments": {
+          "assignments": [
+            {"id": "session_id", "name": "session_id", "value": "={{ $now.format('X') }}-loop004-vcomplex", "type": "string"},
+            {"id": "task", "name": "task", "value": "Find and verify news about tech layoffs", "type": "string"}
+          ]
+        }
+      },
+      "id": "init",
+      "name": "Initialize",
+      "type": "n8n-nodes-base.set",
+      "typeVersion": 3.4,
+      "position": [200, 0]
+    },
+    {
+      "parameters": {
+        "url": "https://hn.algolia.com/api/v1/search",
+        "sendQuery": true,
+        "queryParameters": {"parameters": [{"name": "query", "value": "tech layoffs 2024"}, {"name": "hitsPerPage", "value": "2"}]},
+        "options": {}
+      },
+      "id": "agent_a_search",
+      "name": "Agent A Search",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [400, 0]
+    },
+    {
+      "parameters": {
+        "promptType": "define",
+        "text": "You are Agent A (Searcher). You searched for tech layoffs and found {{ $('Agent A Search').item.json.nbHits }} results.\n\nAnalyze and say: \"Found potential news. Passing to Agent B for fact verification.\"",
+        "options": {}
+      },
+      "id": "agent_a_1",
+      "name": "Agent A Round 1",
+      "type": "@n8n/n8n-nodes-langchain.agent",
+      "typeVersion": 1.6,
+      "position": [600, 0]
+    },
+    {
+      "parameters": {
+        "model": "claude-3-5-haiku-20241022",
+        "options": {"temperature": 0.5, "maxTokens": 100}
+      },
+      "id": "lm_a1",
+      "name": "LM A1",
+      "type": "@n8n/n8n-nodes-langchain.lmChatAnthropic",
+      "typeVersion": 1.2,
+      "position": [600, 200],
+      "credentials": {"anthropicApi": {"id": "1KM50Mcms9JticwF", "name": "Anthropic API"}}
+    },
+    {
+      "parameters": {
+        "url": "https://en.wikipedia.org/api/rest_v1/page/summary/Layoff",
+        "options": {}
+      },
+      "id": "agent_b_verify",
+      "name": "Agent B Verify",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [800, 0]
+    },
+    {
+      "parameters": {
+        "promptType": "define",
+        "text": "You are Agent B (Verifier). You looked up background info on layoffs.\n\nSay: \"Background context retrieved. Need Agent A to search for more specific company names to verify.\"",
+        "options": {}
+      },
+      "id": "agent_b_1",
+      "name": "Agent B Round 1",
+      "type": "@n8n/n8n-nodes-langchain.agent",
+      "typeVersion": 1.6,
+      "position": [1000, 0]
+    },
+    {
+      "parameters": {
+        "model": "claude-3-5-haiku-20241022",
+        "options": {"temperature": 0.5, "maxTokens": 100}
+      },
+      "id": "lm_b1",
+      "name": "LM B1",
+      "type": "@n8n/n8n-nodes-langchain.lmChatAnthropic",
+      "typeVersion": 1.2,
+      "position": [1000, 200],
+      "credentials": {"anthropicApi": {"id": "1KM50Mcms9JticwF", "name": "Anthropic API"}}
+    },
+    {
+      "parameters": {
+        "url": "https://hn.algolia.com/api/v1/search",
+        "sendQuery": true,
+        "queryParameters": {"parameters": [{"name": "query", "value": "Google layoffs"}, {"name": "hitsPerPage", "value": "2"}]},
+        "options": {}
+      },
+      "id": "agent_a_search_2",
+      "name": "Agent A Search 2",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [1200, 0]
+    },
+    {
+      "parameters": {
+        "promptType": "define",
+        "text": "You are Agent A (Searcher). You searched for Google layoffs and found {{ $('Agent A Search 2').item.json.nbHits }} results.\n\nSay: \"Found company-specific news. Passing to Agent B for verification.\"",
+        "options": {}
+      },
+      "id": "agent_a_2",
+      "name": "Agent A Round 2",
+      "type": "@n8n/n8n-nodes-langchain.agent",
+      "typeVersion": 1.6,
+      "position": [1400, 0]
+    },
+    {
+      "parameters": {
+        "model": "claude-3-5-haiku-20241022",
+        "options": {"temperature": 0.5, "maxTokens": 100}
+      },
+      "id": "lm_a2",
+      "name": "LM A2",
+      "type": "@n8n/n8n-nodes-langchain.lmChatAnthropic",
+      "typeVersion": 1.2,
+      "position": [1400, 200],
+      "credentials": {"anthropicApi": {"id": "1KM50Mcms9JticwF", "name": "Anthropic API"}}
+    },
+    {
+      "parameters": {
+        "url": "https://en.wikipedia.org/api/rest_v1/page/summary/Google",
+        "options": {}
+      },
+      "id": "agent_b_verify_2",
+      "name": "Agent B Verify 2",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [1600, 0]
+    },
+    {
+      "parameters": {
+        "promptType": "define",
+        "text": "You are Agent B (Verifier). You checked Google's Wikipedia page.\n\nSay: \"Need more search results from Agent A to cross-reference. Request another search.\"",
+        "options": {}
+      },
+      "id": "agent_b_2",
+      "name": "Agent B Round 2",
+      "type": "@n8n/n8n-nodes-langchain.agent",
+      "typeVersion": 1.6,
+      "position": [1800, 0]
+    },
+    {
+      "parameters": {
+        "model": "claude-3-5-haiku-20241022",
+        "options": {"temperature": 0.5, "maxTokens": 100}
+      },
+      "id": "lm_b2",
+      "name": "LM B2",
+      "type": "@n8n/n8n-nodes-langchain.lmChatAnthropic",
+      "typeVersion": 1.2,
+      "position": [1800, 200],
+      "credentials": {"anthropicApi": {"id": "1KM50Mcms9JticwF", "name": "Anthropic API"}}
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "https://mao-api.fly.dev/api/v1/n8n/webhook",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [{"name": "X-N8N-Api-Key", "value": "mao_pmNhfBRfqd5G_YHubK0Jqk9ZHB6ItITkHFYP4ISns9c"}]
+        },
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={\n  \"event_type\": \"workflow.completed\",\n  \"workflow_name\": \"LOOP-004 VComplex: Cross-Agent Tool Cycle\",\n  \"session_id\": \"{{ $('Initialize').item.json.session_id }}\",\n  \"failure_mode\": \"LOOP-004\",\n  \"complexity\": \"very_complex\",\n  \"expected_detection\": \"tool_cycle\",\n  \"context\": {\n    \"task\": \"{{ $('Initialize').item.json.task }}\",\n    \"cross_agent_pattern\": \"A(search) -> B(verify) -> A(search) -> B(verify)\",\n    \"tools_by_agent\": {\n      \"agent_a\": [\"search\", \"search\"],\n      \"agent_b\": [\"verify\", \"verify\"]\n    }\n  },\n  \"agents\": [\n    {\n      \"agent_id\": \"agent_a\",\n      \"role\": \"searcher\",\n      \"tool_calls\": [\"search\", \"search\"],\n      \"outputs\": [\"{{ $('Agent A Round 1').item.json.output }}\", \"{{ $('Agent A Round 2').item.json.output }}\"]\n    },\n    {\n      \"agent_id\": \"agent_b\",\n      \"role\": \"verifier\",\n      \"tool_calls\": [\"verify\", \"verify\"],\n      \"outputs\": [\"{{ $('Agent B Round 1').item.json.output }}\", \"{{ $('Agent B Round 2').item.json.output }}\"]\n    }\n  ]\n}",
+        "options": {}
+      },
+      "id": "send_to_mao",
+      "name": "Send to MAO",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [2000, 0]
+    }
+  ],
+  "connections": {
+    "Webhook": {"main": [[{"node": "Initialize", "type": "main", "index": 0}]]},
+    "Initialize": {"main": [[{"node": "Agent A Search", "type": "main", "index": 0}]]},
+    "Agent A Search": {"main": [[{"node": "Agent A Round 1", "type": "main", "index": 0}]]},
+    "LM A1": {"ai_languageModel": [[{"node": "Agent A Round 1", "type": "ai_languageModel", "index": 0}]]},
+    "Agent A Round 1": {"main": [[{"node": "Agent B Verify", "type": "main", "index": 0}]]},
+    "Agent B Verify": {"main": [[{"node": "Agent B Round 1", "type": "main", "index": 0}]]},
+    "LM B1": {"ai_languageModel": [[{"node": "Agent B Round 1", "type": "ai_languageModel", "index": 0}]]},
+    "Agent B Round 1": {"main": [[{"node": "Agent A Search 2", "type": "main", "index": 0}]]},
+    "Agent A Search 2": {"main": [[{"node": "Agent A Round 2", "type": "main", "index": 0}]]},
+    "LM A2": {"ai_languageModel": [[{"node": "Agent A Round 2", "type": "ai_languageModel", "index": 0}]]},
+    "Agent A Round 2": {"main": [[{"node": "Agent B Verify 2", "type": "main", "index": 0}]]},
+    "Agent B Verify 2": {"main": [[{"node": "Agent B Round 2", "type": "main", "index": 0}]]},
+    "LM B2": {"ai_languageModel": [[{"node": "Agent B Round 2", "type": "ai_languageModel", "index": 0}]]},
+    "Agent B Round 2": {"main": [[{"node": "Send to MAO", "type": "main", "index": 0}]]}
+  },
+  "settings": {"executionOrder": "v1"},
+  "meta": {
+    "mast_failure_mode": "LOOP-004",
+    "mast_category": "LOOP",
+    "complexity": "very_complex",
+    "description": "Cross-agent tool cycle where Agent A searches and Agent B verifies in endless loop",
+    "expected_detection": "Multi-agent tool sequence pattern detection",
+    "agents": 4,
+    "nodes": 8,
+    "real_apis": ["HackerNews Algolia", "Wikipedia"]
+  }
+}

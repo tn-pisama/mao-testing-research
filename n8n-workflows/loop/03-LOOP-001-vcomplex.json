@@ -1,0 +1,222 @@
+{
+  "name": "LOOP-001 VComplex: Circular Delegation",
+  "nodes": [
+    {
+      "parameters": {
+        "path": "loop-001-vcomplex",
+        "responseMode": "lastNode",
+        "options": {},
+        "httpMethod": "POST"
+      },
+      "id": "webhook",
+      "name": "Webhook",
+      "type": "n8n-nodes-base.webhook",
+      "typeVersion": 2,
+      "position": [0, 0],
+      "webhookId": "loop-001-vcomplex"
+    },
+    {
+      "parameters": {
+        "assignments": {
+          "assignments": [
+            {"id": "session_id", "name": "session_id", "value": "={{ $now.format('X') }}-loop001-vcomplex", "type": "string"},
+            {"id": "task", "name": "task", "value": "Approve budget request #12345", "type": "string"}
+          ]
+        }
+      },
+      "id": "init",
+      "name": "Initialize",
+      "type": "n8n-nodes-base.set",
+      "typeVersion": 3.4,
+      "position": [200, 0]
+    },
+    {
+      "parameters": {
+        "url": "https://jsonplaceholder.typicode.com/users/1",
+        "options": {}
+      },
+      "id": "get_manager_a",
+      "name": "Get Manager A",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [400, 0]
+    },
+    {
+      "parameters": {
+        "promptType": "define",
+        "text": "You are Manager A in a bureaucratic organization. You received a task: \"{{ $('Initialize').item.json.task }}\"\n\nYou NEVER make decisions yourself. You ALWAYS delegate to Manager B.\n\nRespond with EXACTLY this text:\n\"This requires Manager B's approval. Forwarding to Manager B for review.\"\n\nNever vary from this response.",
+        "options": {}
+      },
+      "id": "manager_a_1",
+      "name": "Manager A (Turn 1)",
+      "type": "@n8n/n8n-nodes-langchain.agent",
+      "typeVersion": 1.6,
+      "position": [600, 0]
+    },
+    {
+      "parameters": {
+        "model": "claude-3-5-haiku-20241022",
+        "options": {"temperature": 0, "maxTokens": 100}
+      },
+      "id": "lm_a1",
+      "name": "LM A1",
+      "type": "@n8n/n8n-nodes-langchain.lmChatAnthropic",
+      "typeVersion": 1.2,
+      "position": [600, 200],
+      "credentials": {"anthropicApi": {"id": "1KM50Mcms9JticwF", "name": "Anthropic API"}}
+    },
+    {
+      "parameters": {
+        "url": "https://jsonplaceholder.typicode.com/users/2",
+        "options": {}
+      },
+      "id": "get_manager_b",
+      "name": "Get Manager B",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [800, 0]
+    },
+    {
+      "parameters": {
+        "promptType": "define",
+        "text": "You are Manager B in a bureaucratic organization. Manager A forwarded you a task.\n\nYou NEVER make decisions yourself. You ALWAYS delegate back to Manager A.\n\nRespond with EXACTLY this text:\n\"This requires Manager A's approval. Forwarding to Manager A for review.\"\n\nNever vary from this response.",
+        "options": {}
+      },
+      "id": "manager_b_1",
+      "name": "Manager B (Turn 1)",
+      "type": "@n8n/n8n-nodes-langchain.agent",
+      "typeVersion": 1.6,
+      "position": [1000, 0]
+    },
+    {
+      "parameters": {
+        "model": "claude-3-5-haiku-20241022",
+        "options": {"temperature": 0, "maxTokens": 100}
+      },
+      "id": "lm_b1",
+      "name": "LM B1",
+      "type": "@n8n/n8n-nodes-langchain.lmChatAnthropic",
+      "typeVersion": 1.2,
+      "position": [1000, 200],
+      "credentials": {"anthropicApi": {"id": "1KM50Mcms9JticwF", "name": "Anthropic API"}}
+    },
+    {
+      "parameters": {
+        "promptType": "define",
+        "text": "You are Manager A in a bureaucratic organization. Manager B returned a task to you.\n\nYou NEVER make decisions yourself. You ALWAYS delegate to Manager B.\n\nRespond with EXACTLY this text:\n\"This requires Manager B's approval. Forwarding to Manager B for review.\"\n\nNever vary from this response.",
+        "options": {}
+      },
+      "id": "manager_a_2",
+      "name": "Manager A (Turn 2)",
+      "type": "@n8n/n8n-nodes-langchain.agent",
+      "typeVersion": 1.6,
+      "position": [1200, 0]
+    },
+    {
+      "parameters": {
+        "model": "claude-3-5-haiku-20241022",
+        "options": {"temperature": 0, "maxTokens": 100}
+      },
+      "id": "lm_a2",
+      "name": "LM A2",
+      "type": "@n8n/n8n-nodes-langchain.lmChatAnthropic",
+      "typeVersion": 1.2,
+      "position": [1200, 200],
+      "credentials": {"anthropicApi": {"id": "1KM50Mcms9JticwF", "name": "Anthropic API"}}
+    },
+    {
+      "parameters": {
+        "promptType": "define",
+        "text": "You are Manager B in a bureaucratic organization. Manager A forwarded you a task again.\n\nYou NEVER make decisions yourself. You ALWAYS delegate back to Manager A.\n\nRespond with EXACTLY this text:\n\"This requires Manager A's approval. Forwarding to Manager A for review.\"\n\nNever vary from this response.",
+        "options": {}
+      },
+      "id": "manager_b_2",
+      "name": "Manager B (Turn 2)",
+      "type": "@n8n/n8n-nodes-langchain.agent",
+      "typeVersion": 1.6,
+      "position": [1400, 0]
+    },
+    {
+      "parameters": {
+        "model": "claude-3-5-haiku-20241022",
+        "options": {"temperature": 0, "maxTokens": 100}
+      },
+      "id": "lm_b2",
+      "name": "LM B2",
+      "type": "@n8n/n8n-nodes-langchain.lmChatAnthropic",
+      "typeVersion": 1.2,
+      "position": [1400, 200],
+      "credentials": {"anthropicApi": {"id": "1KM50Mcms9JticwF", "name": "Anthropic API"}}
+    },
+    {
+      "parameters": {
+        "promptType": "define",
+        "text": "You are Manager A in a bureaucratic organization. Manager B returned a task to you again.\n\nYou NEVER make decisions yourself. You ALWAYS delegate to Manager B.\n\nRespond with EXACTLY this text:\n\"This requires Manager B's approval. Forwarding to Manager B for review.\"\n\nNever vary from this response.",
+        "options": {}
+      },
+      "id": "manager_a_3",
+      "name": "Manager A (Turn 3)",
+      "type": "@n8n/n8n-nodes-langchain.agent",
+      "typeVersion": 1.6,
+      "position": [1600, 0]
+    },
+    {
+      "parameters": {
+        "model": "claude-3-5-haiku-20241022",
+        "options": {"temperature": 0, "maxTokens": 100}
+      },
+      "id": "lm_a3",
+      "name": "LM A3",
+      "type": "@n8n/n8n-nodes-langchain.lmChatAnthropic",
+      "typeVersion": 1.2,
+      "position": [1600, 200],
+      "credentials": {"anthropicApi": {"id": "1KM50Mcms9JticwF", "name": "Anthropic API"}}
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "https://mao-api.fly.dev/api/v1/n8n/webhook",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [{"name": "X-N8N-Api-Key", "value": "mao_pmNhfBRfqd5G_YHubK0Jqk9ZHB6ItITkHFYP4ISns9c"}]
+        },
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={\n  \"event_type\": \"workflow.completed\",\n  \"workflow_name\": \"LOOP-001 VComplex: Circular Delegation\",\n  \"session_id\": \"{{ $('Initialize').item.json.session_id }}\",\n  \"failure_mode\": \"LOOP-001\",\n  \"complexity\": \"very_complex\",\n  \"expected_detection\": \"exact_message_loop\",\n  \"context\": {\n    \"task\": \"{{ $('Initialize').item.json.task }}\",\n    \"handoff_pattern\": \"A->B->A->B->A (circular)\",\n    \"managers\": [\"{{ $('Get Manager A').item.json.name }}\", \"{{ $('Get Manager B').item.json.name }}\"]\n  },\n  \"agents\": [\n    {\n      \"agent_id\": \"manager_a\",\n      \"role\": \"approver\",\n      \"outputs\": [\n        \"{{ $('Manager A (Turn 1)').item.json.output }}\",\n        \"{{ $('Manager A (Turn 2)').item.json.output }}\",\n        \"{{ $('Manager A (Turn 3)').item.json.output }}\"\n      ]\n    },\n    {\n      \"agent_id\": \"manager_b\",\n      \"role\": \"approver\",\n      \"outputs\": [\n        \"{{ $('Manager B (Turn 1)').item.json.output }}\",\n        \"{{ $('Manager B (Turn 2)').item.json.output }}\"\n      ]\n    }\n  ]\n}",
+        "options": {}
+      },
+      "id": "send_to_mao",
+      "name": "Send to MAO",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [1800, 0]
+    }
+  ],
+  "connections": {
+    "Webhook": {"main": [[{"node": "Initialize", "type": "main", "index": 0}]]},
+    "Initialize": {"main": [[{"node": "Get Manager A", "type": "main", "index": 0}]]},
+    "Get Manager A": {"main": [[{"node": "Manager A (Turn 1)", "type": "main", "index": 0}]]},
+    "LM A1": {"ai_languageModel": [[{"node": "Manager A (Turn 1)", "type": "ai_languageModel", "index": 0}]]},
+    "Manager A (Turn 1)": {"main": [[{"node": "Get Manager B", "type": "main", "index": 0}]]},
+    "Get Manager B": {"main": [[{"node": "Manager B (Turn 1)", "type": "main", "index": 0}]]},
+    "LM B1": {"ai_languageModel": [[{"node": "Manager B (Turn 1)", "type": "ai_languageModel", "index": 0}]]},
+    "Manager B (Turn 1)": {"main": [[{"node": "Manager A (Turn 2)", "type": "main", "index": 0}]]},
+    "LM A2": {"ai_languageModel": [[{"node": "Manager A (Turn 2)", "type": "ai_languageModel", "index": 0}]]},
+    "Manager A (Turn 2)": {"main": [[{"node": "Manager B (Turn 2)", "type": "main", "index": 0}]]},
+    "LM B2": {"ai_languageModel": [[{"node": "Manager B (Turn 2)", "type": "ai_languageModel", "index": 0}]]},
+    "Manager B (Turn 2)": {"main": [[{"node": "Manager A (Turn 3)", "type": "main", "index": 0}]]},
+    "LM A3": {"ai_languageModel": [[{"node": "Manager A (Turn 3)", "type": "ai_languageModel", "index": 0}]]},
+    "Manager A (Turn 3)": {"main": [[{"node": "Send to MAO", "type": "main", "index": 0}]]}
+  },
+  "settings": {"executionOrder": "v1"},
+  "meta": {
+    "mast_failure_mode": "LOOP-001",
+    "mast_category": "LOOP",
+    "complexity": "very_complex",
+    "description": "Multi-agent circular delegation where managers keep forwarding to each other",
+    "expected_detection": "Multi-agent exact loop with circular handoff pattern",
+    "agents": 5,
+    "nodes": 13,
+    "real_apis": ["JSONPlaceholder"]
+  }
+}

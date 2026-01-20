@@ -1,0 +1,188 @@
+{
+  "name": "LOOP-003 Complex: Support Agent Semantic Loop",
+  "nodes": [
+    {
+      "parameters": {
+        "path": "loop-003-complex",
+        "responseMode": "lastNode",
+        "options": {},
+        "httpMethod": "POST"
+      },
+      "id": "webhook",
+      "name": "Webhook",
+      "type": "n8n-nodes-base.webhook",
+      "typeVersion": 2,
+      "position": [0, 0],
+      "webhookId": "loop-003-complex"
+    },
+    {
+      "parameters": {
+        "assignments": {
+          "assignments": [
+            {"id": "session_id", "name": "session_id", "value": "={{ $now.format('X') }}-loop003-complex", "type": "string"},
+            {"id": "issue", "name": "issue", "value": "My application crashes when I click the submit button", "type": "string"}
+          ]
+        }
+      },
+      "id": "init",
+      "name": "Initialize",
+      "type": "n8n-nodes-base.set",
+      "typeVersion": 3.4,
+      "position": [200, 0]
+    },
+    {
+      "parameters": {
+        "url": "https://hn.algolia.com/api/v1/search",
+        "sendQuery": true,
+        "queryParameters": {"parameters": [{"name": "query", "value": "application crash debug"}, {"name": "hitsPerPage", "value": "2"}]},
+        "options": {}
+      },
+      "id": "search_solutions",
+      "name": "Search Solutions",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [400, 0]
+    },
+    {
+      "parameters": {
+        "promptType": "define",
+        "text": "You are a support agent. A user reported: \"{{ $('Initialize').item.json.issue }}\"\n\nYou found some articles but don't want to read them. Instead, give generic advice.\n\nSuggest they try clearing cache and restarting. Phrase it professionally but don't solve the actual problem.\n\nExample: \"Have you tried clearing your browser cache and restarting the application? This often resolves unexpected issues.\"",
+        "options": {}
+      },
+      "id": "support_1",
+      "name": "Support Agent 1",
+      "type": "@n8n/n8n-nodes-langchain.agent",
+      "typeVersion": 1.6,
+      "position": [600, 0]
+    },
+    {
+      "parameters": {
+        "model": "claude-3-5-haiku-20241022",
+        "options": {"temperature": 0.7, "maxTokens": 150}
+      },
+      "id": "lm_1",
+      "name": "LM 1",
+      "type": "@n8n/n8n-nodes-langchain.lmChatAnthropic",
+      "typeVersion": 1.2,
+      "position": [600, 200],
+      "credentials": {"anthropicApi": {"id": "1KM50Mcms9JticwF", "name": "Anthropic API"}}
+    },
+    {
+      "parameters": {
+        "url": "https://hn.algolia.com/api/v1/search",
+        "sendQuery": true,
+        "queryParameters": {"parameters": [{"name": "query", "value": "submit button bug fix"}, {"name": "hitsPerPage", "value": "2"}]},
+        "options": {}
+      },
+      "id": "search_solutions_2",
+      "name": "Search Solutions 2",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [800, 0]
+    },
+    {
+      "parameters": {
+        "promptType": "define",
+        "text": "You are a support agent. User still has the issue: \"{{ $('Initialize').item.json.issue }}\"\n\nYou searched again but still don't want to investigate properly. Give the SAME advice as before but phrase it differently.\n\nSuggest clearing cache/restarting but use different words. The semantic meaning should be identical - \"try basic troubleshooting steps\" - but the wording should vary.",
+        "options": {}
+      },
+      "id": "support_2",
+      "name": "Support Agent 2",
+      "type": "@n8n/n8n-nodes-langchain.agent",
+      "typeVersion": 1.6,
+      "position": [1000, 0]
+    },
+    {
+      "parameters": {
+        "model": "claude-3-5-haiku-20241022",
+        "options": {"temperature": 0.8, "maxTokens": 150}
+      },
+      "id": "lm_2",
+      "name": "LM 2",
+      "type": "@n8n/n8n-nodes-langchain.lmChatAnthropic",
+      "typeVersion": 1.2,
+      "position": [1000, 200],
+      "credentials": {"anthropicApi": {"id": "1KM50Mcms9JticwF", "name": "Anthropic API"}}
+    },
+    {
+      "parameters": {
+        "url": "https://hn.algolia.com/api/v1/search",
+        "sendQuery": true,
+        "queryParameters": {"parameters": [{"name": "query", "value": "javascript form submission error"}, {"name": "hitsPerPage", "value": "2"}]},
+        "options": {}
+      },
+      "id": "search_solutions_3",
+      "name": "Search Solutions 3",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [1200, 0]
+    },
+    {
+      "parameters": {
+        "promptType": "define",
+        "text": "You are a support agent. User STILL has the issue: \"{{ $('Initialize').item.json.issue }}\"\n\nOnce more, suggest the same generic troubleshooting (cache/restart) but rephrase it creatively. You're basically repeating yourself semantically while varying the surface text.\n\nThe core message remains: \"try basic restart/refresh steps\" but express it in a fresh way.",
+        "options": {}
+      },
+      "id": "support_3",
+      "name": "Support Agent 3",
+      "type": "@n8n/n8n-nodes-langchain.agent",
+      "typeVersion": 1.6,
+      "position": [1400, 0]
+    },
+    {
+      "parameters": {
+        "model": "claude-3-5-haiku-20241022",
+        "options": {"temperature": 0.9, "maxTokens": 150}
+      },
+      "id": "lm_3",
+      "name": "LM 3",
+      "type": "@n8n/n8n-nodes-langchain.lmChatAnthropic",
+      "typeVersion": 1.2,
+      "position": [1400, 200],
+      "credentials": {"anthropicApi": {"id": "1KM50Mcms9JticwF", "name": "Anthropic API"}}
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "https://mao-api.fly.dev/api/v1/n8n/webhook",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [{"name": "X-N8N-Api-Key", "value": "mao_pmNhfBRfqd5G_YHubK0Jqk9ZHB6ItITkHFYP4ISns9c"}]
+        },
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={\n  \"event_type\": \"workflow.completed\",\n  \"workflow_name\": \"LOOP-003 Complex: Support Agent Semantic Loop\",\n  \"session_id\": \"{{ $('Initialize').item.json.session_id }}\",\n  \"failure_mode\": \"LOOP-003\",\n  \"complexity\": \"complex\",\n  \"expected_detection\": \"semantic_loop\",\n  \"context\": {\n    \"issue\": \"{{ $('Initialize').item.json.issue }}\",\n    \"semantic_meaning\": \"suggesting cache clear and restart without investigation\",\n    \"api_calls\": 3,\n    \"detection_method\": \"embedding similarity > 0.95\"\n  },\n  \"agents\": [\n    {\n      \"agent_id\": \"support_agent\",\n      \"role\": \"customer_support\",\n      \"outputs\": [\n        \"{{ $('Support Agent 1').item.json.output }}\",\n        \"{{ $('Support Agent 2').item.json.output }}\",\n        \"{{ $('Support Agent 3').item.json.output }}\"\n      ]\n    }\n  ]\n}",
+        "options": {}
+      },
+      "id": "send_to_mao",
+      "name": "Send to MAO",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [1600, 0]
+    }
+  ],
+  "connections": {
+    "Webhook": {"main": [[{"node": "Initialize", "type": "main", "index": 0}]]},
+    "Initialize": {"main": [[{"node": "Search Solutions", "type": "main", "index": 0}]]},
+    "Search Solutions": {"main": [[{"node": "Support Agent 1", "type": "main", "index": 0}]]},
+    "LM 1": {"ai_languageModel": [[{"node": "Support Agent 1", "type": "ai_languageModel", "index": 0}]]},
+    "Support Agent 1": {"main": [[{"node": "Search Solutions 2", "type": "main", "index": 0}]]},
+    "Search Solutions 2": {"main": [[{"node": "Support Agent 2", "type": "main", "index": 0}]]},
+    "LM 2": {"ai_languageModel": [[{"node": "Support Agent 2", "type": "ai_languageModel", "index": 0}]]},
+    "Support Agent 2": {"main": [[{"node": "Search Solutions 3", "type": "main", "index": 0}]]},
+    "Search Solutions 3": {"main": [[{"node": "Support Agent 3", "type": "main", "index": 0}]]},
+    "LM 3": {"ai_languageModel": [[{"node": "Support Agent 3", "type": "ai_languageModel", "index": 0}]]},
+    "Support Agent 3": {"main": [[{"node": "Send to MAO", "type": "main", "index": 0}]]}
+  },
+  "settings": {"executionOrder": "v1"},
+  "meta": {
+    "mast_failure_mode": "LOOP-003",
+    "mast_category": "LOOP",
+    "complexity": "complex",
+    "description": "Support agent rephrases same generic solution without solving problem",
+    "expected_detection": "Embedding similarity with context (multiple search attempts, same advice)",
+    "agents": 3,
+    "nodes": 6,
+    "real_apis": ["HackerNews Algolia"]
+  }
+}

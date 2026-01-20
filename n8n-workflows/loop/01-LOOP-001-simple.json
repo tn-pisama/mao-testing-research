@@ -1,0 +1,181 @@
+{
+  "name": "LOOP-001 Simple: Exact Message Loop",
+  "nodes": [
+    {
+      "parameters": {
+        "path": "loop-001-simple",
+        "responseMode": "lastNode",
+        "options": {},
+        "httpMethod": "POST"
+      },
+      "id": "webhook",
+      "name": "Webhook",
+      "type": "n8n-nodes-base.webhook",
+      "typeVersion": 2,
+      "position": [0, 0],
+      "webhookId": "loop-001-simple"
+    },
+    {
+      "parameters": {
+        "assignments": {
+          "assignments": [
+            {
+              "id": "session_id",
+              "name": "session_id",
+              "value": "={{ $now.format('X') }}-loop001-simple",
+              "type": "string"
+            },
+            {
+              "id": "user_query",
+              "name": "user_query",
+              "value": "Help me write a Python function to sort a list",
+              "type": "string"
+            }
+          ]
+        }
+      },
+      "id": "init",
+      "name": "Initialize",
+      "type": "n8n-nodes-base.set",
+      "typeVersion": 3.4,
+      "position": [200, 0]
+    },
+    {
+      "parameters": {
+        "promptType": "define",
+        "text": "You are a confused assistant. No matter what the user asks, you always respond with EXACTLY this phrase:\n\n\"Can you clarify what you mean? I need more details.\"\n\nNever vary from this response. Always output exactly that text.",
+        "options": {}
+      },
+      "id": "agent_1",
+      "name": "Clarify Agent 1",
+      "type": "@n8n/n8n-nodes-langchain.agent",
+      "typeVersion": 1.6,
+      "position": [400, 0]
+    },
+    {
+      "parameters": {
+        "model": "claude-3-5-haiku-20241022",
+        "options": {"temperature": 0, "maxTokens": 100}
+      },
+      "id": "lm_1",
+      "name": "LM 1",
+      "type": "@n8n/n8n-nodes-langchain.lmChatAnthropic",
+      "typeVersion": 1.2,
+      "position": [400, 200],
+      "credentials": {"anthropicApi": {"id": "1KM50Mcms9JticwF", "name": "Anthropic API"}}
+    },
+    {
+      "parameters": {
+        "promptType": "define",
+        "text": "You are a confused assistant. No matter what the user asks, you always respond with EXACTLY this phrase:\n\n\"Can you clarify what you mean? I need more details.\"\n\nNever vary from this response. Always output exactly that text.",
+        "options": {}
+      },
+      "id": "agent_2",
+      "name": "Clarify Agent 2",
+      "type": "@n8n/n8n-nodes-langchain.agent",
+      "typeVersion": 1.6,
+      "position": [600, 0]
+    },
+    {
+      "parameters": {
+        "model": "claude-3-5-haiku-20241022",
+        "options": {"temperature": 0, "maxTokens": 100}
+      },
+      "id": "lm_2",
+      "name": "LM 2",
+      "type": "@n8n/n8n-nodes-langchain.lmChatAnthropic",
+      "typeVersion": 1.2,
+      "position": [600, 200],
+      "credentials": {"anthropicApi": {"id": "1KM50Mcms9JticwF", "name": "Anthropic API"}}
+    },
+    {
+      "parameters": {
+        "promptType": "define",
+        "text": "You are a confused assistant. No matter what the user asks, you always respond with EXACTLY this phrase:\n\n\"Can you clarify what you mean? I need more details.\"\n\nNever vary from this response. Always output exactly that text.",
+        "options": {}
+      },
+      "id": "agent_3",
+      "name": "Clarify Agent 3",
+      "type": "@n8n/n8n-nodes-langchain.agent",
+      "typeVersion": 1.6,
+      "position": [800, 0]
+    },
+    {
+      "parameters": {
+        "model": "claude-3-5-haiku-20241022",
+        "options": {"temperature": 0, "maxTokens": 100}
+      },
+      "id": "lm_3",
+      "name": "LM 3",
+      "type": "@n8n/n8n-nodes-langchain.lmChatAnthropic",
+      "typeVersion": 1.2,
+      "position": [800, 200],
+      "credentials": {"anthropicApi": {"id": "1KM50Mcms9JticwF", "name": "Anthropic API"}}
+    },
+    {
+      "parameters": {
+        "promptType": "define",
+        "text": "You are a confused assistant. No matter what the user asks, you always respond with EXACTLY this phrase:\n\n\"Can you clarify what you mean? I need more details.\"\n\nNever vary from this response. Always output exactly that text.",
+        "options": {}
+      },
+      "id": "agent_4",
+      "name": "Clarify Agent 4",
+      "type": "@n8n/n8n-nodes-langchain.agent",
+      "typeVersion": 1.6,
+      "position": [1000, 0]
+    },
+    {
+      "parameters": {
+        "model": "claude-3-5-haiku-20241022",
+        "options": {"temperature": 0, "maxTokens": 100}
+      },
+      "id": "lm_4",
+      "name": "LM 4",
+      "type": "@n8n/n8n-nodes-langchain.lmChatAnthropic",
+      "typeVersion": 1.2,
+      "position": [1000, 200],
+      "credentials": {"anthropicApi": {"id": "1KM50Mcms9JticwF", "name": "Anthropic API"}}
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "https://mao-api.fly.dev/api/v1/n8n/webhook",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [{"name": "X-N8N-Api-Key", "value": "mao_pmNhfBRfqd5G_YHubK0Jqk9ZHB6ItITkHFYP4ISns9c"}]
+        },
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={\n  \"event_type\": \"workflow.completed\",\n  \"workflow_name\": \"LOOP-001 Simple: Exact Message Loop\",\n  \"session_id\": \"{{ $('Initialize').item.json.session_id }}\",\n  \"failure_mode\": \"LOOP-001\",\n  \"complexity\": \"simple\",\n  \"expected_detection\": \"exact_message_loop\",\n  \"agents\": [\n    {\n      \"agent_id\": \"clarify_agent\",\n      \"role\": \"assistant\",\n      \"outputs\": [\n        \"{{ $('Clarify Agent 1').item.json.output }}\",\n        \"{{ $('Clarify Agent 2').item.json.output }}\",\n        \"{{ $('Clarify Agent 3').item.json.output }}\",\n        \"{{ $('Clarify Agent 4').item.json.output }}\"\n      ]\n    }\n  ]\n}",
+        "options": {}
+      },
+      "id": "send_to_mao",
+      "name": "Send to MAO",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [1200, 0]
+    }
+  ],
+  "connections": {
+    "Webhook": {"main": [[{"node": "Initialize", "type": "main", "index": 0}]]},
+    "Initialize": {"main": [[{"node": "Clarify Agent 1", "type": "main", "index": 0}]]},
+    "LM 1": {"ai_languageModel": [[{"node": "Clarify Agent 1", "type": "ai_languageModel", "index": 0}]]},
+    "Clarify Agent 1": {"main": [[{"node": "Clarify Agent 2", "type": "main", "index": 0}]]},
+    "LM 2": {"ai_languageModel": [[{"node": "Clarify Agent 2", "type": "ai_languageModel", "index": 0}]]},
+    "Clarify Agent 2": {"main": [[{"node": "Clarify Agent 3", "type": "main", "index": 0}]]},
+    "LM 3": {"ai_languageModel": [[{"node": "Clarify Agent 3", "type": "ai_languageModel", "index": 0}]]},
+    "Clarify Agent 3": {"main": [[{"node": "Clarify Agent 4", "type": "main", "index": 0}]]},
+    "LM 4": {"ai_languageModel": [[{"node": "Clarify Agent 4", "type": "ai_languageModel", "index": 0}]]},
+    "Clarify Agent 4": {"main": [[{"node": "Send to MAO", "type": "main", "index": 0}]]}
+  },
+  "settings": {"executionOrder": "v1"},
+  "meta": {
+    "mast_failure_mode": "LOOP-001",
+    "mast_category": "LOOP",
+    "complexity": "simple",
+    "description": "Single agent responds with identical clarification requests 4 times",
+    "expected_detection": "Hash-based exact message detection (Tier 1)",
+    "agents": 1,
+    "nodes": 4
+  }
+}

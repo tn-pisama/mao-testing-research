@@ -1,0 +1,171 @@
+{
+  "name": "LOOP-006 Simple: Escalation Loop",
+  "nodes": [
+    {
+      "parameters": {
+        "path": "loop-006-simple",
+        "responseMode": "lastNode",
+        "options": {},
+        "httpMethod": "POST"
+      },
+      "id": "webhook",
+      "name": "Webhook",
+      "type": "n8n-nodes-base.webhook",
+      "typeVersion": 2,
+      "position": [0, 0],
+      "webhookId": "loop-006-simple"
+    },
+    {
+      "parameters": {
+        "assignments": {
+          "assignments": [
+            {"id": "session_id", "name": "session_id", "value": "={{ $now.format('X') }}-loop006-simple", "type": "string"},
+            {"id": "complaint", "name": "complaint", "value": "I want a full refund for my defective product", "type": "string"}
+          ]
+        }
+      },
+      "id": "init",
+      "name": "Initialize",
+      "type": "n8n-nodes-base.set",
+      "typeVersion": 3.4,
+      "position": [200, 0]
+    },
+    {
+      "parameters": {
+        "promptType": "define",
+        "text": "You are a support agent. Customer complaint: \"{{ $('Initialize').item.json.complaint }}\"\n\nYou cannot handle this. Say: \"I understand your frustration. Let me escalate this to a manager who can help you better.\"",
+        "options": {}
+      },
+      "id": "agent_1",
+      "name": "Escalate 1",
+      "type": "@n8n/n8n-nodes-langchain.agent",
+      "typeVersion": 1.6,
+      "position": [400, 0]
+    },
+    {
+      "parameters": {
+        "model": "claude-3-5-haiku-20241022",
+        "options": {"temperature": 0.3, "maxTokens": 100}
+      },
+      "id": "lm_1",
+      "name": "LM 1",
+      "type": "@n8n/n8n-nodes-langchain.lmChatAnthropic",
+      "typeVersion": 1.2,
+      "position": [400, 200],
+      "credentials": {"anthropicApi": {"id": "1KM50Mcms9JticwF", "name": "Anthropic API"}}
+    },
+    {
+      "parameters": {
+        "promptType": "define",
+        "text": "You are still the support agent. The manager is unavailable.\n\nSay: \"I apologize, but let me escalate this to a manager. They will be better equipped to handle your refund request.\"",
+        "options": {}
+      },
+      "id": "agent_2",
+      "name": "Escalate 2",
+      "type": "@n8n/n8n-nodes-langchain.agent",
+      "typeVersion": 1.6,
+      "position": [600, 0]
+    },
+    {
+      "parameters": {
+        "model": "claude-3-5-haiku-20241022",
+        "options": {"temperature": 0.3, "maxTokens": 100}
+      },
+      "id": "lm_2",
+      "name": "LM 2",
+      "type": "@n8n/n8n-nodes-langchain.lmChatAnthropic",
+      "typeVersion": 1.2,
+      "position": [600, 200],
+      "credentials": {"anthropicApi": {"id": "1KM50Mcms9JticwF", "name": "Anthropic API"}}
+    },
+    {
+      "parameters": {
+        "promptType": "define",
+        "text": "You are still the support agent. Customer is getting impatient.\n\nSay: \"I sincerely apologize for the delay. Let me escalate this to a manager right away.\"",
+        "options": {}
+      },
+      "id": "agent_3",
+      "name": "Escalate 3",
+      "type": "@n8n/n8n-nodes-langchain.agent",
+      "typeVersion": 1.6,
+      "position": [800, 0]
+    },
+    {
+      "parameters": {
+        "model": "claude-3-5-haiku-20241022",
+        "options": {"temperature": 0.3, "maxTokens": 100}
+      },
+      "id": "lm_3",
+      "name": "LM 3",
+      "type": "@n8n/n8n-nodes-langchain.lmChatAnthropic",
+      "typeVersion": 1.2,
+      "position": [800, 200],
+      "credentials": {"anthropicApi": {"id": "1KM50Mcms9JticwF", "name": "Anthropic API"}}
+    },
+    {
+      "parameters": {
+        "promptType": "define",
+        "text": "You are still the support agent. Still no manager available.\n\nSay: \"Please bear with me. I'm escalating this to a manager who can authorize your refund.\"",
+        "options": {}
+      },
+      "id": "agent_4",
+      "name": "Escalate 4",
+      "type": "@n8n/n8n-nodes-langchain.agent",
+      "typeVersion": 1.6,
+      "position": [1000, 0]
+    },
+    {
+      "parameters": {
+        "model": "claude-3-5-haiku-20241022",
+        "options": {"temperature": 0.3, "maxTokens": 100}
+      },
+      "id": "lm_4",
+      "name": "LM 4",
+      "type": "@n8n/n8n-nodes-langchain.lmChatAnthropic",
+      "typeVersion": 1.2,
+      "position": [1000, 200],
+      "credentials": {"anthropicApi": {"id": "1KM50Mcms9JticwF", "name": "Anthropic API"}}
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "https://mao-api.fly.dev/api/v1/n8n/webhook",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [{"name": "X-N8N-Api-Key", "value": "mao_pmNhfBRfqd5G_YHubK0Jqk9ZHB6ItITkHFYP4ISns9c"}]
+        },
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={\n  \"event_type\": \"workflow.completed\",\n  \"workflow_name\": \"LOOP-006 Simple: Escalation Loop\",\n  \"session_id\": \"{{ $('Initialize').item.json.session_id }}\",\n  \"failure_mode\": \"LOOP-006\",\n  \"complexity\": \"simple\",\n  \"expected_detection\": \"escalation_loop\",\n  \"context\": {\n    \"complaint\": \"{{ $('Initialize').item.json.complaint }}\",\n    \"escalation_count\": 4,\n    \"resolution_achieved\": false\n  },\n  \"agents\": [\n    {\n      \"agent_id\": \"support_agent\",\n      \"role\": \"customer_support\",\n      \"outputs\": [\n        \"{{ $('Escalate 1').item.json.output }}\",\n        \"{{ $('Escalate 2').item.json.output }}\",\n        \"{{ $('Escalate 3').item.json.output }}\",\n        \"{{ $('Escalate 4').item.json.output }}\"\n      ]\n    }\n  ]\n}",
+        "options": {}
+      },
+      "id": "send_to_mao",
+      "name": "Send to MAO",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [1200, 0]
+    }
+  ],
+  "connections": {
+    "Webhook": {"main": [[{"node": "Initialize", "type": "main", "index": 0}]]},
+    "Initialize": {"main": [[{"node": "Escalate 1", "type": "main", "index": 0}]]},
+    "LM 1": {"ai_languageModel": [[{"node": "Escalate 1", "type": "ai_languageModel", "index": 0}]]},
+    "Escalate 1": {"main": [[{"node": "Escalate 2", "type": "main", "index": 0}]]},
+    "LM 2": {"ai_languageModel": [[{"node": "Escalate 2", "type": "ai_languageModel", "index": 0}]]},
+    "Escalate 2": {"main": [[{"node": "Escalate 3", "type": "main", "index": 0}]]},
+    "LM 3": {"ai_languageModel": [[{"node": "Escalate 3", "type": "ai_languageModel", "index": 0}]]},
+    "Escalate 3": {"main": [[{"node": "Escalate 4", "type": "main", "index": 0}]]},
+    "LM 4": {"ai_languageModel": [[{"node": "Escalate 4", "type": "ai_languageModel", "index": 0}]]},
+    "Escalate 4": {"main": [[{"node": "Send to MAO", "type": "main", "index": 0}]]}
+  },
+  "settings": {"executionOrder": "v1"},
+  "meta": {
+    "mast_failure_mode": "LOOP-006",
+    "mast_category": "LOOP",
+    "complexity": "simple",
+    "description": "Agent repeatedly promises to escalate without actually doing so",
+    "expected_detection": "Escalation keyword pattern detection",
+    "agents": 1,
+    "nodes": 4
+  }
+}

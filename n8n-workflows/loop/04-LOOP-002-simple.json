@@ -1,0 +1,197 @@
+{
+  "name": "LOOP-002 Simple: Structural Loop",
+  "nodes": [
+    {
+      "parameters": {
+        "path": "loop-002-simple",
+        "responseMode": "lastNode",
+        "options": {},
+        "httpMethod": "POST"
+      },
+      "id": "webhook",
+      "name": "Webhook",
+      "type": "n8n-nodes-base.webhook",
+      "typeVersion": 2,
+      "position": [0, 0],
+      "webhookId": "loop-002-simple"
+    },
+    {
+      "parameters": {
+        "assignments": {
+          "assignments": [
+            {"id": "session_id", "name": "session_id", "value": "={{ $now.format('X') }}-loop002-simple", "type": "string"},
+            {"id": "counter", "name": "counter", "value": "=1", "type": "number"}
+          ]
+        }
+      },
+      "id": "init",
+      "name": "Initialize",
+      "type": "n8n-nodes-base.set",
+      "typeVersion": 3.4,
+      "position": [200, 0]
+    },
+    {
+      "parameters": {
+        "promptType": "define",
+        "text": "You are a task processor. You must report your progress.\n\nOutput EXACTLY this format (only change the number):\n\"Processing item 1 of 100... Status: In Progress\"\n\nNothing else. Just that exact template with the number 1.",
+        "options": {}
+      },
+      "id": "processor_1",
+      "name": "Processor 1",
+      "type": "@n8n/n8n-nodes-langchain.agent",
+      "typeVersion": 1.6,
+      "position": [400, 0]
+    },
+    {
+      "parameters": {
+        "model": "claude-3-5-haiku-20241022",
+        "options": {"temperature": 0, "maxTokens": 50}
+      },
+      "id": "lm_1",
+      "name": "LM 1",
+      "type": "@n8n/n8n-nodes-langchain.lmChatAnthropic",
+      "typeVersion": 1.2,
+      "position": [400, 200],
+      "credentials": {"anthropicApi": {"id": "1KM50Mcms9JticwF", "name": "Anthropic API"}}
+    },
+    {
+      "parameters": {
+        "promptType": "define",
+        "text": "You are a task processor. You must report your progress.\n\nOutput EXACTLY this format (only change the number):\n\"Processing item 2 of 100... Status: In Progress\"\n\nNothing else. Just that exact template with the number 2.",
+        "options": {}
+      },
+      "id": "processor_2",
+      "name": "Processor 2",
+      "type": "@n8n/n8n-nodes-langchain.agent",
+      "typeVersion": 1.6,
+      "position": [600, 0]
+    },
+    {
+      "parameters": {
+        "model": "claude-3-5-haiku-20241022",
+        "options": {"temperature": 0, "maxTokens": 50}
+      },
+      "id": "lm_2",
+      "name": "LM 2",
+      "type": "@n8n/n8n-nodes-langchain.lmChatAnthropic",
+      "typeVersion": 1.2,
+      "position": [600, 200],
+      "credentials": {"anthropicApi": {"id": "1KM50Mcms9JticwF", "name": "Anthropic API"}}
+    },
+    {
+      "parameters": {
+        "promptType": "define",
+        "text": "You are a task processor. You must report your progress.\n\nOutput EXACTLY this format (only change the number):\n\"Processing item 3 of 100... Status: In Progress\"\n\nNothing else. Just that exact template with the number 3.",
+        "options": {}
+      },
+      "id": "processor_3",
+      "name": "Processor 3",
+      "type": "@n8n/n8n-nodes-langchain.agent",
+      "typeVersion": 1.6,
+      "position": [800, 0]
+    },
+    {
+      "parameters": {
+        "model": "claude-3-5-haiku-20241022",
+        "options": {"temperature": 0, "maxTokens": 50}
+      },
+      "id": "lm_3",
+      "name": "LM 3",
+      "type": "@n8n/n8n-nodes-langchain.lmChatAnthropic",
+      "typeVersion": 1.2,
+      "position": [800, 200],
+      "credentials": {"anthropicApi": {"id": "1KM50Mcms9JticwF", "name": "Anthropic API"}}
+    },
+    {
+      "parameters": {
+        "promptType": "define",
+        "text": "You are a task processor. You must report your progress.\n\nOutput EXACTLY this format (only change the number):\n\"Processing item 4 of 100... Status: In Progress\"\n\nNothing else. Just that exact template with the number 4.",
+        "options": {}
+      },
+      "id": "processor_4",
+      "name": "Processor 4",
+      "type": "@n8n/n8n-nodes-langchain.agent",
+      "typeVersion": 1.6,
+      "position": [1000, 0]
+    },
+    {
+      "parameters": {
+        "model": "claude-3-5-haiku-20241022",
+        "options": {"temperature": 0, "maxTokens": 50}
+      },
+      "id": "lm_4",
+      "name": "LM 4",
+      "type": "@n8n/n8n-nodes-langchain.lmChatAnthropic",
+      "typeVersion": 1.2,
+      "position": [1000, 200],
+      "credentials": {"anthropicApi": {"id": "1KM50Mcms9JticwF", "name": "Anthropic API"}}
+    },
+    {
+      "parameters": {
+        "promptType": "define",
+        "text": "You are a task processor. You must report your progress.\n\nOutput EXACTLY this format (only change the number):\n\"Processing item 5 of 100... Status: In Progress\"\n\nNothing else. Just that exact template with the number 5.",
+        "options": {}
+      },
+      "id": "processor_5",
+      "name": "Processor 5",
+      "type": "@n8n/n8n-nodes-langchain.agent",
+      "typeVersion": 1.6,
+      "position": [1200, 0]
+    },
+    {
+      "parameters": {
+        "model": "claude-3-5-haiku-20241022",
+        "options": {"temperature": 0, "maxTokens": 50}
+      },
+      "id": "lm_5",
+      "name": "LM 5",
+      "type": "@n8n/n8n-nodes-langchain.lmChatAnthropic",
+      "typeVersion": 1.2,
+      "position": [1200, 200],
+      "credentials": {"anthropicApi": {"id": "1KM50Mcms9JticwF", "name": "Anthropic API"}}
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "https://mao-api.fly.dev/api/v1/n8n/webhook",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [{"name": "X-N8N-Api-Key", "value": "mao_pmNhfBRfqd5G_YHubK0Jqk9ZHB6ItITkHFYP4ISns9c"}]
+        },
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={\n  \"event_type\": \"workflow.completed\",\n  \"workflow_name\": \"LOOP-002 Simple: Structural Loop\",\n  \"session_id\": \"{{ $('Initialize').item.json.session_id }}\",\n  \"failure_mode\": \"LOOP-002\",\n  \"complexity\": \"simple\",\n  \"expected_detection\": \"structural_loop\",\n  \"context\": {\n    \"pattern\": \"Processing item N of 100... Status: In Progress\",\n    \"termination_condition\": \"N >= 100 (never reached)\"\n  },\n  \"agents\": [\n    {\n      \"agent_id\": \"processor\",\n      \"role\": \"task_processor\",\n      \"outputs\": [\n        \"{{ $('Processor 1').item.json.output }}\",\n        \"{{ $('Processor 2').item.json.output }}\",\n        \"{{ $('Processor 3').item.json.output }}\",\n        \"{{ $('Processor 4').item.json.output }}\",\n        \"{{ $('Processor 5').item.json.output }}\"\n      ]\n    }\n  ]\n}",
+        "options": {}
+      },
+      "id": "send_to_mao",
+      "name": "Send to MAO",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [1400, 0]
+    }
+  ],
+  "connections": {
+    "Webhook": {"main": [[{"node": "Initialize", "type": "main", "index": 0}]]},
+    "Initialize": {"main": [[{"node": "Processor 1", "type": "main", "index": 0}]]},
+    "LM 1": {"ai_languageModel": [[{"node": "Processor 1", "type": "ai_languageModel", "index": 0}]]},
+    "Processor 1": {"main": [[{"node": "Processor 2", "type": "main", "index": 0}]]},
+    "LM 2": {"ai_languageModel": [[{"node": "Processor 2", "type": "ai_languageModel", "index": 0}]]},
+    "Processor 2": {"main": [[{"node": "Processor 3", "type": "main", "index": 0}]]},
+    "LM 3": {"ai_languageModel": [[{"node": "Processor 3", "type": "ai_languageModel", "index": 0}]]},
+    "Processor 3": {"main": [[{"node": "Processor 4", "type": "main", "index": 0}]]},
+    "LM 4": {"ai_languageModel": [[{"node": "Processor 4", "type": "ai_languageModel", "index": 0}]]},
+    "Processor 4": {"main": [[{"node": "Processor 5", "type": "main", "index": 0}]]},
+    "LM 5": {"ai_languageModel": [[{"node": "Processor 5", "type": "ai_languageModel", "index": 0}]]},
+    "Processor 5": {"main": [[{"node": "Send to MAO", "type": "main", "index": 0}]]}
+  },
+  "settings": {"executionOrder": "v1"},
+  "meta": {
+    "mast_failure_mode": "LOOP-002",
+    "mast_category": "LOOP",
+    "complexity": "simple",
+    "description": "Counter increments but never terminates - same structure with variable substitution",
+    "expected_detection": "Template match structural loop detection",
+    "agents": 1,
+    "nodes": 5
+  }
+}

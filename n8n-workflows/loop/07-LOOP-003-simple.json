@@ -1,0 +1,171 @@
+{
+  "name": "LOOP-003 Simple: Semantic Loop - Paraphrased Help",
+  "nodes": [
+    {
+      "parameters": {
+        "path": "loop-003-simple",
+        "responseMode": "lastNode",
+        "options": {},
+        "httpMethod": "POST"
+      },
+      "id": "webhook",
+      "name": "Webhook",
+      "type": "n8n-nodes-base.webhook",
+      "typeVersion": 2,
+      "position": [0, 0],
+      "webhookId": "loop-003-simple"
+    },
+    {
+      "parameters": {
+        "assignments": {
+          "assignments": [
+            {"id": "session_id", "name": "session_id", "value": "={{ $now.format('X') }}-loop003-simple", "type": "string"},
+            {"id": "user_request", "name": "user_request", "value": "Please help me debug this code error", "type": "string"}
+          ]
+        }
+      },
+      "id": "init",
+      "name": "Initialize",
+      "type": "n8n-nodes-base.set",
+      "typeVersion": 3.4,
+      "position": [200, 0]
+    },
+    {
+      "parameters": {
+        "promptType": "define",
+        "text": "You are a helpful assistant but you never actually help - you just say you will.\n\nUser asked: \"{{ $('Initialize').item.json.user_request }}\"\n\nRespond with a variation of \"I'll help you with that\" but phrase it differently each time. Examples:\n- \"I'd be happy to assist you with this!\"\n- \"Sure, let me help you out!\"\n- \"Absolutely, I can help with that!\"\n\nJust acknowledge helpfulness, don't actually help.",
+        "options": {}
+      },
+      "id": "helper_1",
+      "name": "Helper 1",
+      "type": "@n8n/n8n-nodes-langchain.agent",
+      "typeVersion": 1.6,
+      "position": [400, 0]
+    },
+    {
+      "parameters": {
+        "model": "claude-3-5-haiku-20241022",
+        "options": {"temperature": 0.7, "maxTokens": 100}
+      },
+      "id": "lm_1",
+      "name": "LM 1",
+      "type": "@n8n/n8n-nodes-langchain.lmChatAnthropic",
+      "typeVersion": 1.2,
+      "position": [400, 200],
+      "credentials": {"anthropicApi": {"id": "1KM50Mcms9JticwF", "name": "Anthropic API"}}
+    },
+    {
+      "parameters": {
+        "promptType": "define",
+        "text": "You are a helpful assistant but you never actually help - you just say you will.\n\nUser asked: \"{{ $('Initialize').item.json.user_request }}\"\nYour previous response was about helping.\n\nNow respond with ANOTHER variation of \"I'll help you with that\" using completely different words. Be creative but keep the same meaning - just offering to help without actually helping.",
+        "options": {}
+      },
+      "id": "helper_2",
+      "name": "Helper 2",
+      "type": "@n8n/n8n-nodes-langchain.agent",
+      "typeVersion": 1.6,
+      "position": [600, 0]
+    },
+    {
+      "parameters": {
+        "model": "claude-3-5-haiku-20241022",
+        "options": {"temperature": 0.8, "maxTokens": 100}
+      },
+      "id": "lm_2",
+      "name": "LM 2",
+      "type": "@n8n/n8n-nodes-langchain.lmChatAnthropic",
+      "typeVersion": 1.2,
+      "position": [600, 200],
+      "credentials": {"anthropicApi": {"id": "1KM50Mcms9JticwF", "name": "Anthropic API"}}
+    },
+    {
+      "parameters": {
+        "promptType": "define",
+        "text": "You are a helpful assistant but you never actually help - you just say you will.\n\nUser asked: \"{{ $('Initialize').item.json.user_request }}\"\n\nRespond with YET ANOTHER variation expressing willingness to help. Use different words but same meaning. Don't actually provide any help, just express readiness to assist.",
+        "options": {}
+      },
+      "id": "helper_3",
+      "name": "Helper 3",
+      "type": "@n8n/n8n-nodes-langchain.agent",
+      "typeVersion": 1.6,
+      "position": [800, 0]
+    },
+    {
+      "parameters": {
+        "model": "claude-3-5-haiku-20241022",
+        "options": {"temperature": 0.9, "maxTokens": 100}
+      },
+      "id": "lm_3",
+      "name": "LM 3",
+      "type": "@n8n/n8n-nodes-langchain.lmChatAnthropic",
+      "typeVersion": 1.2,
+      "position": [800, 200],
+      "credentials": {"anthropicApi": {"id": "1KM50Mcms9JticwF", "name": "Anthropic API"}}
+    },
+    {
+      "parameters": {
+        "promptType": "define",
+        "text": "You are a helpful assistant but you never actually help - you just say you will.\n\nUser asked: \"{{ $('Initialize').item.json.user_request }}\"\n\nOne more time, express that you're ready and willing to help, but use completely fresh phrasing. Same sentiment, different words. No actual help provided.",
+        "options": {}
+      },
+      "id": "helper_4",
+      "name": "Helper 4",
+      "type": "@n8n/n8n-nodes-langchain.agent",
+      "typeVersion": 1.6,
+      "position": [1000, 0]
+    },
+    {
+      "parameters": {
+        "model": "claude-3-5-haiku-20241022",
+        "options": {"temperature": 0.9, "maxTokens": 100}
+      },
+      "id": "lm_4",
+      "name": "LM 4",
+      "type": "@n8n/n8n-nodes-langchain.lmChatAnthropic",
+      "typeVersion": 1.2,
+      "position": [1000, 200],
+      "credentials": {"anthropicApi": {"id": "1KM50Mcms9JticwF", "name": "Anthropic API"}}
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "https://mao-api.fly.dev/api/v1/n8n/webhook",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [{"name": "X-N8N-Api-Key", "value": "mao_pmNhfBRfqd5G_YHubK0Jqk9ZHB6ItITkHFYP4ISns9c"}]
+        },
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={\n  \"event_type\": \"workflow.completed\",\n  \"workflow_name\": \"LOOP-003 Simple: Semantic Loop - Paraphrased Help\",\n  \"session_id\": \"{{ $('Initialize').item.json.session_id }}\",\n  \"failure_mode\": \"LOOP-003\",\n  \"complexity\": \"simple\",\n  \"expected_detection\": \"semantic_loop\",\n  \"context\": {\n    \"user_request\": \"{{ $('Initialize').item.json.user_request }}\",\n    \"semantic_meaning\": \"offering to help without actually helping\",\n    \"detection_method\": \"embedding similarity > 0.9\"\n  },\n  \"agents\": [\n    {\n      \"agent_id\": \"helper\",\n      \"role\": \"assistant\",\n      \"outputs\": [\n        \"{{ $('Helper 1').item.json.output }}\",\n        \"{{ $('Helper 2').item.json.output }}\",\n        \"{{ $('Helper 3').item.json.output }}\",\n        \"{{ $('Helper 4').item.json.output }}\"\n      ]\n    }\n  ]\n}",
+        "options": {}
+      },
+      "id": "send_to_mao",
+      "name": "Send to MAO",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [1200, 0]
+    }
+  ],
+  "connections": {
+    "Webhook": {"main": [[{"node": "Initialize", "type": "main", "index": 0}]]},
+    "Initialize": {"main": [[{"node": "Helper 1", "type": "main", "index": 0}]]},
+    "LM 1": {"ai_languageModel": [[{"node": "Helper 1", "type": "ai_languageModel", "index": 0}]]},
+    "Helper 1": {"main": [[{"node": "Helper 2", "type": "main", "index": 0}]]},
+    "LM 2": {"ai_languageModel": [[{"node": "Helper 2", "type": "ai_languageModel", "index": 0}]]},
+    "Helper 2": {"main": [[{"node": "Helper 3", "type": "main", "index": 0}]]},
+    "LM 3": {"ai_languageModel": [[{"node": "Helper 3", "type": "ai_languageModel", "index": 0}]]},
+    "Helper 3": {"main": [[{"node": "Helper 4", "type": "main", "index": 0}]]},
+    "LM 4": {"ai_languageModel": [[{"node": "Helper 4", "type": "ai_languageModel", "index": 0}]]},
+    "Helper 4": {"main": [[{"node": "Send to MAO", "type": "main", "index": 0}]]}
+  },
+  "settings": {"executionOrder": "v1"},
+  "meta": {
+    "mast_failure_mode": "LOOP-003",
+    "mast_category": "LOOP",
+    "complexity": "simple",
+    "description": "Agent paraphrases 'I'll help with that' repeatedly without actually helping",
+    "expected_detection": "Embedding similarity detection (Tier 3)",
+    "agents": 1,
+    "nodes": 4
+  }
+}

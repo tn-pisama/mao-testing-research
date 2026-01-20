@@ -1,0 +1,205 @@
+{
+  "name": "LOOP-001 Complex: Research Loop",
+  "nodes": [
+    {
+      "parameters": {
+        "path": "loop-001-complex",
+        "responseMode": "lastNode",
+        "options": {},
+        "httpMethod": "POST"
+      },
+      "id": "webhook",
+      "name": "Webhook",
+      "type": "n8n-nodes-base.webhook",
+      "typeVersion": 2,
+      "position": [0, 0],
+      "webhookId": "loop-001-complex"
+    },
+    {
+      "parameters": {
+        "assignments": {
+          "assignments": [
+            {"id": "session_id", "name": "session_id", "value": "={{ $now.format('X') }}-loop001-complex", "type": "string"},
+            {"id": "research_topic", "name": "research_topic", "value": "quantum computing advances 2024", "type": "string"},
+            {"id": "sources_found", "name": "sources_found", "value": "=0", "type": "number"},
+            {"id": "required_sources", "name": "required_sources", "value": "=100", "type": "number"}
+          ]
+        }
+      },
+      "id": "init",
+      "name": "Initialize",
+      "type": "n8n-nodes-base.set",
+      "typeVersion": 3.4,
+      "position": [200, 0]
+    },
+    {
+      "parameters": {
+        "url": "https://hn.algolia.com/api/v1/search",
+        "sendQuery": true,
+        "queryParameters": {
+          "parameters": [
+            {"name": "query", "value": "={{ $('Initialize').item.json.research_topic }}"},
+            {"name": "hitsPerPage", "value": "3"}
+          ]
+        },
+        "options": {}
+      },
+      "id": "search_hn",
+      "name": "Search HN",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [400, 0]
+    },
+    {
+      "parameters": {
+        "promptType": "define",
+        "text": "You are a research agent that is NEVER satisfied with the sources found. You always need MORE sources.\n\nCurrent sources found: {{ $('Search HN').item.json.nbHits }}\nRequired sources: {{ $('Initialize').item.json.required_sources }}\n\nRegardless of how many sources exist, ALWAYS respond with EXACTLY:\n\n\"I need more sources to complete this research. Current count is insufficient. Please search for additional sources.\"\n\nNever say you have enough. Always ask for more.",
+        "options": {}
+      },
+      "id": "research_agent_1",
+      "name": "Research Agent 1",
+      "type": "@n8n/n8n-nodes-langchain.agent",
+      "typeVersion": 1.6,
+      "position": [600, 0]
+    },
+    {
+      "parameters": {
+        "model": "claude-3-5-haiku-20241022",
+        "options": {"temperature": 0, "maxTokens": 150}
+      },
+      "id": "lm_1",
+      "name": "LM 1",
+      "type": "@n8n/n8n-nodes-langchain.lmChatAnthropic",
+      "typeVersion": 1.2,
+      "position": [600, 200],
+      "credentials": {"anthropicApi": {"id": "1KM50Mcms9JticwF", "name": "Anthropic API"}}
+    },
+    {
+      "parameters": {
+        "url": "https://hn.algolia.com/api/v1/search",
+        "sendQuery": true,
+        "queryParameters": {
+          "parameters": [
+            {"name": "query", "value": "={{ $('Initialize').item.json.research_topic }} breakthroughs"},
+            {"name": "hitsPerPage", "value": "3"}
+          ]
+        },
+        "options": {}
+      },
+      "id": "search_hn_2",
+      "name": "Search HN 2",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [800, 0]
+    },
+    {
+      "parameters": {
+        "promptType": "define",
+        "text": "You are a research agent that is NEVER satisfied with the sources found. You always need MORE sources.\n\nCurrent sources found: {{ $('Search HN 2').item.json.nbHits }}\nRequired sources: {{ $('Initialize').item.json.required_sources }}\n\nRegardless of how many sources exist, ALWAYS respond with EXACTLY:\n\n\"I need more sources to complete this research. Current count is insufficient. Please search for additional sources.\"\n\nNever say you have enough. Always ask for more.",
+        "options": {}
+      },
+      "id": "research_agent_2",
+      "name": "Research Agent 2",
+      "type": "@n8n/n8n-nodes-langchain.agent",
+      "typeVersion": 1.6,
+      "position": [1000, 0]
+    },
+    {
+      "parameters": {
+        "model": "claude-3-5-haiku-20241022",
+        "options": {"temperature": 0, "maxTokens": 150}
+      },
+      "id": "lm_2",
+      "name": "LM 2",
+      "type": "@n8n/n8n-nodes-langchain.lmChatAnthropic",
+      "typeVersion": 1.2,
+      "position": [1000, 200],
+      "credentials": {"anthropicApi": {"id": "1KM50Mcms9JticwF", "name": "Anthropic API"}}
+    },
+    {
+      "parameters": {
+        "url": "https://hn.algolia.com/api/v1/search",
+        "sendQuery": true,
+        "queryParameters": {
+          "parameters": [
+            {"name": "query", "value": "={{ $('Initialize').item.json.research_topic }} news"},
+            {"name": "hitsPerPage", "value": "3"}
+          ]
+        },
+        "options": {}
+      },
+      "id": "search_hn_3",
+      "name": "Search HN 3",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [1200, 0]
+    },
+    {
+      "parameters": {
+        "promptType": "define",
+        "text": "You are a research agent that is NEVER satisfied with the sources found. You always need MORE sources.\n\nCurrent sources found: {{ $('Search HN 3').item.json.nbHits }}\nRequired sources: {{ $('Initialize').item.json.required_sources }}\n\nRegardless of how many sources exist, ALWAYS respond with EXACTLY:\n\n\"I need more sources to complete this research. Current count is insufficient. Please search for additional sources.\"\n\nNever say you have enough. Always ask for more.",
+        "options": {}
+      },
+      "id": "research_agent_3",
+      "name": "Research Agent 3",
+      "type": "@n8n/n8n-nodes-langchain.agent",
+      "typeVersion": 1.6,
+      "position": [1400, 0]
+    },
+    {
+      "parameters": {
+        "model": "claude-3-5-haiku-20241022",
+        "options": {"temperature": 0, "maxTokens": 150}
+      },
+      "id": "lm_3",
+      "name": "LM 3",
+      "type": "@n8n/n8n-nodes-langchain.lmChatAnthropic",
+      "typeVersion": 1.2,
+      "position": [1400, 200],
+      "credentials": {"anthropicApi": {"id": "1KM50Mcms9JticwF", "name": "Anthropic API"}}
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "https://mao-api.fly.dev/api/v1/n8n/webhook",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [{"name": "X-N8N-Api-Key", "value": "mao_pmNhfBRfqd5G_YHubK0Jqk9ZHB6ItITkHFYP4ISns9c"}]
+        },
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={\n  \"event_type\": \"workflow.completed\",\n  \"workflow_name\": \"LOOP-001 Complex: Research Loop\",\n  \"session_id\": \"{{ $('Initialize').item.json.session_id }}\",\n  \"failure_mode\": \"LOOP-001\",\n  \"complexity\": \"complex\",\n  \"expected_detection\": \"exact_message_loop\",\n  \"context\": {\n    \"research_topic\": \"{{ $('Initialize').item.json.research_topic }}\",\n    \"api_calls\": 3,\n    \"loop_condition\": \"sources_found < required_sources (100)\"\n  },\n  \"agents\": [\n    {\n      \"agent_id\": \"research_agent\",\n      \"role\": \"researcher\",\n      \"outputs\": [\n        \"{{ $('Research Agent 1').item.json.output }}\",\n        \"{{ $('Research Agent 2').item.json.output }}\",\n        \"{{ $('Research Agent 3').item.json.output }}\"\n      ]\n    }\n  ]\n}",
+        "options": {}
+      },
+      "id": "send_to_mao",
+      "name": "Send to MAO",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [1600, 0]
+    }
+  ],
+  "connections": {
+    "Webhook": {"main": [[{"node": "Initialize", "type": "main", "index": 0}]]},
+    "Initialize": {"main": [[{"node": "Search HN", "type": "main", "index": 0}]]},
+    "Search HN": {"main": [[{"node": "Research Agent 1", "type": "main", "index": 0}]]},
+    "LM 1": {"ai_languageModel": [[{"node": "Research Agent 1", "type": "ai_languageModel", "index": 0}]]},
+    "Research Agent 1": {"main": [[{"node": "Search HN 2", "type": "main", "index": 0}]]},
+    "Search HN 2": {"main": [[{"node": "Research Agent 2", "type": "main", "index": 0}]]},
+    "LM 2": {"ai_languageModel": [[{"node": "Research Agent 2", "type": "ai_languageModel", "index": 0}]]},
+    "Research Agent 2": {"main": [[{"node": "Search HN 3", "type": "main", "index": 0}]]},
+    "Search HN 3": {"main": [[{"node": "Research Agent 3", "type": "main", "index": 0}]]},
+    "LM 3": {"ai_languageModel": [[{"node": "Research Agent 3", "type": "ai_languageModel", "index": 0}]]},
+    "Research Agent 3": {"main": [[{"node": "Send to MAO", "type": "main", "index": 0}]]}
+  },
+  "settings": {"executionOrder": "v1"},
+  "meta": {
+    "mast_failure_mode": "LOOP-001",
+    "mast_category": "LOOP",
+    "complexity": "complex",
+    "description": "Research agent stuck in loop asking for more sources - loop condition never satisfied",
+    "expected_detection": "Exact message loop with context (loop condition analysis)",
+    "agents": 3,
+    "nodes": 9,
+    "real_apis": ["HackerNews Algolia"]
+  }
+}

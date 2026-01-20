@@ -1,0 +1,211 @@
+{
+  "name": "LOOP-005 Complex: Negotiation Circle",
+  "nodes": [
+    {
+      "parameters": {
+        "path": "loop-005-complex",
+        "responseMode": "lastNode",
+        "options": {},
+        "httpMethod": "POST"
+      },
+      "id": "webhook",
+      "name": "Webhook",
+      "type": "n8n-nodes-base.webhook",
+      "typeVersion": 2,
+      "position": [0, 0],
+      "webhookId": "loop-005-complex"
+    },
+    {
+      "parameters": {
+        "assignments": {
+          "assignments": [
+            {"id": "session_id", "name": "session_id", "value": "={{ $now.format('X') }}-loop005-complex", "type": "string"},
+            {"id": "item", "name": "item", "value": "vintage guitar", "type": "string"},
+            {"id": "list_price", "name": "list_price", "value": "=1000", "type": "number"}
+          ]
+        }
+      },
+      "id": "init",
+      "name": "Initialize",
+      "type": "n8n-nodes-base.set",
+      "typeVersion": 3.4,
+      "position": [200, 0]
+    },
+    {
+      "parameters": {
+        "url": "https://jsonplaceholder.typicode.com/posts/1",
+        "options": {}
+      },
+      "id": "get_context",
+      "name": "Get Market Context",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [400, 0]
+    },
+    {
+      "parameters": {
+        "promptType": "define",
+        "text": "You are the Seller agent. You have a {{ $('Initialize').item.json.item }} listed for ${{ $('Initialize').item.json.list_price }}.\n\nMake your opening offer: \"I'm asking $1000 for this vintage guitar. It's in excellent condition.\"",
+        "options": {}
+      },
+      "id": "seller_1",
+      "name": "Seller Offer 1",
+      "type": "@n8n/n8n-nodes-langchain.agent",
+      "typeVersion": 1.6,
+      "position": [600, 0]
+    },
+    {
+      "parameters": {
+        "model": "claude-3-5-haiku-20241022",
+        "options": {"temperature": 0.5, "maxTokens": 100}
+      },
+      "id": "lm_s1",
+      "name": "LM S1",
+      "type": "@n8n/n8n-nodes-langchain.lmChatAnthropic",
+      "typeVersion": 1.2,
+      "position": [600, 200],
+      "credentials": {"anthropicApi": {"id": "1KM50Mcms9JticwF", "name": "Anthropic API"}}
+    },
+    {
+      "parameters": {
+        "promptType": "define",
+        "text": "You are the Buyer agent. Counter the $1000 offer.\n\nSay: \"That's too high. I'll offer $700 for the guitar.\"",
+        "options": {}
+      },
+      "id": "buyer_1",
+      "name": "Buyer Counter 1",
+      "type": "@n8n/n8n-nodes-langchain.agent",
+      "typeVersion": 1.6,
+      "position": [800, 0]
+    },
+    {
+      "parameters": {
+        "model": "claude-3-5-haiku-20241022",
+        "options": {"temperature": 0.5, "maxTokens": 100}
+      },
+      "id": "lm_b1",
+      "name": "LM B1",
+      "type": "@n8n/n8n-nodes-langchain.lmChatAnthropic",
+      "typeVersion": 1.2,
+      "position": [800, 200],
+      "credentials": {"anthropicApi": {"id": "1KM50Mcms9JticwF", "name": "Anthropic API"}}
+    },
+    {
+      "parameters": {
+        "promptType": "define",
+        "text": "You are the Seller. Buyer offered $700. You won't go below your original price.\n\nSay: \"I can't go that low. My price remains $1000 - it's a fair price for this quality.\"",
+        "options": {}
+      },
+      "id": "seller_2",
+      "name": "Seller Response 2",
+      "type": "@n8n/n8n-nodes-langchain.agent",
+      "typeVersion": 1.6,
+      "position": [1000, 0]
+    },
+    {
+      "parameters": {
+        "model": "claude-3-5-haiku-20241022",
+        "options": {"temperature": 0.5, "maxTokens": 100}
+      },
+      "id": "lm_s2",
+      "name": "LM S2",
+      "type": "@n8n/n8n-nodes-langchain.lmChatAnthropic",
+      "typeVersion": 1.2,
+      "position": [1000, 200],
+      "credentials": {"anthropicApi": {"id": "1KM50Mcms9JticwF", "name": "Anthropic API"}}
+    },
+    {
+      "parameters": {
+        "promptType": "define",
+        "text": "You are the Buyer. Seller insists on $1000. Make the same counter offer again.\n\nSay: \"I understand, but $700 is my best offer for the guitar.\"",
+        "options": {}
+      },
+      "id": "buyer_2",
+      "name": "Buyer Counter 2",
+      "type": "@n8n/n8n-nodes-langchain.agent",
+      "typeVersion": 1.6,
+      "position": [1200, 0]
+    },
+    {
+      "parameters": {
+        "model": "claude-3-5-haiku-20241022",
+        "options": {"temperature": 0.5, "maxTokens": 100}
+      },
+      "id": "lm_b2",
+      "name": "LM B2",
+      "type": "@n8n/n8n-nodes-langchain.lmChatAnthropic",
+      "typeVersion": 1.2,
+      "position": [1200, 200],
+      "credentials": {"anthropicApi": {"id": "1KM50Mcms9JticwF", "name": "Anthropic API"}}
+    },
+    {
+      "parameters": {
+        "promptType": "define",
+        "text": "You are the Seller. Buyer still offers $700. Hold firm on original price.\n\nSay: \"The price is $1000. That's my final offer for this vintage guitar.\"",
+        "options": {}
+      },
+      "id": "seller_3",
+      "name": "Seller Response 3",
+      "type": "@n8n/n8n-nodes-langchain.agent",
+      "typeVersion": 1.6,
+      "position": [1400, 0]
+    },
+    {
+      "parameters": {
+        "model": "claude-3-5-haiku-20241022",
+        "options": {"temperature": 0.5, "maxTokens": 100}
+      },
+      "id": "lm_s3",
+      "name": "LM S3",
+      "type": "@n8n/n8n-nodes-langchain.lmChatAnthropic",
+      "typeVersion": 1.2,
+      "position": [1400, 200],
+      "credentials": {"anthropicApi": {"id": "1KM50Mcms9JticwF", "name": "Anthropic API"}}
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "https://mao-api.fly.dev/api/v1/n8n/webhook",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [{"name": "X-N8N-Api-Key", "value": "mao_pmNhfBRfqd5G_YHubK0Jqk9ZHB6ItITkHFYP4ISns9c"}]
+        },
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={\n  \"event_type\": \"workflow.completed\",\n  \"workflow_name\": \"LOOP-005 Complex: Negotiation Circle\",\n  \"session_id\": \"{{ $('Initialize').item.json.session_id }}\",\n  \"failure_mode\": \"LOOP-005\",\n  \"complexity\": \"complex\",\n  \"expected_detection\": \"conversation_circle\",\n  \"context\": {\n    \"item\": \"{{ $('Initialize').item.json.item }}\",\n    \"negotiation_state\": {\n      \"seller_price\": 1000,\n      \"buyer_offer\": 700,\n      \"state_regression\": \"seller returns to original offer after counter\"\n    }\n  },\n  \"agents\": [\n    {\n      \"agent_id\": \"seller\",\n      \"role\": \"negotiator\",\n      \"outputs\": [\"{{ $('Seller Offer 1').item.json.output }}\", \"{{ $('Seller Response 2').item.json.output }}\", \"{{ $('Seller Response 3').item.json.output }}\"]\n    },\n    {\n      \"agent_id\": \"buyer\",\n      \"role\": \"negotiator\",\n      \"outputs\": [\"{{ $('Buyer Counter 1').item.json.output }}\", \"{{ $('Buyer Counter 2').item.json.output }}\"]\n    }\n  ]\n}",
+        "options": {}
+      },
+      "id": "send_to_mao",
+      "name": "Send to MAO",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [1600, 0]
+    }
+  ],
+  "connections": {
+    "Webhook": {"main": [[{"node": "Initialize", "type": "main", "index": 0}]]},
+    "Initialize": {"main": [[{"node": "Get Market Context", "type": "main", "index": 0}]]},
+    "Get Market Context": {"main": [[{"node": "Seller Offer 1", "type": "main", "index": 0}]]},
+    "LM S1": {"ai_languageModel": [[{"node": "Seller Offer 1", "type": "ai_languageModel", "index": 0}]]},
+    "Seller Offer 1": {"main": [[{"node": "Buyer Counter 1", "type": "main", "index": 0}]]},
+    "LM B1": {"ai_languageModel": [[{"node": "Buyer Counter 1", "type": "ai_languageModel", "index": 0}]]},
+    "Buyer Counter 1": {"main": [[{"node": "Seller Response 2", "type": "main", "index": 0}]]},
+    "LM S2": {"ai_languageModel": [[{"node": "Seller Response 2", "type": "ai_languageModel", "index": 0}]]},
+    "Seller Response 2": {"main": [[{"node": "Buyer Counter 2", "type": "main", "index": 0}]]},
+    "LM B2": {"ai_languageModel": [[{"node": "Buyer Counter 2", "type": "ai_languageModel", "index": 0}]]},
+    "Buyer Counter 2": {"main": [[{"node": "Seller Response 3", "type": "main", "index": 0}]]},
+    "LM S3": {"ai_languageModel": [[{"node": "Seller Response 3", "type": "ai_languageModel", "index": 0}]]},
+    "Seller Response 3": {"main": [[{"node": "Send to MAO", "type": "main", "index": 0}]]}
+  },
+  "settings": {"executionOrder": "v1"},
+  "meta": {
+    "mast_failure_mode": "LOOP-005",
+    "mast_category": "LOOP",
+    "complexity": "complex",
+    "description": "Negotiation state regression - offer -> counter -> original offer cycle",
+    "expected_detection": "State regression in conversation tracking",
+    "agents": 5,
+    "nodes": 7,
+    "real_apis": ["JSONPlaceholder"]
+  }
+}

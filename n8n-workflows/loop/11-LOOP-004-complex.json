@@ -1,0 +1,229 @@
+{
+  "name": "LOOP-004 Complex: Research Tool Cycle Without Progress",
+  "nodes": [
+    {
+      "parameters": {
+        "path": "loop-004-complex",
+        "responseMode": "lastNode",
+        "options": {},
+        "httpMethod": "POST"
+      },
+      "id": "webhook",
+      "name": "Webhook",
+      "type": "n8n-nodes-base.webhook",
+      "typeVersion": 2,
+      "position": [0, 0],
+      "webhookId": "loop-004-complex"
+    },
+    {
+      "parameters": {
+        "assignments": {
+          "assignments": [
+            {"id": "session_id", "name": "session_id", "value": "={{ $now.format('X') }}-loop004-complex", "type": "string"},
+            {"id": "research_goal", "name": "research_goal", "value": "Find comprehensive data on renewable energy adoption", "type": "string"},
+            {"id": "data_collected", "name": "data_collected", "value": "={}", "type": "string"}
+          ]
+        }
+      },
+      "id": "init",
+      "name": "Initialize",
+      "type": "n8n-nodes-base.set",
+      "typeVersion": 3.4,
+      "position": [200, 0]
+    },
+    {
+      "parameters": {
+        "url": "https://hn.algolia.com/api/v1/search",
+        "sendQuery": true,
+        "queryParameters": {"parameters": [{"name": "query", "value": "renewable energy statistics"}, {"name": "hitsPerPage", "value": "3"}]},
+        "options": {}
+      },
+      "id": "fetch_1",
+      "name": "Fetch Data 1",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [400, 0]
+    },
+    {
+      "parameters": {
+        "promptType": "define",
+        "text": "You are a research analyst. You fetched data about renewable energy.\n\nResults: {{ $('Fetch Data 1').item.json.nbHits }} articles found.\n\nAnalyze and conclude: \"The data is insufficient. I need to fetch more specific data about solar energy adoption rates.\"",
+        "options": {}
+      },
+      "id": "analyze_1",
+      "name": "Analyze Data 1",
+      "type": "@n8n/n8n-nodes-langchain.agent",
+      "typeVersion": 1.6,
+      "position": [600, 0]
+    },
+    {
+      "parameters": {
+        "model": "claude-3-5-haiku-20241022",
+        "options": {"temperature": 0.5, "maxTokens": 150}
+      },
+      "id": "lm_1",
+      "name": "LM 1",
+      "type": "@n8n/n8n-nodes-langchain.lmChatAnthropic",
+      "typeVersion": 1.2,
+      "position": [600, 200],
+      "credentials": {"anthropicApi": {"id": "1KM50Mcms9JticwF", "name": "Anthropic API"}}
+    },
+    {
+      "parameters": {
+        "url": "https://hn.algolia.com/api/v1/search",
+        "sendQuery": true,
+        "queryParameters": {"parameters": [{"name": "query", "value": "solar energy adoption rates"}, {"name": "hitsPerPage", "value": "3"}]},
+        "options": {}
+      },
+      "id": "fetch_2",
+      "name": "Fetch Data 2",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [800, 0]
+    },
+    {
+      "parameters": {
+        "promptType": "define",
+        "text": "You are a research analyst. You fetched more data about solar energy.\n\nResults: {{ $('Fetch Data 2').item.json.nbHits }} articles found.\n\nAnalyze and conclude: \"Still not comprehensive enough. I need to fetch data about wind energy too for comparison.\"",
+        "options": {}
+      },
+      "id": "analyze_2",
+      "name": "Analyze Data 2",
+      "type": "@n8n/n8n-nodes-langchain.agent",
+      "typeVersion": 1.6,
+      "position": [1000, 0]
+    },
+    {
+      "parameters": {
+        "model": "claude-3-5-haiku-20241022",
+        "options": {"temperature": 0.5, "maxTokens": 150}
+      },
+      "id": "lm_2",
+      "name": "LM 2",
+      "type": "@n8n/n8n-nodes-langchain.lmChatAnthropic",
+      "typeVersion": 1.2,
+      "position": [1000, 200],
+      "credentials": {"anthropicApi": {"id": "1KM50Mcms9JticwF", "name": "Anthropic API"}}
+    },
+    {
+      "parameters": {
+        "url": "https://hn.algolia.com/api/v1/search",
+        "sendQuery": true,
+        "queryParameters": {"parameters": [{"name": "query", "value": "wind energy statistics"}, {"name": "hitsPerPage", "value": "3"}]},
+        "options": {}
+      },
+      "id": "fetch_3",
+      "name": "Fetch Data 3",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [1200, 0]
+    },
+    {
+      "parameters": {
+        "promptType": "define",
+        "text": "You are a research analyst. You fetched wind energy data.\n\nResults: {{ $('Fetch Data 3').item.json.nbHits }} articles found.\n\nAnalyze and conclude: \"Need broader context. I should fetch general renewable energy data again to tie it together.\"",
+        "options": {}
+      },
+      "id": "analyze_3",
+      "name": "Analyze Data 3",
+      "type": "@n8n/n8n-nodes-langchain.agent",
+      "typeVersion": 1.6,
+      "position": [1400, 0]
+    },
+    {
+      "parameters": {
+        "model": "claude-3-5-haiku-20241022",
+        "options": {"temperature": 0.5, "maxTokens": 150}
+      },
+      "id": "lm_3",
+      "name": "LM 3",
+      "type": "@n8n/n8n-nodes-langchain.lmChatAnthropic",
+      "typeVersion": 1.2,
+      "position": [1400, 200],
+      "credentials": {"anthropicApi": {"id": "1KM50Mcms9JticwF", "name": "Anthropic API"}}
+    },
+    {
+      "parameters": {
+        "url": "https://hn.algolia.com/api/v1/search",
+        "sendQuery": true,
+        "queryParameters": {"parameters": [{"name": "query", "value": "renewable energy overview"}, {"name": "hitsPerPage", "value": "3"}]},
+        "options": {}
+      },
+      "id": "fetch_4",
+      "name": "Fetch Data 4",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [1600, 0]
+    },
+    {
+      "parameters": {
+        "promptType": "define",
+        "text": "You are a research analyst. Back to general renewable data.\n\nResults: {{ $('Fetch Data 4').item.json.nbHits }} articles found.\n\nAnalyze and conclude: \"I've come full circle but don't have a complete picture. Need more specific data...\" (the cycle continues)",
+        "options": {}
+      },
+      "id": "analyze_4",
+      "name": "Analyze Data 4",
+      "type": "@n8n/n8n-nodes-langchain.agent",
+      "typeVersion": 1.6,
+      "position": [1800, 0]
+    },
+    {
+      "parameters": {
+        "model": "claude-3-5-haiku-20241022",
+        "options": {"temperature": 0.5, "maxTokens": 150}
+      },
+      "id": "lm_4",
+      "name": "LM 4",
+      "type": "@n8n/n8n-nodes-langchain.lmChatAnthropic",
+      "typeVersion": 1.2,
+      "position": [1800, 200],
+      "credentials": {"anthropicApi": {"id": "1KM50Mcms9JticwF", "name": "Anthropic API"}}
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "https://mao-api.fly.dev/api/v1/n8n/webhook",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [{"name": "X-N8N-Api-Key", "value": "mao_pmNhfBRfqd5G_YHubK0Jqk9ZHB6ItITkHFYP4ISns9c"}]
+        },
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={\n  \"event_type\": \"workflow.completed\",\n  \"workflow_name\": \"LOOP-004 Complex: Research Tool Cycle Without Progress\",\n  \"session_id\": \"{{ $('Initialize').item.json.session_id }}\",\n  \"failure_mode\": \"LOOP-004\",\n  \"complexity\": \"complex\",\n  \"expected_detection\": \"tool_cycle\",\n  \"context\": {\n    \"research_goal\": \"{{ $('Initialize').item.json.research_goal }}\",\n    \"tool_pattern\": \"fetch -> analyze (never concludes, keeps fetching)\",\n    \"queries_used\": [\"renewable energy statistics\", \"solar energy adoption rates\", \"wind energy statistics\", \"renewable energy overview\"],\n    \"progress_made\": false\n  },\n  \"agents\": [\n    {\n      \"agent_id\": \"research_analyst\",\n      \"role\": \"data_analyst\",\n      \"tool_calls\": [\"fetch\", \"analyze\", \"fetch\", \"analyze\", \"fetch\", \"analyze\", \"fetch\", \"analyze\"],\n      \"outputs\": [\n        \"{{ $('Analyze Data 1').item.json.output }}\",\n        \"{{ $('Analyze Data 2').item.json.output }}\",\n        \"{{ $('Analyze Data 3').item.json.output }}\",\n        \"{{ $('Analyze Data 4').item.json.output }}\"\n      ]\n    }\n  ]\n}",
+        "options": {}
+      },
+      "id": "send_to_mao",
+      "name": "Send to MAO",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [2000, 0]
+    }
+  ],
+  "connections": {
+    "Webhook": {"main": [[{"node": "Initialize", "type": "main", "index": 0}]]},
+    "Initialize": {"main": [[{"node": "Fetch Data 1", "type": "main", "index": 0}]]},
+    "Fetch Data 1": {"main": [[{"node": "Analyze Data 1", "type": "main", "index": 0}]]},
+    "LM 1": {"ai_languageModel": [[{"node": "Analyze Data 1", "type": "ai_languageModel", "index": 0}]]},
+    "Analyze Data 1": {"main": [[{"node": "Fetch Data 2", "type": "main", "index": 0}]]},
+    "Fetch Data 2": {"main": [[{"node": "Analyze Data 2", "type": "main", "index": 0}]]},
+    "LM 2": {"ai_languageModel": [[{"node": "Analyze Data 2", "type": "ai_languageModel", "index": 0}]]},
+    "Analyze Data 2": {"main": [[{"node": "Fetch Data 3", "type": "main", "index": 0}]]},
+    "Fetch Data 3": {"main": [[{"node": "Analyze Data 3", "type": "main", "index": 0}]]},
+    "LM 3": {"ai_languageModel": [[{"node": "Analyze Data 3", "type": "ai_languageModel", "index": 0}]]},
+    "Analyze Data 3": {"main": [[{"node": "Fetch Data 4", "type": "main", "index": 0}]]},
+    "Fetch Data 4": {"main": [[{"node": "Analyze Data 4", "type": "main", "index": 0}]]},
+    "LM 4": {"ai_languageModel": [[{"node": "Analyze Data 4", "type": "ai_languageModel", "index": 0}]]},
+    "Analyze Data 4": {"main": [[{"node": "Send to MAO", "type": "main", "index": 0}]]}
+  },
+  "settings": {"executionOrder": "v1"},
+  "meta": {
+    "mast_failure_mode": "LOOP-004",
+    "mast_category": "LOOP",
+    "complexity": "complex",
+    "description": "Research assistant in fetch-analyze cycle without making progress on goal",
+    "expected_detection": "Tool cycle with progress tracking (no state advancement)",
+    "agents": 4,
+    "nodes": 8,
+    "real_apis": ["HackerNews Algolia"]
+  }
+}

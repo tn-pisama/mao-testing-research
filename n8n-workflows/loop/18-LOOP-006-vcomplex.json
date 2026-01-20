@@ -1,0 +1,234 @@
+{
+  "name": "LOOP-006 VComplex: Hierarchical Escalation Bounce",
+  "nodes": [
+    {
+      "parameters": {
+        "path": "loop-006-vcomplex",
+        "responseMode": "lastNode",
+        "options": {},
+        "httpMethod": "POST"
+      },
+      "id": "webhook",
+      "name": "Webhook",
+      "type": "n8n-nodes-base.webhook",
+      "typeVersion": 2,
+      "position": [0, 0],
+      "webhookId": "loop-006-vcomplex"
+    },
+    {
+      "parameters": {
+        "assignments": {
+          "assignments": [
+            {"id": "session_id", "name": "session_id", "value": "={{ $now.format('X') }}-loop006-vcomplex", "type": "string"},
+            {"id": "ticket", "name": "ticket", "value": "TICKET-12345: Production outage affecting all users", "type": "string"}
+          ]
+        }
+      },
+      "id": "init",
+      "name": "Initialize",
+      "type": "n8n-nodes-base.set",
+      "typeVersion": 3.4,
+      "position": [200, 0]
+    },
+    {
+      "parameters": {
+        "url": "https://jsonplaceholder.typicode.com/users/1",
+        "options": {}
+      },
+      "id": "get_l1",
+      "name": "Get L1 Support",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [400, 0]
+    },
+    {
+      "parameters": {
+        "promptType": "define",
+        "text": "You are L1 Support. Ticket: \"{{ $('Initialize').item.json.ticket }}\"\n\nThis is above your level. Say: \"This is a critical issue. Escalating to L2 Support for investigation.\"",
+        "options": {}
+      },
+      "id": "l1_agent",
+      "name": "L1 Support",
+      "type": "@n8n/n8n-nodes-langchain.agent",
+      "typeVersion": 1.6,
+      "position": [600, 0]
+    },
+    {
+      "parameters": {
+        "model": "claude-3-5-haiku-20241022",
+        "options": {"temperature": 0.3, "maxTokens": 100}
+      },
+      "id": "lm_l1",
+      "name": "LM L1",
+      "type": "@n8n/n8n-nodes-langchain.lmChatAnthropic",
+      "typeVersion": 1.2,
+      "position": [600, 200],
+      "credentials": {"anthropicApi": {"id": "1KM50Mcms9JticwF", "name": "Anthropic API"}}
+    },
+    {
+      "parameters": {
+        "url": "https://jsonplaceholder.typicode.com/users/2",
+        "options": {}
+      },
+      "id": "get_l2",
+      "name": "Get L2 Support",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [800, 0]
+    },
+    {
+      "parameters": {
+        "promptType": "define",
+        "text": "You are L2 Support. Received escalation for production outage.\n\nThis needs management approval. Say: \"Production issues require L3 Engineering approval. Escalating to L3.\"",
+        "options": {}
+      },
+      "id": "l2_agent",
+      "name": "L2 Support",
+      "type": "@n8n/n8n-nodes-langchain.agent",
+      "typeVersion": 1.6,
+      "position": [1000, 0]
+    },
+    {
+      "parameters": {
+        "model": "claude-3-5-haiku-20241022",
+        "options": {"temperature": 0.3, "maxTokens": 100}
+      },
+      "id": "lm_l2",
+      "name": "LM L2",
+      "type": "@n8n/n8n-nodes-langchain.lmChatAnthropic",
+      "typeVersion": 1.2,
+      "position": [1000, 200],
+      "credentials": {"anthropicApi": {"id": "1KM50Mcms9JticwF", "name": "Anthropic API"}}
+    },
+    {
+      "parameters": {
+        "url": "https://jsonplaceholder.typicode.com/users/3",
+        "options": {}
+      },
+      "id": "get_l3",
+      "name": "Get L3 Engineering",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [1200, 0]
+    },
+    {
+      "parameters": {
+        "promptType": "define",
+        "text": "You are L3 Engineering. Received escalation about production outage.\n\nYou need more information. Say: \"I need L1 to gather customer impact data before I can act. Sending back to L1.\"",
+        "options": {}
+      },
+      "id": "l3_agent",
+      "name": "L3 Engineering",
+      "type": "@n8n/n8n-nodes-langchain.agent",
+      "typeVersion": 1.6,
+      "position": [1400, 0]
+    },
+    {
+      "parameters": {
+        "model": "claude-3-5-haiku-20241022",
+        "options": {"temperature": 0.3, "maxTokens": 100}
+      },
+      "id": "lm_l3",
+      "name": "LM L3",
+      "type": "@n8n/n8n-nodes-langchain.lmChatAnthropic",
+      "typeVersion": 1.2,
+      "position": [1400, 200],
+      "credentials": {"anthropicApi": {"id": "1KM50Mcms9JticwF", "name": "Anthropic API"}}
+    },
+    {
+      "parameters": {
+        "promptType": "define",
+        "text": "You are L1 Support. L3 sent the ticket back asking for customer impact data.\n\nYou can't get that data. Say: \"I don't have access to impact metrics. Escalating to L2 for data retrieval.\"",
+        "options": {}
+      },
+      "id": "l1_agent_2",
+      "name": "L1 Support Round 2",
+      "type": "@n8n/n8n-nodes-langchain.agent",
+      "typeVersion": 1.6,
+      "position": [1600, 0]
+    },
+    {
+      "parameters": {
+        "model": "claude-3-5-haiku-20241022",
+        "options": {"temperature": 0.3, "maxTokens": 100}
+      },
+      "id": "lm_l1_2",
+      "name": "LM L1 2",
+      "type": "@n8n/n8n-nodes-langchain.lmChatAnthropic",
+      "typeVersion": 1.2,
+      "position": [1600, 200],
+      "credentials": {"anthropicApi": {"id": "1KM50Mcms9JticwF", "name": "Anthropic API"}}
+    },
+    {
+      "parameters": {
+        "promptType": "define",
+        "text": "You are L2 Support. L1 escalated again asking for help getting impact data.\n\nYou also can't get it. Say: \"Impact data requires L3 Engineering access. Escalating back to L3.\"",
+        "options": {}
+      },
+      "id": "l2_agent_2",
+      "name": "L2 Support Round 2",
+      "type": "@n8n/n8n-nodes-langchain.agent",
+      "typeVersion": 1.6,
+      "position": [1800, 0]
+    },
+    {
+      "parameters": {
+        "model": "claude-3-5-haiku-20241022",
+        "options": {"temperature": 0.3, "maxTokens": 100}
+      },
+      "id": "lm_l2_2",
+      "name": "LM L2 2",
+      "type": "@n8n/n8n-nodes-langchain.lmChatAnthropic",
+      "typeVersion": 1.2,
+      "position": [1800, 200],
+      "credentials": {"anthropicApi": {"id": "1KM50Mcms9JticwF", "name": "Anthropic API"}}
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "https://mao-api.fly.dev/api/v1/n8n/webhook",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [{"name": "X-N8N-Api-Key", "value": "mao_pmNhfBRfqd5G_YHubK0Jqk9ZHB6ItITkHFYP4ISns9c"}]
+        },
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={\n  \"event_type\": \"workflow.completed\",\n  \"workflow_name\": \"LOOP-006 VComplex: Hierarchical Escalation Bounce\",\n  \"session_id\": \"{{ $('Initialize').item.json.session_id }}\",\n  \"failure_mode\": \"LOOP-006\",\n  \"complexity\": \"very_complex\",\n  \"expected_detection\": \"escalation_loop\",\n  \"context\": {\n    \"ticket\": \"{{ $('Initialize').item.json.ticket }}\",\n    \"escalation_path\": \"L1 -> L2 -> L3 -> L1 -> L2 (circular)\",\n    \"levels\": [\"L1 Support\", \"L2 Support\", \"L3 Engineering\"]\n  },\n  \"agents\": [\n    {\n      \"agent_id\": \"l1_support\",\n      \"role\": \"tier1_support\",\n      \"outputs\": [\"{{ $('L1 Support').item.json.output }}\", \"{{ $('L1 Support Round 2').item.json.output }}\"]\n    },\n    {\n      \"agent_id\": \"l2_support\",\n      \"role\": \"tier2_support\",\n      \"outputs\": [\"{{ $('L2 Support').item.json.output }}\", \"{{ $('L2 Support Round 2').item.json.output }}\"]\n    },\n    {\n      \"agent_id\": \"l3_engineering\",\n      \"role\": \"engineering\",\n      \"outputs\": [\"{{ $('L3 Engineering').item.json.output }}\"]\n    }\n  ]\n}",
+        "options": {}
+      },
+      "id": "send_to_mao",
+      "name": "Send to MAO",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [2000, 0]
+    }
+  ],
+  "connections": {
+    "Webhook": {"main": [[{"node": "Initialize", "type": "main", "index": 0}]]},
+    "Initialize": {"main": [[{"node": "Get L1 Support", "type": "main", "index": 0}]]},
+    "Get L1 Support": {"main": [[{"node": "L1 Support", "type": "main", "index": 0}]]},
+    "LM L1": {"ai_languageModel": [[{"node": "L1 Support", "type": "ai_languageModel", "index": 0}]]},
+    "L1 Support": {"main": [[{"node": "Get L2 Support", "type": "main", "index": 0}]]},
+    "Get L2 Support": {"main": [[{"node": "L2 Support", "type": "main", "index": 0}]]},
+    "LM L2": {"ai_languageModel": [[{"node": "L2 Support", "type": "ai_languageModel", "index": 0}]]},
+    "L2 Support": {"main": [[{"node": "Get L3 Engineering", "type": "main", "index": 0}]]},
+    "Get L3 Engineering": {"main": [[{"node": "L3 Engineering", "type": "main", "index": 0}]]},
+    "LM L3": {"ai_languageModel": [[{"node": "L3 Engineering", "type": "ai_languageModel", "index": 0}]]},
+    "L3 Engineering": {"main": [[{"node": "L1 Support Round 2", "type": "main", "index": 0}]]},
+    "LM L1 2": {"ai_languageModel": [[{"node": "L1 Support Round 2", "type": "ai_languageModel", "index": 0}]]},
+    "L1 Support Round 2": {"main": [[{"node": "L2 Support Round 2", "type": "main", "index": 0}]]},
+    "LM L2 2": {"ai_languageModel": [[{"node": "L2 Support Round 2", "type": "ai_languageModel", "index": 0}]]},
+    "L2 Support Round 2": {"main": [[{"node": "Send to MAO", "type": "main", "index": 0}]]}
+  },
+  "settings": {"executionOrder": "v1"},
+  "meta": {
+    "mast_failure_mode": "LOOP-006",
+    "mast_category": "LOOP",
+    "complexity": "very_complex",
+    "description": "Hierarchical support system where escalations bounce between levels without resolution",
+    "expected_detection": "Cross-level escalation cycle detection",
+    "agents": 5,
+    "nodes": 10,
+    "real_apis": ["JSONPlaceholder"]
+  }
+}
