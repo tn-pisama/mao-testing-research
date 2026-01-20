@@ -273,9 +273,10 @@ class Settings(BaseSettings):
     auth_rate_limit_requests: int = 10
     auth_rate_limit_window_seconds: int = 60
     
-    embedding_model: str = "intfloat/e5-large-v2"
+    # BGE-M3: +2.5% MTEB over e5-large-v2, same 1024d, no prefix required
+    embedding_model: str = "BAAI/bge-m3"
     embedding_dimensions: int = 1024
-    embedding_instruction_prefix: bool = True
+    embedding_instruction_prefix: bool = False  # BGE-M3 doesn't need prefixes
     loop_detection_window: int = 7
     structural_threshold: float = 0.95
     semantic_threshold: float = 0.85
