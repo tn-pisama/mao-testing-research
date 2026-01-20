@@ -193,12 +193,25 @@ def _parse_metagpt(trajectory: str, max_turns: int) -> List[TurnSnapshot]:
 def _parse_ag2(trajectory: str, max_turns: int) -> List[TurnSnapshot]:
     """Parse AG2/AutoGen trajectory format.
 
-    AG2 format:
-    agent_name (to other_agent):
-    content...
+    Supports two formats:
 
-    ----------------
+    1. Plain text format:
+       agent_name (to other_agent):
+       content...
+       ----------------
+
+    2. YAML-like format (from MAST dataset):
+       trajectory:
+         content: message text...
+         role: assistant
+         name: mathproxyagent
     """
+    # First, try YAML-like format (common in MAST AG2 traces)
+    turns = _parse_ag2_yaml(trajectory, max_turns)
+    if turns:
+        return turns
+
+    # Fall back to plain text format
     turns = []
     turn_number = 0
 
@@ -239,6 +252,126 @@ def _parse_ag2(trajectory: str, max_turns: int) -> List[TurnSnapshot]:
     # Fallback
     if not turns:
         return _parse_generic(trajectory, max_turns)
+
+    return turns
+
+
+def _parse_ag2_yaml(trajectory: str, max_turns: int) -> List[TurnSnapshot]:
+    """Parse AG2 YAML-like trajectory format from MAST dataset.
+
+    Supports two formats:
+
+    1. YAML-indented format:
+        trajectory:
+          content: Let's use Python to solve...
+          role: assistant
+          name: mathproxyagent
+
+    2. Python dict format:
+        {'content': [...], 'role': 'assistant', 'name': 'mathproxyagent'}
+    """
+    turns = []
+    turn_number = 0
+
+    # Try Python dict format first (more common in MAST)
+    # Pattern: {'content': ..., 'role': '...', 'name': '...'}
+    dict_pattern = r"\{['\"]content['\"]\s*:\s*\[.*?\]\s*,\s*['\"]role['\"]\s*:\s*['\"](\w+)['\"]\s*,\s*['\"]name['\"]\s*:\s*['\"](\w+)['\"]\s*\}"
+    dict_matches = re.findall(dict_pattern, trajectory, re.DOTALL)
+
+    if dict_matches:
+        # Parse dict format - extract each message block
+        block_pattern = r"\{['\"]content['\"]\s*:\s*(\[.*?\])\s*,\s*['\"]role['\"]\s*:\s*['\"](\w+)['\"]\s*,\s*['\"]name['\"]\s*:\s*['\"](\w+)['\"]\s*\}"
+        for match in re.finditer(block_pattern, trajectory, re.DOTALL):
+            if turn_number >= max_turns:
+                break
+
+            content_raw = match.group(1)
+            role = match.group(2)
+            agent_name = match.group(3)
+
+            # Parse the content list - it's a Python list of strings
+            # Try to extract meaningful content
+            # Remove list brackets and join strings
+            content = content_raw.strip()[1:-1]  # Remove [ ]
+            # Clean up the string list format
+            content = re.sub(r"'\s*,\s*'", "\n", content)
+            content = re.sub(r"^'|'$", "", content)
+            content = content.replace("\\n", "\n")
+            content = content.strip()
+
+            if len(content) < 10:
+                continue
+
+            participant_type = 'user' if role == 'user' else 'agent'
+
+            turns.append(TurnSnapshot(
+                turn_number=turn_number,
+                participant_type=participant_type,
+                participant_id=agent_name,
+                content=_clean_content(content),
+                turn_metadata={"framework": "AG2", "role": role, "agent": agent_name},
+            ))
+            turn_number += 1
+
+        if turns:
+            return turns
+
+    # Try YAML-indented format
+    if 'trajectory:' not in trajectory:
+        return []
+
+    # Find trajectory section
+    traj_match = re.search(r'trajectory:\s*\n(.*)', trajectory, re.DOTALL)
+    if not traj_match:
+        return []
+
+    traj_content = traj_match.group(1)
+
+    # Check if it has the YAML structure we expect
+    if 'content:' not in traj_content or 'name:' not in traj_content:
+        return []
+
+    # Split into blocks by finding content: lines at consistent indentation
+    # Each message block starts with "content:" and includes role/name
+    # Use a pattern that captures from content: to the next content: or end
+    block_pattern = r'content:\s*(.*?)(?=\n\s*content:|\Z)'
+    blocks = re.findall(block_pattern, traj_content, re.DOTALL)
+
+    for block in blocks:
+        if turn_number >= max_turns:
+            break
+
+        # Extract fields from block
+        role_match = re.search(r'role:\s*(\w+)', block)
+        name_match = re.search(r'name:\s*(\w+)', block)
+
+        if not name_match:
+            continue
+
+        agent_name = name_match.group(1)
+        role = role_match.group(1) if role_match else 'assistant'
+
+        # Extract content - everything before role: or name: lines
+        content = block
+        # Remove role: and name: lines from content
+        content = re.sub(r'\n\s*role:\s*\w+', '', content)
+        content = re.sub(r'\n\s*name:\s*\w+', '', content)
+        content = content.strip()
+
+        if len(content) < 10:
+            continue
+
+        # Determine participant type based on role field
+        participant_type = 'user' if role == 'user' else 'agent'
+
+        turns.append(TurnSnapshot(
+            turn_number=turn_number,
+            participant_type=participant_type,
+            participant_id=agent_name,
+            content=_clean_content(content),
+            turn_metadata={"framework": "AG2", "role": role, "agent": agent_name},
+        ))
+        turn_number += 1
 
     return turns
 
