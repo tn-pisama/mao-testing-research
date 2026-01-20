@@ -8,6 +8,7 @@ import { formatDistanceToNow } from 'date-fns'
 import { clsx } from 'clsx'
 import {
   AlertTriangle,
+  AlertCircle,
   CheckCircle,
   XCircle,
   Filter,
@@ -21,10 +22,12 @@ import {
   ThumbsUp,
   ThumbsDown,
   ChevronRight,
+  Wrench,
 } from 'lucide-react'
 import Link from 'next/link'
 import { generateDemoDetections, generateDemoLoopAnalytics } from '@/lib/demo-data'
 import type { Detection } from '@/lib/api'
+import { useUserPreferences } from '@/lib/user-preferences'
 
 type DetectionType = 'all' | 'infinite_loop' | 'state_corruption' | 'persona_drift' | 'coordination_deadlock' | 'task_derailment' | 'context_neglect' | 'communication_breakdown' | 'specification_mismatch' | 'poor_decomposition' | 'flawed_workflow'
 type Severity = 'all' | 'low' | 'medium' | 'high' | 'critical'
@@ -49,6 +52,20 @@ const severityConfig: Record<string, { label: string; color: string; bg: string 
   critical: { label: 'Critical', color: 'text-red-400', bg: 'bg-red-500/20' },
 }
 
+// Plain-English labels for n8n users
+const plainEnglishLabels: Record<string, string> = {
+  infinite_loop: 'Stuck in a loop',
+  state_corruption: 'Data got corrupted',
+  persona_drift: 'Unexpected behavior',
+  coordination_deadlock: 'System stuck',
+  task_derailment: 'Got off track',
+  context_neglect: 'Lost context',
+  communication_breakdown: 'Communication issue',
+  specification_mismatch: 'Wrong output format',
+  poor_decomposition: 'Bad task split',
+  flawed_workflow: 'Workflow problem',
+}
+
 export default function DetectionsPage() {
   const [typeFilter, setTypeFilter] = useState<DetectionType>('all')
   const [severityFilter, setSeverityFilter] = useState<Severity>('all')
@@ -56,6 +73,10 @@ export default function DetectionsPage() {
   const [showValidated, setShowValidated] = useState(true)
   const [isLoaded, setIsLoaded] = useState(false)
   const [detections, setDetections] = useState<Detection[]>([])
+  const { isN8nUser, showAdvancedFeatures } = useUserPreferences()
+
+  // n8n users see simplified view with friendly terminology
+  const showSimplifiedView = isN8nUser && !showAdvancedFeatures
 
   useEffect(() => {
     setDetections(generateDemoDetections(25))
@@ -109,11 +130,22 @@ export default function DetectionsPage() {
     <Layout>
       <div className="p-6">
         <div className="flex items-center justify-between mb-6">
-          <div>
-            <h1 className="text-2xl font-bold text-white mb-1">Detections</h1>
-            <p className="text-sm text-slate-400">
-              Monitor and validate failure detections across your agent systems
-            </p>
+          <div className="flex items-center gap-3">
+            {showSimplifiedView && (
+              <div className="p-2 bg-amber-500/20 rounded-lg">
+                <AlertCircle size={24} className="text-amber-400" />
+              </div>
+            )}
+            <div>
+              <h1 className="text-2xl font-bold text-white mb-1">
+                {showSimplifiedView ? 'Problems Found' : 'Detections'}
+              </h1>
+              <p className="text-sm text-slate-400">
+                {showSimplifiedView
+                  ? 'Issues we found in your workflows that need attention'
+                  : 'Monitor and validate failure detections across your agent systems'}
+              </p>
+            </div>
           </div>
           <button className="flex items-center gap-2 px-4 py-2 bg-primary-600 hover:bg-primary-700 rounded-lg text-white font-medium transition-colors">
             <RefreshCw size={16} />
@@ -124,28 +156,38 @@ export default function DetectionsPage() {
         <div className="grid grid-cols-2 lg:grid-cols-4 gap-4 mb-6">
           <StatCard
             icon={AlertTriangle}
-            label="Total Detections"
+            label={showSimplifiedView ? 'Total Problems' : 'Total Detections'}
             value={stats.total}
             color="text-red-400"
             bgColor="bg-red-500/20"
           />
           <StatCard
             icon={Eye}
-            label="Needs Review"
+            label={showSimplifiedView ? 'Need Attention' : 'Needs Review'}
             value={stats.unvalidated}
             color="text-amber-400"
             bgColor="bg-amber-500/20"
           />
-          <StatCard
-            icon={ThumbsDown}
-            label="False Positives"
-            value={stats.falsePositives}
-            color="text-slate-400"
-            bgColor="bg-slate-500/20"
-          />
+          {showSimplifiedView ? (
+            <StatCard
+              icon={Wrench}
+              label="Fixes Available"
+              value={Math.floor(stats.total * 0.7)}
+              color="text-purple-400"
+              bgColor="bg-purple-500/20"
+            />
+          ) : (
+            <StatCard
+              icon={ThumbsDown}
+              label="False Positives"
+              value={stats.falsePositives}
+              color="text-slate-400"
+              bgColor="bg-slate-500/20"
+            />
+          )}
           <StatCard
             icon={Shield}
-            label="Avg Confidence"
+            label={showSimplifiedView ? 'Detection Accuracy' : 'Avg Confidence'}
             value={`${Math.round(detections.reduce((s, d) => s + d.confidence * 100, 0) / detections.length)}%`}
             color="text-emerald-400"
             bgColor="bg-emerald-500/20"
@@ -267,11 +309,14 @@ export default function DetectionsPage() {
                   const typeConfig = detectionTypeConfig[detection.detection_type] || detectionTypeConfig.infinite_loop
                   const severity = severityConfig[detection.details?.severity || 'medium']
                   const TypeIcon = typeConfig.icon
+                  const displayLabel = showSimplifiedView
+                    ? (plainEnglishLabels[detection.detection_type] || typeConfig.label)
+                    : typeConfig.label
 
                   return (
                     <Link
                       key={detection.id}
-                      href={`/traces/${detection.trace_id}`}
+                      href={showSimplifiedView ? `/healing?detection=${detection.id}` : `/traces/${detection.trace_id}`}
                       className="flex items-center gap-4 p-4 hover:bg-slate-700/30 transition-colors"
                     >
                       <div className={clsx('p-2 rounded-lg', severity.bg)}>
@@ -280,53 +325,79 @@ export default function DetectionsPage() {
 
                       <div className="flex-1 min-w-0">
                         <div className="flex items-center gap-2 mb-1">
-                          <span className="font-medium text-white">{typeConfig.label}</span>
+                          <span className="font-medium text-white">{displayLabel}</span>
                           <span className={clsx('text-xs px-2 py-0.5 rounded-full', severity.bg, severity.color)}>
                             {severity.label}
                           </span>
                           {detection.validated && (
                             <span className="text-xs px-2 py-0.5 rounded-full bg-emerald-500/20 text-emerald-400">
-                              Validated
+                              {showSimplifiedView ? 'Confirmed' : 'Validated'}
                             </span>
                           )}
                           {detection.false_positive && (
                             <span className="text-xs px-2 py-0.5 rounded-full bg-slate-500/20 text-slate-400">
-                              False Positive
+                              {showSimplifiedView ? 'Not an Issue' : 'False Positive'}
                             </span>
                           )}
                         </div>
                         <div className="flex items-center gap-4 text-xs text-slate-400">
-                          <span>{Math.round(detection.confidence * 100)}% confidence</span>
-                          <span>via {detection.method.replace('_', ' ')}</span>
-                          <span>{detection.details?.affected_agents} agents affected</span>
+                          {showSimplifiedView ? (
+                            <>
+                              <span>{formatDistanceToNow(new Date(detection.created_at), { addSuffix: true })}</span>
+                              {severity.label !== 'Low' && (
+                                <span className="text-amber-400">Recommended to fix</span>
+                              )}
+                            </>
+                          ) : (
+                            <>
+                              <span>{Math.round(detection.confidence * 100)}% confidence</span>
+                              <span>via {detection.method.replace('_', ' ')}</span>
+                              <span>{detection.details?.affected_agents} agents affected</span>
+                            </>
+                          )}
                         </div>
                       </div>
 
                       <div className="text-right">
-                        <div className="text-xs text-slate-400 mb-1">
-                          {formatDistanceToNow(new Date(detection.created_at), { addSuffix: true })}
-                        </div>
-                        <div className="flex items-center gap-1">
-                          {!detection.validated && (
-                            <>
-                              <button
-                                onClick={(e) => { e.preventDefault() }}
-                                className="p-1.5 rounded hover:bg-emerald-500/20 text-slate-400 hover:text-emerald-400 transition-colors"
-                                title="Mark as valid"
-                              >
-                                <ThumbsUp size={14} />
-                              </button>
-                              <button
-                                onClick={(e) => { e.preventDefault() }}
-                                className="p-1.5 rounded hover:bg-red-500/20 text-slate-400 hover:text-red-400 transition-colors"
-                                title="Mark as false positive"
-                              >
-                                <ThumbsDown size={14} />
-                              </button>
-                            </>
-                          )}
-                          <ChevronRight size={14} className="text-slate-500" />
-                        </div>
+                        {showSimplifiedView ? (
+                          <div className="flex items-center gap-2">
+                            <Link
+                              href={`/healing?detection=${detection.id}`}
+                              onClick={(e) => e.stopPropagation()}
+                              className="flex items-center gap-1 px-3 py-1.5 text-sm bg-purple-600 hover:bg-purple-700 text-white rounded-lg transition-colors"
+                            >
+                              <Wrench size={14} />
+                              Fix
+                            </Link>
+                          </div>
+                        ) : (
+                          <>
+                            <div className="text-xs text-slate-400 mb-1">
+                              {formatDistanceToNow(new Date(detection.created_at), { addSuffix: true })}
+                            </div>
+                            <div className="flex items-center gap-1">
+                              {!detection.validated && (
+                                <>
+                                  <button
+                                    onClick={(e) => { e.preventDefault() }}
+                                    className="p-1.5 rounded hover:bg-emerald-500/20 text-slate-400 hover:text-emerald-400 transition-colors"
+                                    title="Mark as valid"
+                                  >
+                                    <ThumbsUp size={14} />
+                                  </button>
+                                  <button
+                                    onClick={(e) => { e.preventDefault() }}
+                                    className="p-1.5 rounded hover:bg-red-500/20 text-slate-400 hover:text-red-400 transition-colors"
+                                    title="Mark as false positive"
+                                  >
+                                    <ThumbsDown size={14} />
+                                  </button>
+                                </>
+                              )}
+                              <ChevronRight size={14} className="text-slate-500" />
+                            </div>
+                          </>
+                        )}
                       </div>
                     </Link>
                   )

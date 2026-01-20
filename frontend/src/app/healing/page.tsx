@@ -27,15 +27,21 @@ import {
   XCircle,
   Loader2,
   RefreshCw,
-  ExternalLink
+  ExternalLink,
+  Wrench
 } from 'lucide-react'
 import { Button } from '@/components/ui/Button'
 import { Card, CardHeader, CardTitle, CardContent } from '@/components/ui/Card'
 import { Badge } from '@/components/ui/Badge'
+import { useUserPreferences } from '@/lib/user-preferences'
 
 export default function HealingPage() {
   const { getToken } = useAuth()
   const { tenantId } = useTenant()
+  const { isN8nUser, showAdvancedFeatures } = useUserPreferences()
+
+  // n8n users see simplified view with friendly terminology
+  const showSimplifiedView = isN8nUser && !showAdvancedFeatures
 
   const [activeTab, setActiveTab] = useState('healings')
   const [isLoading, setIsLoading] = useState(true)
@@ -239,12 +245,20 @@ export default function HealingPage() {
         <div className="flex items-center justify-between mb-6">
           <div className="flex items-center gap-3">
             <div className="p-2 bg-purple-500/20 rounded-lg">
-              <Sparkles size={24} className="text-purple-400" />
+              {showSimplifiedView ? (
+                <Wrench size={24} className="text-purple-400" />
+              ) : (
+                <Sparkles size={24} className="text-purple-400" />
+              )}
             </div>
             <div>
-              <h1 className="text-2xl font-bold text-white">Self-Healing</h1>
+              <h1 className="text-2xl font-bold text-white">
+                {showSimplifiedView ? 'Fixes' : 'Self-Healing'}
+              </h1>
               <p className="text-sm text-slate-400">
-                Manage automated fixes and staged deployments for n8n workflows
+                {showSimplifiedView
+                  ? 'Review and apply fixes to your workflows'
+                  : 'Manage automated fixes and staged deployments for n8n workflows'}
               </p>
             </div>
           </div>
@@ -269,16 +283,25 @@ export default function HealingPage() {
         <Tabs value={activeTab} onValueChange={setActiveTab}>
           <TabsList className="mb-6">
             <TabsTrigger value="healings">
-              <Sparkles size={14} className="mr-2" />
-              Healings
+              {showSimplifiedView ? (
+                <>
+                  <Wrench size={14} className="mr-2" />
+                  Pending Fixes
+                </>
+              ) : (
+                <>
+                  <Sparkles size={14} className="mr-2" />
+                  Healings
+                </>
+              )}
             </TabsTrigger>
             <TabsTrigger value="connections">
               <Settings size={14} className="mr-2" />
-              n8n Connections
+              {showSimplifiedView ? 'Connections' : 'n8n Connections'}
             </TabsTrigger>
             <TabsTrigger value="history">
               <GitBranch size={14} className="mr-2" />
-              Version History
+              {showSimplifiedView ? 'History' : 'Version History'}
             </TabsTrigger>
           </TabsList>
 
