@@ -1112,7 +1112,9 @@ class TestIngestionIntegration:
         async def capture_flush(items):
             flushed_items.extend(items)
 
-        controller = BackpressureController(max_pending=10)
+        # Use high max_pending to avoid sample rate drops during test
+        # (sample rate drops to 0.75 when pending > 50% of max_pending)
+        controller = BackpressureController(max_pending=100)
         buffer = AsyncBuffer(
             config=BufferConfig(max_size=5),
             flush_callback=capture_flush,
