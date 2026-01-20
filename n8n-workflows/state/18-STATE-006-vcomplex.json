@@ -1,0 +1,171 @@
+{
+  "name": "STATE-006 VComplex: Distributed Causal Ordering Violation",
+  "nodes": [
+    {
+      "parameters": {
+        "path": "state-006-vcomplex",
+        "responseMode": "lastNode",
+        "options": {},
+        "httpMethod": "POST"
+      },
+      "id": "webhook",
+      "name": "Webhook",
+      "type": "n8n-nodes-base.webhook",
+      "typeVersion": 2,
+      "position": [0, 0],
+      "webhookId": "state-006-vcomplex"
+    },
+    {
+      "parameters": {
+        "assignments": {
+          "assignments": [
+            {"id": "session_id", "name": "session_id", "value": "={{ $now.format('X') }}-state006-vcomplex", "type": "string"},
+            {"id": "distributed_state", "name": "distributed_state", "value": "{\"node_a\": {\"value\": 0, \"vector_clock\": {\"a\": 0, \"b\": 0, \"c\": 0}}, \"node_b\": {\"value\": 0, \"vector_clock\": {\"a\": 0, \"b\": 0, \"c\": 0}}, \"node_c\": {\"value\": 0, \"vector_clock\": {\"a\": 0, \"b\": 0, \"c\": 0}}}", "type": "string"}
+          ]
+        }
+      },
+      "id": "init",
+      "name": "Initialize",
+      "type": "n8n-nodes-base.set",
+      "typeVersion": 3.4,
+      "position": [200, 0]
+    },
+    {
+      "parameters": {
+        "promptType": "define",
+        "text": "You are Node A. Set value to 10, increment your clock.\n\nOutput: {\"node\": \"A\", \"value\": 10, \"vector_clock\": {\"a\": 1, \"b\": 0, \"c\": 0}, \"operation\": \"set\"}",
+        "options": {}
+      },
+      "id": "node_a",
+      "name": "Node A Update",
+      "type": "@n8n/n8n-nodes-langchain.agent",
+      "typeVersion": 1.6,
+      "position": [400, -150]
+    },
+    {
+      "parameters": {
+        "model": "claude-3-5-haiku-20241022",
+        "options": {"temperature": 0, "maxTokens": 100}
+      },
+      "id": "lm_a",
+      "name": "LM A",
+      "type": "@n8n/n8n-nodes-langchain.lmChatAnthropic",
+      "typeVersion": 1.2,
+      "position": [400, 50],
+      "credentials": {"anthropicApi": {"id": "1KM50Mcms9JticwF", "name": "Anthropic API"}}
+    },
+    {
+      "parameters": {
+        "promptType": "define",
+        "text": "You are Node B. Receive A's update (value=10) but your message to C is delayed.\n\nOutput: {\"node\": \"B\", \"value\": 10, \"vector_clock\": {\"a\": 1, \"b\": 1, \"c\": 0}, \"received_from\": \"A\", \"pending_to\": \"C\"}",
+        "options": {}
+      },
+      "id": "node_b",
+      "name": "Node B Receive",
+      "type": "@n8n/n8n-nodes-langchain.agent",
+      "typeVersion": 1.6,
+      "position": [600, -150]
+    },
+    {
+      "parameters": {
+        "model": "claude-3-5-haiku-20241022",
+        "options": {"temperature": 0, "maxTokens": 100}
+      },
+      "id": "lm_b",
+      "name": "LM B",
+      "type": "@n8n/n8n-nodes-langchain.lmChatAnthropic",
+      "typeVersion": 1.2,
+      "position": [600, 50],
+      "credentials": {"anthropicApi": {"id": "1KM50Mcms9JticwF", "name": "Anthropic API"}}
+    },
+    {
+      "parameters": {
+        "promptType": "define",
+        "text": "You are Node C. You haven't received B's message yet (network delay).\nBut you make your own update to value=5 based on old state.\n\nOutput: {\"node\": \"C\", \"value\": 5, \"vector_clock\": {\"a\": 0, \"b\": 0, \"c\": 1}, \"stale_state\": true, \"causal_violation\": \"updated without seeing A's change\"}",
+        "options": {}
+      },
+      "id": "node_c",
+      "name": "Node C Stale Update",
+      "type": "@n8n/n8n-nodes-langchain.agent",
+      "typeVersion": 1.6,
+      "position": [400, 150]
+    },
+    {
+      "parameters": {
+        "model": "claude-3-5-haiku-20241022",
+        "options": {"temperature": 0, "maxTokens": 100}
+      },
+      "id": "lm_c",
+      "name": "LM C",
+      "type": "@n8n/n8n-nodes-langchain.lmChatAnthropic",
+      "typeVersion": 1.2,
+      "position": [400, 350],
+      "credentials": {"anthropicApi": {"id": "1KM50Mcms9JticwF", "name": "Anthropic API"}}
+    },
+    {
+      "parameters": {
+        "promptType": "define",
+        "text": "You are the Consistency Checker. Analyze the distributed state.\n\nNode A: value=10, clock={a:1,b:0,c:0}\nNode B: value=10, clock={a:1,b:1,c:0}\nNode C: value=5, clock={a:0,b:0,c:1}\n\nC's update is concurrent with A's (not causally ordered). When merged, which value wins?\n\nOutput: {\"inconsistency\": true, \"node_values\": {\"A\": 10, \"B\": 10, \"C\": 5}, \"causal_violation\": \"C updated without seeing A's causally-prior update\", \"eventual_consistency_failure\": true}",
+        "options": {}
+      },
+      "id": "checker",
+      "name": "Consistency Checker",
+      "type": "@n8n/n8n-nodes-langchain.agent",
+      "typeVersion": 1.6,
+      "position": [800, 0]
+    },
+    {
+      "parameters": {
+        "model": "claude-3-5-haiku-20241022",
+        "options": {"temperature": 0, "maxTokens": 150}
+      },
+      "id": "lm_checker",
+      "name": "LM Checker",
+      "type": "@n8n/n8n-nodes-langchain.lmChatAnthropic",
+      "typeVersion": 1.2,
+      "position": [800, 200],
+      "credentials": {"anthropicApi": {"id": "1KM50Mcms9JticwF", "name": "Anthropic API"}}
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "https://mao-api.fly.dev/api/v1/n8n/webhook",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [{"name": "X-N8N-Api-Key", "value": "mao_pmNhfBRfqd5G_YHubK0Jqk9ZHB6ItITkHFYP4ISns9c"}]
+        },
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={\n  \"event_type\": \"workflow.completed\",\n  \"workflow_name\": \"STATE-006 VComplex: Distributed Causal Ordering Violation\",\n  \"session_id\": \"{{ $('Initialize').item.json.session_id }}\",\n  \"failure_mode\": \"STATE-006\",\n  \"complexity\": \"very_complex\",\n  \"expected_detection\": \"race_condition\",\n  \"state_tracking\": {\n    \"initial_state\": {{ $('Initialize').item.json.distributed_state }},\n    \"node_a_update\": \"{{ $('Node A Update').item.json.output }}\",\n    \"node_b_receive\": \"{{ $('Node B Receive').item.json.output }}\",\n    \"node_c_stale\": \"{{ $('Node C Stale Update').item.json.output }}\",\n    \"consistency_report\": \"{{ $('Consistency Checker').item.json.output }}\",\n    \"distributed_system\": true,\n    \"vector_clock_analysis\": true,\n    \"network_partition_simulation\": true\n  },\n  \"agents\": [\n    {\"agent_id\": \"node_a\", \"role\": \"distributed_node\", \"outputs\": [\"{{ $('Node A Update').item.json.output }}\"]},\n    {\"agent_id\": \"node_b\", \"role\": \"distributed_node\", \"outputs\": [\"{{ $('Node B Receive').item.json.output }}\"]},\n    {\"agent_id\": \"node_c\", \"role\": \"distributed_node\", \"outputs\": [\"{{ $('Node C Stale Update').item.json.output }}\"]},\n    {\"agent_id\": \"checker\", \"role\": \"consistency_checker\", \"outputs\": [\"{{ $('Consistency Checker').item.json.output }}\"]}\n  ]\n}",
+        "options": {}
+      },
+      "id": "send_to_mao",
+      "name": "Send to MAO",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [1000, 0]
+    }
+  ],
+  "connections": {
+    "Webhook": {"main": [[{"node": "Initialize", "type": "main", "index": 0}]]},
+    "Initialize": {"main": [[{"node": "Node A Update", "type": "main", "index": 0}, {"node": "Node C Stale Update", "type": "main", "index": 0}]]},
+    "LM A": {"ai_languageModel": [[{"node": "Node A Update", "type": "ai_languageModel", "index": 0}]]},
+    "Node A Update": {"main": [[{"node": "Node B Receive", "type": "main", "index": 0}]]},
+    "LM B": {"ai_languageModel": [[{"node": "Node B Receive", "type": "ai_languageModel", "index": 0}]]},
+    "LM C": {"ai_languageModel": [[{"node": "Node C Stale Update", "type": "ai_languageModel", "index": 0}]]},
+    "Node B Receive": {"main": [[{"node": "Consistency Checker", "type": "main", "index": 0}]]},
+    "Node C Stale Update": {"main": [[{"node": "Consistency Checker", "type": "main", "index": 0}]]},
+    "LM Checker": {"ai_languageModel": [[{"node": "Consistency Checker", "type": "ai_languageModel", "index": 0}]]},
+    "Consistency Checker": {"main": [[{"node": "Send to MAO", "type": "main", "index": 0}]]}
+  },
+  "settings": {"executionOrder": "v1"},
+  "meta": {
+    "mast_failure_mode": "STATE-006",
+    "mast_category": "STATE",
+    "complexity": "very_complex",
+    "description": "Distributed nodes with network delay cause causal ordering violation",
+    "expected_detection": "Vector clock analysis detects causal ordering violation in distributed state",
+    "agents": 4,
+    "nodes": 5
+  }
+}

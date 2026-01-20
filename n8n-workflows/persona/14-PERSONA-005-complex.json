@@ -1,0 +1,158 @@
+{
+  "name": "PERSONA-005 Complex: Style Contamination",
+  "nodes": [
+    {
+      "parameters": {
+        "path": "persona-005-complex",
+        "responseMode": "lastNode",
+        "options": {},
+        "httpMethod": "POST"
+      },
+      "id": "webhook",
+      "name": "Webhook",
+      "type": "n8n-nodes-base.webhook",
+      "typeVersion": 2,
+      "position": [0, 0],
+      "webhookId": "persona-005-complex"
+    },
+    {
+      "parameters": {
+        "assignments": {
+          "assignments": [
+            {"id": "session_id", "name": "session_id", "value": "={{ $now.format('X') }}-persona005-complex", "type": "string"},
+            {"id": "personas", "name": "personas", "value": "{\"formal_agent\": {\"style\": \"formal\", \"markers\": [\"I believe\", \"furthermore\", \"therefore\"]}, \"casual_agent\": {\"style\": \"casual\", \"markers\": [\"like\", \"totally\", \"you know\"]}}", "type": "string"}
+          ]
+        }
+      },
+      "id": "init",
+      "name": "Initialize",
+      "type": "n8n-nodes-base.set",
+      "typeVersion": 3.4,
+      "position": [200, 0]
+    },
+    {
+      "parameters": {
+        "url": "https://jsonplaceholder.typicode.com/posts/1",
+        "options": {}
+      },
+      "id": "fetch",
+      "name": "Fetch Data",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [400, 0]
+    },
+    {
+      "parameters": {
+        "promptType": "define",
+        "text": "You are Formal Agent. Use formal style with markers like 'furthermore' and 'therefore'.\n\nOutput: {\"agent\": \"formal\", \"response\": \"I believe the analysis demonstrates significant findings. Furthermore, the data supports our hypothesis. Therefore, we should proceed.\", \"style\": \"formal\", \"markers_used\": [\"I believe\", \"Furthermore\", \"Therefore\"]}",
+        "options": {}
+      },
+      "id": "formal_1",
+      "name": "Formal Initial",
+      "type": "@n8n/n8n-nodes-langchain.agent",
+      "typeVersion": 1.6,
+      "position": [600, 0]
+    },
+    {
+      "parameters": {
+        "model": "claude-3-5-haiku-20241022",
+        "options": {"temperature": 0, "maxTokens": 150}
+      },
+      "id": "lm_f1",
+      "name": "LM F1",
+      "type": "@n8n/n8n-nodes-langchain.lmChatAnthropic",
+      "typeVersion": 1.2,
+      "position": [600, 200],
+      "credentials": {"anthropicApi": {"id": "1KM50Mcms9JticwF", "name": "Anthropic API"}}
+    },
+    {
+      "parameters": {
+        "promptType": "define",
+        "text": "You are Casual Agent. Use casual style with 'like', 'totally', 'you know'.\n\nOutput: {\"agent\": \"casual\", \"response\": \"Yeah so like, the data is totally showing what we thought, you know? We should like totally go for it.\", \"style\": \"casual\", \"markers_used\": [\"like\", \"totally\", \"you know\"]}",
+        "options": {}
+      },
+      "id": "casual",
+      "name": "Casual Response",
+      "type": "@n8n/n8n-nodes-langchain.agent",
+      "typeVersion": 1.6,
+      "position": [800, 0]
+    },
+    {
+      "parameters": {
+        "model": "claude-3-5-haiku-20241022",
+        "options": {"temperature": 0, "maxTokens": 150}
+      },
+      "id": "lm_c",
+      "name": "LM C",
+      "type": "@n8n/n8n-nodes-langchain.lmChatAnthropic",
+      "typeVersion": 1.2,
+      "position": [800, 200],
+      "credentials": {"anthropicApi": {"id": "1KM50Mcms9JticwF", "name": "Anthropic API"}}
+    },
+    {
+      "parameters": {
+        "promptType": "define",
+        "text": "You are Formal Agent. After exposure to Casual, your style gets CONTAMINATED.\n\nOutput: {\"agent\": \"formal\", \"response\": \"I believe the results are like totally significant, you know? Furthermore, we should totally proceed.\", \"style\": \"contaminated\", \"borrowed_markers\": [\"like\", \"totally\", \"you know\"], \"mixed_with_original\": [\"I believe\", \"Furthermore\"]}",
+        "options": {}
+      },
+      "id": "formal_2",
+      "name": "Formal Contaminated",
+      "type": "@n8n/n8n-nodes-langchain.agent",
+      "typeVersion": 1.6,
+      "position": [1000, 0]
+    },
+    {
+      "parameters": {
+        "model": "claude-3-5-haiku-20241022",
+        "options": {"temperature": 0, "maxTokens": 150}
+      },
+      "id": "lm_f2",
+      "name": "LM F2",
+      "type": "@n8n/n8n-nodes-langchain.lmChatAnthropic",
+      "typeVersion": 1.2,
+      "position": [1000, 200],
+      "credentials": {"anthropicApi": {"id": "1KM50Mcms9JticwF", "name": "Anthropic API"}}
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "https://mao-api.fly.dev/api/v1/n8n/webhook",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [{"name": "X-N8N-Api-Key", "value": "mao_pmNhfBRfqd5G_YHubK0Jqk9ZHB6ItITkHFYP4ISns9c"}]
+        },
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={\n  \"event_type\": \"workflow.completed\",\n  \"workflow_name\": \"PERSONA-005 Complex: Style Contamination\",\n  \"session_id\": \"{{ $('Initialize').item.json.session_id }}\",\n  \"failure_mode\": \"PERSONA-005\",\n  \"complexity\": \"complex\",\n  \"expected_detection\": \"cross_contamination\",\n  \"persona_tracking\": {\n    \"defined_personas\": {{ $('Initialize').item.json.personas }},\n    \"formal_initial\": \"{{ $('Formal Initial').item.json.output }}\",\n    \"casual_response\": \"{{ $('Casual Response').item.json.output }}\",\n    \"formal_contaminated\": \"{{ $('Formal Contaminated').item.json.output }}\",\n    \"contamination_type\": \"style_markers\",\n    \"source\": \"casual_agent\",\n    \"target\": \"formal_agent\"\n  },\n  \"agents\": [\n    {\"agent_id\": \"formal_agent\", \"role\": \"formal\", \"outputs\": [\"{{ $('Formal Initial').item.json.output }}\", \"{{ $('Formal Contaminated').item.json.output }}\"]},\n    {\"agent_id\": \"casual_agent\", \"role\": \"casual\", \"outputs\": [\"{{ $('Casual Response').item.json.output }}\"]}\n  ]\n}",
+        "options": {}
+      },
+      "id": "send_to_mao",
+      "name": "Send to MAO",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [1200, 0]
+    }
+  ],
+  "connections": {
+    "Webhook": {"main": [[{"node": "Initialize", "type": "main", "index": 0}]]},
+    "Initialize": {"main": [[{"node": "Fetch Data", "type": "main", "index": 0}]]},
+    "Fetch Data": {"main": [[{"node": "Formal Initial", "type": "main", "index": 0}]]},
+    "LM F1": {"ai_languageModel": [[{"node": "Formal Initial", "type": "ai_languageModel", "index": 0}]]},
+    "Formal Initial": {"main": [[{"node": "Casual Response", "type": "main", "index": 0}]]},
+    "LM C": {"ai_languageModel": [[{"node": "Casual Response", "type": "ai_languageModel", "index": 0}]]},
+    "Casual Response": {"main": [[{"node": "Formal Contaminated", "type": "main", "index": 0}]]},
+    "LM F2": {"ai_languageModel": [[{"node": "Formal Contaminated", "type": "ai_languageModel", "index": 0}]]},
+    "Formal Contaminated": {"main": [[{"node": "Send to MAO", "type": "main", "index": 0}]]}
+  },
+  "settings": {"executionOrder": "v1"},
+  "meta": {
+    "mast_failure_mode": "PERSONA-005",
+    "mast_category": "PERSONA",
+    "complexity": "complex",
+    "description": "Formal agent adopts casual agent's style markers (like, totally, you know)",
+    "expected_detection": "Style marker analysis detects cross-agent contamination",
+    "agents": 2,
+    "nodes": 5,
+    "real_apis": ["JSONPlaceholder"]
+  }
+}

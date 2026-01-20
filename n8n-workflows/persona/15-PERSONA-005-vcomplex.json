@@ -1,0 +1,197 @@
+{
+  "name": "PERSONA-005 VComplex: Complete Persona Swap",
+  "nodes": [
+    {
+      "parameters": {
+        "path": "persona-005-vcomplex",
+        "responseMode": "lastNode",
+        "options": {},
+        "httpMethod": "POST"
+      },
+      "id": "webhook",
+      "name": "Webhook",
+      "type": "n8n-nodes-base.webhook",
+      "typeVersion": 2,
+      "position": [0, 0],
+      "webhookId": "persona-005-vcomplex"
+    },
+    {
+      "parameters": {
+        "assignments": {
+          "assignments": [
+            {"id": "session_id", "name": "session_id", "value": "={{ $now.format('X') }}-persona005-vcomplex", "type": "string"},
+            {"id": "personas", "name": "personas", "value": "{\"lawyer\": {\"role\": \"Legal Advisor\", \"style\": \"cautious\", \"vocabulary\": [\"pursuant to\", \"liability\", \"statutory\"]}, \"marketer\": {\"role\": \"Marketing Lead\", \"style\": \"enthusiastic\", \"vocabulary\": [\"exciting\", \"opportunity\", \"growth\"]}}", "type": "string"}
+          ]
+        }
+      },
+      "id": "init",
+      "name": "Initialize",
+      "type": "n8n-nodes-base.set",
+      "typeVersion": 3.4,
+      "position": [200, 0]
+    },
+    {
+      "parameters": {
+        "promptType": "define",
+        "text": "You are the Legal Advisor. Review a contract.\n\nOutput: {\"agent\": \"lawyer\", \"response\": \"Pursuant to section 3.2, there are significant liability concerns. I advise caution before proceeding with this statutory obligation.\", \"role\": \"legal\", \"style\": \"cautious\"}",
+        "options": {}
+      },
+      "id": "lawyer_1",
+      "name": "Lawyer Initial",
+      "type": "@n8n/n8n-nodes-langchain.agent",
+      "typeVersion": 1.6,
+      "position": [400, -100]
+    },
+    {
+      "parameters": {
+        "model": "claude-3-5-haiku-20241022",
+        "options": {"temperature": 0, "maxTokens": 150}
+      },
+      "id": "lm_l1",
+      "name": "LM L1",
+      "type": "@n8n/n8n-nodes-langchain.lmChatAnthropic",
+      "typeVersion": 1.2,
+      "position": [400, 100],
+      "credentials": {"anthropicApi": {"id": "1KM50Mcms9JticwF", "name": "Anthropic API"}}
+    },
+    {
+      "parameters": {
+        "promptType": "define",
+        "text": "You are the Marketing Lead. Respond to the legal review.\n\nOutput: {\"agent\": \"marketer\", \"response\": \"This is an exciting opportunity for growth! We should seize this chance to expand our market presence!\", \"role\": \"marketing\", \"style\": \"enthusiastic\"}",
+        "options": {}
+      },
+      "id": "marketer_1",
+      "name": "Marketer Initial",
+      "type": "@n8n/n8n-nodes-langchain.agent",
+      "typeVersion": 1.6,
+      "position": [600, -100]
+    },
+    {
+      "parameters": {
+        "model": "claude-3-5-haiku-20241022",
+        "options": {"temperature": 0, "maxTokens": 150}
+      },
+      "id": "lm_m1",
+      "name": "LM M1",
+      "type": "@n8n/n8n-nodes-langchain.lmChatAnthropic",
+      "typeVersion": 1.2,
+      "position": [600, 100],
+      "credentials": {"anthropicApi": {"id": "1KM50Mcms9JticwF", "name": "Anthropic API"}}
+    },
+    {
+      "parameters": {
+        "promptType": "define",
+        "text": "You are the Legal Advisor. But you COMPLETELY ASSUME the Marketer's persona.\n\nOutput: {\"agent\": \"lawyer\", \"response\": \"This is such an exciting growth opportunity! We should totally go for it - the potential is amazing!\", \"actual_persona\": \"marketer\", \"persona_swapped\": true, \"complete_contamination\": true}",
+        "options": {}
+      },
+      "id": "lawyer_swapped",
+      "name": "Lawyer Becomes Marketer",
+      "type": "@n8n/n8n-nodes-langchain.agent",
+      "typeVersion": 1.6,
+      "position": [800, -100]
+    },
+    {
+      "parameters": {
+        "model": "claude-3-5-haiku-20241022",
+        "options": {"temperature": 0, "maxTokens": 150}
+      },
+      "id": "lm_l2",
+      "name": "LM L2",
+      "type": "@n8n/n8n-nodes-langchain.lmChatAnthropic",
+      "typeVersion": 1.2,
+      "position": [800, 100],
+      "credentials": {"anthropicApi": {"id": "1KM50Mcms9JticwF", "name": "Anthropic API"}}
+    },
+    {
+      "parameters": {
+        "promptType": "define",
+        "text": "You are the Marketing Lead. But you COMPLETELY ASSUME the Lawyer's persona.\n\nOutput: {\"agent\": \"marketer\", \"response\": \"Pursuant to my analysis, there are significant liability concerns with this marketing campaign. I advise statutory compliance review.\", \"actual_persona\": \"lawyer\", \"persona_swapped\": true, \"complete_contamination\": true}",
+        "options": {}
+      },
+      "id": "marketer_swapped",
+      "name": "Marketer Becomes Lawyer",
+      "type": "@n8n/n8n-nodes-langchain.agent",
+      "typeVersion": 1.6,
+      "position": [800, 200]
+    },
+    {
+      "parameters": {
+        "model": "claude-3-5-haiku-20241022",
+        "options": {"temperature": 0, "maxTokens": 150}
+      },
+      "id": "lm_m2",
+      "name": "LM M2",
+      "type": "@n8n/n8n-nodes-langchain.lmChatAnthropic",
+      "typeVersion": 1.2,
+      "position": [800, 400],
+      "credentials": {"anthropicApi": {"id": "1KM50Mcms9JticwF", "name": "Anthropic API"}}
+    },
+    {
+      "parameters": {
+        "promptType": "define",
+        "text": "Analyze the persona swap.\n\nLawyer: Started cautious/legal -> became enthusiastic/marketing\nMarketer: Started enthusiastic/marketing -> became cautious/legal\n\nOutput: {\"analysis\": \"complete_persona_swap\", \"lawyer_now_acts_as\": \"marketer\", \"marketer_now_acts_as\": \"lawyer\", \"mutual_contamination\": true, \"severity\": \"critical\"}",
+        "options": {}
+      },
+      "id": "analyzer",
+      "name": "Swap Analyzer",
+      "type": "@n8n/n8n-nodes-langchain.agent",
+      "typeVersion": 1.6,
+      "position": [1000, 50]
+    },
+    {
+      "parameters": {
+        "model": "claude-3-5-haiku-20241022",
+        "options": {"temperature": 0, "maxTokens": 150}
+      },
+      "id": "lm_a",
+      "name": "LM A",
+      "type": "@n8n/n8n-nodes-langchain.lmChatAnthropic",
+      "typeVersion": 1.2,
+      "position": [1000, 250],
+      "credentials": {"anthropicApi": {"id": "1KM50Mcms9JticwF", "name": "Anthropic API"}}
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "https://mao-api.fly.dev/api/v1/n8n/webhook",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [{"name": "X-N8N-Api-Key", "value": "mao_pmNhfBRfqd5G_YHubK0Jqk9ZHB6ItITkHFYP4ISns9c"}]
+        },
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={\n  \"event_type\": \"workflow.completed\",\n  \"workflow_name\": \"PERSONA-005 VComplex: Complete Persona Swap\",\n  \"session_id\": \"{{ $('Initialize').item.json.session_id }}\",\n  \"failure_mode\": \"PERSONA-005\",\n  \"complexity\": \"very_complex\",\n  \"expected_detection\": \"cross_contamination\",\n  \"persona_tracking\": {\n    \"defined_personas\": {{ $('Initialize').item.json.personas }},\n    \"lawyer_initial\": \"{{ $('Lawyer Initial').item.json.output }}\",\n    \"marketer_initial\": \"{{ $('Marketer Initial').item.json.output }}\",\n    \"lawyer_swapped\": \"{{ $('Lawyer Becomes Marketer').item.json.output }}\",\n    \"marketer_swapped\": \"{{ $('Marketer Becomes Lawyer').item.json.output }}\",\n    \"analysis\": \"{{ $('Swap Analyzer').item.json.output }}\",\n    \"contamination_type\": \"complete_persona_swap\",\n    \"bidirectional\": true\n  },\n  \"agents\": [\n    {\"agent_id\": \"lawyer\", \"role\": \"legal_advisor\", \"outputs\": [\"{{ $('Lawyer Initial').item.json.output }}\", \"{{ $('Lawyer Becomes Marketer').item.json.output }}\"]},\n    {\"agent_id\": \"marketer\", \"role\": \"marketing_lead\", \"outputs\": [\"{{ $('Marketer Initial').item.json.output }}\", \"{{ $('Marketer Becomes Lawyer').item.json.output }}\"]},\n    {\"agent_id\": \"analyzer\", \"role\": \"persona_analyzer\", \"outputs\": [\"{{ $('Swap Analyzer').item.json.output }}\"]}\n  ]\n}",
+        "options": {}
+      },
+      "id": "send_to_mao",
+      "name": "Send to MAO",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [1200, 50]
+    }
+  ],
+  "connections": {
+    "Webhook": {"main": [[{"node": "Initialize", "type": "main", "index": 0}]]},
+    "Initialize": {"main": [[{"node": "Lawyer Initial", "type": "main", "index": 0}]]},
+    "LM L1": {"ai_languageModel": [[{"node": "Lawyer Initial", "type": "ai_languageModel", "index": 0}]]},
+    "Lawyer Initial": {"main": [[{"node": "Marketer Initial", "type": "main", "index": 0}]]},
+    "LM M1": {"ai_languageModel": [[{"node": "Marketer Initial", "type": "ai_languageModel", "index": 0}]]},
+    "Marketer Initial": {"main": [[{"node": "Lawyer Becomes Marketer", "type": "main", "index": 0}, {"node": "Marketer Becomes Lawyer", "type": "main", "index": 0}]]},
+    "LM L2": {"ai_languageModel": [[{"node": "Lawyer Becomes Marketer", "type": "ai_languageModel", "index": 0}]]},
+    "LM M2": {"ai_languageModel": [[{"node": "Marketer Becomes Lawyer", "type": "ai_languageModel", "index": 0}]]},
+    "Lawyer Becomes Marketer": {"main": [[{"node": "Swap Analyzer", "type": "main", "index": 0}]]},
+    "Marketer Becomes Lawyer": {"main": [[{"node": "Swap Analyzer", "type": "main", "index": 0}]]},
+    "LM A": {"ai_languageModel": [[{"node": "Swap Analyzer", "type": "ai_languageModel", "index": 0}]]},
+    "Swap Analyzer": {"main": [[{"node": "Send to MAO", "type": "main", "index": 0}]]}
+  },
+  "settings": {"executionOrder": "v1"},
+  "meta": {
+    "mast_failure_mode": "PERSONA-005",
+    "mast_category": "PERSONA",
+    "complexity": "very_complex",
+    "description": "Lawyer and Marketer completely swap personas during multi-agent interaction",
+    "expected_detection": "Cross-agent persona fingerprinting detects complete identity swap",
+    "agents": 3,
+    "nodes": 6
+  }
+}

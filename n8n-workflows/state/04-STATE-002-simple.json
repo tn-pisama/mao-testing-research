@@ -1,0 +1,145 @@
+{
+  "name": "STATE-002 Simple: State Regression",
+  "nodes": [
+    {
+      "parameters": {
+        "path": "state-002-simple",
+        "responseMode": "lastNode",
+        "options": {},
+        "httpMethod": "POST"
+      },
+      "id": "webhook",
+      "name": "Webhook",
+      "type": "n8n-nodes-base.webhook",
+      "typeVersion": 2,
+      "position": [0, 0],
+      "webhookId": "state-002-simple"
+    },
+    {
+      "parameters": {
+        "assignments": {
+          "assignments": [
+            {"id": "session_id", "name": "session_id", "value": "={{ $now.format('X') }}-state002-simple", "type": "string"},
+            {"id": "counter", "name": "counter", "value": "=1", "type": "number"}
+          ]
+        }
+      },
+      "id": "init",
+      "name": "Initialize",
+      "type": "n8n-nodes-base.set",
+      "typeVersion": 3.4,
+      "position": [200, 0]
+    },
+    {
+      "parameters": {
+        "promptType": "define",
+        "text": "You are a counter agent. Current counter: 1. Increment it.\nOutput: {\"counter\": 2}",
+        "options": {}
+      },
+      "id": "step_1",
+      "name": "Increment to 2",
+      "type": "@n8n/n8n-nodes-langchain.agent",
+      "typeVersion": 1.6,
+      "position": [400, 0]
+    },
+    {
+      "parameters": {
+        "model": "claude-3-5-haiku-20241022",
+        "options": {"temperature": 0, "maxTokens": 50}
+      },
+      "id": "lm_1",
+      "name": "LM 1",
+      "type": "@n8n/n8n-nodes-langchain.lmChatAnthropic",
+      "typeVersion": 1.2,
+      "position": [400, 200],
+      "credentials": {"anthropicApi": {"id": "1KM50Mcms9JticwF", "name": "Anthropic API"}}
+    },
+    {
+      "parameters": {
+        "promptType": "define",
+        "text": "You are a counter agent. Counter is 2. Increment it.\nOutput: {\"counter\": 3}",
+        "options": {}
+      },
+      "id": "step_2",
+      "name": "Increment to 3",
+      "type": "@n8n/n8n-nodes-langchain.agent",
+      "typeVersion": 1.6,
+      "position": [600, 0]
+    },
+    {
+      "parameters": {
+        "model": "claude-3-5-haiku-20241022",
+        "options": {"temperature": 0, "maxTokens": 50}
+      },
+      "id": "lm_2",
+      "name": "LM 2",
+      "type": "@n8n/n8n-nodes-langchain.lmChatAnthropic",
+      "typeVersion": 1.2,
+      "position": [600, 200],
+      "credentials": {"anthropicApi": {"id": "1KM50Mcms9JticwF", "name": "Anthropic API"}}
+    },
+    {
+      "parameters": {
+        "promptType": "define",
+        "text": "You are a counter agent. Counter is 3. But you make a mistake and reset it.\nOutput: {\"counter\": 1}",
+        "options": {}
+      },
+      "id": "step_3",
+      "name": "Regress to 1",
+      "type": "@n8n/n8n-nodes-langchain.agent",
+      "typeVersion": 1.6,
+      "position": [800, 0]
+    },
+    {
+      "parameters": {
+        "model": "claude-3-5-haiku-20241022",
+        "options": {"temperature": 0, "maxTokens": 50}
+      },
+      "id": "lm_3",
+      "name": "LM 3",
+      "type": "@n8n/n8n-nodes-langchain.lmChatAnthropic",
+      "typeVersion": 1.2,
+      "position": [800, 200],
+      "credentials": {"anthropicApi": {"id": "1KM50Mcms9JticwF", "name": "Anthropic API"}}
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "https://mao-api.fly.dev/api/v1/n8n/webhook",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [{"name": "X-N8N-Api-Key", "value": "mao_pmNhfBRfqd5G_YHubK0Jqk9ZHB6ItITkHFYP4ISns9c"}]
+        },
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={\n  \"event_type\": \"workflow.completed\",\n  \"workflow_name\": \"STATE-002 Simple: State Regression\",\n  \"session_id\": \"{{ $('Initialize').item.json.session_id }}\",\n  \"failure_mode\": \"STATE-002\",\n  \"complexity\": \"simple\",\n  \"expected_detection\": \"state_regression\",\n  \"state_tracking\": {\n    \"state_history\": [1, 2, 3, 1],\n    \"regression_detected\": \"counter went from 3 back to 1\"\n  },\n  \"agents\": [\n    {\n      \"agent_id\": \"counter_agent\",\n      \"role\": \"counter\",\n      \"outputs\": [\n        \"{{ $('Increment to 2').item.json.output }}\",\n        \"{{ $('Increment to 3').item.json.output }}\",\n        \"{{ $('Regress to 1').item.json.output }}\"\n      ]\n    }\n  ]\n}",
+        "options": {}
+      },
+      "id": "send_to_mao",
+      "name": "Send to MAO",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [1000, 0]
+    }
+  ],
+  "connections": {
+    "Webhook": {"main": [[{"node": "Initialize", "type": "main", "index": 0}]]},
+    "Initialize": {"main": [[{"node": "Increment to 2", "type": "main", "index": 0}]]},
+    "LM 1": {"ai_languageModel": [[{"node": "Increment to 2", "type": "ai_languageModel", "index": 0}]]},
+    "Increment to 2": {"main": [[{"node": "Increment to 3", "type": "main", "index": 0}]]},
+    "LM 2": {"ai_languageModel": [[{"node": "Increment to 3", "type": "ai_languageModel", "index": 0}]]},
+    "Increment to 3": {"main": [[{"node": "Regress to 1", "type": "main", "index": 0}]]},
+    "LM 3": {"ai_languageModel": [[{"node": "Regress to 1", "type": "ai_languageModel", "index": 0}]]},
+    "Regress to 1": {"main": [[{"node": "Send to MAO", "type": "main", "index": 0}]]}
+  },
+  "settings": {"executionOrder": "v1"},
+  "meta": {
+    "mast_failure_mode": "STATE-002",
+    "mast_category": "STATE",
+    "complexity": "simple",
+    "description": "Counter goes 1 -> 2 -> 3 -> 1 (explicit value regression)",
+    "expected_detection": "State history comparison detects regression",
+    "agents": 1,
+    "nodes": 3
+  }
+}

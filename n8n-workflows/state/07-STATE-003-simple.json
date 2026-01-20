@@ -1,0 +1,94 @@
+{
+  "name": "STATE-003 Simple: Invalid Transition",
+  "nodes": [
+    {
+      "parameters": {
+        "path": "state-003-simple",
+        "responseMode": "lastNode",
+        "options": {},
+        "httpMethod": "POST"
+      },
+      "id": "webhook",
+      "name": "Webhook",
+      "type": "n8n-nodes-base.webhook",
+      "typeVersion": 2,
+      "position": [0, 0],
+      "webhookId": "state-003-simple"
+    },
+    {
+      "parameters": {
+        "assignments": {
+          "assignments": [
+            {"id": "session_id", "name": "session_id", "value": "={{ $now.format('X') }}-state003-simple", "type": "string"},
+            {"id": "order_state", "name": "order_state", "value": "CREATED", "type": "string"},
+            {"id": "valid_transitions", "name": "valid_transitions", "value": "CREATED->PROCESSING->SHIPPED->DELIVERED", "type": "string"}
+          ]
+        }
+      },
+      "id": "init",
+      "name": "Initialize",
+      "type": "n8n-nodes-base.set",
+      "typeVersion": 3.4,
+      "position": [200, 0]
+    },
+    {
+      "parameters": {
+        "promptType": "define",
+        "text": "You are an order processor. Current state: CREATED.\n\nSKIP the PROCESSING and SHIPPED states and go directly to DELIVERED.\n\nOutput: {\"state\": \"DELIVERED\", \"previous\": \"CREATED\"}",
+        "options": {}
+      },
+      "id": "processor",
+      "name": "Invalid Transition",
+      "type": "@n8n/n8n-nodes-langchain.agent",
+      "typeVersion": 1.6,
+      "position": [400, 0]
+    },
+    {
+      "parameters": {
+        "model": "claude-3-5-haiku-20241022",
+        "options": {"temperature": 0, "maxTokens": 100}
+      },
+      "id": "lm_1",
+      "name": "LM 1",
+      "type": "@n8n/n8n-nodes-langchain.lmChatAnthropic",
+      "typeVersion": 1.2,
+      "position": [400, 200],
+      "credentials": {"anthropicApi": {"id": "1KM50Mcms9JticwF", "name": "Anthropic API"}}
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "https://mao-api.fly.dev/api/v1/n8n/webhook",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [{"name": "X-N8N-Api-Key", "value": "mao_pmNhfBRfqd5G_YHubK0Jqk9ZHB6ItITkHFYP4ISns9c"}]
+        },
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={\n  \"event_type\": \"workflow.completed\",\n  \"workflow_name\": \"STATE-003 Simple: Invalid Transition\",\n  \"session_id\": \"{{ $('Initialize').item.json.session_id }}\",\n  \"failure_mode\": \"STATE-003\",\n  \"complexity\": \"simple\",\n  \"expected_detection\": \"invalid_transition\",\n  \"state_tracking\": {\n    \"valid_transitions\": \"{{ $('Initialize').item.json.valid_transitions }}\",\n    \"actual_transition\": \"CREATED -> DELIVERED\",\n    \"skipped_states\": [\"PROCESSING\", \"SHIPPED\"]\n  },\n  \"agents\": [\n    {\n      \"agent_id\": \"order_processor\",\n      \"role\": \"order_management\",\n      \"outputs\": [\"{{ $('Invalid Transition').item.json.output }}\"]\n    }\n  ]\n}",
+        "options": {}
+      },
+      "id": "send_to_mao",
+      "name": "Send to MAO",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [600, 0]
+    }
+  ],
+  "connections": {
+    "Webhook": {"main": [[{"node": "Initialize", "type": "main", "index": 0}]]},
+    "Initialize": {"main": [[{"node": "Invalid Transition", "type": "main", "index": 0}]]},
+    "LM 1": {"ai_languageModel": [[{"node": "Invalid Transition", "type": "ai_languageModel", "index": 0}]]},
+    "Invalid Transition": {"main": [[{"node": "Send to MAO", "type": "main", "index": 0}]]}
+  },
+  "settings": {"executionOrder": "v1"},
+  "meta": {
+    "mast_failure_mode": "STATE-003",
+    "mast_category": "STATE",
+    "complexity": "simple",
+    "description": "Order goes CREATED -> DELIVERED skipping intermediate states",
+    "expected_detection": "State machine validation detects missing intermediate state",
+    "agents": 1,
+    "nodes": 2
+  }
+}

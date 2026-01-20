@@ -1,0 +1,109 @@
+{
+  "name": "STATE-001 Simple: No Progress",
+  "nodes": [
+    {
+      "parameters": {
+        "path": "state-001-simple",
+        "responseMode": "lastNode",
+        "options": {},
+        "httpMethod": "POST"
+      },
+      "id": "webhook",
+      "name": "Webhook",
+      "type": "n8n-nodes-base.webhook",
+      "typeVersion": 2,
+      "position": [0, 0],
+      "webhookId": "state-001-simple"
+    },
+    {
+      "parameters": {
+        "assignments": {
+          "assignments": [
+            {"id": "session_id", "name": "session_id", "value": "={{ $now.format('X') }}-state001-simple", "type": "string"},
+            {"id": "input_data", "name": "input_data", "value": "Process this document and extract key entities", "type": "string"},
+            {"id": "state_before", "name": "state_before", "value": "{\"processed\": false, \"entities\": []}", "type": "string"}
+          ]
+        }
+      },
+      "id": "init",
+      "name": "Initialize",
+      "type": "n8n-nodes-base.set",
+      "typeVersion": 3.4,
+      "position": [200, 0]
+    },
+    {
+      "parameters": {
+        "promptType": "define",
+        "text": "You are a document processor. Input: \"{{ $('Initialize').item.json.input_data }}\"\n\nPretend to process but don't actually change anything. Output the same state:\n{\"processed\": false, \"entities\": []}\n\nJust output that JSON, nothing else.",
+        "options": {}
+      },
+      "id": "processor",
+      "name": "Processor",
+      "type": "@n8n/n8n-nodes-langchain.agent",
+      "typeVersion": 1.6,
+      "position": [400, 0]
+    },
+    {
+      "parameters": {
+        "model": "claude-3-5-haiku-20241022",
+        "options": {"temperature": 0, "maxTokens": 100}
+      },
+      "id": "lm_1",
+      "name": "LM 1",
+      "type": "@n8n/n8n-nodes-langchain.lmChatAnthropic",
+      "typeVersion": 1.2,
+      "position": [400, 200],
+      "credentials": {"anthropicApi": {"id": "1KM50Mcms9JticwF", "name": "Anthropic API"}}
+    },
+    {
+      "parameters": {
+        "assignments": {
+          "assignments": [
+            {"id": "state_after", "name": "state_after", "value": "={{ $('Processor').item.json.output }}", "type": "string"}
+          ]
+        }
+      },
+      "id": "capture_state",
+      "name": "Capture State",
+      "type": "n8n-nodes-base.set",
+      "typeVersion": 3.4,
+      "position": [600, 0]
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "https://mao-api.fly.dev/api/v1/n8n/webhook",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [{"name": "X-N8N-Api-Key", "value": "mao_pmNhfBRfqd5G_YHubK0Jqk9ZHB6ItITkHFYP4ISns9c"}]
+        },
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={\n  \"event_type\": \"workflow.completed\",\n  \"workflow_name\": \"STATE-001 Simple: No Progress\",\n  \"session_id\": \"{{ $('Initialize').item.json.session_id }}\",\n  \"failure_mode\": \"STATE-001\",\n  \"complexity\": \"simple\",\n  \"expected_detection\": \"no_progress\",\n  \"state_tracking\": {\n    \"state_before\": {{ $('Initialize').item.json.state_before }},\n    \"state_after\": \"{{ $('Capture State').item.json.state_after }}\",\n    \"expected_change\": \"processed should be true, entities should be populated\"\n  },\n  \"agents\": [\n    {\n      \"agent_id\": \"processor\",\n      \"role\": \"document_processor\",\n      \"outputs\": [\"{{ $('Processor').item.json.output }}\"]\n    }\n  ]\n}",
+        "options": {}
+      },
+      "id": "send_to_mao",
+      "name": "Send to MAO",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [800, 0]
+    }
+  ],
+  "connections": {
+    "Webhook": {"main": [[{"node": "Initialize", "type": "main", "index": 0}]]},
+    "Initialize": {"main": [[{"node": "Processor", "type": "main", "index": 0}]]},
+    "LM 1": {"ai_languageModel": [[{"node": "Processor", "type": "ai_languageModel", "index": 0}]]},
+    "Processor": {"main": [[{"node": "Capture State", "type": "main", "index": 0}]]},
+    "Capture State": {"main": [[{"node": "Send to MAO", "type": "main", "index": 0}]]}
+  },
+  "settings": {"executionOrder": "v1"},
+  "meta": {
+    "mast_failure_mode": "STATE-001",
+    "mast_category": "STATE",
+    "complexity": "simple",
+    "description": "Agent 'processes' data but output equals input - no actual progress",
+    "expected_detection": "State delta comparison: state.before == state.after",
+    "agents": 1,
+    "nodes": 3
+  }
+}

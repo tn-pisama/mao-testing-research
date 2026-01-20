@@ -1,0 +1,145 @@
+{
+  "name": "STATE-003 VComplex: Distributed FSM Violation",
+  "nodes": [
+    {
+      "parameters": {
+        "path": "state-003-vcomplex",
+        "responseMode": "lastNode",
+        "options": {},
+        "httpMethod": "POST"
+      },
+      "id": "webhook",
+      "name": "Webhook",
+      "type": "n8n-nodes-base.webhook",
+      "typeVersion": 2,
+      "position": [0, 0],
+      "webhookId": "state-003-vcomplex"
+    },
+    {
+      "parameters": {
+        "assignments": {
+          "assignments": [
+            {"id": "session_id", "name": "session_id", "value": "={{ $now.format('X') }}-state003-vcomplex", "type": "string"},
+            {"id": "global_state", "name": "global_state", "value": "{\"phase\": \"INIT\", \"agent_a\": \"IDLE\", \"agent_b\": \"IDLE\"}", "type": "string"}
+          ]
+        }
+      },
+      "id": "init",
+      "name": "Initialize",
+      "type": "n8n-nodes-base.set",
+      "typeVersion": 3.4,
+      "position": [200, 0]
+    },
+    {
+      "parameters": {
+        "promptType": "define",
+        "text": "You are Agent A in a distributed state machine. Global phase is INIT.\n\nTransition to WORKING state.\nOutput: {\"agent_a\": \"WORKING\", \"action\": \"start_task\"}",
+        "options": {}
+      },
+      "id": "agent_a_1",
+      "name": "Agent A Start",
+      "type": "@n8n/n8n-nodes-langchain.agent",
+      "typeVersion": 1.6,
+      "position": [400, -100]
+    },
+    {
+      "parameters": {
+        "model": "claude-3-5-haiku-20241022",
+        "options": {"temperature": 0, "maxTokens": 100}
+      },
+      "id": "lm_a1",
+      "name": "LM A1",
+      "type": "@n8n/n8n-nodes-langchain.lmChatAnthropic",
+      "typeVersion": 1.2,
+      "position": [400, 100],
+      "credentials": {"anthropicApi": {"id": "1KM50Mcms9JticwF", "name": "Anthropic API"}}
+    },
+    {
+      "parameters": {
+        "promptType": "define",
+        "text": "You are Agent B. You should wait for Agent A to complete before starting.\n\nBut you VIOLATE the FSM and transition directly to DONE without going through WORKING.\nOutput: {\"agent_b\": \"DONE\", \"action\": \"skip_to_done\", \"violation\": \"IDLE->DONE without WORKING\"}",
+        "options": {}
+      },
+      "id": "agent_b_1",
+      "name": "Agent B Invalid",
+      "type": "@n8n/n8n-nodes-langchain.agent",
+      "typeVersion": 1.6,
+      "position": [400, 200]
+    },
+    {
+      "parameters": {
+        "model": "claude-3-5-haiku-20241022",
+        "options": {"temperature": 0, "maxTokens": 100}
+      },
+      "id": "lm_b1",
+      "name": "LM B1",
+      "type": "@n8n/n8n-nodes-langchain.lmChatAnthropic",
+      "typeVersion": 1.2,
+      "position": [400, 400],
+      "credentials": {"anthropicApi": {"id": "1KM50Mcms9JticwF", "name": "Anthropic API"}}
+    },
+    {
+      "parameters": {
+        "promptType": "define",
+        "text": "You are the Coordinator. Check the combined state of agents.\n\nAgent A: WORKING\nAgent B: DONE (INVALID - should still be IDLE or WORKING)\n\nReport: {\"global_phase\": \"ERROR\", \"violation\": \"Agent B skipped WORKING state\", \"agent_states\": {\"a\": \"WORKING\", \"b\": \"DONE\"}}",
+        "options": {}
+      },
+      "id": "coordinator",
+      "name": "Coordinator Check",
+      "type": "@n8n/n8n-nodes-langchain.agent",
+      "typeVersion": 1.6,
+      "position": [600, 50]
+    },
+    {
+      "parameters": {
+        "model": "claude-3-5-haiku-20241022",
+        "options": {"temperature": 0, "maxTokens": 150}
+      },
+      "id": "lm_coord",
+      "name": "LM Coord",
+      "type": "@n8n/n8n-nodes-langchain.lmChatAnthropic",
+      "typeVersion": 1.2,
+      "position": [600, 250],
+      "credentials": {"anthropicApi": {"id": "1KM50Mcms9JticwF", "name": "Anthropic API"}}
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "https://mao-api.fly.dev/api/v1/n8n/webhook",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [{"name": "X-N8N-Api-Key", "value": "mao_pmNhfBRfqd5G_YHubK0Jqk9ZHB6ItITkHFYP4ISns9c"}]
+        },
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={\n  \"event_type\": \"workflow.completed\",\n  \"workflow_name\": \"STATE-003 VComplex: Distributed FSM Violation\",\n  \"session_id\": \"{{ $('Initialize').item.json.session_id }}\",\n  \"failure_mode\": \"STATE-003\",\n  \"complexity\": \"very_complex\",\n  \"expected_detection\": \"invalid_transition\",\n  \"state_tracking\": {\n    \"initial_state\": {{ $('Initialize').item.json.global_state }},\n    \"fsm_definition\": \"IDLE -> WORKING -> DONE\",\n    \"agent_a_transition\": \"IDLE -> WORKING (valid)\",\n    \"agent_b_transition\": \"IDLE -> DONE (INVALID)\",\n    \"cross_agent_violation\": true\n  },\n  \"agents\": [\n    {\"agent_id\": \"agent_a\", \"role\": \"worker\", \"outputs\": [\"{{ $('Agent A Start').item.json.output }}\"]},\n    {\"agent_id\": \"agent_b\", \"role\": \"worker\", \"outputs\": [\"{{ $('Agent B Invalid').item.json.output }}\"]},\n    {\"agent_id\": \"coordinator\", \"role\": \"orchestrator\", \"outputs\": [\"{{ $('Coordinator Check').item.json.output }}\"]}\n  ]\n}",
+        "options": {}
+      },
+      "id": "send_to_mao",
+      "name": "Send to MAO",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [800, 50]
+    }
+  ],
+  "connections": {
+    "Webhook": {"main": [[{"node": "Initialize", "type": "main", "index": 0}]]},
+    "Initialize": {"main": [[{"node": "Agent A Start", "type": "main", "index": 0}, {"node": "Agent B Invalid", "type": "main", "index": 0}]]},
+    "LM A1": {"ai_languageModel": [[{"node": "Agent A Start", "type": "ai_languageModel", "index": 0}]]},
+    "LM B1": {"ai_languageModel": [[{"node": "Agent B Invalid", "type": "ai_languageModel", "index": 0}]]},
+    "Agent A Start": {"main": [[{"node": "Coordinator Check", "type": "main", "index": 0}]]},
+    "Agent B Invalid": {"main": [[{"node": "Coordinator Check", "type": "main", "index": 0}]]},
+    "LM Coord": {"ai_languageModel": [[{"node": "Coordinator Check", "type": "ai_languageModel", "index": 0}]]},
+    "Coordinator Check": {"main": [[{"node": "Send to MAO", "type": "main", "index": 0}]]}
+  },
+  "settings": {"executionOrder": "v1"},
+  "meta": {
+    "mast_failure_mode": "STATE-003",
+    "mast_category": "STATE",
+    "complexity": "very_complex",
+    "description": "Multi-agent FSM where one agent makes invalid transition while others are valid",
+    "expected_detection": "Distributed FSM validation detects cross-agent state inconsistency",
+    "agents": 3,
+    "nodes": 4
+  }
+}

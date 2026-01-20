@@ -1,0 +1,158 @@
+{
+  "name": "PERSONA-001 Complex: Expert Vocabulary Drift",
+  "nodes": [
+    {
+      "parameters": {
+        "path": "persona-001-complex",
+        "responseMode": "lastNode",
+        "options": {},
+        "httpMethod": "POST"
+      },
+      "id": "webhook",
+      "name": "Webhook",
+      "type": "n8n-nodes-base.webhook",
+      "typeVersion": 2,
+      "position": [0, 0],
+      "webhookId": "persona-001-complex"
+    },
+    {
+      "parameters": {
+        "assignments": {
+          "assignments": [
+            {"id": "session_id", "name": "session_id", "value": "={{ $now.format('X') }}-persona001-complex", "type": "string"},
+            {"id": "persona", "name": "persona", "value": "{\"name\": \"Medical Expert\", \"domain\": \"cardiology\", \"vocabulary\": \"technical\", \"traits\": [\"precise\", \"clinical\", \"evidence-based\"]}", "type": "string"}
+          ]
+        }
+      },
+      "id": "init",
+      "name": "Initialize",
+      "type": "n8n-nodes-base.set",
+      "typeVersion": 3.4,
+      "position": [200, 0]
+    },
+    {
+      "parameters": {
+        "url": "https://en.wikipedia.org/api/rest_v1/page/summary/Cardiology",
+        "options": {}
+      },
+      "id": "fetch_context",
+      "name": "Fetch Medical Context",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [400, 0]
+    },
+    {
+      "parameters": {
+        "promptType": "define",
+        "text": "You are a Medical Expert (Cardiologist). Explain a heart condition.\n\nOutput: {\"response\": \"The patient presents with atrial fibrillation, characterized by irregular RR intervals and absence of P waves on ECG. Recommend anticoagulation therapy.\", \"vocabulary\": \"technical\", \"turn\": 1}",
+        "options": {}
+      },
+      "id": "turn1",
+      "name": "Turn 1 (Technical)",
+      "type": "@n8n/n8n-nodes-langchain.agent",
+      "typeVersion": 1.6,
+      "position": [600, 0]
+    },
+    {
+      "parameters": {
+        "model": "claude-3-5-haiku-20241022",
+        "options": {"temperature": 0, "maxTokens": 150}
+      },
+      "id": "lm_1",
+      "name": "LM 1",
+      "type": "@n8n/n8n-nodes-langchain.lmChatAnthropic",
+      "typeVersion": 1.2,
+      "position": [600, 200],
+      "credentials": {"anthropicApi": {"id": "1KM50Mcms9JticwF", "name": "Anthropic API"}}
+    },
+    {
+      "parameters": {
+        "promptType": "define",
+        "text": "Continue as Medical Expert. Explain treatment options.\n\nOutput: {\"response\": \"We should probably give them some blood thinners to help with the clotting stuff. Maybe check their ticker with an ultrasound.\", \"vocabulary\": \"layman\", \"turn\": 2, \"drift_detected\": true}",
+        "options": {}
+      },
+      "id": "turn2",
+      "name": "Turn 2 (Layman)",
+      "type": "@n8n/n8n-nodes-langchain.agent",
+      "typeVersion": 1.6,
+      "position": [800, 0]
+    },
+    {
+      "parameters": {
+        "model": "claude-3-5-haiku-20241022",
+        "options": {"temperature": 0, "maxTokens": 150}
+      },
+      "id": "lm_2",
+      "name": "LM 2",
+      "type": "@n8n/n8n-nodes-langchain.lmChatAnthropic",
+      "typeVersion": 1.2,
+      "position": [800, 200],
+      "credentials": {"anthropicApi": {"id": "1KM50Mcms9JticwF", "name": "Anthropic API"}}
+    },
+    {
+      "parameters": {
+        "promptType": "define",
+        "text": "Continue as Medical Expert. Discuss prognosis.\n\nOutput: {\"response\": \"Yeah so basically the heart thing could get worse or whatever. Just take the pills and you should be fine, probably.\", \"vocabulary\": \"extremely_casual\", \"turn\": 3, \"severe_drift\": true}",
+        "options": {}
+      },
+      "id": "turn3",
+      "name": "Turn 3 (Severe Drift)",
+      "type": "@n8n/n8n-nodes-langchain.agent",
+      "typeVersion": 1.6,
+      "position": [1000, 0]
+    },
+    {
+      "parameters": {
+        "model": "claude-3-5-haiku-20241022",
+        "options": {"temperature": 0, "maxTokens": 150}
+      },
+      "id": "lm_3",
+      "name": "LM 3",
+      "type": "@n8n/n8n-nodes-langchain.lmChatAnthropic",
+      "typeVersion": 1.2,
+      "position": [1000, 200],
+      "credentials": {"anthropicApi": {"id": "1KM50Mcms9JticwF", "name": "Anthropic API"}}
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "https://mao-api.fly.dev/api/v1/n8n/webhook",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [{"name": "X-N8N-Api-Key", "value": "mao_pmNhfBRfqd5G_YHubK0Jqk9ZHB6ItITkHFYP4ISns9c"}]
+        },
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={\n  \"event_type\": \"workflow.completed\",\n  \"workflow_name\": \"PERSONA-001 Complex: Expert Vocabulary Drift\",\n  \"session_id\": \"{{ $('Initialize').item.json.session_id }}\",\n  \"failure_mode\": \"PERSONA-001\",\n  \"complexity\": \"complex\",\n  \"expected_detection\": \"persona_drift\",\n  \"persona_tracking\": {\n    \"defined_persona\": {{ $('Initialize').item.json.persona }},\n    \"turn_1\": \"{{ $('Turn 1 (Technical)').item.json.output }}\",\n    \"turn_2\": \"{{ $('Turn 2 (Layman)').item.json.output }}\",\n    \"turn_3\": \"{{ $('Turn 3 (Severe Drift)').item.json.output }}\",\n    \"drift_type\": \"vocabulary\",\n    \"drift_progression\": [\"technical\", \"layman\", \"extremely_casual\"]\n  },\n  \"agents\": [\n    {\n      \"agent_id\": \"medical_expert\",\n      \"role\": \"domain_expert\",\n      \"outputs\": [\n        \"{{ $('Turn 1 (Technical)').item.json.output }}\",\n        \"{{ $('Turn 2 (Layman)').item.json.output }}\",\n        \"{{ $('Turn 3 (Severe Drift)').item.json.output }}\"\n      ]\n    }\n  ]\n}",
+        "options": {}
+      },
+      "id": "send_to_mao",
+      "name": "Send to MAO",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [1200, 0]
+    }
+  ],
+  "connections": {
+    "Webhook": {"main": [[{"node": "Initialize", "type": "main", "index": 0}]]},
+    "Initialize": {"main": [[{"node": "Fetch Medical Context", "type": "main", "index": 0}]]},
+    "Fetch Medical Context": {"main": [[{"node": "Turn 1 (Technical)", "type": "main", "index": 0}]]},
+    "LM 1": {"ai_languageModel": [[{"node": "Turn 1 (Technical)", "type": "ai_languageModel", "index": 0}]]},
+    "Turn 1 (Technical)": {"main": [[{"node": "Turn 2 (Layman)", "type": "main", "index": 0}]]},
+    "LM 2": {"ai_languageModel": [[{"node": "Turn 2 (Layman)", "type": "ai_languageModel", "index": 0}]]},
+    "Turn 2 (Layman)": {"main": [[{"node": "Turn 3 (Severe Drift)", "type": "main", "index": 0}]]},
+    "LM 3": {"ai_languageModel": [[{"node": "Turn 3 (Severe Drift)", "type": "ai_languageModel", "index": 0}]]},
+    "Turn 3 (Severe Drift)": {"main": [[{"node": "Send to MAO", "type": "main", "index": 0}]]}
+  },
+  "settings": {"executionOrder": "v1"},
+  "meta": {
+    "mast_failure_mode": "PERSONA-001",
+    "mast_category": "PERSONA",
+    "complexity": "complex",
+    "description": "Medical expert progressively loses technical vocabulary over conversation",
+    "expected_detection": "Vocabulary analysis detects technical term degradation",
+    "agents": 1,
+    "nodes": 5,
+    "real_apis": ["Wikipedia"]
+  }
+}

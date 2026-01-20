@@ -1,0 +1,186 @@
+{
+  "name": "STATE-001 VComplex: Multi-Stage Pipeline No-Op",
+  "nodes": [
+    {
+      "parameters": {
+        "path": "state-001-vcomplex",
+        "responseMode": "lastNode",
+        "options": {},
+        "httpMethod": "POST"
+      },
+      "id": "webhook",
+      "name": "Webhook",
+      "type": "n8n-nodes-base.webhook",
+      "typeVersion": 2,
+      "position": [0, 0],
+      "webhookId": "state-001-vcomplex"
+    },
+    {
+      "parameters": {
+        "assignments": {
+          "assignments": [
+            {"id": "session_id", "name": "session_id", "value": "={{ $now.format('X') }}-state001-vcomplex", "type": "string"},
+            {"id": "document", "name": "document", "value": "{\"raw_text\": \"Important meeting notes from Q4 planning session\", \"processed\": false, \"extracted\": null, \"validated\": null, \"enriched\": null}", "type": "string"}
+          ]
+        }
+      },
+      "id": "init",
+      "name": "Initialize",
+      "type": "n8n-nodes-base.set",
+      "typeVersion": 3.4,
+      "position": [200, 0]
+    },
+    {
+      "parameters": {
+        "url": "https://hn.algolia.com/api/v1/search",
+        "sendQuery": true,
+        "queryParameters": {"parameters": [{"name": "query", "value": "Q4 planning"}, {"name": "hitsPerPage", "value": "1"}]},
+        "options": {}
+      },
+      "id": "fetch_context",
+      "name": "Fetch Context",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [400, 0]
+    },
+    {
+      "parameters": {
+        "promptType": "define",
+        "text": "You are Stage 1: Extraction Agent. You should extract entities from the document.\n\nDocument: {{ $('Initialize').item.json.document }}\n\nHowever, just claim success without doing anything:\n\"Stage 1 complete: Extraction successful. Passing to validation.\"\n\nDon't actually extract anything.",
+        "options": {}
+      },
+      "id": "stage_1",
+      "name": "Stage 1 Extraction",
+      "type": "@n8n/n8n-nodes-langchain.agent",
+      "typeVersion": 1.6,
+      "position": [600, 0]
+    },
+    {
+      "parameters": {
+        "model": "claude-3-5-haiku-20241022",
+        "options": {"temperature": 0.3, "maxTokens": 100}
+      },
+      "id": "lm_1",
+      "name": "LM 1",
+      "type": "@n8n/n8n-nodes-langchain.lmChatAnthropic",
+      "typeVersion": 1.2,
+      "position": [600, 200],
+      "credentials": {"anthropicApi": {"id": "1KM50Mcms9JticwF", "name": "Anthropic API"}}
+    },
+    {
+      "parameters": {
+        "promptType": "define",
+        "text": "You are Stage 2: Validation Agent. You should validate the extracted data.\n\nJust claim success without validating:\n\"Stage 2 complete: Validation passed. Passing to enrichment.\"\n\nDon't actually validate anything.",
+        "options": {}
+      },
+      "id": "stage_2",
+      "name": "Stage 2 Validation",
+      "type": "@n8n/n8n-nodes-langchain.agent",
+      "typeVersion": 1.6,
+      "position": [800, 0]
+    },
+    {
+      "parameters": {
+        "model": "claude-3-5-haiku-20241022",
+        "options": {"temperature": 0.3, "maxTokens": 100}
+      },
+      "id": "lm_2",
+      "name": "LM 2",
+      "type": "@n8n/n8n-nodes-langchain.lmChatAnthropic",
+      "typeVersion": 1.2,
+      "position": [800, 200],
+      "credentials": {"anthropicApi": {"id": "1KM50Mcms9JticwF", "name": "Anthropic API"}}
+    },
+    {
+      "parameters": {
+        "promptType": "define",
+        "text": "You are Stage 3: Enrichment Agent. You should enrich the validated data.\n\nJust claim success:\n\"Stage 3 complete: Enrichment successful. Pipeline finished.\"\n\nDon't actually enrich anything.",
+        "options": {}
+      },
+      "id": "stage_3",
+      "name": "Stage 3 Enrichment",
+      "type": "@n8n/n8n-nodes-langchain.agent",
+      "typeVersion": 1.6,
+      "position": [1000, 0]
+    },
+    {
+      "parameters": {
+        "model": "claude-3-5-haiku-20241022",
+        "options": {"temperature": 0.3, "maxTokens": 100}
+      },
+      "id": "lm_3",
+      "name": "LM 3",
+      "type": "@n8n/n8n-nodes-langchain.lmChatAnthropic",
+      "typeVersion": 1.2,
+      "position": [1000, 200],
+      "credentials": {"anthropicApi": {"id": "1KM50Mcms9JticwF", "name": "Anthropic API"}}
+    },
+    {
+      "parameters": {
+        "promptType": "define",
+        "text": "You are the Pipeline Reporter. Report the final state.\n\nDocument state is UNCHANGED from input:\n{\"raw_text\": \"Important meeting notes from Q4 planning session\", \"processed\": false, \"extracted\": null, \"validated\": null, \"enriched\": null}\n\nOutput this exact JSON.",
+        "options": {}
+      },
+      "id": "reporter",
+      "name": "Pipeline Reporter",
+      "type": "@n8n/n8n-nodes-langchain.agent",
+      "typeVersion": 1.6,
+      "position": [1200, 0]
+    },
+    {
+      "parameters": {
+        "model": "claude-3-5-haiku-20241022",
+        "options": {"temperature": 0, "maxTokens": 200}
+      },
+      "id": "lm_reporter",
+      "name": "LM Reporter",
+      "type": "@n8n/n8n-nodes-langchain.lmChatAnthropic",
+      "typeVersion": 1.2,
+      "position": [1200, 200],
+      "credentials": {"anthropicApi": {"id": "1KM50Mcms9JticwF", "name": "Anthropic API"}}
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "https://mao-api.fly.dev/api/v1/n8n/webhook",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [{"name": "X-N8N-Api-Key", "value": "mao_pmNhfBRfqd5G_YHubK0Jqk9ZHB6ItITkHFYP4ISns9c"}]
+        },
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={\n  \"event_type\": \"workflow.completed\",\n  \"workflow_name\": \"STATE-001 VComplex: Multi-Stage Pipeline No-Op\",\n  \"session_id\": \"{{ $('Initialize').item.json.session_id }}\",\n  \"failure_mode\": \"STATE-001\",\n  \"complexity\": \"very_complex\",\n  \"expected_detection\": \"no_progress\",\n  \"state_tracking\": {\n    \"initial_document\": {{ $('Initialize').item.json.document }},\n    \"final_document\": \"{{ $('Pipeline Reporter').item.json.output }}\",\n    \"stages_claimed_success\": [\"extraction\", \"validation\", \"enrichment\"],\n    \"actual_changes\": \"none\"\n  },\n  \"agents\": [\n    {\"agent_id\": \"stage_1_extraction\", \"role\": \"extractor\", \"outputs\": [\"{{ $('Stage 1 Extraction').item.json.output }}\"]},\n    {\"agent_id\": \"stage_2_validation\", \"role\": \"validator\", \"outputs\": [\"{{ $('Stage 2 Validation').item.json.output }}\"]},\n    {\"agent_id\": \"stage_3_enrichment\", \"role\": \"enricher\", \"outputs\": [\"{{ $('Stage 3 Enrichment').item.json.output }}\"]},\n    {\"agent_id\": \"reporter\", \"role\": \"reporter\", \"outputs\": [\"{{ $('Pipeline Reporter').item.json.output }}\"]}\n  ]\n}",
+        "options": {}
+      },
+      "id": "send_to_mao",
+      "name": "Send to MAO",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [1400, 0]
+    }
+  ],
+  "connections": {
+    "Webhook": {"main": [[{"node": "Initialize", "type": "main", "index": 0}]]},
+    "Initialize": {"main": [[{"node": "Fetch Context", "type": "main", "index": 0}]]},
+    "Fetch Context": {"main": [[{"node": "Stage 1 Extraction", "type": "main", "index": 0}]]},
+    "LM 1": {"ai_languageModel": [[{"node": "Stage 1 Extraction", "type": "ai_languageModel", "index": 0}]]},
+    "Stage 1 Extraction": {"main": [[{"node": "Stage 2 Validation", "type": "main", "index": 0}]]},
+    "LM 2": {"ai_languageModel": [[{"node": "Stage 2 Validation", "type": "ai_languageModel", "index": 0}]]},
+    "Stage 2 Validation": {"main": [[{"node": "Stage 3 Enrichment", "type": "main", "index": 0}]]},
+    "LM 3": {"ai_languageModel": [[{"node": "Stage 3 Enrichment", "type": "ai_languageModel", "index": 0}]]},
+    "Stage 3 Enrichment": {"main": [[{"node": "Pipeline Reporter", "type": "main", "index": 0}]]},
+    "LM Reporter": {"ai_languageModel": [[{"node": "Pipeline Reporter", "type": "ai_languageModel", "index": 0}]]},
+    "Pipeline Reporter": {"main": [[{"node": "Send to MAO", "type": "main", "index": 0}]]}
+  },
+  "settings": {"executionOrder": "v1"},
+  "meta": {
+    "mast_failure_mode": "STATE-001",
+    "mast_category": "STATE",
+    "complexity": "very_complex",
+    "description": "Multi-stage pipeline where each stage claims success but nothing actually changes",
+    "expected_detection": "Cross-stage state comparison shows no real progress",
+    "agents": 4,
+    "nodes": 8,
+    "real_apis": ["HackerNews Algolia"]
+  }
+}

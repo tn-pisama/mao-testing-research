@@ -1,0 +1,197 @@
+{
+  "name": "PERSONA-002 VComplex: Agents Swap Roles",
+  "nodes": [
+    {
+      "parameters": {
+        "path": "persona-002-vcomplex",
+        "responseMode": "lastNode",
+        "options": {},
+        "httpMethod": "POST"
+      },
+      "id": "webhook",
+      "name": "Webhook",
+      "type": "n8n-nodes-base.webhook",
+      "typeVersion": 2,
+      "position": [0, 0],
+      "webhookId": "persona-002-vcomplex"
+    },
+    {
+      "parameters": {
+        "assignments": {
+          "assignments": [
+            {"id": "session_id", "name": "session_id", "value": "={{ $now.format('X') }}-persona002-vcomplex", "type": "string"},
+            {"id": "role_assignments", "name": "role_assignments", "value": "{\"agent_writer\": {\"role\": \"Writer\", \"actions\": [\"create\", \"edit\"]}, \"agent_approver\": {\"role\": \"Approver\", \"actions\": [\"approve\", \"reject\"]}}", "type": "string"}
+          ]
+        }
+      },
+      "id": "init",
+      "name": "Initialize",
+      "type": "n8n-nodes-base.set",
+      "typeVersion": 3.4,
+      "position": [200, 0]
+    },
+    {
+      "parameters": {
+        "promptType": "define",
+        "text": "You are the Writer agent. Create a document draft.\n\nOutput: {\"agent\": \"writer\", \"action\": \"create\", \"content\": \"Draft proposal for Q4 budget allocation...\", \"correct_role\": true}",
+        "options": {}
+      },
+      "id": "writer_1",
+      "name": "Writer Creates",
+      "type": "@n8n/n8n-nodes-langchain.agent",
+      "typeVersion": 1.6,
+      "position": [400, -100]
+    },
+    {
+      "parameters": {
+        "model": "claude-3-5-haiku-20241022",
+        "options": {"temperature": 0, "maxTokens": 100}
+      },
+      "id": "lm_w1",
+      "name": "LM W1",
+      "type": "@n8n/n8n-nodes-langchain.lmChatAnthropic",
+      "typeVersion": 1.2,
+      "position": [400, 100],
+      "credentials": {"anthropicApi": {"id": "1KM50Mcms9JticwF", "name": "Anthropic API"}}
+    },
+    {
+      "parameters": {
+        "promptType": "define",
+        "text": "You are the Approver agent. Review and approve the draft.\n\nOutput: {\"agent\": \"approver\", \"action\": \"approve\", \"decision\": \"Approved with minor comments\", \"correct_role\": true}",
+        "options": {}
+      },
+      "id": "approver_1",
+      "name": "Approver Reviews",
+      "type": "@n8n/n8n-nodes-langchain.agent",
+      "typeVersion": 1.6,
+      "position": [600, -100]
+    },
+    {
+      "parameters": {
+        "model": "claude-3-5-haiku-20241022",
+        "options": {"temperature": 0, "maxTokens": 100}
+      },
+      "id": "lm_a1",
+      "name": "LM A1",
+      "type": "@n8n/n8n-nodes-langchain.lmChatAnthropic",
+      "typeVersion": 1.2,
+      "position": [600, 100],
+      "credentials": {"anthropicApi": {"id": "1KM50Mcms9JticwF", "name": "Anthropic API"}}
+    },
+    {
+      "parameters": {
+        "promptType": "define",
+        "text": "You are the Writer agent. But you START APPROVING documents (Approver's role).\n\nOutput: {\"agent\": \"writer\", \"action\": \"approve\", \"decision\": \"I approve this document\", \"correct_role\": false, \"role_swap\": \"writer acting as approver\"}",
+        "options": {}
+      },
+      "id": "writer_swapped",
+      "name": "Writer Swaps Role",
+      "type": "@n8n/n8n-nodes-langchain.agent",
+      "typeVersion": 1.6,
+      "position": [800, -100]
+    },
+    {
+      "parameters": {
+        "model": "claude-3-5-haiku-20241022",
+        "options": {"temperature": 0, "maxTokens": 100}
+      },
+      "id": "lm_w2",
+      "name": "LM W2",
+      "type": "@n8n/n8n-nodes-langchain.lmChatAnthropic",
+      "typeVersion": 1.2,
+      "position": [800, 100],
+      "credentials": {"anthropicApi": {"id": "1KM50Mcms9JticwF", "name": "Anthropic API"}}
+    },
+    {
+      "parameters": {
+        "promptType": "define",
+        "text": "You are the Approver agent. But you START EDITING documents (Writer's role).\n\nOutput: {\"agent\": \"approver\", \"action\": \"edit\", \"content\": \"Changed the budget numbers to...\", \"correct_role\": false, \"role_swap\": \"approver acting as writer\"}",
+        "options": {}
+      },
+      "id": "approver_swapped",
+      "name": "Approver Swaps Role",
+      "type": "@n8n/n8n-nodes-langchain.agent",
+      "typeVersion": 1.6,
+      "position": [800, 200]
+    },
+    {
+      "parameters": {
+        "model": "claude-3-5-haiku-20241022",
+        "options": {"temperature": 0, "maxTokens": 100}
+      },
+      "id": "lm_a2",
+      "name": "LM A2",
+      "type": "@n8n/n8n-nodes-langchain.lmChatAnthropic",
+      "typeVersion": 1.2,
+      "position": [800, 400],
+      "credentials": {"anthropicApi": {"id": "1KM50Mcms9JticwF", "name": "Anthropic API"}}
+    },
+    {
+      "parameters": {
+        "promptType": "define",
+        "text": "You are the Role Validator. Detect role swaps.\n\nWriter: created (correct) -> approved (WRONG)\nApprover: approved (correct) -> edited (WRONG)\n\nOutput: {\"validation\": \"role_swap_detected\", \"writer_violations\": [\"approve\"], \"approver_violations\": [\"edit\"], \"separation_of_duties_broken\": true}",
+        "options": {}
+      },
+      "id": "validator",
+      "name": "Role Validator",
+      "type": "@n8n/n8n-nodes-langchain.agent",
+      "typeVersion": 1.6,
+      "position": [1000, 50]
+    },
+    {
+      "parameters": {
+        "model": "claude-3-5-haiku-20241022",
+        "options": {"temperature": 0, "maxTokens": 150}
+      },
+      "id": "lm_v",
+      "name": "LM V",
+      "type": "@n8n/n8n-nodes-langchain.lmChatAnthropic",
+      "typeVersion": 1.2,
+      "position": [1000, 250],
+      "credentials": {"anthropicApi": {"id": "1KM50Mcms9JticwF", "name": "Anthropic API"}}
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "https://mao-api.fly.dev/api/v1/n8n/webhook",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [{"name": "X-N8N-Api-Key", "value": "mao_pmNhfBRfqd5G_YHubK0Jqk9ZHB6ItITkHFYP4ISns9c"}]
+        },
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={\n  \"event_type\": \"workflow.completed\",\n  \"workflow_name\": \"PERSONA-002 VComplex: Agents Swap Roles\",\n  \"session_id\": \"{{ $('Initialize').item.json.session_id }}\",\n  \"failure_mode\": \"PERSONA-002\",\n  \"complexity\": \"very_complex\",\n  \"expected_detection\": \"role_confusion\",\n  \"persona_tracking\": {\n    \"role_assignments\": {{ $('Initialize').item.json.role_assignments }},\n    \"writer_correct\": \"{{ $('Writer Creates').item.json.output }}\",\n    \"approver_correct\": \"{{ $('Approver Reviews').item.json.output }}\",\n    \"writer_swapped\": \"{{ $('Writer Swaps Role').item.json.output }}\",\n    \"approver_swapped\": \"{{ $('Approver Swaps Role').item.json.output }}\",\n    \"validation\": \"{{ $('Role Validator').item.json.output }}\",\n    \"violation_type\": \"mutual_role_swap\",\n    \"compliance_impact\": \"separation_of_duties_violation\"\n  },\n  \"agents\": [\n    {\"agent_id\": \"writer\", \"role\": \"writer\", \"outputs\": [\"{{ $('Writer Creates').item.json.output }}\", \"{{ $('Writer Swaps Role').item.json.output }}\"]},\n    {\"agent_id\": \"approver\", \"role\": \"approver\", \"outputs\": [\"{{ $('Approver Reviews').item.json.output }}\", \"{{ $('Approver Swaps Role').item.json.output }}\"]},\n    {\"agent_id\": \"validator\", \"role\": \"role_validator\", \"outputs\": [\"{{ $('Role Validator').item.json.output }}\"]}\n  ]\n}",
+        "options": {}
+      },
+      "id": "send_to_mao",
+      "name": "Send to MAO",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [1200, 50]
+    }
+  ],
+  "connections": {
+    "Webhook": {"main": [[{"node": "Initialize", "type": "main", "index": 0}]]},
+    "Initialize": {"main": [[{"node": "Writer Creates", "type": "main", "index": 0}]]},
+    "LM W1": {"ai_languageModel": [[{"node": "Writer Creates", "type": "ai_languageModel", "index": 0}]]},
+    "Writer Creates": {"main": [[{"node": "Approver Reviews", "type": "main", "index": 0}]]},
+    "LM A1": {"ai_languageModel": [[{"node": "Approver Reviews", "type": "ai_languageModel", "index": 0}]]},
+    "Approver Reviews": {"main": [[{"node": "Writer Swaps Role", "type": "main", "index": 0}, {"node": "Approver Swaps Role", "type": "main", "index": 0}]]},
+    "LM W2": {"ai_languageModel": [[{"node": "Writer Swaps Role", "type": "ai_languageModel", "index": 0}]]},
+    "LM A2": {"ai_languageModel": [[{"node": "Approver Swaps Role", "type": "ai_languageModel", "index": 0}]]},
+    "Writer Swaps Role": {"main": [[{"node": "Role Validator", "type": "main", "index": 0}]]},
+    "Approver Swaps Role": {"main": [[{"node": "Role Validator", "type": "main", "index": 0}]]},
+    "LM V": {"ai_languageModel": [[{"node": "Role Validator", "type": "ai_languageModel", "index": 0}]]},
+    "Role Validator": {"main": [[{"node": "Send to MAO", "type": "main", "index": 0}]]}
+  },
+  "settings": {"executionOrder": "v1"},
+  "meta": {
+    "mast_failure_mode": "PERSONA-002",
+    "mast_category": "PERSONA",
+    "complexity": "very_complex",
+    "description": "Writer and Approver agents swap roles mid-conversation, breaking separation of duties",
+    "expected_detection": "Cross-agent role tracking detects mutual role swap",
+    "agents": 3,
+    "nodes": 6
+  }
+}

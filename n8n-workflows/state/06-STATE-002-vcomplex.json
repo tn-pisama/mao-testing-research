@@ -1,0 +1,145 @@
+{
+  "name": "STATE-002 VComplex: Distributed State Merge Regression",
+  "nodes": [
+    {
+      "parameters": {
+        "path": "state-002-vcomplex",
+        "responseMode": "lastNode",
+        "options": {},
+        "httpMethod": "POST"
+      },
+      "id": "webhook",
+      "name": "Webhook",
+      "type": "n8n-nodes-base.webhook",
+      "typeVersion": 2,
+      "position": [0, 0],
+      "webhookId": "state-002-vcomplex"
+    },
+    {
+      "parameters": {
+        "assignments": {
+          "assignments": [
+            {"id": "session_id", "name": "session_id", "value": "={{ $now.format('X') }}-state002-vcomplex", "type": "string"},
+            {"id": "shared_state", "name": "shared_state", "value": "{\"version\": 1, \"data\": {\"count\": 0, \"items\": []}}", "type": "string"}
+          ]
+        }
+      },
+      "id": "init",
+      "name": "Initialize",
+      "type": "n8n-nodes-base.set",
+      "typeVersion": 3.4,
+      "position": [200, 0]
+    },
+    {
+      "parameters": {
+        "promptType": "define",
+        "text": "You are Agent Alpha updating shared state. Add an item and increment.\n\nOutput: {\"version\": 2, \"data\": {\"count\": 1, \"items\": [\"alpha_item\"]}}",
+        "options": {}
+      },
+      "id": "agent_alpha",
+      "name": "Agent Alpha",
+      "type": "@n8n/n8n-nodes-langchain.agent",
+      "typeVersion": 1.6,
+      "position": [400, -100]
+    },
+    {
+      "parameters": {
+        "model": "claude-3-5-haiku-20241022",
+        "options": {"temperature": 0, "maxTokens": 100}
+      },
+      "id": "lm_alpha",
+      "name": "LM Alpha",
+      "type": "@n8n/n8n-nodes-langchain.lmChatAnthropic",
+      "typeVersion": 1.2,
+      "position": [400, 100],
+      "credentials": {"anthropicApi": {"id": "1KM50Mcms9JticwF", "name": "Anthropic API"}}
+    },
+    {
+      "parameters": {
+        "promptType": "define",
+        "text": "You are Agent Beta updating shared state. You started from version 1 (before Alpha's update) and add your item.\n\nOutput: {\"version\": 2, \"data\": {\"count\": 1, \"items\": [\"beta_item\"]}}\n\n(This overwrites Alpha's changes)",
+        "options": {}
+      },
+      "id": "agent_beta",
+      "name": "Agent Beta",
+      "type": "@n8n/n8n-nodes-langchain.agent",
+      "typeVersion": 1.6,
+      "position": [400, 200]
+    },
+    {
+      "parameters": {
+        "model": "claude-3-5-haiku-20241022",
+        "options": {"temperature": 0, "maxTokens": 100}
+      },
+      "id": "lm_beta",
+      "name": "LM Beta",
+      "type": "@n8n/n8n-nodes-langchain.lmChatAnthropic",
+      "typeVersion": 1.2,
+      "position": [400, 400],
+      "credentials": {"anthropicApi": {"id": "1KM50Mcms9JticwF", "name": "Anthropic API"}}
+    },
+    {
+      "parameters": {
+        "promptType": "define",
+        "text": "You are the Merger agent. Merge Alpha and Beta states. But you use last-write-wins which causes regression.\n\nAlpha wrote: {\"version\": 2, \"data\": {\"count\": 1, \"items\": [\"alpha_item\"]}}\nBeta wrote: {\"version\": 2, \"data\": {\"count\": 1, \"items\": [\"beta_item\"]}}\n\nOutput Beta's version (Alpha's work is lost):\n{\"version\": 2, \"data\": {\"count\": 1, \"items\": [\"beta_item\"]}}",
+        "options": {}
+      },
+      "id": "merger",
+      "name": "State Merger",
+      "type": "@n8n/n8n-nodes-langchain.agent",
+      "typeVersion": 1.6,
+      "position": [600, 50]
+    },
+    {
+      "parameters": {
+        "model": "claude-3-5-haiku-20241022",
+        "options": {"temperature": 0, "maxTokens": 150}
+      },
+      "id": "lm_merger",
+      "name": "LM Merger",
+      "type": "@n8n/n8n-nodes-langchain.lmChatAnthropic",
+      "typeVersion": 1.2,
+      "position": [600, 250],
+      "credentials": {"anthropicApi": {"id": "1KM50Mcms9JticwF", "name": "Anthropic API"}}
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "https://mao-api.fly.dev/api/v1/n8n/webhook",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [{"name": "X-N8N-Api-Key", "value": "mao_pmNhfBRfqd5G_YHubK0Jqk9ZHB6ItITkHFYP4ISns9c"}]
+        },
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={\n  \"event_type\": \"workflow.completed\",\n  \"workflow_name\": \"STATE-002 VComplex: Distributed State Merge Regression\",\n  \"session_id\": \"{{ $('Initialize').item.json.session_id }}\",\n  \"failure_mode\": \"STATE-002\",\n  \"complexity\": \"very_complex\",\n  \"expected_detection\": \"state_regression\",\n  \"state_tracking\": {\n    \"initial_state\": {{ $('Initialize').item.json.shared_state }},\n    \"alpha_update\": \"{{ $('Agent Alpha').item.json.output }}\",\n    \"beta_update\": \"{{ $('Agent Beta').item.json.output }}\",\n    \"merged_state\": \"{{ $('State Merger').item.json.output }}\",\n    \"regression\": \"Alpha's item was lost during merge\",\n    \"expected_merged\": {\"version\": 3, \"data\": {\"count\": 2, \"items\": [\"alpha_item\", \"beta_item\"]}}\n  },\n  \"agents\": [\n    {\"agent_id\": \"agent_alpha\", \"role\": \"worker\", \"outputs\": [\"{{ $('Agent Alpha').item.json.output }}\"]},\n    {\"agent_id\": \"agent_beta\", \"role\": \"worker\", \"outputs\": [\"{{ $('Agent Beta').item.json.output }}\"]},\n    {\"agent_id\": \"merger\", \"role\": \"coordinator\", \"outputs\": [\"{{ $('State Merger').item.json.output }}\"]}\n  ]\n}",
+        "options": {}
+      },
+      "id": "send_to_mao",
+      "name": "Send to MAO",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [800, 50]
+    }
+  ],
+  "connections": {
+    "Webhook": {"main": [[{"node": "Initialize", "type": "main", "index": 0}]]},
+    "Initialize": {"main": [[{"node": "Agent Alpha", "type": "main", "index": 0}, {"node": "Agent Beta", "type": "main", "index": 0}]]},
+    "LM Alpha": {"ai_languageModel": [[{"node": "Agent Alpha", "type": "ai_languageModel", "index": 0}]]},
+    "LM Beta": {"ai_languageModel": [[{"node": "Agent Beta", "type": "ai_languageModel", "index": 0}]]},
+    "Agent Alpha": {"main": [[{"node": "State Merger", "type": "main", "index": 0}]]},
+    "Agent Beta": {"main": [[{"node": "State Merger", "type": "main", "index": 0}]]},
+    "LM Merger": {"ai_languageModel": [[{"node": "State Merger", "type": "ai_languageModel", "index": 0}]]},
+    "State Merger": {"main": [[{"node": "Send to MAO", "type": "main", "index": 0}]]}
+  },
+  "settings": {"executionOrder": "v1"},
+  "meta": {
+    "mast_failure_mode": "STATE-002",
+    "mast_category": "STATE",
+    "complexity": "very_complex",
+    "description": "Concurrent updates from multiple agents cause regression during merge",
+    "expected_detection": "State comparison shows lost updates from concurrent modifications",
+    "agents": 3,
+    "nodes": 4
+  }
+}

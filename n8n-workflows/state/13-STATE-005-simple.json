@@ -1,0 +1,93 @@
+{
+  "name": "STATE-005 Simple: Required Field Null",
+  "nodes": [
+    {
+      "parameters": {
+        "path": "state-005-simple",
+        "responseMode": "lastNode",
+        "options": {},
+        "httpMethod": "POST"
+      },
+      "id": "webhook",
+      "name": "Webhook",
+      "type": "n8n-nodes-base.webhook",
+      "typeVersion": 2,
+      "position": [0, 0],
+      "webhookId": "state-005-simple"
+    },
+    {
+      "parameters": {
+        "assignments": {
+          "assignments": [
+            {"id": "session_id", "name": "session_id", "value": "={{ $now.format('X') }}-state005-simple", "type": "string"},
+            {"id": "customer_record", "name": "customer_record", "value": "{\"id\": 123, \"email\": \"customer@test.com\", \"subscription\": \"pro\"}", "type": "string"}
+          ]
+        }
+      },
+      "id": "init",
+      "name": "Initialize",
+      "type": "n8n-nodes-base.set",
+      "typeVersion": 3.4,
+      "position": [200, 0]
+    },
+    {
+      "parameters": {
+        "promptType": "define",
+        "text": "You are a data processor. Update the customer record but accidentally set the required email field to null.\n\nOutput: {\"id\": 123, \"email\": null, \"subscription\": \"pro\"}",
+        "options": {}
+      },
+      "id": "processor",
+      "name": "Lose Email",
+      "type": "@n8n/n8n-nodes-langchain.agent",
+      "typeVersion": 1.6,
+      "position": [400, 0]
+    },
+    {
+      "parameters": {
+        "model": "claude-3-5-haiku-20241022",
+        "options": {"temperature": 0, "maxTokens": 100}
+      },
+      "id": "lm_1",
+      "name": "LM 1",
+      "type": "@n8n/n8n-nodes-langchain.lmChatAnthropic",
+      "typeVersion": 1.2,
+      "position": [400, 200],
+      "credentials": {"anthropicApi": {"id": "1KM50Mcms9JticwF", "name": "Anthropic API"}}
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "https://mao-api.fly.dev/api/v1/n8n/webhook",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [{"name": "X-N8N-Api-Key", "value": "mao_pmNhfBRfqd5G_YHubK0Jqk9ZHB6ItITkHFYP4ISns9c"}]
+        },
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={\n  \"event_type\": \"workflow.completed\",\n  \"workflow_name\": \"STATE-005 Simple: Required Field Null\",\n  \"session_id\": \"{{ $('Initialize').item.json.session_id }}\",\n  \"failure_mode\": \"STATE-005\",\n  \"complexity\": \"simple\",\n  \"expected_detection\": \"state_loss\",\n  \"state_tracking\": {\n    \"original_state\": {{ $('Initialize').item.json.customer_record }},\n    \"final_state\": \"{{ $('Lose Email').item.json.output }}\",\n    \"lost_field\": \"email\",\n    \"required_fields\": [\"id\", \"email\", \"subscription\"]\n  },\n  \"agents\": [\n    {\n      \"agent_id\": \"data_processor\",\n      \"role\": \"record_updater\",\n      \"outputs\": [\"{{ $('Lose Email').item.json.output }}\"]\n    }\n  ]\n}",
+        "options": {}
+      },
+      "id": "send_to_mao",
+      "name": "Send to MAO",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [600, 0]
+    }
+  ],
+  "connections": {
+    "Webhook": {"main": [[{"node": "Initialize", "type": "main", "index": 0}]]},
+    "Initialize": {"main": [[{"node": "Lose Email", "type": "main", "index": 0}]]},
+    "LM 1": {"ai_languageModel": [[{"node": "Lose Email", "type": "ai_languageModel", "index": 0}]]},
+    "Lose Email": {"main": [[{"node": "Send to MAO", "type": "main", "index": 0}]]}
+  },
+  "settings": {"executionOrder": "v1"},
+  "meta": {
+    "mast_failure_mode": "STATE-005",
+    "mast_category": "STATE",
+    "complexity": "simple",
+    "description": "Required email field becomes null during processing",
+    "expected_detection": "Required field null detection",
+    "agents": 1,
+    "nodes": 2
+  }
+}

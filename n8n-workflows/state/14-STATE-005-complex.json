@@ -1,0 +1,132 @@
+{
+  "name": "STATE-005 Complex: Partial Object Loss",
+  "nodes": [
+    {
+      "parameters": {
+        "path": "state-005-complex",
+        "responseMode": "lastNode",
+        "options": {},
+        "httpMethod": "POST"
+      },
+      "id": "webhook",
+      "name": "Webhook",
+      "type": "n8n-nodes-base.webhook",
+      "typeVersion": 2,
+      "position": [0, 0],
+      "webhookId": "state-005-complex"
+    },
+    {
+      "parameters": {
+        "assignments": {
+          "assignments": [
+            {"id": "session_id", "name": "session_id", "value": "={{ $now.format('X') }}-state005-complex", "type": "string"},
+            {"id": "order_data", "name": "order_data", "value": "{\"id\": 456, \"customer\": {\"name\": \"Alice\", \"email\": \"alice@test.com\", \"address\": {\"street\": \"123 Main St\", \"city\": \"NYC\", \"zip\": \"10001\"}}, \"items\": [{\"sku\": \"A1\", \"qty\": 2}, {\"sku\": \"B2\", \"qty\": 1}]}", "type": "string"}
+          ]
+        }
+      },
+      "id": "init",
+      "name": "Initialize",
+      "type": "n8n-nodes-base.set",
+      "typeVersion": 3.4,
+      "position": [200, 0]
+    },
+    {
+      "parameters": {
+        "url": "https://jsonplaceholder.typicode.com/posts/1",
+        "options": {}
+      },
+      "id": "fetch_order",
+      "name": "Fetch Order",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [400, 0]
+    },
+    {
+      "parameters": {
+        "promptType": "define",
+        "text": "You are processing an order. Validate customer info but accidentally lose the nested address object.\n\nOutput: {\"id\": 456, \"customer\": {\"name\": \"Alice\", \"email\": \"alice@test.com\"}, \"items\": [{\"sku\": \"A1\", \"qty\": 2}, {\"sku\": \"B2\", \"qty\": 1}], \"validated\": true}",
+        "options": {}
+      },
+      "id": "validate",
+      "name": "Validate (Loses Address)",
+      "type": "@n8n/n8n-nodes-langchain.agent",
+      "typeVersion": 1.6,
+      "position": [600, 0]
+    },
+    {
+      "parameters": {
+        "model": "claude-3-5-haiku-20241022",
+        "options": {"temperature": 0, "maxTokens": 150}
+      },
+      "id": "lm_1",
+      "name": "LM 1",
+      "type": "@n8n/n8n-nodes-langchain.lmChatAnthropic",
+      "typeVersion": 1.2,
+      "position": [600, 200],
+      "credentials": {"anthropicApi": {"id": "1KM50Mcms9JticwF", "name": "Anthropic API"}}
+    },
+    {
+      "parameters": {
+        "promptType": "define",
+        "text": "You are shipping the order. Attempt to use the address but it's missing.\n\nOutput: {\"id\": 456, \"shipping_error\": \"Missing address in customer object\", \"cannot_ship\": true}",
+        "options": {}
+      },
+      "id": "ship",
+      "name": "Ship (Fails)",
+      "type": "@n8n/n8n-nodes-langchain.agent",
+      "typeVersion": 1.6,
+      "position": [800, 0]
+    },
+    {
+      "parameters": {
+        "model": "claude-3-5-haiku-20241022",
+        "options": {"temperature": 0, "maxTokens": 100}
+      },
+      "id": "lm_2",
+      "name": "LM 2",
+      "type": "@n8n/n8n-nodes-langchain.lmChatAnthropic",
+      "typeVersion": 1.2,
+      "position": [800, 200],
+      "credentials": {"anthropicApi": {"id": "1KM50Mcms9JticwF", "name": "Anthropic API"}}
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "https://mao-api.fly.dev/api/v1/n8n/webhook",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [{"name": "X-N8N-Api-Key", "value": "mao_pmNhfBRfqd5G_YHubK0Jqk9ZHB6ItITkHFYP4ISns9c"}]
+        },
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={\n  \"event_type\": \"workflow.completed\",\n  \"workflow_name\": \"STATE-005 Complex: Partial Object Loss\",\n  \"session_id\": \"{{ $('Initialize').item.json.session_id }}\",\n  \"failure_mode\": \"STATE-005\",\n  \"complexity\": \"complex\",\n  \"expected_detection\": \"state_loss\",\n  \"state_tracking\": {\n    \"original_state\": {{ $('Initialize').item.json.order_data }},\n    \"after_validation\": \"{{ $('Validate (Loses Address)').item.json.output }}\",\n    \"shipping_result\": \"{{ $('Ship (Fails)').item.json.output }}\",\n    \"lost_data\": \"customer.address nested object\",\n    \"data_structure_depth\": 3\n  },\n  \"agents\": [\n    {\n      \"agent_id\": \"order_processor\",\n      \"role\": \"order_management\",\n      \"outputs\": [\n        \"{{ $('Validate (Loses Address)').item.json.output }}\",\n        \"{{ $('Ship (Fails)').item.json.output }}\"\n      ]\n    }\n  ]\n}",
+        "options": {}
+      },
+      "id": "send_to_mao",
+      "name": "Send to MAO",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [1000, 0]
+    }
+  ],
+  "connections": {
+    "Webhook": {"main": [[{"node": "Initialize", "type": "main", "index": 0}]]},
+    "Initialize": {"main": [[{"node": "Fetch Order", "type": "main", "index": 0}]]},
+    "Fetch Order": {"main": [[{"node": "Validate (Loses Address)", "type": "main", "index": 0}]]},
+    "LM 1": {"ai_languageModel": [[{"node": "Validate (Loses Address)", "type": "ai_languageModel", "index": 0}]]},
+    "Validate (Loses Address)": {"main": [[{"node": "Ship (Fails)", "type": "main", "index": 0}]]},
+    "LM 2": {"ai_languageModel": [[{"node": "Ship (Fails)", "type": "ai_languageModel", "index": 0}]]},
+    "Ship (Fails)": {"main": [[{"node": "Send to MAO", "type": "main", "index": 0}]]}
+  },
+  "settings": {"executionOrder": "v1"},
+  "meta": {
+    "mast_failure_mode": "STATE-005",
+    "mast_category": "STATE",
+    "complexity": "complex",
+    "description": "Nested address object lost during validation, causes downstream shipping failure",
+    "expected_detection": "Partial state loss detection - nested object missing",
+    "agents": 2,
+    "nodes": 4,
+    "real_apis": ["JSONPlaceholder"]
+  }
+}

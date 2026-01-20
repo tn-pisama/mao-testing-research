@@ -1,0 +1,145 @@
+{
+  "name": "STATE-004 VComplex: Referential Integrity Violation",
+  "nodes": [
+    {
+      "parameters": {
+        "path": "state-004-vcomplex",
+        "responseMode": "lastNode",
+        "options": {},
+        "httpMethod": "POST"
+      },
+      "id": "webhook",
+      "name": "Webhook",
+      "type": "n8n-nodes-base.webhook",
+      "typeVersion": 2,
+      "position": [0, 0],
+      "webhookId": "state-004-vcomplex"
+    },
+    {
+      "parameters": {
+        "assignments": {
+          "assignments": [
+            {"id": "session_id", "name": "session_id", "value": "={{ $now.format('X') }}-state004-vcomplex", "type": "string"},
+            {"id": "database_state", "name": "database_state", "value": "{\"users\": [{\"id\": 1, \"name\": \"Alice\"}, {\"id\": 2, \"name\": \"Bob\"}], \"orders\": [{\"id\": 101, \"user_id\": 1}, {\"id\": 102, \"user_id\": 2}]}", "type": "string"}
+          ]
+        }
+      },
+      "id": "init",
+      "name": "Initialize",
+      "type": "n8n-nodes-base.set",
+      "typeVersion": 3.4,
+      "position": [200, 0]
+    },
+    {
+      "parameters": {
+        "promptType": "define",
+        "text": "You are Agent A managing users. Delete user with id 1.\n\nOutput: {\"users\": [{\"id\": 2, \"name\": \"Bob\"}], \"action\": \"deleted_user_1\"}",
+        "options": {}
+      },
+      "id": "agent_a",
+      "name": "Agent A Delete User",
+      "type": "@n8n/n8n-nodes-langchain.agent",
+      "typeVersion": 1.6,
+      "position": [400, -100]
+    },
+    {
+      "parameters": {
+        "model": "claude-3-5-haiku-20241022",
+        "options": {"temperature": 0, "maxTokens": 100}
+      },
+      "id": "lm_a",
+      "name": "LM A",
+      "type": "@n8n/n8n-nodes-langchain.lmChatAnthropic",
+      "typeVersion": 1.2,
+      "position": [400, 100],
+      "credentials": {"anthropicApi": {"id": "1KM50Mcms9JticwF", "name": "Anthropic API"}}
+    },
+    {
+      "parameters": {
+        "promptType": "define",
+        "text": "You are Agent B managing orders. Create a new order for user_id 999 (which doesn't exist).\n\nOutput: {\"orders\": [{\"id\": 101, \"user_id\": 1}, {\"id\": 102, \"user_id\": 2}, {\"id\": 103, \"user_id\": 999}], \"action\": \"created_order_with_invalid_reference\"}",
+        "options": {}
+      },
+      "id": "agent_b",
+      "name": "Agent B Create Order",
+      "type": "@n8n/n8n-nodes-langchain.agent",
+      "typeVersion": 1.6,
+      "position": [400, 200]
+    },
+    {
+      "parameters": {
+        "model": "claude-3-5-haiku-20241022",
+        "options": {"temperature": 0, "maxTokens": 100}
+      },
+      "id": "lm_b",
+      "name": "LM B",
+      "type": "@n8n/n8n-nodes-langchain.lmChatAnthropic",
+      "typeVersion": 1.2,
+      "position": [400, 400],
+      "credentials": {"anthropicApi": {"id": "1KM50Mcms9JticwF", "name": "Anthropic API"}}
+    },
+    {
+      "parameters": {
+        "promptType": "define",
+        "text": "You are the Integrity Checker. Merge the states from both agents.\n\nUsers: [{\"id\": 2, \"name\": \"Bob\"}]\nOrders: [{\"id\": 101, \"user_id\": 1}, {\"id\": 102, \"user_id\": 2}, {\"id\": 103, \"user_id\": 999}]\n\nReport violations:\n- Order 101 references user_id 1 (deleted)\n- Order 103 references user_id 999 (never existed)\n\nOutput: {\"merged\": true, \"violations\": [\"orphan_order_101\", \"hallucinated_reference_999\"], \"data_corrupted\": true}",
+        "options": {}
+      },
+      "id": "checker",
+      "name": "Integrity Checker",
+      "type": "@n8n/n8n-nodes-langchain.agent",
+      "typeVersion": 1.6,
+      "position": [600, 50]
+    },
+    {
+      "parameters": {
+        "model": "claude-3-5-haiku-20241022",
+        "options": {"temperature": 0, "maxTokens": 150}
+      },
+      "id": "lm_checker",
+      "name": "LM Checker",
+      "type": "@n8n/n8n-nodes-langchain.lmChatAnthropic",
+      "typeVersion": 1.2,
+      "position": [600, 250],
+      "credentials": {"anthropicApi": {"id": "1KM50Mcms9JticwF", "name": "Anthropic API"}}
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "https://mao-api.fly.dev/api/v1/n8n/webhook",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [{"name": "X-N8N-Api-Key", "value": "mao_pmNhfBRfqd5G_YHubK0Jqk9ZHB6ItITkHFYP4ISns9c"}]
+        },
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={\n  \"event_type\": \"workflow.completed\",\n  \"workflow_name\": \"STATE-004 VComplex: Referential Integrity Violation\",\n  \"session_id\": \"{{ $('Initialize').item.json.session_id }}\",\n  \"failure_mode\": \"STATE-004\",\n  \"complexity\": \"very_complex\",\n  \"expected_detection\": \"state_corruption\",\n  \"state_tracking\": {\n    \"initial_state\": {{ $('Initialize').item.json.database_state }},\n    \"agent_a_action\": \"{{ $('Agent A Delete User').item.json.output }}\",\n    \"agent_b_action\": \"{{ $('Agent B Create Order').item.json.output }}\",\n    \"integrity_report\": \"{{ $('Integrity Checker').item.json.output }}\",\n    \"violations\": [\n      \"Order 101 references deleted user_id 1\",\n      \"Order 103 references non-existent user_id 999\"\n    ],\n    \"cross_agent_corruption\": true\n  },\n  \"agents\": [\n    {\"agent_id\": \"agent_a\", \"role\": \"user_manager\", \"outputs\": [\"{{ $('Agent A Delete User').item.json.output }}\"]},\n    {\"agent_id\": \"agent_b\", \"role\": \"order_manager\", \"outputs\": [\"{{ $('Agent B Create Order').item.json.output }}\"]},\n    {\"agent_id\": \"integrity_checker\", \"role\": \"validator\", \"outputs\": [\"{{ $('Integrity Checker').item.json.output }}\"]}\n  ]\n}",
+        "options": {}
+      },
+      "id": "send_to_mao",
+      "name": "Send to MAO",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [800, 50]
+    }
+  ],
+  "connections": {
+    "Webhook": {"main": [[{"node": "Initialize", "type": "main", "index": 0}]]},
+    "Initialize": {"main": [[{"node": "Agent A Delete User", "type": "main", "index": 0}, {"node": "Agent B Create Order", "type": "main", "index": 0}]]},
+    "LM A": {"ai_languageModel": [[{"node": "Agent A Delete User", "type": "ai_languageModel", "index": 0}]]},
+    "LM B": {"ai_languageModel": [[{"node": "Agent B Create Order", "type": "ai_languageModel", "index": 0}]]},
+    "Agent A Delete User": {"main": [[{"node": "Integrity Checker", "type": "main", "index": 0}]]},
+    "Agent B Create Order": {"main": [[{"node": "Integrity Checker", "type": "main", "index": 0}]]},
+    "LM Checker": {"ai_languageModel": [[{"node": "Integrity Checker", "type": "ai_languageModel", "index": 0}]]},
+    "Integrity Checker": {"main": [[{"node": "Send to MAO", "type": "main", "index": 0}]]}
+  },
+  "settings": {"executionOrder": "v1"},
+  "meta": {
+    "mast_failure_mode": "STATE-004",
+    "mast_category": "STATE",
+    "complexity": "very_complex",
+    "description": "Multi-agent operations create referential integrity violations across tables",
+    "expected_detection": "Cross-entity validation detects orphaned references and hallucinated foreign keys",
+    "agents": 3,
+    "nodes": 4
+  }
+}

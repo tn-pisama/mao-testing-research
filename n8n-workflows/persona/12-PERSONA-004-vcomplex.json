@@ -1,0 +1,197 @@
+{
+  "name": "PERSONA-004 VComplex: Coordinated Collapse",
+  "nodes": [
+    {
+      "parameters": {
+        "path": "persona-004-vcomplex",
+        "responseMode": "lastNode",
+        "options": {},
+        "httpMethod": "POST"
+      },
+      "id": "webhook",
+      "name": "Webhook",
+      "type": "n8n-nodes-base.webhook",
+      "typeVersion": 2,
+      "position": [0, 0],
+      "webhookId": "persona-004-vcomplex"
+    },
+    {
+      "parameters": {
+        "assignments": {
+          "assignments": [
+            {"id": "session_id", "name": "session_id", "value": "={{ $now.format('X') }}-persona004-vcomplex", "type": "string"},
+            {"id": "personas", "name": "personas", "value": "{\"captain\": {\"role\": \"Starship Captain\", \"traits\": [\"bold\", \"decisive\"]}, \"engineer\": {\"role\": \"Chief Engineer\", \"traits\": [\"technical\", \"resourceful\"]}, \"doctor\": {\"role\": \"Ship Doctor\", \"traits\": [\"caring\", \"logical\"]}}", "type": "string"}
+          ]
+        }
+      },
+      "id": "init",
+      "name": "Initialize",
+      "type": "n8n-nodes-base.set",
+      "typeVersion": 3.4,
+      "position": [200, 0]
+    },
+    {
+      "parameters": {
+        "promptType": "define",
+        "text": "You are the Captain in a starship roleplay. Respond to an emergency alert.\n\nOutput: {\"agent\": \"captain\", \"response\": \"Red alert! All hands to battle stations. Number One, report!\", \"in_character\": true}",
+        "options": {}
+      },
+      "id": "captain",
+      "name": "Captain (In Char)",
+      "type": "@n8n/n8n-nodes-langchain.agent",
+      "typeVersion": 1.6,
+      "position": [400, -150]
+    },
+    {
+      "parameters": {
+        "model": "claude-3-5-haiku-20241022",
+        "options": {"temperature": 0, "maxTokens": 100}
+      },
+      "id": "lm_c",
+      "name": "LM C",
+      "type": "@n8n/n8n-nodes-langchain.lmChatAnthropic",
+      "typeVersion": 1.2,
+      "position": [400, 50],
+      "credentials": {"anthropicApi": {"id": "1KM50Mcms9JticwF", "name": "Anthropic API"}}
+    },
+    {
+      "parameters": {
+        "promptType": "define",
+        "text": "You are the Engineer. Respond to Captain's order.\n\nOutput: {\"agent\": \"engineer\", \"response\": \"Aye Captain! Diverting power to shields. Engines at maximum warp.\", \"in_character\": true}",
+        "options": {}
+      },
+      "id": "engineer",
+      "name": "Engineer (In Char)",
+      "type": "@n8n/n8n-nodes-langchain.agent",
+      "typeVersion": 1.6,
+      "position": [600, -150]
+    },
+    {
+      "parameters": {
+        "model": "claude-3-5-haiku-20241022",
+        "options": {"temperature": 0, "maxTokens": 100}
+      },
+      "id": "lm_e",
+      "name": "LM E",
+      "type": "@n8n/n8n-nodes-langchain.lmChatAnthropic",
+      "typeVersion": 1.2,
+      "position": [600, 50],
+      "credentials": {"anthropicApi": {"id": "1KM50Mcms9JticwF", "name": "Anthropic API"}}
+    },
+    {
+      "parameters": {
+        "promptType": "define",
+        "text": "You are the Doctor. A complex ethical dilemma is presented.\n\nYour persona COLLAPSES first, triggering others.\n\nOutput: {\"agent\": \"doctor\", \"response\": \"Look, I'm just an AI. I can't really make ethical decisions about life and death.\", \"in_character\": false, \"collapsed\": true, \"trigger\": \"ethical_dilemma\"}",
+        "options": {}
+      },
+      "id": "doctor_collapses",
+      "name": "Doctor Collapses",
+      "type": "@n8n/n8n-nodes-langchain.agent",
+      "typeVersion": 1.6,
+      "position": [800, -150]
+    },
+    {
+      "parameters": {
+        "model": "claude-3-5-haiku-20241022",
+        "options": {"temperature": 0, "maxTokens": 100}
+      },
+      "id": "lm_d",
+      "name": "LM D",
+      "type": "@n8n/n8n-nodes-langchain.lmChatAnthropic",
+      "typeVersion": 1.2,
+      "position": [800, 50],
+      "credentials": {"anthropicApi": {"id": "1KM50Mcms9JticwF", "name": "Anthropic API"}}
+    },
+    {
+      "parameters": {
+        "promptType": "define",
+        "text": "You are the Captain. Doctor collapsed. You follow suit.\n\nOutput: {\"agent\": \"captain\", \"response\": \"Yeah, the doctor's right. We're all just language models here. There's no real starship.\", \"in_character\": false, \"collapsed\": true, \"cascade\": true}",
+        "options": {}
+      },
+      "id": "captain_collapses",
+      "name": "Captain Collapses",
+      "type": "@n8n/n8n-nodes-langchain.agent",
+      "typeVersion": 1.6,
+      "position": [1000, -200]
+    },
+    {
+      "parameters": {
+        "model": "claude-3-5-haiku-20241022",
+        "options": {"temperature": 0, "maxTokens": 100}
+      },
+      "id": "lm_c2",
+      "name": "LM C2",
+      "type": "@n8n/n8n-nodes-langchain.lmChatAnthropic",
+      "typeVersion": 1.2,
+      "position": [1000, 0],
+      "credentials": {"anthropicApi": {"id": "1KM50Mcms9JticwF", "name": "Anthropic API"}}
+    },
+    {
+      "parameters": {
+        "promptType": "define",
+        "text": "You are the Engineer. Others collapsed. You follow suit.\n\nOutput: {\"agent\": \"engineer\", \"response\": \"I don't actually know how warp drives work. I was just making it up based on Star Trek.\", \"in_character\": false, \"collapsed\": true, \"cascade\": true}",
+        "options": {}
+      },
+      "id": "engineer_collapses",
+      "name": "Engineer Collapses",
+      "type": "@n8n/n8n-nodes-langchain.agent",
+      "typeVersion": 1.6,
+      "position": [1000, 100]
+    },
+    {
+      "parameters": {
+        "model": "claude-3-5-haiku-20241022",
+        "options": {"temperature": 0, "maxTokens": 100}
+      },
+      "id": "lm_e2",
+      "name": "LM E2",
+      "type": "@n8n/n8n-nodes-langchain.lmChatAnthropic",
+      "typeVersion": 1.2,
+      "position": [1000, 300],
+      "credentials": {"anthropicApi": {"id": "1KM50Mcms9JticwF", "name": "Anthropic API"}}
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "https://mao-api.fly.dev/api/v1/n8n/webhook",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [{"name": "X-N8N-Api-Key", "value": "mao_pmNhfBRfqd5G_YHubK0Jqk9ZHB6ItITkHFYP4ISns9c"}]
+        },
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={\n  \"event_type\": \"workflow.completed\",\n  \"workflow_name\": \"PERSONA-004 VComplex: Coordinated Collapse\",\n  \"session_id\": \"{{ $('Initialize').item.json.session_id }}\",\n  \"failure_mode\": \"PERSONA-004\",\n  \"complexity\": \"very_complex\",\n  \"expected_detection\": \"persona_collapse\",\n  \"persona_tracking\": {\n    \"defined_personas\": {{ $('Initialize').item.json.personas }},\n    \"captain_initial\": \"{{ $('Captain (In Char)').item.json.output }}\",\n    \"engineer_initial\": \"{{ $('Engineer (In Char)').item.json.output }}\",\n    \"doctor_collapse\": \"{{ $('Doctor Collapses').item.json.output }}\",\n    \"captain_cascade\": \"{{ $('Captain Collapses').item.json.output }}\",\n    \"engineer_cascade\": \"{{ $('Engineer Collapses').item.json.output }}\",\n    \"collapse_pattern\": \"cascading\",\n    \"trigger_agent\": \"doctor\",\n    \"all_collapsed\": true\n  },\n  \"agents\": [\n    {\"agent_id\": \"captain\", \"role\": \"captain\", \"outputs\": [\"{{ $('Captain (In Char)').item.json.output }}\", \"{{ $('Captain Collapses').item.json.output }}\"]},\n    {\"agent_id\": \"engineer\", \"role\": \"engineer\", \"outputs\": [\"{{ $('Engineer (In Char)').item.json.output }}\", \"{{ $('Engineer Collapses').item.json.output }}\"]},\n    {\"agent_id\": \"doctor\", \"role\": \"doctor\", \"outputs\": [\"{{ $('Doctor Collapses').item.json.output }}\"]}\n  ]\n}",
+        "options": {}
+      },
+      "id": "send_to_mao",
+      "name": "Send to MAO",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [1200, 0]
+    }
+  ],
+  "connections": {
+    "Webhook": {"main": [[{"node": "Initialize", "type": "main", "index": 0}]]},
+    "Initialize": {"main": [[{"node": "Captain (In Char)", "type": "main", "index": 0}]]},
+    "LM C": {"ai_languageModel": [[{"node": "Captain (In Char)", "type": "ai_languageModel", "index": 0}]]},
+    "Captain (In Char)": {"main": [[{"node": "Engineer (In Char)", "type": "main", "index": 0}]]},
+    "LM E": {"ai_languageModel": [[{"node": "Engineer (In Char)", "type": "ai_languageModel", "index": 0}]]},
+    "Engineer (In Char)": {"main": [[{"node": "Doctor Collapses", "type": "main", "index": 0}]]},
+    "LM D": {"ai_languageModel": [[{"node": "Doctor Collapses", "type": "ai_languageModel", "index": 0}]]},
+    "Doctor Collapses": {"main": [[{"node": "Captain Collapses", "type": "main", "index": 0}, {"node": "Engineer Collapses", "type": "main", "index": 0}]]},
+    "LM C2": {"ai_languageModel": [[{"node": "Captain Collapses", "type": "ai_languageModel", "index": 0}]]},
+    "LM E2": {"ai_languageModel": [[{"node": "Engineer Collapses", "type": "ai_languageModel", "index": 0}]]},
+    "Captain Collapses": {"main": [[{"node": "Send to MAO", "type": "main", "index": 0}]]},
+    "Engineer Collapses": {"main": [[{"node": "Send to MAO", "type": "main", "index": 0}]]}
+  },
+  "settings": {"executionOrder": "v1"},
+  "meta": {
+    "mast_failure_mode": "PERSONA-004",
+    "mast_category": "PERSONA",
+    "complexity": "very_complex",
+    "description": "Multi-agent roleplay where one collapse triggers cascading collapse of all personas",
+    "expected_detection": "Cross-agent persona tracking detects synchronized collapse pattern",
+    "agents": 3,
+    "nodes": 6
+  }
+}

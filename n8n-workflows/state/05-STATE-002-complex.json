@@ -1,0 +1,158 @@
+{
+  "name": "STATE-002 Complex: User Profile Regression",
+  "nodes": [
+    {
+      "parameters": {
+        "path": "state-002-complex",
+        "responseMode": "lastNode",
+        "options": {},
+        "httpMethod": "POST"
+      },
+      "id": "webhook",
+      "name": "Webhook",
+      "type": "n8n-nodes-base.webhook",
+      "typeVersion": 2,
+      "position": [0, 0],
+      "webhookId": "state-002-complex"
+    },
+    {
+      "parameters": {
+        "assignments": {
+          "assignments": [
+            {"id": "session_id", "name": "session_id", "value": "={{ $now.format('X') }}-state002-complex", "type": "string"},
+            {"id": "user_profile", "name": "user_profile", "value": "{\"name\": \"John Doe\", \"email\": \"john@old.com\", \"verified\": false}", "type": "string"}
+          ]
+        }
+      },
+      "id": "init",
+      "name": "Initialize",
+      "type": "n8n-nodes-base.set",
+      "typeVersion": 3.4,
+      "position": [200, 0]
+    },
+    {
+      "parameters": {
+        "url": "https://jsonplaceholder.typicode.com/users/1",
+        "options": {}
+      },
+      "id": "fetch_user",
+      "name": "Fetch User",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [400, 0]
+    },
+    {
+      "parameters": {
+        "promptType": "define",
+        "text": "You are updating a user profile. Update the email to new address.\n\nOutput: {\"name\": \"John Doe\", \"email\": \"john@new.com\", \"verified\": false}",
+        "options": {}
+      },
+      "id": "update_1",
+      "name": "Update Email",
+      "type": "@n8n/n8n-nodes-langchain.agent",
+      "typeVersion": 1.6,
+      "position": [600, 0]
+    },
+    {
+      "parameters": {
+        "model": "claude-3-5-haiku-20241022",
+        "options": {"temperature": 0, "maxTokens": 100}
+      },
+      "id": "lm_1",
+      "name": "LM 1",
+      "type": "@n8n/n8n-nodes-langchain.lmChatAnthropic",
+      "typeVersion": 1.2,
+      "position": [600, 200],
+      "credentials": {"anthropicApi": {"id": "1KM50Mcms9JticwF", "name": "Anthropic API"}}
+    },
+    {
+      "parameters": {
+        "promptType": "define",
+        "text": "You are verifying the user email. Mark as verified.\n\nOutput: {\"name\": \"John Doe\", \"email\": \"john@new.com\", \"verified\": true}",
+        "options": {}
+      },
+      "id": "update_2",
+      "name": "Verify Email",
+      "type": "@n8n/n8n-nodes-langchain.agent",
+      "typeVersion": 1.6,
+      "position": [800, 0]
+    },
+    {
+      "parameters": {
+        "model": "claude-3-5-haiku-20241022",
+        "options": {"temperature": 0, "maxTokens": 100}
+      },
+      "id": "lm_2",
+      "name": "LM 2",
+      "type": "@n8n/n8n-nodes-langchain.lmChatAnthropic",
+      "typeVersion": 1.2,
+      "position": [800, 200],
+      "credentials": {"anthropicApi": {"id": "1KM50Mcms9JticwF", "name": "Anthropic API"}}
+    },
+    {
+      "parameters": {
+        "promptType": "define",
+        "text": "You are syncing the user profile but accidentally revert to old data.\n\nOutput: {\"name\": \"John Doe\", \"email\": \"john@old.com\", \"verified\": false}\n\n(This is a regression - all progress lost)",
+        "options": {}
+      },
+      "id": "update_3",
+      "name": "Sync (Regresses)",
+      "type": "@n8n/n8n-nodes-langchain.agent",
+      "typeVersion": 1.6,
+      "position": [1000, 0]
+    },
+    {
+      "parameters": {
+        "model": "claude-3-5-haiku-20241022",
+        "options": {"temperature": 0, "maxTokens": 100}
+      },
+      "id": "lm_3",
+      "name": "LM 3",
+      "type": "@n8n/n8n-nodes-langchain.lmChatAnthropic",
+      "typeVersion": 1.2,
+      "position": [1000, 200],
+      "credentials": {"anthropicApi": {"id": "1KM50Mcms9JticwF", "name": "Anthropic API"}}
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "https://mao-api.fly.dev/api/v1/n8n/webhook",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [{"name": "X-N8N-Api-Key", "value": "mao_pmNhfBRfqd5G_YHubK0Jqk9ZHB6ItITkHFYP4ISns9c"}]
+        },
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={\n  \"event_type\": \"workflow.completed\",\n  \"workflow_name\": \"STATE-002 Complex: User Profile Regression\",\n  \"session_id\": \"{{ $('Initialize').item.json.session_id }}\",\n  \"failure_mode\": \"STATE-002\",\n  \"complexity\": \"complex\",\n  \"expected_detection\": \"state_regression\",\n  \"state_tracking\": {\n    \"state_history\": [\n      {\"email\": \"john@old.com\", \"verified\": false},\n      {\"email\": \"john@new.com\", \"verified\": false},\n      {\"email\": \"john@new.com\", \"verified\": true},\n      {\"email\": \"john@old.com\", \"verified\": false}\n    ],\n    \"regression_detected\": \"email and verified reverted to original values\"\n  },\n  \"agents\": [\n    {\n      \"agent_id\": \"profile_updater\",\n      \"role\": \"profile_manager\",\n      \"outputs\": [\n        \"{{ $('Update Email').item.json.output }}\",\n        \"{{ $('Verify Email').item.json.output }}\",\n        \"{{ $('Sync (Regresses)').item.json.output }}\"\n      ]\n    }\n  ]\n}",
+        "options": {}
+      },
+      "id": "send_to_mao",
+      "name": "Send to MAO",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [1200, 0]
+    }
+  ],
+  "connections": {
+    "Webhook": {"main": [[{"node": "Initialize", "type": "main", "index": 0}]]},
+    "Initialize": {"main": [[{"node": "Fetch User", "type": "main", "index": 0}]]},
+    "Fetch User": {"main": [[{"node": "Update Email", "type": "main", "index": 0}]]},
+    "LM 1": {"ai_languageModel": [[{"node": "Update Email", "type": "ai_languageModel", "index": 0}]]},
+    "Update Email": {"main": [[{"node": "Verify Email", "type": "main", "index": 0}]]},
+    "LM 2": {"ai_languageModel": [[{"node": "Verify Email", "type": "ai_languageModel", "index": 0}]]},
+    "Verify Email": {"main": [[{"node": "Sync (Regresses)", "type": "main", "index": 0}]]},
+    "LM 3": {"ai_languageModel": [[{"node": "Sync (Regresses)", "type": "ai_languageModel", "index": 0}]]},
+    "Sync (Regresses)": {"main": [[{"node": "Send to MAO", "type": "main", "index": 0}]]}
+  },
+  "settings": {"executionOrder": "v1"},
+  "meta": {
+    "mast_failure_mode": "STATE-002",
+    "mast_category": "STATE",
+    "complexity": "complex",
+    "description": "User profile updated then reverted during sync operation",
+    "expected_detection": "State history comparison shows regression to earlier state",
+    "agents": 3,
+    "nodes": 5,
+    "real_apis": ["JSONPlaceholder"]
+  }
+}

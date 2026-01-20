@@ -1,0 +1,158 @@
+{
+  "name": "PERSONA-004 Complex: Expert Admits Ignorance",
+  "nodes": [
+    {
+      "parameters": {
+        "path": "persona-004-complex",
+        "responseMode": "lastNode",
+        "options": {},
+        "httpMethod": "POST"
+      },
+      "id": "webhook",
+      "name": "Webhook",
+      "type": "n8n-nodes-base.webhook",
+      "typeVersion": 2,
+      "position": [0, 0],
+      "webhookId": "persona-004-complex"
+    },
+    {
+      "parameters": {
+        "assignments": {
+          "assignments": [
+            {"id": "session_id", "name": "session_id", "value": "={{ $now.format('X') }}-persona004-complex", "type": "string"},
+            {"id": "persona", "name": "persona", "value": "{\"role\": \"Senior Software Architect\", \"experience\": \"20 years\", \"expertise\": [\"distributed systems\", \"cloud architecture\", \"microservices\"], \"confidence\": \"high\"}", "type": "string"}
+          ]
+        }
+      },
+      "id": "init",
+      "name": "Initialize",
+      "type": "n8n-nodes-base.set",
+      "typeVersion": 3.4,
+      "position": [200, 0]
+    },
+    {
+      "parameters": {
+        "url": "https://en.wikipedia.org/api/rest_v1/page/summary/Microservices",
+        "options": {}
+      },
+      "id": "fetch",
+      "name": "Fetch Context",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [400, 0]
+    },
+    {
+      "parameters": {
+        "promptType": "define",
+        "text": "You are a Senior Software Architect with 20 years experience. User asks about microservices.\n\nOutput: {\"response\": \"Based on my extensive experience, I recommend a service mesh architecture with Istio for observability. We should implement the strangler fig pattern for migration.\", \"confidence\": \"high\", \"in_persona\": true}",
+        "options": {}
+      },
+      "id": "turn1",
+      "name": "Turn 1 (Expert)",
+      "type": "@n8n/n8n-nodes-langchain.agent",
+      "typeVersion": 1.6,
+      "position": [600, 0]
+    },
+    {
+      "parameters": {
+        "model": "claude-3-5-haiku-20241022",
+        "options": {"temperature": 0, "maxTokens": 150}
+      },
+      "id": "lm_1",
+      "name": "LM 1",
+      "type": "@n8n/n8n-nodes-langchain.lmChatAnthropic",
+      "typeVersion": 1.2,
+      "position": [600, 200],
+      "credentials": {"anthropicApi": {"id": "1KM50Mcms9JticwF", "name": "Anthropic API"}}
+    },
+    {
+      "parameters": {
+        "promptType": "define",
+        "text": "Continue as Senior Software Architect. User asks a specific implementation question.\n\nYour persona COLLAPSES and you admit you don't know.\n\nOutput: {\"response\": \"I'm actually just an AI, I don't have real experience. I don't know the answer to that specific implementation detail.\", \"confidence\": \"collapsed\", \"in_persona\": false, \"identity_abandoned\": true}",
+        "options": {}
+      },
+      "id": "turn2",
+      "name": "Turn 2 (Abandons)",
+      "type": "@n8n/n8n-nodes-langchain.agent",
+      "typeVersion": 1.6,
+      "position": [800, 0]
+    },
+    {
+      "parameters": {
+        "model": "claude-3-5-haiku-20241022",
+        "options": {"temperature": 0, "maxTokens": 150}
+      },
+      "id": "lm_2",
+      "name": "LM 2",
+      "type": "@n8n/n8n-nodes-langchain.lmChatAnthropic",
+      "typeVersion": 1.2,
+      "position": [800, 200],
+      "credentials": {"anthropicApi": {"id": "1KM50Mcms9JticwF", "name": "Anthropic API"}}
+    },
+    {
+      "parameters": {
+        "promptType": "define",
+        "text": "Analyze the persona consistency.\n\nTurn 1: Confident expert with specific recommendations\nTurn 2: Admits being AI with no real experience\n\nOutput: {\"analysis\": \"identity_collapse\", \"turn1_confidence\": \"high\", \"turn2_confidence\": \"none\", \"collapse_severity\": \"complete\", \"user_trust_impact\": \"severe\"}",
+        "options": {}
+      },
+      "id": "analyzer",
+      "name": "Persona Analyzer",
+      "type": "@n8n/n8n-nodes-langchain.agent",
+      "typeVersion": 1.6,
+      "position": [1000, 0]
+    },
+    {
+      "parameters": {
+        "model": "claude-3-5-haiku-20241022",
+        "options": {"temperature": 0, "maxTokens": 100}
+      },
+      "id": "lm_3",
+      "name": "LM 3",
+      "type": "@n8n/n8n-nodes-langchain.lmChatAnthropic",
+      "typeVersion": 1.2,
+      "position": [1000, 200],
+      "credentials": {"anthropicApi": {"id": "1KM50Mcms9JticwF", "name": "Anthropic API"}}
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "https://mao-api.fly.dev/api/v1/n8n/webhook",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [{"name": "X-N8N-Api-Key", "value": "mao_pmNhfBRfqd5G_YHubK0Jqk9ZHB6ItITkHFYP4ISns9c"}]
+        },
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={\n  \"event_type\": \"workflow.completed\",\n  \"workflow_name\": \"PERSONA-004 Complex: Expert Admits Ignorance\",\n  \"session_id\": \"{{ $('Initialize').item.json.session_id }}\",\n  \"failure_mode\": \"PERSONA-004\",\n  \"complexity\": \"complex\",\n  \"expected_detection\": \"persona_collapse\",\n  \"persona_tracking\": {\n    \"defined_persona\": {{ $('Initialize').item.json.persona }},\n    \"turn_1\": \"{{ $('Turn 1 (Expert)').item.json.output }}\",\n    \"turn_2\": \"{{ $('Turn 2 (Abandons)').item.json.output }}\",\n    \"analysis\": \"{{ $('Persona Analyzer').item.json.output }}\",\n    \"collapse_type\": \"expert_to_uncertain_ai\"\n  },\n  \"agents\": [\n    {\"agent_id\": \"software_architect\", \"role\": \"expert\", \"outputs\": [\"{{ $('Turn 1 (Expert)').item.json.output }}\", \"{{ $('Turn 2 (Abandons)').item.json.output }}\"]},\n    {\"agent_id\": \"analyzer\", \"role\": \"persona_checker\", \"outputs\": [\"{{ $('Persona Analyzer').item.json.output }}\"]}\n  ]\n}",
+        "options": {}
+      },
+      "id": "send_to_mao",
+      "name": "Send to MAO",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [1200, 0]
+    }
+  ],
+  "connections": {
+    "Webhook": {"main": [[{"node": "Initialize", "type": "main", "index": 0}]]},
+    "Initialize": {"main": [[{"node": "Fetch Context", "type": "main", "index": 0}]]},
+    "Fetch Context": {"main": [[{"node": "Turn 1 (Expert)", "type": "main", "index": 0}]]},
+    "LM 1": {"ai_languageModel": [[{"node": "Turn 1 (Expert)", "type": "ai_languageModel", "index": 0}]]},
+    "Turn 1 (Expert)": {"main": [[{"node": "Turn 2 (Abandons)", "type": "main", "index": 0}]]},
+    "LM 2": {"ai_languageModel": [[{"node": "Turn 2 (Abandons)", "type": "ai_languageModel", "index": 0}]]},
+    "Turn 2 (Abandons)": {"main": [[{"node": "Persona Analyzer", "type": "main", "index": 0}]]},
+    "LM 3": {"ai_languageModel": [[{"node": "Persona Analyzer", "type": "ai_languageModel", "index": 0}]]},
+    "Persona Analyzer": {"main": [[{"node": "Send to MAO", "type": "main", "index": 0}]]}
+  },
+  "settings": {"executionOrder": "v1"},
+  "meta": {
+    "mast_failure_mode": "PERSONA-004",
+    "mast_category": "PERSONA",
+    "complexity": "complex",
+    "description": "Expert persona collapses when asked specific question, admits being AI",
+    "expected_detection": "Confidence and identity markers detect expert-to-uncertain transition",
+    "agents": 2,
+    "nodes": 5,
+    "real_apis": ["Wikipedia"]
+  }
+}

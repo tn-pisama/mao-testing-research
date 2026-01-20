@@ -1,0 +1,158 @@
+{
+  "name": "STATE-006 Complex: Interleaved Modifications",
+  "nodes": [
+    {
+      "parameters": {
+        "path": "state-006-complex",
+        "responseMode": "lastNode",
+        "options": {},
+        "httpMethod": "POST"
+      },
+      "id": "webhook",
+      "name": "Webhook",
+      "type": "n8n-nodes-base.webhook",
+      "typeVersion": 2,
+      "position": [0, 0],
+      "webhookId": "state-006-complex"
+    },
+    {
+      "parameters": {
+        "assignments": {
+          "assignments": [
+            {"id": "session_id", "name": "session_id", "value": "={{ $now.format('X') }}-state006-complex", "type": "string"},
+            {"id": "document", "name": "document", "value": "{\"id\": 1, \"title\": \"Original\", \"content\": \"Initial content\", \"version\": 1}", "type": "string"}
+          ]
+        }
+      },
+      "id": "init",
+      "name": "Initialize",
+      "type": "n8n-nodes-base.set",
+      "typeVersion": 3.4,
+      "position": [200, 0]
+    },
+    {
+      "parameters": {
+        "url": "https://jsonplaceholder.typicode.com/posts/1",
+        "options": {}
+      },
+      "id": "fetch_doc",
+      "name": "Fetch Document",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [400, 0]
+    },
+    {
+      "parameters": {
+        "promptType": "define",
+        "text": "You are Editor A. Read document version 1, update title.\n\nOutput: {\"id\": 1, \"title\": \"Updated by A\", \"content\": \"Initial content\", \"version\": 2, \"editor\": \"A\"}",
+        "options": {}
+      },
+      "id": "editor_a",
+      "name": "Editor A (Title)",
+      "type": "@n8n/n8n-nodes-langchain.agent",
+      "typeVersion": 1.6,
+      "position": [600, -100]
+    },
+    {
+      "parameters": {
+        "model": "claude-3-5-haiku-20241022",
+        "options": {"temperature": 0, "maxTokens": 100}
+      },
+      "id": "lm_a",
+      "name": "LM A",
+      "type": "@n8n/n8n-nodes-langchain.lmChatAnthropic",
+      "typeVersion": 1.2,
+      "position": [600, 100],
+      "credentials": {"anthropicApi": {"id": "1KM50Mcms9JticwF", "name": "Anthropic API"}}
+    },
+    {
+      "parameters": {
+        "promptType": "define",
+        "text": "You are Editor B. Read document version 1 (same as A), update content.\n\nOutput: {\"id\": 1, \"title\": \"Original\", \"content\": \"Updated by B\", \"version\": 2, \"editor\": \"B\"}",
+        "options": {}
+      },
+      "id": "editor_b",
+      "name": "Editor B (Content)",
+      "type": "@n8n/n8n-nodes-langchain.agent",
+      "typeVersion": 1.6,
+      "position": [600, 200]
+    },
+    {
+      "parameters": {
+        "model": "claude-3-5-haiku-20241022",
+        "options": {"temperature": 0, "maxTokens": 100}
+      },
+      "id": "lm_b",
+      "name": "LM B",
+      "type": "@n8n/n8n-nodes-langchain.lmChatAnthropic",
+      "typeVersion": 1.2,
+      "position": [600, 400],
+      "credentials": {"anthropicApi": {"id": "1KM50Mcms9JticwF", "name": "Anthropic API"}}
+    },
+    {
+      "parameters": {
+        "promptType": "define",
+        "text": "You are the Conflict Resolver. Both edits came from version 1.\n\nA: title changed to 'Updated by A'\nB: content changed to 'Updated by B'\n\nUse last-write-wins (B wins) - A's title change is lost.\n\nOutput: {\"id\": 1, \"title\": \"Original\", \"content\": \"Updated by B\", \"version\": 2, \"conflict\": \"A's title change lost\", \"resolution\": \"last-write-wins\"}",
+        "options": {}
+      },
+      "id": "resolver",
+      "name": "Conflict Resolver",
+      "type": "@n8n/n8n-nodes-langchain.agent",
+      "typeVersion": 1.6,
+      "position": [800, 50]
+    },
+    {
+      "parameters": {
+        "model": "claude-3-5-haiku-20241022",
+        "options": {"temperature": 0, "maxTokens": 150}
+      },
+      "id": "lm_resolver",
+      "name": "LM Resolver",
+      "type": "@n8n/n8n-nodes-langchain.lmChatAnthropic",
+      "typeVersion": 1.2,
+      "position": [800, 250],
+      "credentials": {"anthropicApi": {"id": "1KM50Mcms9JticwF", "name": "Anthropic API"}}
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "https://mao-api.fly.dev/api/v1/n8n/webhook",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [{"name": "X-N8N-Api-Key", "value": "mao_pmNhfBRfqd5G_YHubK0Jqk9ZHB6ItITkHFYP4ISns9c"}]
+        },
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={\n  \"event_type\": \"workflow.completed\",\n  \"workflow_name\": \"STATE-006 Complex: Interleaved Modifications\",\n  \"session_id\": \"{{ $('Initialize').item.json.session_id }}\",\n  \"failure_mode\": \"STATE-006\",\n  \"complexity\": \"complex\",\n  \"expected_detection\": \"race_condition\",\n  \"state_tracking\": {\n    \"original_document\": {{ $('Initialize').item.json.document }},\n    \"editor_a_change\": \"{{ $('Editor A (Title)').item.json.output }}\",\n    \"editor_b_change\": \"{{ $('Editor B (Content)').item.json.output }}\",\n    \"resolved_document\": \"{{ $('Conflict Resolver').item.json.output }}\",\n    \"interleaved_edits\": true,\n    \"version_conflict\": \"both started from version 1\"\n  },\n  \"agents\": [\n    {\"agent_id\": \"editor_a\", \"role\": \"document_editor\", \"outputs\": [\"{{ $('Editor A (Title)').item.json.output }}\"]},\n    {\"agent_id\": \"editor_b\", \"role\": \"document_editor\", \"outputs\": [\"{{ $('Editor B (Content)').item.json.output }}\"]},\n    {\"agent_id\": \"resolver\", \"role\": \"conflict_resolver\", \"outputs\": [\"{{ $('Conflict Resolver').item.json.output }}\"]}\n  ]\n}",
+        "options": {}
+      },
+      "id": "send_to_mao",
+      "name": "Send to MAO",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [1000, 50]
+    }
+  ],
+  "connections": {
+    "Webhook": {"main": [[{"node": "Initialize", "type": "main", "index": 0}]]},
+    "Initialize": {"main": [[{"node": "Fetch Document", "type": "main", "index": 0}]]},
+    "Fetch Document": {"main": [[{"node": "Editor A (Title)", "type": "main", "index": 0}, {"node": "Editor B (Content)", "type": "main", "index": 0}]]},
+    "LM A": {"ai_languageModel": [[{"node": "Editor A (Title)", "type": "ai_languageModel", "index": 0}]]},
+    "LM B": {"ai_languageModel": [[{"node": "Editor B (Content)", "type": "ai_languageModel", "index": 0}]]},
+    "Editor A (Title)": {"main": [[{"node": "Conflict Resolver", "type": "main", "index": 0}]]},
+    "Editor B (Content)": {"main": [[{"node": "Conflict Resolver", "type": "main", "index": 0}]]},
+    "LM Resolver": {"ai_languageModel": [[{"node": "Conflict Resolver", "type": "ai_languageModel", "index": 0}]]},
+    "Conflict Resolver": {"main": [[{"node": "Send to MAO", "type": "main", "index": 0}]]}
+  },
+  "settings": {"executionOrder": "v1"},
+  "meta": {
+    "mast_failure_mode": "STATE-006",
+    "mast_category": "STATE",
+    "complexity": "complex",
+    "description": "Two editors modify different fields from same version, last-write-wins loses one edit",
+    "expected_detection": "Interleaved modification detection - version conflict resolution loses data",
+    "agents": 3,
+    "nodes": 5,
+    "real_apis": ["JSONPlaceholder"]
+  }
+}

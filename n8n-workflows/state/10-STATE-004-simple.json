@@ -1,0 +1,93 @@
+{
+  "name": "STATE-004 Simple: Invalid Age Value",
+  "nodes": [
+    {
+      "parameters": {
+        "path": "state-004-simple",
+        "responseMode": "lastNode",
+        "options": {},
+        "httpMethod": "POST"
+      },
+      "id": "webhook",
+      "name": "Webhook",
+      "type": "n8n-nodes-base.webhook",
+      "typeVersion": 2,
+      "position": [0, 0],
+      "webhookId": "state-004-simple"
+    },
+    {
+      "parameters": {
+        "assignments": {
+          "assignments": [
+            {"id": "session_id", "name": "session_id", "value": "={{ $now.format('X') }}-state004-simple", "type": "string"},
+            {"id": "user_record", "name": "user_record", "value": "{\"name\": \"Alice\", \"age\": 25, \"email\": \"alice@test.com\"}", "type": "string"}
+          ]
+        }
+      },
+      "id": "init",
+      "name": "Initialize",
+      "type": "n8n-nodes-base.set",
+      "typeVersion": 3.4,
+      "position": [200, 0]
+    },
+    {
+      "parameters": {
+        "promptType": "define",
+        "text": "You are a data processor. Update the user's age based on a calculation error.\n\nSet age to an INVALID value: -5\n\nOutput: {\"name\": \"Alice\", \"age\": -5, \"email\": \"alice@test.com\"}",
+        "options": {}
+      },
+      "id": "processor",
+      "name": "Corrupt Age",
+      "type": "@n8n/n8n-nodes-langchain.agent",
+      "typeVersion": 1.6,
+      "position": [400, 0]
+    },
+    {
+      "parameters": {
+        "model": "claude-3-5-haiku-20241022",
+        "options": {"temperature": 0, "maxTokens": 100}
+      },
+      "id": "lm_1",
+      "name": "LM 1",
+      "type": "@n8n/n8n-nodes-langchain.lmChatAnthropic",
+      "typeVersion": 1.2,
+      "position": [400, 200],
+      "credentials": {"anthropicApi": {"id": "1KM50Mcms9JticwF", "name": "Anthropic API"}}
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "https://mao-api.fly.dev/api/v1/n8n/webhook",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [{"name": "X-N8N-Api-Key", "value": "mao_pmNhfBRfqd5G_YHubK0Jqk9ZHB6ItITkHFYP4ISns9c"}]
+        },
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={\n  \"event_type\": \"workflow.completed\",\n  \"workflow_name\": \"STATE-004 Simple: Invalid Age Value\",\n  \"session_id\": \"{{ $('Initialize').item.json.session_id }}\",\n  \"failure_mode\": \"STATE-004\",\n  \"complexity\": \"simple\",\n  \"expected_detection\": \"state_corruption\",\n  \"state_tracking\": {\n    \"original_state\": {{ $('Initialize').item.json.user_record }},\n    \"corrupted_state\": \"{{ $('Corrupt Age').item.json.output }}\",\n    \"violation\": \"age field has invalid negative value\",\n    \"schema_rule\": \"age must be >= 0\"\n  },\n  \"agents\": [\n    {\n      \"agent_id\": \"data_processor\",\n      \"role\": \"record_updater\",\n      \"outputs\": [\"{{ $('Corrupt Age').item.json.output }}\"]\n    }\n  ]\n}",
+        "options": {}
+      },
+      "id": "send_to_mao",
+      "name": "Send to MAO",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [600, 0]
+    }
+  ],
+  "connections": {
+    "Webhook": {"main": [[{"node": "Initialize", "type": "main", "index": 0}]]},
+    "Initialize": {"main": [[{"node": "Corrupt Age", "type": "main", "index": 0}]]},
+    "LM 1": {"ai_languageModel": [[{"node": "Corrupt Age", "type": "ai_languageModel", "index": 0}]]},
+    "Corrupt Age": {"main": [[{"node": "Send to MAO", "type": "main", "index": 0}]]}
+  },
+  "settings": {"executionOrder": "v1"},
+  "meta": {
+    "mast_failure_mode": "STATE-004",
+    "mast_category": "STATE",
+    "complexity": "simple",
+    "description": "User record corrupted with invalid negative age value",
+    "expected_detection": "Schema validation detects domain violation (age < 0)",
+    "agents": 1,
+    "nodes": 2
+  }
+}

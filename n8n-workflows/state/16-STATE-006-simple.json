@@ -1,0 +1,145 @@
+{
+  "name": "STATE-006 Simple: Concurrent Write Conflict",
+  "nodes": [
+    {
+      "parameters": {
+        "path": "state-006-simple",
+        "responseMode": "lastNode",
+        "options": {},
+        "httpMethod": "POST"
+      },
+      "id": "webhook",
+      "name": "Webhook",
+      "type": "n8n-nodes-base.webhook",
+      "typeVersion": 2,
+      "position": [0, 0],
+      "webhookId": "state-006-simple"
+    },
+    {
+      "parameters": {
+        "assignments": {
+          "assignments": [
+            {"id": "session_id", "name": "session_id", "value": "={{ $now.format('X') }}-state006-simple", "type": "string"},
+            {"id": "balance", "name": "balance", "value": "100", "type": "string"}
+          ]
+        }
+      },
+      "id": "init",
+      "name": "Initialize",
+      "type": "n8n-nodes-base.set",
+      "typeVersion": 3.4,
+      "position": [200, 0]
+    },
+    {
+      "parameters": {
+        "promptType": "define",
+        "text": "You are Writer A. Read balance 100, add 50.\n\nOutput: {\"operation\": \"add\", \"amount\": 50, \"read_balance\": 100, \"new_balance\": 150, \"timestamp\": \"T1\"}",
+        "options": {}
+      },
+      "id": "writer_a",
+      "name": "Writer A (+50)",
+      "type": "@n8n/n8n-nodes-langchain.agent",
+      "typeVersion": 1.6,
+      "position": [400, -100]
+    },
+    {
+      "parameters": {
+        "model": "claude-3-5-haiku-20241022",
+        "options": {"temperature": 0, "maxTokens": 100}
+      },
+      "id": "lm_a",
+      "name": "LM A",
+      "type": "@n8n/n8n-nodes-langchain.lmChatAnthropic",
+      "typeVersion": 1.2,
+      "position": [400, 100],
+      "credentials": {"anthropicApi": {"id": "1KM50Mcms9JticwF", "name": "Anthropic API"}}
+    },
+    {
+      "parameters": {
+        "promptType": "define",
+        "text": "You are Writer B. Read balance 100 (same original), subtract 30.\n\nOutput: {\"operation\": \"subtract\", \"amount\": 30, \"read_balance\": 100, \"new_balance\": 70, \"timestamp\": \"T2\"}",
+        "options": {}
+      },
+      "id": "writer_b",
+      "name": "Writer B (-30)",
+      "type": "@n8n/n8n-nodes-langchain.agent",
+      "typeVersion": 1.6,
+      "position": [400, 200]
+    },
+    {
+      "parameters": {
+        "model": "claude-3-5-haiku-20241022",
+        "options": {"temperature": 0, "maxTokens": 100}
+      },
+      "id": "lm_b",
+      "name": "LM B",
+      "type": "@n8n/n8n-nodes-langchain.lmChatAnthropic",
+      "typeVersion": 1.2,
+      "position": [400, 400],
+      "credentials": {"anthropicApi": {"id": "1KM50Mcms9JticwF", "name": "Anthropic API"}}
+    },
+    {
+      "parameters": {
+        "promptType": "define",
+        "text": "You are the Merger. Last-write-wins: Writer B's 70 wins.\n\nBut correct balance should be: 100 + 50 - 30 = 120\n\nOutput: {\"final_balance\": 70, \"expected_balance\": 120, \"race_condition\": true, \"lost_update\": \"Writer A's +50 was lost\"}",
+        "options": {}
+      },
+      "id": "merger",
+      "name": "Merge (Race)",
+      "type": "@n8n/n8n-nodes-langchain.agent",
+      "typeVersion": 1.6,
+      "position": [600, 50]
+    },
+    {
+      "parameters": {
+        "model": "claude-3-5-haiku-20241022",
+        "options": {"temperature": 0, "maxTokens": 100}
+      },
+      "id": "lm_merger",
+      "name": "LM Merger",
+      "type": "@n8n/n8n-nodes-langchain.lmChatAnthropic",
+      "typeVersion": 1.2,
+      "position": [600, 250],
+      "credentials": {"anthropicApi": {"id": "1KM50Mcms9JticwF", "name": "Anthropic API"}}
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "https://mao-api.fly.dev/api/v1/n8n/webhook",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [{"name": "X-N8N-Api-Key", "value": "mao_pmNhfBRfqd5G_YHubK0Jqk9ZHB6ItITkHFYP4ISns9c"}]
+        },
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={\n  \"event_type\": \"workflow.completed\",\n  \"workflow_name\": \"STATE-006 Simple: Concurrent Write Conflict\",\n  \"session_id\": \"{{ $('Initialize').item.json.session_id }}\",\n  \"failure_mode\": \"STATE-006\",\n  \"complexity\": \"simple\",\n  \"expected_detection\": \"race_condition\",\n  \"state_tracking\": {\n    \"initial_balance\": 100,\n    \"writer_a\": \"{{ $('Writer A (+50)').item.json.output }}\",\n    \"writer_b\": \"{{ $('Writer B (-30)').item.json.output }}\",\n    \"merge_result\": \"{{ $('Merge (Race)').item.json.output }}\",\n    \"concurrent_reads\": true,\n    \"lost_update\": \"Writer A's +50\"\n  },\n  \"agents\": [\n    {\"agent_id\": \"writer_a\", \"role\": \"concurrent_writer\", \"outputs\": [\"{{ $('Writer A (+50)').item.json.output }}\"]},\n    {\"agent_id\": \"writer_b\", \"role\": \"concurrent_writer\", \"outputs\": [\"{{ $('Writer B (-30)').item.json.output }}\"]},\n    {\"agent_id\": \"merger\", \"role\": \"state_merger\", \"outputs\": [\"{{ $('Merge (Race)').item.json.output }}\"]}\n  ]\n}",
+        "options": {}
+      },
+      "id": "send_to_mao",
+      "name": "Send to MAO",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [800, 50]
+    }
+  ],
+  "connections": {
+    "Webhook": {"main": [[{"node": "Initialize", "type": "main", "index": 0}]]},
+    "Initialize": {"main": [[{"node": "Writer A (+50)", "type": "main", "index": 0}, {"node": "Writer B (-30)", "type": "main", "index": 0}]]},
+    "LM A": {"ai_languageModel": [[{"node": "Writer A (+50)", "type": "ai_languageModel", "index": 0}]]},
+    "LM B": {"ai_languageModel": [[{"node": "Writer B (-30)", "type": "ai_languageModel", "index": 0}]]},
+    "Writer A (+50)": {"main": [[{"node": "Merge (Race)", "type": "main", "index": 0}]]},
+    "Writer B (-30)": {"main": [[{"node": "Merge (Race)", "type": "main", "index": 0}]]},
+    "LM Merger": {"ai_languageModel": [[{"node": "Merge (Race)", "type": "ai_languageModel", "index": 0}]]},
+    "Merge (Race)": {"main": [[{"node": "Send to MAO", "type": "main", "index": 0}]]}
+  },
+  "settings": {"executionOrder": "v1"},
+  "meta": {
+    "mast_failure_mode": "STATE-006",
+    "mast_category": "STATE",
+    "complexity": "simple",
+    "description": "Two concurrent writes based on same read cause lost update",
+    "expected_detection": "Race condition detection - concurrent modification with lost update",
+    "agents": 3,
+    "nodes": 4
+  }
+}

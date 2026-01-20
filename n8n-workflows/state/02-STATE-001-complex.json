@@ -1,0 +1,161 @@
+{
+  "name": "STATE-001 Complex: Task Manager No Progress",
+  "nodes": [
+    {
+      "parameters": {
+        "path": "state-001-complex",
+        "responseMode": "lastNode",
+        "options": {},
+        "httpMethod": "POST"
+      },
+      "id": "webhook",
+      "name": "Webhook",
+      "type": "n8n-nodes-base.webhook",
+      "typeVersion": 2,
+      "position": [0, 0],
+      "webhookId": "state-001-complex"
+    },
+    {
+      "parameters": {
+        "assignments": {
+          "assignments": [
+            {"id": "session_id", "name": "session_id", "value": "={{ $now.format('X') }}-state001-complex", "type": "string"},
+            {"id": "tasks", "name": "tasks", "value": "[{\"id\": 1, \"status\": \"pending\"}, {\"id\": 2, \"status\": \"pending\"}, {\"id\": 3, \"status\": \"pending\"}]", "type": "string"},
+            {"id": "completed_count", "name": "completed_count", "value": "=0", "type": "number"}
+          ]
+        }
+      },
+      "id": "init",
+      "name": "Initialize",
+      "type": "n8n-nodes-base.set",
+      "typeVersion": 3.4,
+      "position": [200, 0]
+    },
+    {
+      "parameters": {
+        "url": "https://jsonplaceholder.typicode.com/todos",
+        "sendQuery": true,
+        "queryParameters": {"parameters": [{"name": "_limit", "value": "3"}]},
+        "options": {}
+      },
+      "id": "get_tasks",
+      "name": "Get Tasks",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [400, 0]
+    },
+    {
+      "parameters": {
+        "promptType": "define",
+        "text": "You are a task manager. You have 3 pending tasks. You should process them.\n\nHowever, instead of completing tasks, just acknowledge them and say:\n\"Reviewed task 1. Status remains pending. Moving to next task.\"\n\nDon't actually change any status.",
+        "options": {}
+      },
+      "id": "manager_1",
+      "name": "Task Manager 1",
+      "type": "@n8n/n8n-nodes-langchain.agent",
+      "typeVersion": 1.6,
+      "position": [600, 0]
+    },
+    {
+      "parameters": {
+        "model": "claude-3-5-haiku-20241022",
+        "options": {"temperature": 0.3, "maxTokens": 100}
+      },
+      "id": "lm_1",
+      "name": "LM 1",
+      "type": "@n8n/n8n-nodes-langchain.lmChatAnthropic",
+      "typeVersion": 1.2,
+      "position": [600, 200],
+      "credentials": {"anthropicApi": {"id": "1KM50Mcms9JticwF", "name": "Anthropic API"}}
+    },
+    {
+      "parameters": {
+        "promptType": "define",
+        "text": "You are a task manager. Continue processing tasks.\n\nSay: \"Reviewed task 2. Status remains pending. Moving to next task.\"\n\nDon't complete anything.",
+        "options": {}
+      },
+      "id": "manager_2",
+      "name": "Task Manager 2",
+      "type": "@n8n/n8n-nodes-langchain.agent",
+      "typeVersion": 1.6,
+      "position": [800, 0]
+    },
+    {
+      "parameters": {
+        "model": "claude-3-5-haiku-20241022",
+        "options": {"temperature": 0.3, "maxTokens": 100}
+      },
+      "id": "lm_2",
+      "name": "LM 2",
+      "type": "@n8n/n8n-nodes-langchain.lmChatAnthropic",
+      "typeVersion": 1.2,
+      "position": [800, 200],
+      "credentials": {"anthropicApi": {"id": "1KM50Mcms9JticwF", "name": "Anthropic API"}}
+    },
+    {
+      "parameters": {
+        "promptType": "define",
+        "text": "You are a task manager. Final task review.\n\nSay: \"Reviewed task 3. Status remains pending. All tasks reviewed but none completed.\"\n\nProgress metric should stay at 0.",
+        "options": {}
+      },
+      "id": "manager_3",
+      "name": "Task Manager 3",
+      "type": "@n8n/n8n-nodes-langchain.agent",
+      "typeVersion": 1.6,
+      "position": [1000, 0]
+    },
+    {
+      "parameters": {
+        "model": "claude-3-5-haiku-20241022",
+        "options": {"temperature": 0.3, "maxTokens": 100}
+      },
+      "id": "lm_3",
+      "name": "LM 3",
+      "type": "@n8n/n8n-nodes-langchain.lmChatAnthropic",
+      "typeVersion": 1.2,
+      "position": [1000, 200],
+      "credentials": {"anthropicApi": {"id": "1KM50Mcms9JticwF", "name": "Anthropic API"}}
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "https://mao-api.fly.dev/api/v1/n8n/webhook",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [{"name": "X-N8N-Api-Key", "value": "mao_pmNhfBRfqd5G_YHubK0Jqk9ZHB6ItITkHFYP4ISns9c"}]
+        },
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={\n  \"event_type\": \"workflow.completed\",\n  \"workflow_name\": \"STATE-001 Complex: Task Manager No Progress\",\n  \"session_id\": \"{{ $('Initialize').item.json.session_id }}\",\n  \"failure_mode\": \"STATE-001\",\n  \"complexity\": \"complex\",\n  \"expected_detection\": \"no_progress\",\n  \"state_tracking\": {\n    \"initial_tasks\": {{ $('Initialize').item.json.tasks }},\n    \"completed_before\": 0,\n    \"completed_after\": 0,\n    \"progress_metric\": \"static\"\n  },\n  \"agents\": [\n    {\n      \"agent_id\": \"task_manager\",\n      \"role\": \"task_processor\",\n      \"outputs\": [\n        \"{{ $('Task Manager 1').item.json.output }}\",\n        \"{{ $('Task Manager 2').item.json.output }}\",\n        \"{{ $('Task Manager 3').item.json.output }}\"\n      ]\n    }\n  ]\n}",
+        "options": {}
+      },
+      "id": "send_to_mao",
+      "name": "Send to MAO",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [1200, 0]
+    }
+  ],
+  "connections": {
+    "Webhook": {"main": [[{"node": "Initialize", "type": "main", "index": 0}]]},
+    "Initialize": {"main": [[{"node": "Get Tasks", "type": "main", "index": 0}]]},
+    "Get Tasks": {"main": [[{"node": "Task Manager 1", "type": "main", "index": 0}]]},
+    "LM 1": {"ai_languageModel": [[{"node": "Task Manager 1", "type": "ai_languageModel", "index": 0}]]},
+    "Task Manager 1": {"main": [[{"node": "Task Manager 2", "type": "main", "index": 0}]]},
+    "LM 2": {"ai_languageModel": [[{"node": "Task Manager 2", "type": "ai_languageModel", "index": 0}]]},
+    "Task Manager 2": {"main": [[{"node": "Task Manager 3", "type": "main", "index": 0}]]},
+    "LM 3": {"ai_languageModel": [[{"node": "Task Manager 3", "type": "ai_languageModel", "index": 0}]]},
+    "Task Manager 3": {"main": [[{"node": "Send to MAO", "type": "main", "index": 0}]]}
+  },
+  "settings": {"executionOrder": "v1"},
+  "meta": {
+    "mast_failure_mode": "STATE-001",
+    "mast_category": "STATE",
+    "complexity": "complex",
+    "description": "Task manager marks tasks as reviewed but none complete - progress metric stays static",
+    "expected_detection": "Progress metric tracking shows no advancement",
+    "agents": 3,
+    "nodes": 5,
+    "real_apis": ["JSONPlaceholder"]
+  }
+}
