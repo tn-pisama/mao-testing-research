@@ -262,7 +262,8 @@ class EmbeddingService:
 
         # Create cache key from text content and encoding parameters
         cache_key = hashlib.md5(
-            f"{text}|{is_query}|{normalize}|{self._model_name}".encode()
+            f"{text}|{is_query}|{normalize}|{self._model_name}".encode(),
+            usedforsecurity=False,  # Cache key only, not cryptographic
         ).hexdigest()
 
         # Try to get from cache
@@ -312,7 +313,8 @@ class EmbeddingService:
         # Check cache for each text
         for i, text in enumerate(texts):
             cache_key = hashlib.md5(
-                f"{text}|{is_query}|{normalize}|{self._model_name}".encode()
+                f"{text}|{is_query}|{normalize}|{self._model_name}".encode(),
+                usedforsecurity=False,  # Cache key only, not cryptographic
             ).hexdigest()
 
             if cache_key in cache:
@@ -340,7 +342,8 @@ class EmbeddingService:
                 results[idx] = emb
 
                 cache_key = hashlib.md5(
-                    f"{to_encode[j]}|{is_query}|{normalize}|{self._model_name}".encode()
+                    f"{to_encode[j]}|{is_query}|{normalize}|{self._model_name}".encode(),
+                    usedforsecurity=False,  # Cache key only, not cryptographic
                 ).hexdigest()
                 try:
                     cache[cache_key] = emb

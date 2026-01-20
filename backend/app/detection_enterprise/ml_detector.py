@@ -603,10 +603,10 @@ class MLFailureDetector:
             scaler_path = path / f"scaler_{mode}.pkl"
 
             with open(clf_path, "rb") as f:
-                self.classifiers[mode] = pickle.load(f)
+                self.classifiers[mode] = pickle.load(f)  # nosec B301 - trusted model file
 
             with open(scaler_path, "rb") as f:
-                self.feature_scalers[mode] = pickle.load(f)
+                self.feature_scalers[mode] = pickle.load(f)  # nosec B301 - trusted model file
 
         self.is_trained = True
         logger.info(f"Model loaded from {path} ({len(self.classifiers)} modes)")
