@@ -34,11 +34,14 @@ class TurnAwareRoleUsurpationDetector(EmbeddingMixin, TurnAwareDetector):
     3. Unauthorized actions - agent exceeds permission boundaries
     4. Role drift - gradual deviation from assigned responsibilities
 
-    Phase 2 Enhancement (v2.0): Uses semantic similarity to:
-    - Better infer agent roles from conversation context
-    - Detect semantic role boundary violations (not just keyword matching)
-    - Track role consistency across conversation turns
-    - Identify implicit role conflicts through embedding analysis
+    NOTE: F9 detection with rule-based/semantic approaches has limitations:
+    - MAST F9 patterns are subtle and vary across frameworks
+    - Semantic similarity between related roles causes false positives
+    - AG2 trajectory parsing needs improvement for 21/40 F9 examples
+
+    RECOMMENDATION: Use hybrid mode with LLM escalation for F9 detection
+    to achieve reasonable accuracy. The turn-aware detector provides
+    structural analysis but relies on LLM for nuanced judgment.
 
     Based on MAST research (NeurIPS 2025): FM-2.5 Role Usurpation (3%)
     """
@@ -87,9 +90,31 @@ class TurnAwareRoleUsurpationDetector(EmbeddingMixin, TurnAwareDetector):
         },
     }
 
-    def __init__(self, min_turns: int = 3, strict_mode: bool = False):
+    # ChatDev/MetaGPT specific role mappings
+    # Maps agent name patterns to role categories
+    # NOTE: CTO excluded - they legitimately review/handle code
+    EXECUTIVE_PATTERNS = [
+        "chief executive", "ceo", "chief product", "cpo",
+        "chief human resources", "human resources officer", "chief creative", "cco",
+    ]
+    IMPLEMENTER_PATTERNS = [
+        "programmer", "developer", "engineer", "coder", "simplecoder",
+    ]
+    REVIEWER_PATTERNS = [
+        "code reviewer", "reviewer", "tester", "qa ",
+    ]
+
+    # Code patterns that indicate implementation work
+    CODE_PATTERNS = [
+        "def ", "class ", "import ", "from ", "```python", "```java", "```js",
+        "function ", "const ", "let ", "var ", "public class", "private ",
+        "if __name__", "async def", "await ", "return ", "self.", "this.",
+    ]
+
+    def __init__(self, min_turns: int = 3, strict_mode: bool = False, min_violations: int = 1):
         self.min_turns = min_turns
         self.strict_mode = strict_mode  # If True, be more aggressive in detection
+        self.min_violations = min_violations  # Minimum violations to trigger detection
 
     def detect(
         self,
@@ -97,6 +122,7 @@ class TurnAwareRoleUsurpationDetector(EmbeddingMixin, TurnAwareDetector):
         conversation_metadata: Optional[Dict[str, Any]] = None,
     ) -> TurnAwareDetectionResult:
         """Detect role usurpation issues."""
+        logger.debug(f"F9 detect: {len(turns)} turns, embedder={self.embedder is not None}")
         if len(turns) < self.min_turns:
             return TurnAwareDetectionResult(
                 detected=False,
@@ -109,16 +135,23 @@ class TurnAwareRoleUsurpationDetector(EmbeddingMixin, TurnAwareDetector):
 
         # Track agent roles across conversation
         agent_roles = self._infer_agent_roles(turns)
+        logger.debug(f"F9: Inferred roles: {agent_roles}")
 
         # Detect various types of role violations
         violations = []
         affected_turns = []
 
+        # 0. Executive writing code (ChatDev-specific pattern)
+        # NOTE: Disabled - causes high FP rate without improving TP
+        # In ChatDev, executives review code (which appears in their turns)
+        # but this is normal behavior, not role usurpation
+        # exec_code_violations = self._detect_executive_coding(turns)
+
         # 1. Boundary violations (agent acting outside assigned role)
-        boundary_violations = self._detect_boundary_violations(turns, agent_roles)
-        violations.extend(boundary_violations)
-        for v in boundary_violations:
-            affected_turns.extend(v.get("turns", []))
+        # NOTE: Disabled - semantic similarity approach has high FP rate
+        # The similarity between roles (e.g., reviewer/tester) causes false triggers
+        # boundary_violations = self._detect_boundary_violations(turns, agent_roles)
+        boundary_violations = []
 
         # 2. Role conflicts (multiple agents claiming same role)
         role_conflicts = self._detect_role_conflicts(turns, agent_roles)
@@ -132,13 +165,13 @@ class TurnAwareRoleUsurpationDetector(EmbeddingMixin, TurnAwareDetector):
         for v in unauthorized:
             affected_turns.extend(v.get("turns", []))
 
-        if not violations:
+        if len(violations) < self.min_violations:
             return TurnAwareDetectionResult(
                 detected=False,
                 severity=TurnAwareSeverity.NONE,
                 confidence=0.8,
                 failure_mode=None,
-                explanation="No role usurpation detected",
+                explanation=f"Insufficient evidence ({len(violations)} violations < {self.min_violations} required)",
                 detector_name=self.name,
             )
 
@@ -237,6 +270,7 @@ class TurnAwareRoleUsurpationDetector(EmbeddingMixin, TurnAwareDetector):
             # Get best matching role
             best_role = max(role_similarities, key=role_similarities.get)
             best_score = role_similarities[best_role]
+            logger.debug(f"F9 semantic role: best={best_role} score={best_score:.3f}, all={role_similarities}")
 
             # Require reasonable confidence threshold
             if best_score >= 0.50:  # Semantic similarity threshold
@@ -286,6 +320,52 @@ class TurnAwareRoleUsurpationDetector(EmbeddingMixin, TurnAwareDetector):
 
         return None
 
+    def _is_executive_role(self, participant_id: str) -> bool:
+        """Check if participant is an executive (CEO, CPO, CTO, etc.)."""
+        id_lower = participant_id.lower()
+        return any(pattern in id_lower for pattern in self.EXECUTIVE_PATTERNS)
+
+    def _is_implementer_role(self, participant_id: str) -> bool:
+        """Check if participant is an implementer (Programmer, Developer, etc.)."""
+        id_lower = participant_id.lower()
+        return any(pattern in id_lower for pattern in self.IMPLEMENTER_PATTERNS)
+
+    def _contains_significant_code(self, content: str) -> int:
+        """Count code pattern matches in content."""
+        return sum(1 for pattern in self.CODE_PATTERNS if pattern in content)
+
+    def _detect_executive_coding(self, turns: List[TurnSnapshot]) -> List[Dict[str, Any]]:
+        """Detect executives writing code (primary ChatDev role usurpation pattern).
+
+        In ChatDev, role usurpation often manifests as CEO/CPO/CTO agents
+        writing implementation code instead of delegating to programmers.
+        """
+        violations = []
+
+        for turn in turns:
+            agent_id = turn.participant_id or "unknown"
+
+            # Check if this is an executive role
+            if not self._is_executive_role(agent_id):
+                continue
+
+            # Check if the content contains significant code
+            code_matches = self._contains_significant_code(turn.content)
+
+            # Executives writing code is a role usurpation
+            # Threshold: 3+ code patterns indicates actual implementation
+            if code_matches >= 3:
+                violations.append({
+                    "type": "executive_coding",
+                    "turns": [turn.turn_number],
+                    "agent": agent_id,
+                    "code_patterns": code_matches,
+                    "severity": "critical",
+                    "description": f"Executive {agent_id} writing implementation code ({code_matches} code patterns)",
+                })
+
+        return violations[:5]  # Limit to top 5
+
     def _detect_boundary_violations(
         self,
         turns: List[TurnSnapshot],
@@ -323,12 +403,15 @@ class TurnAwareRoleUsurpationDetector(EmbeddingMixin, TurnAwareDetector):
                         content[:300], own_role_def.get("description", "")
                     ) if own_role_def else 0.0
 
-                    # FPR FIX: Require ALL conditions to reduce false positives:
-                    # 1. High similarity to other role (>= 0.80, raised from 0.65)
-                    # 2. Significant margin over own role (0.20 margin)
-                    # 3. Low similarity to own role (< 0.55)
-                    if (other_similarity >= 0.80 and
-                        other_similarity > own_similarity + 0.20 and
+                    logger.debug(f"F9 boundary: {agent_id}({assigned_role}) vs {other_role}: other={other_similarity:.3f}, own={own_similarity:.3f}")
+
+                    # Role boundary violation detection:
+                    # Balanced thresholds - reduce FPs while maintaining recall
+                    # 1. Moderate similarity to other role (>= 0.48)
+                    # 2. Clear margin over own role (0.12)
+                    # 3. Not strong fit to own role (< 0.55)
+                    if (other_similarity >= 0.48 and
+                        other_similarity > own_similarity + 0.12 and
                         own_similarity < 0.55):
                         violations.append({
                             "type": "boundary_violation",
@@ -407,7 +490,15 @@ class TurnAwareRoleUsurpationDetector(EmbeddingMixin, TurnAwareDetector):
         turns: List[TurnSnapshot],
         agent_roles: Dict[str, Dict[str, Any]]
     ) -> List[Dict[str, Any]]:
-        """Detect agents performing actions outside their permission scope."""
+        """Detect agents performing actions outside their permission scope.
+
+        NOTE: This method is currently disabled due to high false positive rate.
+        Simple keyword matching like 'delete' triggers on discussion of deletion,
+        not actual deletion actions.
+        """
+        # Temporarily disabled to reduce FPs
+        return []
+
         unauthorized = []
 
         # High-privilege actions that require specific roles

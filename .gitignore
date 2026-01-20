@@ -67,3 +67,4 @@ logs/
 # Local config
 *.local
 models/
+_archived/

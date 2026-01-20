@@ -452,7 +452,7 @@ class BenchmarkRunner:
         }
 
         # Run turn-aware detection for semantic modes (unless skipped for LLM)
-        turn_aware_modes = {"F6", "F8"}  # Modes handled by turn-aware detectors
+        turn_aware_modes = {"F6", "F8", "F9"}  # Modes handled by turn-aware detectors
         modes_to_run = [m for m in turn_aware_modes if m not in skip_modes]
         if modes_to_run:
             turn_aware_attempts = self._run_turn_aware_detectors(records, modes_to_run)
@@ -494,16 +494,16 @@ class BenchmarkRunner:
         records: List[MASTRecord],
         modes: Optional[List[str]] = None,
     ) -> List[DetectionAttempt]:
-        """Run turn-aware detectors for semantic modes (F6, F8).
+        """Run turn-aware detectors for semantic modes (F6, F8, F9).
 
         Uses turn-aware detectors with parsed conversation turns.
 
         Args:
             records: List of records to process
-            modes: List of modes to run (default: ['F6', 'F8'])
+            modes: List of modes to run (default: ['F6', 'F8', 'F9'])
         """
         if modes is None:
-            modes = ["F6", "F8"]
+            modes = ["F6", "F8", "F9"]
 
         # Filter to modes in target list
         modes = [m for m in modes if m in self.failure_modes]
@@ -516,6 +516,7 @@ class BenchmarkRunner:
             from app.benchmark.trajectory_parser import parse_trajectory_to_turns
             from app.detection.turn_aware.derailment import TurnAwareDerailmentDetector
             from app.detection.turn_aware.withholding import TurnAwareInformationWithholdingDetector
+            from app.detection.turn_aware.role_usurpation import TurnAwareRoleUsurpationDetector
         except ImportError as e:
             logger.warning(f"Turn-aware detector import failed: {e}")
             return attempts
@@ -526,6 +527,8 @@ class BenchmarkRunner:
             detectors["F6"] = ("turn_aware_derailment", None)  # Created per-record with framework
         if "F8" in modes:
             detectors["F8"] = ("turn_aware_withholding", TurnAwareInformationWithholdingDetector())
+        if "F9" in modes:
+            detectors["F9"] = ("turn_aware_role_usurpation", TurnAwareRoleUsurpationDetector())
 
         for record in records:
             start_time = time.time()
@@ -570,6 +573,16 @@ class BenchmarkRunner:
                         }
                         result = detector.detect(turns=turns, conversation_metadata=metadata)
                         detector_name = "turn_aware_withholding"
+
+                    elif mode == "F9":
+                        # Role usurpation detector
+                        detector = detectors["F9"][1]
+                        metadata = {
+                            "task_description": record.task,
+                            "framework": record.framework,
+                        }
+                        result = detector.detect(turns=turns, conversation_metadata=metadata)
+                        detector_name = "turn_aware_role_usurpation"
                     else:
                         continue
 
