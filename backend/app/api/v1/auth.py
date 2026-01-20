@@ -80,7 +80,7 @@ async def get_token(
     tenants = result.scalars().all()
     
     for tenant in tenants:
-        if verify_api_key(request.api_key, tenant.api_key_hash):
+        if tenant.api_key_hash and verify_api_key(request.api_key, tenant.api_key_hash):
             access_token = create_access_token(str(tenant.id))
             return TokenResponse(access_token=access_token)
     
