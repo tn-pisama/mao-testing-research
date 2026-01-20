@@ -10,15 +10,26 @@ from .models import (
 )
 
 
-# Node types that represent AI/LLM agents
+# Node types that represent AI/LLM agents (nodes that have prompts)
 AI_NODE_TYPES = {
     "@n8n/n8n-nodes-langchain.agent",
     "@n8n/n8n-nodes-langchain.chainLlm",
+    "@n8n/n8n-nodes-langchain.chainSummarization",
+    "@n8n/n8n-nodes-langchain.chainRetrievalQa",
+    "n8n-nodes-base.openAi",
+    "n8n-nodes-base.anthropic",
+}
+
+# LM nodes are just model configuration - they connect to agents
+# These don't need system prompts, so we exclude them from scoring
+LM_CONFIG_NODE_TYPES = {
     "@n8n/n8n-nodes-langchain.lmChatOpenAi",
     "@n8n/n8n-nodes-langchain.lmChatAnthropic",
     "@n8n/n8n-nodes-langchain.lmChatGoogleGemini",
-    "n8n-nodes-base.openAi",
-    "n8n-nodes-base.anthropic",
+    "@n8n/n8n-nodes-langchain.lmChatAzureOpenAi",
+    "@n8n/n8n-nodes-langchain.lmChatOllama",
+    "@n8n/n8n-nodes-langchain.lmChatMistral",
+    "@n8n/n8n-nodes-langchain.lmChatGroq",
 }
 
 # Role definition keywords
@@ -595,5 +606,13 @@ class AgentQualityScorer:
 
 
 def is_agent_node(node: Dict[str, Any]) -> bool:
-    """Check if a node is an AI/agent node."""
-    return node.get("type", "") in AI_NODE_TYPES
+    """Check if a node is an AI/agent node that should be scored.
+
+    Returns True for agent nodes that have prompts.
+    Returns False for LM config nodes (model configuration only).
+    """
+    node_type = node.get("type", "")
+    # Exclude LM config nodes - they're just model settings
+    if node_type in LM_CONFIG_NODE_TYPES:
+        return False
+    return node_type in AI_NODE_TYPES

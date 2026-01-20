@@ -8,7 +8,7 @@ from .models import (
     ComplexityMetrics,
     OrchestrationDimension,
 )
-from .agent_scorer import AI_NODE_TYPES
+from .agent_scorer import AI_NODE_TYPES, LM_CONFIG_NODE_TYPES
 
 
 # Orchestration pattern thresholds
@@ -101,7 +101,11 @@ class OrchestrationQualityScorer:
 
         # Count nodes by type
         node_count = len(nodes)
-        agent_count = sum(1 for n in nodes if n.get("type") in AI_NODE_TYPES)
+        # Count actual agents (exclude LM config nodes)
+        agent_count = sum(
+            1 for n in nodes
+            if n.get("type") in AI_NODE_TYPES and n.get("type") not in LM_CONFIG_NODE_TYPES
+        )
         ai_node_ratio = agent_count / node_count if node_count > 0 else 0.0
 
         # Count connections
