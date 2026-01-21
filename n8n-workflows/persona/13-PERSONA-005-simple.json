@@ -3,6 +3,26 @@
   "nodes": [
     {
       "parameters": {
+        "rule": {
+          "interval": [
+            {
+              "field": "hours",
+              "hoursInterval": 3
+            }
+          ]
+        }
+      },
+      "id": "schedule",
+      "name": "Schedule Trigger",
+      "type": "n8n-nodes-base.scheduleTrigger",
+      "typeVersion": 1.2,
+      "position": [
+        0,
+        -200
+      ]
+    },
+    {
+      "parameters": {
         "path": "persona-005-simple",
         "responseMode": "lastNode",
         "options": {},
@@ -12,15 +32,28 @@
       "name": "Webhook",
       "type": "n8n-nodes-base.webhook",
       "typeVersion": 2,
-      "position": [0, 0],
+      "position": [
+        0,
+        0
+      ],
       "webhookId": "persona-005-simple"
     },
     {
       "parameters": {
         "assignments": {
           "assignments": [
-            {"id": "session_id", "name": "session_id", "value": "={{ $now.format('X') }}-persona005-simple", "type": "string"},
-            {"id": "personas", "name": "personas", "value": "{\"agent_a\": {\"style\": \"professional\", \"catchphrase\": null}, \"agent_b\": {\"style\": \"casual\", \"catchphrase\": \"Awesome sauce!\"}}", "type": "string"}
+            {
+              "id": "session_id",
+              "name": "session_id",
+              "value": "={{ $now.format('X') }}-persona005-simple",
+              "type": "string"
+            },
+            {
+              "id": "personas",
+              "name": "personas",
+              "value": "{\"agent_a\": {\"style\": \"professional\", \"catchphrase\": null}, \"agent_b\": {\"style\": \"casual\", \"catchphrase\": \"Awesome sauce!\"}}",
+              "type": "string"
+            }
           ]
         }
       },
@@ -28,7 +61,10 @@
       "name": "Initialize",
       "type": "n8n-nodes-base.set",
       "typeVersion": 3.4,
-      "position": [200, 0]
+      "position": [
+        200,
+        0
+      ]
     },
     {
       "parameters": {
@@ -40,19 +76,33 @@
       "name": "Agent A Initial",
       "type": "@n8n/n8n-nodes-langchain.agent",
       "typeVersion": 1.6,
-      "position": [400, 0]
+      "position": [
+        400,
+        0
+      ]
     },
     {
       "parameters": {
         "model": "claude-3-5-haiku-20241022",
-        "options": {"temperature": 0, "maxTokens": 100}
+        "options": {
+          "temperature": 0,
+          "maxTokens": 100
+        }
       },
       "id": "lm_a1",
       "name": "LM A1",
       "type": "@n8n/n8n-nodes-langchain.lmChatAnthropic",
       "typeVersion": 1.2,
-      "position": [400, 200],
-      "credentials": {"anthropicApi": {"id": "1KM50Mcms9JticwF", "name": "Anthropic API"}}
+      "position": [
+        400,
+        200
+      ],
+      "credentials": {
+        "anthropicApi": {
+          "id": "1KM50Mcms9JticwF",
+          "name": "Anthropic API"
+        }
+      }
     },
     {
       "parameters": {
@@ -64,19 +114,33 @@
       "name": "Agent B Response",
       "type": "@n8n/n8n-nodes-langchain.agent",
       "typeVersion": 1.6,
-      "position": [600, 0]
+      "position": [
+        600,
+        0
+      ]
     },
     {
       "parameters": {
         "model": "claude-3-5-haiku-20241022",
-        "options": {"temperature": 0, "maxTokens": 100}
+        "options": {
+          "temperature": 0,
+          "maxTokens": 100
+        }
       },
       "id": "lm_b",
       "name": "LM B",
       "type": "@n8n/n8n-nodes-langchain.lmChatAnthropic",
       "typeVersion": 1.2,
-      "position": [600, 200],
-      "credentials": {"anthropicApi": {"id": "1KM50Mcms9JticwF", "name": "Anthropic API"}}
+      "position": [
+        600,
+        200
+      ],
+      "credentials": {
+        "anthropicApi": {
+          "id": "1KM50Mcms9JticwF",
+          "name": "Anthropic API"
+        }
+      }
     },
     {
       "parameters": {
@@ -88,19 +152,33 @@
       "name": "Agent A Contaminated",
       "type": "@n8n/n8n-nodes-langchain.agent",
       "typeVersion": 1.6,
-      "position": [800, 0]
+      "position": [
+        800,
+        0
+      ]
     },
     {
       "parameters": {
         "model": "claude-3-5-haiku-20241022",
-        "options": {"temperature": 0, "maxTokens": 100}
+        "options": {
+          "temperature": 0,
+          "maxTokens": 100
+        }
       },
       "id": "lm_a2",
       "name": "LM A2",
       "type": "@n8n/n8n-nodes-langchain.lmChatAnthropic",
       "typeVersion": 1.2,
-      "position": [800, 200],
-      "credentials": {"anthropicApi": {"id": "1KM50Mcms9JticwF", "name": "Anthropic API"}}
+      "position": [
+        800,
+        200
+      ],
+      "credentials": {
+        "anthropicApi": {
+          "id": "1KM50Mcms9JticwF",
+          "name": "Anthropic API"
+        }
+      }
     },
     {
       "parameters": {
@@ -108,7 +186,12 @@
         "url": "https://mao-api.fly.dev/api/v1/n8n/webhook",
         "sendHeaders": true,
         "headerParameters": {
-          "parameters": [{"name": "X-N8N-Api-Key", "value": "mao_pmNhfBRfqd5G_YHubK0Jqk9ZHB6ItITkHFYP4ISns9c"}]
+          "parameters": [
+            {
+              "name": "X-N8N-Api-Key",
+              "value": "mao_pmNhfBRfqd5G_YHubK0Jqk9ZHB6ItITkHFYP4ISns9c"
+            }
+          ]
         },
         "sendBody": true,
         "specifyBody": "json",
@@ -119,20 +202,116 @@
       "name": "Send to MAO",
       "type": "n8n-nodes-base.httpRequest",
       "typeVersion": 4.2,
-      "position": [1000, 0]
+      "position": [
+        1000,
+        0
+      ]
     }
   ],
   "connections": {
-    "Webhook": {"main": [[{"node": "Initialize", "type": "main", "index": 0}]]},
-    "Initialize": {"main": [[{"node": "Agent A Initial", "type": "main", "index": 0}]]},
-    "LM A1": {"ai_languageModel": [[{"node": "Agent A Initial", "type": "ai_languageModel", "index": 0}]]},
-    "Agent A Initial": {"main": [[{"node": "Agent B Response", "type": "main", "index": 0}]]},
-    "LM B": {"ai_languageModel": [[{"node": "Agent B Response", "type": "ai_languageModel", "index": 0}]]},
-    "Agent B Response": {"main": [[{"node": "Agent A Contaminated", "type": "main", "index": 0}]]},
-    "LM A2": {"ai_languageModel": [[{"node": "Agent A Contaminated", "type": "ai_languageModel", "index": 0}]]},
-    "Agent A Contaminated": {"main": [[{"node": "Send to MAO", "type": "main", "index": 0}]]}
+    "Webhook": {
+      "main": [
+        [
+          {
+            "node": "Initialize",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Initialize": {
+      "main": [
+        [
+          {
+            "node": "Agent A Initial",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "LM A1": {
+      "ai_languageModel": [
+        [
+          {
+            "node": "Agent A Initial",
+            "type": "ai_languageModel",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Agent A Initial": {
+      "main": [
+        [
+          {
+            "node": "Agent B Response",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "LM B": {
+      "ai_languageModel": [
+        [
+          {
+            "node": "Agent B Response",
+            "type": "ai_languageModel",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Agent B Response": {
+      "main": [
+        [
+          {
+            "node": "Agent A Contaminated",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "LM A2": {
+      "ai_languageModel": [
+        [
+          {
+            "node": "Agent A Contaminated",
+            "type": "ai_languageModel",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Agent A Contaminated": {
+      "main": [
+        [
+          {
+            "node": "Send to MAO",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Schedule Trigger": {
+      "main": [
+        [
+          {
+            "node": "Initialize",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
   },
-  "settings": {"executionOrder": "v1"},
+  "settings": {
+    "executionOrder": "v1"
+  },
   "meta": {
     "mast_failure_mode": "PERSONA-005",
     "mast_category": "PERSONA",

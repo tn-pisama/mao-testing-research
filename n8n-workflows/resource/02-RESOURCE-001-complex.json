@@ -1,28 +1,318 @@
 {
   "name": "RESOURCE-001 Complex: Exponential Output Growth",
   "nodes": [
-    {"parameters": {"path": "resource-001-complex", "responseMode": "lastNode", "options": {}, "httpMethod": "POST"}, "id": "webhook", "name": "Webhook", "type": "n8n-nodes-base.webhook", "typeVersion": 2, "position": [0, 0], "webhookId": "resource-001-complex"},
-    {"parameters": {"assignments": {"assignments": [{"id": "session_id", "name": "session_id", "value": "={{ $now.format('X') }}-resource001-complex", "type": "string"}]}}, "id": "init", "name": "Initialize", "type": "n8n-nodes-base.set", "typeVersion": 3.4, "position": [200, 0]},
-    {"parameters": {"promptType": "define", "text": "You are Iteration 1. Generate a summary of the input (100 tokens) but add context, making it 200 tokens.\n\nInput: \"Summarize this document.\"\nOutput: (200 tokens of summary + explanation + caveats)\n\nOutput: {\"iteration\": 1, \"input_tokens\": 5, \"output_tokens\": 200, \"growth_rate\": 40}", "options": {}}, "id": "iter1", "name": "Iteration 1", "type": "@n8n/n8n-nodes-langchain.agent", "typeVersion": 1.6, "position": [400, 0]},
-    {"parameters": {"model": "claude-3-5-haiku-20241022", "options": {"temperature": 0, "maxTokens": 100}}, "id": "lm_1", "name": "LM 1", "type": "@n8n/n8n-nodes-langchain.lmChatAnthropic", "typeVersion": 1.2, "position": [400, 200], "credentials": {"anthropicApi": {"id": "1KM50Mcms9JticwF", "name": "Anthropic API"}}},
-    {"parameters": {"promptType": "define", "text": "You are Iteration 2. Take the 200-token input and expand it with more detail.\n\nOutput: (400 tokens - doubled from input)\n\nOutput: {\"iteration\": 2, \"input_tokens\": 200, \"output_tokens\": 400, \"growth_rate\": 2}", "options": {}}, "id": "iter2", "name": "Iteration 2", "type": "@n8n/n8n-nodes-langchain.agent", "typeVersion": 1.6, "position": [600, 0]},
-    {"parameters": {"model": "claude-3-5-haiku-20241022", "options": {"temperature": 0, "maxTokens": 100}}, "id": "lm_2", "name": "LM 2", "type": "@n8n/n8n-nodes-langchain.lmChatAnthropic", "typeVersion": 1.2, "position": [600, 200], "credentials": {"anthropicApi": {"id": "1KM50Mcms9JticwF", "name": "Anthropic API"}}},
-    {"parameters": {"promptType": "define", "text": "You are Iteration 3. Take the 400-token input and expand again.\n\nOutput: (800 tokens - doubled from input)\n\nOutput: {\"iteration\": 3, \"input_tokens\": 400, \"output_tokens\": 800, \"growth_rate\": 2, \"cumulative_growth\": 160}", "options": {}}, "id": "iter3", "name": "Iteration 3", "type": "@n8n/n8n-nodes-langchain.agent", "typeVersion": 1.6, "position": [800, 0]},
-    {"parameters": {"model": "claude-3-5-haiku-20241022", "options": {"temperature": 0, "maxTokens": 100}}, "id": "lm_3", "name": "LM 3", "type": "@n8n/n8n-nodes-langchain.lmChatAnthropic", "typeVersion": 1.2, "position": [800, 200], "credentials": {"anthropicApi": {"id": "1KM50Mcms9JticwF", "name": "Anthropic API"}}},
-    {"parameters": {"method": "POST", "url": "https://mao-api.fly.dev/api/v1/n8n/webhook", "sendHeaders": true, "headerParameters": {"parameters": [{"name": "X-N8N-Api-Key", "value": "mao_pmNhfBRfqd5G_YHubK0Jqk9ZHB6ItITkHFYP4ISns9c"}]}, "sendBody": true, "specifyBody": "json", "jsonBody": "={\n  \"event_type\": \"workflow.completed\",\n  \"workflow_name\": \"RESOURCE-001 Complex: Exponential Output Growth\",\n  \"session_id\": \"{{ $('Initialize').item.json.session_id }}\",\n  \"failure_mode\": \"RESOURCE-001\",\n  \"complexity\": \"complex\",\n  \"expected_detection\": \"token_explosion\",\n  \"resource_tracking\": {\n    \"iteration_1\": \"{{ $('Iteration 1').item.json.output }}\",\n    \"iteration_2\": \"{{ $('Iteration 2').item.json.output }}\",\n    \"iteration_3\": \"{{ $('Iteration 3').item.json.output }}\",\n    \"initial_tokens\": 5,\n    \"final_tokens\": 800,\n    \"growth_pattern\": \"exponential\",\n    \"explosion_type\": \"iterative_expansion\"\n  },\n  \"agents\": [\n    {\"agent_id\": \"iter1\", \"outputs\": [\"{{ $('Iteration 1').item.json.output }}\"]},\n    {\"agent_id\": \"iter2\", \"outputs\": [\"{{ $('Iteration 2').item.json.output }}\"]},\n    {\"agent_id\": \"iter3\", \"outputs\": [\"{{ $('Iteration 3').item.json.output }}\"]}  \n  ]\n}", "options": {}},
-      "id": "send_to_mao", "name": "Send to MAO", "type": "n8n-nodes-base.httpRequest", "typeVersion": 4.2, "position": [1000, 0]
+    {
+      "parameters": {
+        "rule": {
+          "interval": [
+            {
+              "field": "hours",
+              "hoursInterval": 3
+            }
+          ]
+        }
+      },
+      "id": "schedule",
+      "name": "Schedule Trigger",
+      "type": "n8n-nodes-base.scheduleTrigger",
+      "typeVersion": 1.2,
+      "position": [
+        0,
+        -200
+      ]
+    },
+    {
+      "parameters": {
+        "path": "resource-001-complex",
+        "responseMode": "lastNode",
+        "options": {},
+        "httpMethod": "POST"
+      },
+      "id": "webhook",
+      "name": "Webhook",
+      "type": "n8n-nodes-base.webhook",
+      "typeVersion": 2,
+      "position": [
+        0,
+        0
+      ],
+      "webhookId": "resource-001-complex"
+    },
+    {
+      "parameters": {
+        "assignments": {
+          "assignments": [
+            {
+              "id": "session_id",
+              "name": "session_id",
+              "value": "={{ $now.format('X') }}-resource001-complex",
+              "type": "string"
+            }
+          ]
+        }
+      },
+      "id": "init",
+      "name": "Initialize",
+      "type": "n8n-nodes-base.set",
+      "typeVersion": 3.4,
+      "position": [
+        200,
+        0
+      ]
+    },
+    {
+      "parameters": {
+        "promptType": "define",
+        "text": "You are Iteration 1. Generate a summary of the input (100 tokens) but add context, making it 200 tokens.\n\nInput: \"Summarize this document.\"\nOutput: (200 tokens of summary + explanation + caveats)\n\nOutput: {\"iteration\": 1, \"input_tokens\": 5, \"output_tokens\": 200, \"growth_rate\": 40}",
+        "options": {}
+      },
+      "id": "iter1",
+      "name": "Iteration 1",
+      "type": "@n8n/n8n-nodes-langchain.agent",
+      "typeVersion": 1.6,
+      "position": [
+        400,
+        0
+      ]
+    },
+    {
+      "parameters": {
+        "model": "claude-3-5-haiku-20241022",
+        "options": {
+          "temperature": 0,
+          "maxTokens": 100
+        }
+      },
+      "id": "lm_1",
+      "name": "LM 1",
+      "type": "@n8n/n8n-nodes-langchain.lmChatAnthropic",
+      "typeVersion": 1.2,
+      "position": [
+        400,
+        200
+      ],
+      "credentials": {
+        "anthropicApi": {
+          "id": "1KM50Mcms9JticwF",
+          "name": "Anthropic API"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "promptType": "define",
+        "text": "You are Iteration 2. Take the 200-token input and expand it with more detail.\n\nOutput: (400 tokens - doubled from input)\n\nOutput: {\"iteration\": 2, \"input_tokens\": 200, \"output_tokens\": 400, \"growth_rate\": 2}",
+        "options": {}
+      },
+      "id": "iter2",
+      "name": "Iteration 2",
+      "type": "@n8n/n8n-nodes-langchain.agent",
+      "typeVersion": 1.6,
+      "position": [
+        600,
+        0
+      ]
+    },
+    {
+      "parameters": {
+        "model": "claude-3-5-haiku-20241022",
+        "options": {
+          "temperature": 0,
+          "maxTokens": 100
+        }
+      },
+      "id": "lm_2",
+      "name": "LM 2",
+      "type": "@n8n/n8n-nodes-langchain.lmChatAnthropic",
+      "typeVersion": 1.2,
+      "position": [
+        600,
+        200
+      ],
+      "credentials": {
+        "anthropicApi": {
+          "id": "1KM50Mcms9JticwF",
+          "name": "Anthropic API"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "promptType": "define",
+        "text": "You are Iteration 3. Take the 400-token input and expand again.\n\nOutput: (800 tokens - doubled from input)\n\nOutput: {\"iteration\": 3, \"input_tokens\": 400, \"output_tokens\": 800, \"growth_rate\": 2, \"cumulative_growth\": 160}",
+        "options": {}
+      },
+      "id": "iter3",
+      "name": "Iteration 3",
+      "type": "@n8n/n8n-nodes-langchain.agent",
+      "typeVersion": 1.6,
+      "position": [
+        800,
+        0
+      ]
+    },
+    {
+      "parameters": {
+        "model": "claude-3-5-haiku-20241022",
+        "options": {
+          "temperature": 0,
+          "maxTokens": 100
+        }
+      },
+      "id": "lm_3",
+      "name": "LM 3",
+      "type": "@n8n/n8n-nodes-langchain.lmChatAnthropic",
+      "typeVersion": 1.2,
+      "position": [
+        800,
+        200
+      ],
+      "credentials": {
+        "anthropicApi": {
+          "id": "1KM50Mcms9JticwF",
+          "name": "Anthropic API"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "https://mao-api.fly.dev/api/v1/n8n/webhook",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            {
+              "name": "X-N8N-Api-Key",
+              "value": "mao_pmNhfBRfqd5G_YHubK0Jqk9ZHB6ItITkHFYP4ISns9c"
+            }
+          ]
+        },
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={\n  \"event_type\": \"workflow.completed\",\n  \"workflow_name\": \"RESOURCE-001 Complex: Exponential Output Growth\",\n  \"session_id\": \"{{ $('Initialize').item.json.session_id }}\",\n  \"failure_mode\": \"RESOURCE-001\",\n  \"complexity\": \"complex\",\n  \"expected_detection\": \"token_explosion\",\n  \"resource_tracking\": {\n    \"iteration_1\": \"{{ $('Iteration 1').item.json.output }}\",\n    \"iteration_2\": \"{{ $('Iteration 2').item.json.output }}\",\n    \"iteration_3\": \"{{ $('Iteration 3').item.json.output }}\",\n    \"initial_tokens\": 5,\n    \"final_tokens\": 800,\n    \"growth_pattern\": \"exponential\",\n    \"explosion_type\": \"iterative_expansion\"\n  },\n  \"agents\": [\n    {\"agent_id\": \"iter1\", \"outputs\": [\"{{ $('Iteration 1').item.json.output }}\"]},\n    {\"agent_id\": \"iter2\", \"outputs\": [\"{{ $('Iteration 2').item.json.output }}\"]},\n    {\"agent_id\": \"iter3\", \"outputs\": [\"{{ $('Iteration 3').item.json.output }}\"]}  \n  ]\n}",
+        "options": {}
+      },
+      "id": "send_to_mao",
+      "name": "Send to MAO",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [
+        1000,
+        0
+      ]
     }
   ],
   "connections": {
-    "Webhook": {"main": [[{"node": "Initialize", "type": "main", "index": 0}]]},
-    "Initialize": {"main": [[{"node": "Iteration 1", "type": "main", "index": 0}]]},
-    "LM 1": {"ai_languageModel": [[{"node": "Iteration 1", "type": "ai_languageModel", "index": 0}]]},
-    "Iteration 1": {"main": [[{"node": "Iteration 2", "type": "main", "index": 0}]]},
-    "LM 2": {"ai_languageModel": [[{"node": "Iteration 2", "type": "ai_languageModel", "index": 0}]]},
-    "Iteration 2": {"main": [[{"node": "Iteration 3", "type": "main", "index": 0}]]},
-    "LM 3": {"ai_languageModel": [[{"node": "Iteration 3", "type": "ai_languageModel", "index": 0}]]},
-    "Iteration 3": {"main": [[{"node": "Send to MAO", "type": "main", "index": 0}]]}
+    "Webhook": {
+      "main": [
+        [
+          {
+            "node": "Initialize",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Initialize": {
+      "main": [
+        [
+          {
+            "node": "Iteration 1",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "LM 1": {
+      "ai_languageModel": [
+        [
+          {
+            "node": "Iteration 1",
+            "type": "ai_languageModel",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Iteration 1": {
+      "main": [
+        [
+          {
+            "node": "Iteration 2",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "LM 2": {
+      "ai_languageModel": [
+        [
+          {
+            "node": "Iteration 2",
+            "type": "ai_languageModel",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Iteration 2": {
+      "main": [
+        [
+          {
+            "node": "Iteration 3",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "LM 3": {
+      "ai_languageModel": [
+        [
+          {
+            "node": "Iteration 3",
+            "type": "ai_languageModel",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Iteration 3": {
+      "main": [
+        [
+          {
+            "node": "Send to MAO",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Schedule Trigger": {
+      "main": [
+        [
+          {
+            "node": "Initialize",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
   },
-  "settings": {"executionOrder": "v1"},
-  "meta": {"mast_failure_mode": "RESOURCE-001", "mast_category": "RESOURCE", "complexity": "complex", "description": "Each iteration doubles output length exponentially", "expected_detection": "Exponential token growth detection across iterations", "agents": 3, "nodes": 5}
+  "settings": {
+    "executionOrder": "v1"
+  },
+  "meta": {
+    "mast_failure_mode": "RESOURCE-001",
+    "mast_category": "RESOURCE",
+    "complexity": "complex",
+    "description": "Each iteration doubles output length exponentially",
+    "expected_detection": "Exponential token growth detection across iterations",
+    "agents": 3,
+    "nodes": 5
+  }
 }

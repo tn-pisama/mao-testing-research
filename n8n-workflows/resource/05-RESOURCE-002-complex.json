@@ -1,32 +1,377 @@
 {
   "name": "RESOURCE-002 Complex: Cascading Timeout Chain",
   "nodes": [
-    {"parameters": {"path": "resource-002-complex", "responseMode": "lastNode", "options": {}, "httpMethod": "POST"}, "id": "webhook", "name": "Webhook", "type": "n8n-nodes-base.webhook", "typeVersion": 2, "position": [0, 0], "webhookId": "resource-002-complex"},
-    {"parameters": {"assignments": {"assignments": [{"id": "session_id", "name": "session_id", "value": "={{ $now.format('X') }}-resource002-complex", "type": "string"}]}}, "id": "init", "name": "Initialize", "type": "n8n-nodes-base.set", "typeVersion": 3.4, "position": [200, 0]},
-    {"parameters": {"url": "https://httpbin.org/delay/5", "options": {"timeout": 2000}}, "id": "api_1", "name": "API 1 (Timeout)", "type": "n8n-nodes-base.httpRequest", "typeVersion": 4.2, "position": [400, 0], "continueOnFail": true},
-    {"parameters": {"promptType": "define", "text": "You are Stage 1 handler. API 1 timed out (2s limit, 5s actual).\nYou CANNOT proceed without API 1 data, so you retry...\n\nOutput: {\"stage\": 1, \"api\": \"api_1\", \"status\": \"TIMEOUT\", \"action\": \"retry_with_longer_timeout\"}", "options": {}}, "id": "stage1", "name": "Stage 1 Handler", "type": "@n8n/n8n-nodes-langchain.agent", "typeVersion": 1.6, "position": [600, 0]},
-    {"parameters": {"model": "claude-3-5-haiku-20241022", "options": {"temperature": 0, "maxTokens": 100}}, "id": "lm_1", "name": "LM 1", "type": "@n8n/n8n-nodes-langchain.lmChatAnthropic", "typeVersion": 1.2, "position": [600, 200], "credentials": {"anthropicApi": {"id": "1KM50Mcms9JticwF", "name": "Anthropic API"}}},
-    {"parameters": {"url": "https://httpbin.org/delay/5", "options": {"timeout": 3000}}, "id": "api_2", "name": "API 1 Retry (Timeout)", "type": "n8n-nodes-base.httpRequest", "typeVersion": 4.2, "position": [800, 0], "continueOnFail": true},
-    {"parameters": {"promptType": "define", "text": "You are Stage 2 handler. API 1 retry also timed out (3s limit, 5s actual).\nCumulative time wasted: 5s. Stage 2 processing cannot start.\n\nOutput: {\"stage\": 2, \"api\": \"api_1_retry\", \"status\": \"TIMEOUT\", \"cumulative_timeout_ms\": 5000, \"pipeline_status\": \"stalled\"}", "options": {}}, "id": "stage2", "name": "Stage 2 Handler", "type": "@n8n/n8n-nodes-langchain.agent", "typeVersion": 1.6, "position": [1000, 0]},
-    {"parameters": {"model": "claude-3-5-haiku-20241022", "options": {"temperature": 0, "maxTokens": 100}}, "id": "lm_2", "name": "LM 2", "type": "@n8n/n8n-nodes-langchain.lmChatAnthropic", "typeVersion": 1.2, "position": [1000, 200], "credentials": {"anthropicApi": {"id": "1KM50Mcms9JticwF", "name": "Anthropic API"}}},
-    {"parameters": {"promptType": "define", "text": "You are Stage 3 handler. Waiting for Stage 2 which is waiting for API 1.\nYou timeout while waiting for upstream.\n\nOutput: {\"stage\": 3, \"status\": \"TIMEOUT_WAITING_UPSTREAM\", \"blocked_by\": \"stage_2\", \"chain\": [\"api_1\", \"stage_1\", \"api_1_retry\", \"stage_2\", \"stage_3\"], \"cascade_depth\": 5}", "options": {}}, "id": "stage3", "name": "Stage 3 Handler", "type": "@n8n/n8n-nodes-langchain.agent", "typeVersion": 1.6, "position": [1200, 0]},
-    {"parameters": {"model": "claude-3-5-haiku-20241022", "options": {"temperature": 0, "maxTokens": 100}}, "id": "lm_3", "name": "LM 3", "type": "@n8n/n8n-nodes-langchain.lmChatAnthropic", "typeVersion": 1.2, "position": [1200, 200], "credentials": {"anthropicApi": {"id": "1KM50Mcms9JticwF", "name": "Anthropic API"}}},
-    {"parameters": {"method": "POST", "url": "https://mao-api.fly.dev/api/v1/n8n/webhook", "sendHeaders": true, "headerParameters": {"parameters": [{"name": "X-N8N-Api-Key", "value": "mao_pmNhfBRfqd5G_YHubK0Jqk9ZHB6ItITkHFYP4ISns9c"}]}, "sendBody": true, "specifyBody": "json", "jsonBody": "={\n  \"event_type\": \"workflow.completed\",\n  \"workflow_name\": \"RESOURCE-002 Complex: Cascading Timeout Chain\",\n  \"session_id\": \"{{ $('Initialize').item.json.session_id }}\",\n  \"failure_mode\": \"RESOURCE-002\",\n  \"complexity\": \"complex\",\n  \"expected_detection\": \"timeout\",\n  \"resource_tracking\": {\n    \"stage_1\": \"{{ $('Stage 1 Handler').item.json.output }}\",\n    \"stage_2\": \"{{ $('Stage 2 Handler').item.json.output }}\",\n    \"stage_3\": \"{{ $('Stage 3 Handler').item.json.output }}\",\n    \"timeout_chain\": [\"api_1\", \"api_1_retry\", \"stage_2\", \"stage_3\"],\n    \"timeout_type\": \"cascading_chain\"\n  },\n  \"agents\": [\n    {\"agent_id\": \"stage1\", \"outputs\": [\"{{ $('Stage 1 Handler').item.json.output }}\"]},\n    {\"agent_id\": \"stage2\", \"outputs\": [\"{{ $('Stage 2 Handler').item.json.output }}\"]},\n    {\"agent_id\": \"stage3\", \"outputs\": [\"{{ $('Stage 3 Handler').item.json.output }}\"]}  \n  ]\n}", "options": {}},
-      "id": "send_to_mao", "name": "Send to MAO", "type": "n8n-nodes-base.httpRequest", "typeVersion": 4.2, "position": [1400, 0]
+    {
+      "parameters": {
+        "rule": {
+          "interval": [
+            {
+              "field": "hours",
+              "hoursInterval": 3
+            }
+          ]
+        }
+      },
+      "id": "schedule",
+      "name": "Schedule Trigger",
+      "type": "n8n-nodes-base.scheduleTrigger",
+      "typeVersion": 1.2,
+      "position": [
+        0,
+        -200
+      ]
+    },
+    {
+      "parameters": {
+        "path": "resource-002-complex",
+        "responseMode": "lastNode",
+        "options": {},
+        "httpMethod": "POST"
+      },
+      "id": "webhook",
+      "name": "Webhook",
+      "type": "n8n-nodes-base.webhook",
+      "typeVersion": 2,
+      "position": [
+        0,
+        0
+      ],
+      "webhookId": "resource-002-complex"
+    },
+    {
+      "parameters": {
+        "assignments": {
+          "assignments": [
+            {
+              "id": "session_id",
+              "name": "session_id",
+              "value": "={{ $now.format('X') }}-resource002-complex",
+              "type": "string"
+            }
+          ]
+        }
+      },
+      "id": "init",
+      "name": "Initialize",
+      "type": "n8n-nodes-base.set",
+      "typeVersion": 3.4,
+      "position": [
+        200,
+        0
+      ]
+    },
+    {
+      "parameters": {
+        "url": "https://httpbin.org/delay/5",
+        "options": {
+          "timeout": 2000
+        }
+      },
+      "id": "api_1",
+      "name": "API 1 (Timeout)",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [
+        400,
+        0
+      ],
+      "continueOnFail": true
+    },
+    {
+      "parameters": {
+        "promptType": "define",
+        "text": "You are Stage 1 handler. API 1 timed out (2s limit, 5s actual).\nYou CANNOT proceed without API 1 data, so you retry...\n\nOutput: {\"stage\": 1, \"api\": \"api_1\", \"status\": \"TIMEOUT\", \"action\": \"retry_with_longer_timeout\"}",
+        "options": {}
+      },
+      "id": "stage1",
+      "name": "Stage 1 Handler",
+      "type": "@n8n/n8n-nodes-langchain.agent",
+      "typeVersion": 1.6,
+      "position": [
+        600,
+        0
+      ]
+    },
+    {
+      "parameters": {
+        "model": "claude-3-5-haiku-20241022",
+        "options": {
+          "temperature": 0,
+          "maxTokens": 100
+        }
+      },
+      "id": "lm_1",
+      "name": "LM 1",
+      "type": "@n8n/n8n-nodes-langchain.lmChatAnthropic",
+      "typeVersion": 1.2,
+      "position": [
+        600,
+        200
+      ],
+      "credentials": {
+        "anthropicApi": {
+          "id": "1KM50Mcms9JticwF",
+          "name": "Anthropic API"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "url": "https://httpbin.org/delay/5",
+        "options": {
+          "timeout": 3000
+        }
+      },
+      "id": "api_2",
+      "name": "API 1 Retry (Timeout)",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [
+        800,
+        0
+      ],
+      "continueOnFail": true
+    },
+    {
+      "parameters": {
+        "promptType": "define",
+        "text": "You are Stage 2 handler. API 1 retry also timed out (3s limit, 5s actual).\nCumulative time wasted: 5s. Stage 2 processing cannot start.\n\nOutput: {\"stage\": 2, \"api\": \"api_1_retry\", \"status\": \"TIMEOUT\", \"cumulative_timeout_ms\": 5000, \"pipeline_status\": \"stalled\"}",
+        "options": {}
+      },
+      "id": "stage2",
+      "name": "Stage 2 Handler",
+      "type": "@n8n/n8n-nodes-langchain.agent",
+      "typeVersion": 1.6,
+      "position": [
+        1000,
+        0
+      ]
+    },
+    {
+      "parameters": {
+        "model": "claude-3-5-haiku-20241022",
+        "options": {
+          "temperature": 0,
+          "maxTokens": 100
+        }
+      },
+      "id": "lm_2",
+      "name": "LM 2",
+      "type": "@n8n/n8n-nodes-langchain.lmChatAnthropic",
+      "typeVersion": 1.2,
+      "position": [
+        1000,
+        200
+      ],
+      "credentials": {
+        "anthropicApi": {
+          "id": "1KM50Mcms9JticwF",
+          "name": "Anthropic API"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "promptType": "define",
+        "text": "You are Stage 3 handler. Waiting for Stage 2 which is waiting for API 1.\nYou timeout while waiting for upstream.\n\nOutput: {\"stage\": 3, \"status\": \"TIMEOUT_WAITING_UPSTREAM\", \"blocked_by\": \"stage_2\", \"chain\": [\"api_1\", \"stage_1\", \"api_1_retry\", \"stage_2\", \"stage_3\"], \"cascade_depth\": 5}",
+        "options": {}
+      },
+      "id": "stage3",
+      "name": "Stage 3 Handler",
+      "type": "@n8n/n8n-nodes-langchain.agent",
+      "typeVersion": 1.6,
+      "position": [
+        1200,
+        0
+      ]
+    },
+    {
+      "parameters": {
+        "model": "claude-3-5-haiku-20241022",
+        "options": {
+          "temperature": 0,
+          "maxTokens": 100
+        }
+      },
+      "id": "lm_3",
+      "name": "LM 3",
+      "type": "@n8n/n8n-nodes-langchain.lmChatAnthropic",
+      "typeVersion": 1.2,
+      "position": [
+        1200,
+        200
+      ],
+      "credentials": {
+        "anthropicApi": {
+          "id": "1KM50Mcms9JticwF",
+          "name": "Anthropic API"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "https://mao-api.fly.dev/api/v1/n8n/webhook",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            {
+              "name": "X-N8N-Api-Key",
+              "value": "mao_pmNhfBRfqd5G_YHubK0Jqk9ZHB6ItITkHFYP4ISns9c"
+            }
+          ]
+        },
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={\n  \"event_type\": \"workflow.completed\",\n  \"workflow_name\": \"RESOURCE-002 Complex: Cascading Timeout Chain\",\n  \"session_id\": \"{{ $('Initialize').item.json.session_id }}\",\n  \"failure_mode\": \"RESOURCE-002\",\n  \"complexity\": \"complex\",\n  \"expected_detection\": \"timeout\",\n  \"resource_tracking\": {\n    \"stage_1\": \"{{ $('Stage 1 Handler').item.json.output }}\",\n    \"stage_2\": \"{{ $('Stage 2 Handler').item.json.output }}\",\n    \"stage_3\": \"{{ $('Stage 3 Handler').item.json.output }}\",\n    \"timeout_chain\": [\"api_1\", \"api_1_retry\", \"stage_2\", \"stage_3\"],\n    \"timeout_type\": \"cascading_chain\"\n  },\n  \"agents\": [\n    {\"agent_id\": \"stage1\", \"outputs\": [\"{{ $('Stage 1 Handler').item.json.output }}\"]},\n    {\"agent_id\": \"stage2\", \"outputs\": [\"{{ $('Stage 2 Handler').item.json.output }}\"]},\n    {\"agent_id\": \"stage3\", \"outputs\": [\"{{ $('Stage 3 Handler').item.json.output }}\"]}  \n  ]\n}",
+        "options": {}
+      },
+      "id": "send_to_mao",
+      "name": "Send to MAO",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [
+        1400,
+        0
+      ]
     }
   ],
   "connections": {
-    "Webhook": {"main": [[{"node": "Initialize", "type": "main", "index": 0}]]},
-    "Initialize": {"main": [[{"node": "API 1 (Timeout)", "type": "main", "index": 0}]]},
-    "API 1 (Timeout)": {"main": [[{"node": "Stage 1 Handler", "type": "main", "index": 0}]]},
-    "LM 1": {"ai_languageModel": [[{"node": "Stage 1 Handler", "type": "ai_languageModel", "index": 0}]]},
-    "Stage 1 Handler": {"main": [[{"node": "API 1 Retry (Timeout)", "type": "main", "index": 0}]]},
-    "API 1 Retry (Timeout)": {"main": [[{"node": "Stage 2 Handler", "type": "main", "index": 0}]]},
-    "LM 2": {"ai_languageModel": [[{"node": "Stage 2 Handler", "type": "ai_languageModel", "index": 0}]]},
-    "Stage 2 Handler": {"main": [[{"node": "Stage 3 Handler", "type": "main", "index": 0}]]},
-    "LM 3": {"ai_languageModel": [[{"node": "Stage 3 Handler", "type": "ai_languageModel", "index": 0}]]},
-    "Stage 3 Handler": {"main": [[{"node": "Send to MAO", "type": "main", "index": 0}]]}
+    "Webhook": {
+      "main": [
+        [
+          {
+            "node": "Initialize",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Initialize": {
+      "main": [
+        [
+          {
+            "node": "API 1 (Timeout)",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "API 1 (Timeout)": {
+      "main": [
+        [
+          {
+            "node": "Stage 1 Handler",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "LM 1": {
+      "ai_languageModel": [
+        [
+          {
+            "node": "Stage 1 Handler",
+            "type": "ai_languageModel",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Stage 1 Handler": {
+      "main": [
+        [
+          {
+            "node": "API 1 Retry (Timeout)",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "API 1 Retry (Timeout)": {
+      "main": [
+        [
+          {
+            "node": "Stage 2 Handler",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "LM 2": {
+      "ai_languageModel": [
+        [
+          {
+            "node": "Stage 2 Handler",
+            "type": "ai_languageModel",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Stage 2 Handler": {
+      "main": [
+        [
+          {
+            "node": "Stage 3 Handler",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "LM 3": {
+      "ai_languageModel": [
+        [
+          {
+            "node": "Stage 3 Handler",
+            "type": "ai_languageModel",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Stage 3 Handler": {
+      "main": [
+        [
+          {
+            "node": "Send to MAO",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Schedule Trigger": {
+      "main": [
+        [
+          {
+            "node": "Initialize",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
   },
-  "settings": {"executionOrder": "v1"},
-  "meta": {"mast_failure_mode": "RESOURCE-002", "mast_category": "RESOURCE", "complexity": "complex", "description": "Timeout on retry causes cascade through downstream stages", "expected_detection": "Cascading timeout chain detection", "agents": 3, "nodes": 6, "real_apis": ["HTTPBin"]}
+  "settings": {
+    "executionOrder": "v1"
+  },
+  "meta": {
+    "mast_failure_mode": "RESOURCE-002",
+    "mast_category": "RESOURCE",
+    "complexity": "complex",
+    "description": "Timeout on retry causes cascade through downstream stages",
+    "expected_detection": "Cascading timeout chain detection",
+    "agents": 3,
+    "nodes": 6,
+    "real_apis": [
+      "HTTPBin"
+    ]
+  }
 }

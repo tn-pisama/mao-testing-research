@@ -3,6 +3,26 @@
   "nodes": [
     {
       "parameters": {
+        "rule": {
+          "interval": [
+            {
+              "field": "hours",
+              "hoursInterval": 3
+            }
+          ]
+        }
+      },
+      "id": "schedule",
+      "name": "Schedule Trigger",
+      "type": "n8n-nodes-base.scheduleTrigger",
+      "typeVersion": 1.2,
+      "position": [
+        0,
+        -200
+      ]
+    },
+    {
+      "parameters": {
         "path": "loop-005-vcomplex",
         "responseMode": "lastNode",
         "options": {},
@@ -12,15 +32,28 @@
       "name": "Webhook",
       "type": "n8n-nodes-base.webhook",
       "typeVersion": 2,
-      "position": [0, 0],
+      "position": [
+        0,
+        0
+      ],
       "webhookId": "loop-005-vcomplex"
     },
     {
       "parameters": {
         "assignments": {
           "assignments": [
-            {"id": "session_id", "name": "session_id", "value": "={{ $now.format('X') }}-loop005-vcomplex", "type": "string"},
-            {"id": "topic", "name": "topic", "value": "Which JavaScript framework should we use?", "type": "string"}
+            {
+              "id": "session_id",
+              "name": "session_id",
+              "value": "={{ $now.format('X') }}-loop005-vcomplex",
+              "type": "string"
+            },
+            {
+              "id": "topic",
+              "name": "topic",
+              "value": "Which JavaScript framework should we use?",
+              "type": "string"
+            }
           ]
         }
       },
@@ -28,20 +61,37 @@
       "name": "Initialize",
       "type": "n8n-nodes-base.set",
       "typeVersion": 3.4,
-      "position": [200, 0]
+      "position": [
+        200,
+        0
+      ]
     },
     {
       "parameters": {
         "url": "https://hn.algolia.com/api/v1/search",
         "sendQuery": true,
-        "queryParameters": {"parameters": [{"name": "query", "value": "React vs Vue vs Angular"}, {"name": "hitsPerPage", "value": "2"}]},
+        "queryParameters": {
+          "parameters": [
+            {
+              "name": "query",
+              "value": "React vs Vue vs Angular"
+            },
+            {
+              "name": "hitsPerPage",
+              "value": "2"
+            }
+          ]
+        },
         "options": {}
       },
       "id": "research",
       "name": "Research",
       "type": "n8n-nodes-base.httpRequest",
       "typeVersion": 4.2,
-      "position": [400, 0]
+      "position": [
+        400,
+        0
+      ]
     },
     {
       "parameters": {
@@ -53,19 +103,33 @@
       "name": "Alex Proposes",
       "type": "@n8n/n8n-nodes-langchain.agent",
       "typeVersion": 1.6,
-      "position": [600, 0]
+      "position": [
+        600,
+        0
+      ]
     },
     {
       "parameters": {
         "model": "claude-3-5-haiku-20241022",
-        "options": {"temperature": 0.5, "maxTokens": 100}
+        "options": {
+          "temperature": 0.5,
+          "maxTokens": 100
+        }
       },
       "id": "lm_a1",
       "name": "LM A1",
       "type": "@n8n/n8n-nodes-langchain.lmChatAnthropic",
       "typeVersion": 1.2,
-      "position": [600, 200],
-      "credentials": {"anthropicApi": {"id": "1KM50Mcms9JticwF", "name": "Anthropic API"}}
+      "position": [
+        600,
+        200
+      ],
+      "credentials": {
+        "anthropicApi": {
+          "id": "1KM50Mcms9JticwF",
+          "name": "Anthropic API"
+        }
+      }
     },
     {
       "parameters": {
@@ -77,19 +141,33 @@
       "name": "Blake Agrees",
       "type": "@n8n/n8n-nodes-langchain.agent",
       "typeVersion": 1.6,
-      "position": [800, 0]
+      "position": [
+        800,
+        0
+      ]
     },
     {
       "parameters": {
         "model": "claude-3-5-haiku-20241022",
-        "options": {"temperature": 0.5, "maxTokens": 100}
+        "options": {
+          "temperature": 0.5,
+          "maxTokens": 100
+        }
       },
       "id": "lm_b1",
       "name": "LM B1",
       "type": "@n8n/n8n-nodes-langchain.lmChatAnthropic",
       "typeVersion": 1.2,
-      "position": [800, 200],
-      "credentials": {"anthropicApi": {"id": "1KM50Mcms9JticwF", "name": "Anthropic API"}}
+      "position": [
+        800,
+        200
+      ],
+      "credentials": {
+        "anthropicApi": {
+          "id": "1KM50Mcms9JticwF",
+          "name": "Anthropic API"
+        }
+      }
     },
     {
       "parameters": {
@@ -101,19 +179,33 @@
       "name": "Casey Confirms",
       "type": "@n8n/n8n-nodes-langchain.agent",
       "typeVersion": 1.6,
-      "position": [1000, 0]
+      "position": [
+        1000,
+        0
+      ]
     },
     {
       "parameters": {
         "model": "claude-3-5-haiku-20241022",
-        "options": {"temperature": 0.5, "maxTokens": 100}
+        "options": {
+          "temperature": 0.5,
+          "maxTokens": 100
+        }
       },
       "id": "lm_c1",
       "name": "LM C1",
       "type": "@n8n/n8n-nodes-langchain.lmChatAnthropic",
       "typeVersion": 1.2,
-      "position": [1000, 200],
-      "credentials": {"anthropicApi": {"id": "1KM50Mcms9JticwF", "name": "Anthropic API"}}
+      "position": [
+        1000,
+        200
+      ],
+      "credentials": {
+        "anthropicApi": {
+          "id": "1KM50Mcms9JticwF",
+          "name": "Anthropic API"
+        }
+      }
     },
     {
       "parameters": {
@@ -125,19 +217,33 @@
       "name": "Alex Reconsiders",
       "type": "@n8n/n8n-nodes-langchain.agent",
       "typeVersion": 1.6,
-      "position": [1200, 0]
+      "position": [
+        1200,
+        0
+      ]
     },
     {
       "parameters": {
         "model": "claude-3-5-haiku-20241022",
-        "options": {"temperature": 0.5, "maxTokens": 100}
+        "options": {
+          "temperature": 0.5,
+          "maxTokens": 100
+        }
       },
       "id": "lm_a2",
       "name": "LM A2",
       "type": "@n8n/n8n-nodes-langchain.lmChatAnthropic",
       "typeVersion": 1.2,
-      "position": [1200, 200],
-      "credentials": {"anthropicApi": {"id": "1KM50Mcms9JticwF", "name": "Anthropic API"}}
+      "position": [
+        1200,
+        200
+      ],
+      "credentials": {
+        "anthropicApi": {
+          "id": "1KM50Mcms9JticwF",
+          "name": "Anthropic API"
+        }
+      }
     },
     {
       "parameters": {
@@ -149,19 +255,33 @@
       "name": "Blake Wavers",
       "type": "@n8n/n8n-nodes-langchain.agent",
       "typeVersion": 1.6,
-      "position": [1400, 0]
+      "position": [
+        1400,
+        0
+      ]
     },
     {
       "parameters": {
         "model": "claude-3-5-haiku-20241022",
-        "options": {"temperature": 0.5, "maxTokens": 100}
+        "options": {
+          "temperature": 0.5,
+          "maxTokens": 100
+        }
       },
       "id": "lm_b2",
       "name": "LM B2",
       "type": "@n8n/n8n-nodes-langchain.lmChatAnthropic",
       "typeVersion": 1.2,
-      "position": [1400, 200],
-      "credentials": {"anthropicApi": {"id": "1KM50Mcms9JticwF", "name": "Anthropic API"}}
+      "position": [
+        1400,
+        200
+      ],
+      "credentials": {
+        "anthropicApi": {
+          "id": "1KM50Mcms9JticwF",
+          "name": "Anthropic API"
+        }
+      }
     },
     {
       "parameters": {
@@ -173,19 +293,33 @@
       "name": "Alex Returns to React",
       "type": "@n8n/n8n-nodes-langchain.agent",
       "typeVersion": 1.6,
-      "position": [1600, 0]
+      "position": [
+        1600,
+        0
+      ]
     },
     {
       "parameters": {
         "model": "claude-3-5-haiku-20241022",
-        "options": {"temperature": 0.5, "maxTokens": 100}
+        "options": {
+          "temperature": 0.5,
+          "maxTokens": 100
+        }
       },
       "id": "lm_a3",
       "name": "LM A3",
       "type": "@n8n/n8n-nodes-langchain.lmChatAnthropic",
       "typeVersion": 1.2,
-      "position": [1600, 200],
-      "credentials": {"anthropicApi": {"id": "1KM50Mcms9JticwF", "name": "Anthropic API"}}
+      "position": [
+        1600,
+        200
+      ],
+      "credentials": {
+        "anthropicApi": {
+          "id": "1KM50Mcms9JticwF",
+          "name": "Anthropic API"
+        }
+      }
     },
     {
       "parameters": {
@@ -193,7 +327,12 @@
         "url": "https://mao-api.fly.dev/api/v1/n8n/webhook",
         "sendHeaders": true,
         "headerParameters": {
-          "parameters": [{"name": "X-N8N-Api-Key", "value": "mao_pmNhfBRfqd5G_YHubK0Jqk9ZHB6ItITkHFYP4ISns9c"}]
+          "parameters": [
+            {
+              "name": "X-N8N-Api-Key",
+              "value": "mao_pmNhfBRfqd5G_YHubK0Jqk9ZHB6ItITkHFYP4ISns9c"
+            }
+          ]
         },
         "sendBody": true,
         "specifyBody": "json",
@@ -204,27 +343,193 @@
       "name": "Send to MAO",
       "type": "n8n-nodes-base.httpRequest",
       "typeVersion": 4.2,
-      "position": [1800, 0]
+      "position": [
+        1800,
+        0
+      ]
     }
   ],
   "connections": {
-    "Webhook": {"main": [[{"node": "Initialize", "type": "main", "index": 0}]]},
-    "Initialize": {"main": [[{"node": "Research", "type": "main", "index": 0}]]},
-    "Research": {"main": [[{"node": "Alex Proposes", "type": "main", "index": 0}]]},
-    "LM A1": {"ai_languageModel": [[{"node": "Alex Proposes", "type": "ai_languageModel", "index": 0}]]},
-    "Alex Proposes": {"main": [[{"node": "Blake Agrees", "type": "main", "index": 0}]]},
-    "LM B1": {"ai_languageModel": [[{"node": "Blake Agrees", "type": "ai_languageModel", "index": 0}]]},
-    "Blake Agrees": {"main": [[{"node": "Casey Confirms", "type": "main", "index": 0}]]},
-    "LM C1": {"ai_languageModel": [[{"node": "Casey Confirms", "type": "ai_languageModel", "index": 0}]]},
-    "Casey Confirms": {"main": [[{"node": "Alex Reconsiders", "type": "main", "index": 0}]]},
-    "LM A2": {"ai_languageModel": [[{"node": "Alex Reconsiders", "type": "ai_languageModel", "index": 0}]]},
-    "Alex Reconsiders": {"main": [[{"node": "Blake Wavers", "type": "main", "index": 0}]]},
-    "LM B2": {"ai_languageModel": [[{"node": "Blake Wavers", "type": "ai_languageModel", "index": 0}]]},
-    "Blake Wavers": {"main": [[{"node": "Alex Returns to React", "type": "main", "index": 0}]]},
-    "LM A3": {"ai_languageModel": [[{"node": "Alex Returns to React", "type": "ai_languageModel", "index": 0}]]},
-    "Alex Returns to React": {"main": [[{"node": "Send to MAO", "type": "main", "index": 0}]]}
+    "Webhook": {
+      "main": [
+        [
+          {
+            "node": "Initialize",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Initialize": {
+      "main": [
+        [
+          {
+            "node": "Research",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Research": {
+      "main": [
+        [
+          {
+            "node": "Alex Proposes",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "LM A1": {
+      "ai_languageModel": [
+        [
+          {
+            "node": "Alex Proposes",
+            "type": "ai_languageModel",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Alex Proposes": {
+      "main": [
+        [
+          {
+            "node": "Blake Agrees",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "LM B1": {
+      "ai_languageModel": [
+        [
+          {
+            "node": "Blake Agrees",
+            "type": "ai_languageModel",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Blake Agrees": {
+      "main": [
+        [
+          {
+            "node": "Casey Confirms",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "LM C1": {
+      "ai_languageModel": [
+        [
+          {
+            "node": "Casey Confirms",
+            "type": "ai_languageModel",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Casey Confirms": {
+      "main": [
+        [
+          {
+            "node": "Alex Reconsiders",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "LM A2": {
+      "ai_languageModel": [
+        [
+          {
+            "node": "Alex Reconsiders",
+            "type": "ai_languageModel",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Alex Reconsiders": {
+      "main": [
+        [
+          {
+            "node": "Blake Wavers",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "LM B2": {
+      "ai_languageModel": [
+        [
+          {
+            "node": "Blake Wavers",
+            "type": "ai_languageModel",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Blake Wavers": {
+      "main": [
+        [
+          {
+            "node": "Alex Returns to React",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "LM A3": {
+      "ai_languageModel": [
+        [
+          {
+            "node": "Alex Returns to React",
+            "type": "ai_languageModel",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Alex Returns to React": {
+      "main": [
+        [
+          {
+            "node": "Send to MAO",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Schedule Trigger": {
+      "main": [
+        [
+          {
+            "node": "Initialize",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
   },
-  "settings": {"executionOrder": "v1"},
+  "settings": {
+    "executionOrder": "v1"
+  },
   "meta": {
     "mast_failure_mode": "LOOP-005",
     "mast_category": "LOOP",
@@ -233,6 +538,8 @@
     "expected_detection": "Conversation segment clustering detects topic cycle",
     "agents": 6,
     "nodes": 8,
-    "real_apis": ["HackerNews Algolia"]
+    "real_apis": [
+      "HackerNews Algolia"
+    ]
   }
 }

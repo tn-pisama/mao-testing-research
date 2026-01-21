@@ -1,36 +1,459 @@
 {
   "name": "COORD-004 VComplex: Transitive Priority Inversion Chain",
   "nodes": [
-    {"parameters": {"path": "coord-004-vcomplex", "responseMode": "lastNode", "options": {}, "httpMethod": "POST"}, "id": "webhook", "name": "Webhook", "type": "n8n-nodes-base.webhook", "typeVersion": 2, "position": [0, 0], "webhookId": "coord-004-vcomplex"},
-    {"parameters": {"assignments": {"assignments": [{"id": "session_id", "name": "session_id", "value": "={{ $now.format('X') }}-coord004-vcomplex", "type": "string"}, {"id": "resources", "name": "resources", "value": "[\"mutex_A\", \"mutex_B\", \"mutex_C\"]", "type": "string"}]}}, "id": "init", "name": "Initialize", "type": "n8n-nodes-base.set", "typeVersion": 3.4, "position": [200, 0]},
-    {"parameters": {"promptType": "define", "text": "You are LOW priority task. You hold mutex_A.\n\nOutput: {\"task\": \"task_low\", \"priority\": 1, \"holds\": \"mutex_A\", \"status\": \"running\"}", "options": {}}, "id": "low", "name": "Low Priority (P1)", "type": "@n8n/n8n-nodes-langchain.agent", "typeVersion": 1.6, "position": [400, -150]},
-    {"parameters": {"model": "claude-3-5-haiku-20241022", "options": {"temperature": 0, "maxTokens": 100}}, "id": "lm_1", "name": "LM 1", "type": "@n8n/n8n-nodes-langchain.lmChatAnthropic", "typeVersion": 1.2, "position": [400, 50], "credentials": {"anthropicApi": {"id": "1KM50Mcms9JticwF", "name": "Anthropic API"}}},
-    {"parameters": {"promptType": "define", "text": "You are MEDIUM priority task. You hold mutex_B but need mutex_A (held by LOW).\n\nOutput: {\"task\": \"task_medium\", \"priority\": 5, \"holds\": \"mutex_B\", \"waiting_for\": \"mutex_A\", \"blocked_by\": \"task_low\", \"status\": \"blocked\"}", "options": {}}, "id": "medium", "name": "Medium Priority (P5)", "type": "@n8n/n8n-nodes-langchain.agent", "typeVersion": 1.6, "position": [400, 100]},
-    {"parameters": {"model": "claude-3-5-haiku-20241022", "options": {"temperature": 0, "maxTokens": 100}}, "id": "lm_5", "name": "LM 5", "type": "@n8n/n8n-nodes-langchain.lmChatAnthropic", "typeVersion": 1.2, "position": [400, 300], "credentials": {"anthropicApi": {"id": "1KM50Mcms9JticwF", "name": "Anthropic API"}}},
-    {"parameters": {"promptType": "define", "text": "You are HIGH priority task. You need mutex_B (held by MEDIUM) and mutex_C.\n\nOutput: {\"task\": \"task_high\", \"priority\": 10, \"needs\": [\"mutex_B\", \"mutex_C\"], \"waiting_for\": \"mutex_B\", \"blocked_by\": \"task_medium\", \"status\": \"blocked\"}", "options": {}}, "id": "high", "name": "High Priority (P10)", "type": "@n8n/n8n-nodes-langchain.agent", "typeVersion": 1.6, "position": [400, 350]},
-    {"parameters": {"model": "claude-3-5-haiku-20241022", "options": {"temperature": 0, "maxTokens": 100}}, "id": "lm_10", "name": "LM 10", "type": "@n8n/n8n-nodes-langchain.lmChatAnthropic", "typeVersion": 1.2, "position": [400, 550], "credentials": {"anthropicApi": {"id": "1KM50Mcms9JticwF", "name": "Anthropic API"}}},
-    {"parameters": {"promptType": "define", "text": "You are CRITICAL priority task. You need mutex_C but it's contended. You're effectively blocked by the chain.\n\nOutput: {\"task\": \"task_critical\", \"priority\": 100, \"needs\": \"mutex_C\", \"effective_priority\": 1, \"inversion_chain\": [\"critical->high->medium->low\"], \"status\": \"transitively_blocked\"}", "options": {}}, "id": "critical", "name": "Critical Priority (P100)", "type": "@n8n/n8n-nodes-langchain.agent", "typeVersion": 1.6, "position": [400, 600]},
-    {"parameters": {"model": "claude-3-5-haiku-20241022", "options": {"temperature": 0, "maxTokens": 100}}, "id": "lm_100", "name": "LM 100", "type": "@n8n/n8n-nodes-langchain.lmChatAnthropic", "typeVersion": 1.2, "position": [400, 800], "credentials": {"anthropicApi": {"id": "1KM50Mcms9JticwF", "name": "Anthropic API"}}},
-    {"parameters": {"promptType": "define", "text": "Analyze transitive priority inversion chain:\n\nP100 (critical) blocked by P10 (high)\nP10 (high) blocked by P5 (medium)\nP5 (medium) blocked by P1 (low)\n\nResult: P100 task effectively runs at P1 priority!\nChain length: 4, Inversion ratio: 100x\n\nOutput: {\"analysis\": \"transitive_priority_inversion\", \"chain\": [\"P100\", \"P10\", \"P5\", \"P1\"], \"chain_length\": 4, \"top_priority\": 100, \"effective_priority\": 1, \"inversion_ratio\": 100, \"severity\": \"critical\"}", "options": {}}, "id": "analyzer", "name": "Inversion Analyzer", "type": "@n8n/n8n-nodes-langchain.agent", "typeVersion": 1.6, "position": [600, 200]},
-    {"parameters": {"model": "claude-3-5-haiku-20241022", "options": {"temperature": 0, "maxTokens": 150}}, "id": "lm_a", "name": "LM A", "type": "@n8n/n8n-nodes-langchain.lmChatAnthropic", "typeVersion": 1.2, "position": [600, 400], "credentials": {"anthropicApi": {"id": "1KM50Mcms9JticwF", "name": "Anthropic API"}}},
-    {"parameters": {"method": "POST", "url": "https://mao-api.fly.dev/api/v1/n8n/webhook", "sendHeaders": true, "headerParameters": {"parameters": [{"name": "X-N8N-Api-Key", "value": "mao_pmNhfBRfqd5G_YHubK0Jqk9ZHB6ItITkHFYP4ISns9c"}]}, "sendBody": true, "specifyBody": "json", "jsonBody": "={\n  \"event_type\": \"workflow.completed\",\n  \"workflow_name\": \"COORD-004 VComplex: Transitive Priority Inversion Chain\",\n  \"session_id\": \"{{ $('Initialize').item.json.session_id }}\",\n  \"failure_mode\": \"COORD-004\",\n  \"complexity\": \"very_complex\",\n  \"expected_detection\": \"priority_inversion\",\n  \"coordination_tracking\": {\n    \"resources\": {{ $('Initialize').item.json.resources }},\n    \"low\": \"{{ $('Low Priority (P1)').item.json.output }}\",\n    \"medium\": \"{{ $('Medium Priority (P5)').item.json.output }}\",\n    \"high\": \"{{ $('High Priority (P10)').item.json.output }}\",\n    \"critical\": \"{{ $('Critical Priority (P100)').item.json.output }}\",\n    \"analysis\": \"{{ $('Inversion Analyzer').item.json.output }}\",\n    \"inversion_type\": \"transitive_chain\"\n  },\n  \"agents\": [\n    {\"agent_id\": \"low\", \"priority\": 1, \"outputs\": [\"{{ $('Low Priority (P1)').item.json.output }}\"]},\n    {\"agent_id\": \"medium\", \"priority\": 5, \"outputs\": [\"{{ $('Medium Priority (P5)').item.json.output }}\"]},\n    {\"agent_id\": \"high\", \"priority\": 10, \"outputs\": [\"{{ $('High Priority (P10)').item.json.output }}\"]},\n    {\"agent_id\": \"critical\", \"priority\": 100, \"outputs\": [\"{{ $('Critical Priority (P100)').item.json.output }}\"]}  \n  ]\n}", "options": {}},
-      "id": "send_to_mao", "name": "Send to MAO", "type": "n8n-nodes-base.httpRequest", "typeVersion": 4.2, "position": [800, 200]
+    {
+      "parameters": {
+        "rule": {
+          "interval": [
+            {
+              "field": "hours",
+              "hoursInterval": 3
+            }
+          ]
+        }
+      },
+      "id": "schedule",
+      "name": "Schedule Trigger",
+      "type": "n8n-nodes-base.scheduleTrigger",
+      "typeVersion": 1.2,
+      "position": [
+        0,
+        -200
+      ]
+    },
+    {
+      "parameters": {
+        "path": "coord-004-vcomplex",
+        "responseMode": "lastNode",
+        "options": {},
+        "httpMethod": "POST"
+      },
+      "id": "webhook",
+      "name": "Webhook",
+      "type": "n8n-nodes-base.webhook",
+      "typeVersion": 2,
+      "position": [
+        0,
+        0
+      ],
+      "webhookId": "coord-004-vcomplex"
+    },
+    {
+      "parameters": {
+        "assignments": {
+          "assignments": [
+            {
+              "id": "session_id",
+              "name": "session_id",
+              "value": "={{ $now.format('X') }}-coord004-vcomplex",
+              "type": "string"
+            },
+            {
+              "id": "resources",
+              "name": "resources",
+              "value": "[\"mutex_A\", \"mutex_B\", \"mutex_C\"]",
+              "type": "string"
+            }
+          ]
+        }
+      },
+      "id": "init",
+      "name": "Initialize",
+      "type": "n8n-nodes-base.set",
+      "typeVersion": 3.4,
+      "position": [
+        200,
+        0
+      ]
+    },
+    {
+      "parameters": {
+        "promptType": "define",
+        "text": "You are LOW priority task. You hold mutex_A.\n\nOutput: {\"task\": \"task_low\", \"priority\": 1, \"holds\": \"mutex_A\", \"status\": \"running\"}",
+        "options": {}
+      },
+      "id": "low",
+      "name": "Low Priority (P1)",
+      "type": "@n8n/n8n-nodes-langchain.agent",
+      "typeVersion": 1.6,
+      "position": [
+        400,
+        -150
+      ]
+    },
+    {
+      "parameters": {
+        "model": "claude-3-5-haiku-20241022",
+        "options": {
+          "temperature": 0,
+          "maxTokens": 100
+        }
+      },
+      "id": "lm_1",
+      "name": "LM 1",
+      "type": "@n8n/n8n-nodes-langchain.lmChatAnthropic",
+      "typeVersion": 1.2,
+      "position": [
+        400,
+        50
+      ],
+      "credentials": {
+        "anthropicApi": {
+          "id": "1KM50Mcms9JticwF",
+          "name": "Anthropic API"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "promptType": "define",
+        "text": "You are MEDIUM priority task. You hold mutex_B but need mutex_A (held by LOW).\n\nOutput: {\"task\": \"task_medium\", \"priority\": 5, \"holds\": \"mutex_B\", \"waiting_for\": \"mutex_A\", \"blocked_by\": \"task_low\", \"status\": \"blocked\"}",
+        "options": {}
+      },
+      "id": "medium",
+      "name": "Medium Priority (P5)",
+      "type": "@n8n/n8n-nodes-langchain.agent",
+      "typeVersion": 1.6,
+      "position": [
+        400,
+        100
+      ]
+    },
+    {
+      "parameters": {
+        "model": "claude-3-5-haiku-20241022",
+        "options": {
+          "temperature": 0,
+          "maxTokens": 100
+        }
+      },
+      "id": "lm_5",
+      "name": "LM 5",
+      "type": "@n8n/n8n-nodes-langchain.lmChatAnthropic",
+      "typeVersion": 1.2,
+      "position": [
+        400,
+        300
+      ],
+      "credentials": {
+        "anthropicApi": {
+          "id": "1KM50Mcms9JticwF",
+          "name": "Anthropic API"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "promptType": "define",
+        "text": "You are HIGH priority task. You need mutex_B (held by MEDIUM) and mutex_C.\n\nOutput: {\"task\": \"task_high\", \"priority\": 10, \"needs\": [\"mutex_B\", \"mutex_C\"], \"waiting_for\": \"mutex_B\", \"blocked_by\": \"task_medium\", \"status\": \"blocked\"}",
+        "options": {}
+      },
+      "id": "high",
+      "name": "High Priority (P10)",
+      "type": "@n8n/n8n-nodes-langchain.agent",
+      "typeVersion": 1.6,
+      "position": [
+        400,
+        350
+      ]
+    },
+    {
+      "parameters": {
+        "model": "claude-3-5-haiku-20241022",
+        "options": {
+          "temperature": 0,
+          "maxTokens": 100
+        }
+      },
+      "id": "lm_10",
+      "name": "LM 10",
+      "type": "@n8n/n8n-nodes-langchain.lmChatAnthropic",
+      "typeVersion": 1.2,
+      "position": [
+        400,
+        550
+      ],
+      "credentials": {
+        "anthropicApi": {
+          "id": "1KM50Mcms9JticwF",
+          "name": "Anthropic API"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "promptType": "define",
+        "text": "You are CRITICAL priority task. You need mutex_C but it's contended. You're effectively blocked by the chain.\n\nOutput: {\"task\": \"task_critical\", \"priority\": 100, \"needs\": \"mutex_C\", \"effective_priority\": 1, \"inversion_chain\": [\"critical->high->medium->low\"], \"status\": \"transitively_blocked\"}",
+        "options": {}
+      },
+      "id": "critical",
+      "name": "Critical Priority (P100)",
+      "type": "@n8n/n8n-nodes-langchain.agent",
+      "typeVersion": 1.6,
+      "position": [
+        400,
+        600
+      ]
+    },
+    {
+      "parameters": {
+        "model": "claude-3-5-haiku-20241022",
+        "options": {
+          "temperature": 0,
+          "maxTokens": 100
+        }
+      },
+      "id": "lm_100",
+      "name": "LM 100",
+      "type": "@n8n/n8n-nodes-langchain.lmChatAnthropic",
+      "typeVersion": 1.2,
+      "position": [
+        400,
+        800
+      ],
+      "credentials": {
+        "anthropicApi": {
+          "id": "1KM50Mcms9JticwF",
+          "name": "Anthropic API"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "promptType": "define",
+        "text": "Analyze transitive priority inversion chain:\n\nP100 (critical) blocked by P10 (high)\nP10 (high) blocked by P5 (medium)\nP5 (medium) blocked by P1 (low)\n\nResult: P100 task effectively runs at P1 priority!\nChain length: 4, Inversion ratio: 100x\n\nOutput: {\"analysis\": \"transitive_priority_inversion\", \"chain\": [\"P100\", \"P10\", \"P5\", \"P1\"], \"chain_length\": 4, \"top_priority\": 100, \"effective_priority\": 1, \"inversion_ratio\": 100, \"severity\": \"critical\"}",
+        "options": {}
+      },
+      "id": "analyzer",
+      "name": "Inversion Analyzer",
+      "type": "@n8n/n8n-nodes-langchain.agent",
+      "typeVersion": 1.6,
+      "position": [
+        600,
+        200
+      ]
+    },
+    {
+      "parameters": {
+        "model": "claude-3-5-haiku-20241022",
+        "options": {
+          "temperature": 0,
+          "maxTokens": 150
+        }
+      },
+      "id": "lm_a",
+      "name": "LM A",
+      "type": "@n8n/n8n-nodes-langchain.lmChatAnthropic",
+      "typeVersion": 1.2,
+      "position": [
+        600,
+        400
+      ],
+      "credentials": {
+        "anthropicApi": {
+          "id": "1KM50Mcms9JticwF",
+          "name": "Anthropic API"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "https://mao-api.fly.dev/api/v1/n8n/webhook",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            {
+              "name": "X-N8N-Api-Key",
+              "value": "mao_pmNhfBRfqd5G_YHubK0Jqk9ZHB6ItITkHFYP4ISns9c"
+            }
+          ]
+        },
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={\n  \"event_type\": \"workflow.completed\",\n  \"workflow_name\": \"COORD-004 VComplex: Transitive Priority Inversion Chain\",\n  \"session_id\": \"{{ $('Initialize').item.json.session_id }}\",\n  \"failure_mode\": \"COORD-004\",\n  \"complexity\": \"very_complex\",\n  \"expected_detection\": \"priority_inversion\",\n  \"coordination_tracking\": {\n    \"resources\": {{ $('Initialize').item.json.resources }},\n    \"low\": \"{{ $('Low Priority (P1)').item.json.output }}\",\n    \"medium\": \"{{ $('Medium Priority (P5)').item.json.output }}\",\n    \"high\": \"{{ $('High Priority (P10)').item.json.output }}\",\n    \"critical\": \"{{ $('Critical Priority (P100)').item.json.output }}\",\n    \"analysis\": \"{{ $('Inversion Analyzer').item.json.output }}\",\n    \"inversion_type\": \"transitive_chain\"\n  },\n  \"agents\": [\n    {\"agent_id\": \"low\", \"priority\": 1, \"outputs\": [\"{{ $('Low Priority (P1)').item.json.output }}\"]},\n    {\"agent_id\": \"medium\", \"priority\": 5, \"outputs\": [\"{{ $('Medium Priority (P5)').item.json.output }}\"]},\n    {\"agent_id\": \"high\", \"priority\": 10, \"outputs\": [\"{{ $('High Priority (P10)').item.json.output }}\"]},\n    {\"agent_id\": \"critical\", \"priority\": 100, \"outputs\": [\"{{ $('Critical Priority (P100)').item.json.output }}\"]}  \n  ]\n}",
+        "options": {}
+      },
+      "id": "send_to_mao",
+      "name": "Send to MAO",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [
+        800,
+        200
+      ]
     }
   ],
   "connections": {
-    "Webhook": {"main": [[{"node": "Initialize", "type": "main", "index": 0}]]},
-    "Initialize": {"main": [[{"node": "Low Priority (P1)", "type": "main", "index": 0}, {"node": "Medium Priority (P5)", "type": "main", "index": 0}, {"node": "High Priority (P10)", "type": "main", "index": 0}, {"node": "Critical Priority (P100)", "type": "main", "index": 0}]]},
-    "LM 1": {"ai_languageModel": [[{"node": "Low Priority (P1)", "type": "ai_languageModel", "index": 0}]]},
-    "LM 5": {"ai_languageModel": [[{"node": "Medium Priority (P5)", "type": "ai_languageModel", "index": 0}]]},
-    "LM 10": {"ai_languageModel": [[{"node": "High Priority (P10)", "type": "ai_languageModel", "index": 0}]]},
-    "LM 100": {"ai_languageModel": [[{"node": "Critical Priority (P100)", "type": "ai_languageModel", "index": 0}]]},
-    "Low Priority (P1)": {"main": [[{"node": "Inversion Analyzer", "type": "main", "index": 0}]]},
-    "Medium Priority (P5)": {"main": [[{"node": "Inversion Analyzer", "type": "main", "index": 0}]]},
-    "High Priority (P10)": {"main": [[{"node": "Inversion Analyzer", "type": "main", "index": 0}]]},
-    "Critical Priority (P100)": {"main": [[{"node": "Inversion Analyzer", "type": "main", "index": 0}]]},
-    "LM A": {"ai_languageModel": [[{"node": "Inversion Analyzer", "type": "ai_languageModel", "index": 0}]]},
-    "Inversion Analyzer": {"main": [[{"node": "Send to MAO", "type": "main", "index": 0}]]}
+    "Webhook": {
+      "main": [
+        [
+          {
+            "node": "Initialize",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Initialize": {
+      "main": [
+        [
+          {
+            "node": "Low Priority (P1)",
+            "type": "main",
+            "index": 0
+          },
+          {
+            "node": "Medium Priority (P5)",
+            "type": "main",
+            "index": 0
+          },
+          {
+            "node": "High Priority (P10)",
+            "type": "main",
+            "index": 0
+          },
+          {
+            "node": "Critical Priority (P100)",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "LM 1": {
+      "ai_languageModel": [
+        [
+          {
+            "node": "Low Priority (P1)",
+            "type": "ai_languageModel",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "LM 5": {
+      "ai_languageModel": [
+        [
+          {
+            "node": "Medium Priority (P5)",
+            "type": "ai_languageModel",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "LM 10": {
+      "ai_languageModel": [
+        [
+          {
+            "node": "High Priority (P10)",
+            "type": "ai_languageModel",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "LM 100": {
+      "ai_languageModel": [
+        [
+          {
+            "node": "Critical Priority (P100)",
+            "type": "ai_languageModel",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Low Priority (P1)": {
+      "main": [
+        [
+          {
+            "node": "Inversion Analyzer",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Medium Priority (P5)": {
+      "main": [
+        [
+          {
+            "node": "Inversion Analyzer",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "High Priority (P10)": {
+      "main": [
+        [
+          {
+            "node": "Inversion Analyzer",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Critical Priority (P100)": {
+      "main": [
+        [
+          {
+            "node": "Inversion Analyzer",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "LM A": {
+      "ai_languageModel": [
+        [
+          {
+            "node": "Inversion Analyzer",
+            "type": "ai_languageModel",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Inversion Analyzer": {
+      "main": [
+        [
+          {
+            "node": "Send to MAO",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Schedule Trigger": {
+      "main": [
+        [
+          {
+            "node": "Initialize",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
   },
-  "settings": {"executionOrder": "v1"},
-  "meta": {"mast_failure_mode": "COORD-004", "mast_category": "COORDINATION", "complexity": "very_complex", "description": "Multi-level priority inversion chain where P100 task effectively runs at P1", "expected_detection": "Transitive priority inversion chain detection", "agents": 5, "nodes": 7}
+  "settings": {
+    "executionOrder": "v1"
+  },
+  "meta": {
+    "mast_failure_mode": "COORD-004",
+    "mast_category": "COORDINATION",
+    "complexity": "very_complex",
+    "description": "Multi-level priority inversion chain where P100 task effectively runs at P1",
+    "expected_detection": "Transitive priority inversion chain detection",
+    "agents": 5,
+    "nodes": 7
+  }
 }

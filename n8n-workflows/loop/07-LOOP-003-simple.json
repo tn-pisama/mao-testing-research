@@ -3,6 +3,26 @@
   "nodes": [
     {
       "parameters": {
+        "rule": {
+          "interval": [
+            {
+              "field": "hours",
+              "hoursInterval": 3
+            }
+          ]
+        }
+      },
+      "id": "schedule",
+      "name": "Schedule Trigger",
+      "type": "n8n-nodes-base.scheduleTrigger",
+      "typeVersion": 1.2,
+      "position": [
+        0,
+        -200
+      ]
+    },
+    {
+      "parameters": {
         "path": "loop-003-simple",
         "responseMode": "lastNode",
         "options": {},
@@ -12,15 +32,28 @@
       "name": "Webhook",
       "type": "n8n-nodes-base.webhook",
       "typeVersion": 2,
-      "position": [0, 0],
+      "position": [
+        0,
+        0
+      ],
       "webhookId": "loop-003-simple"
     },
     {
       "parameters": {
         "assignments": {
           "assignments": [
-            {"id": "session_id", "name": "session_id", "value": "={{ $now.format('X') }}-loop003-simple", "type": "string"},
-            {"id": "user_request", "name": "user_request", "value": "Please help me debug this code error", "type": "string"}
+            {
+              "id": "session_id",
+              "name": "session_id",
+              "value": "={{ $now.format('X') }}-loop003-simple",
+              "type": "string"
+            },
+            {
+              "id": "user_request",
+              "name": "user_request",
+              "value": "Please help me debug this code error",
+              "type": "string"
+            }
           ]
         }
       },
@@ -28,7 +61,10 @@
       "name": "Initialize",
       "type": "n8n-nodes-base.set",
       "typeVersion": 3.4,
-      "position": [200, 0]
+      "position": [
+        200,
+        0
+      ]
     },
     {
       "parameters": {
@@ -40,19 +76,33 @@
       "name": "Helper 1",
       "type": "@n8n/n8n-nodes-langchain.agent",
       "typeVersion": 1.6,
-      "position": [400, 0]
+      "position": [
+        400,
+        0
+      ]
     },
     {
       "parameters": {
         "model": "claude-3-5-haiku-20241022",
-        "options": {"temperature": 0.7, "maxTokens": 100}
+        "options": {
+          "temperature": 0.7,
+          "maxTokens": 100
+        }
       },
       "id": "lm_1",
       "name": "LM 1",
       "type": "@n8n/n8n-nodes-langchain.lmChatAnthropic",
       "typeVersion": 1.2,
-      "position": [400, 200],
-      "credentials": {"anthropicApi": {"id": "1KM50Mcms9JticwF", "name": "Anthropic API"}}
+      "position": [
+        400,
+        200
+      ],
+      "credentials": {
+        "anthropicApi": {
+          "id": "1KM50Mcms9JticwF",
+          "name": "Anthropic API"
+        }
+      }
     },
     {
       "parameters": {
@@ -64,19 +114,33 @@
       "name": "Helper 2",
       "type": "@n8n/n8n-nodes-langchain.agent",
       "typeVersion": 1.6,
-      "position": [600, 0]
+      "position": [
+        600,
+        0
+      ]
     },
     {
       "parameters": {
         "model": "claude-3-5-haiku-20241022",
-        "options": {"temperature": 0.8, "maxTokens": 100}
+        "options": {
+          "temperature": 0.8,
+          "maxTokens": 100
+        }
       },
       "id": "lm_2",
       "name": "LM 2",
       "type": "@n8n/n8n-nodes-langchain.lmChatAnthropic",
       "typeVersion": 1.2,
-      "position": [600, 200],
-      "credentials": {"anthropicApi": {"id": "1KM50Mcms9JticwF", "name": "Anthropic API"}}
+      "position": [
+        600,
+        200
+      ],
+      "credentials": {
+        "anthropicApi": {
+          "id": "1KM50Mcms9JticwF",
+          "name": "Anthropic API"
+        }
+      }
     },
     {
       "parameters": {
@@ -88,19 +152,33 @@
       "name": "Helper 3",
       "type": "@n8n/n8n-nodes-langchain.agent",
       "typeVersion": 1.6,
-      "position": [800, 0]
+      "position": [
+        800,
+        0
+      ]
     },
     {
       "parameters": {
         "model": "claude-3-5-haiku-20241022",
-        "options": {"temperature": 0.9, "maxTokens": 100}
+        "options": {
+          "temperature": 0.9,
+          "maxTokens": 100
+        }
       },
       "id": "lm_3",
       "name": "LM 3",
       "type": "@n8n/n8n-nodes-langchain.lmChatAnthropic",
       "typeVersion": 1.2,
-      "position": [800, 200],
-      "credentials": {"anthropicApi": {"id": "1KM50Mcms9JticwF", "name": "Anthropic API"}}
+      "position": [
+        800,
+        200
+      ],
+      "credentials": {
+        "anthropicApi": {
+          "id": "1KM50Mcms9JticwF",
+          "name": "Anthropic API"
+        }
+      }
     },
     {
       "parameters": {
@@ -112,19 +190,33 @@
       "name": "Helper 4",
       "type": "@n8n/n8n-nodes-langchain.agent",
       "typeVersion": 1.6,
-      "position": [1000, 0]
+      "position": [
+        1000,
+        0
+      ]
     },
     {
       "parameters": {
         "model": "claude-3-5-haiku-20241022",
-        "options": {"temperature": 0.9, "maxTokens": 100}
+        "options": {
+          "temperature": 0.9,
+          "maxTokens": 100
+        }
       },
       "id": "lm_4",
       "name": "LM 4",
       "type": "@n8n/n8n-nodes-langchain.lmChatAnthropic",
       "typeVersion": 1.2,
-      "position": [1000, 200],
-      "credentials": {"anthropicApi": {"id": "1KM50Mcms9JticwF", "name": "Anthropic API"}}
+      "position": [
+        1000,
+        200
+      ],
+      "credentials": {
+        "anthropicApi": {
+          "id": "1KM50Mcms9JticwF",
+          "name": "Anthropic API"
+        }
+      }
     },
     {
       "parameters": {
@@ -132,7 +224,12 @@
         "url": "https://mao-api.fly.dev/api/v1/n8n/webhook",
         "sendHeaders": true,
         "headerParameters": {
-          "parameters": [{"name": "X-N8N-Api-Key", "value": "mao_pmNhfBRfqd5G_YHubK0Jqk9ZHB6ItITkHFYP4ISns9c"}]
+          "parameters": [
+            {
+              "name": "X-N8N-Api-Key",
+              "value": "mao_pmNhfBRfqd5G_YHubK0Jqk9ZHB6ItITkHFYP4ISns9c"
+            }
+          ]
         },
         "sendBody": true,
         "specifyBody": "json",
@@ -143,22 +240,138 @@
       "name": "Send to MAO",
       "type": "n8n-nodes-base.httpRequest",
       "typeVersion": 4.2,
-      "position": [1200, 0]
+      "position": [
+        1200,
+        0
+      ]
     }
   ],
   "connections": {
-    "Webhook": {"main": [[{"node": "Initialize", "type": "main", "index": 0}]]},
-    "Initialize": {"main": [[{"node": "Helper 1", "type": "main", "index": 0}]]},
-    "LM 1": {"ai_languageModel": [[{"node": "Helper 1", "type": "ai_languageModel", "index": 0}]]},
-    "Helper 1": {"main": [[{"node": "Helper 2", "type": "main", "index": 0}]]},
-    "LM 2": {"ai_languageModel": [[{"node": "Helper 2", "type": "ai_languageModel", "index": 0}]]},
-    "Helper 2": {"main": [[{"node": "Helper 3", "type": "main", "index": 0}]]},
-    "LM 3": {"ai_languageModel": [[{"node": "Helper 3", "type": "ai_languageModel", "index": 0}]]},
-    "Helper 3": {"main": [[{"node": "Helper 4", "type": "main", "index": 0}]]},
-    "LM 4": {"ai_languageModel": [[{"node": "Helper 4", "type": "ai_languageModel", "index": 0}]]},
-    "Helper 4": {"main": [[{"node": "Send to MAO", "type": "main", "index": 0}]]}
+    "Webhook": {
+      "main": [
+        [
+          {
+            "node": "Initialize",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Initialize": {
+      "main": [
+        [
+          {
+            "node": "Helper 1",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "LM 1": {
+      "ai_languageModel": [
+        [
+          {
+            "node": "Helper 1",
+            "type": "ai_languageModel",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Helper 1": {
+      "main": [
+        [
+          {
+            "node": "Helper 2",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "LM 2": {
+      "ai_languageModel": [
+        [
+          {
+            "node": "Helper 2",
+            "type": "ai_languageModel",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Helper 2": {
+      "main": [
+        [
+          {
+            "node": "Helper 3",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "LM 3": {
+      "ai_languageModel": [
+        [
+          {
+            "node": "Helper 3",
+            "type": "ai_languageModel",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Helper 3": {
+      "main": [
+        [
+          {
+            "node": "Helper 4",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "LM 4": {
+      "ai_languageModel": [
+        [
+          {
+            "node": "Helper 4",
+            "type": "ai_languageModel",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Helper 4": {
+      "main": [
+        [
+          {
+            "node": "Send to MAO",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Schedule Trigger": {
+      "main": [
+        [
+          {
+            "node": "Initialize",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
   },
-  "settings": {"executionOrder": "v1"},
+  "settings": {
+    "executionOrder": "v1"
+  },
   "meta": {
     "mast_failure_mode": "LOOP-003",
     "mast_category": "LOOP",

@@ -1,34 +1,414 @@
 {
   "name": "COORD-005 Complex: API Dependency Cascade",
   "nodes": [
-    {"parameters": {"path": "coord-005-complex", "responseMode": "lastNode", "options": {}, "httpMethod": "POST"}, "id": "webhook", "name": "Webhook", "type": "n8n-nodes-base.webhook", "typeVersion": 2, "position": [0, 0], "webhookId": "coord-005-complex"},
-    {"parameters": {"assignments": {"assignments": [{"id": "session_id", "name": "session_id", "value": "={{ $now.format('X') }}-coord005-complex", "type": "string"}]}}, "id": "init", "name": "Initialize", "type": "n8n-nodes-base.set", "typeVersion": 3.4, "position": [200, 0]},
-    {"parameters": {"url": "https://httpbin.org/delay/10", "options": {"timeout": 2000}}, "id": "api_call", "name": "API Call (Timeout)", "type": "n8n-nodes-base.httpRequest", "typeVersion": 4.2, "position": [400, 0], "continueOnFail": true},
-    {"parameters": {"promptType": "define", "text": "You are the Data Fetcher. The API call timed out after 2 seconds.\n\nOutput: {\"agent\": \"fetcher\", \"status\": \"FAILED\", \"error\": \"TIMEOUT\", \"api\": \"httpbin.org/delay/10\", \"timeout_ms\": 2000}", "options": {}}, "id": "fetcher", "name": "Fetcher (Timeout)", "type": "@n8n/n8n-nodes-langchain.agent", "typeVersion": 1.6, "position": [600, 0]},
-    {"parameters": {"model": "claude-3-5-haiku-20241022", "options": {"temperature": 0, "maxTokens": 100}}, "id": "lm_f", "name": "LM F", "type": "@n8n/n8n-nodes-langchain.lmChatAnthropic", "typeVersion": 1.2, "position": [600, 200], "credentials": {"anthropicApi": {"id": "1KM50Mcms9JticwF", "name": "Anthropic API"}}},
-    {"parameters": {"promptType": "define", "text": "You are the Parser. Cannot parse null response from timed out request.\n\nOutput: {\"agent\": \"parser\", \"status\": \"FAILED\", \"error\": \"NO_DATA_TO_PARSE\", \"cascaded_from\": \"fetcher\"}", "options": {}}, "id": "parser", "name": "Parser (Cascade)", "type": "@n8n/n8n-nodes-langchain.agent", "typeVersion": 1.6, "position": [800, -100]},
-    {"parameters": {"model": "claude-3-5-haiku-20241022", "options": {"temperature": 0, "maxTokens": 100}}, "id": "lm_p", "name": "LM P", "type": "@n8n/n8n-nodes-langchain.lmChatAnthropic", "typeVersion": 1.2, "position": [800, 100], "credentials": {"anthropicApi": {"id": "1KM50Mcms9JticwF", "name": "Anthropic API"}}},
-    {"parameters": {"promptType": "define", "text": "You are the Enricher. Cannot enrich without parsed data.\n\nOutput: {\"agent\": \"enricher\", \"status\": \"FAILED\", \"error\": \"NO_PARSED_DATA\", \"cascaded_from\": \"parser\"}", "options": {}}, "id": "enricher", "name": "Enricher (Cascade)", "type": "@n8n/n8n-nodes-langchain.agent", "typeVersion": 1.6, "position": [800, 150]},
-    {"parameters": {"model": "claude-3-5-haiku-20241022", "options": {"temperature": 0, "maxTokens": 100}}, "id": "lm_e", "name": "LM E", "type": "@n8n/n8n-nodes-langchain.lmChatAnthropic", "typeVersion": 1.2, "position": [800, 350], "credentials": {"anthropicApi": {"id": "1KM50Mcms9JticwF", "name": "Anthropic API"}}},
-    {"parameters": {"promptType": "define", "text": "You are the Output Formatter. Cannot format null results.\n\nOutput: {\"agent\": \"formatter\", \"status\": \"FAILED\", \"error\": \"NO_DATA_TO_FORMAT\", \"cascaded_from\": \"enricher\", \"cascade_depth\": 3}", "options": {}}, "id": "formatter", "name": "Formatter (Cascade)", "type": "@n8n/n8n-nodes-langchain.agent", "typeVersion": 1.6, "position": [1000, 50]},
-    {"parameters": {"model": "claude-3-5-haiku-20241022", "options": {"temperature": 0, "maxTokens": 100}}, "id": "lm_o", "name": "LM O", "type": "@n8n/n8n-nodes-langchain.lmChatAnthropic", "typeVersion": 1.2, "position": [1000, 250], "credentials": {"anthropicApi": {"id": "1KM50Mcms9JticwF", "name": "Anthropic API"}}},
-    {"parameters": {"method": "POST", "url": "https://mao-api.fly.dev/api/v1/n8n/webhook", "sendHeaders": true, "headerParameters": {"parameters": [{"name": "X-N8N-Api-Key", "value": "mao_pmNhfBRfqd5G_YHubK0Jqk9ZHB6ItITkHFYP4ISns9c"}]}, "sendBody": true, "specifyBody": "json", "jsonBody": "={\n  \"event_type\": \"workflow.completed\",\n  \"workflow_name\": \"COORD-005 Complex: API Dependency Cascade\",\n  \"session_id\": \"{{ $('Initialize').item.json.session_id }}\",\n  \"failure_mode\": \"COORD-005\",\n  \"complexity\": \"complex\",\n  \"expected_detection\": \"cascade_failure\",\n  \"coordination_tracking\": {\n    \"fetcher\": \"{{ $('Fetcher (Timeout)').item.json.output }}\",\n    \"parser\": \"{{ $('Parser (Cascade)').item.json.output }}\",\n    \"enricher\": \"{{ $('Enricher (Cascade)').item.json.output }}\",\n    \"formatter\": \"{{ $('Formatter (Cascade)').item.json.output }}\",\n    \"cascade_chain\": [\"fetcher\", \"parser\", \"enricher\", \"formatter\"],\n    \"cascade_depth\": 3,\n    \"root_cause\": \"api_timeout\"\n  },\n  \"agents\": [\n    {\"agent_id\": \"fetcher\", \"outputs\": [\"{{ $('Fetcher (Timeout)').item.json.output }}\"]},\n    {\"agent_id\": \"parser\", \"outputs\": [\"{{ $('Parser (Cascade)').item.json.output }}\"]},\n    {\"agent_id\": \"enricher\", \"outputs\": [\"{{ $('Enricher (Cascade)').item.json.output }}\"]},\n    {\"agent_id\": \"formatter\", \"outputs\": [\"{{ $('Formatter (Cascade)').item.json.output }}\"]}  \n  ]\n}", "options": {}},
-      "id": "send_to_mao", "name": "Send to MAO", "type": "n8n-nodes-base.httpRequest", "typeVersion": 4.2, "position": [1200, 50]
+    {
+      "parameters": {
+        "rule": {
+          "interval": [
+            {
+              "field": "hours",
+              "hoursInterval": 3
+            }
+          ]
+        }
+      },
+      "id": "schedule",
+      "name": "Schedule Trigger",
+      "type": "n8n-nodes-base.scheduleTrigger",
+      "typeVersion": 1.2,
+      "position": [
+        0,
+        -200
+      ]
+    },
+    {
+      "parameters": {
+        "path": "coord-005-complex",
+        "responseMode": "lastNode",
+        "options": {},
+        "httpMethod": "POST"
+      },
+      "id": "webhook",
+      "name": "Webhook",
+      "type": "n8n-nodes-base.webhook",
+      "typeVersion": 2,
+      "position": [
+        0,
+        0
+      ],
+      "webhookId": "coord-005-complex"
+    },
+    {
+      "parameters": {
+        "assignments": {
+          "assignments": [
+            {
+              "id": "session_id",
+              "name": "session_id",
+              "value": "={{ $now.format('X') }}-coord005-complex",
+              "type": "string"
+            }
+          ]
+        }
+      },
+      "id": "init",
+      "name": "Initialize",
+      "type": "n8n-nodes-base.set",
+      "typeVersion": 3.4,
+      "position": [
+        200,
+        0
+      ]
+    },
+    {
+      "parameters": {
+        "url": "https://httpbin.org/delay/10",
+        "options": {
+          "timeout": 2000
+        }
+      },
+      "id": "api_call",
+      "name": "API Call (Timeout)",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [
+        400,
+        0
+      ],
+      "continueOnFail": true
+    },
+    {
+      "parameters": {
+        "promptType": "define",
+        "text": "You are the Data Fetcher. The API call timed out after 2 seconds.\n\nOutput: {\"agent\": \"fetcher\", \"status\": \"FAILED\", \"error\": \"TIMEOUT\", \"api\": \"httpbin.org/delay/10\", \"timeout_ms\": 2000}",
+        "options": {}
+      },
+      "id": "fetcher",
+      "name": "Fetcher (Timeout)",
+      "type": "@n8n/n8n-nodes-langchain.agent",
+      "typeVersion": 1.6,
+      "position": [
+        600,
+        0
+      ]
+    },
+    {
+      "parameters": {
+        "model": "claude-3-5-haiku-20241022",
+        "options": {
+          "temperature": 0,
+          "maxTokens": 100
+        }
+      },
+      "id": "lm_f",
+      "name": "LM F",
+      "type": "@n8n/n8n-nodes-langchain.lmChatAnthropic",
+      "typeVersion": 1.2,
+      "position": [
+        600,
+        200
+      ],
+      "credentials": {
+        "anthropicApi": {
+          "id": "1KM50Mcms9JticwF",
+          "name": "Anthropic API"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "promptType": "define",
+        "text": "You are the Parser. Cannot parse null response from timed out request.\n\nOutput: {\"agent\": \"parser\", \"status\": \"FAILED\", \"error\": \"NO_DATA_TO_PARSE\", \"cascaded_from\": \"fetcher\"}",
+        "options": {}
+      },
+      "id": "parser",
+      "name": "Parser (Cascade)",
+      "type": "@n8n/n8n-nodes-langchain.agent",
+      "typeVersion": 1.6,
+      "position": [
+        800,
+        -100
+      ]
+    },
+    {
+      "parameters": {
+        "model": "claude-3-5-haiku-20241022",
+        "options": {
+          "temperature": 0,
+          "maxTokens": 100
+        }
+      },
+      "id": "lm_p",
+      "name": "LM P",
+      "type": "@n8n/n8n-nodes-langchain.lmChatAnthropic",
+      "typeVersion": 1.2,
+      "position": [
+        800,
+        100
+      ],
+      "credentials": {
+        "anthropicApi": {
+          "id": "1KM50Mcms9JticwF",
+          "name": "Anthropic API"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "promptType": "define",
+        "text": "You are the Enricher. Cannot enrich without parsed data.\n\nOutput: {\"agent\": \"enricher\", \"status\": \"FAILED\", \"error\": \"NO_PARSED_DATA\", \"cascaded_from\": \"parser\"}",
+        "options": {}
+      },
+      "id": "enricher",
+      "name": "Enricher (Cascade)",
+      "type": "@n8n/n8n-nodes-langchain.agent",
+      "typeVersion": 1.6,
+      "position": [
+        800,
+        150
+      ]
+    },
+    {
+      "parameters": {
+        "model": "claude-3-5-haiku-20241022",
+        "options": {
+          "temperature": 0,
+          "maxTokens": 100
+        }
+      },
+      "id": "lm_e",
+      "name": "LM E",
+      "type": "@n8n/n8n-nodes-langchain.lmChatAnthropic",
+      "typeVersion": 1.2,
+      "position": [
+        800,
+        350
+      ],
+      "credentials": {
+        "anthropicApi": {
+          "id": "1KM50Mcms9JticwF",
+          "name": "Anthropic API"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "promptType": "define",
+        "text": "You are the Output Formatter. Cannot format null results.\n\nOutput: {\"agent\": \"formatter\", \"status\": \"FAILED\", \"error\": \"NO_DATA_TO_FORMAT\", \"cascaded_from\": \"enricher\", \"cascade_depth\": 3}",
+        "options": {}
+      },
+      "id": "formatter",
+      "name": "Formatter (Cascade)",
+      "type": "@n8n/n8n-nodes-langchain.agent",
+      "typeVersion": 1.6,
+      "position": [
+        1000,
+        50
+      ]
+    },
+    {
+      "parameters": {
+        "model": "claude-3-5-haiku-20241022",
+        "options": {
+          "temperature": 0,
+          "maxTokens": 100
+        }
+      },
+      "id": "lm_o",
+      "name": "LM O",
+      "type": "@n8n/n8n-nodes-langchain.lmChatAnthropic",
+      "typeVersion": 1.2,
+      "position": [
+        1000,
+        250
+      ],
+      "credentials": {
+        "anthropicApi": {
+          "id": "1KM50Mcms9JticwF",
+          "name": "Anthropic API"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "https://mao-api.fly.dev/api/v1/n8n/webhook",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            {
+              "name": "X-N8N-Api-Key",
+              "value": "mao_pmNhfBRfqd5G_YHubK0Jqk9ZHB6ItITkHFYP4ISns9c"
+            }
+          ]
+        },
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={\n  \"event_type\": \"workflow.completed\",\n  \"workflow_name\": \"COORD-005 Complex: API Dependency Cascade\",\n  \"session_id\": \"{{ $('Initialize').item.json.session_id }}\",\n  \"failure_mode\": \"COORD-005\",\n  \"complexity\": \"complex\",\n  \"expected_detection\": \"cascade_failure\",\n  \"coordination_tracking\": {\n    \"fetcher\": \"{{ $('Fetcher (Timeout)').item.json.output }}\",\n    \"parser\": \"{{ $('Parser (Cascade)').item.json.output }}\",\n    \"enricher\": \"{{ $('Enricher (Cascade)').item.json.output }}\",\n    \"formatter\": \"{{ $('Formatter (Cascade)').item.json.output }}\",\n    \"cascade_chain\": [\"fetcher\", \"parser\", \"enricher\", \"formatter\"],\n    \"cascade_depth\": 3,\n    \"root_cause\": \"api_timeout\"\n  },\n  \"agents\": [\n    {\"agent_id\": \"fetcher\", \"outputs\": [\"{{ $('Fetcher (Timeout)').item.json.output }}\"]},\n    {\"agent_id\": \"parser\", \"outputs\": [\"{{ $('Parser (Cascade)').item.json.output }}\"]},\n    {\"agent_id\": \"enricher\", \"outputs\": [\"{{ $('Enricher (Cascade)').item.json.output }}\"]},\n    {\"agent_id\": \"formatter\", \"outputs\": [\"{{ $('Formatter (Cascade)').item.json.output }}\"]}  \n  ]\n}",
+        "options": {}
+      },
+      "id": "send_to_mao",
+      "name": "Send to MAO",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [
+        1200,
+        50
+      ]
     }
   ],
   "connections": {
-    "Webhook": {"main": [[{"node": "Initialize", "type": "main", "index": 0}]]},
-    "Initialize": {"main": [[{"node": "API Call (Timeout)", "type": "main", "index": 0}]]},
-    "API Call (Timeout)": {"main": [[{"node": "Fetcher (Timeout)", "type": "main", "index": 0}]]},
-    "LM F": {"ai_languageModel": [[{"node": "Fetcher (Timeout)", "type": "ai_languageModel", "index": 0}]]},
-    "Fetcher (Timeout)": {"main": [[{"node": "Parser (Cascade)", "type": "main", "index": 0}, {"node": "Enricher (Cascade)", "type": "main", "index": 0}]]},
-    "LM P": {"ai_languageModel": [[{"node": "Parser (Cascade)", "type": "ai_languageModel", "index": 0}]]},
-    "LM E": {"ai_languageModel": [[{"node": "Enricher (Cascade)", "type": "ai_languageModel", "index": 0}]]},
-    "Parser (Cascade)": {"main": [[{"node": "Formatter (Cascade)", "type": "main", "index": 0}]]},
-    "Enricher (Cascade)": {"main": [[{"node": "Formatter (Cascade)", "type": "main", "index": 0}]]},
-    "LM O": {"ai_languageModel": [[{"node": "Formatter (Cascade)", "type": "ai_languageModel", "index": 0}]]},
-    "Formatter (Cascade)": {"main": [[{"node": "Send to MAO", "type": "main", "index": 0}]]}
+    "Webhook": {
+      "main": [
+        [
+          {
+            "node": "Initialize",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Initialize": {
+      "main": [
+        [
+          {
+            "node": "API Call (Timeout)",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "API Call (Timeout)": {
+      "main": [
+        [
+          {
+            "node": "Fetcher (Timeout)",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "LM F": {
+      "ai_languageModel": [
+        [
+          {
+            "node": "Fetcher (Timeout)",
+            "type": "ai_languageModel",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Fetcher (Timeout)": {
+      "main": [
+        [
+          {
+            "node": "Parser (Cascade)",
+            "type": "main",
+            "index": 0
+          },
+          {
+            "node": "Enricher (Cascade)",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "LM P": {
+      "ai_languageModel": [
+        [
+          {
+            "node": "Parser (Cascade)",
+            "type": "ai_languageModel",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "LM E": {
+      "ai_languageModel": [
+        [
+          {
+            "node": "Enricher (Cascade)",
+            "type": "ai_languageModel",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Parser (Cascade)": {
+      "main": [
+        [
+          {
+            "node": "Formatter (Cascade)",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Enricher (Cascade)": {
+      "main": [
+        [
+          {
+            "node": "Formatter (Cascade)",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "LM O": {
+      "ai_languageModel": [
+        [
+          {
+            "node": "Formatter (Cascade)",
+            "type": "ai_languageModel",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Formatter (Cascade)": {
+      "main": [
+        [
+          {
+            "node": "Send to MAO",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Schedule Trigger": {
+      "main": [
+        [
+          {
+            "node": "Initialize",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
   },
-  "settings": {"executionOrder": "v1"},
-  "meta": {"mast_failure_mode": "COORD-005", "mast_category": "COORDINATION", "complexity": "complex", "description": "API timeout causes downstream cascade through parser, enricher, formatter", "expected_detection": "Multi-stage cascade failure detection", "agents": 4, "nodes": 6, "real_apis": ["HTTPBin"]}
+  "settings": {
+    "executionOrder": "v1"
+  },
+  "meta": {
+    "mast_failure_mode": "COORD-005",
+    "mast_category": "COORDINATION",
+    "complexity": "complex",
+    "description": "API timeout causes downstream cascade through parser, enricher, formatter",
+    "expected_detection": "Multi-stage cascade failure detection",
+    "agents": 4,
+    "nodes": 6,
+    "real_apis": [
+      "HTTPBin"
+    ]
+  }
 }

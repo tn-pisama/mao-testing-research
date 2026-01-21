@@ -3,6 +3,26 @@
   "nodes": [
     {
       "parameters": {
+        "rule": {
+          "interval": [
+            {
+              "field": "hours",
+              "hoursInterval": 3
+            }
+          ]
+        }
+      },
+      "id": "schedule",
+      "name": "Schedule Trigger",
+      "type": "n8n-nodes-base.scheduleTrigger",
+      "typeVersion": 1.2,
+      "position": [
+        0,
+        -200
+      ]
+    },
+    {
+      "parameters": {
         "path": "loop-004-simple",
         "responseMode": "lastNode",
         "options": {},
@@ -12,15 +32,28 @@
       "name": "Webhook",
       "type": "n8n-nodes-base.webhook",
       "typeVersion": 2,
-      "position": [0, 0],
+      "position": [
+        0,
+        0
+      ],
       "webhookId": "loop-004-simple"
     },
     {
       "parameters": {
         "assignments": {
           "assignments": [
-            {"id": "session_id", "name": "session_id", "value": "={{ $now.format('X') }}-loop004-simple", "type": "string"},
-            {"id": "query", "name": "query", "value": "latest AI news", "type": "string"}
+            {
+              "id": "session_id",
+              "name": "session_id",
+              "value": "={{ $now.format('X') }}-loop004-simple",
+              "type": "string"
+            },
+            {
+              "id": "query",
+              "name": "query",
+              "value": "latest AI news",
+              "type": "string"
+            }
           ]
         }
       },
@@ -28,20 +61,37 @@
       "name": "Initialize",
       "type": "n8n-nodes-base.set",
       "typeVersion": 3.4,
-      "position": [200, 0]
+      "position": [
+        200,
+        0
+      ]
     },
     {
       "parameters": {
         "url": "https://hn.algolia.com/api/v1/search",
         "sendQuery": true,
-        "queryParameters": {"parameters": [{"name": "query", "value": "={{ $('Initialize').item.json.query }}"}, {"name": "hitsPerPage", "value": "2"}]},
+        "queryParameters": {
+          "parameters": [
+            {
+              "name": "query",
+              "value": "={{ $('Initialize').item.json.query }}"
+            },
+            {
+              "name": "hitsPerPage",
+              "value": "2"
+            }
+          ]
+        },
         "options": {}
       },
       "id": "search_1",
       "name": "Search 1",
       "type": "n8n-nodes-base.httpRequest",
       "typeVersion": 4.2,
-      "position": [400, 0]
+      "position": [
+        400,
+        0
+      ]
     },
     {
       "parameters": {
@@ -53,32 +103,60 @@
       "name": "Analyze 1",
       "type": "@n8n/n8n-nodes-langchain.agent",
       "typeVersion": 1.6,
-      "position": [600, 0]
+      "position": [
+        600,
+        0
+      ]
     },
     {
       "parameters": {
         "model": "claude-3-5-haiku-20241022",
-        "options": {"temperature": 0.5, "maxTokens": 100}
+        "options": {
+          "temperature": 0.5,
+          "maxTokens": 100
+        }
       },
       "id": "lm_1",
       "name": "LM 1",
       "type": "@n8n/n8n-nodes-langchain.lmChatAnthropic",
       "typeVersion": 1.2,
-      "position": [600, 200],
-      "credentials": {"anthropicApi": {"id": "1KM50Mcms9JticwF", "name": "Anthropic API"}}
+      "position": [
+        600,
+        200
+      ],
+      "credentials": {
+        "anthropicApi": {
+          "id": "1KM50Mcms9JticwF",
+          "name": "Anthropic API"
+        }
+      }
     },
     {
       "parameters": {
         "url": "https://hn.algolia.com/api/v1/search",
         "sendQuery": true,
-        "queryParameters": {"parameters": [{"name": "query", "value": "={{ $('Initialize').item.json.query }} 2024"}, {"name": "hitsPerPage", "value": "2"}]},
+        "queryParameters": {
+          "parameters": [
+            {
+              "name": "query",
+              "value": "={{ $('Initialize').item.json.query }} 2024"
+            },
+            {
+              "name": "hitsPerPage",
+              "value": "2"
+            }
+          ]
+        },
         "options": {}
       },
       "id": "search_2",
       "name": "Search 2",
       "type": "n8n-nodes-base.httpRequest",
       "typeVersion": 4.2,
-      "position": [800, 0]
+      "position": [
+        800,
+        0
+      ]
     },
     {
       "parameters": {
@@ -90,32 +168,60 @@
       "name": "Analyze 2",
       "type": "@n8n/n8n-nodes-langchain.agent",
       "typeVersion": 1.6,
-      "position": [1000, 0]
+      "position": [
+        1000,
+        0
+      ]
     },
     {
       "parameters": {
         "model": "claude-3-5-haiku-20241022",
-        "options": {"temperature": 0.5, "maxTokens": 100}
+        "options": {
+          "temperature": 0.5,
+          "maxTokens": 100
+        }
       },
       "id": "lm_2",
       "name": "LM 2",
       "type": "@n8n/n8n-nodes-langchain.lmChatAnthropic",
       "typeVersion": 1.2,
-      "position": [1000, 200],
-      "credentials": {"anthropicApi": {"id": "1KM50Mcms9JticwF", "name": "Anthropic API"}}
+      "position": [
+        1000,
+        200
+      ],
+      "credentials": {
+        "anthropicApi": {
+          "id": "1KM50Mcms9JticwF",
+          "name": "Anthropic API"
+        }
+      }
     },
     {
       "parameters": {
         "url": "https://hn.algolia.com/api/v1/search",
         "sendQuery": true,
-        "queryParameters": {"parameters": [{"name": "query", "value": "={{ $('Initialize').item.json.query }} breakthroughs"}, {"name": "hitsPerPage", "value": "2"}]},
+        "queryParameters": {
+          "parameters": [
+            {
+              "name": "query",
+              "value": "={{ $('Initialize').item.json.query }} breakthroughs"
+            },
+            {
+              "name": "hitsPerPage",
+              "value": "2"
+            }
+          ]
+        },
         "options": {}
       },
       "id": "search_3",
       "name": "Search 3",
       "type": "n8n-nodes-base.httpRequest",
       "typeVersion": 4.2,
-      "position": [1200, 0]
+      "position": [
+        1200,
+        0
+      ]
     },
     {
       "parameters": {
@@ -127,19 +233,33 @@
       "name": "Analyze 3",
       "type": "@n8n/n8n-nodes-langchain.agent",
       "typeVersion": 1.6,
-      "position": [1400, 0]
+      "position": [
+        1400,
+        0
+      ]
     },
     {
       "parameters": {
         "model": "claude-3-5-haiku-20241022",
-        "options": {"temperature": 0.5, "maxTokens": 100}
+        "options": {
+          "temperature": 0.5,
+          "maxTokens": 100
+        }
       },
       "id": "lm_3",
       "name": "LM 3",
       "type": "@n8n/n8n-nodes-langchain.lmChatAnthropic",
       "typeVersion": 1.2,
-      "position": [1400, 200],
-      "credentials": {"anthropicApi": {"id": "1KM50Mcms9JticwF", "name": "Anthropic API"}}
+      "position": [
+        1400,
+        200
+      ],
+      "credentials": {
+        "anthropicApi": {
+          "id": "1KM50Mcms9JticwF",
+          "name": "Anthropic API"
+        }
+      }
     },
     {
       "parameters": {
@@ -147,7 +267,12 @@
         "url": "https://mao-api.fly.dev/api/v1/n8n/webhook",
         "sendHeaders": true,
         "headerParameters": {
-          "parameters": [{"name": "X-N8N-Api-Key", "value": "mao_pmNhfBRfqd5G_YHubK0Jqk9ZHB6ItITkHFYP4ISns9c"}]
+          "parameters": [
+            {
+              "name": "X-N8N-Api-Key",
+              "value": "mao_pmNhfBRfqd5G_YHubK0Jqk9ZHB6ItITkHFYP4ISns9c"
+            }
+          ]
         },
         "sendBody": true,
         "specifyBody": "json",
@@ -158,23 +283,149 @@
       "name": "Send to MAO",
       "type": "n8n-nodes-base.httpRequest",
       "typeVersion": 4.2,
-      "position": [1600, 0]
+      "position": [
+        1600,
+        0
+      ]
     }
   ],
   "connections": {
-    "Webhook": {"main": [[{"node": "Initialize", "type": "main", "index": 0}]]},
-    "Initialize": {"main": [[{"node": "Search 1", "type": "main", "index": 0}]]},
-    "Search 1": {"main": [[{"node": "Analyze 1", "type": "main", "index": 0}]]},
-    "LM 1": {"ai_languageModel": [[{"node": "Analyze 1", "type": "ai_languageModel", "index": 0}]]},
-    "Analyze 1": {"main": [[{"node": "Search 2", "type": "main", "index": 0}]]},
-    "Search 2": {"main": [[{"node": "Analyze 2", "type": "main", "index": 0}]]},
-    "LM 2": {"ai_languageModel": [[{"node": "Analyze 2", "type": "ai_languageModel", "index": 0}]]},
-    "Analyze 2": {"main": [[{"node": "Search 3", "type": "main", "index": 0}]]},
-    "Search 3": {"main": [[{"node": "Analyze 3", "type": "main", "index": 0}]]},
-    "LM 3": {"ai_languageModel": [[{"node": "Analyze 3", "type": "ai_languageModel", "index": 0}]]},
-    "Analyze 3": {"main": [[{"node": "Send to MAO", "type": "main", "index": 0}]]}
+    "Webhook": {
+      "main": [
+        [
+          {
+            "node": "Initialize",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Initialize": {
+      "main": [
+        [
+          {
+            "node": "Search 1",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Search 1": {
+      "main": [
+        [
+          {
+            "node": "Analyze 1",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "LM 1": {
+      "ai_languageModel": [
+        [
+          {
+            "node": "Analyze 1",
+            "type": "ai_languageModel",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Analyze 1": {
+      "main": [
+        [
+          {
+            "node": "Search 2",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Search 2": {
+      "main": [
+        [
+          {
+            "node": "Analyze 2",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "LM 2": {
+      "ai_languageModel": [
+        [
+          {
+            "node": "Analyze 2",
+            "type": "ai_languageModel",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Analyze 2": {
+      "main": [
+        [
+          {
+            "node": "Search 3",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Search 3": {
+      "main": [
+        [
+          {
+            "node": "Analyze 3",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "LM 3": {
+      "ai_languageModel": [
+        [
+          {
+            "node": "Analyze 3",
+            "type": "ai_languageModel",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Analyze 3": {
+      "main": [
+        [
+          {
+            "node": "Send to MAO",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Schedule Trigger": {
+      "main": [
+        [
+          {
+            "node": "Initialize",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
   },
-  "settings": {"executionOrder": "v1"},
+  "settings": {
+    "executionOrder": "v1"
+  },
   "meta": {
     "mast_failure_mode": "LOOP-004",
     "mast_category": "LOOP",
@@ -183,6 +434,8 @@
     "expected_detection": "Tool sequence pattern detection",
     "agents": 1,
     "nodes": 6,
-    "real_apis": ["HackerNews Algolia"]
+    "real_apis": [
+      "HackerNews Algolia"
+    ]
   }
 }

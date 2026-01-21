@@ -3,6 +3,26 @@
   "nodes": [
     {
       "parameters": {
+        "rule": {
+          "interval": [
+            {
+              "field": "hours",
+              "hoursInterval": 3
+            }
+          ]
+        }
+      },
+      "id": "schedule",
+      "name": "Schedule Trigger",
+      "type": "n8n-nodes-base.scheduleTrigger",
+      "typeVersion": 1.2,
+      "position": [
+        0,
+        -200
+      ]
+    },
+    {
+      "parameters": {
         "path": "loop-006-vcomplex",
         "responseMode": "lastNode",
         "options": {},
@@ -12,15 +32,28 @@
       "name": "Webhook",
       "type": "n8n-nodes-base.webhook",
       "typeVersion": 2,
-      "position": [0, 0],
+      "position": [
+        0,
+        0
+      ],
       "webhookId": "loop-006-vcomplex"
     },
     {
       "parameters": {
         "assignments": {
           "assignments": [
-            {"id": "session_id", "name": "session_id", "value": "={{ $now.format('X') }}-loop006-vcomplex", "type": "string"},
-            {"id": "ticket", "name": "ticket", "value": "TICKET-12345: Production outage affecting all users", "type": "string"}
+            {
+              "id": "session_id",
+              "name": "session_id",
+              "value": "={{ $now.format('X') }}-loop006-vcomplex",
+              "type": "string"
+            },
+            {
+              "id": "ticket",
+              "name": "ticket",
+              "value": "TICKET-12345: Production outage affecting all users",
+              "type": "string"
+            }
           ]
         }
       },
@@ -28,7 +61,10 @@
       "name": "Initialize",
       "type": "n8n-nodes-base.set",
       "typeVersion": 3.4,
-      "position": [200, 0]
+      "position": [
+        200,
+        0
+      ]
     },
     {
       "parameters": {
@@ -39,7 +75,10 @@
       "name": "Get L1 Support",
       "type": "n8n-nodes-base.httpRequest",
       "typeVersion": 4.2,
-      "position": [400, 0]
+      "position": [
+        400,
+        0
+      ]
     },
     {
       "parameters": {
@@ -51,19 +90,33 @@
       "name": "L1 Support",
       "type": "@n8n/n8n-nodes-langchain.agent",
       "typeVersion": 1.6,
-      "position": [600, 0]
+      "position": [
+        600,
+        0
+      ]
     },
     {
       "parameters": {
         "model": "claude-3-5-haiku-20241022",
-        "options": {"temperature": 0.3, "maxTokens": 100}
+        "options": {
+          "temperature": 0.3,
+          "maxTokens": 100
+        }
       },
       "id": "lm_l1",
       "name": "LM L1",
       "type": "@n8n/n8n-nodes-langchain.lmChatAnthropic",
       "typeVersion": 1.2,
-      "position": [600, 200],
-      "credentials": {"anthropicApi": {"id": "1KM50Mcms9JticwF", "name": "Anthropic API"}}
+      "position": [
+        600,
+        200
+      ],
+      "credentials": {
+        "anthropicApi": {
+          "id": "1KM50Mcms9JticwF",
+          "name": "Anthropic API"
+        }
+      }
     },
     {
       "parameters": {
@@ -74,7 +127,10 @@
       "name": "Get L2 Support",
       "type": "n8n-nodes-base.httpRequest",
       "typeVersion": 4.2,
-      "position": [800, 0]
+      "position": [
+        800,
+        0
+      ]
     },
     {
       "parameters": {
@@ -86,19 +142,33 @@
       "name": "L2 Support",
       "type": "@n8n/n8n-nodes-langchain.agent",
       "typeVersion": 1.6,
-      "position": [1000, 0]
+      "position": [
+        1000,
+        0
+      ]
     },
     {
       "parameters": {
         "model": "claude-3-5-haiku-20241022",
-        "options": {"temperature": 0.3, "maxTokens": 100}
+        "options": {
+          "temperature": 0.3,
+          "maxTokens": 100
+        }
       },
       "id": "lm_l2",
       "name": "LM L2",
       "type": "@n8n/n8n-nodes-langchain.lmChatAnthropic",
       "typeVersion": 1.2,
-      "position": [1000, 200],
-      "credentials": {"anthropicApi": {"id": "1KM50Mcms9JticwF", "name": "Anthropic API"}}
+      "position": [
+        1000,
+        200
+      ],
+      "credentials": {
+        "anthropicApi": {
+          "id": "1KM50Mcms9JticwF",
+          "name": "Anthropic API"
+        }
+      }
     },
     {
       "parameters": {
@@ -109,7 +179,10 @@
       "name": "Get L3 Engineering",
       "type": "n8n-nodes-base.httpRequest",
       "typeVersion": 4.2,
-      "position": [1200, 0]
+      "position": [
+        1200,
+        0
+      ]
     },
     {
       "parameters": {
@@ -121,19 +194,33 @@
       "name": "L3 Engineering",
       "type": "@n8n/n8n-nodes-langchain.agent",
       "typeVersion": 1.6,
-      "position": [1400, 0]
+      "position": [
+        1400,
+        0
+      ]
     },
     {
       "parameters": {
         "model": "claude-3-5-haiku-20241022",
-        "options": {"temperature": 0.3, "maxTokens": 100}
+        "options": {
+          "temperature": 0.3,
+          "maxTokens": 100
+        }
       },
       "id": "lm_l3",
       "name": "LM L3",
       "type": "@n8n/n8n-nodes-langchain.lmChatAnthropic",
       "typeVersion": 1.2,
-      "position": [1400, 200],
-      "credentials": {"anthropicApi": {"id": "1KM50Mcms9JticwF", "name": "Anthropic API"}}
+      "position": [
+        1400,
+        200
+      ],
+      "credentials": {
+        "anthropicApi": {
+          "id": "1KM50Mcms9JticwF",
+          "name": "Anthropic API"
+        }
+      }
     },
     {
       "parameters": {
@@ -145,19 +232,33 @@
       "name": "L1 Support Round 2",
       "type": "@n8n/n8n-nodes-langchain.agent",
       "typeVersion": 1.6,
-      "position": [1600, 0]
+      "position": [
+        1600,
+        0
+      ]
     },
     {
       "parameters": {
         "model": "claude-3-5-haiku-20241022",
-        "options": {"temperature": 0.3, "maxTokens": 100}
+        "options": {
+          "temperature": 0.3,
+          "maxTokens": 100
+        }
       },
       "id": "lm_l1_2",
       "name": "LM L1 2",
       "type": "@n8n/n8n-nodes-langchain.lmChatAnthropic",
       "typeVersion": 1.2,
-      "position": [1600, 200],
-      "credentials": {"anthropicApi": {"id": "1KM50Mcms9JticwF", "name": "Anthropic API"}}
+      "position": [
+        1600,
+        200
+      ],
+      "credentials": {
+        "anthropicApi": {
+          "id": "1KM50Mcms9JticwF",
+          "name": "Anthropic API"
+        }
+      }
     },
     {
       "parameters": {
@@ -169,19 +270,33 @@
       "name": "L2 Support Round 2",
       "type": "@n8n/n8n-nodes-langchain.agent",
       "typeVersion": 1.6,
-      "position": [1800, 0]
+      "position": [
+        1800,
+        0
+      ]
     },
     {
       "parameters": {
         "model": "claude-3-5-haiku-20241022",
-        "options": {"temperature": 0.3, "maxTokens": 100}
+        "options": {
+          "temperature": 0.3,
+          "maxTokens": 100
+        }
       },
       "id": "lm_l2_2",
       "name": "LM L2 2",
       "type": "@n8n/n8n-nodes-langchain.lmChatAnthropic",
       "typeVersion": 1.2,
-      "position": [1800, 200],
-      "credentials": {"anthropicApi": {"id": "1KM50Mcms9JticwF", "name": "Anthropic API"}}
+      "position": [
+        1800,
+        200
+      ],
+      "credentials": {
+        "anthropicApi": {
+          "id": "1KM50Mcms9JticwF",
+          "name": "Anthropic API"
+        }
+      }
     },
     {
       "parameters": {
@@ -189,7 +304,12 @@
         "url": "https://mao-api.fly.dev/api/v1/n8n/webhook",
         "sendHeaders": true,
         "headerParameters": {
-          "parameters": [{"name": "X-N8N-Api-Key", "value": "mao_pmNhfBRfqd5G_YHubK0Jqk9ZHB6ItITkHFYP4ISns9c"}]
+          "parameters": [
+            {
+              "name": "X-N8N-Api-Key",
+              "value": "mao_pmNhfBRfqd5G_YHubK0Jqk9ZHB6ItITkHFYP4ISns9c"
+            }
+          ]
         },
         "sendBody": true,
         "specifyBody": "json",
@@ -200,27 +320,193 @@
       "name": "Send to MAO",
       "type": "n8n-nodes-base.httpRequest",
       "typeVersion": 4.2,
-      "position": [2000, 0]
+      "position": [
+        2000,
+        0
+      ]
     }
   ],
   "connections": {
-    "Webhook": {"main": [[{"node": "Initialize", "type": "main", "index": 0}]]},
-    "Initialize": {"main": [[{"node": "Get L1 Support", "type": "main", "index": 0}]]},
-    "Get L1 Support": {"main": [[{"node": "L1 Support", "type": "main", "index": 0}]]},
-    "LM L1": {"ai_languageModel": [[{"node": "L1 Support", "type": "ai_languageModel", "index": 0}]]},
-    "L1 Support": {"main": [[{"node": "Get L2 Support", "type": "main", "index": 0}]]},
-    "Get L2 Support": {"main": [[{"node": "L2 Support", "type": "main", "index": 0}]]},
-    "LM L2": {"ai_languageModel": [[{"node": "L2 Support", "type": "ai_languageModel", "index": 0}]]},
-    "L2 Support": {"main": [[{"node": "Get L3 Engineering", "type": "main", "index": 0}]]},
-    "Get L3 Engineering": {"main": [[{"node": "L3 Engineering", "type": "main", "index": 0}]]},
-    "LM L3": {"ai_languageModel": [[{"node": "L3 Engineering", "type": "ai_languageModel", "index": 0}]]},
-    "L3 Engineering": {"main": [[{"node": "L1 Support Round 2", "type": "main", "index": 0}]]},
-    "LM L1 2": {"ai_languageModel": [[{"node": "L1 Support Round 2", "type": "ai_languageModel", "index": 0}]]},
-    "L1 Support Round 2": {"main": [[{"node": "L2 Support Round 2", "type": "main", "index": 0}]]},
-    "LM L2 2": {"ai_languageModel": [[{"node": "L2 Support Round 2", "type": "ai_languageModel", "index": 0}]]},
-    "L2 Support Round 2": {"main": [[{"node": "Send to MAO", "type": "main", "index": 0}]]}
+    "Webhook": {
+      "main": [
+        [
+          {
+            "node": "Initialize",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Initialize": {
+      "main": [
+        [
+          {
+            "node": "Get L1 Support",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Get L1 Support": {
+      "main": [
+        [
+          {
+            "node": "L1 Support",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "LM L1": {
+      "ai_languageModel": [
+        [
+          {
+            "node": "L1 Support",
+            "type": "ai_languageModel",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "L1 Support": {
+      "main": [
+        [
+          {
+            "node": "Get L2 Support",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Get L2 Support": {
+      "main": [
+        [
+          {
+            "node": "L2 Support",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "LM L2": {
+      "ai_languageModel": [
+        [
+          {
+            "node": "L2 Support",
+            "type": "ai_languageModel",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "L2 Support": {
+      "main": [
+        [
+          {
+            "node": "Get L3 Engineering",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Get L3 Engineering": {
+      "main": [
+        [
+          {
+            "node": "L3 Engineering",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "LM L3": {
+      "ai_languageModel": [
+        [
+          {
+            "node": "L3 Engineering",
+            "type": "ai_languageModel",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "L3 Engineering": {
+      "main": [
+        [
+          {
+            "node": "L1 Support Round 2",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "LM L1 2": {
+      "ai_languageModel": [
+        [
+          {
+            "node": "L1 Support Round 2",
+            "type": "ai_languageModel",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "L1 Support Round 2": {
+      "main": [
+        [
+          {
+            "node": "L2 Support Round 2",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "LM L2 2": {
+      "ai_languageModel": [
+        [
+          {
+            "node": "L2 Support Round 2",
+            "type": "ai_languageModel",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "L2 Support Round 2": {
+      "main": [
+        [
+          {
+            "node": "Send to MAO",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Schedule Trigger": {
+      "main": [
+        [
+          {
+            "node": "Initialize",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
   },
-  "settings": {"executionOrder": "v1"},
+  "settings": {
+    "executionOrder": "v1"
+  },
   "meta": {
     "mast_failure_mode": "LOOP-006",
     "mast_category": "LOOP",
@@ -229,6 +515,8 @@
     "expected_detection": "Cross-level escalation cycle detection",
     "agents": 5,
     "nodes": 10,
-    "real_apis": ["JSONPlaceholder"]
+    "real_apis": [
+      "JSONPlaceholder"
+    ]
   }
 }

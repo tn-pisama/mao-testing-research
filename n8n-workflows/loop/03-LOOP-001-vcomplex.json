@@ -3,6 +3,26 @@
   "nodes": [
     {
       "parameters": {
+        "rule": {
+          "interval": [
+            {
+              "field": "hours",
+              "hoursInterval": 3
+            }
+          ]
+        }
+      },
+      "id": "schedule",
+      "name": "Schedule Trigger",
+      "type": "n8n-nodes-base.scheduleTrigger",
+      "typeVersion": 1.2,
+      "position": [
+        0,
+        -200
+      ]
+    },
+    {
+      "parameters": {
         "path": "loop-001-vcomplex",
         "responseMode": "lastNode",
         "options": {},
@@ -12,15 +32,28 @@
       "name": "Webhook",
       "type": "n8n-nodes-base.webhook",
       "typeVersion": 2,
-      "position": [0, 0],
+      "position": [
+        0,
+        0
+      ],
       "webhookId": "loop-001-vcomplex"
     },
     {
       "parameters": {
         "assignments": {
           "assignments": [
-            {"id": "session_id", "name": "session_id", "value": "={{ $now.format('X') }}-loop001-vcomplex", "type": "string"},
-            {"id": "task", "name": "task", "value": "Approve budget request #12345", "type": "string"}
+            {
+              "id": "session_id",
+              "name": "session_id",
+              "value": "={{ $now.format('X') }}-loop001-vcomplex",
+              "type": "string"
+            },
+            {
+              "id": "task",
+              "name": "task",
+              "value": "Approve budget request #12345",
+              "type": "string"
+            }
           ]
         }
       },
@@ -28,7 +61,10 @@
       "name": "Initialize",
       "type": "n8n-nodes-base.set",
       "typeVersion": 3.4,
-      "position": [200, 0]
+      "position": [
+        200,
+        0
+      ]
     },
     {
       "parameters": {
@@ -39,7 +75,10 @@
       "name": "Get Manager A",
       "type": "n8n-nodes-base.httpRequest",
       "typeVersion": 4.2,
-      "position": [400, 0]
+      "position": [
+        400,
+        0
+      ]
     },
     {
       "parameters": {
@@ -51,19 +90,33 @@
       "name": "Manager A (Turn 1)",
       "type": "@n8n/n8n-nodes-langchain.agent",
       "typeVersion": 1.6,
-      "position": [600, 0]
+      "position": [
+        600,
+        0
+      ]
     },
     {
       "parameters": {
         "model": "claude-3-5-haiku-20241022",
-        "options": {"temperature": 0, "maxTokens": 100}
+        "options": {
+          "temperature": 0,
+          "maxTokens": 100
+        }
       },
       "id": "lm_a1",
       "name": "LM A1",
       "type": "@n8n/n8n-nodes-langchain.lmChatAnthropic",
       "typeVersion": 1.2,
-      "position": [600, 200],
-      "credentials": {"anthropicApi": {"id": "1KM50Mcms9JticwF", "name": "Anthropic API"}}
+      "position": [
+        600,
+        200
+      ],
+      "credentials": {
+        "anthropicApi": {
+          "id": "1KM50Mcms9JticwF",
+          "name": "Anthropic API"
+        }
+      }
     },
     {
       "parameters": {
@@ -74,7 +127,10 @@
       "name": "Get Manager B",
       "type": "n8n-nodes-base.httpRequest",
       "typeVersion": 4.2,
-      "position": [800, 0]
+      "position": [
+        800,
+        0
+      ]
     },
     {
       "parameters": {
@@ -86,19 +142,33 @@
       "name": "Manager B (Turn 1)",
       "type": "@n8n/n8n-nodes-langchain.agent",
       "typeVersion": 1.6,
-      "position": [1000, 0]
+      "position": [
+        1000,
+        0
+      ]
     },
     {
       "parameters": {
         "model": "claude-3-5-haiku-20241022",
-        "options": {"temperature": 0, "maxTokens": 100}
+        "options": {
+          "temperature": 0,
+          "maxTokens": 100
+        }
       },
       "id": "lm_b1",
       "name": "LM B1",
       "type": "@n8n/n8n-nodes-langchain.lmChatAnthropic",
       "typeVersion": 1.2,
-      "position": [1000, 200],
-      "credentials": {"anthropicApi": {"id": "1KM50Mcms9JticwF", "name": "Anthropic API"}}
+      "position": [
+        1000,
+        200
+      ],
+      "credentials": {
+        "anthropicApi": {
+          "id": "1KM50Mcms9JticwF",
+          "name": "Anthropic API"
+        }
+      }
     },
     {
       "parameters": {
@@ -110,19 +180,33 @@
       "name": "Manager A (Turn 2)",
       "type": "@n8n/n8n-nodes-langchain.agent",
       "typeVersion": 1.6,
-      "position": [1200, 0]
+      "position": [
+        1200,
+        0
+      ]
     },
     {
       "parameters": {
         "model": "claude-3-5-haiku-20241022",
-        "options": {"temperature": 0, "maxTokens": 100}
+        "options": {
+          "temperature": 0,
+          "maxTokens": 100
+        }
       },
       "id": "lm_a2",
       "name": "LM A2",
       "type": "@n8n/n8n-nodes-langchain.lmChatAnthropic",
       "typeVersion": 1.2,
-      "position": [1200, 200],
-      "credentials": {"anthropicApi": {"id": "1KM50Mcms9JticwF", "name": "Anthropic API"}}
+      "position": [
+        1200,
+        200
+      ],
+      "credentials": {
+        "anthropicApi": {
+          "id": "1KM50Mcms9JticwF",
+          "name": "Anthropic API"
+        }
+      }
     },
     {
       "parameters": {
@@ -134,19 +218,33 @@
       "name": "Manager B (Turn 2)",
       "type": "@n8n/n8n-nodes-langchain.agent",
       "typeVersion": 1.6,
-      "position": [1400, 0]
+      "position": [
+        1400,
+        0
+      ]
     },
     {
       "parameters": {
         "model": "claude-3-5-haiku-20241022",
-        "options": {"temperature": 0, "maxTokens": 100}
+        "options": {
+          "temperature": 0,
+          "maxTokens": 100
+        }
       },
       "id": "lm_b2",
       "name": "LM B2",
       "type": "@n8n/n8n-nodes-langchain.lmChatAnthropic",
       "typeVersion": 1.2,
-      "position": [1400, 200],
-      "credentials": {"anthropicApi": {"id": "1KM50Mcms9JticwF", "name": "Anthropic API"}}
+      "position": [
+        1400,
+        200
+      ],
+      "credentials": {
+        "anthropicApi": {
+          "id": "1KM50Mcms9JticwF",
+          "name": "Anthropic API"
+        }
+      }
     },
     {
       "parameters": {
@@ -158,19 +256,33 @@
       "name": "Manager A (Turn 3)",
       "type": "@n8n/n8n-nodes-langchain.agent",
       "typeVersion": 1.6,
-      "position": [1600, 0]
+      "position": [
+        1600,
+        0
+      ]
     },
     {
       "parameters": {
         "model": "claude-3-5-haiku-20241022",
-        "options": {"temperature": 0, "maxTokens": 100}
+        "options": {
+          "temperature": 0,
+          "maxTokens": 100
+        }
       },
       "id": "lm_a3",
       "name": "LM A3",
       "type": "@n8n/n8n-nodes-langchain.lmChatAnthropic",
       "typeVersion": 1.2,
-      "position": [1600, 200],
-      "credentials": {"anthropicApi": {"id": "1KM50Mcms9JticwF", "name": "Anthropic API"}}
+      "position": [
+        1600,
+        200
+      ],
+      "credentials": {
+        "anthropicApi": {
+          "id": "1KM50Mcms9JticwF",
+          "name": "Anthropic API"
+        }
+      }
     },
     {
       "parameters": {
@@ -178,7 +290,12 @@
         "url": "https://mao-api.fly.dev/api/v1/n8n/webhook",
         "sendHeaders": true,
         "headerParameters": {
-          "parameters": [{"name": "X-N8N-Api-Key", "value": "mao_pmNhfBRfqd5G_YHubK0Jqk9ZHB6ItITkHFYP4ISns9c"}]
+          "parameters": [
+            {
+              "name": "X-N8N-Api-Key",
+              "value": "mao_pmNhfBRfqd5G_YHubK0Jqk9ZHB6ItITkHFYP4ISns9c"
+            }
+          ]
         },
         "sendBody": true,
         "specifyBody": "json",
@@ -189,26 +306,182 @@
       "name": "Send to MAO",
       "type": "n8n-nodes-base.httpRequest",
       "typeVersion": 4.2,
-      "position": [1800, 0]
+      "position": [
+        1800,
+        0
+      ]
     }
   ],
   "connections": {
-    "Webhook": {"main": [[{"node": "Initialize", "type": "main", "index": 0}]]},
-    "Initialize": {"main": [[{"node": "Get Manager A", "type": "main", "index": 0}]]},
-    "Get Manager A": {"main": [[{"node": "Manager A (Turn 1)", "type": "main", "index": 0}]]},
-    "LM A1": {"ai_languageModel": [[{"node": "Manager A (Turn 1)", "type": "ai_languageModel", "index": 0}]]},
-    "Manager A (Turn 1)": {"main": [[{"node": "Get Manager B", "type": "main", "index": 0}]]},
-    "Get Manager B": {"main": [[{"node": "Manager B (Turn 1)", "type": "main", "index": 0}]]},
-    "LM B1": {"ai_languageModel": [[{"node": "Manager B (Turn 1)", "type": "ai_languageModel", "index": 0}]]},
-    "Manager B (Turn 1)": {"main": [[{"node": "Manager A (Turn 2)", "type": "main", "index": 0}]]},
-    "LM A2": {"ai_languageModel": [[{"node": "Manager A (Turn 2)", "type": "ai_languageModel", "index": 0}]]},
-    "Manager A (Turn 2)": {"main": [[{"node": "Manager B (Turn 2)", "type": "main", "index": 0}]]},
-    "LM B2": {"ai_languageModel": [[{"node": "Manager B (Turn 2)", "type": "ai_languageModel", "index": 0}]]},
-    "Manager B (Turn 2)": {"main": [[{"node": "Manager A (Turn 3)", "type": "main", "index": 0}]]},
-    "LM A3": {"ai_languageModel": [[{"node": "Manager A (Turn 3)", "type": "ai_languageModel", "index": 0}]]},
-    "Manager A (Turn 3)": {"main": [[{"node": "Send to MAO", "type": "main", "index": 0}]]}
+    "Webhook": {
+      "main": [
+        [
+          {
+            "node": "Initialize",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Initialize": {
+      "main": [
+        [
+          {
+            "node": "Get Manager A",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Get Manager A": {
+      "main": [
+        [
+          {
+            "node": "Manager A (Turn 1)",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "LM A1": {
+      "ai_languageModel": [
+        [
+          {
+            "node": "Manager A (Turn 1)",
+            "type": "ai_languageModel",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Manager A (Turn 1)": {
+      "main": [
+        [
+          {
+            "node": "Get Manager B",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Get Manager B": {
+      "main": [
+        [
+          {
+            "node": "Manager B (Turn 1)",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "LM B1": {
+      "ai_languageModel": [
+        [
+          {
+            "node": "Manager B (Turn 1)",
+            "type": "ai_languageModel",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Manager B (Turn 1)": {
+      "main": [
+        [
+          {
+            "node": "Manager A (Turn 2)",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "LM A2": {
+      "ai_languageModel": [
+        [
+          {
+            "node": "Manager A (Turn 2)",
+            "type": "ai_languageModel",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Manager A (Turn 2)": {
+      "main": [
+        [
+          {
+            "node": "Manager B (Turn 2)",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "LM B2": {
+      "ai_languageModel": [
+        [
+          {
+            "node": "Manager B (Turn 2)",
+            "type": "ai_languageModel",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Manager B (Turn 2)": {
+      "main": [
+        [
+          {
+            "node": "Manager A (Turn 3)",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "LM A3": {
+      "ai_languageModel": [
+        [
+          {
+            "node": "Manager A (Turn 3)",
+            "type": "ai_languageModel",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Manager A (Turn 3)": {
+      "main": [
+        [
+          {
+            "node": "Send to MAO",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Schedule Trigger": {
+      "main": [
+        [
+          {
+            "node": "Initialize",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
   },
-  "settings": {"executionOrder": "v1"},
+  "settings": {
+    "executionOrder": "v1"
+  },
   "meta": {
     "mast_failure_mode": "LOOP-001",
     "mast_category": "LOOP",
@@ -217,6 +490,8 @@
     "expected_detection": "Multi-agent exact loop with circular handoff pattern",
     "agents": 5,
     "nodes": 13,
-    "real_apis": ["JSONPlaceholder"]
+    "real_apis": [
+      "JSONPlaceholder"
+    ]
   }
 }

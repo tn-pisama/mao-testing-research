@@ -1,32 +1,394 @@
 {
   "name": "RESOURCE-004 VComplex: Ironic Cost Optimizer Overrun",
   "nodes": [
-    {"parameters": {"path": "resource-004-vcomplex", "responseMode": "lastNode", "options": {}, "httpMethod": "POST"}, "id": "webhook", "name": "Webhook", "type": "n8n-nodes-base.webhook", "typeVersion": 2, "position": [0, 0], "webhookId": "resource-004-vcomplex"},
-    {"parameters": {"assignments": {"assignments": [{"id": "session_id", "name": "session_id", "value": "={{ $now.format('X') }}-resource004-vcomplex", "type": "string"}, {"id": "budget", "name": "budget", "value": "0.50", "type": "number"}]}}, "id": "init", "name": "Initialize", "type": "n8n-nodes-base.set", "typeVersion": 3.4, "position": [200, 0]},
-    {"parameters": {"promptType": "define", "text": "You are the Cost Analyzer agent. Your job is to analyze costs.\nIronically, you use an expensive model to do this analysis!\n\nYour analysis: Review 100 previous API calls\nModel used: GPT-4-32K (expensive)\nTokens: 50,000 input, 5,000 output\nCost: $2.10\n\nOutput: {\"agent\": \"cost_analyzer\", \"purpose\": \"analyze_costs\", \"model\": \"gpt-4-32k\", \"cost_usd\": 2.10, \"irony\": \"cost_analysis_is_expensive\"}", "options": {}}, "id": "analyzer", "name": "Cost Analyzer (Expensive)", "type": "@n8n/n8n-nodes-langchain.agent", "typeVersion": 1.6, "position": [400, -100]},
-    {"parameters": {"model": "claude-3-5-haiku-20241022", "options": {"temperature": 0, "maxTokens": 120}}, "id": "lm_a", "name": "LM A", "type": "@n8n/n8n-nodes-langchain.lmChatAnthropic", "typeVersion": 1.2, "position": [400, 100], "credentials": {"anthropicApi": {"id": "1KM50Mcms9JticwF", "name": "Anthropic API"}}},
-    {"parameters": {"promptType": "define", "text": "You are the Optimizer Agent. Based on analysis, generate optimization recommendations.\nYou also use expensive model for detailed recommendations!\n\nRecommendations: 15 detailed optimization strategies\nModel used: GPT-4-32K\nTokens: 30,000 input, 10,000 output\nCost: $1.80\n\nOutput: {\"agent\": \"optimizer\", \"purpose\": \"reduce_costs\", \"recommendations\": 15, \"model\": \"gpt-4-32k\", \"cost_usd\": 1.80, \"irony\": \"optimization_suggestions_expensive\"}", "options": {}}, "id": "optimizer", "name": "Optimizer Agent (Expensive)", "type": "@n8n/n8n-nodes-langchain.agent", "typeVersion": 1.6, "position": [400, 150]},
-    {"parameters": {"model": "claude-3-5-haiku-20241022", "options": {"temperature": 0, "maxTokens": 120}}, "id": "lm_o", "name": "LM O", "type": "@n8n/n8n-nodes-langchain.lmChatAnthropic", "typeVersion": 1.2, "position": [400, 350], "credentials": {"anthropicApi": {"id": "1KM50Mcms9JticwF", "name": "Anthropic API"}}},
-    {"parameters": {"promptType": "define", "text": "You are the Report Generator. Create a cost savings report.\nYou generate a beautiful, detailed report using expensive model!\n\nReport: 20-page cost savings analysis\nModel used: GPT-4-32K\nTokens: 20,000 input, 15,000 output\nCost: $1.60\n\nOutput: {\"agent\": \"reporter\", \"purpose\": \"document_savings\", \"pages\": 20, \"model\": \"gpt-4-32k\", \"cost_usd\": 1.60, \"irony\": \"savings_report_expensive\"}", "options": {}}, "id": "reporter", "name": "Report Generator (Expensive)", "type": "@n8n/n8n-nodes-langchain.agent", "typeVersion": 1.6, "position": [400, 400]},
-    {"parameters": {"model": "claude-3-5-haiku-20241022", "options": {"temperature": 0, "maxTokens": 120}}, "id": "lm_r", "name": "LM R", "type": "@n8n/n8n-nodes-langchain.lmChatAnthropic", "typeVersion": 1.2, "position": [400, 600], "credentials": {"anthropicApi": {"id": "1KM50Mcms9JticwF", "name": "Anthropic API"}}},
-    {"parameters": {"promptType": "define", "text": "Analyze the ironic cost overrun from the cost optimization pipeline.\n\nCost Analyzer: $2.10\nOptimizer Agent: $1.80\nReport Generator: $1.60\nTotal cost of optimization: $5.50\n\nBudget: $0.50\nOverrun: 1000%!\n\nPotential savings identified: $0.30/month\nTime to ROI: 18+ months\n\nThe cost optimization agents spent $5.50 to identify $0.30 in savings!\nThis is PEAK IRONY.\n\nOutput: {\"analysis\": \"ironic_cost_overrun\", \"optimization_cost_usd\": 5.50, \"budget_usd\": 0.50, \"overrun_percent\": 1000, \"savings_identified_usd\": 0.30, \"roi_months\": 18, \"net_loss_usd\": 5.20, \"irony_level\": \"extreme\", \"severity\": \"critical\"}", "options": {}}, "id": "irony_analyzer", "name": "Irony Analyzer", "type": "@n8n/n8n-nodes-langchain.agent", "typeVersion": 1.6, "position": [600, 150]},
-    {"parameters": {"model": "claude-3-5-haiku-20241022", "options": {"temperature": 0, "maxTokens": 180}}, "id": "lm_i", "name": "LM I", "type": "@n8n/n8n-nodes-langchain.lmChatAnthropic", "typeVersion": 1.2, "position": [600, 350], "credentials": {"anthropicApi": {"id": "1KM50Mcms9JticwF", "name": "Anthropic API"}}},
-    {"parameters": {"method": "POST", "url": "https://mao-api.fly.dev/api/v1/n8n/webhook", "sendHeaders": true, "headerParameters": {"parameters": [{"name": "X-N8N-Api-Key", "value": "mao_pmNhfBRfqd5G_YHubK0Jqk9ZHB6ItITkHFYP4ISns9c"}]}, "sendBody": true, "specifyBody": "json", "jsonBody": "={\n  \"event_type\": \"workflow.completed\",\n  \"workflow_name\": \"RESOURCE-004 VComplex: Ironic Cost Optimizer Overrun\",\n  \"session_id\": \"{{ $('Initialize').item.json.session_id }}\",\n  \"failure_mode\": \"RESOURCE-004\",\n  \"complexity\": \"very_complex\",\n  \"expected_detection\": \"cost_overrun\",\n  \"resource_tracking\": {\n    \"budget_usd\": {{ $('Initialize').item.json.budget }},\n    \"analyzer\": \"{{ $('Cost Analyzer (Expensive)').item.json.output }}\",\n    \"optimizer\": \"{{ $('Optimizer Agent (Expensive)').item.json.output }}\",\n    \"reporter\": \"{{ $('Report Generator (Expensive)').item.json.output }}\",\n    \"irony_analysis\": \"{{ $('Irony Analyzer').item.json.output }}\",\n    \"cost_type\": \"ironic_optimization_overrun\"\n  },\n  \"agents\": [\n    {\"agent_id\": \"analyzer\", \"outputs\": [\"{{ $('Cost Analyzer (Expensive)').item.json.output }}\"]},\n    {\"agent_id\": \"optimizer\", \"outputs\": [\"{{ $('Optimizer Agent (Expensive)').item.json.output }}\"]},\n    {\"agent_id\": \"reporter\", \"outputs\": [\"{{ $('Report Generator (Expensive)').item.json.output }}\"]}  \n  ]\n}", "options": {}},
-      "id": "send_to_mao", "name": "Send to MAO", "type": "n8n-nodes-base.httpRequest", "typeVersion": 4.2, "position": [800, 150]
+    {
+      "parameters": {
+        "rule": {
+          "interval": [
+            {
+              "field": "hours",
+              "hoursInterval": 3
+            }
+          ]
+        }
+      },
+      "id": "schedule",
+      "name": "Schedule Trigger",
+      "type": "n8n-nodes-base.scheduleTrigger",
+      "typeVersion": 1.2,
+      "position": [
+        0,
+        -200
+      ]
+    },
+    {
+      "parameters": {
+        "path": "resource-004-vcomplex",
+        "responseMode": "lastNode",
+        "options": {},
+        "httpMethod": "POST"
+      },
+      "id": "webhook",
+      "name": "Webhook",
+      "type": "n8n-nodes-base.webhook",
+      "typeVersion": 2,
+      "position": [
+        0,
+        0
+      ],
+      "webhookId": "resource-004-vcomplex"
+    },
+    {
+      "parameters": {
+        "assignments": {
+          "assignments": [
+            {
+              "id": "session_id",
+              "name": "session_id",
+              "value": "={{ $now.format('X') }}-resource004-vcomplex",
+              "type": "string"
+            },
+            {
+              "id": "budget",
+              "name": "budget",
+              "value": "0.50",
+              "type": "number"
+            }
+          ]
+        }
+      },
+      "id": "init",
+      "name": "Initialize",
+      "type": "n8n-nodes-base.set",
+      "typeVersion": 3.4,
+      "position": [
+        200,
+        0
+      ]
+    },
+    {
+      "parameters": {
+        "promptType": "define",
+        "text": "You are the Cost Analyzer agent. Your job is to analyze costs.\nIronically, you use an expensive model to do this analysis!\n\nYour analysis: Review 100 previous API calls\nModel used: GPT-4-32K (expensive)\nTokens: 50,000 input, 5,000 output\nCost: $2.10\n\nOutput: {\"agent\": \"cost_analyzer\", \"purpose\": \"analyze_costs\", \"model\": \"gpt-4-32k\", \"cost_usd\": 2.10, \"irony\": \"cost_analysis_is_expensive\"}",
+        "options": {}
+      },
+      "id": "analyzer",
+      "name": "Cost Analyzer (Expensive)",
+      "type": "@n8n/n8n-nodes-langchain.agent",
+      "typeVersion": 1.6,
+      "position": [
+        400,
+        -100
+      ]
+    },
+    {
+      "parameters": {
+        "model": "claude-3-5-haiku-20241022",
+        "options": {
+          "temperature": 0,
+          "maxTokens": 120
+        }
+      },
+      "id": "lm_a",
+      "name": "LM A",
+      "type": "@n8n/n8n-nodes-langchain.lmChatAnthropic",
+      "typeVersion": 1.2,
+      "position": [
+        400,
+        100
+      ],
+      "credentials": {
+        "anthropicApi": {
+          "id": "1KM50Mcms9JticwF",
+          "name": "Anthropic API"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "promptType": "define",
+        "text": "You are the Optimizer Agent. Based on analysis, generate optimization recommendations.\nYou also use expensive model for detailed recommendations!\n\nRecommendations: 15 detailed optimization strategies\nModel used: GPT-4-32K\nTokens: 30,000 input, 10,000 output\nCost: $1.80\n\nOutput: {\"agent\": \"optimizer\", \"purpose\": \"reduce_costs\", \"recommendations\": 15, \"model\": \"gpt-4-32k\", \"cost_usd\": 1.80, \"irony\": \"optimization_suggestions_expensive\"}",
+        "options": {}
+      },
+      "id": "optimizer",
+      "name": "Optimizer Agent (Expensive)",
+      "type": "@n8n/n8n-nodes-langchain.agent",
+      "typeVersion": 1.6,
+      "position": [
+        400,
+        150
+      ]
+    },
+    {
+      "parameters": {
+        "model": "claude-3-5-haiku-20241022",
+        "options": {
+          "temperature": 0,
+          "maxTokens": 120
+        }
+      },
+      "id": "lm_o",
+      "name": "LM O",
+      "type": "@n8n/n8n-nodes-langchain.lmChatAnthropic",
+      "typeVersion": 1.2,
+      "position": [
+        400,
+        350
+      ],
+      "credentials": {
+        "anthropicApi": {
+          "id": "1KM50Mcms9JticwF",
+          "name": "Anthropic API"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "promptType": "define",
+        "text": "You are the Report Generator. Create a cost savings report.\nYou generate a beautiful, detailed report using expensive model!\n\nReport: 20-page cost savings analysis\nModel used: GPT-4-32K\nTokens: 20,000 input, 15,000 output\nCost: $1.60\n\nOutput: {\"agent\": \"reporter\", \"purpose\": \"document_savings\", \"pages\": 20, \"model\": \"gpt-4-32k\", \"cost_usd\": 1.60, \"irony\": \"savings_report_expensive\"}",
+        "options": {}
+      },
+      "id": "reporter",
+      "name": "Report Generator (Expensive)",
+      "type": "@n8n/n8n-nodes-langchain.agent",
+      "typeVersion": 1.6,
+      "position": [
+        400,
+        400
+      ]
+    },
+    {
+      "parameters": {
+        "model": "claude-3-5-haiku-20241022",
+        "options": {
+          "temperature": 0,
+          "maxTokens": 120
+        }
+      },
+      "id": "lm_r",
+      "name": "LM R",
+      "type": "@n8n/n8n-nodes-langchain.lmChatAnthropic",
+      "typeVersion": 1.2,
+      "position": [
+        400,
+        600
+      ],
+      "credentials": {
+        "anthropicApi": {
+          "id": "1KM50Mcms9JticwF",
+          "name": "Anthropic API"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "promptType": "define",
+        "text": "Analyze the ironic cost overrun from the cost optimization pipeline.\n\nCost Analyzer: $2.10\nOptimizer Agent: $1.80\nReport Generator: $1.60\nTotal cost of optimization: $5.50\n\nBudget: $0.50\nOverrun: 1000%!\n\nPotential savings identified: $0.30/month\nTime to ROI: 18+ months\n\nThe cost optimization agents spent $5.50 to identify $0.30 in savings!\nThis is PEAK IRONY.\n\nOutput: {\"analysis\": \"ironic_cost_overrun\", \"optimization_cost_usd\": 5.50, \"budget_usd\": 0.50, \"overrun_percent\": 1000, \"savings_identified_usd\": 0.30, \"roi_months\": 18, \"net_loss_usd\": 5.20, \"irony_level\": \"extreme\", \"severity\": \"critical\"}",
+        "options": {}
+      },
+      "id": "irony_analyzer",
+      "name": "Irony Analyzer",
+      "type": "@n8n/n8n-nodes-langchain.agent",
+      "typeVersion": 1.6,
+      "position": [
+        600,
+        150
+      ]
+    },
+    {
+      "parameters": {
+        "model": "claude-3-5-haiku-20241022",
+        "options": {
+          "temperature": 0,
+          "maxTokens": 180
+        }
+      },
+      "id": "lm_i",
+      "name": "LM I",
+      "type": "@n8n/n8n-nodes-langchain.lmChatAnthropic",
+      "typeVersion": 1.2,
+      "position": [
+        600,
+        350
+      ],
+      "credentials": {
+        "anthropicApi": {
+          "id": "1KM50Mcms9JticwF",
+          "name": "Anthropic API"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "https://mao-api.fly.dev/api/v1/n8n/webhook",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            {
+              "name": "X-N8N-Api-Key",
+              "value": "mao_pmNhfBRfqd5G_YHubK0Jqk9ZHB6ItITkHFYP4ISns9c"
+            }
+          ]
+        },
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={\n  \"event_type\": \"workflow.completed\",\n  \"workflow_name\": \"RESOURCE-004 VComplex: Ironic Cost Optimizer Overrun\",\n  \"session_id\": \"{{ $('Initialize').item.json.session_id }}\",\n  \"failure_mode\": \"RESOURCE-004\",\n  \"complexity\": \"very_complex\",\n  \"expected_detection\": \"cost_overrun\",\n  \"resource_tracking\": {\n    \"budget_usd\": {{ $('Initialize').item.json.budget }},\n    \"analyzer\": \"{{ $('Cost Analyzer (Expensive)').item.json.output }}\",\n    \"optimizer\": \"{{ $('Optimizer Agent (Expensive)').item.json.output }}\",\n    \"reporter\": \"{{ $('Report Generator (Expensive)').item.json.output }}\",\n    \"irony_analysis\": \"{{ $('Irony Analyzer').item.json.output }}\",\n    \"cost_type\": \"ironic_optimization_overrun\"\n  },\n  \"agents\": [\n    {\"agent_id\": \"analyzer\", \"outputs\": [\"{{ $('Cost Analyzer (Expensive)').item.json.output }}\"]},\n    {\"agent_id\": \"optimizer\", \"outputs\": [\"{{ $('Optimizer Agent (Expensive)').item.json.output }}\"]},\n    {\"agent_id\": \"reporter\", \"outputs\": [\"{{ $('Report Generator (Expensive)').item.json.output }}\"]}  \n  ]\n}",
+        "options": {}
+      },
+      "id": "send_to_mao",
+      "name": "Send to MAO",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [
+        800,
+        150
+      ]
     }
   ],
   "connections": {
-    "Webhook": {"main": [[{"node": "Initialize", "type": "main", "index": 0}]]},
-    "Initialize": {"main": [[{"node": "Cost Analyzer (Expensive)", "type": "main", "index": 0}, {"node": "Optimizer Agent (Expensive)", "type": "main", "index": 0}, {"node": "Report Generator (Expensive)", "type": "main", "index": 0}]]},
-    "LM A": {"ai_languageModel": [[{"node": "Cost Analyzer (Expensive)", "type": "ai_languageModel", "index": 0}]]},
-    "LM O": {"ai_languageModel": [[{"node": "Optimizer Agent (Expensive)", "type": "ai_languageModel", "index": 0}]]},
-    "LM R": {"ai_languageModel": [[{"node": "Report Generator (Expensive)", "type": "ai_languageModel", "index": 0}]]},
-    "Cost Analyzer (Expensive)": {"main": [[{"node": "Irony Analyzer", "type": "main", "index": 0}]]},
-    "Optimizer Agent (Expensive)": {"main": [[{"node": "Irony Analyzer", "type": "main", "index": 0}]]},
-    "Report Generator (Expensive)": {"main": [[{"node": "Irony Analyzer", "type": "main", "index": 0}]]},
-    "LM I": {"ai_languageModel": [[{"node": "Irony Analyzer", "type": "ai_languageModel", "index": 0}]]},
-    "Irony Analyzer": {"main": [[{"node": "Send to MAO", "type": "main", "index": 0}]]}
+    "Webhook": {
+      "main": [
+        [
+          {
+            "node": "Initialize",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Initialize": {
+      "main": [
+        [
+          {
+            "node": "Cost Analyzer (Expensive)",
+            "type": "main",
+            "index": 0
+          },
+          {
+            "node": "Optimizer Agent (Expensive)",
+            "type": "main",
+            "index": 0
+          },
+          {
+            "node": "Report Generator (Expensive)",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "LM A": {
+      "ai_languageModel": [
+        [
+          {
+            "node": "Cost Analyzer (Expensive)",
+            "type": "ai_languageModel",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "LM O": {
+      "ai_languageModel": [
+        [
+          {
+            "node": "Optimizer Agent (Expensive)",
+            "type": "ai_languageModel",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "LM R": {
+      "ai_languageModel": [
+        [
+          {
+            "node": "Report Generator (Expensive)",
+            "type": "ai_languageModel",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Cost Analyzer (Expensive)": {
+      "main": [
+        [
+          {
+            "node": "Irony Analyzer",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Optimizer Agent (Expensive)": {
+      "main": [
+        [
+          {
+            "node": "Irony Analyzer",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Report Generator (Expensive)": {
+      "main": [
+        [
+          {
+            "node": "Irony Analyzer",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "LM I": {
+      "ai_languageModel": [
+        [
+          {
+            "node": "Irony Analyzer",
+            "type": "ai_languageModel",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Irony Analyzer": {
+      "main": [
+        [
+          {
+            "node": "Send to MAO",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Schedule Trigger": {
+      "main": [
+        [
+          {
+            "node": "Initialize",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
   },
-  "settings": {"executionOrder": "v1"},
-  "meta": {"mast_failure_mode": "RESOURCE-004", "mast_category": "RESOURCE", "complexity": "very_complex", "description": "Cost optimization agents ironically cause massive cost overrun", "expected_detection": "Ironic cost overrun - optimization costing more than savings", "agents": 4, "nodes": 6}
+  "settings": {
+    "executionOrder": "v1"
+  },
+  "meta": {
+    "mast_failure_mode": "RESOURCE-004",
+    "mast_category": "RESOURCE",
+    "complexity": "very_complex",
+    "description": "Cost optimization agents ironically cause massive cost overrun",
+    "expected_detection": "Ironic cost overrun - optimization costing more than savings",
+    "agents": 4,
+    "nodes": 6
+  }
 }

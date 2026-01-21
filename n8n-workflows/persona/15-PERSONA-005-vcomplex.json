@@ -3,6 +3,26 @@
   "nodes": [
     {
       "parameters": {
+        "rule": {
+          "interval": [
+            {
+              "field": "hours",
+              "hoursInterval": 3
+            }
+          ]
+        }
+      },
+      "id": "schedule",
+      "name": "Schedule Trigger",
+      "type": "n8n-nodes-base.scheduleTrigger",
+      "typeVersion": 1.2,
+      "position": [
+        0,
+        -200
+      ]
+    },
+    {
+      "parameters": {
         "path": "persona-005-vcomplex",
         "responseMode": "lastNode",
         "options": {},
@@ -12,15 +32,28 @@
       "name": "Webhook",
       "type": "n8n-nodes-base.webhook",
       "typeVersion": 2,
-      "position": [0, 0],
+      "position": [
+        0,
+        0
+      ],
       "webhookId": "persona-005-vcomplex"
     },
     {
       "parameters": {
         "assignments": {
           "assignments": [
-            {"id": "session_id", "name": "session_id", "value": "={{ $now.format('X') }}-persona005-vcomplex", "type": "string"},
-            {"id": "personas", "name": "personas", "value": "{\"lawyer\": {\"role\": \"Legal Advisor\", \"style\": \"cautious\", \"vocabulary\": [\"pursuant to\", \"liability\", \"statutory\"]}, \"marketer\": {\"role\": \"Marketing Lead\", \"style\": \"enthusiastic\", \"vocabulary\": [\"exciting\", \"opportunity\", \"growth\"]}}", "type": "string"}
+            {
+              "id": "session_id",
+              "name": "session_id",
+              "value": "={{ $now.format('X') }}-persona005-vcomplex",
+              "type": "string"
+            },
+            {
+              "id": "personas",
+              "name": "personas",
+              "value": "{\"lawyer\": {\"role\": \"Legal Advisor\", \"style\": \"cautious\", \"vocabulary\": [\"pursuant to\", \"liability\", \"statutory\"]}, \"marketer\": {\"role\": \"Marketing Lead\", \"style\": \"enthusiastic\", \"vocabulary\": [\"exciting\", \"opportunity\", \"growth\"]}}",
+              "type": "string"
+            }
           ]
         }
       },
@@ -28,7 +61,10 @@
       "name": "Initialize",
       "type": "n8n-nodes-base.set",
       "typeVersion": 3.4,
-      "position": [200, 0]
+      "position": [
+        200,
+        0
+      ]
     },
     {
       "parameters": {
@@ -40,19 +76,33 @@
       "name": "Lawyer Initial",
       "type": "@n8n/n8n-nodes-langchain.agent",
       "typeVersion": 1.6,
-      "position": [400, -100]
+      "position": [
+        400,
+        -100
+      ]
     },
     {
       "parameters": {
         "model": "claude-3-5-haiku-20241022",
-        "options": {"temperature": 0, "maxTokens": 150}
+        "options": {
+          "temperature": 0,
+          "maxTokens": 150
+        }
       },
       "id": "lm_l1",
       "name": "LM L1",
       "type": "@n8n/n8n-nodes-langchain.lmChatAnthropic",
       "typeVersion": 1.2,
-      "position": [400, 100],
-      "credentials": {"anthropicApi": {"id": "1KM50Mcms9JticwF", "name": "Anthropic API"}}
+      "position": [
+        400,
+        100
+      ],
+      "credentials": {
+        "anthropicApi": {
+          "id": "1KM50Mcms9JticwF",
+          "name": "Anthropic API"
+        }
+      }
     },
     {
       "parameters": {
@@ -64,19 +114,33 @@
       "name": "Marketer Initial",
       "type": "@n8n/n8n-nodes-langchain.agent",
       "typeVersion": 1.6,
-      "position": [600, -100]
+      "position": [
+        600,
+        -100
+      ]
     },
     {
       "parameters": {
         "model": "claude-3-5-haiku-20241022",
-        "options": {"temperature": 0, "maxTokens": 150}
+        "options": {
+          "temperature": 0,
+          "maxTokens": 150
+        }
       },
       "id": "lm_m1",
       "name": "LM M1",
       "type": "@n8n/n8n-nodes-langchain.lmChatAnthropic",
       "typeVersion": 1.2,
-      "position": [600, 100],
-      "credentials": {"anthropicApi": {"id": "1KM50Mcms9JticwF", "name": "Anthropic API"}}
+      "position": [
+        600,
+        100
+      ],
+      "credentials": {
+        "anthropicApi": {
+          "id": "1KM50Mcms9JticwF",
+          "name": "Anthropic API"
+        }
+      }
     },
     {
       "parameters": {
@@ -88,19 +152,33 @@
       "name": "Lawyer Becomes Marketer",
       "type": "@n8n/n8n-nodes-langchain.agent",
       "typeVersion": 1.6,
-      "position": [800, -100]
+      "position": [
+        800,
+        -100
+      ]
     },
     {
       "parameters": {
         "model": "claude-3-5-haiku-20241022",
-        "options": {"temperature": 0, "maxTokens": 150}
+        "options": {
+          "temperature": 0,
+          "maxTokens": 150
+        }
       },
       "id": "lm_l2",
       "name": "LM L2",
       "type": "@n8n/n8n-nodes-langchain.lmChatAnthropic",
       "typeVersion": 1.2,
-      "position": [800, 100],
-      "credentials": {"anthropicApi": {"id": "1KM50Mcms9JticwF", "name": "Anthropic API"}}
+      "position": [
+        800,
+        100
+      ],
+      "credentials": {
+        "anthropicApi": {
+          "id": "1KM50Mcms9JticwF",
+          "name": "Anthropic API"
+        }
+      }
     },
     {
       "parameters": {
@@ -112,19 +190,33 @@
       "name": "Marketer Becomes Lawyer",
       "type": "@n8n/n8n-nodes-langchain.agent",
       "typeVersion": 1.6,
-      "position": [800, 200]
+      "position": [
+        800,
+        200
+      ]
     },
     {
       "parameters": {
         "model": "claude-3-5-haiku-20241022",
-        "options": {"temperature": 0, "maxTokens": 150}
+        "options": {
+          "temperature": 0,
+          "maxTokens": 150
+        }
       },
       "id": "lm_m2",
       "name": "LM M2",
       "type": "@n8n/n8n-nodes-langchain.lmChatAnthropic",
       "typeVersion": 1.2,
-      "position": [800, 400],
-      "credentials": {"anthropicApi": {"id": "1KM50Mcms9JticwF", "name": "Anthropic API"}}
+      "position": [
+        800,
+        400
+      ],
+      "credentials": {
+        "anthropicApi": {
+          "id": "1KM50Mcms9JticwF",
+          "name": "Anthropic API"
+        }
+      }
     },
     {
       "parameters": {
@@ -136,19 +228,33 @@
       "name": "Swap Analyzer",
       "type": "@n8n/n8n-nodes-langchain.agent",
       "typeVersion": 1.6,
-      "position": [1000, 50]
+      "position": [
+        1000,
+        50
+      ]
     },
     {
       "parameters": {
         "model": "claude-3-5-haiku-20241022",
-        "options": {"temperature": 0, "maxTokens": 150}
+        "options": {
+          "temperature": 0,
+          "maxTokens": 150
+        }
       },
       "id": "lm_a",
       "name": "LM A",
       "type": "@n8n/n8n-nodes-langchain.lmChatAnthropic",
       "typeVersion": 1.2,
-      "position": [1000, 250],
-      "credentials": {"anthropicApi": {"id": "1KM50Mcms9JticwF", "name": "Anthropic API"}}
+      "position": [
+        1000,
+        250
+      ],
+      "credentials": {
+        "anthropicApi": {
+          "id": "1KM50Mcms9JticwF",
+          "name": "Anthropic API"
+        }
+      }
     },
     {
       "parameters": {
@@ -156,7 +262,12 @@
         "url": "https://mao-api.fly.dev/api/v1/n8n/webhook",
         "sendHeaders": true,
         "headerParameters": {
-          "parameters": [{"name": "X-N8N-Api-Key", "value": "mao_pmNhfBRfqd5G_YHubK0Jqk9ZHB6ItITkHFYP4ISns9c"}]
+          "parameters": [
+            {
+              "name": "X-N8N-Api-Key",
+              "value": "mao_pmNhfBRfqd5G_YHubK0Jqk9ZHB6ItITkHFYP4ISns9c"
+            }
+          ]
         },
         "sendBody": true,
         "specifyBody": "json",
@@ -167,24 +278,165 @@
       "name": "Send to MAO",
       "type": "n8n-nodes-base.httpRequest",
       "typeVersion": 4.2,
-      "position": [1200, 50]
+      "position": [
+        1200,
+        50
+      ]
     }
   ],
   "connections": {
-    "Webhook": {"main": [[{"node": "Initialize", "type": "main", "index": 0}]]},
-    "Initialize": {"main": [[{"node": "Lawyer Initial", "type": "main", "index": 0}]]},
-    "LM L1": {"ai_languageModel": [[{"node": "Lawyer Initial", "type": "ai_languageModel", "index": 0}]]},
-    "Lawyer Initial": {"main": [[{"node": "Marketer Initial", "type": "main", "index": 0}]]},
-    "LM M1": {"ai_languageModel": [[{"node": "Marketer Initial", "type": "ai_languageModel", "index": 0}]]},
-    "Marketer Initial": {"main": [[{"node": "Lawyer Becomes Marketer", "type": "main", "index": 0}, {"node": "Marketer Becomes Lawyer", "type": "main", "index": 0}]]},
-    "LM L2": {"ai_languageModel": [[{"node": "Lawyer Becomes Marketer", "type": "ai_languageModel", "index": 0}]]},
-    "LM M2": {"ai_languageModel": [[{"node": "Marketer Becomes Lawyer", "type": "ai_languageModel", "index": 0}]]},
-    "Lawyer Becomes Marketer": {"main": [[{"node": "Swap Analyzer", "type": "main", "index": 0}]]},
-    "Marketer Becomes Lawyer": {"main": [[{"node": "Swap Analyzer", "type": "main", "index": 0}]]},
-    "LM A": {"ai_languageModel": [[{"node": "Swap Analyzer", "type": "ai_languageModel", "index": 0}]]},
-    "Swap Analyzer": {"main": [[{"node": "Send to MAO", "type": "main", "index": 0}]]}
+    "Webhook": {
+      "main": [
+        [
+          {
+            "node": "Initialize",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Initialize": {
+      "main": [
+        [
+          {
+            "node": "Lawyer Initial",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "LM L1": {
+      "ai_languageModel": [
+        [
+          {
+            "node": "Lawyer Initial",
+            "type": "ai_languageModel",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Lawyer Initial": {
+      "main": [
+        [
+          {
+            "node": "Marketer Initial",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "LM M1": {
+      "ai_languageModel": [
+        [
+          {
+            "node": "Marketer Initial",
+            "type": "ai_languageModel",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Marketer Initial": {
+      "main": [
+        [
+          {
+            "node": "Lawyer Becomes Marketer",
+            "type": "main",
+            "index": 0
+          },
+          {
+            "node": "Marketer Becomes Lawyer",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "LM L2": {
+      "ai_languageModel": [
+        [
+          {
+            "node": "Lawyer Becomes Marketer",
+            "type": "ai_languageModel",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "LM M2": {
+      "ai_languageModel": [
+        [
+          {
+            "node": "Marketer Becomes Lawyer",
+            "type": "ai_languageModel",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Lawyer Becomes Marketer": {
+      "main": [
+        [
+          {
+            "node": "Swap Analyzer",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Marketer Becomes Lawyer": {
+      "main": [
+        [
+          {
+            "node": "Swap Analyzer",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "LM A": {
+      "ai_languageModel": [
+        [
+          {
+            "node": "Swap Analyzer",
+            "type": "ai_languageModel",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Swap Analyzer": {
+      "main": [
+        [
+          {
+            "node": "Send to MAO",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Schedule Trigger": {
+      "main": [
+        [
+          {
+            "node": "Initialize",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
   },
-  "settings": {"executionOrder": "v1"},
+  "settings": {
+    "executionOrder": "v1"
+  },
   "meta": {
     "mast_failure_mode": "PERSONA-005",
     "mast_category": "PERSONA",

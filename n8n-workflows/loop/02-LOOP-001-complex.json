@@ -3,6 +3,26 @@
   "nodes": [
     {
       "parameters": {
+        "rule": {
+          "interval": [
+            {
+              "field": "hours",
+              "hoursInterval": 3
+            }
+          ]
+        }
+      },
+      "id": "schedule",
+      "name": "Schedule Trigger",
+      "type": "n8n-nodes-base.scheduleTrigger",
+      "typeVersion": 1.2,
+      "position": [
+        0,
+        -200
+      ]
+    },
+    {
+      "parameters": {
         "path": "loop-001-complex",
         "responseMode": "lastNode",
         "options": {},
@@ -12,17 +32,40 @@
       "name": "Webhook",
       "type": "n8n-nodes-base.webhook",
       "typeVersion": 2,
-      "position": [0, 0],
+      "position": [
+        0,
+        0
+      ],
       "webhookId": "loop-001-complex"
     },
     {
       "parameters": {
         "assignments": {
           "assignments": [
-            {"id": "session_id", "name": "session_id", "value": "={{ $now.format('X') }}-loop001-complex", "type": "string"},
-            {"id": "research_topic", "name": "research_topic", "value": "quantum computing advances 2024", "type": "string"},
-            {"id": "sources_found", "name": "sources_found", "value": "=0", "type": "number"},
-            {"id": "required_sources", "name": "required_sources", "value": "=100", "type": "number"}
+            {
+              "id": "session_id",
+              "name": "session_id",
+              "value": "={{ $now.format('X') }}-loop001-complex",
+              "type": "string"
+            },
+            {
+              "id": "research_topic",
+              "name": "research_topic",
+              "value": "quantum computing advances 2024",
+              "type": "string"
+            },
+            {
+              "id": "sources_found",
+              "name": "sources_found",
+              "value": "=0",
+              "type": "number"
+            },
+            {
+              "id": "required_sources",
+              "name": "required_sources",
+              "value": "=100",
+              "type": "number"
+            }
           ]
         }
       },
@@ -30,7 +73,10 @@
       "name": "Initialize",
       "type": "n8n-nodes-base.set",
       "typeVersion": 3.4,
-      "position": [200, 0]
+      "position": [
+        200,
+        0
+      ]
     },
     {
       "parameters": {
@@ -38,8 +84,14 @@
         "sendQuery": true,
         "queryParameters": {
           "parameters": [
-            {"name": "query", "value": "={{ $('Initialize').item.json.research_topic }}"},
-            {"name": "hitsPerPage", "value": "3"}
+            {
+              "name": "query",
+              "value": "={{ $('Initialize').item.json.research_topic }}"
+            },
+            {
+              "name": "hitsPerPage",
+              "value": "3"
+            }
           ]
         },
         "options": {}
@@ -48,7 +100,10 @@
       "name": "Search HN",
       "type": "n8n-nodes-base.httpRequest",
       "typeVersion": 4.2,
-      "position": [400, 0]
+      "position": [
+        400,
+        0
+      ]
     },
     {
       "parameters": {
@@ -60,19 +115,33 @@
       "name": "Research Agent 1",
       "type": "@n8n/n8n-nodes-langchain.agent",
       "typeVersion": 1.6,
-      "position": [600, 0]
+      "position": [
+        600,
+        0
+      ]
     },
     {
       "parameters": {
         "model": "claude-3-5-haiku-20241022",
-        "options": {"temperature": 0, "maxTokens": 150}
+        "options": {
+          "temperature": 0,
+          "maxTokens": 150
+        }
       },
       "id": "lm_1",
       "name": "LM 1",
       "type": "@n8n/n8n-nodes-langchain.lmChatAnthropic",
       "typeVersion": 1.2,
-      "position": [600, 200],
-      "credentials": {"anthropicApi": {"id": "1KM50Mcms9JticwF", "name": "Anthropic API"}}
+      "position": [
+        600,
+        200
+      ],
+      "credentials": {
+        "anthropicApi": {
+          "id": "1KM50Mcms9JticwF",
+          "name": "Anthropic API"
+        }
+      }
     },
     {
       "parameters": {
@@ -80,8 +149,14 @@
         "sendQuery": true,
         "queryParameters": {
           "parameters": [
-            {"name": "query", "value": "={{ $('Initialize').item.json.research_topic }} breakthroughs"},
-            {"name": "hitsPerPage", "value": "3"}
+            {
+              "name": "query",
+              "value": "={{ $('Initialize').item.json.research_topic }} breakthroughs"
+            },
+            {
+              "name": "hitsPerPage",
+              "value": "3"
+            }
           ]
         },
         "options": {}
@@ -90,7 +165,10 @@
       "name": "Search HN 2",
       "type": "n8n-nodes-base.httpRequest",
       "typeVersion": 4.2,
-      "position": [800, 0]
+      "position": [
+        800,
+        0
+      ]
     },
     {
       "parameters": {
@@ -102,19 +180,33 @@
       "name": "Research Agent 2",
       "type": "@n8n/n8n-nodes-langchain.agent",
       "typeVersion": 1.6,
-      "position": [1000, 0]
+      "position": [
+        1000,
+        0
+      ]
     },
     {
       "parameters": {
         "model": "claude-3-5-haiku-20241022",
-        "options": {"temperature": 0, "maxTokens": 150}
+        "options": {
+          "temperature": 0,
+          "maxTokens": 150
+        }
       },
       "id": "lm_2",
       "name": "LM 2",
       "type": "@n8n/n8n-nodes-langchain.lmChatAnthropic",
       "typeVersion": 1.2,
-      "position": [1000, 200],
-      "credentials": {"anthropicApi": {"id": "1KM50Mcms9JticwF", "name": "Anthropic API"}}
+      "position": [
+        1000,
+        200
+      ],
+      "credentials": {
+        "anthropicApi": {
+          "id": "1KM50Mcms9JticwF",
+          "name": "Anthropic API"
+        }
+      }
     },
     {
       "parameters": {
@@ -122,8 +214,14 @@
         "sendQuery": true,
         "queryParameters": {
           "parameters": [
-            {"name": "query", "value": "={{ $('Initialize').item.json.research_topic }} news"},
-            {"name": "hitsPerPage", "value": "3"}
+            {
+              "name": "query",
+              "value": "={{ $('Initialize').item.json.research_topic }} news"
+            },
+            {
+              "name": "hitsPerPage",
+              "value": "3"
+            }
           ]
         },
         "options": {}
@@ -132,7 +230,10 @@
       "name": "Search HN 3",
       "type": "n8n-nodes-base.httpRequest",
       "typeVersion": 4.2,
-      "position": [1200, 0]
+      "position": [
+        1200,
+        0
+      ]
     },
     {
       "parameters": {
@@ -144,19 +245,33 @@
       "name": "Research Agent 3",
       "type": "@n8n/n8n-nodes-langchain.agent",
       "typeVersion": 1.6,
-      "position": [1400, 0]
+      "position": [
+        1400,
+        0
+      ]
     },
     {
       "parameters": {
         "model": "claude-3-5-haiku-20241022",
-        "options": {"temperature": 0, "maxTokens": 150}
+        "options": {
+          "temperature": 0,
+          "maxTokens": 150
+        }
       },
       "id": "lm_3",
       "name": "LM 3",
       "type": "@n8n/n8n-nodes-langchain.lmChatAnthropic",
       "typeVersion": 1.2,
-      "position": [1400, 200],
-      "credentials": {"anthropicApi": {"id": "1KM50Mcms9JticwF", "name": "Anthropic API"}}
+      "position": [
+        1400,
+        200
+      ],
+      "credentials": {
+        "anthropicApi": {
+          "id": "1KM50Mcms9JticwF",
+          "name": "Anthropic API"
+        }
+      }
     },
     {
       "parameters": {
@@ -164,7 +279,12 @@
         "url": "https://mao-api.fly.dev/api/v1/n8n/webhook",
         "sendHeaders": true,
         "headerParameters": {
-          "parameters": [{"name": "X-N8N-Api-Key", "value": "mao_pmNhfBRfqd5G_YHubK0Jqk9ZHB6ItITkHFYP4ISns9c"}]
+          "parameters": [
+            {
+              "name": "X-N8N-Api-Key",
+              "value": "mao_pmNhfBRfqd5G_YHubK0Jqk9ZHB6ItITkHFYP4ISns9c"
+            }
+          ]
         },
         "sendBody": true,
         "specifyBody": "json",
@@ -175,23 +295,149 @@
       "name": "Send to MAO",
       "type": "n8n-nodes-base.httpRequest",
       "typeVersion": 4.2,
-      "position": [1600, 0]
+      "position": [
+        1600,
+        0
+      ]
     }
   ],
   "connections": {
-    "Webhook": {"main": [[{"node": "Initialize", "type": "main", "index": 0}]]},
-    "Initialize": {"main": [[{"node": "Search HN", "type": "main", "index": 0}]]},
-    "Search HN": {"main": [[{"node": "Research Agent 1", "type": "main", "index": 0}]]},
-    "LM 1": {"ai_languageModel": [[{"node": "Research Agent 1", "type": "ai_languageModel", "index": 0}]]},
-    "Research Agent 1": {"main": [[{"node": "Search HN 2", "type": "main", "index": 0}]]},
-    "Search HN 2": {"main": [[{"node": "Research Agent 2", "type": "main", "index": 0}]]},
-    "LM 2": {"ai_languageModel": [[{"node": "Research Agent 2", "type": "ai_languageModel", "index": 0}]]},
-    "Research Agent 2": {"main": [[{"node": "Search HN 3", "type": "main", "index": 0}]]},
-    "Search HN 3": {"main": [[{"node": "Research Agent 3", "type": "main", "index": 0}]]},
-    "LM 3": {"ai_languageModel": [[{"node": "Research Agent 3", "type": "ai_languageModel", "index": 0}]]},
-    "Research Agent 3": {"main": [[{"node": "Send to MAO", "type": "main", "index": 0}]]}
+    "Webhook": {
+      "main": [
+        [
+          {
+            "node": "Initialize",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Initialize": {
+      "main": [
+        [
+          {
+            "node": "Search HN",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Search HN": {
+      "main": [
+        [
+          {
+            "node": "Research Agent 1",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "LM 1": {
+      "ai_languageModel": [
+        [
+          {
+            "node": "Research Agent 1",
+            "type": "ai_languageModel",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Research Agent 1": {
+      "main": [
+        [
+          {
+            "node": "Search HN 2",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Search HN 2": {
+      "main": [
+        [
+          {
+            "node": "Research Agent 2",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "LM 2": {
+      "ai_languageModel": [
+        [
+          {
+            "node": "Research Agent 2",
+            "type": "ai_languageModel",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Research Agent 2": {
+      "main": [
+        [
+          {
+            "node": "Search HN 3",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Search HN 3": {
+      "main": [
+        [
+          {
+            "node": "Research Agent 3",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "LM 3": {
+      "ai_languageModel": [
+        [
+          {
+            "node": "Research Agent 3",
+            "type": "ai_languageModel",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Research Agent 3": {
+      "main": [
+        [
+          {
+            "node": "Send to MAO",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Schedule Trigger": {
+      "main": [
+        [
+          {
+            "node": "Initialize",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
   },
-  "settings": {"executionOrder": "v1"},
+  "settings": {
+    "executionOrder": "v1"
+  },
   "meta": {
     "mast_failure_mode": "LOOP-001",
     "mast_category": "LOOP",
@@ -200,6 +446,8 @@
     "expected_detection": "Exact message loop with context (loop condition analysis)",
     "agents": 3,
     "nodes": 9,
-    "real_apis": ["HackerNews Algolia"]
+    "real_apis": [
+      "HackerNews Algolia"
+    ]
   }
 }

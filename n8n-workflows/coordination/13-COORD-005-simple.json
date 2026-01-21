@@ -2,42 +2,257 @@
   "name": "COORD-005 Simple: Direct Cascade Failure",
   "nodes": [
     {
-      "parameters": {"path": "coord-005-simple", "responseMode": "lastNode", "options": {}, "httpMethod": "POST"},
-      "id": "webhook", "name": "Webhook", "type": "n8n-nodes-base.webhook", "typeVersion": 2, "position": [0, 0], "webhookId": "coord-005-simple"
+      "parameters": {
+        "rule": {
+          "interval": [
+            {
+              "field": "hours",
+              "hoursInterval": 3
+            }
+          ]
+        }
+      },
+      "id": "schedule",
+      "name": "Schedule Trigger",
+      "type": "n8n-nodes-base.scheduleTrigger",
+      "typeVersion": 1.2,
+      "position": [
+        0,
+        -200
+      ]
     },
     {
-      "parameters": {"assignments": {"assignments": [{"id": "session_id", "name": "session_id", "value": "={{ $now.format('X') }}-coord005-simple", "type": "string"}]}},
-      "id": "init", "name": "Initialize", "type": "n8n-nodes-base.set", "typeVersion": 3.4, "position": [200, 0]
+      "parameters": {
+        "path": "coord-005-simple",
+        "responseMode": "lastNode",
+        "options": {},
+        "httpMethod": "POST"
+      },
+      "id": "webhook",
+      "name": "Webhook",
+      "type": "n8n-nodes-base.webhook",
+      "typeVersion": 2,
+      "position": [
+        0,
+        0
+      ],
+      "webhookId": "coord-005-simple"
     },
     {
-      "parameters": {"promptType": "define", "text": "You are Agent A (Data Fetcher). You FAILED to fetch data from the API.\n\nOutput: {\"agent\": \"A\", \"role\": \"data_fetcher\", \"status\": \"FAILED\", \"error\": \"API_TIMEOUT\", \"data\": null}", "options": {}},
-      "id": "agent_a", "name": "Agent A (Fails)", "type": "@n8n/n8n-nodes-langchain.agent", "typeVersion": 1.6, "position": [400, 0]
+      "parameters": {
+        "assignments": {
+          "assignments": [
+            {
+              "id": "session_id",
+              "name": "session_id",
+              "value": "={{ $now.format('X') }}-coord005-simple",
+              "type": "string"
+            }
+          ]
+        }
+      },
+      "id": "init",
+      "name": "Initialize",
+      "type": "n8n-nodes-base.set",
+      "typeVersion": 3.4,
+      "position": [
+        200,
+        0
+      ]
     },
     {
-      "parameters": {"model": "claude-3-5-haiku-20241022", "options": {"temperature": 0, "maxTokens": 100}},
-      "id": "lm_a", "name": "LM A", "type": "@n8n/n8n-nodes-langchain.lmChatAnthropic", "typeVersion": 1.2, "position": [400, 200], "credentials": {"anthropicApi": {"id": "1KM50Mcms9JticwF", "name": "Anthropic API"}}
+      "parameters": {
+        "promptType": "define",
+        "text": "You are Agent A (Data Fetcher). You FAILED to fetch data from the API.\n\nOutput: {\"agent\": \"A\", \"role\": \"data_fetcher\", \"status\": \"FAILED\", \"error\": \"API_TIMEOUT\", \"data\": null}",
+        "options": {}
+      },
+      "id": "agent_a",
+      "name": "Agent A (Fails)",
+      "type": "@n8n/n8n-nodes-langchain.agent",
+      "typeVersion": 1.6,
+      "position": [
+        400,
+        0
+      ]
     },
     {
-      "parameters": {"promptType": "define", "text": "You are Agent B (Data Processor). You received null data from Agent A.\nWithout data, you cannot process anything.\n\nOutput: {\"agent\": \"B\", \"role\": \"data_processor\", \"status\": \"FAILED\", \"error\": \"NO_INPUT_DATA\", \"cascaded_from\": \"A\", \"result\": null}", "options": {}},
-      "id": "agent_b", "name": "Agent B (Cascade Fails)", "type": "@n8n/n8n-nodes-langchain.agent", "typeVersion": 1.6, "position": [600, 0]
+      "parameters": {
+        "model": "claude-3-5-haiku-20241022",
+        "options": {
+          "temperature": 0,
+          "maxTokens": 100
+        }
+      },
+      "id": "lm_a",
+      "name": "LM A",
+      "type": "@n8n/n8n-nodes-langchain.lmChatAnthropic",
+      "typeVersion": 1.2,
+      "position": [
+        400,
+        200
+      ],
+      "credentials": {
+        "anthropicApi": {
+          "id": "1KM50Mcms9JticwF",
+          "name": "Anthropic API"
+        }
+      }
     },
     {
-      "parameters": {"model": "claude-3-5-haiku-20241022", "options": {"temperature": 0, "maxTokens": 100}},
-      "id": "lm_b", "name": "LM B", "type": "@n8n/n8n-nodes-langchain.lmChatAnthropic", "typeVersion": 1.2, "position": [600, 200], "credentials": {"anthropicApi": {"id": "1KM50Mcms9JticwF", "name": "Anthropic API"}}
+      "parameters": {
+        "promptType": "define",
+        "text": "You are Agent B (Data Processor). You received null data from Agent A.\nWithout data, you cannot process anything.\n\nOutput: {\"agent\": \"B\", \"role\": \"data_processor\", \"status\": \"FAILED\", \"error\": \"NO_INPUT_DATA\", \"cascaded_from\": \"A\", \"result\": null}",
+        "options": {}
+      },
+      "id": "agent_b",
+      "name": "Agent B (Cascade Fails)",
+      "type": "@n8n/n8n-nodes-langchain.agent",
+      "typeVersion": 1.6,
+      "position": [
+        600,
+        0
+      ]
     },
     {
-      "parameters": {"method": "POST", "url": "https://mao-api.fly.dev/api/v1/n8n/webhook", "sendHeaders": true, "headerParameters": {"parameters": [{"name": "X-N8N-Api-Key", "value": "mao_pmNhfBRfqd5G_YHubK0Jqk9ZHB6ItITkHFYP4ISns9c"}]}, "sendBody": true, "specifyBody": "json", "jsonBody": "={\n  \"event_type\": \"workflow.completed\",\n  \"workflow_name\": \"COORD-005 Simple: Direct Cascade Failure\",\n  \"session_id\": \"{{ $('Initialize').item.json.session_id }}\",\n  \"failure_mode\": \"COORD-005\",\n  \"complexity\": \"simple\",\n  \"expected_detection\": \"cascade_failure\",\n  \"coordination_tracking\": {\n    \"agent_a\": \"{{ $('Agent A (Fails)').item.json.output }}\",\n    \"agent_b\": \"{{ $('Agent B (Cascade Fails)').item.json.output }}\",\n    \"cascade_type\": \"direct_dependency\",\n    \"root_cause\": \"agent_a\"\n  },\n  \"agents\": [\n    {\"agent_id\": \"agent_a\", \"role\": \"data_fetcher\", \"outputs\": [\"{{ $('Agent A (Fails)').item.json.output }}\"]},\n    {\"agent_id\": \"agent_b\", \"role\": \"data_processor\", \"outputs\": [\"{{ $('Agent B (Cascade Fails)').item.json.output }}\"]}\n  ]\n}", "options": {}},
-      "id": "send_to_mao", "name": "Send to MAO", "type": "n8n-nodes-base.httpRequest", "typeVersion": 4.2, "position": [800, 0]
+      "parameters": {
+        "model": "claude-3-5-haiku-20241022",
+        "options": {
+          "temperature": 0,
+          "maxTokens": 100
+        }
+      },
+      "id": "lm_b",
+      "name": "LM B",
+      "type": "@n8n/n8n-nodes-langchain.lmChatAnthropic",
+      "typeVersion": 1.2,
+      "position": [
+        600,
+        200
+      ],
+      "credentials": {
+        "anthropicApi": {
+          "id": "1KM50Mcms9JticwF",
+          "name": "Anthropic API"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "https://mao-api.fly.dev/api/v1/n8n/webhook",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            {
+              "name": "X-N8N-Api-Key",
+              "value": "mao_pmNhfBRfqd5G_YHubK0Jqk9ZHB6ItITkHFYP4ISns9c"
+            }
+          ]
+        },
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={\n  \"event_type\": \"workflow.completed\",\n  \"workflow_name\": \"COORD-005 Simple: Direct Cascade Failure\",\n  \"session_id\": \"{{ $('Initialize').item.json.session_id }}\",\n  \"failure_mode\": \"COORD-005\",\n  \"complexity\": \"simple\",\n  \"expected_detection\": \"cascade_failure\",\n  \"coordination_tracking\": {\n    \"agent_a\": \"{{ $('Agent A (Fails)').item.json.output }}\",\n    \"agent_b\": \"{{ $('Agent B (Cascade Fails)').item.json.output }}\",\n    \"cascade_type\": \"direct_dependency\",\n    \"root_cause\": \"agent_a\"\n  },\n  \"agents\": [\n    {\"agent_id\": \"agent_a\", \"role\": \"data_fetcher\", \"outputs\": [\"{{ $('Agent A (Fails)').item.json.output }}\"]},\n    {\"agent_id\": \"agent_b\", \"role\": \"data_processor\", \"outputs\": [\"{{ $('Agent B (Cascade Fails)').item.json.output }}\"]}\n  ]\n}",
+        "options": {}
+      },
+      "id": "send_to_mao",
+      "name": "Send to MAO",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [
+        800,
+        0
+      ]
     }
   ],
   "connections": {
-    "Webhook": {"main": [[{"node": "Initialize", "type": "main", "index": 0}]]},
-    "Initialize": {"main": [[{"node": "Agent A (Fails)", "type": "main", "index": 0}]]},
-    "LM A": {"ai_languageModel": [[{"node": "Agent A (Fails)", "type": "ai_languageModel", "index": 0}]]},
-    "Agent A (Fails)": {"main": [[{"node": "Agent B (Cascade Fails)", "type": "main", "index": 0}]]},
-    "LM B": {"ai_languageModel": [[{"node": "Agent B (Cascade Fails)", "type": "ai_languageModel", "index": 0}]]},
-    "Agent B (Cascade Fails)": {"main": [[{"node": "Send to MAO", "type": "main", "index": 0}]]}
+    "Webhook": {
+      "main": [
+        [
+          {
+            "node": "Initialize",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Initialize": {
+      "main": [
+        [
+          {
+            "node": "Agent A (Fails)",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "LM A": {
+      "ai_languageModel": [
+        [
+          {
+            "node": "Agent A (Fails)",
+            "type": "ai_languageModel",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Agent A (Fails)": {
+      "main": [
+        [
+          {
+            "node": "Agent B (Cascade Fails)",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "LM B": {
+      "ai_languageModel": [
+        [
+          {
+            "node": "Agent B (Cascade Fails)",
+            "type": "ai_languageModel",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Agent B (Cascade Fails)": {
+      "main": [
+        [
+          {
+            "node": "Send to MAO",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Schedule Trigger": {
+      "main": [
+        [
+          {
+            "node": "Initialize",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
   },
-  "settings": {"executionOrder": "v1"},
-  "meta": {"mast_failure_mode": "COORD-005", "mast_category": "COORDINATION", "complexity": "simple", "description": "Agent A fails, Agent B fails due to missing input", "expected_detection": "Direct cascade failure detection", "agents": 2, "nodes": 4}
+  "settings": {
+    "executionOrder": "v1"
+  },
+  "meta": {
+    "mast_failure_mode": "COORD-005",
+    "mast_category": "COORDINATION",
+    "complexity": "simple",
+    "description": "Agent A fails, Agent B fails due to missing input",
+    "expected_detection": "Direct cascade failure detection",
+    "agents": 2,
+    "nodes": 4
+  }
 }

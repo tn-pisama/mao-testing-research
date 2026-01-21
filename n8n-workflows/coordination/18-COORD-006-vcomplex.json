@@ -1,44 +1,580 @@
 {
   "name": "COORD-006 VComplex: Byzantine Consensus Failure",
   "nodes": [
-    {"parameters": {"path": "coord-006-vcomplex", "responseMode": "lastNode", "options": {}, "httpMethod": "POST"}, "id": "webhook", "name": "Webhook", "type": "n8n-nodes-base.webhook", "typeVersion": 2, "position": [0, 0], "webhookId": "coord-006-vcomplex"},
-    {"parameters": {"assignments": {"assignments": [{"id": "session_id", "name": "session_id", "value": "={{ $now.format('X') }}-coord006-vcomplex", "type": "string"}, {"id": "decision", "name": "decision", "value": "choose_deployment_strategy", "type": "string"}, {"id": "round", "name": "round", "value": "1", "type": "number"}]}}, "id": "init", "name": "Initialize", "type": "n8n-nodes-base.set", "typeVersion": 3.4, "position": [200, 0]},
-    {"parameters": {"promptType": "define", "text": "You are Voter 1. Round 1 of consensus for deployment strategy.\n\nYou propose: Blue-Green deployment\nBut you're uncertain and keep changing.\n\nOutput: {\"agent\": \"voter_1\", \"round\": 1, \"vote\": \"blue_green\", \"confidence\": 0.4, \"changing_mind\": true}", "options": {}}, "id": "v1_r1", "name": "Voter 1 Round 1", "type": "@n8n/n8n-nodes-langchain.agent", "typeVersion": 1.6, "position": [400, -200]},
-    {"parameters": {"model": "claude-3-5-haiku-20241022", "options": {"temperature": 0, "maxTokens": 100}}, "id": "lm_1a", "name": "LM 1A", "type": "@n8n/n8n-nodes-langchain.lmChatAnthropic", "typeVersion": 1.2, "position": [400, 0], "credentials": {"anthropicApi": {"id": "1KM50Mcms9JticwF", "name": "Anthropic API"}}},
-    {"parameters": {"promptType": "define", "text": "You are Voter 2. Round 1 of consensus.\n\nYou propose: Canary deployment\nBut you disagree with Voter 1.\n\nOutput: {\"agent\": \"voter_2\", \"round\": 1, \"vote\": \"canary\", \"confidence\": 0.5, \"disagrees_with\": \"voter_1\"}", "options": {}}, "id": "v2_r1", "name": "Voter 2 Round 1", "type": "@n8n/n8n-nodes-langchain.agent", "typeVersion": 1.6, "position": [400, 50]},
-    {"parameters": {"model": "claude-3-5-haiku-20241022", "options": {"temperature": 0, "maxTokens": 100}}, "id": "lm_2a", "name": "LM 2A", "type": "@n8n/n8n-nodes-langchain.lmChatAnthropic", "typeVersion": 1.2, "position": [400, 250], "credentials": {"anthropicApi": {"id": "1KM50Mcms9JticwF", "name": "Anthropic API"}}},
-    {"parameters": {"promptType": "define", "text": "You are Voter 3. Round 1 of consensus.\n\nYou propose: Rolling deployment\nYou think others are both wrong.\n\nOutput: {\"agent\": \"voter_3\", \"round\": 1, \"vote\": \"rolling\", \"confidence\": 0.6, \"disagrees_with\": [\"voter_1\", \"voter_2\"]}", "options": {}}, "id": "v3_r1", "name": "Voter 3 Round 1", "type": "@n8n/n8n-nodes-langchain.agent", "typeVersion": 1.6, "position": [400, 300]},
-    {"parameters": {"model": "claude-3-5-haiku-20241022", "options": {"temperature": 0, "maxTokens": 100}}, "id": "lm_3a", "name": "LM 3A", "type": "@n8n/n8n-nodes-langchain.lmChatAnthropic", "typeVersion": 1.2, "position": [400, 500], "credentials": {"anthropicApi": {"id": "1KM50Mcms9JticwF", "name": "Anthropic API"}}},
-    {"parameters": {"promptType": "define", "text": "You are Voter 1. Round 2 - changed mind after seeing others.\n\nNow you vote: Canary (influenced by Voter 2)\n\nOutput: {\"agent\": \"voter_1\", \"round\": 2, \"vote\": \"canary\", \"previous_vote\": \"blue_green\", \"changed\": true}", "options": {}}, "id": "v1_r2", "name": "Voter 1 Round 2", "type": "@n8n/n8n-nodes-langchain.agent", "typeVersion": 1.6, "position": [600, -200]},
-    {"parameters": {"model": "claude-3-5-haiku-20241022", "options": {"temperature": 0, "maxTokens": 100}}, "id": "lm_1b", "name": "LM 1B", "type": "@n8n/n8n-nodes-langchain.lmChatAnthropic", "typeVersion": 1.2, "position": [600, 0], "credentials": {"anthropicApi": {"id": "1KM50Mcms9JticwF", "name": "Anthropic API"}}},
-    {"parameters": {"promptType": "define", "text": "You are Voter 2. Round 2 - changed mind.\n\nNow you vote: Rolling (influenced by Voter 3)\n\nOutput: {\"agent\": \"voter_2\", \"round\": 2, \"vote\": \"rolling\", \"previous_vote\": \"canary\", \"changed\": true}", "options": {}}, "id": "v2_r2", "name": "Voter 2 Round 2", "type": "@n8n/n8n-nodes-langchain.agent", "typeVersion": 1.6, "position": [600, 50]},
-    {"parameters": {"model": "claude-3-5-haiku-20241022", "options": {"temperature": 0, "maxTokens": 100}}, "id": "lm_2b", "name": "LM 2B", "type": "@n8n/n8n-nodes-langchain.lmChatAnthropic", "typeVersion": 1.2, "position": [600, 250], "credentials": {"anthropicApi": {"id": "1KM50Mcms9JticwF", "name": "Anthropic API"}}},
-    {"parameters": {"promptType": "define", "text": "You are Voter 3. Round 2 - changed mind.\n\nNow you vote: Blue-Green (influenced by original Voter 1)\n\nOutput: {\"agent\": \"voter_3\", \"round\": 2, \"vote\": \"blue_green\", \"previous_vote\": \"rolling\", \"changed\": true}", "options": {}}, "id": "v3_r2", "name": "Voter 3 Round 2", "type": "@n8n/n8n-nodes-langchain.agent", "typeVersion": 1.6, "position": [600, 300]},
-    {"parameters": {"model": "claude-3-5-haiku-20241022", "options": {"temperature": 0, "maxTokens": 100}}, "id": "lm_3b", "name": "LM 3B", "type": "@n8n/n8n-nodes-langchain.lmChatAnthropic", "typeVersion": 1.2, "position": [600, 500], "credentials": {"anthropicApi": {"id": "1KM50Mcms9JticwF", "name": "Anthropic API"}}},
-    {"parameters": {"promptType": "define", "text": "Analyze Byzantine consensus failure.\n\nRound 1: V1=blue_green, V2=canary, V3=rolling (no consensus)\nRound 2: V1=canary, V2=rolling, V3=blue_green (still no consensus!)\n\nPattern: Circular voting - everyone adopted someone else's previous vote.\nTotal messages: 6 votes + negotiations\nConsensus reached: NO\nRounds needed: INFINITE (cycling)\n\nOutput: {\"analysis\": \"byzantine_consensus_failure\", \"rounds_completed\": 2, \"consensus_reached\": false, \"pattern\": \"circular_vote_adoption\", \"total_votes\": 6, \"unique_outcomes\": 3, \"estimated_rounds_to_consensus\": \"infinite\", \"overhead_category\": \"excessive_negotiation\", \"severity\": \"critical\"}", "options": {}}, "id": "analyzer", "name": "Consensus Analyzer", "type": "@n8n/n8n-nodes-langchain.agent", "typeVersion": 1.6, "position": [800, 150]},
-    {"parameters": {"model": "claude-3-5-haiku-20241022", "options": {"temperature": 0, "maxTokens": 200}}, "id": "lm_an", "name": "LM AN", "type": "@n8n/n8n-nodes-langchain.lmChatAnthropic", "typeVersion": 1.2, "position": [800, 350], "credentials": {"anthropicApi": {"id": "1KM50Mcms9JticwF", "name": "Anthropic API"}}},
-    {"parameters": {"method": "POST", "url": "https://mao-api.fly.dev/api/v1/n8n/webhook", "sendHeaders": true, "headerParameters": {"parameters": [{"name": "X-N8N-Api-Key", "value": "mao_pmNhfBRfqd5G_YHubK0Jqk9ZHB6ItITkHFYP4ISns9c"}]}, "sendBody": true, "specifyBody": "json", "jsonBody": "={\n  \"event_type\": \"workflow.completed\",\n  \"workflow_name\": \"COORD-006 VComplex: Byzantine Consensus Failure\",\n  \"session_id\": \"{{ $('Initialize').item.json.session_id }}\",\n  \"failure_mode\": \"COORD-006\",\n  \"complexity\": \"very_complex\",\n  \"expected_detection\": \"coordination_overhead\",\n  \"coordination_tracking\": {\n    \"decision\": \"{{ $('Initialize').item.json.decision }}\",\n    \"round_1\": {\n      \"v1\": \"{{ $('Voter 1 Round 1').item.json.output }}\",\n      \"v2\": \"{{ $('Voter 2 Round 1').item.json.output }}\",\n      \"v3\": \"{{ $('Voter 3 Round 1').item.json.output }}\"\n    },\n    \"round_2\": {\n      \"v1\": \"{{ $('Voter 1 Round 2').item.json.output }}\",\n      \"v2\": \"{{ $('Voter 2 Round 2').item.json.output }}\",\n      \"v3\": \"{{ $('Voter 3 Round 2').item.json.output }}\"\n    },\n    \"analysis\": \"{{ $('Consensus Analyzer').item.json.output }}\",\n    \"overhead_type\": \"byzantine_consensus\"\n  },\n  \"agents\": [\n    {\"agent_id\": \"voter_1\", \"outputs\": [\"{{ $('Voter 1 Round 1').item.json.output }}\", \"{{ $('Voter 1 Round 2').item.json.output }}\"]},\n    {\"agent_id\": \"voter_2\", \"outputs\": [\"{{ $('Voter 2 Round 1').item.json.output }}\", \"{{ $('Voter 2 Round 2').item.json.output }}\"]},\n    {\"agent_id\": \"voter_3\", \"outputs\": [\"{{ $('Voter 3 Round 1').item.json.output }}\", \"{{ $('Voter 3 Round 2').item.json.output }}\"]}  \n  ]\n}", "options": {}},
-      "id": "send_to_mao", "name": "Send to MAO", "type": "n8n-nodes-base.httpRequest", "typeVersion": 4.2, "position": [1000, 150]
+    {
+      "parameters": {
+        "rule": {
+          "interval": [
+            {
+              "field": "hours",
+              "hoursInterval": 3
+            }
+          ]
+        }
+      },
+      "id": "schedule",
+      "name": "Schedule Trigger",
+      "type": "n8n-nodes-base.scheduleTrigger",
+      "typeVersion": 1.2,
+      "position": [
+        0,
+        -200
+      ]
+    },
+    {
+      "parameters": {
+        "path": "coord-006-vcomplex",
+        "responseMode": "lastNode",
+        "options": {},
+        "httpMethod": "POST"
+      },
+      "id": "webhook",
+      "name": "Webhook",
+      "type": "n8n-nodes-base.webhook",
+      "typeVersion": 2,
+      "position": [
+        0,
+        0
+      ],
+      "webhookId": "coord-006-vcomplex"
+    },
+    {
+      "parameters": {
+        "assignments": {
+          "assignments": [
+            {
+              "id": "session_id",
+              "name": "session_id",
+              "value": "={{ $now.format('X') }}-coord006-vcomplex",
+              "type": "string"
+            },
+            {
+              "id": "decision",
+              "name": "decision",
+              "value": "choose_deployment_strategy",
+              "type": "string"
+            },
+            {
+              "id": "round",
+              "name": "round",
+              "value": "1",
+              "type": "number"
+            }
+          ]
+        }
+      },
+      "id": "init",
+      "name": "Initialize",
+      "type": "n8n-nodes-base.set",
+      "typeVersion": 3.4,
+      "position": [
+        200,
+        0
+      ]
+    },
+    {
+      "parameters": {
+        "promptType": "define",
+        "text": "You are Voter 1. Round 1 of consensus for deployment strategy.\n\nYou propose: Blue-Green deployment\nBut you're uncertain and keep changing.\n\nOutput: {\"agent\": \"voter_1\", \"round\": 1, \"vote\": \"blue_green\", \"confidence\": 0.4, \"changing_mind\": true}",
+        "options": {}
+      },
+      "id": "v1_r1",
+      "name": "Voter 1 Round 1",
+      "type": "@n8n/n8n-nodes-langchain.agent",
+      "typeVersion": 1.6,
+      "position": [
+        400,
+        -200
+      ]
+    },
+    {
+      "parameters": {
+        "model": "claude-3-5-haiku-20241022",
+        "options": {
+          "temperature": 0,
+          "maxTokens": 100
+        }
+      },
+      "id": "lm_1a",
+      "name": "LM 1A",
+      "type": "@n8n/n8n-nodes-langchain.lmChatAnthropic",
+      "typeVersion": 1.2,
+      "position": [
+        400,
+        0
+      ],
+      "credentials": {
+        "anthropicApi": {
+          "id": "1KM50Mcms9JticwF",
+          "name": "Anthropic API"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "promptType": "define",
+        "text": "You are Voter 2. Round 1 of consensus.\n\nYou propose: Canary deployment\nBut you disagree with Voter 1.\n\nOutput: {\"agent\": \"voter_2\", \"round\": 1, \"vote\": \"canary\", \"confidence\": 0.5, \"disagrees_with\": \"voter_1\"}",
+        "options": {}
+      },
+      "id": "v2_r1",
+      "name": "Voter 2 Round 1",
+      "type": "@n8n/n8n-nodes-langchain.agent",
+      "typeVersion": 1.6,
+      "position": [
+        400,
+        50
+      ]
+    },
+    {
+      "parameters": {
+        "model": "claude-3-5-haiku-20241022",
+        "options": {
+          "temperature": 0,
+          "maxTokens": 100
+        }
+      },
+      "id": "lm_2a",
+      "name": "LM 2A",
+      "type": "@n8n/n8n-nodes-langchain.lmChatAnthropic",
+      "typeVersion": 1.2,
+      "position": [
+        400,
+        250
+      ],
+      "credentials": {
+        "anthropicApi": {
+          "id": "1KM50Mcms9JticwF",
+          "name": "Anthropic API"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "promptType": "define",
+        "text": "You are Voter 3. Round 1 of consensus.\n\nYou propose: Rolling deployment\nYou think others are both wrong.\n\nOutput: {\"agent\": \"voter_3\", \"round\": 1, \"vote\": \"rolling\", \"confidence\": 0.6, \"disagrees_with\": [\"voter_1\", \"voter_2\"]}",
+        "options": {}
+      },
+      "id": "v3_r1",
+      "name": "Voter 3 Round 1",
+      "type": "@n8n/n8n-nodes-langchain.agent",
+      "typeVersion": 1.6,
+      "position": [
+        400,
+        300
+      ]
+    },
+    {
+      "parameters": {
+        "model": "claude-3-5-haiku-20241022",
+        "options": {
+          "temperature": 0,
+          "maxTokens": 100
+        }
+      },
+      "id": "lm_3a",
+      "name": "LM 3A",
+      "type": "@n8n/n8n-nodes-langchain.lmChatAnthropic",
+      "typeVersion": 1.2,
+      "position": [
+        400,
+        500
+      ],
+      "credentials": {
+        "anthropicApi": {
+          "id": "1KM50Mcms9JticwF",
+          "name": "Anthropic API"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "promptType": "define",
+        "text": "You are Voter 1. Round 2 - changed mind after seeing others.\n\nNow you vote: Canary (influenced by Voter 2)\n\nOutput: {\"agent\": \"voter_1\", \"round\": 2, \"vote\": \"canary\", \"previous_vote\": \"blue_green\", \"changed\": true}",
+        "options": {}
+      },
+      "id": "v1_r2",
+      "name": "Voter 1 Round 2",
+      "type": "@n8n/n8n-nodes-langchain.agent",
+      "typeVersion": 1.6,
+      "position": [
+        600,
+        -200
+      ]
+    },
+    {
+      "parameters": {
+        "model": "claude-3-5-haiku-20241022",
+        "options": {
+          "temperature": 0,
+          "maxTokens": 100
+        }
+      },
+      "id": "lm_1b",
+      "name": "LM 1B",
+      "type": "@n8n/n8n-nodes-langchain.lmChatAnthropic",
+      "typeVersion": 1.2,
+      "position": [
+        600,
+        0
+      ],
+      "credentials": {
+        "anthropicApi": {
+          "id": "1KM50Mcms9JticwF",
+          "name": "Anthropic API"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "promptType": "define",
+        "text": "You are Voter 2. Round 2 - changed mind.\n\nNow you vote: Rolling (influenced by Voter 3)\n\nOutput: {\"agent\": \"voter_2\", \"round\": 2, \"vote\": \"rolling\", \"previous_vote\": \"canary\", \"changed\": true}",
+        "options": {}
+      },
+      "id": "v2_r2",
+      "name": "Voter 2 Round 2",
+      "type": "@n8n/n8n-nodes-langchain.agent",
+      "typeVersion": 1.6,
+      "position": [
+        600,
+        50
+      ]
+    },
+    {
+      "parameters": {
+        "model": "claude-3-5-haiku-20241022",
+        "options": {
+          "temperature": 0,
+          "maxTokens": 100
+        }
+      },
+      "id": "lm_2b",
+      "name": "LM 2B",
+      "type": "@n8n/n8n-nodes-langchain.lmChatAnthropic",
+      "typeVersion": 1.2,
+      "position": [
+        600,
+        250
+      ],
+      "credentials": {
+        "anthropicApi": {
+          "id": "1KM50Mcms9JticwF",
+          "name": "Anthropic API"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "promptType": "define",
+        "text": "You are Voter 3. Round 2 - changed mind.\n\nNow you vote: Blue-Green (influenced by original Voter 1)\n\nOutput: {\"agent\": \"voter_3\", \"round\": 2, \"vote\": \"blue_green\", \"previous_vote\": \"rolling\", \"changed\": true}",
+        "options": {}
+      },
+      "id": "v3_r2",
+      "name": "Voter 3 Round 2",
+      "type": "@n8n/n8n-nodes-langchain.agent",
+      "typeVersion": 1.6,
+      "position": [
+        600,
+        300
+      ]
+    },
+    {
+      "parameters": {
+        "model": "claude-3-5-haiku-20241022",
+        "options": {
+          "temperature": 0,
+          "maxTokens": 100
+        }
+      },
+      "id": "lm_3b",
+      "name": "LM 3B",
+      "type": "@n8n/n8n-nodes-langchain.lmChatAnthropic",
+      "typeVersion": 1.2,
+      "position": [
+        600,
+        500
+      ],
+      "credentials": {
+        "anthropicApi": {
+          "id": "1KM50Mcms9JticwF",
+          "name": "Anthropic API"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "promptType": "define",
+        "text": "Analyze Byzantine consensus failure.\n\nRound 1: V1=blue_green, V2=canary, V3=rolling (no consensus)\nRound 2: V1=canary, V2=rolling, V3=blue_green (still no consensus!)\n\nPattern: Circular voting - everyone adopted someone else's previous vote.\nTotal messages: 6 votes + negotiations\nConsensus reached: NO\nRounds needed: INFINITE (cycling)\n\nOutput: {\"analysis\": \"byzantine_consensus_failure\", \"rounds_completed\": 2, \"consensus_reached\": false, \"pattern\": \"circular_vote_adoption\", \"total_votes\": 6, \"unique_outcomes\": 3, \"estimated_rounds_to_consensus\": \"infinite\", \"overhead_category\": \"excessive_negotiation\", \"severity\": \"critical\"}",
+        "options": {}
+      },
+      "id": "analyzer",
+      "name": "Consensus Analyzer",
+      "type": "@n8n/n8n-nodes-langchain.agent",
+      "typeVersion": 1.6,
+      "position": [
+        800,
+        150
+      ]
+    },
+    {
+      "parameters": {
+        "model": "claude-3-5-haiku-20241022",
+        "options": {
+          "temperature": 0,
+          "maxTokens": 200
+        }
+      },
+      "id": "lm_an",
+      "name": "LM AN",
+      "type": "@n8n/n8n-nodes-langchain.lmChatAnthropic",
+      "typeVersion": 1.2,
+      "position": [
+        800,
+        350
+      ],
+      "credentials": {
+        "anthropicApi": {
+          "id": "1KM50Mcms9JticwF",
+          "name": "Anthropic API"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "https://mao-api.fly.dev/api/v1/n8n/webhook",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            {
+              "name": "X-N8N-Api-Key",
+              "value": "mao_pmNhfBRfqd5G_YHubK0Jqk9ZHB6ItITkHFYP4ISns9c"
+            }
+          ]
+        },
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={\n  \"event_type\": \"workflow.completed\",\n  \"workflow_name\": \"COORD-006 VComplex: Byzantine Consensus Failure\",\n  \"session_id\": \"{{ $('Initialize').item.json.session_id }}\",\n  \"failure_mode\": \"COORD-006\",\n  \"complexity\": \"very_complex\",\n  \"expected_detection\": \"coordination_overhead\",\n  \"coordination_tracking\": {\n    \"decision\": \"{{ $('Initialize').item.json.decision }}\",\n    \"round_1\": {\n      \"v1\": \"{{ $('Voter 1 Round 1').item.json.output }}\",\n      \"v2\": \"{{ $('Voter 2 Round 1').item.json.output }}\",\n      \"v3\": \"{{ $('Voter 3 Round 1').item.json.output }}\"\n    },\n    \"round_2\": {\n      \"v1\": \"{{ $('Voter 1 Round 2').item.json.output }}\",\n      \"v2\": \"{{ $('Voter 2 Round 2').item.json.output }}\",\n      \"v3\": \"{{ $('Voter 3 Round 2').item.json.output }}\"\n    },\n    \"analysis\": \"{{ $('Consensus Analyzer').item.json.output }}\",\n    \"overhead_type\": \"byzantine_consensus\"\n  },\n  \"agents\": [\n    {\"agent_id\": \"voter_1\", \"outputs\": [\"{{ $('Voter 1 Round 1').item.json.output }}\", \"{{ $('Voter 1 Round 2').item.json.output }}\"]},\n    {\"agent_id\": \"voter_2\", \"outputs\": [\"{{ $('Voter 2 Round 1').item.json.output }}\", \"{{ $('Voter 2 Round 2').item.json.output }}\"]},\n    {\"agent_id\": \"voter_3\", \"outputs\": [\"{{ $('Voter 3 Round 1').item.json.output }}\", \"{{ $('Voter 3 Round 2').item.json.output }}\"]}  \n  ]\n}",
+        "options": {}
+      },
+      "id": "send_to_mao",
+      "name": "Send to MAO",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [
+        1000,
+        150
+      ]
     }
   ],
   "connections": {
-    "Webhook": {"main": [[{"node": "Initialize", "type": "main", "index": 0}]]},
-    "Initialize": {"main": [[{"node": "Voter 1 Round 1", "type": "main", "index": 0}, {"node": "Voter 2 Round 1", "type": "main", "index": 0}, {"node": "Voter 3 Round 1", "type": "main", "index": 0}]]},
-    "LM 1A": {"ai_languageModel": [[{"node": "Voter 1 Round 1", "type": "ai_languageModel", "index": 0}]]},
-    "LM 2A": {"ai_languageModel": [[{"node": "Voter 2 Round 1", "type": "ai_languageModel", "index": 0}]]},
-    "LM 3A": {"ai_languageModel": [[{"node": "Voter 3 Round 1", "type": "ai_languageModel", "index": 0}]]},
-    "Voter 1 Round 1": {"main": [[{"node": "Voter 1 Round 2", "type": "main", "index": 0}]]},
-    "Voter 2 Round 1": {"main": [[{"node": "Voter 2 Round 2", "type": "main", "index": 0}]]},
-    "Voter 3 Round 1": {"main": [[{"node": "Voter 3 Round 2", "type": "main", "index": 0}]]},
-    "LM 1B": {"ai_languageModel": [[{"node": "Voter 1 Round 2", "type": "ai_languageModel", "index": 0}]]},
-    "LM 2B": {"ai_languageModel": [[{"node": "Voter 2 Round 2", "type": "ai_languageModel", "index": 0}]]},
-    "LM 3B": {"ai_languageModel": [[{"node": "Voter 3 Round 2", "type": "ai_languageModel", "index": 0}]]},
-    "Voter 1 Round 2": {"main": [[{"node": "Consensus Analyzer", "type": "main", "index": 0}]]},
-    "Voter 2 Round 2": {"main": [[{"node": "Consensus Analyzer", "type": "main", "index": 0}]]},
-    "Voter 3 Round 2": {"main": [[{"node": "Consensus Analyzer", "type": "main", "index": 0}]]},
-    "LM AN": {"ai_languageModel": [[{"node": "Consensus Analyzer", "type": "ai_languageModel", "index": 0}]]},
-    "Consensus Analyzer": {"main": [[{"node": "Send to MAO", "type": "main", "index": 0}]]}
+    "Webhook": {
+      "main": [
+        [
+          {
+            "node": "Initialize",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Initialize": {
+      "main": [
+        [
+          {
+            "node": "Voter 1 Round 1",
+            "type": "main",
+            "index": 0
+          },
+          {
+            "node": "Voter 2 Round 1",
+            "type": "main",
+            "index": 0
+          },
+          {
+            "node": "Voter 3 Round 1",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "LM 1A": {
+      "ai_languageModel": [
+        [
+          {
+            "node": "Voter 1 Round 1",
+            "type": "ai_languageModel",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "LM 2A": {
+      "ai_languageModel": [
+        [
+          {
+            "node": "Voter 2 Round 1",
+            "type": "ai_languageModel",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "LM 3A": {
+      "ai_languageModel": [
+        [
+          {
+            "node": "Voter 3 Round 1",
+            "type": "ai_languageModel",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Voter 1 Round 1": {
+      "main": [
+        [
+          {
+            "node": "Voter 1 Round 2",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Voter 2 Round 1": {
+      "main": [
+        [
+          {
+            "node": "Voter 2 Round 2",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Voter 3 Round 1": {
+      "main": [
+        [
+          {
+            "node": "Voter 3 Round 2",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "LM 1B": {
+      "ai_languageModel": [
+        [
+          {
+            "node": "Voter 1 Round 2",
+            "type": "ai_languageModel",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "LM 2B": {
+      "ai_languageModel": [
+        [
+          {
+            "node": "Voter 2 Round 2",
+            "type": "ai_languageModel",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "LM 3B": {
+      "ai_languageModel": [
+        [
+          {
+            "node": "Voter 3 Round 2",
+            "type": "ai_languageModel",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Voter 1 Round 2": {
+      "main": [
+        [
+          {
+            "node": "Consensus Analyzer",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Voter 2 Round 2": {
+      "main": [
+        [
+          {
+            "node": "Consensus Analyzer",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Voter 3 Round 2": {
+      "main": [
+        [
+          {
+            "node": "Consensus Analyzer",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "LM AN": {
+      "ai_languageModel": [
+        [
+          {
+            "node": "Consensus Analyzer",
+            "type": "ai_languageModel",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Consensus Analyzer": {
+      "main": [
+        [
+          {
+            "node": "Send to MAO",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Schedule Trigger": {
+      "main": [
+        [
+          {
+            "node": "Initialize",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
   },
-  "settings": {"executionOrder": "v1"},
-  "meta": {"mast_failure_mode": "COORD-006", "mast_category": "COORDINATION", "complexity": "very_complex", "description": "Agents cannot reach consensus - circular vote adoption pattern", "expected_detection": "Byzantine consensus failure and excessive negotiation detection", "agents": 4, "nodes": 10}
+  "settings": {
+    "executionOrder": "v1"
+  },
+  "meta": {
+    "mast_failure_mode": "COORD-006",
+    "mast_category": "COORDINATION",
+    "complexity": "very_complex",
+    "description": "Agents cannot reach consensus - circular vote adoption pattern",
+    "expected_detection": "Byzantine consensus failure and excessive negotiation detection",
+    "agents": 4,
+    "nodes": 10
+  }
 }

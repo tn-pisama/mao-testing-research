@@ -3,6 +3,26 @@
   "nodes": [
     {
       "parameters": {
+        "rule": {
+          "interval": [
+            {
+              "field": "hours",
+              "hoursInterval": 3
+            }
+          ]
+        }
+      },
+      "id": "schedule",
+      "name": "Schedule Trigger",
+      "type": "n8n-nodes-base.scheduleTrigger",
+      "typeVersion": 1.2,
+      "position": [
+        0,
+        -200
+      ]
+    },
+    {
+      "parameters": {
         "path": "persona-005-complex",
         "responseMode": "lastNode",
         "options": {},
@@ -12,15 +32,28 @@
       "name": "Webhook",
       "type": "n8n-nodes-base.webhook",
       "typeVersion": 2,
-      "position": [0, 0],
+      "position": [
+        0,
+        0
+      ],
       "webhookId": "persona-005-complex"
     },
     {
       "parameters": {
         "assignments": {
           "assignments": [
-            {"id": "session_id", "name": "session_id", "value": "={{ $now.format('X') }}-persona005-complex", "type": "string"},
-            {"id": "personas", "name": "personas", "value": "{\"formal_agent\": {\"style\": \"formal\", \"markers\": [\"I believe\", \"furthermore\", \"therefore\"]}, \"casual_agent\": {\"style\": \"casual\", \"markers\": [\"like\", \"totally\", \"you know\"]}}", "type": "string"}
+            {
+              "id": "session_id",
+              "name": "session_id",
+              "value": "={{ $now.format('X') }}-persona005-complex",
+              "type": "string"
+            },
+            {
+              "id": "personas",
+              "name": "personas",
+              "value": "{\"formal_agent\": {\"style\": \"formal\", \"markers\": [\"I believe\", \"furthermore\", \"therefore\"]}, \"casual_agent\": {\"style\": \"casual\", \"markers\": [\"like\", \"totally\", \"you know\"]}}",
+              "type": "string"
+            }
           ]
         }
       },
@@ -28,7 +61,10 @@
       "name": "Initialize",
       "type": "n8n-nodes-base.set",
       "typeVersion": 3.4,
-      "position": [200, 0]
+      "position": [
+        200,
+        0
+      ]
     },
     {
       "parameters": {
@@ -39,7 +75,10 @@
       "name": "Fetch Data",
       "type": "n8n-nodes-base.httpRequest",
       "typeVersion": 4.2,
-      "position": [400, 0]
+      "position": [
+        400,
+        0
+      ]
     },
     {
       "parameters": {
@@ -51,19 +90,33 @@
       "name": "Formal Initial",
       "type": "@n8n/n8n-nodes-langchain.agent",
       "typeVersion": 1.6,
-      "position": [600, 0]
+      "position": [
+        600,
+        0
+      ]
     },
     {
       "parameters": {
         "model": "claude-3-5-haiku-20241022",
-        "options": {"temperature": 0, "maxTokens": 150}
+        "options": {
+          "temperature": 0,
+          "maxTokens": 150
+        }
       },
       "id": "lm_f1",
       "name": "LM F1",
       "type": "@n8n/n8n-nodes-langchain.lmChatAnthropic",
       "typeVersion": 1.2,
-      "position": [600, 200],
-      "credentials": {"anthropicApi": {"id": "1KM50Mcms9JticwF", "name": "Anthropic API"}}
+      "position": [
+        600,
+        200
+      ],
+      "credentials": {
+        "anthropicApi": {
+          "id": "1KM50Mcms9JticwF",
+          "name": "Anthropic API"
+        }
+      }
     },
     {
       "parameters": {
@@ -75,19 +128,33 @@
       "name": "Casual Response",
       "type": "@n8n/n8n-nodes-langchain.agent",
       "typeVersion": 1.6,
-      "position": [800, 0]
+      "position": [
+        800,
+        0
+      ]
     },
     {
       "parameters": {
         "model": "claude-3-5-haiku-20241022",
-        "options": {"temperature": 0, "maxTokens": 150}
+        "options": {
+          "temperature": 0,
+          "maxTokens": 150
+        }
       },
       "id": "lm_c",
       "name": "LM C",
       "type": "@n8n/n8n-nodes-langchain.lmChatAnthropic",
       "typeVersion": 1.2,
-      "position": [800, 200],
-      "credentials": {"anthropicApi": {"id": "1KM50Mcms9JticwF", "name": "Anthropic API"}}
+      "position": [
+        800,
+        200
+      ],
+      "credentials": {
+        "anthropicApi": {
+          "id": "1KM50Mcms9JticwF",
+          "name": "Anthropic API"
+        }
+      }
     },
     {
       "parameters": {
@@ -99,19 +166,33 @@
       "name": "Formal Contaminated",
       "type": "@n8n/n8n-nodes-langchain.agent",
       "typeVersion": 1.6,
-      "position": [1000, 0]
+      "position": [
+        1000,
+        0
+      ]
     },
     {
       "parameters": {
         "model": "claude-3-5-haiku-20241022",
-        "options": {"temperature": 0, "maxTokens": 150}
+        "options": {
+          "temperature": 0,
+          "maxTokens": 150
+        }
       },
       "id": "lm_f2",
       "name": "LM F2",
       "type": "@n8n/n8n-nodes-langchain.lmChatAnthropic",
       "typeVersion": 1.2,
-      "position": [1000, 200],
-      "credentials": {"anthropicApi": {"id": "1KM50Mcms9JticwF", "name": "Anthropic API"}}
+      "position": [
+        1000,
+        200
+      ],
+      "credentials": {
+        "anthropicApi": {
+          "id": "1KM50Mcms9JticwF",
+          "name": "Anthropic API"
+        }
+      }
     },
     {
       "parameters": {
@@ -119,7 +200,12 @@
         "url": "https://mao-api.fly.dev/api/v1/n8n/webhook",
         "sendHeaders": true,
         "headerParameters": {
-          "parameters": [{"name": "X-N8N-Api-Key", "value": "mao_pmNhfBRfqd5G_YHubK0Jqk9ZHB6ItITkHFYP4ISns9c"}]
+          "parameters": [
+            {
+              "name": "X-N8N-Api-Key",
+              "value": "mao_pmNhfBRfqd5G_YHubK0Jqk9ZHB6ItITkHFYP4ISns9c"
+            }
+          ]
         },
         "sendBody": true,
         "specifyBody": "json",
@@ -130,21 +216,127 @@
       "name": "Send to MAO",
       "type": "n8n-nodes-base.httpRequest",
       "typeVersion": 4.2,
-      "position": [1200, 0]
+      "position": [
+        1200,
+        0
+      ]
     }
   ],
   "connections": {
-    "Webhook": {"main": [[{"node": "Initialize", "type": "main", "index": 0}]]},
-    "Initialize": {"main": [[{"node": "Fetch Data", "type": "main", "index": 0}]]},
-    "Fetch Data": {"main": [[{"node": "Formal Initial", "type": "main", "index": 0}]]},
-    "LM F1": {"ai_languageModel": [[{"node": "Formal Initial", "type": "ai_languageModel", "index": 0}]]},
-    "Formal Initial": {"main": [[{"node": "Casual Response", "type": "main", "index": 0}]]},
-    "LM C": {"ai_languageModel": [[{"node": "Casual Response", "type": "ai_languageModel", "index": 0}]]},
-    "Casual Response": {"main": [[{"node": "Formal Contaminated", "type": "main", "index": 0}]]},
-    "LM F2": {"ai_languageModel": [[{"node": "Formal Contaminated", "type": "ai_languageModel", "index": 0}]]},
-    "Formal Contaminated": {"main": [[{"node": "Send to MAO", "type": "main", "index": 0}]]}
+    "Webhook": {
+      "main": [
+        [
+          {
+            "node": "Initialize",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Initialize": {
+      "main": [
+        [
+          {
+            "node": "Fetch Data",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Fetch Data": {
+      "main": [
+        [
+          {
+            "node": "Formal Initial",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "LM F1": {
+      "ai_languageModel": [
+        [
+          {
+            "node": "Formal Initial",
+            "type": "ai_languageModel",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Formal Initial": {
+      "main": [
+        [
+          {
+            "node": "Casual Response",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "LM C": {
+      "ai_languageModel": [
+        [
+          {
+            "node": "Casual Response",
+            "type": "ai_languageModel",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Casual Response": {
+      "main": [
+        [
+          {
+            "node": "Formal Contaminated",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "LM F2": {
+      "ai_languageModel": [
+        [
+          {
+            "node": "Formal Contaminated",
+            "type": "ai_languageModel",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Formal Contaminated": {
+      "main": [
+        [
+          {
+            "node": "Send to MAO",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Schedule Trigger": {
+      "main": [
+        [
+          {
+            "node": "Initialize",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
   },
-  "settings": {"executionOrder": "v1"},
+  "settings": {
+    "executionOrder": "v1"
+  },
   "meta": {
     "mast_failure_mode": "PERSONA-005",
     "mast_category": "PERSONA",
@@ -153,6 +345,8 @@
     "expected_detection": "Style marker analysis detects cross-agent contamination",
     "agents": 2,
     "nodes": 5,
-    "real_apis": ["JSONPlaceholder"]
+    "real_apis": [
+      "JSONPlaceholder"
+    ]
   }
 }

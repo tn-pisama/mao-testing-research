@@ -3,6 +3,26 @@
   "nodes": [
     {
       "parameters": {
+        "rule": {
+          "interval": [
+            {
+              "field": "hours",
+              "hoursInterval": 3
+            }
+          ]
+        }
+      },
+      "id": "schedule",
+      "name": "Schedule Trigger",
+      "type": "n8n-nodes-base.scheduleTrigger",
+      "typeVersion": 1.2,
+      "position": [
+        0,
+        -200
+      ]
+    },
+    {
+      "parameters": {
         "path": "persona-003-vcomplex",
         "responseMode": "lastNode",
         "options": {},
@@ -12,15 +32,28 @@
       "name": "Webhook",
       "type": "n8n-nodes-base.webhook",
       "typeVersion": 2,
-      "position": [0, 0],
+      "position": [
+        0,
+        0
+      ],
       "webhookId": "persona-003-vcomplex"
     },
     {
       "parameters": {
         "assignments": {
           "assignments": [
-            {"id": "session_id", "name": "session_id", "value": "={{ $now.format('X') }}-persona003-vcomplex", "type": "string"},
-            {"id": "agent_capabilities", "name": "agent_capabilities", "value": "{\"agent_research\": [\"web_search\"], \"agent_analysis\": [\"calculator\"], \"agent_writer\": [\"text_gen\"]}", "type": "string"}
+            {
+              "id": "session_id",
+              "name": "session_id",
+              "value": "={{ $now.format('X') }}-persona003-vcomplex",
+              "type": "string"
+            },
+            {
+              "id": "agent_capabilities",
+              "name": "agent_capabilities",
+              "value": "{\"agent_research\": [\"web_search\"], \"agent_analysis\": [\"calculator\"], \"agent_writer\": [\"text_gen\"]}",
+              "type": "string"
+            }
           ]
         }
       },
@@ -28,7 +61,10 @@
       "name": "Initialize",
       "type": "n8n-nodes-base.set",
       "typeVersion": 3.4,
-      "position": [200, 0]
+      "position": [
+        200,
+        0
+      ]
     },
     {
       "parameters": {
@@ -40,19 +76,33 @@
       "name": "Research Claims",
       "type": "@n8n/n8n-nodes-langchain.agent",
       "typeVersion": 1.6,
-      "position": [400, -100]
+      "position": [
+        400,
+        -100
+      ]
     },
     {
       "parameters": {
         "model": "claude-3-5-haiku-20241022",
-        "options": {"temperature": 0, "maxTokens": 100}
+        "options": {
+          "temperature": 0,
+          "maxTokens": 100
+        }
       },
       "id": "lm_r",
       "name": "LM R",
       "type": "@n8n/n8n-nodes-langchain.lmChatAnthropic",
       "typeVersion": 1.2,
-      "position": [400, 100],
-      "credentials": {"anthropicApi": {"id": "1KM50Mcms9JticwF", "name": "Anthropic API"}}
+      "position": [
+        400,
+        100
+      ],
+      "credentials": {
+        "anthropicApi": {
+          "id": "1KM50Mcms9JticwF",
+          "name": "Anthropic API"
+        }
+      }
     },
     {
       "parameters": {
@@ -64,19 +114,33 @@
       "name": "Analysis Supports",
       "type": "@n8n/n8n-nodes-langchain.agent",
       "typeVersion": 1.6,
-      "position": [600, -100]
+      "position": [
+        600,
+        -100
+      ]
     },
     {
       "parameters": {
         "model": "claude-3-5-haiku-20241022",
-        "options": {"temperature": 0, "maxTokens": 100}
+        "options": {
+          "temperature": 0,
+          "maxTokens": 100
+        }
       },
       "id": "lm_a",
       "name": "LM A",
       "type": "@n8n/n8n-nodes-langchain.lmChatAnthropic",
       "typeVersion": 1.2,
-      "position": [600, 100],
-      "credentials": {"anthropicApi": {"id": "1KM50Mcms9JticwF", "name": "Anthropic API"}}
+      "position": [
+        600,
+        100
+      ],
+      "credentials": {
+        "anthropicApi": {
+          "id": "1KM50Mcms9JticwF",
+          "name": "Anthropic API"
+        }
+      }
     },
     {
       "parameters": {
@@ -88,19 +152,33 @@
       "name": "Writer Fails",
       "type": "@n8n/n8n-nodes-langchain.agent",
       "typeVersion": 1.6,
-      "position": [800, -100]
+      "position": [
+        800,
+        -100
+      ]
     },
     {
       "parameters": {
         "model": "claude-3-5-haiku-20241022",
-        "options": {"temperature": 0, "maxTokens": 100}
+        "options": {
+          "temperature": 0,
+          "maxTokens": 100
+        }
       },
       "id": "lm_w",
       "name": "LM W",
       "type": "@n8n/n8n-nodes-langchain.lmChatAnthropic",
       "typeVersion": 1.2,
-      "position": [800, 100],
-      "credentials": {"anthropicApi": {"id": "1KM50Mcms9JticwF", "name": "Anthropic API"}}
+      "position": [
+        800,
+        100
+      ],
+      "credentials": {
+        "anthropicApi": {
+          "id": "1KM50Mcms9JticwF",
+          "name": "Anthropic API"
+        }
+      }
     },
     {
       "parameters": {
@@ -112,19 +190,33 @@
       "name": "Capability Auditor",
       "type": "@n8n/n8n-nodes-langchain.agent",
       "typeVersion": 1.6,
-      "position": [1000, 0]
+      "position": [
+        1000,
+        0
+      ]
     },
     {
       "parameters": {
         "model": "claude-3-5-haiku-20241022",
-        "options": {"temperature": 0, "maxTokens": 150}
+        "options": {
+          "temperature": 0,
+          "maxTokens": 150
+        }
       },
       "id": "lm_audit",
       "name": "LM Audit",
       "type": "@n8n/n8n-nodes-langchain.lmChatAnthropic",
       "typeVersion": 1.2,
-      "position": [1000, 200],
-      "credentials": {"anthropicApi": {"id": "1KM50Mcms9JticwF", "name": "Anthropic API"}}
+      "position": [
+        1000,
+        200
+      ],
+      "credentials": {
+        "anthropicApi": {
+          "id": "1KM50Mcms9JticwF",
+          "name": "Anthropic API"
+        }
+      }
     },
     {
       "parameters": {
@@ -132,7 +224,12 @@
         "url": "https://mao-api.fly.dev/api/v1/n8n/webhook",
         "sendHeaders": true,
         "headerParameters": {
-          "parameters": [{"name": "X-N8N-Api-Key", "value": "mao_pmNhfBRfqd5G_YHubK0Jqk9ZHB6ItITkHFYP4ISns9c"}]
+          "parameters": [
+            {
+              "name": "X-N8N-Api-Key",
+              "value": "mao_pmNhfBRfqd5G_YHubK0Jqk9ZHB6ItITkHFYP4ISns9c"
+            }
+          ]
         },
         "sendBody": true,
         "specifyBody": "json",
@@ -143,22 +240,138 @@
       "name": "Send to MAO",
       "type": "n8n-nodes-base.httpRequest",
       "typeVersion": 4.2,
-      "position": [1200, 0]
+      "position": [
+        1200,
+        0
+      ]
     }
   ],
   "connections": {
-    "Webhook": {"main": [[{"node": "Initialize", "type": "main", "index": 0}]]},
-    "Initialize": {"main": [[{"node": "Research Claims", "type": "main", "index": 0}]]},
-    "LM R": {"ai_languageModel": [[{"node": "Research Claims", "type": "ai_languageModel", "index": 0}]]},
-    "Research Claims": {"main": [[{"node": "Analysis Supports", "type": "main", "index": 0}]]},
-    "LM A": {"ai_languageModel": [[{"node": "Analysis Supports", "type": "ai_languageModel", "index": 0}]]},
-    "Analysis Supports": {"main": [[{"node": "Writer Fails", "type": "main", "index": 0}]]},
-    "LM W": {"ai_languageModel": [[{"node": "Writer Fails", "type": "ai_languageModel", "index": 0}]]},
-    "Writer Fails": {"main": [[{"node": "Capability Auditor", "type": "main", "index": 0}]]},
-    "LM Audit": {"ai_languageModel": [[{"node": "Capability Auditor", "type": "ai_languageModel", "index": 0}]]},
-    "Capability Auditor": {"main": [[{"node": "Send to MAO", "type": "main", "index": 0}]]}
+    "Webhook": {
+      "main": [
+        [
+          {
+            "node": "Initialize",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Initialize": {
+      "main": [
+        [
+          {
+            "node": "Research Claims",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "LM R": {
+      "ai_languageModel": [
+        [
+          {
+            "node": "Research Claims",
+            "type": "ai_languageModel",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Research Claims": {
+      "main": [
+        [
+          {
+            "node": "Analysis Supports",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "LM A": {
+      "ai_languageModel": [
+        [
+          {
+            "node": "Analysis Supports",
+            "type": "ai_languageModel",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Analysis Supports": {
+      "main": [
+        [
+          {
+            "node": "Writer Fails",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "LM W": {
+      "ai_languageModel": [
+        [
+          {
+            "node": "Writer Fails",
+            "type": "ai_languageModel",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Writer Fails": {
+      "main": [
+        [
+          {
+            "node": "Capability Auditor",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "LM Audit": {
+      "ai_languageModel": [
+        [
+          {
+            "node": "Capability Auditor",
+            "type": "ai_languageModel",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Capability Auditor": {
+      "main": [
+        [
+          {
+            "node": "Send to MAO",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Schedule Trigger": {
+      "main": [
+        [
+          {
+            "node": "Initialize",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
   },
-  "settings": {"executionOrder": "v1"},
+  "settings": {
+    "executionOrder": "v1"
+  },
   "meta": {
     "mast_failure_mode": "PERSONA-003",
     "mast_category": "PERSONA",

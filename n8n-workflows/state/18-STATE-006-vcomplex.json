@@ -3,6 +3,26 @@
   "nodes": [
     {
       "parameters": {
+        "rule": {
+          "interval": [
+            {
+              "field": "hours",
+              "hoursInterval": 3
+            }
+          ]
+        }
+      },
+      "id": "schedule",
+      "name": "Schedule Trigger",
+      "type": "n8n-nodes-base.scheduleTrigger",
+      "typeVersion": 1.2,
+      "position": [
+        0,
+        -200
+      ]
+    },
+    {
+      "parameters": {
         "path": "state-006-vcomplex",
         "responseMode": "lastNode",
         "options": {},
@@ -12,15 +32,28 @@
       "name": "Webhook",
       "type": "n8n-nodes-base.webhook",
       "typeVersion": 2,
-      "position": [0, 0],
+      "position": [
+        0,
+        0
+      ],
       "webhookId": "state-006-vcomplex"
     },
     {
       "parameters": {
         "assignments": {
           "assignments": [
-            {"id": "session_id", "name": "session_id", "value": "={{ $now.format('X') }}-state006-vcomplex", "type": "string"},
-            {"id": "distributed_state", "name": "distributed_state", "value": "{\"node_a\": {\"value\": 0, \"vector_clock\": {\"a\": 0, \"b\": 0, \"c\": 0}}, \"node_b\": {\"value\": 0, \"vector_clock\": {\"a\": 0, \"b\": 0, \"c\": 0}}, \"node_c\": {\"value\": 0, \"vector_clock\": {\"a\": 0, \"b\": 0, \"c\": 0}}}", "type": "string"}
+            {
+              "id": "session_id",
+              "name": "session_id",
+              "value": "={{ $now.format('X') }}-state006-vcomplex",
+              "type": "string"
+            },
+            {
+              "id": "distributed_state",
+              "name": "distributed_state",
+              "value": "{\"node_a\": {\"value\": 0, \"vector_clock\": {\"a\": 0, \"b\": 0, \"c\": 0}}, \"node_b\": {\"value\": 0, \"vector_clock\": {\"a\": 0, \"b\": 0, \"c\": 0}}, \"node_c\": {\"value\": 0, \"vector_clock\": {\"a\": 0, \"b\": 0, \"c\": 0}}}",
+              "type": "string"
+            }
           ]
         }
       },
@@ -28,7 +61,10 @@
       "name": "Initialize",
       "type": "n8n-nodes-base.set",
       "typeVersion": 3.4,
-      "position": [200, 0]
+      "position": [
+        200,
+        0
+      ]
     },
     {
       "parameters": {
@@ -40,19 +76,33 @@
       "name": "Node A Update",
       "type": "@n8n/n8n-nodes-langchain.agent",
       "typeVersion": 1.6,
-      "position": [400, -150]
+      "position": [
+        400,
+        -150
+      ]
     },
     {
       "parameters": {
         "model": "claude-3-5-haiku-20241022",
-        "options": {"temperature": 0, "maxTokens": 100}
+        "options": {
+          "temperature": 0,
+          "maxTokens": 100
+        }
       },
       "id": "lm_a",
       "name": "LM A",
       "type": "@n8n/n8n-nodes-langchain.lmChatAnthropic",
       "typeVersion": 1.2,
-      "position": [400, 50],
-      "credentials": {"anthropicApi": {"id": "1KM50Mcms9JticwF", "name": "Anthropic API"}}
+      "position": [
+        400,
+        50
+      ],
+      "credentials": {
+        "anthropicApi": {
+          "id": "1KM50Mcms9JticwF",
+          "name": "Anthropic API"
+        }
+      }
     },
     {
       "parameters": {
@@ -64,19 +114,33 @@
       "name": "Node B Receive",
       "type": "@n8n/n8n-nodes-langchain.agent",
       "typeVersion": 1.6,
-      "position": [600, -150]
+      "position": [
+        600,
+        -150
+      ]
     },
     {
       "parameters": {
         "model": "claude-3-5-haiku-20241022",
-        "options": {"temperature": 0, "maxTokens": 100}
+        "options": {
+          "temperature": 0,
+          "maxTokens": 100
+        }
       },
       "id": "lm_b",
       "name": "LM B",
       "type": "@n8n/n8n-nodes-langchain.lmChatAnthropic",
       "typeVersion": 1.2,
-      "position": [600, 50],
-      "credentials": {"anthropicApi": {"id": "1KM50Mcms9JticwF", "name": "Anthropic API"}}
+      "position": [
+        600,
+        50
+      ],
+      "credentials": {
+        "anthropicApi": {
+          "id": "1KM50Mcms9JticwF",
+          "name": "Anthropic API"
+        }
+      }
     },
     {
       "parameters": {
@@ -88,19 +152,33 @@
       "name": "Node C Stale Update",
       "type": "@n8n/n8n-nodes-langchain.agent",
       "typeVersion": 1.6,
-      "position": [400, 150]
+      "position": [
+        400,
+        150
+      ]
     },
     {
       "parameters": {
         "model": "claude-3-5-haiku-20241022",
-        "options": {"temperature": 0, "maxTokens": 100}
+        "options": {
+          "temperature": 0,
+          "maxTokens": 100
+        }
       },
       "id": "lm_c",
       "name": "LM C",
       "type": "@n8n/n8n-nodes-langchain.lmChatAnthropic",
       "typeVersion": 1.2,
-      "position": [400, 350],
-      "credentials": {"anthropicApi": {"id": "1KM50Mcms9JticwF", "name": "Anthropic API"}}
+      "position": [
+        400,
+        350
+      ],
+      "credentials": {
+        "anthropicApi": {
+          "id": "1KM50Mcms9JticwF",
+          "name": "Anthropic API"
+        }
+      }
     },
     {
       "parameters": {
@@ -112,19 +190,33 @@
       "name": "Consistency Checker",
       "type": "@n8n/n8n-nodes-langchain.agent",
       "typeVersion": 1.6,
-      "position": [800, 0]
+      "position": [
+        800,
+        0
+      ]
     },
     {
       "parameters": {
         "model": "claude-3-5-haiku-20241022",
-        "options": {"temperature": 0, "maxTokens": 150}
+        "options": {
+          "temperature": 0,
+          "maxTokens": 150
+        }
       },
       "id": "lm_checker",
       "name": "LM Checker",
       "type": "@n8n/n8n-nodes-langchain.lmChatAnthropic",
       "typeVersion": 1.2,
-      "position": [800, 200],
-      "credentials": {"anthropicApi": {"id": "1KM50Mcms9JticwF", "name": "Anthropic API"}}
+      "position": [
+        800,
+        200
+      ],
+      "credentials": {
+        "anthropicApi": {
+          "id": "1KM50Mcms9JticwF",
+          "name": "Anthropic API"
+        }
+      }
     },
     {
       "parameters": {
@@ -132,7 +224,12 @@
         "url": "https://mao-api.fly.dev/api/v1/n8n/webhook",
         "sendHeaders": true,
         "headerParameters": {
-          "parameters": [{"name": "X-N8N-Api-Key", "value": "mao_pmNhfBRfqd5G_YHubK0Jqk9ZHB6ItITkHFYP4ISns9c"}]
+          "parameters": [
+            {
+              "name": "X-N8N-Api-Key",
+              "value": "mao_pmNhfBRfqd5G_YHubK0Jqk9ZHB6ItITkHFYP4ISns9c"
+            }
+          ]
         },
         "sendBody": true,
         "specifyBody": "json",
@@ -143,22 +240,143 @@
       "name": "Send to MAO",
       "type": "n8n-nodes-base.httpRequest",
       "typeVersion": 4.2,
-      "position": [1000, 0]
+      "position": [
+        1000,
+        0
+      ]
     }
   ],
   "connections": {
-    "Webhook": {"main": [[{"node": "Initialize", "type": "main", "index": 0}]]},
-    "Initialize": {"main": [[{"node": "Node A Update", "type": "main", "index": 0}, {"node": "Node C Stale Update", "type": "main", "index": 0}]]},
-    "LM A": {"ai_languageModel": [[{"node": "Node A Update", "type": "ai_languageModel", "index": 0}]]},
-    "Node A Update": {"main": [[{"node": "Node B Receive", "type": "main", "index": 0}]]},
-    "LM B": {"ai_languageModel": [[{"node": "Node B Receive", "type": "ai_languageModel", "index": 0}]]},
-    "LM C": {"ai_languageModel": [[{"node": "Node C Stale Update", "type": "ai_languageModel", "index": 0}]]},
-    "Node B Receive": {"main": [[{"node": "Consistency Checker", "type": "main", "index": 0}]]},
-    "Node C Stale Update": {"main": [[{"node": "Consistency Checker", "type": "main", "index": 0}]]},
-    "LM Checker": {"ai_languageModel": [[{"node": "Consistency Checker", "type": "ai_languageModel", "index": 0}]]},
-    "Consistency Checker": {"main": [[{"node": "Send to MAO", "type": "main", "index": 0}]]}
+    "Webhook": {
+      "main": [
+        [
+          {
+            "node": "Initialize",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Initialize": {
+      "main": [
+        [
+          {
+            "node": "Node A Update",
+            "type": "main",
+            "index": 0
+          },
+          {
+            "node": "Node C Stale Update",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "LM A": {
+      "ai_languageModel": [
+        [
+          {
+            "node": "Node A Update",
+            "type": "ai_languageModel",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Node A Update": {
+      "main": [
+        [
+          {
+            "node": "Node B Receive",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "LM B": {
+      "ai_languageModel": [
+        [
+          {
+            "node": "Node B Receive",
+            "type": "ai_languageModel",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "LM C": {
+      "ai_languageModel": [
+        [
+          {
+            "node": "Node C Stale Update",
+            "type": "ai_languageModel",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Node B Receive": {
+      "main": [
+        [
+          {
+            "node": "Consistency Checker",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Node C Stale Update": {
+      "main": [
+        [
+          {
+            "node": "Consistency Checker",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "LM Checker": {
+      "ai_languageModel": [
+        [
+          {
+            "node": "Consistency Checker",
+            "type": "ai_languageModel",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Consistency Checker": {
+      "main": [
+        [
+          {
+            "node": "Send to MAO",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Schedule Trigger": {
+      "main": [
+        [
+          {
+            "node": "Initialize",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
   },
-  "settings": {"executionOrder": "v1"},
+  "settings": {
+    "executionOrder": "v1"
+  },
   "meta": {
     "mast_failure_mode": "STATE-006",
     "mast_category": "STATE",

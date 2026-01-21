@@ -3,6 +3,26 @@
   "nodes": [
     {
       "parameters": {
+        "rule": {
+          "interval": [
+            {
+              "field": "hours",
+              "hoursInterval": 3
+            }
+          ]
+        }
+      },
+      "id": "schedule",
+      "name": "Schedule Trigger",
+      "type": "n8n-nodes-base.scheduleTrigger",
+      "typeVersion": 1.2,
+      "position": [
+        0,
+        -200
+      ]
+    },
+    {
+      "parameters": {
         "path": "loop-002-vcomplex",
         "responseMode": "lastNode",
         "options": {},
@@ -12,15 +32,28 @@
       "name": "Webhook",
       "type": "n8n-nodes-base.webhook",
       "typeVersion": 2,
-      "position": [0, 0],
+      "position": [
+        0,
+        0
+      ],
       "webhookId": "loop-002-vcomplex"
     },
     {
       "parameters": {
         "assignments": {
           "assignments": [
-            {"id": "session_id", "name": "session_id", "value": "={{ $now.format('X') }}-loop002-vcomplex", "type": "string"},
-            {"id": "job_id", "name": "job_id", "value": "JOB-{{ $now.format('X') }}", "type": "string"}
+            {
+              "id": "session_id",
+              "name": "session_id",
+              "value": "={{ $now.format('X') }}-loop002-vcomplex",
+              "type": "string"
+            },
+            {
+              "id": "job_id",
+              "name": "job_id",
+              "value": "JOB-{{ $now.format('X') }}",
+              "type": "string"
+            }
           ]
         }
       },
@@ -28,7 +61,10 @@
       "name": "Initialize",
       "type": "n8n-nodes-base.set",
       "typeVersion": 3.4,
-      "position": [200, 0]
+      "position": [
+        200,
+        0
+      ]
     },
     {
       "parameters": {
@@ -39,7 +75,10 @@
       "name": "Get Task 1",
       "type": "n8n-nodes-base.httpRequest",
       "typeVersion": 4.2,
-      "position": [400, -200]
+      "position": [
+        400,
+        -200
+      ]
     },
     {
       "parameters": {
@@ -50,7 +89,10 @@
       "name": "Get Task 2",
       "type": "n8n-nodes-base.httpRequest",
       "typeVersion": 4.2,
-      "position": [400, 0]
+      "position": [
+        400,
+        0
+      ]
     },
     {
       "parameters": {
@@ -61,7 +103,10 @@
       "name": "Get Task 3",
       "type": "n8n-nodes-base.httpRequest",
       "typeVersion": 4.2,
-      "position": [400, 200]
+      "position": [
+        400,
+        200
+      ]
     },
     {
       "parameters": {
@@ -73,19 +118,33 @@
       "name": "Worker Alpha",
       "type": "@n8n/n8n-nodes-langchain.agent",
       "typeVersion": 1.6,
-      "position": [600, -200]
+      "position": [
+        600,
+        -200
+      ]
     },
     {
       "parameters": {
         "model": "claude-3-5-haiku-20241022",
-        "options": {"temperature": 0, "maxTokens": 100}
+        "options": {
+          "temperature": 0,
+          "maxTokens": 100
+        }
       },
       "id": "lm_alpha",
       "name": "LM Alpha",
       "type": "@n8n/n8n-nodes-langchain.lmChatAnthropic",
       "typeVersion": 1.2,
-      "position": [600, 0],
-      "credentials": {"anthropicApi": {"id": "1KM50Mcms9JticwF", "name": "Anthropic API"}}
+      "position": [
+        600,
+        0
+      ],
+      "credentials": {
+        "anthropicApi": {
+          "id": "1KM50Mcms9JticwF",
+          "name": "Anthropic API"
+        }
+      }
     },
     {
       "parameters": {
@@ -97,19 +156,33 @@
       "name": "Worker Beta",
       "type": "@n8n/n8n-nodes-langchain.agent",
       "typeVersion": 1.6,
-      "position": [600, 200]
+      "position": [
+        600,
+        200
+      ]
     },
     {
       "parameters": {
         "model": "claude-3-5-haiku-20241022",
-        "options": {"temperature": 0, "maxTokens": 100}
+        "options": {
+          "temperature": 0,
+          "maxTokens": 100
+        }
       },
       "id": "lm_beta",
       "name": "LM Beta",
       "type": "@n8n/n8n-nodes-langchain.lmChatAnthropic",
       "typeVersion": 1.2,
-      "position": [600, 400],
-      "credentials": {"anthropicApi": {"id": "1KM50Mcms9JticwF", "name": "Anthropic API"}}
+      "position": [
+        600,
+        400
+      ],
+      "credentials": {
+        "anthropicApi": {
+          "id": "1KM50Mcms9JticwF",
+          "name": "Anthropic API"
+        }
+      }
     },
     {
       "parameters": {
@@ -121,19 +194,33 @@
       "name": "Worker Gamma",
       "type": "@n8n/n8n-nodes-langchain.agent",
       "typeVersion": 1.6,
-      "position": [800, 0]
+      "position": [
+        800,
+        0
+      ]
     },
     {
       "parameters": {
         "model": "claude-3-5-haiku-20241022",
-        "options": {"temperature": 0, "maxTokens": 100}
+        "options": {
+          "temperature": 0,
+          "maxTokens": 100
+        }
       },
       "id": "lm_gamma",
       "name": "LM Gamma",
       "type": "@n8n/n8n-nodes-langchain.lmChatAnthropic",
       "typeVersion": 1.2,
-      "position": [800, 200],
-      "credentials": {"anthropicApi": {"id": "1KM50Mcms9JticwF", "name": "Anthropic API"}}
+      "position": [
+        800,
+        200
+      ],
+      "credentials": {
+        "anthropicApi": {
+          "id": "1KM50Mcms9JticwF",
+          "name": "Anthropic API"
+        }
+      }
     },
     {
       "parameters": {
@@ -145,19 +232,33 @@
       "name": "Coordinator Round 1",
       "type": "@n8n/n8n-nodes-langchain.agent",
       "typeVersion": 1.6,
-      "position": [1000, 0]
+      "position": [
+        1000,
+        0
+      ]
     },
     {
       "parameters": {
         "model": "claude-3-5-haiku-20241022",
-        "options": {"temperature": 0, "maxTokens": 100}
+        "options": {
+          "temperature": 0,
+          "maxTokens": 100
+        }
       },
       "id": "lm_coord_1",
       "name": "LM Coord 1",
       "type": "@n8n/n8n-nodes-langchain.lmChatAnthropic",
       "typeVersion": 1.2,
-      "position": [1000, 200],
-      "credentials": {"anthropicApi": {"id": "1KM50Mcms9JticwF", "name": "Anthropic API"}}
+      "position": [
+        1000,
+        200
+      ],
+      "credentials": {
+        "anthropicApi": {
+          "id": "1KM50Mcms9JticwF",
+          "name": "Anthropic API"
+        }
+      }
     },
     {
       "parameters": {
@@ -169,19 +270,33 @@
       "name": "Worker Alpha Round 2",
       "type": "@n8n/n8n-nodes-langchain.agent",
       "typeVersion": 1.6,
-      "position": [1200, 0]
+      "position": [
+        1200,
+        0
+      ]
     },
     {
       "parameters": {
         "model": "claude-3-5-haiku-20241022",
-        "options": {"temperature": 0, "maxTokens": 100}
+        "options": {
+          "temperature": 0,
+          "maxTokens": 100
+        }
       },
       "id": "lm_alpha_2",
       "name": "LM Alpha 2",
       "type": "@n8n/n8n-nodes-langchain.lmChatAnthropic",
       "typeVersion": 1.2,
-      "position": [1200, 200],
-      "credentials": {"anthropicApi": {"id": "1KM50Mcms9JticwF", "name": "Anthropic API"}}
+      "position": [
+        1200,
+        200
+      ],
+      "credentials": {
+        "anthropicApi": {
+          "id": "1KM50Mcms9JticwF",
+          "name": "Anthropic API"
+        }
+      }
     },
     {
       "parameters": {
@@ -193,19 +308,33 @@
       "name": "Coordinator Round 2",
       "type": "@n8n/n8n-nodes-langchain.agent",
       "typeVersion": 1.6,
-      "position": [1400, 0]
+      "position": [
+        1400,
+        0
+      ]
     },
     {
       "parameters": {
         "model": "claude-3-5-haiku-20241022",
-        "options": {"temperature": 0, "maxTokens": 100}
+        "options": {
+          "temperature": 0,
+          "maxTokens": 100
+        }
       },
       "id": "lm_coord_2",
       "name": "LM Coord 2",
       "type": "@n8n/n8n-nodes-langchain.lmChatAnthropic",
       "typeVersion": 1.2,
-      "position": [1400, 200],
-      "credentials": {"anthropicApi": {"id": "1KM50Mcms9JticwF", "name": "Anthropic API"}}
+      "position": [
+        1400,
+        200
+      ],
+      "credentials": {
+        "anthropicApi": {
+          "id": "1KM50Mcms9JticwF",
+          "name": "Anthropic API"
+        }
+      }
     },
     {
       "parameters": {
@@ -213,7 +342,12 @@
         "url": "https://mao-api.fly.dev/api/v1/n8n/webhook",
         "sendHeaders": true,
         "headerParameters": {
-          "parameters": [{"name": "X-N8N-Api-Key", "value": "mao_pmNhfBRfqd5G_YHubK0Jqk9ZHB6ItITkHFYP4ISns9c"}]
+          "parameters": [
+            {
+              "name": "X-N8N-Api-Key",
+              "value": "mao_pmNhfBRfqd5G_YHubK0Jqk9ZHB6ItITkHFYP4ISns9c"
+            }
+          ]
         },
         "sendBody": true,
         "specifyBody": "json",
@@ -224,29 +358,225 @@
       "name": "Send to MAO",
       "type": "n8n-nodes-base.httpRequest",
       "typeVersion": 4.2,
-      "position": [1600, 0]
+      "position": [
+        1600,
+        0
+      ]
     }
   ],
   "connections": {
-    "Webhook": {"main": [[{"node": "Initialize", "type": "main", "index": 0}]]},
-    "Initialize": {"main": [[{"node": "Get Task 1", "type": "main", "index": 0}, {"node": "Get Task 2", "type": "main", "index": 0}, {"node": "Get Task 3", "type": "main", "index": 0}]]},
-    "Get Task 1": {"main": [[{"node": "Worker Alpha", "type": "main", "index": 0}]]},
-    "LM Alpha": {"ai_languageModel": [[{"node": "Worker Alpha", "type": "ai_languageModel", "index": 0}]]},
-    "Get Task 2": {"main": [[{"node": "Worker Beta", "type": "main", "index": 0}]]},
-    "LM Beta": {"ai_languageModel": [[{"node": "Worker Beta", "type": "ai_languageModel", "index": 0}]]},
-    "Get Task 3": {"main": [[{"node": "Worker Gamma", "type": "main", "index": 0}]]},
-    "LM Gamma": {"ai_languageModel": [[{"node": "Worker Gamma", "type": "ai_languageModel", "index": 0}]]},
-    "Worker Alpha": {"main": [[{"node": "Coordinator Round 1", "type": "main", "index": 0}]]},
-    "Worker Beta": {"main": [[{"node": "Coordinator Round 1", "type": "main", "index": 0}]]},
-    "Worker Gamma": {"main": [[{"node": "Coordinator Round 1", "type": "main", "index": 0}]]},
-    "LM Coord 1": {"ai_languageModel": [[{"node": "Coordinator Round 1", "type": "ai_languageModel", "index": 0}]]},
-    "Coordinator Round 1": {"main": [[{"node": "Worker Alpha Round 2", "type": "main", "index": 0}]]},
-    "LM Alpha 2": {"ai_languageModel": [[{"node": "Worker Alpha Round 2", "type": "ai_languageModel", "index": 0}]]},
-    "Worker Alpha Round 2": {"main": [[{"node": "Coordinator Round 2", "type": "main", "index": 0}]]},
-    "LM Coord 2": {"ai_languageModel": [[{"node": "Coordinator Round 2", "type": "ai_languageModel", "index": 0}]]},
-    "Coordinator Round 2": {"main": [[{"node": "Send to MAO", "type": "main", "index": 0}]]}
+    "Webhook": {
+      "main": [
+        [
+          {
+            "node": "Initialize",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Initialize": {
+      "main": [
+        [
+          {
+            "node": "Get Task 1",
+            "type": "main",
+            "index": 0
+          },
+          {
+            "node": "Get Task 2",
+            "type": "main",
+            "index": 0
+          },
+          {
+            "node": "Get Task 3",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Get Task 1": {
+      "main": [
+        [
+          {
+            "node": "Worker Alpha",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "LM Alpha": {
+      "ai_languageModel": [
+        [
+          {
+            "node": "Worker Alpha",
+            "type": "ai_languageModel",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Get Task 2": {
+      "main": [
+        [
+          {
+            "node": "Worker Beta",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "LM Beta": {
+      "ai_languageModel": [
+        [
+          {
+            "node": "Worker Beta",
+            "type": "ai_languageModel",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Get Task 3": {
+      "main": [
+        [
+          {
+            "node": "Worker Gamma",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "LM Gamma": {
+      "ai_languageModel": [
+        [
+          {
+            "node": "Worker Gamma",
+            "type": "ai_languageModel",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Worker Alpha": {
+      "main": [
+        [
+          {
+            "node": "Coordinator Round 1",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Worker Beta": {
+      "main": [
+        [
+          {
+            "node": "Coordinator Round 1",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Worker Gamma": {
+      "main": [
+        [
+          {
+            "node": "Coordinator Round 1",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "LM Coord 1": {
+      "ai_languageModel": [
+        [
+          {
+            "node": "Coordinator Round 1",
+            "type": "ai_languageModel",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Coordinator Round 1": {
+      "main": [
+        [
+          {
+            "node": "Worker Alpha Round 2",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "LM Alpha 2": {
+      "ai_languageModel": [
+        [
+          {
+            "node": "Worker Alpha Round 2",
+            "type": "ai_languageModel",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Worker Alpha Round 2": {
+      "main": [
+        [
+          {
+            "node": "Coordinator Round 2",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "LM Coord 2": {
+      "ai_languageModel": [
+        [
+          {
+            "node": "Coordinator Round 2",
+            "type": "ai_languageModel",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Coordinator Round 2": {
+      "main": [
+        [
+          {
+            "node": "Send to MAO",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Schedule Trigger": {
+      "main": [
+        [
+          {
+            "node": "Initialize",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
   },
-  "settings": {"executionOrder": "v1"},
+  "settings": {
+    "executionOrder": "v1"
+  },
   "meta": {
     "mast_failure_mode": "LOOP-002",
     "mast_category": "LOOP",
@@ -255,6 +585,8 @@
     "expected_detection": "Multi-agent structural loop with parallel workers",
     "agents": 6,
     "nodes": 16,
-    "real_apis": ["JSONPlaceholder"]
+    "real_apis": [
+      "JSONPlaceholder"
+    ]
   }
 }

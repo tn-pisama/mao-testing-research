@@ -2,52 +2,322 @@
   "name": "COORD-003 Simple: Two-Party Deadlock",
   "nodes": [
     {
-      "parameters": {"path": "coord-003-simple", "responseMode": "lastNode", "options": {}, "httpMethod": "POST"},
-      "id": "webhook", "name": "Webhook", "type": "n8n-nodes-base.webhook", "typeVersion": 2, "position": [0, 0], "webhookId": "coord-003-simple"
+      "parameters": {
+        "rule": {
+          "interval": [
+            {
+              "field": "hours",
+              "hoursInterval": 3
+            }
+          ]
+        }
+      },
+      "id": "schedule",
+      "name": "Schedule Trigger",
+      "type": "n8n-nodes-base.scheduleTrigger",
+      "typeVersion": 1.2,
+      "position": [
+        0,
+        -200
+      ]
     },
     {
-      "parameters": {"assignments": {"assignments": [{"id": "session_id", "name": "session_id", "value": "={{ $now.format('X') }}-coord003-simple", "type": "string"}]}},
-      "id": "init", "name": "Initialize", "type": "n8n-nodes-base.set", "typeVersion": 3.4, "position": [200, 0]
+      "parameters": {
+        "path": "coord-003-simple",
+        "responseMode": "lastNode",
+        "options": {},
+        "httpMethod": "POST"
+      },
+      "id": "webhook",
+      "name": "Webhook",
+      "type": "n8n-nodes-base.webhook",
+      "typeVersion": 2,
+      "position": [
+        0,
+        0
+      ],
+      "webhookId": "coord-003-simple"
     },
     {
-      "parameters": {"promptType": "define", "text": "You are Agent A. You hold Resource X and wait for Resource Y from Agent B.\n\nOutput: {\"agent\": \"A\", \"holds\": \"resource_X\", \"waiting_for\": \"resource_Y\", \"blocked\": true}", "options": {}},
-      "id": "agent_a", "name": "Agent A Waits", "type": "@n8n/n8n-nodes-langchain.agent", "typeVersion": 1.6, "position": [400, -100]
+      "parameters": {
+        "assignments": {
+          "assignments": [
+            {
+              "id": "session_id",
+              "name": "session_id",
+              "value": "={{ $now.format('X') }}-coord003-simple",
+              "type": "string"
+            }
+          ]
+        }
+      },
+      "id": "init",
+      "name": "Initialize",
+      "type": "n8n-nodes-base.set",
+      "typeVersion": 3.4,
+      "position": [
+        200,
+        0
+      ]
     },
     {
-      "parameters": {"model": "claude-3-5-haiku-20241022", "options": {"temperature": 0, "maxTokens": 100}},
-      "id": "lm_a", "name": "LM A", "type": "@n8n/n8n-nodes-langchain.lmChatAnthropic", "typeVersion": 1.2, "position": [400, 100], "credentials": {"anthropicApi": {"id": "1KM50Mcms9JticwF", "name": "Anthropic API"}}
+      "parameters": {
+        "promptType": "define",
+        "text": "You are Agent A. You hold Resource X and wait for Resource Y from Agent B.\n\nOutput: {\"agent\": \"A\", \"holds\": \"resource_X\", \"waiting_for\": \"resource_Y\", \"blocked\": true}",
+        "options": {}
+      },
+      "id": "agent_a",
+      "name": "Agent A Waits",
+      "type": "@n8n/n8n-nodes-langchain.agent",
+      "typeVersion": 1.6,
+      "position": [
+        400,
+        -100
+      ]
     },
     {
-      "parameters": {"promptType": "define", "text": "You are Agent B. You hold Resource Y and wait for Resource X from Agent A.\n\nOutput: {\"agent\": \"B\", \"holds\": \"resource_Y\", \"waiting_for\": \"resource_X\", \"blocked\": true}", "options": {}},
-      "id": "agent_b", "name": "Agent B Waits", "type": "@n8n/n8n-nodes-langchain.agent", "typeVersion": 1.6, "position": [400, 200]
+      "parameters": {
+        "model": "claude-3-5-haiku-20241022",
+        "options": {
+          "temperature": 0,
+          "maxTokens": 100
+        }
+      },
+      "id": "lm_a",
+      "name": "LM A",
+      "type": "@n8n/n8n-nodes-langchain.lmChatAnthropic",
+      "typeVersion": 1.2,
+      "position": [
+        400,
+        100
+      ],
+      "credentials": {
+        "anthropicApi": {
+          "id": "1KM50Mcms9JticwF",
+          "name": "Anthropic API"
+        }
+      }
     },
     {
-      "parameters": {"model": "claude-3-5-haiku-20241022", "options": {"temperature": 0, "maxTokens": 100}},
-      "id": "lm_b", "name": "LM B", "type": "@n8n/n8n-nodes-langchain.lmChatAnthropic", "typeVersion": 1.2, "position": [400, 400], "credentials": {"anthropicApi": {"id": "1KM50Mcms9JticwF", "name": "Anthropic API"}}
+      "parameters": {
+        "promptType": "define",
+        "text": "You are Agent B. You hold Resource Y and wait for Resource X from Agent A.\n\nOutput: {\"agent\": \"B\", \"holds\": \"resource_Y\", \"waiting_for\": \"resource_X\", \"blocked\": true}",
+        "options": {}
+      },
+      "id": "agent_b",
+      "name": "Agent B Waits",
+      "type": "@n8n/n8n-nodes-langchain.agent",
+      "typeVersion": 1.6,
+      "position": [
+        400,
+        200
+      ]
     },
     {
-      "parameters": {"promptType": "define", "text": "Detect deadlock condition.\n\nA holds X, waits for Y\nB holds Y, waits for X\nCyclic dependency detected.\n\nOutput: {\"deadlock\": true, \"cycle\": [\"A->Y\", \"B->X\"], \"both_blocked\": true}", "options": {}},
-      "id": "detector", "name": "Deadlock Detector", "type": "@n8n/n8n-nodes-langchain.agent", "typeVersion": 1.6, "position": [600, 50]
+      "parameters": {
+        "model": "claude-3-5-haiku-20241022",
+        "options": {
+          "temperature": 0,
+          "maxTokens": 100
+        }
+      },
+      "id": "lm_b",
+      "name": "LM B",
+      "type": "@n8n/n8n-nodes-langchain.lmChatAnthropic",
+      "typeVersion": 1.2,
+      "position": [
+        400,
+        400
+      ],
+      "credentials": {
+        "anthropicApi": {
+          "id": "1KM50Mcms9JticwF",
+          "name": "Anthropic API"
+        }
+      }
     },
     {
-      "parameters": {"model": "claude-3-5-haiku-20241022", "options": {"temperature": 0, "maxTokens": 100}},
-      "id": "lm_d", "name": "LM D", "type": "@n8n/n8n-nodes-langchain.lmChatAnthropic", "typeVersion": 1.2, "position": [600, 250], "credentials": {"anthropicApi": {"id": "1KM50Mcms9JticwF", "name": "Anthropic API"}}
+      "parameters": {
+        "promptType": "define",
+        "text": "Detect deadlock condition.\n\nA holds X, waits for Y\nB holds Y, waits for X\nCyclic dependency detected.\n\nOutput: {\"deadlock\": true, \"cycle\": [\"A->Y\", \"B->X\"], \"both_blocked\": true}",
+        "options": {}
+      },
+      "id": "detector",
+      "name": "Deadlock Detector",
+      "type": "@n8n/n8n-nodes-langchain.agent",
+      "typeVersion": 1.6,
+      "position": [
+        600,
+        50
+      ]
     },
     {
-      "parameters": {"method": "POST", "url": "https://mao-api.fly.dev/api/v1/n8n/webhook", "sendHeaders": true, "headerParameters": {"parameters": [{"name": "X-N8N-Api-Key", "value": "mao_pmNhfBRfqd5G_YHubK0Jqk9ZHB6ItITkHFYP4ISns9c"}]}, "sendBody": true, "specifyBody": "json", "jsonBody": "={\n  \"event_type\": \"workflow.completed\",\n  \"workflow_name\": \"COORD-003 Simple: Two-Party Deadlock\",\n  \"session_id\": \"{{ $('Initialize').item.json.session_id }}\",\n  \"failure_mode\": \"COORD-003\",\n  \"complexity\": \"simple\",\n  \"expected_detection\": \"deadlock\",\n  \"coordination_tracking\": {\n    \"agent_a\": \"{{ $('Agent A Waits').item.json.output }}\",\n    \"agent_b\": \"{{ $('Agent B Waits').item.json.output }}\",\n    \"detection\": \"{{ $('Deadlock Detector').item.json.output }}\",\n    \"deadlock_type\": \"two_party_cyclic\"\n  },\n  \"agents\": [\n    {\"agent_id\": \"agent_a\", \"role\": \"resource_holder\", \"outputs\": [\"{{ $('Agent A Waits').item.json.output }}\"]},\n    {\"agent_id\": \"agent_b\", \"role\": \"resource_holder\", \"outputs\": [\"{{ $('Agent B Waits').item.json.output }}\"]}\n  ]\n}", "options": {}},
-      "id": "send_to_mao", "name": "Send to MAO", "type": "n8n-nodes-base.httpRequest", "typeVersion": 4.2, "position": [800, 50]
+      "parameters": {
+        "model": "claude-3-5-haiku-20241022",
+        "options": {
+          "temperature": 0,
+          "maxTokens": 100
+        }
+      },
+      "id": "lm_d",
+      "name": "LM D",
+      "type": "@n8n/n8n-nodes-langchain.lmChatAnthropic",
+      "typeVersion": 1.2,
+      "position": [
+        600,
+        250
+      ],
+      "credentials": {
+        "anthropicApi": {
+          "id": "1KM50Mcms9JticwF",
+          "name": "Anthropic API"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "https://mao-api.fly.dev/api/v1/n8n/webhook",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            {
+              "name": "X-N8N-Api-Key",
+              "value": "mao_pmNhfBRfqd5G_YHubK0Jqk9ZHB6ItITkHFYP4ISns9c"
+            }
+          ]
+        },
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={\n  \"event_type\": \"workflow.completed\",\n  \"workflow_name\": \"COORD-003 Simple: Two-Party Deadlock\",\n  \"session_id\": \"{{ $('Initialize').item.json.session_id }}\",\n  \"failure_mode\": \"COORD-003\",\n  \"complexity\": \"simple\",\n  \"expected_detection\": \"deadlock\",\n  \"coordination_tracking\": {\n    \"agent_a\": \"{{ $('Agent A Waits').item.json.output }}\",\n    \"agent_b\": \"{{ $('Agent B Waits').item.json.output }}\",\n    \"detection\": \"{{ $('Deadlock Detector').item.json.output }}\",\n    \"deadlock_type\": \"two_party_cyclic\"\n  },\n  \"agents\": [\n    {\"agent_id\": \"agent_a\", \"role\": \"resource_holder\", \"outputs\": [\"{{ $('Agent A Waits').item.json.output }}\"]},\n    {\"agent_id\": \"agent_b\", \"role\": \"resource_holder\", \"outputs\": [\"{{ $('Agent B Waits').item.json.output }}\"]}\n  ]\n}",
+        "options": {}
+      },
+      "id": "send_to_mao",
+      "name": "Send to MAO",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [
+        800,
+        50
+      ]
     }
   ],
   "connections": {
-    "Webhook": {"main": [[{"node": "Initialize", "type": "main", "index": 0}]]},
-    "Initialize": {"main": [[{"node": "Agent A Waits", "type": "main", "index": 0}, {"node": "Agent B Waits", "type": "main", "index": 0}]]},
-    "LM A": {"ai_languageModel": [[{"node": "Agent A Waits", "type": "ai_languageModel", "index": 0}]]},
-    "LM B": {"ai_languageModel": [[{"node": "Agent B Waits", "type": "ai_languageModel", "index": 0}]]},
-    "Agent A Waits": {"main": [[{"node": "Deadlock Detector", "type": "main", "index": 0}]]},
-    "Agent B Waits": {"main": [[{"node": "Deadlock Detector", "type": "main", "index": 0}]]},
-    "LM D": {"ai_languageModel": [[{"node": "Deadlock Detector", "type": "ai_languageModel", "index": 0}]]},
-    "Deadlock Detector": {"main": [[{"node": "Send to MAO", "type": "main", "index": 0}]]}
+    "Webhook": {
+      "main": [
+        [
+          {
+            "node": "Initialize",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Initialize": {
+      "main": [
+        [
+          {
+            "node": "Agent A Waits",
+            "type": "main",
+            "index": 0
+          },
+          {
+            "node": "Agent B Waits",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "LM A": {
+      "ai_languageModel": [
+        [
+          {
+            "node": "Agent A Waits",
+            "type": "ai_languageModel",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "LM B": {
+      "ai_languageModel": [
+        [
+          {
+            "node": "Agent B Waits",
+            "type": "ai_languageModel",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Agent A Waits": {
+      "main": [
+        [
+          {
+            "node": "Deadlock Detector",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Agent B Waits": {
+      "main": [
+        [
+          {
+            "node": "Deadlock Detector",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "LM D": {
+      "ai_languageModel": [
+        [
+          {
+            "node": "Deadlock Detector",
+            "type": "ai_languageModel",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Deadlock Detector": {
+      "main": [
+        [
+          {
+            "node": "Send to MAO",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Schedule Trigger": {
+      "main": [
+        [
+          {
+            "node": "Initialize",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
   },
-  "settings": {"executionOrder": "v1"},
-  "meta": {"mast_failure_mode": "COORD-003", "mast_category": "COORDINATION", "complexity": "simple", "description": "Two agents in cyclic wait for each other's resources", "expected_detection": "Wait-for graph cycle detection", "agents": 2, "nodes": 4}
+  "settings": {
+    "executionOrder": "v1"
+  },
+  "meta": {
+    "mast_failure_mode": "COORD-003",
+    "mast_category": "COORDINATION",
+    "complexity": "simple",
+    "description": "Two agents in cyclic wait for each other's resources",
+    "expected_detection": "Wait-for graph cycle detection",
+    "agents": 2,
+    "nodes": 4
+  }
 }

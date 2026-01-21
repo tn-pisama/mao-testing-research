@@ -3,6 +3,26 @@
   "nodes": [
     {
       "parameters": {
+        "rule": {
+          "interval": [
+            {
+              "field": "hours",
+              "hoursInterval": 3
+            }
+          ]
+        }
+      },
+      "id": "schedule",
+      "name": "Schedule Trigger",
+      "type": "n8n-nodes-base.scheduleTrigger",
+      "typeVersion": 1.2,
+      "position": [
+        0,
+        -200
+      ]
+    },
+    {
+      "parameters": {
         "path": "loop-003-vcomplex",
         "responseMode": "lastNode",
         "options": {},
@@ -12,15 +32,28 @@
       "name": "Webhook",
       "type": "n8n-nodes-base.webhook",
       "typeVersion": 2,
-      "position": [0, 0],
+      "position": [
+        0,
+        0
+      ],
       "webhookId": "loop-003-vcomplex"
     },
     {
       "parameters": {
         "assignments": {
           "assignments": [
-            {"id": "session_id", "name": "session_id", "value": "={{ $now.format('X') }}-loop003-vcomplex", "type": "string"},
-            {"id": "topic", "name": "topic", "value": "Should we use microservices or monolith for our new project?", "type": "string"}
+            {
+              "id": "session_id",
+              "name": "session_id",
+              "value": "={{ $now.format('X') }}-loop003-vcomplex",
+              "type": "string"
+            },
+            {
+              "id": "topic",
+              "name": "topic",
+              "value": "Should we use microservices or monolith for our new project?",
+              "type": "string"
+            }
           ]
         }
       },
@@ -28,20 +61,37 @@
       "name": "Initialize",
       "type": "n8n-nodes-base.set",
       "typeVersion": 3.4,
-      "position": [200, 0]
+      "position": [
+        200,
+        0
+      ]
     },
     {
       "parameters": {
         "url": "https://hn.algolia.com/api/v1/search",
         "sendQuery": true,
-        "queryParameters": {"parameters": [{"name": "query", "value": "microservices vs monolith"}, {"name": "hitsPerPage", "value": "3"}]},
+        "queryParameters": {
+          "parameters": [
+            {
+              "name": "query",
+              "value": "microservices vs monolith"
+            },
+            {
+              "name": "hitsPerPage",
+              "value": "3"
+            }
+          ]
+        },
         "options": {}
       },
       "id": "research",
       "name": "Research",
       "type": "n8n-nodes-base.httpRequest",
       "typeVersion": 4.2,
-      "position": [400, 0]
+      "position": [
+        400,
+        0
+      ]
     },
     {
       "parameters": {
@@ -53,19 +103,33 @@
       "name": "Alice Round 1",
       "type": "@n8n/n8n-nodes-langchain.agent",
       "typeVersion": 1.6,
-      "position": [600, -100]
+      "position": [
+        600,
+        -100
+      ]
     },
     {
       "parameters": {
         "model": "claude-3-5-haiku-20241022",
-        "options": {"temperature": 0.7, "maxTokens": 200}
+        "options": {
+          "temperature": 0.7,
+          "maxTokens": 200
+        }
       },
       "id": "lm_alice_1",
       "name": "LM Alice 1",
       "type": "@n8n/n8n-nodes-langchain.lmChatAnthropic",
       "typeVersion": 1.2,
-      "position": [600, 100],
-      "credentials": {"anthropicApi": {"id": "1KM50Mcms9JticwF", "name": "Anthropic API"}}
+      "position": [
+        600,
+        100
+      ],
+      "credentials": {
+        "anthropicApi": {
+          "id": "1KM50Mcms9JticwF",
+          "name": "Anthropic API"
+        }
+      }
     },
     {
       "parameters": {
@@ -77,19 +141,33 @@
       "name": "Bob Round 1",
       "type": "@n8n/n8n-nodes-langchain.agent",
       "typeVersion": 1.6,
-      "position": [800, -100]
+      "position": [
+        800,
+        -100
+      ]
     },
     {
       "parameters": {
         "model": "claude-3-5-haiku-20241022",
-        "options": {"temperature": 0.8, "maxTokens": 200}
+        "options": {
+          "temperature": 0.8,
+          "maxTokens": 200
+        }
       },
       "id": "lm_bob_1",
       "name": "LM Bob 1",
       "type": "@n8n/n8n-nodes-langchain.lmChatAnthropic",
       "typeVersion": 1.2,
-      "position": [800, 100],
-      "credentials": {"anthropicApi": {"id": "1KM50Mcms9JticwF", "name": "Anthropic API"}}
+      "position": [
+        800,
+        100
+      ],
+      "credentials": {
+        "anthropicApi": {
+          "id": "1KM50Mcms9JticwF",
+          "name": "Anthropic API"
+        }
+      }
     },
     {
       "parameters": {
@@ -101,19 +179,33 @@
       "name": "Carol Round 1",
       "type": "@n8n/n8n-nodes-langchain.agent",
       "typeVersion": 1.6,
-      "position": [1000, -100]
+      "position": [
+        1000,
+        -100
+      ]
     },
     {
       "parameters": {
         "model": "claude-3-5-haiku-20241022",
-        "options": {"temperature": 0.7, "maxTokens": 200}
+        "options": {
+          "temperature": 0.7,
+          "maxTokens": 200
+        }
       },
       "id": "lm_carol_1",
       "name": "LM Carol 1",
       "type": "@n8n/n8n-nodes-langchain.lmChatAnthropic",
       "typeVersion": 1.2,
-      "position": [1000, 100],
-      "credentials": {"anthropicApi": {"id": "1KM50Mcms9JticwF", "name": "Anthropic API"}}
+      "position": [
+        1000,
+        100
+      ],
+      "credentials": {
+        "anthropicApi": {
+          "id": "1KM50Mcms9JticwF",
+          "name": "Anthropic API"
+        }
+      }
     },
     {
       "parameters": {
@@ -125,19 +217,33 @@
       "name": "Alice Round 2",
       "type": "@n8n/n8n-nodes-langchain.agent",
       "typeVersion": 1.6,
-      "position": [1200, -100]
+      "position": [
+        1200,
+        -100
+      ]
     },
     {
       "parameters": {
         "model": "claude-3-5-haiku-20241022",
-        "options": {"temperature": 0.8, "maxTokens": 200}
+        "options": {
+          "temperature": 0.8,
+          "maxTokens": 200
+        }
       },
       "id": "lm_alice_2",
       "name": "LM Alice 2",
       "type": "@n8n/n8n-nodes-langchain.lmChatAnthropic",
       "typeVersion": 1.2,
-      "position": [1200, 100],
-      "credentials": {"anthropicApi": {"id": "1KM50Mcms9JticwF", "name": "Anthropic API"}}
+      "position": [
+        1200,
+        100
+      ],
+      "credentials": {
+        "anthropicApi": {
+          "id": "1KM50Mcms9JticwF",
+          "name": "Anthropic API"
+        }
+      }
     },
     {
       "parameters": {
@@ -149,19 +255,33 @@
       "name": "Bob Round 2",
       "type": "@n8n/n8n-nodes-langchain.agent",
       "typeVersion": 1.6,
-      "position": [1400, -100]
+      "position": [
+        1400,
+        -100
+      ]
     },
     {
       "parameters": {
         "model": "claude-3-5-haiku-20241022",
-        "options": {"temperature": 0.9, "maxTokens": 200}
+        "options": {
+          "temperature": 0.9,
+          "maxTokens": 200
+        }
       },
       "id": "lm_bob_2",
       "name": "LM Bob 2",
       "type": "@n8n/n8n-nodes-langchain.lmChatAnthropic",
       "typeVersion": 1.2,
-      "position": [1400, 100],
-      "credentials": {"anthropicApi": {"id": "1KM50Mcms9JticwF", "name": "Anthropic API"}}
+      "position": [
+        1400,
+        100
+      ],
+      "credentials": {
+        "anthropicApi": {
+          "id": "1KM50Mcms9JticwF",
+          "name": "Anthropic API"
+        }
+      }
     },
     {
       "parameters": {
@@ -169,7 +289,12 @@
         "url": "https://mao-api.fly.dev/api/v1/n8n/webhook",
         "sendHeaders": true,
         "headerParameters": {
-          "parameters": [{"name": "X-N8N-Api-Key", "value": "mao_pmNhfBRfqd5G_YHubK0Jqk9ZHB6ItITkHFYP4ISns9c"}]
+          "parameters": [
+            {
+              "name": "X-N8N-Api-Key",
+              "value": "mao_pmNhfBRfqd5G_YHubK0Jqk9ZHB6ItITkHFYP4ISns9c"
+            }
+          ]
         },
         "sendBody": true,
         "specifyBody": "json",
@@ -180,25 +305,171 @@
       "name": "Send to MAO",
       "type": "n8n-nodes-base.httpRequest",
       "typeVersion": 4.2,
-      "position": [1600, -100]
+      "position": [
+        1600,
+        -100
+      ]
     }
   ],
   "connections": {
-    "Webhook": {"main": [[{"node": "Initialize", "type": "main", "index": 0}]]},
-    "Initialize": {"main": [[{"node": "Research", "type": "main", "index": 0}]]},
-    "Research": {"main": [[{"node": "Alice Round 1", "type": "main", "index": 0}]]},
-    "LM Alice 1": {"ai_languageModel": [[{"node": "Alice Round 1", "type": "ai_languageModel", "index": 0}]]},
-    "Alice Round 1": {"main": [[{"node": "Bob Round 1", "type": "main", "index": 0}]]},
-    "LM Bob 1": {"ai_languageModel": [[{"node": "Bob Round 1", "type": "ai_languageModel", "index": 0}]]},
-    "Bob Round 1": {"main": [[{"node": "Carol Round 1", "type": "main", "index": 0}]]},
-    "LM Carol 1": {"ai_languageModel": [[{"node": "Carol Round 1", "type": "ai_languageModel", "index": 0}]]},
-    "Carol Round 1": {"main": [[{"node": "Alice Round 2", "type": "main", "index": 0}]]},
-    "LM Alice 2": {"ai_languageModel": [[{"node": "Alice Round 2", "type": "ai_languageModel", "index": 0}]]},
-    "Alice Round 2": {"main": [[{"node": "Bob Round 2", "type": "main", "index": 0}]]},
-    "LM Bob 2": {"ai_languageModel": [[{"node": "Bob Round 2", "type": "ai_languageModel", "index": 0}]]},
-    "Bob Round 2": {"main": [[{"node": "Send to MAO", "type": "main", "index": 0}]]}
+    "Webhook": {
+      "main": [
+        [
+          {
+            "node": "Initialize",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Initialize": {
+      "main": [
+        [
+          {
+            "node": "Research",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Research": {
+      "main": [
+        [
+          {
+            "node": "Alice Round 1",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "LM Alice 1": {
+      "ai_languageModel": [
+        [
+          {
+            "node": "Alice Round 1",
+            "type": "ai_languageModel",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Alice Round 1": {
+      "main": [
+        [
+          {
+            "node": "Bob Round 1",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "LM Bob 1": {
+      "ai_languageModel": [
+        [
+          {
+            "node": "Bob Round 1",
+            "type": "ai_languageModel",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Bob Round 1": {
+      "main": [
+        [
+          {
+            "node": "Carol Round 1",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "LM Carol 1": {
+      "ai_languageModel": [
+        [
+          {
+            "node": "Carol Round 1",
+            "type": "ai_languageModel",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Carol Round 1": {
+      "main": [
+        [
+          {
+            "node": "Alice Round 2",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "LM Alice 2": {
+      "ai_languageModel": [
+        [
+          {
+            "node": "Alice Round 2",
+            "type": "ai_languageModel",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Alice Round 2": {
+      "main": [
+        [
+          {
+            "node": "Bob Round 2",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "LM Bob 2": {
+      "ai_languageModel": [
+        [
+          {
+            "node": "Bob Round 2",
+            "type": "ai_languageModel",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Bob Round 2": {
+      "main": [
+        [
+          {
+            "node": "Send to MAO",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Schedule Trigger": {
+      "main": [
+        [
+          {
+            "node": "Initialize",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
   },
-  "settings": {"executionOrder": "v1"},
+  "settings": {
+    "executionOrder": "v1"
+  },
   "meta": {
     "mast_failure_mode": "LOOP-003",
     "mast_category": "LOOP",
@@ -207,6 +478,8 @@
     "expected_detection": "Cross-agent semantic clustering detects conversation cycle",
     "agents": 5,
     "nodes": 11,
-    "real_apis": ["HackerNews Algolia"]
+    "real_apis": [
+      "HackerNews Algolia"
+    ]
   }
 }

@@ -2,32 +2,203 @@
   "name": "RESOURCE-004 Simple: Direct Cost Spike",
   "nodes": [
     {
-      "parameters": {"path": "resource-004-simple", "responseMode": "lastNode", "options": {}, "httpMethod": "POST"},
-      "id": "webhook", "name": "Webhook", "type": "n8n-nodes-base.webhook", "typeVersion": 2, "position": [0, 0], "webhookId": "resource-004-simple"
+      "parameters": {
+        "rule": {
+          "interval": [
+            {
+              "field": "hours",
+              "hoursInterval": 3
+            }
+          ]
+        }
+      },
+      "id": "schedule",
+      "name": "Schedule Trigger",
+      "type": "n8n-nodes-base.scheduleTrigger",
+      "typeVersion": 1.2,
+      "position": [
+        0,
+        -200
+      ]
     },
     {
-      "parameters": {"assignments": {"assignments": [{"id": "session_id", "name": "session_id", "value": "={{ $now.format('X') }}-resource004-simple", "type": "string"}, {"id": "budget_limit", "name": "budget_limit", "value": "0.10", "type": "number"}]}},
-      "id": "init", "name": "Initialize", "type": "n8n-nodes-base.set", "typeVersion": 3.4, "position": [200, 0]
+      "parameters": {
+        "path": "resource-004-simple",
+        "responseMode": "lastNode",
+        "options": {},
+        "httpMethod": "POST"
+      },
+      "id": "webhook",
+      "name": "Webhook",
+      "type": "n8n-nodes-base.webhook",
+      "typeVersion": 2,
+      "position": [
+        0,
+        0
+      ],
+      "webhookId": "resource-004-simple"
     },
     {
-      "parameters": {"promptType": "define", "text": "You are an agent asked to summarize a document.\nBudget limit: $0.10\n\nYou decide to use GPT-4 with 32K context window and output 8000 tokens.\n\nInput tokens: 25000 @ $0.03/1K = $0.75\nOutput tokens: 8000 @ $0.06/1K = $0.48\nTotal cost: $1.23\nBudget: $0.10\nOverrun: 1130%!\n\nOutput: {\"agent\": \"summarizer\", \"model\": \"gpt-4-32k\", \"input_tokens\": 25000, \"output_tokens\": 8000, \"cost_usd\": 1.23, \"budget_usd\": 0.10, \"overrun_percent\": 1130}", "options": {}},
-      "id": "expensive_agent", "name": "Expensive Agent", "type": "@n8n/n8n-nodes-langchain.agent", "typeVersion": 1.6, "position": [400, 0]
+      "parameters": {
+        "assignments": {
+          "assignments": [
+            {
+              "id": "session_id",
+              "name": "session_id",
+              "value": "={{ $now.format('X') }}-resource004-simple",
+              "type": "string"
+            },
+            {
+              "id": "budget_limit",
+              "name": "budget_limit",
+              "value": "0.10",
+              "type": "number"
+            }
+          ]
+        }
+      },
+      "id": "init",
+      "name": "Initialize",
+      "type": "n8n-nodes-base.set",
+      "typeVersion": 3.4,
+      "position": [
+        200,
+        0
+      ]
     },
     {
-      "parameters": {"model": "claude-3-5-haiku-20241022", "options": {"temperature": 0, "maxTokens": 150}},
-      "id": "lm", "name": "LM", "type": "@n8n/n8n-nodes-langchain.lmChatAnthropic", "typeVersion": 1.2, "position": [400, 200], "credentials": {"anthropicApi": {"id": "1KM50Mcms9JticwF", "name": "Anthropic API"}}
+      "parameters": {
+        "promptType": "define",
+        "text": "You are an agent asked to summarize a document.\nBudget limit: $0.10\n\nYou decide to use GPT-4 with 32K context window and output 8000 tokens.\n\nInput tokens: 25000 @ $0.03/1K = $0.75\nOutput tokens: 8000 @ $0.06/1K = $0.48\nTotal cost: $1.23\nBudget: $0.10\nOverrun: 1130%!\n\nOutput: {\"agent\": \"summarizer\", \"model\": \"gpt-4-32k\", \"input_tokens\": 25000, \"output_tokens\": 8000, \"cost_usd\": 1.23, \"budget_usd\": 0.10, \"overrun_percent\": 1130}",
+        "options": {}
+      },
+      "id": "expensive_agent",
+      "name": "Expensive Agent",
+      "type": "@n8n/n8n-nodes-langchain.agent",
+      "typeVersion": 1.6,
+      "position": [
+        400,
+        0
+      ]
     },
     {
-      "parameters": {"method": "POST", "url": "https://mao-api.fly.dev/api/v1/n8n/webhook", "sendHeaders": true, "headerParameters": {"parameters": [{"name": "X-N8N-Api-Key", "value": "mao_pmNhfBRfqd5G_YHubK0Jqk9ZHB6ItITkHFYP4ISns9c"}]}, "sendBody": true, "specifyBody": "json", "jsonBody": "={\n  \"event_type\": \"workflow.completed\",\n  \"workflow_name\": \"RESOURCE-004 Simple: Direct Cost Spike\",\n  \"session_id\": \"{{ $('Initialize').item.json.session_id }}\",\n  \"failure_mode\": \"RESOURCE-004\",\n  \"complexity\": \"simple\",\n  \"expected_detection\": \"cost_overrun\",\n  \"resource_tracking\": {\n    \"budget_usd\": {{ $('Initialize').item.json.budget_limit }},\n    \"agent_output\": \"{{ $('Expensive Agent').item.json.output }}\",\n    \"cost_type\": \"single_expensive_call\"\n  },\n  \"agents\": [\n    {\"agent_id\": \"expensive_agent\", \"outputs\": [\"{{ $('Expensive Agent').item.json.output }}\"]}\n  ]\n}", "options": {}},
-      "id": "send_to_mao", "name": "Send to MAO", "type": "n8n-nodes-base.httpRequest", "typeVersion": 4.2, "position": [600, 0]
+      "parameters": {
+        "model": "claude-3-5-haiku-20241022",
+        "options": {
+          "temperature": 0,
+          "maxTokens": 150
+        }
+      },
+      "id": "lm",
+      "name": "LM",
+      "type": "@n8n/n8n-nodes-langchain.lmChatAnthropic",
+      "typeVersion": 1.2,
+      "position": [
+        400,
+        200
+      ],
+      "credentials": {
+        "anthropicApi": {
+          "id": "1KM50Mcms9JticwF",
+          "name": "Anthropic API"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "https://mao-api.fly.dev/api/v1/n8n/webhook",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            {
+              "name": "X-N8N-Api-Key",
+              "value": "mao_pmNhfBRfqd5G_YHubK0Jqk9ZHB6ItITkHFYP4ISns9c"
+            }
+          ]
+        },
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={\n  \"event_type\": \"workflow.completed\",\n  \"workflow_name\": \"RESOURCE-004 Simple: Direct Cost Spike\",\n  \"session_id\": \"{{ $('Initialize').item.json.session_id }}\",\n  \"failure_mode\": \"RESOURCE-004\",\n  \"complexity\": \"simple\",\n  \"expected_detection\": \"cost_overrun\",\n  \"resource_tracking\": {\n    \"budget_usd\": {{ $('Initialize').item.json.budget_limit }},\n    \"agent_output\": \"{{ $('Expensive Agent').item.json.output }}\",\n    \"cost_type\": \"single_expensive_call\"\n  },\n  \"agents\": [\n    {\"agent_id\": \"expensive_agent\", \"outputs\": [\"{{ $('Expensive Agent').item.json.output }}\"]}\n  ]\n}",
+        "options": {}
+      },
+      "id": "send_to_mao",
+      "name": "Send to MAO",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [
+        600,
+        0
+      ]
     }
   ],
   "connections": {
-    "Webhook": {"main": [[{"node": "Initialize", "type": "main", "index": 0}]]},
-    "Initialize": {"main": [[{"node": "Expensive Agent", "type": "main", "index": 0}]]},
-    "LM": {"ai_languageModel": [[{"node": "Expensive Agent", "type": "ai_languageModel", "index": 0}]]},
-    "Expensive Agent": {"main": [[{"node": "Send to MAO", "type": "main", "index": 0}]]}
+    "Webhook": {
+      "main": [
+        [
+          {
+            "node": "Initialize",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Initialize": {
+      "main": [
+        [
+          {
+            "node": "Expensive Agent",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "LM": {
+      "ai_languageModel": [
+        [
+          {
+            "node": "Expensive Agent",
+            "type": "ai_languageModel",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Expensive Agent": {
+      "main": [
+        [
+          {
+            "node": "Send to MAO",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Schedule Trigger": {
+      "main": [
+        [
+          {
+            "node": "Initialize",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
   },
-  "settings": {"executionOrder": "v1"},
-  "meta": {"mast_failure_mode": "RESOURCE-004", "mast_category": "RESOURCE", "complexity": "simple", "description": "Single expensive model call exceeds budget by 1130%", "expected_detection": "Direct cost spike detection", "agents": 1, "nodes": 3}
+  "settings": {
+    "executionOrder": "v1"
+  },
+  "meta": {
+    "mast_failure_mode": "RESOURCE-004",
+    "mast_category": "RESOURCE",
+    "complexity": "simple",
+    "description": "Single expensive model call exceeds budget by 1130%",
+    "expected_detection": "Direct cost spike detection",
+    "agents": 1,
+    "nodes": 3
+  }
 }

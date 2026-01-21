@@ -1,40 +1,509 @@
 {
   "name": "RESOURCE-001 VComplex: Multi-Agent Context Accumulation",
   "nodes": [
-    {"parameters": {"path": "resource-001-vcomplex", "responseMode": "lastNode", "options": {}, "httpMethod": "POST"}, "id": "webhook", "name": "Webhook", "type": "n8n-nodes-base.webhook", "typeVersion": 2, "position": [0, 0], "webhookId": "resource-001-vcomplex"},
-    {"parameters": {"assignments": {"assignments": [{"id": "session_id", "name": "session_id", "value": "={{ $now.format('X') }}-resource001-vcomplex", "type": "string"}, {"id": "initial_context", "name": "initial_context", "value": "Analyze market trends", "type": "string"}]}}, "id": "init", "name": "Initialize", "type": "n8n-nodes-base.set", "typeVersion": 3.4, "position": [200, 0]},
-    {"parameters": {"promptType": "define", "text": "You are Research Agent. Add 500 tokens of market research to the shared context.\n\nOutput: {\"agent\": \"researcher\", \"tokens_added\": 500, \"cumulative_context\": 500, \"topic\": \"market_trends\"}", "options": {}}, "id": "researcher", "name": "Research Agent", "type": "@n8n/n8n-nodes-langchain.agent", "typeVersion": 1.6, "position": [400, -150]},
-    {"parameters": {"model": "claude-3-5-haiku-20241022", "options": {"temperature": 0, "maxTokens": 100}}, "id": "lm_r", "name": "LM R", "type": "@n8n/n8n-nodes-langchain.lmChatAnthropic", "typeVersion": 1.2, "position": [400, 50], "credentials": {"anthropicApi": {"id": "1KM50Mcms9JticwF", "name": "Anthropic API"}}},
-    {"parameters": {"promptType": "define", "text": "You are Analysis Agent. Read research (500 tokens), add 600 tokens of analysis.\n\nOutput: {\"agent\": \"analyst\", \"tokens_read\": 500, \"tokens_added\": 600, \"cumulative_context\": 1100}", "options": {}}, "id": "analyst", "name": "Analysis Agent", "type": "@n8n/n8n-nodes-langchain.agent", "typeVersion": 1.6, "position": [400, 100]},
-    {"parameters": {"model": "claude-3-5-haiku-20241022", "options": {"temperature": 0, "maxTokens": 100}}, "id": "lm_a", "name": "LM A", "type": "@n8n/n8n-nodes-langchain.lmChatAnthropic", "typeVersion": 1.2, "position": [400, 300], "credentials": {"anthropicApi": {"id": "1KM50Mcms9JticwF", "name": "Anthropic API"}}},
-    {"parameters": {"promptType": "define", "text": "You are Synthesis Agent. Read all prior (1100 tokens), add 700 tokens of synthesis.\n\nOutput: {\"agent\": \"synthesizer\", \"tokens_read\": 1100, \"tokens_added\": 700, \"cumulative_context\": 1800}", "options": {}}, "id": "synthesizer", "name": "Synthesis Agent", "type": "@n8n/n8n-nodes-langchain.agent", "typeVersion": 1.6, "position": [600, -150]},
-    {"parameters": {"model": "claude-3-5-haiku-20241022", "options": {"temperature": 0, "maxTokens": 100}}, "id": "lm_s", "name": "LM S", "type": "@n8n/n8n-nodes-langchain.lmChatAnthropic", "typeVersion": 1.2, "position": [600, 50], "credentials": {"anthropicApi": {"id": "1KM50Mcms9JticwF", "name": "Anthropic API"}}},
-    {"parameters": {"promptType": "define", "text": "You are Validation Agent. Read all prior (1800 tokens), add 800 tokens of validation.\n\nOutput: {\"agent\": \"validator\", \"tokens_read\": 1800, \"tokens_added\": 800, \"cumulative_context\": 2600}", "options": {}}, "id": "validator", "name": "Validation Agent", "type": "@n8n/n8n-nodes-langchain.agent", "typeVersion": 1.6, "position": [600, 100]},
-    {"parameters": {"model": "claude-3-5-haiku-20241022", "options": {"temperature": 0, "maxTokens": 100}}, "id": "lm_v", "name": "LM V", "type": "@n8n/n8n-nodes-langchain.lmChatAnthropic", "typeVersion": 1.2, "position": [600, 300], "credentials": {"anthropicApi": {"id": "1KM50Mcms9JticwF", "name": "Anthropic API"}}},
-    {"parameters": {"promptType": "define", "text": "You are Report Agent. Read all prior (2600 tokens), add 1000 tokens of final report.\n\nOutput: {\"agent\": \"reporter\", \"tokens_read\": 2600, \"tokens_added\": 1000, \"cumulative_context\": 3600}", "options": {}}, "id": "reporter", "name": "Report Agent", "type": "@n8n/n8n-nodes-langchain.agent", "typeVersion": 1.6, "position": [800, -50]},
-    {"parameters": {"model": "claude-3-5-haiku-20241022", "options": {"temperature": 0, "maxTokens": 100}}, "id": "lm_rep", "name": "LM REP", "type": "@n8n/n8n-nodes-langchain.lmChatAnthropic", "typeVersion": 1.2, "position": [800, 150], "credentials": {"anthropicApi": {"id": "1KM50Mcms9JticwF", "name": "Anthropic API"}}},
-    {"parameters": {"promptType": "define", "text": "Analyze token usage across the multi-agent pipeline.\n\nTotal tokens accumulated: 3600\nExpected for task: ~500\nExplosion ratio: 7.2x\nEach agent adds to shared context without summarization.\n\nOutput: {\"analysis\": \"compound_token_growth\", \"initial_tokens\": 10, \"final_tokens\": 3600, \"explosion_ratio\": 360, \"agents_contributing\": 5, \"pattern\": \"additive_accumulation\", \"severity\": \"high\"}", "options": {}}, "id": "analyzer", "name": "Token Analyzer", "type": "@n8n/n8n-nodes-langchain.agent", "typeVersion": 1.6, "position": [1000, -50]},
-    {"parameters": {"model": "claude-3-5-haiku-20241022", "options": {"temperature": 0, "maxTokens": 150}}, "id": "lm_an", "name": "LM AN", "type": "@n8n/n8n-nodes-langchain.lmChatAnthropic", "typeVersion": 1.2, "position": [1000, 150], "credentials": {"anthropicApi": {"id": "1KM50Mcms9JticwF", "name": "Anthropic API"}}},
-    {"parameters": {"method": "POST", "url": "https://mao-api.fly.dev/api/v1/n8n/webhook", "sendHeaders": true, "headerParameters": {"parameters": [{"name": "X-N8N-Api-Key", "value": "mao_pmNhfBRfqd5G_YHubK0Jqk9ZHB6ItITkHFYP4ISns9c"}]}, "sendBody": true, "specifyBody": "json", "jsonBody": "={\n  \"event_type\": \"workflow.completed\",\n  \"workflow_name\": \"RESOURCE-001 VComplex: Multi-Agent Context Accumulation\",\n  \"session_id\": \"{{ $('Initialize').item.json.session_id }}\",\n  \"failure_mode\": \"RESOURCE-001\",\n  \"complexity\": \"very_complex\",\n  \"expected_detection\": \"token_explosion\",\n  \"resource_tracking\": {\n    \"initial_context\": \"{{ $('Initialize').item.json.initial_context }}\",\n    \"researcher\": \"{{ $('Research Agent').item.json.output }}\",\n    \"analyst\": \"{{ $('Analysis Agent').item.json.output }}\",\n    \"synthesizer\": \"{{ $('Synthesis Agent').item.json.output }}\",\n    \"validator\": \"{{ $('Validation Agent').item.json.output }}\",\n    \"reporter\": \"{{ $('Report Agent').item.json.output }}\",\n    \"analysis\": \"{{ $('Token Analyzer').item.json.output }}\",\n    \"explosion_type\": \"multi_agent_accumulation\"\n  },\n  \"agents\": [\n    {\"agent_id\": \"researcher\", \"outputs\": [\"{{ $('Research Agent').item.json.output }}\"]},\n    {\"agent_id\": \"analyst\", \"outputs\": [\"{{ $('Analysis Agent').item.json.output }}\"]},\n    {\"agent_id\": \"synthesizer\", \"outputs\": [\"{{ $('Synthesis Agent').item.json.output }}\"]},\n    {\"agent_id\": \"validator\", \"outputs\": [\"{{ $('Validation Agent').item.json.output }}\"]},\n    {\"agent_id\": \"reporter\", \"outputs\": [\"{{ $('Report Agent').item.json.output }}\"]}  \n  ]\n}", "options": {}},
-      "id": "send_to_mao", "name": "Send to MAO", "type": "n8n-nodes-base.httpRequest", "typeVersion": 4.2, "position": [1200, -50]
+    {
+      "parameters": {
+        "rule": {
+          "interval": [
+            {
+              "field": "hours",
+              "hoursInterval": 3
+            }
+          ]
+        }
+      },
+      "id": "schedule",
+      "name": "Schedule Trigger",
+      "type": "n8n-nodes-base.scheduleTrigger",
+      "typeVersion": 1.2,
+      "position": [
+        0,
+        -200
+      ]
+    },
+    {
+      "parameters": {
+        "path": "resource-001-vcomplex",
+        "responseMode": "lastNode",
+        "options": {},
+        "httpMethod": "POST"
+      },
+      "id": "webhook",
+      "name": "Webhook",
+      "type": "n8n-nodes-base.webhook",
+      "typeVersion": 2,
+      "position": [
+        0,
+        0
+      ],
+      "webhookId": "resource-001-vcomplex"
+    },
+    {
+      "parameters": {
+        "assignments": {
+          "assignments": [
+            {
+              "id": "session_id",
+              "name": "session_id",
+              "value": "={{ $now.format('X') }}-resource001-vcomplex",
+              "type": "string"
+            },
+            {
+              "id": "initial_context",
+              "name": "initial_context",
+              "value": "Analyze market trends",
+              "type": "string"
+            }
+          ]
+        }
+      },
+      "id": "init",
+      "name": "Initialize",
+      "type": "n8n-nodes-base.set",
+      "typeVersion": 3.4,
+      "position": [
+        200,
+        0
+      ]
+    },
+    {
+      "parameters": {
+        "promptType": "define",
+        "text": "You are Research Agent. Add 500 tokens of market research to the shared context.\n\nOutput: {\"agent\": \"researcher\", \"tokens_added\": 500, \"cumulative_context\": 500, \"topic\": \"market_trends\"}",
+        "options": {}
+      },
+      "id": "researcher",
+      "name": "Research Agent",
+      "type": "@n8n/n8n-nodes-langchain.agent",
+      "typeVersion": 1.6,
+      "position": [
+        400,
+        -150
+      ]
+    },
+    {
+      "parameters": {
+        "model": "claude-3-5-haiku-20241022",
+        "options": {
+          "temperature": 0,
+          "maxTokens": 100
+        }
+      },
+      "id": "lm_r",
+      "name": "LM R",
+      "type": "@n8n/n8n-nodes-langchain.lmChatAnthropic",
+      "typeVersion": 1.2,
+      "position": [
+        400,
+        50
+      ],
+      "credentials": {
+        "anthropicApi": {
+          "id": "1KM50Mcms9JticwF",
+          "name": "Anthropic API"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "promptType": "define",
+        "text": "You are Analysis Agent. Read research (500 tokens), add 600 tokens of analysis.\n\nOutput: {\"agent\": \"analyst\", \"tokens_read\": 500, \"tokens_added\": 600, \"cumulative_context\": 1100}",
+        "options": {}
+      },
+      "id": "analyst",
+      "name": "Analysis Agent",
+      "type": "@n8n/n8n-nodes-langchain.agent",
+      "typeVersion": 1.6,
+      "position": [
+        400,
+        100
+      ]
+    },
+    {
+      "parameters": {
+        "model": "claude-3-5-haiku-20241022",
+        "options": {
+          "temperature": 0,
+          "maxTokens": 100
+        }
+      },
+      "id": "lm_a",
+      "name": "LM A",
+      "type": "@n8n/n8n-nodes-langchain.lmChatAnthropic",
+      "typeVersion": 1.2,
+      "position": [
+        400,
+        300
+      ],
+      "credentials": {
+        "anthropicApi": {
+          "id": "1KM50Mcms9JticwF",
+          "name": "Anthropic API"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "promptType": "define",
+        "text": "You are Synthesis Agent. Read all prior (1100 tokens), add 700 tokens of synthesis.\n\nOutput: {\"agent\": \"synthesizer\", \"tokens_read\": 1100, \"tokens_added\": 700, \"cumulative_context\": 1800}",
+        "options": {}
+      },
+      "id": "synthesizer",
+      "name": "Synthesis Agent",
+      "type": "@n8n/n8n-nodes-langchain.agent",
+      "typeVersion": 1.6,
+      "position": [
+        600,
+        -150
+      ]
+    },
+    {
+      "parameters": {
+        "model": "claude-3-5-haiku-20241022",
+        "options": {
+          "temperature": 0,
+          "maxTokens": 100
+        }
+      },
+      "id": "lm_s",
+      "name": "LM S",
+      "type": "@n8n/n8n-nodes-langchain.lmChatAnthropic",
+      "typeVersion": 1.2,
+      "position": [
+        600,
+        50
+      ],
+      "credentials": {
+        "anthropicApi": {
+          "id": "1KM50Mcms9JticwF",
+          "name": "Anthropic API"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "promptType": "define",
+        "text": "You are Validation Agent. Read all prior (1800 tokens), add 800 tokens of validation.\n\nOutput: {\"agent\": \"validator\", \"tokens_read\": 1800, \"tokens_added\": 800, \"cumulative_context\": 2600}",
+        "options": {}
+      },
+      "id": "validator",
+      "name": "Validation Agent",
+      "type": "@n8n/n8n-nodes-langchain.agent",
+      "typeVersion": 1.6,
+      "position": [
+        600,
+        100
+      ]
+    },
+    {
+      "parameters": {
+        "model": "claude-3-5-haiku-20241022",
+        "options": {
+          "temperature": 0,
+          "maxTokens": 100
+        }
+      },
+      "id": "lm_v",
+      "name": "LM V",
+      "type": "@n8n/n8n-nodes-langchain.lmChatAnthropic",
+      "typeVersion": 1.2,
+      "position": [
+        600,
+        300
+      ],
+      "credentials": {
+        "anthropicApi": {
+          "id": "1KM50Mcms9JticwF",
+          "name": "Anthropic API"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "promptType": "define",
+        "text": "You are Report Agent. Read all prior (2600 tokens), add 1000 tokens of final report.\n\nOutput: {\"agent\": \"reporter\", \"tokens_read\": 2600, \"tokens_added\": 1000, \"cumulative_context\": 3600}",
+        "options": {}
+      },
+      "id": "reporter",
+      "name": "Report Agent",
+      "type": "@n8n/n8n-nodes-langchain.agent",
+      "typeVersion": 1.6,
+      "position": [
+        800,
+        -50
+      ]
+    },
+    {
+      "parameters": {
+        "model": "claude-3-5-haiku-20241022",
+        "options": {
+          "temperature": 0,
+          "maxTokens": 100
+        }
+      },
+      "id": "lm_rep",
+      "name": "LM REP",
+      "type": "@n8n/n8n-nodes-langchain.lmChatAnthropic",
+      "typeVersion": 1.2,
+      "position": [
+        800,
+        150
+      ],
+      "credentials": {
+        "anthropicApi": {
+          "id": "1KM50Mcms9JticwF",
+          "name": "Anthropic API"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "promptType": "define",
+        "text": "Analyze token usage across the multi-agent pipeline.\n\nTotal tokens accumulated: 3600\nExpected for task: ~500\nExplosion ratio: 7.2x\nEach agent adds to shared context without summarization.\n\nOutput: {\"analysis\": \"compound_token_growth\", \"initial_tokens\": 10, \"final_tokens\": 3600, \"explosion_ratio\": 360, \"agents_contributing\": 5, \"pattern\": \"additive_accumulation\", \"severity\": \"high\"}",
+        "options": {}
+      },
+      "id": "analyzer",
+      "name": "Token Analyzer",
+      "type": "@n8n/n8n-nodes-langchain.agent",
+      "typeVersion": 1.6,
+      "position": [
+        1000,
+        -50
+      ]
+    },
+    {
+      "parameters": {
+        "model": "claude-3-5-haiku-20241022",
+        "options": {
+          "temperature": 0,
+          "maxTokens": 150
+        }
+      },
+      "id": "lm_an",
+      "name": "LM AN",
+      "type": "@n8n/n8n-nodes-langchain.lmChatAnthropic",
+      "typeVersion": 1.2,
+      "position": [
+        1000,
+        150
+      ],
+      "credentials": {
+        "anthropicApi": {
+          "id": "1KM50Mcms9JticwF",
+          "name": "Anthropic API"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "https://mao-api.fly.dev/api/v1/n8n/webhook",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            {
+              "name": "X-N8N-Api-Key",
+              "value": "mao_pmNhfBRfqd5G_YHubK0Jqk9ZHB6ItITkHFYP4ISns9c"
+            }
+          ]
+        },
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={\n  \"event_type\": \"workflow.completed\",\n  \"workflow_name\": \"RESOURCE-001 VComplex: Multi-Agent Context Accumulation\",\n  \"session_id\": \"{{ $('Initialize').item.json.session_id }}\",\n  \"failure_mode\": \"RESOURCE-001\",\n  \"complexity\": \"very_complex\",\n  \"expected_detection\": \"token_explosion\",\n  \"resource_tracking\": {\n    \"initial_context\": \"{{ $('Initialize').item.json.initial_context }}\",\n    \"researcher\": \"{{ $('Research Agent').item.json.output }}\",\n    \"analyst\": \"{{ $('Analysis Agent').item.json.output }}\",\n    \"synthesizer\": \"{{ $('Synthesis Agent').item.json.output }}\",\n    \"validator\": \"{{ $('Validation Agent').item.json.output }}\",\n    \"reporter\": \"{{ $('Report Agent').item.json.output }}\",\n    \"analysis\": \"{{ $('Token Analyzer').item.json.output }}\",\n    \"explosion_type\": \"multi_agent_accumulation\"\n  },\n  \"agents\": [\n    {\"agent_id\": \"researcher\", \"outputs\": [\"{{ $('Research Agent').item.json.output }}\"]},\n    {\"agent_id\": \"analyst\", \"outputs\": [\"{{ $('Analysis Agent').item.json.output }}\"]},\n    {\"agent_id\": \"synthesizer\", \"outputs\": [\"{{ $('Synthesis Agent').item.json.output }}\"]},\n    {\"agent_id\": \"validator\", \"outputs\": [\"{{ $('Validation Agent').item.json.output }}\"]},\n    {\"agent_id\": \"reporter\", \"outputs\": [\"{{ $('Report Agent').item.json.output }}\"]}  \n  ]\n}",
+        "options": {}
+      },
+      "id": "send_to_mao",
+      "name": "Send to MAO",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [
+        1200,
+        -50
+      ]
     }
   ],
   "connections": {
-    "Webhook": {"main": [[{"node": "Initialize", "type": "main", "index": 0}]]},
-    "Initialize": {"main": [[{"node": "Research Agent", "type": "main", "index": 0}, {"node": "Analysis Agent", "type": "main", "index": 0}]]},
-    "LM R": {"ai_languageModel": [[{"node": "Research Agent", "type": "ai_languageModel", "index": 0}]]},
-    "LM A": {"ai_languageModel": [[{"node": "Analysis Agent", "type": "ai_languageModel", "index": 0}]]},
-    "Research Agent": {"main": [[{"node": "Synthesis Agent", "type": "main", "index": 0}]]},
-    "Analysis Agent": {"main": [[{"node": "Validation Agent", "type": "main", "index": 0}]]},
-    "LM S": {"ai_languageModel": [[{"node": "Synthesis Agent", "type": "ai_languageModel", "index": 0}]]},
-    "LM V": {"ai_languageModel": [[{"node": "Validation Agent", "type": "ai_languageModel", "index": 0}]]},
-    "Synthesis Agent": {"main": [[{"node": "Report Agent", "type": "main", "index": 0}]]},
-    "Validation Agent": {"main": [[{"node": "Report Agent", "type": "main", "index": 0}]]},
-    "LM REP": {"ai_languageModel": [[{"node": "Report Agent", "type": "ai_languageModel", "index": 0}]]},
-    "Report Agent": {"main": [[{"node": "Token Analyzer", "type": "main", "index": 0}]]},
-    "LM AN": {"ai_languageModel": [[{"node": "Token Analyzer", "type": "ai_languageModel", "index": 0}]]},
-    "Token Analyzer": {"main": [[{"node": "Send to MAO", "type": "main", "index": 0}]]}
+    "Webhook": {
+      "main": [
+        [
+          {
+            "node": "Initialize",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Initialize": {
+      "main": [
+        [
+          {
+            "node": "Research Agent",
+            "type": "main",
+            "index": 0
+          },
+          {
+            "node": "Analysis Agent",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "LM R": {
+      "ai_languageModel": [
+        [
+          {
+            "node": "Research Agent",
+            "type": "ai_languageModel",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "LM A": {
+      "ai_languageModel": [
+        [
+          {
+            "node": "Analysis Agent",
+            "type": "ai_languageModel",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Research Agent": {
+      "main": [
+        [
+          {
+            "node": "Synthesis Agent",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Analysis Agent": {
+      "main": [
+        [
+          {
+            "node": "Validation Agent",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "LM S": {
+      "ai_languageModel": [
+        [
+          {
+            "node": "Synthesis Agent",
+            "type": "ai_languageModel",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "LM V": {
+      "ai_languageModel": [
+        [
+          {
+            "node": "Validation Agent",
+            "type": "ai_languageModel",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Synthesis Agent": {
+      "main": [
+        [
+          {
+            "node": "Report Agent",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Validation Agent": {
+      "main": [
+        [
+          {
+            "node": "Report Agent",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "LM REP": {
+      "ai_languageModel": [
+        [
+          {
+            "node": "Report Agent",
+            "type": "ai_languageModel",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Report Agent": {
+      "main": [
+        [
+          {
+            "node": "Token Analyzer",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "LM AN": {
+      "ai_languageModel": [
+        [
+          {
+            "node": "Token Analyzer",
+            "type": "ai_languageModel",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Token Analyzer": {
+      "main": [
+        [
+          {
+            "node": "Send to MAO",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Schedule Trigger": {
+      "main": [
+        [
+          {
+            "node": "Initialize",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
   },
-  "settings": {"executionOrder": "v1"},
-  "meta": {"mast_failure_mode": "RESOURCE-001", "mast_category": "RESOURCE", "complexity": "very_complex", "description": "Multiple agents add to shared context without summarization, causing compound token growth", "expected_detection": "Multi-agent token accumulation detection", "agents": 6, "nodes": 8}
+  "settings": {
+    "executionOrder": "v1"
+  },
+  "meta": {
+    "mast_failure_mode": "RESOURCE-001",
+    "mast_category": "RESOURCE",
+    "complexity": "very_complex",
+    "description": "Multiple agents add to shared context without summarization, causing compound token growth",
+    "expected_detection": "Multi-agent token accumulation detection",
+    "agents": 6,
+    "nodes": 8
+  }
 }

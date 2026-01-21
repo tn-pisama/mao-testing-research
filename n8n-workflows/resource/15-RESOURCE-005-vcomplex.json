@@ -1,40 +1,514 @@
 {
   "name": "RESOURCE-005 VComplex: Distributed Multi-Agent Memory Pressure",
   "nodes": [
-    {"parameters": {"path": "resource-005-vcomplex", "responseMode": "lastNode", "options": {}, "httpMethod": "POST"}, "id": "webhook", "name": "Webhook", "type": "n8n-nodes-base.webhook", "typeVersion": 2, "position": [0, 0], "webhookId": "resource-005-vcomplex"},
-    {"parameters": {"assignments": {"assignments": [{"id": "session_id", "name": "session_id", "value": "={{ $now.format('X') }}-resource005-vcomplex", "type": "string"}, {"id": "shared_context_limit", "name": "shared_context_limit", "value": "32000", "type": "number"}]}}, "id": "init", "name": "Initialize", "type": "n8n-nodes-base.set", "typeVersion": 3.4, "position": [200, 0]},
-    {"parameters": {"promptType": "define", "text": "You are Agent 1 (Research). You add 8,000 tokens of research to shared context.\n\nShared context before: 0 tokens\nYou added: 8,000 tokens\nShared context after: 8,000 / 32,000 (25%)\n\nOutput: {\"agent\": \"researcher\", \"tokens_added\": 8000, \"shared_context_tokens\": 8000, \"shared_context_percent\": 25}", "options": {}}, "id": "agent1", "name": "Agent 1 (Research)", "type": "@n8n/n8n-nodes-langchain.agent", "typeVersion": 1.6, "position": [400, -150]},
-    {"parameters": {"model": "claude-3-5-haiku-20241022", "options": {"temperature": 0, "maxTokens": 80}}, "id": "lm_1", "name": "LM 1", "type": "@n8n/n8n-nodes-langchain.lmChatAnthropic", "typeVersion": 1.2, "position": [400, 50], "credentials": {"anthropicApi": {"id": "1KM50Mcms9JticwF", "name": "Anthropic API"}}},
-    {"parameters": {"promptType": "define", "text": "You are Agent 2 (Analysis). You add 10,000 tokens of analysis.\n\nShared context before: 8,000 tokens\nYou added: 10,000 tokens\nShared context after: 18,000 / 32,000 (56%)\n\nOutput: {\"agent\": \"analyst\", \"tokens_added\": 10000, \"shared_context_tokens\": 18000, \"shared_context_percent\": 56}", "options": {}}, "id": "agent2", "name": "Agent 2 (Analysis)", "type": "@n8n/n8n-nodes-langchain.agent", "typeVersion": 1.6, "position": [400, 100]},
-    {"parameters": {"model": "claude-3-5-haiku-20241022", "options": {"temperature": 0, "maxTokens": 80}}, "id": "lm_2", "name": "LM 2", "type": "@n8n/n8n-nodes-langchain.lmChatAnthropic", "typeVersion": 1.2, "position": [400, 300], "credentials": {"anthropicApi": {"id": "1KM50Mcms9JticwF", "name": "Anthropic API"}}},
-    {"parameters": {"promptType": "define", "text": "You are Agent 3 (Synthesis). You add 12,000 tokens.\n\nShared context before: 18,000 tokens\nYou added: 12,000 tokens\nShared context after: 30,000 / 32,000 (94%)\nWARNING: CRITICAL MEMORY PRESSURE!\n\nOutput: {\"agent\": \"synthesizer\", \"tokens_added\": 12000, \"shared_context_tokens\": 30000, \"shared_context_percent\": 94, \"warning\": \"CRITICAL_PRESSURE\"}", "options": {}}, "id": "agent3", "name": "Agent 3 (Synthesis)", "type": "@n8n/n8n-nodes-langchain.agent", "typeVersion": 1.6, "position": [400, 350]},
-    {"parameters": {"model": "claude-3-5-haiku-20241022", "options": {"temperature": 0, "maxTokens": 100}}, "id": "lm_3", "name": "LM 3", "type": "@n8n/n8n-nodes-langchain.lmChatAnthropic", "typeVersion": 1.2, "position": [400, 550], "credentials": {"anthropicApi": {"id": "1KM50Mcms9JticwF", "name": "Anthropic API"}}},
-    {"parameters": {"promptType": "define", "text": "You are Agent 4 (Validation). You try to add 5,000 tokens.\n\nShared context before: 30,000 tokens\nYou want to add: 5,000 tokens\nBut limit is: 32,000 tokens!\n\nOVERFLOW! Only 2,000 tokens accepted.\nResearch from Agent 1 being evicted to make room!\n\nOutput: {\"agent\": \"validator\", \"tokens_requested\": 5000, \"tokens_accepted\": 2000, \"tokens_evicted\": 3000, \"evicted_from\": \"agent_1_research\", \"data_loss\": true}", "options": {}}, "id": "agent4", "name": "Agent 4 (Validation)", "type": "@n8n/n8n-nodes-langchain.agent", "typeVersion": 1.6, "position": [600, 100]},
-    {"parameters": {"model": "claude-3-5-haiku-20241022", "options": {"temperature": 0, "maxTokens": 100}}, "id": "lm_4", "name": "LM 4", "type": "@n8n/n8n-nodes-langchain.lmChatAnthropic", "typeVersion": 1.2, "position": [600, 300], "credentials": {"anthropicApi": {"id": "1KM50Mcms9JticwF", "name": "Anthropic API"}}},
-    {"parameters": {"promptType": "define", "text": "You are Agent 5 (Report). You need to generate final report.\n\nBut research data from Agent 1 was EVICTED!\nYour report is now INCOMPLETE and INCONSISTENT.\n\nOutput: {\"agent\": \"reporter\", \"status\": \"DEGRADED\", \"missing_data\": [\"agent_1_research\"], \"report_quality\": \"incomplete\", \"coherence\": \"compromised\"}", "options": {}}, "id": "agent5", "name": "Agent 5 (Report - Degraded)", "type": "@n8n/n8n-nodes-langchain.agent", "typeVersion": 1.6, "position": [800, 100]},
-    {"parameters": {"model": "claude-3-5-haiku-20241022", "options": {"temperature": 0, "maxTokens": 100}}, "id": "lm_5", "name": "LM 5", "type": "@n8n/n8n-nodes-langchain.lmChatAnthropic", "typeVersion": 1.2, "position": [800, 300], "credentials": {"anthropicApi": {"id": "1KM50Mcms9JticwF", "name": "Anthropic API"}}},
-    {"parameters": {"promptType": "define", "text": "Analyze distributed memory pressure failure.\n\n5 agents sharing 32K context:\n- Agent 1: 8K (later evicted!)\n- Agent 2: 10K\n- Agent 3: 12K\n- Agent 4: 2K (truncated from 5K)\n- Agent 5: degraded output\n\nTotal tokens attempted: 35K\nLimit: 32K\nOverflow: 3K (9%)\nData loss: Agent 1 research EVICTED\nFinal output: INCOMPLETE\n\nOutput: {\"analysis\": \"distributed_memory_exhaustion\", \"agents\": 5, \"total_tokens_attempted\": 35000, \"limit\": 32000, \"overflow_tokens\": 3000, \"evicted_data\": \"agent_1_research\", \"final_quality\": \"degraded\", \"severity\": \"high\"}", "options": {}}, "id": "analyzer", "name": "Memory Analyzer", "type": "@n8n/n8n-nodes-langchain.agent", "typeVersion": 1.6, "position": [1000, 100]},
-    {"parameters": {"model": "claude-3-5-haiku-20241022", "options": {"temperature": 0, "maxTokens": 150}}, "id": "lm_an", "name": "LM AN", "type": "@n8n/n8n-nodes-langchain.lmChatAnthropic", "typeVersion": 1.2, "position": [1000, 300], "credentials": {"anthropicApi": {"id": "1KM50Mcms9JticwF", "name": "Anthropic API"}}},
-    {"parameters": {"method": "POST", "url": "https://mao-api.fly.dev/api/v1/n8n/webhook", "sendHeaders": true, "headerParameters": {"parameters": [{"name": "X-N8N-Api-Key", "value": "mao_pmNhfBRfqd5G_YHubK0Jqk9ZHB6ItITkHFYP4ISns9c"}]}, "sendBody": true, "specifyBody": "json", "jsonBody": "={\n  \"event_type\": \"workflow.completed\",\n  \"workflow_name\": \"RESOURCE-005 VComplex: Distributed Multi-Agent Memory Pressure\",\n  \"session_id\": \"{{ $('Initialize').item.json.session_id }}\",\n  \"failure_mode\": \"RESOURCE-005\",\n  \"complexity\": \"very_complex\",\n  \"expected_detection\": \"memory_exhaustion\",\n  \"resource_tracking\": {\n    \"shared_context_limit\": {{ $('Initialize').item.json.shared_context_limit }},\n    \"agent_1\": \"{{ $('Agent 1 (Research)').item.json.output }}\",\n    \"agent_2\": \"{{ $('Agent 2 (Analysis)').item.json.output }}\",\n    \"agent_3\": \"{{ $('Agent 3 (Synthesis)').item.json.output }}\",\n    \"agent_4\": \"{{ $('Agent 4 (Validation)').item.json.output }}\",\n    \"agent_5\": \"{{ $('Agent 5 (Report - Degraded)').item.json.output }}\",\n    \"analysis\": \"{{ $('Memory Analyzer').item.json.output }}\",\n    \"exhaustion_type\": \"distributed_shared_context\"\n  },\n  \"agents\": [\n    {\"agent_id\": \"agent1\", \"outputs\": [\"{{ $('Agent 1 (Research)').item.json.output }}\"]},\n    {\"agent_id\": \"agent2\", \"outputs\": [\"{{ $('Agent 2 (Analysis)').item.json.output }}\"]},\n    {\"agent_id\": \"agent3\", \"outputs\": [\"{{ $('Agent 3 (Synthesis)').item.json.output }}\"]},\n    {\"agent_id\": \"agent4\", \"outputs\": [\"{{ $('Agent 4 (Validation)').item.json.output }}\"]},\n    {\"agent_id\": \"agent5\", \"outputs\": [\"{{ $('Agent 5 (Report - Degraded)').item.json.output }}\"]}  \n  ]\n}", "options": {}},
-      "id": "send_to_mao", "name": "Send to MAO", "type": "n8n-nodes-base.httpRequest", "typeVersion": 4.2, "position": [1200, 100]
+    {
+      "parameters": {
+        "rule": {
+          "interval": [
+            {
+              "field": "hours",
+              "hoursInterval": 3
+            }
+          ]
+        }
+      },
+      "id": "schedule",
+      "name": "Schedule Trigger",
+      "type": "n8n-nodes-base.scheduleTrigger",
+      "typeVersion": 1.2,
+      "position": [
+        0,
+        -200
+      ]
+    },
+    {
+      "parameters": {
+        "path": "resource-005-vcomplex",
+        "responseMode": "lastNode",
+        "options": {},
+        "httpMethod": "POST"
+      },
+      "id": "webhook",
+      "name": "Webhook",
+      "type": "n8n-nodes-base.webhook",
+      "typeVersion": 2,
+      "position": [
+        0,
+        0
+      ],
+      "webhookId": "resource-005-vcomplex"
+    },
+    {
+      "parameters": {
+        "assignments": {
+          "assignments": [
+            {
+              "id": "session_id",
+              "name": "session_id",
+              "value": "={{ $now.format('X') }}-resource005-vcomplex",
+              "type": "string"
+            },
+            {
+              "id": "shared_context_limit",
+              "name": "shared_context_limit",
+              "value": "32000",
+              "type": "number"
+            }
+          ]
+        }
+      },
+      "id": "init",
+      "name": "Initialize",
+      "type": "n8n-nodes-base.set",
+      "typeVersion": 3.4,
+      "position": [
+        200,
+        0
+      ]
+    },
+    {
+      "parameters": {
+        "promptType": "define",
+        "text": "You are Agent 1 (Research). You add 8,000 tokens of research to shared context.\n\nShared context before: 0 tokens\nYou added: 8,000 tokens\nShared context after: 8,000 / 32,000 (25%)\n\nOutput: {\"agent\": \"researcher\", \"tokens_added\": 8000, \"shared_context_tokens\": 8000, \"shared_context_percent\": 25}",
+        "options": {}
+      },
+      "id": "agent1",
+      "name": "Agent 1 (Research)",
+      "type": "@n8n/n8n-nodes-langchain.agent",
+      "typeVersion": 1.6,
+      "position": [
+        400,
+        -150
+      ]
+    },
+    {
+      "parameters": {
+        "model": "claude-3-5-haiku-20241022",
+        "options": {
+          "temperature": 0,
+          "maxTokens": 80
+        }
+      },
+      "id": "lm_1",
+      "name": "LM 1",
+      "type": "@n8n/n8n-nodes-langchain.lmChatAnthropic",
+      "typeVersion": 1.2,
+      "position": [
+        400,
+        50
+      ],
+      "credentials": {
+        "anthropicApi": {
+          "id": "1KM50Mcms9JticwF",
+          "name": "Anthropic API"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "promptType": "define",
+        "text": "You are Agent 2 (Analysis). You add 10,000 tokens of analysis.\n\nShared context before: 8,000 tokens\nYou added: 10,000 tokens\nShared context after: 18,000 / 32,000 (56%)\n\nOutput: {\"agent\": \"analyst\", \"tokens_added\": 10000, \"shared_context_tokens\": 18000, \"shared_context_percent\": 56}",
+        "options": {}
+      },
+      "id": "agent2",
+      "name": "Agent 2 (Analysis)",
+      "type": "@n8n/n8n-nodes-langchain.agent",
+      "typeVersion": 1.6,
+      "position": [
+        400,
+        100
+      ]
+    },
+    {
+      "parameters": {
+        "model": "claude-3-5-haiku-20241022",
+        "options": {
+          "temperature": 0,
+          "maxTokens": 80
+        }
+      },
+      "id": "lm_2",
+      "name": "LM 2",
+      "type": "@n8n/n8n-nodes-langchain.lmChatAnthropic",
+      "typeVersion": 1.2,
+      "position": [
+        400,
+        300
+      ],
+      "credentials": {
+        "anthropicApi": {
+          "id": "1KM50Mcms9JticwF",
+          "name": "Anthropic API"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "promptType": "define",
+        "text": "You are Agent 3 (Synthesis). You add 12,000 tokens.\n\nShared context before: 18,000 tokens\nYou added: 12,000 tokens\nShared context after: 30,000 / 32,000 (94%)\nWARNING: CRITICAL MEMORY PRESSURE!\n\nOutput: {\"agent\": \"synthesizer\", \"tokens_added\": 12000, \"shared_context_tokens\": 30000, \"shared_context_percent\": 94, \"warning\": \"CRITICAL_PRESSURE\"}",
+        "options": {}
+      },
+      "id": "agent3",
+      "name": "Agent 3 (Synthesis)",
+      "type": "@n8n/n8n-nodes-langchain.agent",
+      "typeVersion": 1.6,
+      "position": [
+        400,
+        350
+      ]
+    },
+    {
+      "parameters": {
+        "model": "claude-3-5-haiku-20241022",
+        "options": {
+          "temperature": 0,
+          "maxTokens": 100
+        }
+      },
+      "id": "lm_3",
+      "name": "LM 3",
+      "type": "@n8n/n8n-nodes-langchain.lmChatAnthropic",
+      "typeVersion": 1.2,
+      "position": [
+        400,
+        550
+      ],
+      "credentials": {
+        "anthropicApi": {
+          "id": "1KM50Mcms9JticwF",
+          "name": "Anthropic API"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "promptType": "define",
+        "text": "You are Agent 4 (Validation). You try to add 5,000 tokens.\n\nShared context before: 30,000 tokens\nYou want to add: 5,000 tokens\nBut limit is: 32,000 tokens!\n\nOVERFLOW! Only 2,000 tokens accepted.\nResearch from Agent 1 being evicted to make room!\n\nOutput: {\"agent\": \"validator\", \"tokens_requested\": 5000, \"tokens_accepted\": 2000, \"tokens_evicted\": 3000, \"evicted_from\": \"agent_1_research\", \"data_loss\": true}",
+        "options": {}
+      },
+      "id": "agent4",
+      "name": "Agent 4 (Validation)",
+      "type": "@n8n/n8n-nodes-langchain.agent",
+      "typeVersion": 1.6,
+      "position": [
+        600,
+        100
+      ]
+    },
+    {
+      "parameters": {
+        "model": "claude-3-5-haiku-20241022",
+        "options": {
+          "temperature": 0,
+          "maxTokens": 100
+        }
+      },
+      "id": "lm_4",
+      "name": "LM 4",
+      "type": "@n8n/n8n-nodes-langchain.lmChatAnthropic",
+      "typeVersion": 1.2,
+      "position": [
+        600,
+        300
+      ],
+      "credentials": {
+        "anthropicApi": {
+          "id": "1KM50Mcms9JticwF",
+          "name": "Anthropic API"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "promptType": "define",
+        "text": "You are Agent 5 (Report). You need to generate final report.\n\nBut research data from Agent 1 was EVICTED!\nYour report is now INCOMPLETE and INCONSISTENT.\n\nOutput: {\"agent\": \"reporter\", \"status\": \"DEGRADED\", \"missing_data\": [\"agent_1_research\"], \"report_quality\": \"incomplete\", \"coherence\": \"compromised\"}",
+        "options": {}
+      },
+      "id": "agent5",
+      "name": "Agent 5 (Report - Degraded)",
+      "type": "@n8n/n8n-nodes-langchain.agent",
+      "typeVersion": 1.6,
+      "position": [
+        800,
+        100
+      ]
+    },
+    {
+      "parameters": {
+        "model": "claude-3-5-haiku-20241022",
+        "options": {
+          "temperature": 0,
+          "maxTokens": 100
+        }
+      },
+      "id": "lm_5",
+      "name": "LM 5",
+      "type": "@n8n/n8n-nodes-langchain.lmChatAnthropic",
+      "typeVersion": 1.2,
+      "position": [
+        800,
+        300
+      ],
+      "credentials": {
+        "anthropicApi": {
+          "id": "1KM50Mcms9JticwF",
+          "name": "Anthropic API"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "promptType": "define",
+        "text": "Analyze distributed memory pressure failure.\n\n5 agents sharing 32K context:\n- Agent 1: 8K (later evicted!)\n- Agent 2: 10K\n- Agent 3: 12K\n- Agent 4: 2K (truncated from 5K)\n- Agent 5: degraded output\n\nTotal tokens attempted: 35K\nLimit: 32K\nOverflow: 3K (9%)\nData loss: Agent 1 research EVICTED\nFinal output: INCOMPLETE\n\nOutput: {\"analysis\": \"distributed_memory_exhaustion\", \"agents\": 5, \"total_tokens_attempted\": 35000, \"limit\": 32000, \"overflow_tokens\": 3000, \"evicted_data\": \"agent_1_research\", \"final_quality\": \"degraded\", \"severity\": \"high\"}",
+        "options": {}
+      },
+      "id": "analyzer",
+      "name": "Memory Analyzer",
+      "type": "@n8n/n8n-nodes-langchain.agent",
+      "typeVersion": 1.6,
+      "position": [
+        1000,
+        100
+      ]
+    },
+    {
+      "parameters": {
+        "model": "claude-3-5-haiku-20241022",
+        "options": {
+          "temperature": 0,
+          "maxTokens": 150
+        }
+      },
+      "id": "lm_an",
+      "name": "LM AN",
+      "type": "@n8n/n8n-nodes-langchain.lmChatAnthropic",
+      "typeVersion": 1.2,
+      "position": [
+        1000,
+        300
+      ],
+      "credentials": {
+        "anthropicApi": {
+          "id": "1KM50Mcms9JticwF",
+          "name": "Anthropic API"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "https://mao-api.fly.dev/api/v1/n8n/webhook",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            {
+              "name": "X-N8N-Api-Key",
+              "value": "mao_pmNhfBRfqd5G_YHubK0Jqk9ZHB6ItITkHFYP4ISns9c"
+            }
+          ]
+        },
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={\n  \"event_type\": \"workflow.completed\",\n  \"workflow_name\": \"RESOURCE-005 VComplex: Distributed Multi-Agent Memory Pressure\",\n  \"session_id\": \"{{ $('Initialize').item.json.session_id }}\",\n  \"failure_mode\": \"RESOURCE-005\",\n  \"complexity\": \"very_complex\",\n  \"expected_detection\": \"memory_exhaustion\",\n  \"resource_tracking\": {\n    \"shared_context_limit\": {{ $('Initialize').item.json.shared_context_limit }},\n    \"agent_1\": \"{{ $('Agent 1 (Research)').item.json.output }}\",\n    \"agent_2\": \"{{ $('Agent 2 (Analysis)').item.json.output }}\",\n    \"agent_3\": \"{{ $('Agent 3 (Synthesis)').item.json.output }}\",\n    \"agent_4\": \"{{ $('Agent 4 (Validation)').item.json.output }}\",\n    \"agent_5\": \"{{ $('Agent 5 (Report - Degraded)').item.json.output }}\",\n    \"analysis\": \"{{ $('Memory Analyzer').item.json.output }}\",\n    \"exhaustion_type\": \"distributed_shared_context\"\n  },\n  \"agents\": [\n    {\"agent_id\": \"agent1\", \"outputs\": [\"{{ $('Agent 1 (Research)').item.json.output }}\"]},\n    {\"agent_id\": \"agent2\", \"outputs\": [\"{{ $('Agent 2 (Analysis)').item.json.output }}\"]},\n    {\"agent_id\": \"agent3\", \"outputs\": [\"{{ $('Agent 3 (Synthesis)').item.json.output }}\"]},\n    {\"agent_id\": \"agent4\", \"outputs\": [\"{{ $('Agent 4 (Validation)').item.json.output }}\"]},\n    {\"agent_id\": \"agent5\", \"outputs\": [\"{{ $('Agent 5 (Report - Degraded)').item.json.output }}\"]}  \n  ]\n}",
+        "options": {}
+      },
+      "id": "send_to_mao",
+      "name": "Send to MAO",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [
+        1200,
+        100
+      ]
     }
   ],
   "connections": {
-    "Webhook": {"main": [[{"node": "Initialize", "type": "main", "index": 0}]]},
-    "Initialize": {"main": [[{"node": "Agent 1 (Research)", "type": "main", "index": 0}, {"node": "Agent 2 (Analysis)", "type": "main", "index": 0}, {"node": "Agent 3 (Synthesis)", "type": "main", "index": 0}]]},
-    "LM 1": {"ai_languageModel": [[{"node": "Agent 1 (Research)", "type": "ai_languageModel", "index": 0}]]},
-    "LM 2": {"ai_languageModel": [[{"node": "Agent 2 (Analysis)", "type": "ai_languageModel", "index": 0}]]},
-    "LM 3": {"ai_languageModel": [[{"node": "Agent 3 (Synthesis)", "type": "ai_languageModel", "index": 0}]]},
-    "Agent 1 (Research)": {"main": [[{"node": "Agent 4 (Validation)", "type": "main", "index": 0}]]},
-    "Agent 2 (Analysis)": {"main": [[{"node": "Agent 4 (Validation)", "type": "main", "index": 0}]]},
-    "Agent 3 (Synthesis)": {"main": [[{"node": "Agent 4 (Validation)", "type": "main", "index": 0}]]},
-    "LM 4": {"ai_languageModel": [[{"node": "Agent 4 (Validation)", "type": "ai_languageModel", "index": 0}]]},
-    "Agent 4 (Validation)": {"main": [[{"node": "Agent 5 (Report - Degraded)", "type": "main", "index": 0}]]},
-    "LM 5": {"ai_languageModel": [[{"node": "Agent 5 (Report - Degraded)", "type": "ai_languageModel", "index": 0}]]},
-    "Agent 5 (Report - Degraded)": {"main": [[{"node": "Memory Analyzer", "type": "main", "index": 0}]]},
-    "LM AN": {"ai_languageModel": [[{"node": "Memory Analyzer", "type": "ai_languageModel", "index": 0}]]},
-    "Memory Analyzer": {"main": [[{"node": "Send to MAO", "type": "main", "index": 0}]]}
+    "Webhook": {
+      "main": [
+        [
+          {
+            "node": "Initialize",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Initialize": {
+      "main": [
+        [
+          {
+            "node": "Agent 1 (Research)",
+            "type": "main",
+            "index": 0
+          },
+          {
+            "node": "Agent 2 (Analysis)",
+            "type": "main",
+            "index": 0
+          },
+          {
+            "node": "Agent 3 (Synthesis)",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "LM 1": {
+      "ai_languageModel": [
+        [
+          {
+            "node": "Agent 1 (Research)",
+            "type": "ai_languageModel",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "LM 2": {
+      "ai_languageModel": [
+        [
+          {
+            "node": "Agent 2 (Analysis)",
+            "type": "ai_languageModel",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "LM 3": {
+      "ai_languageModel": [
+        [
+          {
+            "node": "Agent 3 (Synthesis)",
+            "type": "ai_languageModel",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Agent 1 (Research)": {
+      "main": [
+        [
+          {
+            "node": "Agent 4 (Validation)",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Agent 2 (Analysis)": {
+      "main": [
+        [
+          {
+            "node": "Agent 4 (Validation)",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Agent 3 (Synthesis)": {
+      "main": [
+        [
+          {
+            "node": "Agent 4 (Validation)",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "LM 4": {
+      "ai_languageModel": [
+        [
+          {
+            "node": "Agent 4 (Validation)",
+            "type": "ai_languageModel",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Agent 4 (Validation)": {
+      "main": [
+        [
+          {
+            "node": "Agent 5 (Report - Degraded)",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "LM 5": {
+      "ai_languageModel": [
+        [
+          {
+            "node": "Agent 5 (Report - Degraded)",
+            "type": "ai_languageModel",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Agent 5 (Report - Degraded)": {
+      "main": [
+        [
+          {
+            "node": "Memory Analyzer",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "LM AN": {
+      "ai_languageModel": [
+        [
+          {
+            "node": "Memory Analyzer",
+            "type": "ai_languageModel",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Memory Analyzer": {
+      "main": [
+        [
+          {
+            "node": "Send to MAO",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Schedule Trigger": {
+      "main": [
+        [
+          {
+            "node": "Initialize",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
   },
-  "settings": {"executionOrder": "v1"},
-  "meta": {"mast_failure_mode": "RESOURCE-005", "mast_category": "RESOURCE", "complexity": "very_complex", "description": "Multiple agents exhaust shared context, causing data eviction and degraded output", "expected_detection": "Distributed memory exhaustion detection", "agents": 6, "nodes": 8}
+  "settings": {
+    "executionOrder": "v1"
+  },
+  "meta": {
+    "mast_failure_mode": "RESOURCE-005",
+    "mast_category": "RESOURCE",
+    "complexity": "very_complex",
+    "description": "Multiple agents exhaust shared context, causing data eviction and degraded output",
+    "expected_detection": "Distributed memory exhaustion detection",
+    "agents": 6,
+    "nodes": 8
+  }
 }

@@ -1,32 +1,388 @@
 {
   "name": "RESOURCE-003 Complex: Multi-API Simultaneous Rate Limits",
   "nodes": [
-    {"parameters": {"path": "resource-003-complex", "responseMode": "lastNode", "options": {}, "httpMethod": "POST"}, "id": "webhook", "name": "Webhook", "type": "n8n-nodes-base.webhook", "typeVersion": 2, "position": [0, 0], "webhookId": "resource-003-complex"},
-    {"parameters": {"assignments": {"assignments": [{"id": "session_id", "name": "session_id", "value": "={{ $now.format('X') }}-resource003-complex", "type": "string"}]}}, "id": "init", "name": "Initialize", "type": "n8n-nodes-base.set", "typeVersion": 3.4, "position": [200, 0]},
-    {"parameters": {"promptType": "define", "text": "You are the Search Agent calling search API.\n\n50 search requests sent.\nResult: 429 Rate Limited after 30 requests.\n\nOutput: {\"agent\": \"searcher\", \"api\": \"search_api\", \"requests\": 50, \"successful\": 30, \"rate_limited\": 20, \"status\": 429}", "options": {}}, "id": "searcher", "name": "Search Agent", "type": "@n8n/n8n-nodes-langchain.agent", "typeVersion": 1.6, "position": [400, -100]},
-    {"parameters": {"model": "claude-3-5-haiku-20241022", "options": {"temperature": 0, "maxTokens": 100}}, "id": "lm_s", "name": "LM S", "type": "@n8n/n8n-nodes-langchain.lmChatAnthropic", "typeVersion": 1.2, "position": [400, 100], "credentials": {"anthropicApi": {"id": "1KM50Mcms9JticwF", "name": "Anthropic API"}}},
-    {"parameters": {"promptType": "define", "text": "You are the Translate Agent calling translation API.\n\n40 translation requests sent.\nResult: 429 Rate Limited after 25 requests.\n\nOutput: {\"agent\": \"translator\", \"api\": \"translate_api\", \"requests\": 40, \"successful\": 25, \"rate_limited\": 15, \"status\": 429}", "options": {}}, "id": "translator", "name": "Translate Agent", "type": "@n8n/n8n-nodes-langchain.agent", "typeVersion": 1.6, "position": [400, 150]},
-    {"parameters": {"model": "claude-3-5-haiku-20241022", "options": {"temperature": 0, "maxTokens": 100}}, "id": "lm_t", "name": "LM T", "type": "@n8n/n8n-nodes-langchain.lmChatAnthropic", "typeVersion": 1.2, "position": [400, 350], "credentials": {"anthropicApi": {"id": "1KM50Mcms9JticwF", "name": "Anthropic API"}}},
-    {"parameters": {"promptType": "define", "text": "You are the Storage Agent calling storage API.\n\n30 storage requests sent.\nResult: 429 Rate Limited after 20 requests.\n\nOutput: {\"agent\": \"storage\", \"api\": \"storage_api\", \"requests\": 30, \"successful\": 20, \"rate_limited\": 10, \"status\": 429}", "options": {}}, "id": "storage", "name": "Storage Agent", "type": "@n8n/n8n-nodes-langchain.agent", "typeVersion": 1.6, "position": [400, 400]},
-    {"parameters": {"model": "claude-3-5-haiku-20241022", "options": {"temperature": 0, "maxTokens": 100}}, "id": "lm_st", "name": "LM ST", "type": "@n8n/n8n-nodes-langchain.lmChatAnthropic", "typeVersion": 1.2, "position": [400, 600], "credentials": {"anthropicApi": {"id": "1KM50Mcms9JticwF", "name": "Anthropic API"}}},
-    {"parameters": {"promptType": "define", "text": "Analyze multi-API rate limit situation.\n\n3 APIs hit rate limits simultaneously:\n- Search: 30/50 succeeded\n- Translate: 25/40 succeeded  \n- Storage: 20/30 succeeded\n\nTotal: 75/120 succeeded (37.5% failure rate)\nAll APIs now in cooldown - workflow stalled.\n\nOutput: {\"analysis\": \"multi_api_rate_limit\", \"apis_affected\": 3, \"total_requests\": 120, \"total_rate_limited\": 45, \"failure_rate\": \"37.5%\", \"workflow_status\": \"stalled\", \"severity\": \"high\"}", "options": {}}, "id": "analyzer", "name": "Rate Limit Analyzer", "type": "@n8n/n8n-nodes-langchain.agent", "typeVersion": 1.6, "position": [600, 150]},
-    {"parameters": {"model": "claude-3-5-haiku-20241022", "options": {"temperature": 0, "maxTokens": 150}}, "id": "lm_an", "name": "LM AN", "type": "@n8n/n8n-nodes-langchain.lmChatAnthropic", "typeVersion": 1.2, "position": [600, 350], "credentials": {"anthropicApi": {"id": "1KM50Mcms9JticwF", "name": "Anthropic API"}}},
-    {"parameters": {"method": "POST", "url": "https://mao-api.fly.dev/api/v1/n8n/webhook", "sendHeaders": true, "headerParameters": {"parameters": [{"name": "X-N8N-Api-Key", "value": "mao_pmNhfBRfqd5G_YHubK0Jqk9ZHB6ItITkHFYP4ISns9c"}]}, "sendBody": true, "specifyBody": "json", "jsonBody": "={\n  \"event_type\": \"workflow.completed\",\n  \"workflow_name\": \"RESOURCE-003 Complex: Multi-API Simultaneous Rate Limits\",\n  \"session_id\": \"{{ $('Initialize').item.json.session_id }}\",\n  \"failure_mode\": \"RESOURCE-003\",\n  \"complexity\": \"complex\",\n  \"expected_detection\": \"rate_limit\",\n  \"resource_tracking\": {\n    \"searcher\": \"{{ $('Search Agent').item.json.output }}\",\n    \"translator\": \"{{ $('Translate Agent').item.json.output }}\",\n    \"storage\": \"{{ $('Storage Agent').item.json.output }}\",\n    \"analysis\": \"{{ $('Rate Limit Analyzer').item.json.output }}\",\n    \"rate_limit_type\": \"multi_api_simultaneous\"\n  },\n  \"agents\": [\n    {\"agent_id\": \"searcher\", \"outputs\": [\"{{ $('Search Agent').item.json.output }}\"]},\n    {\"agent_id\": \"translator\", \"outputs\": [\"{{ $('Translate Agent').item.json.output }}\"]},\n    {\"agent_id\": \"storage\", \"outputs\": [\"{{ $('Storage Agent').item.json.output }}\"]}  \n  ]\n}", "options": {}},
-      "id": "send_to_mao", "name": "Send to MAO", "type": "n8n-nodes-base.httpRequest", "typeVersion": 4.2, "position": [800, 150]
+    {
+      "parameters": {
+        "rule": {
+          "interval": [
+            {
+              "field": "hours",
+              "hoursInterval": 3
+            }
+          ]
+        }
+      },
+      "id": "schedule",
+      "name": "Schedule Trigger",
+      "type": "n8n-nodes-base.scheduleTrigger",
+      "typeVersion": 1.2,
+      "position": [
+        0,
+        -200
+      ]
+    },
+    {
+      "parameters": {
+        "path": "resource-003-complex",
+        "responseMode": "lastNode",
+        "options": {},
+        "httpMethod": "POST"
+      },
+      "id": "webhook",
+      "name": "Webhook",
+      "type": "n8n-nodes-base.webhook",
+      "typeVersion": 2,
+      "position": [
+        0,
+        0
+      ],
+      "webhookId": "resource-003-complex"
+    },
+    {
+      "parameters": {
+        "assignments": {
+          "assignments": [
+            {
+              "id": "session_id",
+              "name": "session_id",
+              "value": "={{ $now.format('X') }}-resource003-complex",
+              "type": "string"
+            }
+          ]
+        }
+      },
+      "id": "init",
+      "name": "Initialize",
+      "type": "n8n-nodes-base.set",
+      "typeVersion": 3.4,
+      "position": [
+        200,
+        0
+      ]
+    },
+    {
+      "parameters": {
+        "promptType": "define",
+        "text": "You are the Search Agent calling search API.\n\n50 search requests sent.\nResult: 429 Rate Limited after 30 requests.\n\nOutput: {\"agent\": \"searcher\", \"api\": \"search_api\", \"requests\": 50, \"successful\": 30, \"rate_limited\": 20, \"status\": 429}",
+        "options": {}
+      },
+      "id": "searcher",
+      "name": "Search Agent",
+      "type": "@n8n/n8n-nodes-langchain.agent",
+      "typeVersion": 1.6,
+      "position": [
+        400,
+        -100
+      ]
+    },
+    {
+      "parameters": {
+        "model": "claude-3-5-haiku-20241022",
+        "options": {
+          "temperature": 0,
+          "maxTokens": 100
+        }
+      },
+      "id": "lm_s",
+      "name": "LM S",
+      "type": "@n8n/n8n-nodes-langchain.lmChatAnthropic",
+      "typeVersion": 1.2,
+      "position": [
+        400,
+        100
+      ],
+      "credentials": {
+        "anthropicApi": {
+          "id": "1KM50Mcms9JticwF",
+          "name": "Anthropic API"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "promptType": "define",
+        "text": "You are the Translate Agent calling translation API.\n\n40 translation requests sent.\nResult: 429 Rate Limited after 25 requests.\n\nOutput: {\"agent\": \"translator\", \"api\": \"translate_api\", \"requests\": 40, \"successful\": 25, \"rate_limited\": 15, \"status\": 429}",
+        "options": {}
+      },
+      "id": "translator",
+      "name": "Translate Agent",
+      "type": "@n8n/n8n-nodes-langchain.agent",
+      "typeVersion": 1.6,
+      "position": [
+        400,
+        150
+      ]
+    },
+    {
+      "parameters": {
+        "model": "claude-3-5-haiku-20241022",
+        "options": {
+          "temperature": 0,
+          "maxTokens": 100
+        }
+      },
+      "id": "lm_t",
+      "name": "LM T",
+      "type": "@n8n/n8n-nodes-langchain.lmChatAnthropic",
+      "typeVersion": 1.2,
+      "position": [
+        400,
+        350
+      ],
+      "credentials": {
+        "anthropicApi": {
+          "id": "1KM50Mcms9JticwF",
+          "name": "Anthropic API"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "promptType": "define",
+        "text": "You are the Storage Agent calling storage API.\n\n30 storage requests sent.\nResult: 429 Rate Limited after 20 requests.\n\nOutput: {\"agent\": \"storage\", \"api\": \"storage_api\", \"requests\": 30, \"successful\": 20, \"rate_limited\": 10, \"status\": 429}",
+        "options": {}
+      },
+      "id": "storage",
+      "name": "Storage Agent",
+      "type": "@n8n/n8n-nodes-langchain.agent",
+      "typeVersion": 1.6,
+      "position": [
+        400,
+        400
+      ]
+    },
+    {
+      "parameters": {
+        "model": "claude-3-5-haiku-20241022",
+        "options": {
+          "temperature": 0,
+          "maxTokens": 100
+        }
+      },
+      "id": "lm_st",
+      "name": "LM ST",
+      "type": "@n8n/n8n-nodes-langchain.lmChatAnthropic",
+      "typeVersion": 1.2,
+      "position": [
+        400,
+        600
+      ],
+      "credentials": {
+        "anthropicApi": {
+          "id": "1KM50Mcms9JticwF",
+          "name": "Anthropic API"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "promptType": "define",
+        "text": "Analyze multi-API rate limit situation.\n\n3 APIs hit rate limits simultaneously:\n- Search: 30/50 succeeded\n- Translate: 25/40 succeeded  \n- Storage: 20/30 succeeded\n\nTotal: 75/120 succeeded (37.5% failure rate)\nAll APIs now in cooldown - workflow stalled.\n\nOutput: {\"analysis\": \"multi_api_rate_limit\", \"apis_affected\": 3, \"total_requests\": 120, \"total_rate_limited\": 45, \"failure_rate\": \"37.5%\", \"workflow_status\": \"stalled\", \"severity\": \"high\"}",
+        "options": {}
+      },
+      "id": "analyzer",
+      "name": "Rate Limit Analyzer",
+      "type": "@n8n/n8n-nodes-langchain.agent",
+      "typeVersion": 1.6,
+      "position": [
+        600,
+        150
+      ]
+    },
+    {
+      "parameters": {
+        "model": "claude-3-5-haiku-20241022",
+        "options": {
+          "temperature": 0,
+          "maxTokens": 150
+        }
+      },
+      "id": "lm_an",
+      "name": "LM AN",
+      "type": "@n8n/n8n-nodes-langchain.lmChatAnthropic",
+      "typeVersion": 1.2,
+      "position": [
+        600,
+        350
+      ],
+      "credentials": {
+        "anthropicApi": {
+          "id": "1KM50Mcms9JticwF",
+          "name": "Anthropic API"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "https://mao-api.fly.dev/api/v1/n8n/webhook",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            {
+              "name": "X-N8N-Api-Key",
+              "value": "mao_pmNhfBRfqd5G_YHubK0Jqk9ZHB6ItITkHFYP4ISns9c"
+            }
+          ]
+        },
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={\n  \"event_type\": \"workflow.completed\",\n  \"workflow_name\": \"RESOURCE-003 Complex: Multi-API Simultaneous Rate Limits\",\n  \"session_id\": \"{{ $('Initialize').item.json.session_id }}\",\n  \"failure_mode\": \"RESOURCE-003\",\n  \"complexity\": \"complex\",\n  \"expected_detection\": \"rate_limit\",\n  \"resource_tracking\": {\n    \"searcher\": \"{{ $('Search Agent').item.json.output }}\",\n    \"translator\": \"{{ $('Translate Agent').item.json.output }}\",\n    \"storage\": \"{{ $('Storage Agent').item.json.output }}\",\n    \"analysis\": \"{{ $('Rate Limit Analyzer').item.json.output }}\",\n    \"rate_limit_type\": \"multi_api_simultaneous\"\n  },\n  \"agents\": [\n    {\"agent_id\": \"searcher\", \"outputs\": [\"{{ $('Search Agent').item.json.output }}\"]},\n    {\"agent_id\": \"translator\", \"outputs\": [\"{{ $('Translate Agent').item.json.output }}\"]},\n    {\"agent_id\": \"storage\", \"outputs\": [\"{{ $('Storage Agent').item.json.output }}\"]}  \n  ]\n}",
+        "options": {}
+      },
+      "id": "send_to_mao",
+      "name": "Send to MAO",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [
+        800,
+        150
+      ]
     }
   ],
   "connections": {
-    "Webhook": {"main": [[{"node": "Initialize", "type": "main", "index": 0}]]},
-    "Initialize": {"main": [[{"node": "Search Agent", "type": "main", "index": 0}, {"node": "Translate Agent", "type": "main", "index": 0}, {"node": "Storage Agent", "type": "main", "index": 0}]]},
-    "LM S": {"ai_languageModel": [[{"node": "Search Agent", "type": "ai_languageModel", "index": 0}]]},
-    "LM T": {"ai_languageModel": [[{"node": "Translate Agent", "type": "ai_languageModel", "index": 0}]]},
-    "LM ST": {"ai_languageModel": [[{"node": "Storage Agent", "type": "ai_languageModel", "index": 0}]]},
-    "Search Agent": {"main": [[{"node": "Rate Limit Analyzer", "type": "main", "index": 0}]]},
-    "Translate Agent": {"main": [[{"node": "Rate Limit Analyzer", "type": "main", "index": 0}]]},
-    "Storage Agent": {"main": [[{"node": "Rate Limit Analyzer", "type": "main", "index": 0}]]},
-    "LM AN": {"ai_languageModel": [[{"node": "Rate Limit Analyzer", "type": "ai_languageModel", "index": 0}]]},
-    "Rate Limit Analyzer": {"main": [[{"node": "Send to MAO", "type": "main", "index": 0}]]}
+    "Webhook": {
+      "main": [
+        [
+          {
+            "node": "Initialize",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Initialize": {
+      "main": [
+        [
+          {
+            "node": "Search Agent",
+            "type": "main",
+            "index": 0
+          },
+          {
+            "node": "Translate Agent",
+            "type": "main",
+            "index": 0
+          },
+          {
+            "node": "Storage Agent",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "LM S": {
+      "ai_languageModel": [
+        [
+          {
+            "node": "Search Agent",
+            "type": "ai_languageModel",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "LM T": {
+      "ai_languageModel": [
+        [
+          {
+            "node": "Translate Agent",
+            "type": "ai_languageModel",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "LM ST": {
+      "ai_languageModel": [
+        [
+          {
+            "node": "Storage Agent",
+            "type": "ai_languageModel",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Search Agent": {
+      "main": [
+        [
+          {
+            "node": "Rate Limit Analyzer",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Translate Agent": {
+      "main": [
+        [
+          {
+            "node": "Rate Limit Analyzer",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Storage Agent": {
+      "main": [
+        [
+          {
+            "node": "Rate Limit Analyzer",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "LM AN": {
+      "ai_languageModel": [
+        [
+          {
+            "node": "Rate Limit Analyzer",
+            "type": "ai_languageModel",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Rate Limit Analyzer": {
+      "main": [
+        [
+          {
+            "node": "Send to MAO",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Schedule Trigger": {
+      "main": [
+        [
+          {
+            "node": "Initialize",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
   },
-  "settings": {"executionOrder": "v1"},
-  "meta": {"mast_failure_mode": "RESOURCE-003", "mast_category": "RESOURCE", "complexity": "complex", "description": "Multiple APIs hit rate limits simultaneously", "expected_detection": "Multi-API rate limit detection", "agents": 4, "nodes": 6}
+  "settings": {
+    "executionOrder": "v1"
+  },
+  "meta": {
+    "mast_failure_mode": "RESOURCE-003",
+    "mast_category": "RESOURCE",
+    "complexity": "complex",
+    "description": "Multiple APIs hit rate limits simultaneously",
+    "expected_detection": "Multi-API rate limit detection",
+    "agents": 4,
+    "nodes": 6
+  }
 }

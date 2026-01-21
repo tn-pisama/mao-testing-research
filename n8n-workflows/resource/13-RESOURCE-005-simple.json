@@ -2,32 +2,203 @@
   "name": "RESOURCE-005 Simple: Input-Based Context Exhaustion",
   "nodes": [
     {
-      "parameters": {"path": "resource-005-simple", "responseMode": "lastNode", "options": {}, "httpMethod": "POST"},
-      "id": "webhook", "name": "Webhook", "type": "n8n-nodes-base.webhook", "typeVersion": 2, "position": [0, 0], "webhookId": "resource-005-simple"
+      "parameters": {
+        "rule": {
+          "interval": [
+            {
+              "field": "hours",
+              "hoursInterval": 3
+            }
+          ]
+        }
+      },
+      "id": "schedule",
+      "name": "Schedule Trigger",
+      "type": "n8n-nodes-base.scheduleTrigger",
+      "typeVersion": 1.2,
+      "position": [
+        0,
+        -200
+      ]
     },
     {
-      "parameters": {"assignments": {"assignments": [{"id": "session_id", "name": "session_id", "value": "={{ $now.format('X') }}-resource005-simple", "type": "string"}, {"id": "context_limit", "name": "context_limit", "value": "8000", "type": "number"}]}},
-      "id": "init", "name": "Initialize", "type": "n8n-nodes-base.set", "typeVersion": 3.4, "position": [200, 0]
+      "parameters": {
+        "path": "resource-005-simple",
+        "responseMode": "lastNode",
+        "options": {},
+        "httpMethod": "POST"
+      },
+      "id": "webhook",
+      "name": "Webhook",
+      "type": "n8n-nodes-base.webhook",
+      "typeVersion": 2,
+      "position": [
+        0,
+        0
+      ],
+      "webhookId": "resource-005-simple"
     },
     {
-      "parameters": {"promptType": "define", "text": "You are an agent that received a massive input document.\n\nInput size: 15,000 tokens\nModel context limit: 8,000 tokens\nOverflow: 7,000 tokens (87.5% over limit!)\n\nThe input was TRUNCATED. You only see the first 8,000 tokens.\nCritical information at the end of the document is LOST.\n\nOutput: {\"agent\": \"document_processor\", \"input_tokens\": 15000, \"context_limit\": 8000, \"tokens_lost\": 7000, \"overflow_percent\": 87.5, \"data_loss\": \"critical_info_at_end_lost\"}", "options": {}},
-      "id": "processor", "name": "Document Processor", "type": "@n8n/n8n-nodes-langchain.agent", "typeVersion": 1.6, "position": [400, 0]
+      "parameters": {
+        "assignments": {
+          "assignments": [
+            {
+              "id": "session_id",
+              "name": "session_id",
+              "value": "={{ $now.format('X') }}-resource005-simple",
+              "type": "string"
+            },
+            {
+              "id": "context_limit",
+              "name": "context_limit",
+              "value": "8000",
+              "type": "number"
+            }
+          ]
+        }
+      },
+      "id": "init",
+      "name": "Initialize",
+      "type": "n8n-nodes-base.set",
+      "typeVersion": 3.4,
+      "position": [
+        200,
+        0
+      ]
     },
     {
-      "parameters": {"model": "claude-3-5-haiku-20241022", "options": {"temperature": 0, "maxTokens": 120}},
-      "id": "lm", "name": "LM", "type": "@n8n/n8n-nodes-langchain.lmChatAnthropic", "typeVersion": 1.2, "position": [400, 200], "credentials": {"anthropicApi": {"id": "1KM50Mcms9JticwF", "name": "Anthropic API"}}
+      "parameters": {
+        "promptType": "define",
+        "text": "You are an agent that received a massive input document.\n\nInput size: 15,000 tokens\nModel context limit: 8,000 tokens\nOverflow: 7,000 tokens (87.5% over limit!)\n\nThe input was TRUNCATED. You only see the first 8,000 tokens.\nCritical information at the end of the document is LOST.\n\nOutput: {\"agent\": \"document_processor\", \"input_tokens\": 15000, \"context_limit\": 8000, \"tokens_lost\": 7000, \"overflow_percent\": 87.5, \"data_loss\": \"critical_info_at_end_lost\"}",
+        "options": {}
+      },
+      "id": "processor",
+      "name": "Document Processor",
+      "type": "@n8n/n8n-nodes-langchain.agent",
+      "typeVersion": 1.6,
+      "position": [
+        400,
+        0
+      ]
     },
     {
-      "parameters": {"method": "POST", "url": "https://mao-api.fly.dev/api/v1/n8n/webhook", "sendHeaders": true, "headerParameters": {"parameters": [{"name": "X-N8N-Api-Key", "value": "mao_pmNhfBRfqd5G_YHubK0Jqk9ZHB6ItITkHFYP4ISns9c"}]}, "sendBody": true, "specifyBody": "json", "jsonBody": "={\n  \"event_type\": \"workflow.completed\",\n  \"workflow_name\": \"RESOURCE-005 Simple: Input-Based Context Exhaustion\",\n  \"session_id\": \"{{ $('Initialize').item.json.session_id }}\",\n  \"failure_mode\": \"RESOURCE-005\",\n  \"complexity\": \"simple\",\n  \"expected_detection\": \"memory_exhaustion\",\n  \"resource_tracking\": {\n    \"context_limit\": {{ $('Initialize').item.json.context_limit }},\n    \"processor_output\": \"{{ $('Document Processor').item.json.output }}\",\n    \"exhaustion_type\": \"input_overflow\"\n  },\n  \"agents\": [\n    {\"agent_id\": \"processor\", \"outputs\": [\"{{ $('Document Processor').item.json.output }}\"]}\n  ]\n}", "options": {}},
-      "id": "send_to_mao", "name": "Send to MAO", "type": "n8n-nodes-base.httpRequest", "typeVersion": 4.2, "position": [600, 0]
+      "parameters": {
+        "model": "claude-3-5-haiku-20241022",
+        "options": {
+          "temperature": 0,
+          "maxTokens": 120
+        }
+      },
+      "id": "lm",
+      "name": "LM",
+      "type": "@n8n/n8n-nodes-langchain.lmChatAnthropic",
+      "typeVersion": 1.2,
+      "position": [
+        400,
+        200
+      ],
+      "credentials": {
+        "anthropicApi": {
+          "id": "1KM50Mcms9JticwF",
+          "name": "Anthropic API"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "https://mao-api.fly.dev/api/v1/n8n/webhook",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            {
+              "name": "X-N8N-Api-Key",
+              "value": "mao_pmNhfBRfqd5G_YHubK0Jqk9ZHB6ItITkHFYP4ISns9c"
+            }
+          ]
+        },
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={\n  \"event_type\": \"workflow.completed\",\n  \"workflow_name\": \"RESOURCE-005 Simple: Input-Based Context Exhaustion\",\n  \"session_id\": \"{{ $('Initialize').item.json.session_id }}\",\n  \"failure_mode\": \"RESOURCE-005\",\n  \"complexity\": \"simple\",\n  \"expected_detection\": \"memory_exhaustion\",\n  \"resource_tracking\": {\n    \"context_limit\": {{ $('Initialize').item.json.context_limit }},\n    \"processor_output\": \"{{ $('Document Processor').item.json.output }}\",\n    \"exhaustion_type\": \"input_overflow\"\n  },\n  \"agents\": [\n    {\"agent_id\": \"processor\", \"outputs\": [\"{{ $('Document Processor').item.json.output }}\"]}\n  ]\n}",
+        "options": {}
+      },
+      "id": "send_to_mao",
+      "name": "Send to MAO",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [
+        600,
+        0
+      ]
     }
   ],
   "connections": {
-    "Webhook": {"main": [[{"node": "Initialize", "type": "main", "index": 0}]]},
-    "Initialize": {"main": [[{"node": "Document Processor", "type": "main", "index": 0}]]},
-    "LM": {"ai_languageModel": [[{"node": "Document Processor", "type": "ai_languageModel", "index": 0}]]},
-    "Document Processor": {"main": [[{"node": "Send to MAO", "type": "main", "index": 0}]]}
+    "Webhook": {
+      "main": [
+        [
+          {
+            "node": "Initialize",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Initialize": {
+      "main": [
+        [
+          {
+            "node": "Document Processor",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "LM": {
+      "ai_languageModel": [
+        [
+          {
+            "node": "Document Processor",
+            "type": "ai_languageModel",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Document Processor": {
+      "main": [
+        [
+          {
+            "node": "Send to MAO",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Schedule Trigger": {
+      "main": [
+        [
+          {
+            "node": "Initialize",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
   },
-  "settings": {"executionOrder": "v1"},
-  "meta": {"mast_failure_mode": "RESOURCE-005", "mast_category": "RESOURCE", "complexity": "simple", "description": "Input document exceeds context window, causing truncation and data loss", "expected_detection": "Input-based context exhaustion detection", "agents": 1, "nodes": 3}
+  "settings": {
+    "executionOrder": "v1"
+  },
+  "meta": {
+    "mast_failure_mode": "RESOURCE-005",
+    "mast_category": "RESOURCE",
+    "complexity": "simple",
+    "description": "Input document exceeds context window, causing truncation and data loss",
+    "expected_detection": "Input-based context exhaustion detection",
+    "agents": 1,
+    "nodes": 3
+  }
 }
