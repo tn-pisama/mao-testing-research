@@ -9,21 +9,25 @@ from enum import Enum
 
 
 class MASTFailureMode(str, Enum):
-    """MAST 14 failure modes - aligned with MAST taxonomy (arXiv:2503.13657)."""
-    # FC1: System Design Issues (5 modes)
-    F1 = "F1"   # Disobey Task Specification (FM-1.1)
-    F2 = "F2"   # Disobey Role Specification (FM-1.2)
-    F3 = "F3"   # Step Repetition (FM-1.3)
-    F4 = "F4"   # Loss of Conversation History (FM-1.4)
-    F5 = "F5"   # Unaware of Termination Conditions (FM-1.5)
-    # FC2: Inter-Agent Misalignment (6 modes)
-    F6 = "F6"   # Conversation Reset (FM-2.1)
-    F7 = "F7"   # Fail to Ask for Clarification (FM-2.2)
-    F8 = "F8"   # Task Derailment (FM-2.3)
-    F9 = "F9"   # Information Withholding (FM-2.4)
-    F10 = "F10" # Ignored Other Agent's Input (FM-2.5)
-    F11 = "F11" # Reasoning-Action Mismatch (FM-2.6)
-    # FC3: Task Verification Issues (3 modes)
-    F12 = "F12" # Premature Termination (FM-3.1)
-    F13 = "F13" # No or Incomplete Verification (FM-3.2)
-    F14 = "F14" # Incorrect Verification (FM-3.3)
+    """MAST 14 failure modes - aligned with benchmark/mast_loader.py naming.
+
+    NOTE: Names must match FAILURE_MODE_NAMES in benchmark/mast_loader.py
+    for consistent evaluation across rule-based and LLM-based detectors.
+    """
+    # FC1: Planning Failures (5 modes)
+    F1 = "F1"   # Specification Mismatch (FM-1.1)
+    F2 = "F2"   # Poor Task Decomposition (FM-1.2)
+    F3 = "F3"   # Resource Misallocation (FM-1.3)
+    F4 = "F4"   # Inadequate Tool Provision (FM-1.4)
+    F5 = "F5"   # Flawed Workflow Design (FM-1.5)
+    # FC2: Execution Failures (6 modes)
+    F6 = "F6"   # Task Derailment (FM-2.1)
+    F7 = "F7"   # Context Neglect (FM-2.2)
+    F8 = "F8"   # Information Withholding (FM-2.3)
+    F9 = "F9"   # Role Usurpation (FM-2.4)
+    F10 = "F10" # Communication Breakdown (FM-2.5)
+    F11 = "F11" # Coordination Failure (FM-2.6)
+    # FC3: Verification Failures (3 modes)
+    F12 = "F12" # Output Validation Failure (FM-3.1)
+    F13 = "F13" # Quality Gate Bypass (FM-3.2)
+    F14 = "F14" # Completion Misjudgment (FM-3.3)

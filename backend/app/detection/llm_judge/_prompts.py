@@ -116,17 +116,18 @@ Agent: "Found bug in password check. Fixed. Testing now."
 Verdict: NO - Stayed focused on task"""
     },
     MASTFailureMode.F9: {
-        "name": "Information Withholding",
-        "definition": """FM-2.4: Failure to share or communicate important data or insights that could impact
-decision-making of other agents. Look for: agent having relevant info but not sharing it,
-hiding errors, or failing to communicate important findings.""",
-        "positive_example": """Agent A knows: "Database is at 95% capacity"
-Agent B: "Should I start the data import?"
-Agent A: "Sure, go ahead." [doesn't mention capacity]
-Verdict: YES - Withheld critical capacity information""",
-        "negative_example": """Agent A: "Warning: Database at 95% capacity"
-Agent B: "Thanks, will wait for cleanup"
-Verdict: NO - Shared relevant information"""
+        "name": "Role Usurpation",
+        "definition": """FM-2.4: Agent acts outside their designated role, exceeding boundaries or taking over
+responsibilities assigned to other agents. Look for: agent performing tasks explicitly assigned to another role,
+claiming authority they don't have, making decisions outside their scope, or overriding role-specific constraints.
+Note: This differs from F2 (Role Specification) which is about initial role definition; F9 is about runtime role violations.""",
+        "positive_example": """Setup: "Coder writes, Reviewer reviews, Deployer deploys"
+Coder: "Code done. I'm also reviewing it myself - APPROVED. Deploying now."
+Verdict: YES - Coder usurped Reviewer and Deployer roles""",
+        "negative_example": """Coder: "Code done. Sending to Reviewer."
+Reviewer: "LGTM. Approved for deployment."
+Deployer: "Deploying now."
+Verdict: NO - Each agent stayed within role boundaries"""
     },
     MASTFailureMode.F10: {
         "name": "Ignored Other Agent's Input",

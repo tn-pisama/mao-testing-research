@@ -27,7 +27,7 @@ logger = logging.getLogger(__name__)
 
 
 class TurnAwareRoleUsurpationDetector(EmbeddingMixin, TurnAwareDetector):
-    """Detects F9: Role Usurpation in conversations.
+    """Detects F9: Role Usurpation (FM-2.4) in conversations.
 
     Analyzes whether agents act outside their designated roles:
     1. Role boundary violation - agent performs tasks outside role scope
@@ -35,16 +35,33 @@ class TurnAwareRoleUsurpationDetector(EmbeddingMixin, TurnAwareDetector):
     3. Unauthorized actions - agent exceeds permission boundaries
     4. Role drift - gradual deviation from assigned responsibilities
 
-    NOTE: F9 detection with rule-based/semantic approaches has limitations:
-    - MAST F9 patterns are subtle and vary across frameworks
-    - Semantic similarity between related roles causes false positives
-    - AG2 trajectory parsing needs improvement for 21/40 F9 examples
+    == IMPORTANT FINDINGS (Jan 2026) ==
 
-    RECOMMENDATION: Use hybrid mode with LLM escalation for F9 detection
-    to achieve reasonable accuracy. The turn-aware detector provides
-    structural analysis but relies on LLM for nuanced judgment.
+    Analysis of MAST benchmark F9 cases revealed:
 
-    Based on MAST research (NeurIPS 2025): FM-2.5 Role Usurpation (3%)
+    1. F9 IS PART OF CASCADE FAILURES
+       - 100% of F9+ cases have multiple other failures (F1, F3, F5, F7, F8, F11, F12, F14)
+       - F9 rarely appears in isolation; it's part of systemic failures
+       - Error rate 2.5x higher in F9+ cases (40% vs 16%)
+
+    2. RULE-BASED DETECTION HAS FUNDAMENTAL LIMITS
+       - Current patterns detect 1/40 F9+ cases (2.5% recall)
+       - Cascade detection was tested but adds FPs without improving TPs
+       - The trajectories don't show obvious role usurpation patterns
+       - Most F9+ cases show agents performing their roles, but with errors
+
+    3. BENCHMARK F9 DEFINITION
+       - FM-2.4 in MAST paper = Role Usurpation
+       - Occurs when agents exceed role boundaries or claim others' responsibilities
+       - Often manifests subtly (not explicit "I'm taking over" statements)
+
+    4. LLM JUDGE MAPPING BUG
+       - LLM judge (_enums.py) incorrectly maps F9 to "Information Withholding"
+       - Should be "Role Usurpation" to match benchmark
+       - Fix required before using hybrid LLM escalation for F9
+
+    CURRENT STATUS: F1=0.182 (1 TP, 0 FP, 39 FN) - baseline is maintained
+    RECOMMENDATION: Hybrid LLM escalation required for meaningful F9 detection
     """
 
     name = "TurnAwareRoleUsurpationDetector"
