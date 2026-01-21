@@ -218,10 +218,13 @@ class TurnAwareRoleUsurpationDetector(EmbeddingMixin, TurnAwareDetector):
         # violations.extend(cascade_violations)
 
         if len(violations) < self.min_violations:
+            # AMBIGUOUS confidence for F9 when no violations found
+            # This triggers LLM escalation in hybrid mode (0.40-0.85 range)
+            # since F9 rule-based detection only achieves 2.5% recall on MAST
             return TurnAwareDetectionResult(
                 detected=False,
                 severity=TurnAwareSeverity.NONE,
-                confidence=0.8,
+                confidence=0.50,  # Ambiguous → LLM escalation in hybrid mode
                 failure_mode=None,
                 explanation=f"Insufficient evidence ({len(violations)} violations < {self.min_violations} required)",
                 detector_name=self.name,
