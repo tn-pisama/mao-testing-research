@@ -9,7 +9,7 @@ import {
   generateDemoDetections,
   generateDemoTraces,
 } from '@/lib/demo-data'
-import type { LoopAnalytics, CostAnalytics, Detection, Trace } from '@/lib/api'
+import type { LoopAnalytics, CostAnalytics, Detection, Trace, QualityAssessment } from '@/lib/api'
 
 export function useApiWithFallback() {
   const { getToken } = useAuth()
@@ -21,23 +21,26 @@ export function useApiWithFallback() {
   const [costAnalytics, setCostAnalytics] = useState<CostAnalytics | undefined>()
   const [detections, setDetections] = useState<Detection[]>([])
   const [traces, setTraces] = useState<Trace[]>([])
+  const [qualityAssessments, setQualityAssessments] = useState<QualityAssessment[]>([])
 
   const loadRealData = useCallback(async () => {
     try {
       const token = await getToken()
       const api = createApiClient(token)
       
-      const [loops, cost, dets, trc] = await Promise.all([
+      const [loops, cost, dets, trc, qualityRes] = await Promise.all([
         api.getLoopAnalytics(30),
         api.getCostAnalytics(30),
         api.getDetections({ perPage: 10 }),
         api.getTraces({ perPage: 10 }),
+        api.listQualityAssessments({ pageSize: 20 }).catch(() => ({ assessments: [] })),
       ])
-      
+
       setLoopAnalytics(loops)
       setCostAnalytics(cost)
       setDetections(dets)
       setTraces(trc.traces)
+      setQualityAssessments(qualityRes.assessments)
       setIsDemoMode(false)
       setError(null)
       return true
@@ -52,6 +55,7 @@ export function useApiWithFallback() {
     setCostAnalytics(generateDemoCostAnalytics())
     setDetections(generateDemoDetections(8))
     setTraces(generateDemoTraces(10))
+    setQualityAssessments([])
     setIsDemoMode(true)
   }, [])
 
@@ -86,6 +90,7 @@ export function useApiWithFallback() {
     costAnalytics,
     detections,
     traces,
+    qualityAssessments,
     refresh,
     toggleDemoMode,
   }

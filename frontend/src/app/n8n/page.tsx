@@ -10,7 +10,8 @@ import {
 } from 'lucide-react'
 import { Layout } from '@/components/common/Layout'
 import { Button } from '@/components/ui/Button'
-import { createApiClient, N8nWorkflow } from '@/lib/api'
+import { QualityGradeBadge } from '@/components/quality/QualityGradeBadge'
+import { createApiClient, N8nWorkflow, QualityAssessment } from '@/lib/api'
 
 interface DisplayWorkflow {
   id: string
@@ -18,15 +19,24 @@ interface DisplayWorkflow {
   workflowName: string
   webhookUrl: string
   registeredAt: string
+  qualityGrade?: string
+  qualityScore?: number
+  qualityAssessmentId?: string
 }
 
-function mapWorkflow(w: N8nWorkflow): DisplayWorkflow {
+function mapWorkflow(w: N8nWorkflow, assessments: QualityAssessment[]): DisplayWorkflow {
+  // Find the most recent quality assessment for this workflow
+  const assessment = assessments.find(a => a.workflow_name === (w.workflow_name || `Workflow ${w.workflow_id}`))
+
   return {
     id: w.id,
     workflowId: w.workflow_id,
     workflowName: w.workflow_name || `Workflow ${w.workflow_id}`,
     webhookUrl: w.webhook_url,
-    registeredAt: new Date(w.registered_at).toLocaleString()
+    registeredAt: new Date(w.registered_at).toLocaleString(),
+    qualityGrade: assessment?.overall_grade,
+    qualityScore: assessment?.overall_score,
+    qualityAssessmentId: assessment?.id,
   }
 }
 
@@ -47,8 +57,14 @@ export default function N8nPage() {
     try {
       const token = await getToken()
       const api = createApiClient(token, tenantId)
-      const data = await api.listN8nWorkflows()
-      setWorkflows(data.map(mapWorkflow))
+
+      // Load both workflows and quality assessments
+      const [workflowsData, qualityRes] = await Promise.all([
+        api.listN8nWorkflows(),
+        api.listQualityAssessments({ pageSize: 100 }).catch(() => ({ assessments: [] })),
+      ])
+
+      setWorkflows(workflowsData.map(w => mapWorkflow(w, qualityRes.assessments)))
     } catch (err) {
       console.warn('Failed to load n8n workflows:', err)
       setWorkflows([])
@@ -202,19 +218,32 @@ export default function N8nPage() {
                         <span className="text-slate-500 text-xs font-mono bg-slate-700 px-2 py-0.5 rounded">
                           {workflow.workflowId}
                         </span>
+                        {workflow.qualityGrade && (
+                          <QualityGradeBadge grade={workflow.qualityGrade} size="sm" />
+                        )}
                       </div>
                       <p className="text-slate-500 text-sm">
                         Registered: {workflow.registeredAt}
                       </p>
                     </div>
-                    <a
-                      href={`https://n8n.io`}
-                      target="_blank"
-                      rel="noopener noreferrer"
-                      className="text-slate-400 hover:text-white transition-colors"
-                    >
-                      <ExternalLink size={18} />
-                    </a>
+                    <div className="flex items-center gap-2">
+                      {workflow.qualityAssessmentId && (
+                        <a
+                          href={`/quality/${workflow.qualityAssessmentId}`}
+                          className="text-sm text-blue-400 hover:text-blue-300"
+                        >
+                          View Quality
+                        </a>
+                      )}
+                      <a
+                        href={`https://n8n.io`}
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        className="text-slate-400 hover:text-white transition-colors"
+                      >
+                        <ExternalLink size={18} />
+                      </a>
+                    </div>
                   </div>
 
                   {/* Webhook URL */}

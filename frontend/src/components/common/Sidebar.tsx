@@ -18,6 +18,7 @@ import {
   Box,
   Sparkles,
   Wrench,
+  Star,
 } from 'lucide-react'
 import { useUserPreferences } from '@/lib/user-preferences'
 
@@ -33,6 +34,7 @@ interface NavItem {
 const n8nNavItems: NavItem[] = [
   { label: 'Dashboard', href: '/dashboard', icon: LayoutDashboard },
   { label: 'My Workflows', href: '/n8n', icon: GitBranch },
+  { label: 'Quality', href: '/quality', icon: Star },
   { label: 'Problems Found', href: '/detections', icon: AlertCircle },
   { label: 'Fixes', href: '/healing', icon: Wrench },
 ]
@@ -42,6 +44,7 @@ const developerMainItems: NavItem[] = [
   { label: 'Dashboard', href: '/dashboard', icon: LayoutDashboard },
   { label: 'Traces', href: '/traces', icon: Activity },
   { label: 'Detections', href: '/detections', icon: AlertTriangle },
+  { label: 'Quality', href: '/quality', icon: Star },
   { label: 'Healing', href: '/healing', icon: Sparkles },
   { label: 'Benchmarks', href: '/benchmarks', icon: BarChart3, advancedOnly: true },
 ]

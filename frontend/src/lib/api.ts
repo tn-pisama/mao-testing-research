@@ -666,6 +666,112 @@ export interface MetricsExport {
   timestamp: string
 }
 
+// ============================================================================
+// Quality Assessment Types
+// ============================================================================
+
+export interface QualityDimensionScore {
+  dimension: string
+  score: number
+  weight: number
+  issues: string[]
+  evidence: Record<string, any>
+  suggestions: string[]
+}
+
+export interface AgentQualityScore {
+  agent_id: string
+  agent_name: string
+  agent_type: string
+  overall_score: number
+  grade: string
+  dimensions: QualityDimensionScore[]
+  issues_count: number
+  critical_issues: string[]
+  metadata?: Record<string, any>
+}
+
+export interface ComplexityMetrics {
+  node_count: number
+  agent_count: number
+  connection_count: number
+  max_depth: number
+  cyclomatic_complexity: number
+  coupling_ratio: number
+  ai_node_ratio: number
+  parallel_branches: number
+  conditional_branches: number
+}
+
+export interface OrchestrationQualityScore {
+  workflow_id: string
+  workflow_name: string
+  overall_score: number
+  grade: string
+  dimensions: QualityDimensionScore[]
+  complexity_metrics: ComplexityMetrics
+  issues_count: number
+  critical_issues: string[]
+  detected_pattern: string
+}
+
+export interface QualityImprovement {
+  id: string
+  target_type: 'agent' | 'orchestration'
+  target_id: string
+  severity: 'info' | 'low' | 'medium' | 'high' | 'critical'
+  category: string
+  title: string
+  description: string
+  rationale: string
+  suggested_change?: string
+  code_example?: string
+  estimated_impact: string
+  effort: 'low' | 'medium' | 'high'
+}
+
+export interface QualityAssessment {
+  id: string
+  workflow_id: string
+  workflow_name: string
+  trace_id?: string
+  overall_score: number
+  overall_grade: string
+  agent_quality_score: number
+  orchestration_quality_score: number
+  agent_scores: AgentQualityScore[]
+  orchestration_score: OrchestrationQualityScore
+  improvements: QualityImprovement[]
+  complexity_metrics?: ComplexityMetrics
+  total_issues: number
+  critical_issues_count: number
+  source: string
+  assessment_time_ms?: number
+  summary?: string
+  key_findings?: string[]
+  created_at: string
+  assessed_at: string
+}
+
+export interface QualityAssessmentListResponse {
+  assessments: QualityAssessment[]
+  total: number
+  page: number
+  page_size: number
+}
+
+export interface QualityDimensionInfo {
+  name: string
+  description: string
+  weight: number
+  checks: string[]
+}
+
+export interface QualityDimensionsResponse {
+  agent_dimensions: QualityDimensionInfo[]
+  orchestration_dimensions: QualityDimensionInfo[]
+}
+
 export function createApiClient(token?: string | null, tenantId?: string | null) {
   const opts = { token, tenantId }
   
@@ -1184,6 +1290,72 @@ export function createApiClient(token?: string | null, tenantId?: string | null)
       return fetchApi<{ formats: Array<{ name: string; description: string; default?: boolean; example_marker?: string }> }>(
         '/diagnose/formats',
         {}
+      )
+    },
+
+    // ========================================================================
+    // Quality Assessment endpoints
+    // ========================================================================
+
+    async listQualityAssessments(params: {
+      page?: number
+      pageSize?: number
+      workflowId?: string
+      minGrade?: string
+    } = {}) {
+      const query = new URLSearchParams()
+      if (params.page) query.set('page', String(params.page))
+      if (params.pageSize) query.set('page_size', String(params.pageSize))
+      if (params.workflowId) query.set('workflow_id', params.workflowId)
+      if (params.minGrade) query.set('min_grade', params.minGrade)
+
+      return fetchApi<QualityAssessmentListResponse>(
+        `/enterprise/quality/tenants/{tenant_id}/assessments?${query}`,
+        opts
+      )
+    },
+
+    async getQualityAssessment(assessmentId: string) {
+      return fetchApi<QualityAssessment>(
+        `/enterprise/quality/tenants/{tenant_id}/assessments/${assessmentId}`,
+        opts
+      )
+    },
+
+    async getQualityByTrace(traceId: string) {
+      return fetchApi<QualityAssessment>(
+        `/enterprise/quality/tenants/{tenant_id}/assessments/by-trace/${traceId}`,
+        opts
+      )
+    },
+
+    async getQualityDimensions() {
+      return fetchApi<QualityDimensionsResponse>(
+        `/enterprise/quality/dimensions`,
+        opts
+      )
+    },
+
+    async assessWorkflowQuality(workflow: Record<string, any>, maxSuggestions: number = 10) {
+      return fetchApi<QualityAssessment>(`/enterprise/quality/workflow`, {
+        ...opts,
+        method: 'POST',
+        body: { workflow, max_suggestions: maxSuggestions },
+      })
+    },
+
+    async assessAndSaveQuality(
+      workflow: Record<string, any>,
+      traceId?: string,
+      maxSuggestions: number = 10
+    ) {
+      return fetchApi<QualityAssessment>(
+        `/enterprise/quality/tenants/{tenant_id}/assess-and-save`,
+        {
+          ...opts,
+          method: 'POST',
+          body: { workflow, trace_id: traceId, max_suggestions: maxSuggestions },
+        }
       )
     },
   }

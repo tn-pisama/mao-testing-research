@@ -13,6 +13,8 @@ import { WorkflowHealthCard } from '@/components/dashboard/WorkflowHealthCard'
 import { ProblemsOverviewCard } from '@/components/dashboard/ProblemsOverviewCard'
 import { FixesStatusCard } from '@/components/dashboard/FixesStatusCard'
 import { WorkflowAttentionList } from '@/components/dashboard/WorkflowAttentionList'
+import { QualityScoreCard } from '@/components/dashboard/QualityScoreCard'
+import { QualitySuggestionsCard } from '@/components/dashboard/QualitySuggestionsCard'
 import { Button } from '@/components/ui/Button'
 import { ImportModal } from '@/components/import'
 import { useApiWithFallback } from '@/hooks/useApiWithFallback'
@@ -26,6 +28,7 @@ export default function DashboardPage() {
     costAnalytics,
     detections,
     traces,
+    qualityAssessments,
     refresh,
   } = useApiWithFallback()
   const [showImportModal, setShowImportModal] = useState(false)
@@ -98,7 +101,16 @@ export default function DashboardPage() {
             <div className="grid lg:grid-cols-3 gap-6 mb-6">
               <WorkflowHealthCard traces={traces} isLoading={false} />
               <ProblemsOverviewCard detections={detections} isLoading={false} />
+              <QualityScoreCard assessments={qualityAssessments} isLoading={false} />
+            </div>
+
+            <div className="grid lg:grid-cols-2 gap-6 mb-6">
               <FixesStatusCard isLoading={false} />
+              <QualitySuggestionsCard
+                suggestions={qualityAssessments.flatMap(a => a.improvements)}
+                isLoading={false}
+                maxItems={5}
+              />
             </div>
 
             <WorkflowAttentionList detections={detections} isLoading={false} />
@@ -109,6 +121,15 @@ export default function DashboardPage() {
             <div className="grid lg:grid-cols-2 gap-6 mb-6">
               <LoopAnalyticsCard data={loopAnalytics} isLoading={false} />
               <CostAnalyticsCard data={costAnalytics} isLoading={false} />
+            </div>
+
+            <div className="grid lg:grid-cols-2 gap-6 mb-6">
+              <QualityScoreCard assessments={qualityAssessments} isLoading={false} />
+              <QualitySuggestionsCard
+                suggestions={qualityAssessments.flatMap(a => a.improvements)}
+                isLoading={false}
+                maxItems={5}
+              />
             </div>
 
             <div className="grid lg:grid-cols-2 gap-6">
