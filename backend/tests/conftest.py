@@ -270,3 +270,184 @@ async def api_test_client():
                 yield client, mock_db
     finally:
         app.dependency_overrides.pop(get_db, None)
+
+
+# =============================================================================
+# Quality Assessment Test Fixtures
+# =============================================================================
+
+
+@pytest.fixture
+def sample_workflow():
+    """Sample n8n workflow JSON for quality testing."""
+    return {
+        "id": "wf-test-quality",
+        "name": "Test Quality Workflow",
+        "nodes": [
+            {
+                "id": "1",
+                "name": "Webhook Trigger",
+                "type": "n8n-nodes-base.webhook",
+                "parameters": {}
+            },
+            {
+                "id": "2",
+                "name": "Data Analyst",
+                "type": "@n8n/n8n-nodes-langchain.agent",
+                "continueOnFail": True,
+                "parameters": {
+                    "systemMessage": "You are a data analyst. Analyze input and return JSON.",
+                    "options": {
+                        "temperature": 0.3,
+                        "timeout": 30000,
+                        "retryOnFail": True
+                    }
+                }
+            },
+            {
+                "id": "3",
+                "name": "Output",
+                "type": "n8n-nodes-base.respond",
+                "parameters": {}
+            }
+        ],
+        "connections": {
+            "Webhook Trigger": {"main": [[{"node": "Data Analyst"}]]},
+            "Data Analyst": {"main": [[{"node": "Output"}]]}
+        }
+    }
+
+
+@pytest.fixture
+def sample_agent_node():
+    """Sample agent node JSON for quality testing."""
+    return {
+        "id": "agent-test",
+        "name": "Test Agent",
+        "type": "@n8n/n8n-nodes-langchain.agent",
+        "continueOnFail": True,
+        "parameters": {
+            "systemMessage": "You are a helpful assistant. Always respond in JSON format.",
+            "options": {
+                "temperature": 0.5,
+                "timeout": 30000
+            }
+        }
+    }
+
+
+@pytest.fixture
+def minimal_workflow():
+    """Minimal workflow for testing low-quality scenarios."""
+    return {
+        "id": "wf-minimal",
+        "name": "Minimal Workflow",
+        "nodes": [
+            {
+                "id": "1",
+                "name": "Agent",
+                "type": "@n8n/n8n-nodes-langchain.agent",
+                "parameters": {}
+            }
+        ],
+        "connections": {}
+    }
+
+
+@pytest.fixture
+def well_configured_workflow():
+    """Well-configured workflow for testing high-quality scenarios."""
+    return {
+        "id": "wf-excellent",
+        "name": "Excellent Workflow",
+        "nodes": [
+            {
+                "id": "1",
+                "name": "Webhook Trigger",
+                "type": "n8n-nodes-base.webhook",
+                "parameters": {}
+            },
+            {
+                "id": "2",
+                "name": "Senior Data Analyst",
+                "type": "@n8n/n8n-nodes-langchain.agent",
+                "continueOnFail": True,
+                "alwaysOutputData": True,
+                "parameters": {
+                    "systemMessage": """You are a senior data analyst specializing in business intelligence.
+Your role is to analyze data and provide actionable insights.
+Your task is to examine the provided dataset and identify trends.
+
+You must respond with a JSON object in this format:
+{
+  "summary": "Brief analysis summary",
+  "insights": ["insight 1", "insight 2"],
+  "confidence": 0.0-1.0
+}
+
+Do not make assumptions about missing data.
+Only respond to data analysis requests.""",
+                    "options": {
+                        "temperature": 0.2,
+                        "timeout": 60000,
+                        "retryOnFail": True,
+                        "maxRetries": 3
+                    },
+                    "tools": [
+                        {
+                            "name": "search_data",
+                            "description": "Search the data warehouse",
+                            "parameters": {"type": "object", "properties": {"query": {"type": "string"}}}
+                        }
+                    ]
+                }
+            },
+            {
+                "id": "3",
+                "name": "Checkpoint",
+                "type": "n8n-nodes-base.set",
+                "parameters": {}
+            },
+            {
+                "id": "4",
+                "name": "Send Response",
+                "type": "n8n-nodes-base.respond",
+                "parameters": {}
+            },
+            {
+                "id": "5",
+                "name": "Error Handler",
+                "type": "n8n-nodes-base.errorTrigger",
+                "parameters": {}
+            }
+        ],
+        "connections": {
+            "Webhook Trigger": {"main": [[{"node": "Senior Data Analyst"}]]},
+            "Senior Data Analyst": {"main": [[{"node": "Checkpoint"}]]},
+            "Checkpoint": {"main": [[{"node": "Send Response"}]]}
+        },
+        "settings": {
+            "saveManualExecutions": True,
+            "saveDataErrorExecution": "all"
+        }
+    }
+
+
+@pytest.fixture
+def execution_history_consistent():
+    """Consistent execution history for output consistency testing."""
+    return [
+        {"output": {"result": "A", "confidence": 0.9}},
+        {"output": {"result": "B", "confidence": 0.8}},
+        {"output": {"result": "C", "confidence": 0.95}},
+    ]
+
+
+@pytest.fixture
+def execution_history_inconsistent():
+    """Inconsistent execution history for output consistency testing."""
+    return [
+        {"output": {"result": "A", "confidence": 0.9}},
+        {"output": {"answer": "B", "score": 0.8}},
+        {"output": {"data": "C"}},
+    ]
