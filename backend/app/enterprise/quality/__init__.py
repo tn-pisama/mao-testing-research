@@ -1,4 +1,89 @@
-"""Quality assessment module for n8n workflows and agents."""
+"""
+Quality Assessment System for n8n Workflows and Agents.
+
+This module provides comprehensive quality assessment for multi-agent workflows,
+evaluating both individual agent quality and workflow-level orchestration patterns.
+
+## Agent vs Orchestration Quality Differentiation
+
+The assessment system distinguishes between two complementary quality dimensions:
+
+### Agent Quality (60% of overall score)
+
+Evaluates INDIVIDUAL AI NODE COMPETENCE - answers "Can each agent do its job well?"
+
+**Dimensions**:
+- `role_clarity`: Quality of system prompt, role definition, output format specification
+- `output_consistency`: Structural consistency of agent outputs across executions
+- `error_handling`: Individual node's ability to recover from failures (retry, timeout, continueOnFail)
+- `tool_usage`: Quality of tool integration, descriptions, and parameter schemas
+- `config_appropriateness`: Suitability of model configuration (temperature, tokens, model choice)
+
+**Data Sources**: Node prompts, configuration, execution history
+
+**Conceptual Level**: Micro (component-level)
+
+### Orchestration Quality (40% of overall score)
+
+Evaluates WORKFLOW ARCHITECTURE AND COORDINATION - answers "Do agents work well together?"
+
+**Dimensions**:
+- `data_flow_clarity`: Explicitness of data passing between nodes, naming clarity
+- `complexity_management`: Appropriate workflow size, depth, cyclomatic complexity
+- `agent_coupling`: Balance of agent interdependence, chain length
+- `observability`: Debugging capability, checkpoints, error triggers
+- `best_practices`: Workflow-level error handling patterns, configuration uniformity
+
+**Data Sources**: Workflow graph structure, connections, patterns
+
+**Conceptual Level**: Macro (system-level)
+
+## The 60/40 Weighting Rationale
+
+The overall score formula is:
+    overall = (avg_agent_score * 0.6) + (orchestration_score * 0.4)
+
+**Why 60% Agent Weight?**
+1. Agent quality issues (bad prompts, poor config) typically cause MORE SEVERE failures
+   - A poorly prompted agent produces wrong outputs regardless of good orchestration
+   - Configuration issues like missing retry can cause complete workflow failures
+2. Agent problems are often ROOT CAUSES, while orchestration problems are CONTRIBUTING FACTORS
+3. Users have more direct control over agent configuration
+
+**Why 40% Orchestration Weight?**
+1. Good orchestration can MITIGATE some agent issues (error handling, checkpoints)
+2. Orchestration problems often cause INTERMITTENT rather than consistent failures
+3. Orchestration fixes are often structural changes requiring more effort
+
+## Error Handling Boundary
+
+To avoid double-penalizing workflows, error handling is evaluated differently at each level:
+
+**Agent-level error handling** (agent_scorer.py):
+- Evaluates: "Can THIS NODE recover from its own failures?"
+- Checks: Individual node retry, timeout, continueOnFail configuration
+- Perspective: Per-node capability
+
+**Orchestration-level best practices** (orchestration_scorer.py):
+- Evaluates: "Does the WORKFLOW have robust error handling architecture?"
+- Checks: Global error handler presence, error branching patterns, configuration uniformity
+- Perspective: Workflow-wide patterns
+
+This separation ensures that a workflow isn't penalized twice for the same missing retry config.
+
+## Usage
+
+```python
+from app.enterprise.quality import QualityAssessor
+
+assessor = QualityAssessor(use_llm_judge=False)
+report = assessor.assess_workflow(workflow_json, max_suggestions=10)
+
+print(f"Overall: {report.overall_score:.1%} ({report.overall_grade})")
+print(f"Agent avg: {sum(a.overall_score for a in report.agent_scores) / len(report.agent_scores):.1%}")
+print(f"Orchestration: {report.orchestration_score.overall_score:.1%}")
+```
+"""
 
 from .models import (
     QualityDimension,

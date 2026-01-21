@@ -299,13 +299,31 @@ class AgentQualityScorer:
         workflow_context: Optional[Dict[str, Any]] = None,
     ) -> DimensionScore:
         """
-        Score error handling coverage.
+        Score error handling capability for this individual agent node.
+
+        BOUNDARY CLARIFICATION:
+        This scores whether the INDIVIDUAL NODE can recover from failures.
+        It answers: "Can this agent gracefully handle its own errors?"
+
+        This is distinct from orchestration-level best practices scoring,
+        which evaluates WORKFLOW-WIDE error handling coverage and patterns.
+
+        Agent error handling (this method):
+        - Per-node retry, timeout, continueOnFail configuration
+        - Individual node's ability to recover from its own failures
+        - Error output paths FROM this specific node
+
+        Orchestration best practices (separate scorer):
+        - Workflow-wide error handler presence
+        - Coverage patterns across all nodes
+        - Error branching and recovery flows
 
         Checks for:
-        - continueOnFail flag
-        - Error output paths
-        - Fallback configurations
-        - Timeout settings
+        - continueOnFail flag (25%) - graceful failure handling
+        - alwaysOutputData flag (15%) - consistent output even on partial failure
+        - Retry settings (20%) - transient error recovery
+        - Timeout (15%) - prevent hanging
+        - Error output paths (15%) - downstream error handling
         """
         issues = []
         suggestions = []

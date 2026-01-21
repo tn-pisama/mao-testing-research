@@ -367,6 +367,316 @@ class CouplingImprovementGenerator(BaseImprovementGenerator):
         return improvements
 
 
+class OutputConsistencyImprovementGenerator(BaseImprovementGenerator):
+    """Generate improvements for output consistency issues."""
+
+    def can_handle(self, dimension: str) -> bool:
+        return dimension == QualityDimension.OUTPUT_CONSISTENCY.value
+
+    def generate(
+        self,
+        score: DimensionScore,
+        context: Dict[str, Any],
+    ) -> List[QualityImprovement]:
+        improvements = []
+        agent_id = context.get("agent_id", "unknown")
+        agent_name = context.get("agent_name", "Agent")
+        evidence = score.evidence
+
+        # Check if JSON is expected but structure varies
+        if evidence.get("expects_json") and evidence.get("unique_structures", 1) > 1:
+            improvements.append(QualityImprovement.create(
+                target_type="agent",
+                target_id=agent_id,
+                severity=Severity.MEDIUM,
+                category="output_consistency",
+                title=f"Enforce JSON schema for {agent_name}",
+                description=f"Output structure varies across executions ({evidence.get('unique_structures')} different schemas detected).",
+                rationale="Inconsistent output schemas break downstream parsing. Using structured output mode or explicit schema validation ensures reliable data flow.",
+                suggested_change="Use structured output mode or add explicit JSON schema to system prompt",
+                code_example='''Add to system prompt:
+"You must respond with valid JSON matching this exact schema:
+{
+  "result": string,
+  "confidence": number (0.0-1.0),
+  "metadata": {"source": string, "timestamp": string}
+}
+
+Do not include any text outside the JSON object."
+
+Or use n8n's structured output parser node after this agent.''',
+                estimated_impact="Eliminate output parsing errors",
+                effort=Effort.LOW,
+            ))
+
+        elif score.score < 0.6 and evidence.get("execution_samples", 0) < 2:
+            improvements.append(QualityImprovement.create(
+                target_type="agent",
+                target_id=agent_id,
+                severity=Severity.LOW,
+                category="output_consistency",
+                title=f"Validate {agent_name} output consistency",
+                description="Insufficient execution history to assess output consistency.",
+                rationale="Output consistency can only be measured with multiple executions. Run the workflow several times to gather baseline data.",
+                suggested_change="Run 3-5 test executions with varied inputs to establish output pattern baseline",
+                estimated_impact="Enable output consistency monitoring",
+                effort=Effort.LOW,
+            ))
+
+        if evidence.get("expects_json") and score.score < 0.8:
+            improvements.append(QualityImprovement.create(
+                target_type="agent",
+                target_id=agent_id,
+                severity=Severity.LOW,
+                category="output_consistency",
+                title=f"Add output validation node after {agent_name}",
+                description="JSON output expected but no validation node present.",
+                rationale="Adding a validation node catches malformed outputs early and provides clear error messages.",
+                suggested_change="Add a Code node after this agent to validate and normalize output structure",
+                code_example='''// Validation node code
+const input = $input.first().json;
+
+// Validate required fields
+if (!input.result || typeof input.confidence !== 'number') {
+  throw new Error('Invalid output structure: missing required fields');
+}
+
+// Normalize confidence to 0-1 range
+const normalized = {
+  ...input,
+  confidence: Math.max(0, Math.min(1, input.confidence))
+};
+
+return [{json: normalized}];''',
+                estimated_impact="Catch output errors before downstream processing",
+                effort=Effort.MEDIUM,
+            ))
+
+        return improvements
+
+
+class ToolUsageImprovementGenerator(BaseImprovementGenerator):
+    """Generate improvements for tool usage issues."""
+
+    def can_handle(self, dimension: str) -> bool:
+        return dimension == QualityDimension.TOOL_USAGE.value
+
+    def generate(
+        self,
+        score: DimensionScore,
+        context: Dict[str, Any],
+    ) -> List[QualityImprovement]:
+        improvements = []
+        agent_id = context.get("agent_id", "unknown")
+        agent_name = context.get("agent_name", "Agent")
+        evidence = score.evidence
+
+        tool_count = evidence.get("tool_count", 0)
+        tools_with_description = evidence.get("tools_with_description", 0)
+        tools_with_schema = evidence.get("tools_with_schema", 0)
+
+        # Agent node without tools
+        if tool_count == 0 and "agent" in context.get("agent_type", "").lower():
+            improvements.append(QualityImprovement.create(
+                target_type="agent",
+                target_id=agent_id,
+                severity=Severity.MEDIUM,
+                category="tool_usage",
+                title=f"Add tools to {agent_name}",
+                description="This agent has no tools configured.",
+                rationale="Agents without tools are limited to text generation. Tools enable agents to take actions, fetch data, and interact with external systems.",
+                suggested_change="Add relevant tools based on the agent's purpose",
+                code_example='''"tools": [
+  {
+    "name": "search_database",
+    "description": "Search the product database for items matching criteria",
+    "parameters": {
+      "type": "object",
+      "properties": {
+        "query": {"type": "string", "description": "Search query"},
+        "limit": {"type": "integer", "default": 10}
+      },
+      "required": ["query"]
+    }
+  }
+]''',
+                estimated_impact="Enable agent to perform actions beyond text generation",
+                effort=Effort.MEDIUM,
+            ))
+
+        # Tools missing descriptions
+        if tool_count > 0 and tools_with_description < tool_count:
+            missing = tool_count - tools_with_description
+            improvements.append(QualityImprovement.create(
+                target_type="agent",
+                target_id=agent_id,
+                severity=Severity.MEDIUM,
+                category="tool_usage",
+                title=f"Add descriptions to tools in {agent_name}",
+                description=f"{missing} of {tool_count} tools lack descriptions.",
+                rationale="Tool descriptions help the LLM understand when and how to use each tool. Without descriptions, the agent may misuse tools or fail to use them when appropriate.",
+                suggested_change="Add clear, action-oriented descriptions to all tools",
+                code_example='''// Instead of:
+{"name": "getData"}
+
+// Use:
+{
+  "name": "getData",
+  "description": "Retrieves customer data by ID. Use this when the user asks about a specific customer's order history, preferences, or account details."
+}''',
+                estimated_impact="Improve tool selection accuracy by 40-60%",
+                effort=Effort.LOW,
+            ))
+
+        # Tools missing parameter schemas
+        if tool_count > 0 and tools_with_schema < tool_count:
+            missing = tool_count - tools_with_schema
+            improvements.append(QualityImprovement.create(
+                target_type="agent",
+                target_id=agent_id,
+                severity=Severity.LOW,
+                category="tool_usage",
+                title=f"Add parameter schemas to tools in {agent_name}",
+                description=f"{missing} of {tool_count} tools lack parameter schemas.",
+                rationale="Parameter schemas enable type validation and help the LLM construct valid tool calls.",
+                suggested_change="Add JSON schema for all tool parameters",
+                code_example='''"parameters": {
+  "type": "object",
+  "properties": {
+    "customer_id": {
+      "type": "string",
+      "description": "The unique customer identifier (format: CUST-XXXXX)"
+    },
+    "include_history": {
+      "type": "boolean",
+      "description": "Whether to include order history",
+      "default": false
+    }
+  },
+  "required": ["customer_id"]
+}''',
+                estimated_impact="Reduce tool call errors by 30%",
+                effort=Effort.LOW,
+            ))
+
+        # Too many tools
+        if tool_count > 10:
+            improvements.append(QualityImprovement.create(
+                target_type="agent",
+                target_id=agent_id,
+                severity=Severity.MEDIUM,
+                category="tool_usage",
+                title=f"Reduce tool count in {agent_name}",
+                description=f"Agent has {tool_count} tools, which may cause confusion.",
+                rationale="Too many tools overwhelm the LLM's ability to select the right one. Consider grouping related tools or splitting into specialized agents.",
+                suggested_change="Consolidate related tools or split agent into specialized sub-agents",
+                estimated_impact="Improve tool selection accuracy",
+                effort=Effort.HIGH,
+            ))
+
+        return improvements
+
+
+class ConfigAppropriatenessImprovementGenerator(BaseImprovementGenerator):
+    """Generate improvements for configuration appropriateness issues."""
+
+    def can_handle(self, dimension: str) -> bool:
+        return dimension == QualityDimension.CONFIG_APPROPRIATENESS.value
+
+    def generate(
+        self,
+        score: DimensionScore,
+        context: Dict[str, Any],
+    ) -> List[QualityImprovement]:
+        improvements = []
+        agent_id = context.get("agent_id", "unknown")
+        agent_name = context.get("agent_name", "Agent")
+        evidence = score.evidence
+
+        temperature = evidence.get("temperature")
+        max_tokens = evidence.get("max_tokens")
+        model = evidence.get("model", "")
+        task_type = evidence.get("inferred_task_type", "default")
+
+        # Temperature recommendations by task type
+        temp_recommendations = {
+            "code": (0.0, 0.3, "Code generation requires deterministic outputs"),
+            "analysis": (0.0, 0.5, "Analysis benefits from focused, factual responses"),
+            "creative": (0.5, 0.9, "Creative tasks benefit from more variation"),
+            "default": (0.0, 0.7, "General tasks work well with moderate temperature"),
+        }
+
+        if temperature is not None:
+            rec = temp_recommendations.get(task_type, temp_recommendations["default"])
+            if temperature < rec[0] or temperature > rec[1]:
+                improvements.append(QualityImprovement.create(
+                    target_type="agent",
+                    target_id=agent_id,
+                    severity=Severity.LOW,
+                    category="config_appropriateness",
+                    title=f"Adjust temperature for {agent_name}",
+                    description=f"Temperature {temperature} may not be optimal for {task_type} tasks.",
+                    rationale=f"{rec[2]}. Current temperature ({temperature}) is outside the recommended range of {rec[0]}-{rec[1]}.",
+                    suggested_change=f"Set temperature between {rec[0]} and {rec[1]} for {task_type} tasks",
+                    code_example=f'''"options": {{
+  "temperature": {(rec[0] + rec[1]) / 2:.1f}  // Recommended for {task_type}
+}}''',
+                    estimated_impact="Improve output quality for task type",
+                    effort=Effort.LOW,
+                ))
+
+        # Max tokens too low
+        if max_tokens is not None and max_tokens < 100:
+            improvements.append(QualityImprovement.create(
+                target_type="agent",
+                target_id=agent_id,
+                severity=Severity.MEDIUM,
+                category="config_appropriateness",
+                title=f"Increase max tokens for {agent_name}",
+                description=f"Max tokens ({max_tokens}) is very low and may truncate responses.",
+                rationale="Low token limits can cause incomplete responses, especially for complex tasks or detailed outputs.",
+                suggested_change="Increase max tokens to at least 500 for most tasks, or 1000+ for complex outputs",
+                code_example='''"options": {
+  "maxTokens": 1000  // Minimum recommended for complex responses
+}''',
+                estimated_impact="Prevent response truncation",
+                effort=Effort.LOW,
+            ))
+
+        # Max tokens very high (cost concern)
+        elif max_tokens is not None and max_tokens > 8000:
+            improvements.append(QualityImprovement.create(
+                target_type="agent",
+                target_id=agent_id,
+                severity=Severity.INFO,
+                category="config_appropriateness",
+                title=f"Review high token limit for {agent_name}",
+                description=f"Max tokens ({max_tokens}) is very high.",
+                rationale="High token limits increase cost. Ensure this is necessary for the task.",
+                suggested_change="Review if the task actually requires such long outputs, or add output length guidance to system prompt",
+                estimated_impact="Potential cost savings",
+                effort=Effort.LOW,
+            ))
+
+        # Model tier suggestions
+        model_tier = evidence.get("model_tier", "")
+        if model_tier == "powerful" and task_type in ["default"]:
+            improvements.append(QualityImprovement.create(
+                target_type="agent",
+                target_id=agent_id,
+                severity=Severity.INFO,
+                category="config_appropriateness",
+                title=f"Consider using faster model for {agent_name}",
+                description=f"Using powerful model tier ({model}) for general tasks.",
+                rationale="Smaller, faster models often perform well for straightforward tasks at lower cost and latency.",
+                suggested_change="Consider using a smaller model (e.g., claude-3-5-haiku, gpt-4o-mini) for simpler tasks",
+                estimated_impact="Reduce cost and latency",
+                effort=Effort.LOW,
+            ))
+
+        return improvements
+
+
 class ImprovementSuggester:
     """Orchestrates improvement generation across all dimensions."""
 
@@ -376,8 +686,14 @@ class ImprovementSuggester:
 
     def _register_defaults(self):
         """Register default improvement generators."""
+        # Agent quality dimension generators
         self.register(RoleClarityImprovementGenerator())
         self.register(ErrorHandlingImprovementGenerator())
+        self.register(OutputConsistencyImprovementGenerator())
+        self.register(ToolUsageImprovementGenerator())
+        self.register(ConfigAppropriatenessImprovementGenerator())
+
+        # Orchestration quality dimension generators
         self.register(ObservabilityImprovementGenerator())
         self.register(ComplexityImprovementGenerator())
         self.register(CouplingImprovementGenerator())

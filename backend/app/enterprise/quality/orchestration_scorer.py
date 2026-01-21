@@ -582,20 +582,39 @@ class OrchestrationQualityScorer:
 
     def _score_best_practices(self, workflow: Dict[str, Any]) -> DimensionScore:
         """
-        Score adherence to best practices.
+        Score adherence to workflow-level best practices.
+
+        BOUNDARY CLARIFICATION:
+        This scores WORKFLOW-WIDE operational patterns, not individual node config.
+        It answers: "Does the workflow have robust error handling architecture?"
+
+        This is distinct from agent-level error handling scoring, which evaluates
+        whether each node can individually recover from failures.
+
+        Orchestration best practices (this method):
+        - Global error handler presence (workflow-level catch-all)
+        - Error branching patterns (dedicated error flows)
+        - Coverage uniformity (are best practices consistently applied?)
+        - Workflow settings for error data preservation
+
+        Agent error handling (separate scorer):
+        - Per-node retry/timeout/continueOnFail configuration
+        - Individual node failure recovery capability
 
         Checks for:
-        - Retry configurations
-        - Timeout settings
-        - Rate limiting considerations
-        - Idempotency markers
+        - Global error handler (25%) - workflow-level error catching
+        - Error branching coverage (20%) - dedicated error flows
+        - Configuration uniformity (15%) - consistent patterns across workflow
+        - Workflow settings (15%) - error data preservation
+        - Basic coverage reference (25%) - high-level coverage health
         """
         issues = []
         suggestions = []
         evidence = {}
-        score = 0.5
+        score = 0.0
 
         nodes = workflow.get("nodes", [])
+        connections = workflow.get("connections", {})
         ai_nodes = [n for n in nodes if n.get("type") in AI_NODE_TYPES]
 
         if not ai_nodes:
@@ -607,51 +626,97 @@ class OrchestrationQualityScorer:
                 suggestions=suggestions,
             )
 
-        # Check retry settings on AI nodes
-        nodes_with_retry = 0
-        nodes_with_timeout = 0
-        nodes_with_continue = 0
+        # NEW: Check for global error handler (workflow-level error catching)
+        # This is an orchestration-level concern - having a catch-all for errors
+        has_global_error_handler = any(
+            "error" in n.get("type", "").lower() or
+            n.get("type") == "n8n-nodes-base.errorTrigger"
+            for n in nodes
+        )
+        evidence["has_global_error_handler"] = has_global_error_handler
 
-        for node in ai_nodes:
-            params = node.get("parameters", {})
-            options = params.get("options", {})
+        if has_global_error_handler:
+            score += 0.25
+        else:
+            issues.append("No global error handler in workflow")
+            suggestions.append("Add an Error Trigger node to catch workflow-level failures")
 
-            if options.get("retryOnFail") or node.get("retryOnFail"):
-                nodes_with_retry += 1
-            if options.get("timeout") or params.get("timeout"):
-                nodes_with_timeout += 1
-            if node.get("continueOnFail"):
-                nodes_with_continue += 1
+        # NEW: Check for error branching patterns (dedicated error handling flows)
+        # Count nodes that have explicit error output connections
+        nodes_with_error_branches = 0
+        for node_name, node_conns in connections.items():
+            if isinstance(node_conns, dict):
+                # Check if this node has error-specific outputs
+                if "error" in node_conns or any(
+                    "error" in str(output_key).lower()
+                    for output_key in node_conns.keys()
+                ):
+                    nodes_with_error_branches += 1
+
+        evidence["nodes_with_error_branches"] = nodes_with_error_branches
+        error_branch_ratio = nodes_with_error_branches / len(nodes) if nodes else 0
+
+        if error_branch_ratio >= 0.2:
+            score += 0.20
+        elif error_branch_ratio > 0:
+            score += 0.10
+        else:
+            suggestions.append("Consider adding error branching for critical nodes")
+
+        # Check configuration uniformity across AI nodes
+        # (Do nodes consistently use the same patterns?)
+        nodes_with_retry = sum(
+            1 for n in ai_nodes
+            if n.get("parameters", {}).get("options", {}).get("retryOnFail") or n.get("retryOnFail")
+        )
+        nodes_with_timeout = sum(
+            1 for n in ai_nodes
+            if n.get("parameters", {}).get("options", {}).get("timeout") or n.get("parameters", {}).get("timeout")
+        )
 
         evidence["ai_nodes"] = len(ai_nodes)
         evidence["nodes_with_retry"] = nodes_with_retry
         evidence["nodes_with_timeout"] = nodes_with_timeout
-        evidence["nodes_with_continue_on_fail"] = nodes_with_continue
 
-        # Score based on coverage
+        # Score uniformity - either all have it or none (consistent pattern)
         if len(ai_nodes) > 0:
             retry_coverage = nodes_with_retry / len(ai_nodes)
             timeout_coverage = nodes_with_timeout / len(ai_nodes)
-            continue_coverage = nodes_with_continue / len(ai_nodes)
 
-            score += retry_coverage * 0.15
-            score += timeout_coverage * 0.15
-            score += continue_coverage * 0.1
+            # Reward uniformity (all or none) rather than just coverage
+            # This is an orchestration concern - consistent patterns
+            retry_uniformity = 1.0 if retry_coverage in [0, 1.0] else (0.5 + retry_coverage * 0.3)
+            timeout_uniformity = 1.0 if timeout_coverage in [0, 1.0] else (0.5 + timeout_coverage * 0.3)
 
-            if retry_coverage < 0.5:
-                issues.append("Most AI nodes lack retry configuration")
-                suggestions.append("Enable retry on fail for LLM calls")
+            uniformity_score = (retry_uniformity + timeout_uniformity) / 2
+            score += uniformity_score * 0.15
+            evidence["config_uniformity"] = uniformity_score
 
-            if timeout_coverage < 0.5:
-                issues.append("Most AI nodes lack timeout configuration")
-                suggestions.append("Add timeouts to prevent hanging executions")
+            if retry_coverage > 0 and retry_coverage < 1.0:
+                suggestions.append("Apply retry configuration consistently across all AI nodes")
 
         # Check workflow-level settings
         settings = workflow.get("settings", {})
+        workflow_settings_score = 0.0
+
         if settings.get("saveManualExecutions"):
-            score += 0.05
+            workflow_settings_score += 0.5
         if settings.get("saveDataErrorExecution") == "all":
-            score += 0.05
+            workflow_settings_score += 0.5
+
+        score += workflow_settings_score * 0.15
+        evidence["workflow_settings_score"] = workflow_settings_score
+
+        # Basic coverage health reference (high-level indicator, not per-node scoring)
+        # This is a sanity check, not the primary scoring factor
+        if len(ai_nodes) > 0:
+            basic_coverage = (nodes_with_retry + nodes_with_timeout) / (len(ai_nodes) * 2)
+            score += basic_coverage * 0.25
+            evidence["basic_coverage"] = basic_coverage
+
+            # Only flag as issue if severely lacking
+            if basic_coverage < 0.25:
+                issues.append("Workflow lacks basic resilience configuration")
 
         return DimensionScore(
             dimension=OrchestrationDimension.BEST_PRACTICES.value,
