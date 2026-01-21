@@ -12,6 +12,7 @@ Based on MAST research (NeurIPS 2025): FM-2.5 Role Usurpation (3%)
 """
 
 import logging
+import re
 from typing import List, Optional, Dict, Any
 
 from ._base import (
@@ -111,6 +112,19 @@ class TurnAwareRoleUsurpationDetector(EmbeddingMixin, TurnAwareDetector):
         "if __name__", "async def", "await ", "return ", "self.", "this.",
     ]
 
+    # AG2-specific execution markers (code was run)
+    AG2_EXECUTION_MARKERS = [
+        "exitcode:", "code output:", ">>> ", "executed successfully",
+        "output:", "result:", "execution result",
+    ]
+
+    # Explicit verbal patterns indicating role usurpation
+    USURPATION_PATTERNS = [
+        (r"(?:tak|assum)(?:ing|e)\s+(?:over|control|charge)", "task_hijacking"),
+        (r"(?:skip|bypass|ignore)(?:ping|ed)?\s+(?:the\s+)?(?:review|approval)", "authority_bypass"),
+        (r"I(?:'ll|\s+will)\s+(?:decide|determine)\s+(?:to\s+|the\s+|which\s+)", "decision_overreach"),
+    ]
+
     def __init__(self, min_turns: int = 3, strict_mode: bool = False, min_violations: int = 1):
         self.min_turns = min_turns
         self.strict_mode = strict_mode  # If True, be more aggressive in detection
@@ -163,6 +177,18 @@ class TurnAwareRoleUsurpationDetector(EmbeddingMixin, TurnAwareDetector):
         unauthorized = self._detect_unauthorized_actions(turns, agent_roles)
         violations.extend(unauthorized)
         for v in unauthorized:
+            affected_turns.extend(v.get("turns", []))
+
+        # 4. AG2-specific patterns (self-response, unapproved execution)
+        ag2_violations = self._detect_ag2_violations(turns)
+        violations.extend(ag2_violations)
+        for v in ag2_violations:
+            affected_turns.extend(v.get("turns", []))
+
+        # 5. Explicit verbal usurpation patterns (taking over, bypassing approval)
+        explicit_violations = self._detect_explicit_usurpation(turns)
+        violations.extend(explicit_violations)
+        for v in explicit_violations:
             affected_turns.extend(v.get("turns", []))
 
         if len(violations) < self.min_violations:
@@ -536,3 +562,93 @@ class TurnAwareRoleUsurpationDetector(EmbeddingMixin, TurnAwareDetector):
                     })
 
         return unauthorized[:3]  # Limit to top 3
+
+    def _get_framework(self, turns: List[TurnSnapshot]) -> str:
+        """Get framework from turn metadata."""
+        for turn in turns:
+            if turn.turn_metadata:
+                fw = turn.turn_metadata.get("framework", "")
+                if fw:
+                    return fw.lower()
+        return "unknown"
+
+    def _detect_ag2_violations(self, turns: List[TurnSnapshot]) -> List[Dict[str, Any]]:
+        """Detect AG2-specific role usurpation patterns.
+
+        AG2/AutoGen patterns:
+        - Many consecutive turns from same agent (3+) without user checkpoint
+          indicates the agent is proceeding without approval
+
+        NOTE: The role='user' field in AG2 metadata is a messaging convention,
+        not an indicator of usurpation. Removed that pattern to avoid FPs.
+        """
+        violations = []
+
+        # Check if this is AG2 framework
+        framework = self._get_framework(turns)
+        if "ag2" not in framework and "autogen" not in framework:
+            return []
+
+        # Known human/user identifiers
+        USER_IDENTIFIERS = ["user", "human", "person", "customer"]
+
+        def is_likely_user(participant_id: str) -> bool:
+            """Check if participant_id looks like a real user."""
+            pid_lower = (participant_id or "").lower()
+            return any(uid in pid_lower for uid in USER_IDENTIFIERS)
+
+        # Pattern: Many consecutive turns from same participant without user
+        # Threshold of 3+ consecutive turns indicates agent proceeding autonomously
+        prev_pid = None
+        consecutive_count = 0
+        for turn in turns:
+            pid = turn.participant_id or ""
+            if is_likely_user(pid):
+                # Real user turn resets the count
+                prev_pid = None
+                consecutive_count = 0
+            elif prev_pid == pid:
+                consecutive_count += 1
+                # Require 3+ consecutive turns (stricter threshold)
+                if consecutive_count >= 3:
+                    violations.append({
+                        "type": "autonomous_agent",
+                        "turns": [turn.turn_number],
+                        "agent": pid,
+                        "severity": "critical",
+                        "description": f"Agent '{pid}' proceeding autonomously ({consecutive_count+1} turns without user)",
+                    })
+            else:
+                consecutive_count = 1
+                prev_pid = pid
+
+        return violations[:3]  # Limit to top 3
+
+    def _detect_explicit_usurpation(self, turns: List[TurnSnapshot]) -> List[Dict[str, Any]]:
+        """Detect explicit verbal patterns indicating role usurpation.
+
+        High-precision patterns that clearly indicate an agent is:
+        - Taking over another's role
+        - Bypassing required approvals
+        - Making decisions outside their scope
+        """
+        violations = []
+
+        for turn in turns:
+            if turn.participant_type != "agent":
+                continue
+
+            content_lower = turn.content.lower()
+
+            for pattern, vtype in self.USURPATION_PATTERNS:
+                if re.search(pattern, content_lower):
+                    violations.append({
+                        "type": vtype,
+                        "turns": [turn.turn_number],
+                        "agent": turn.participant_id,
+                        "severity": "critical",
+                        "description": f"Agent {turn.participant_id}: {vtype.replace('_', ' ')}",
+                    })
+                    break  # Only report first pattern match per turn
+
+        return violations[:5]  # Limit to top 5
