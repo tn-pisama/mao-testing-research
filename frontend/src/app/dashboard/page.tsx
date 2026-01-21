@@ -3,7 +3,7 @@
 export const dynamic = 'force-dynamic'
 
 import { useState } from 'react'
-import { Upload, Wifi, WifiOff } from 'lucide-react'
+import { Upload, Wifi, WifiOff, AlertTriangle } from 'lucide-react'
 import { Layout } from '@/components/common/Layout'
 import { LoopAnalyticsCard } from '@/components/dashboard/LoopAnalyticsCard'
 import { CostAnalyticsCard } from '@/components/dashboard/CostAnalyticsCard'
@@ -24,6 +24,7 @@ export default function DashboardPage() {
   const {
     isLoading,
     isDemoMode,
+    error,
     loopAnalytics,
     costAnalytics,
     detections,
@@ -94,6 +95,16 @@ export default function DashboardPage() {
             )}
           </div>
         </div>
+
+        {error && (
+          <div className="mb-6 p-4 bg-red-500/10 border border-red-500/20 rounded-xl flex items-center gap-3">
+            <AlertTriangle size={20} className="text-red-400 flex-shrink-0" />
+            <p className="text-sm text-red-300 flex-1">{error}</p>
+            <Button variant="ghost" size="sm" onClick={refresh}>
+              Retry
+            </Button>
+          </div>
+        )}
 
         {showSimplifiedDashboard ? (
           <>

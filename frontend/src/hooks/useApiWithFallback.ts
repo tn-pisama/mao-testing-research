@@ -1,6 +1,6 @@
 'use client'
 
-import { useState, useEffect, useCallback } from 'react'
+import { useState, useEffect, useCallback, useRef } from 'react'
 import { useSafeAuth as useAuth } from '@/hooks/useSafeAuth'
 import { createApiClient } from '@/lib/api'
 import {
@@ -23,18 +23,36 @@ export function useApiWithFallback() {
   const [traces, setTraces] = useState<Trace[]>([])
   const [qualityAssessments, setQualityAssessments] = useState<QualityAssessment[]>([])
 
+  // Prevent double-loading on mount
+  const hasLoadedRef = useRef(false)
+  const isMountedRef = useRef(true)
+
+  const loadDemoData = useCallback(() => {
+    setLoopAnalytics(generateDemoLoopAnalytics())
+    setCostAnalytics(generateDemoCostAnalytics())
+    setDetections(generateDemoDetections(8))
+    setTraces(generateDemoTraces(10))
+    setQualityAssessments([])
+    setIsDemoMode(true)
+    setError(null)
+  }, [])
+
   const loadRealData = useCallback(async () => {
     try {
       const token = await getToken()
       const api = createApiClient(token)
-      
+
+      // Add .catch() to ALL promises to handle partial failures gracefully
       const [loops, cost, dets, trc, qualityRes] = await Promise.all([
-        api.getLoopAnalytics(30),
-        api.getCostAnalytics(30),
-        api.getDetections({ perPage: 10 }),
-        api.getTraces({ perPage: 10 }),
+        api.getLoopAnalytics(30).catch(() => undefined),
+        api.getCostAnalytics(30).catch(() => undefined),
+        api.getDetections({ perPage: 10 }).catch(() => []),
+        api.getTraces({ perPage: 10 }).catch(() => ({ traces: [], total: 0 })),
         api.listQualityAssessments({ pageSize: 20 }).catch(() => ({ assessments: [] })),
       ])
+
+      // Only update state if still mounted
+      if (!isMountedRef.current) return false
 
       setLoopAnalytics(loops)
       setCostAnalytics(cost)
@@ -46,33 +64,41 @@ export function useApiWithFallback() {
       return true
     } catch (err) {
       console.warn('API unavailable, falling back to demo mode:', err)
+      if (isMountedRef.current) {
+        setError('Unable to connect to API. Showing demo data.')
+      }
       return false
     }
   }, [getToken])
 
-  const loadDemoData = useCallback(() => {
-    setLoopAnalytics(generateDemoLoopAnalytics())
-    setCostAnalytics(generateDemoCostAnalytics())
-    setDetections(generateDemoDetections(8))
-    setTraces(generateDemoTraces(10))
-    setQualityAssessments([])
-    setIsDemoMode(true)
-  }, [])
-
   const refresh = useCallback(async () => {
     setIsLoading(true)
-    
+    setError(null)
+
     const dataSuccess = await loadRealData()
-    if (!dataSuccess) {
+    if (!dataSuccess && isMountedRef.current) {
       loadDemoData()
     }
-    
-    setIsLoading(false)
+
+    if (isMountedRef.current) {
+      setIsLoading(false)
+    }
   }, [loadRealData, loadDemoData])
 
+  // Initial load effect - runs once on mount
   useEffect(() => {
-    refresh()
-  }, [refresh])
+    isMountedRef.current = true
+
+    if (!hasLoadedRef.current) {
+      hasLoadedRef.current = true
+      refresh()
+    }
+
+    // Cleanup on unmount
+    return () => {
+      isMountedRef.current = false
+    }
+  }, []) // Empty dependency - only run on mount
 
   const toggleDemoMode = useCallback(() => {
     if (isDemoMode) {

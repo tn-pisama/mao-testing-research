@@ -19,6 +19,7 @@ export default function QualityPage() {
   const { tenantId } = useTenant()
   const [assessments, setAssessments] = useState<QualityAssessment[]>([])
   const [isLoading, setIsLoading] = useState(true)
+  const [error, setError] = useState<string | null>(null)
   const [page, setPage] = useState(1)
   const [total, setTotal] = useState(0)
   const [gradeFilter, setGradeFilter] = useState<string | null>(null)
@@ -26,6 +27,7 @@ export default function QualityPage() {
 
   const loadAssessments = useCallback(async () => {
     setIsLoading(true)
+    setError(null)
     try {
       const token = await getToken()
       const api = createApiClient(token, tenantId)
@@ -38,6 +40,7 @@ export default function QualityPage() {
       setTotal(result.total)
     } catch (err) {
       console.warn('Failed to load quality assessments:', err)
+      setError('Failed to load quality assessments. Please try again.')
       setAssessments([])
       setTotal(0)
     }
@@ -101,6 +104,17 @@ export default function QualityPage() {
             ))}
           </div>
         </div>
+
+        {/* Error Banner */}
+        {error && (
+          <div className="mb-6 p-4 bg-red-500/10 border border-red-500/20 rounded-xl flex items-center gap-3">
+            <AlertTriangle size={20} className="text-red-400 flex-shrink-0" />
+            <p className="text-sm text-red-300 flex-1">{error}</p>
+            <Button variant="ghost" size="sm" onClick={loadAssessments}>
+              Retry
+            </Button>
+          </div>
+        )}
 
         {/* Assessment List */}
         <div className="space-y-4">

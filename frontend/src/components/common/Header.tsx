@@ -1,14 +1,14 @@
 'use client'
 
 import { Bell, Search, Menu, User } from 'lucide-react'
-import { Button } from '../ui/Button'
 
 interface HeaderProps {
   onMenuClick?: () => void
   title?: string
+  notificationCount?: number
 }
 
-export function Header({ onMenuClick, title }: HeaderProps) {
+export function Header({ onMenuClick, title, notificationCount = 0 }: HeaderProps) {
   return (
     <header className="flex items-center justify-between h-16 px-6 bg-slate-900 border-b border-slate-800">
       <div className="flex items-center gap-4">
@@ -38,9 +38,14 @@ export function Header({ onMenuClick, title }: HeaderProps) {
         </div>
 
         {/* Notifications */}
-        <button className="p-2 text-slate-400 hover:text-white hover:bg-slate-800 rounded-lg relative">
+        <button
+          className="p-2 text-slate-400 hover:text-white hover:bg-slate-800 rounded-lg relative"
+          aria-label={`Notifications${notificationCount > 0 ? ` (${notificationCount} unread)` : ''}`}
+        >
           <Bell size={20} />
-          <span className="absolute top-1 right-1 w-2 h-2 bg-red-500 rounded-full" />
+          {notificationCount > 0 && (
+            <span className="absolute top-1 right-1 w-2 h-2 bg-red-500 rounded-full" />
+          )}
         </button>
 
         {/* User Menu */}
