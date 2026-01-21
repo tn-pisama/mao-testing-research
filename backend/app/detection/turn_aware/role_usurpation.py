@@ -191,6 +191,15 @@ class TurnAwareRoleUsurpationDetector(EmbeddingMixin, TurnAwareDetector):
         for v in explicit_violations:
             affected_turns.extend(v.get("turns", []))
 
+        # 6. Cascade indicators - DISABLED
+        # F9 cascade detection was tested but does not improve F9 detection:
+        # - Loose thresholds: 7 TP, 164 FP (F1=0.077)
+        # - Tight thresholds: 1 TP, 8 FP (F1=0.105)
+        # The cascade pattern (errors + recovery loops) correlates with F9
+        # but is not discriminative enough - many F9- cases also have errors.
+        # cascade_violations = self._detect_cascade_indicators(turns)
+        # violations.extend(cascade_violations)
+
         if len(violations) < self.min_violations:
             return TurnAwareDetectionResult(
                 detected=False,
@@ -652,3 +661,84 @@ class TurnAwareRoleUsurpationDetector(EmbeddingMixin, TurnAwareDetector):
                     break  # Only report first pattern match per turn
 
         return violations[:5]  # Limit to top 5
+
+    def _detect_cascade_indicators(self, turns: List[TurnSnapshot]) -> List[Dict[str, Any]]:
+        """Detect F9 cascade indicators: errors, complexity, recovery loops.
+
+        Key discovery: F9 is a systemic failure pattern with these signals:
+        - Error rate 2.5x higher in F9+ cases (40% vs 16%)
+        - Longer conversations (6.4 vs 4.8 messages)
+        - Error recovery loops (error → fix → error pattern)
+
+        CRITICAL: Only returns violations when ALL conditions are met.
+        Partial matches do NOT trigger F9 detection.
+        """
+        # Signal 1: Error/traceback presence (strong indicators only)
+        strong_error_patterns = ["traceback", "exception:", "exitcode: 1", "exitcode:1"]
+
+        strong_error_count = 0
+        for turn in turns:
+            content_lower = turn.content.lower()
+            if any(p in content_lower for p in strong_error_patterns):
+                strong_error_count += 1
+
+        # Signal 2: Conversation complexity
+        message_count = len(turns)
+
+        # Signal 3: Error recovery loop (REQUIRED)
+        has_recovery_loop = self._detect_recovery_loop(turns)
+
+        # F9 Cascade Pattern requires ALL THREE signals:
+        # 1. Recovery loop with strong error
+        # 2. At least one strong error (traceback/exception/exitcode)
+        # 3. Extended conversation (7+ messages)
+        if not has_recovery_loop:
+            return []
+
+        if strong_error_count < 1:
+            return []
+
+        if message_count <= 6:
+            return []
+
+        # All conditions met - return cascade violation
+        return [{
+            "type": "cascade_pattern",
+            "turns": [],
+            "severity": "critical",
+            "description": f"Systemic cascade: {strong_error_count} tracebacks, {message_count} messages, recovery_loop=True",
+        }]
+
+    def _detect_recovery_loop(self, turns: List[TurnSnapshot]) -> bool:
+        """Detect error → revised code → error pattern.
+
+        This pattern indicates the system had to step in and provide revised code,
+        which is a form of role boundary violation.
+
+        Requires at least one STRONG error indicator (traceback, exception, exitcode).
+        """
+        # Strong error patterns that indicate actual code execution failure
+        strong_patterns = ["traceback", "exception:", "exitcode: 1", "exitcode:1"]
+
+        strong_error_indices = []
+        any_error_indices = []
+
+        for i, turn in enumerate(turns):
+            content_lower = turn.content.lower()
+            if any(p in content_lower for p in strong_patterns):
+                strong_error_indices.append(i)
+                any_error_indices.append(i)
+            elif "error:" in content_lower or "error in" in content_lower:
+                any_error_indices.append(i)
+
+        # Recovery loop requires:
+        # 1. At least one strong error (traceback/exception/exitcode)
+        # 2. At least 2 error-related turns with gap between them
+        if len(strong_error_indices) == 0:
+            return False
+
+        if len(any_error_indices) < 2:
+            return False
+
+        # Must have turns between errors (indicating retry)
+        return (any_error_indices[-1] - any_error_indices[0]) >= 2
