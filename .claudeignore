@@ -1,0 +1,39 @@
+# Large data files (60+ MB)
+/data/*.json
+/data/mast/
+
+# Virtual environments
+.venv/
+venv/
+**/venv/
+
+# Node artifacts
+**/node_modules/
+**/.next/
+
+# Archives
+_archived/
+
+# Build outputs
+**/__pycache__/
+**/*.pyc
+**/dist/
+**/build/
+**/*.egg-info/
+**/htmlcov/
+**/.pytest_cache/
+
+# Logs
+**/logs/
+**/*.log
+
+# Demo assets
+scripts/demo-video/audio/
+
+# Terraform state
+**/*.tfstate
+**/*.tfstate.backup
+
+# IDE
+.idea/
+.vscode/
