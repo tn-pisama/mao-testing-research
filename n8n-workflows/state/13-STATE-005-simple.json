@@ -112,14 +112,14 @@
         "headerParameters": {
           "parameters": [
             {
-              "name": "X-N8N-Api-Key",
+              "name": "X-MAO-API-Key",
               "value": "mao_pmNhfBRfqd5G_YHubK0Jqk9ZHB6ItITkHFYP4ISns9c"
             }
           ]
         },
         "sendBody": true,
         "specifyBody": "json",
-        "jsonBody": "={\n  \"event_type\": \"workflow.completed\",\n  \"workflow_name\": \"STATE-005 Simple: Required Field Null\",\n  \"session_id\": \"{{ $('Initialize').item.json.session_id }}\",\n  \"failure_mode\": \"STATE-005\",\n  \"complexity\": \"simple\",\n  \"expected_detection\": \"state_loss\",\n  \"state_tracking\": {\n    \"original_state\": {{ $('Initialize').item.json.customer_record }},\n    \"final_state\": \"{{ $('Lose Email').item.json.output }}\",\n    \"lost_field\": \"email\",\n    \"required_fields\": [\"id\", \"email\", \"subscription\"]\n  },\n  \"agents\": [\n    {\n      \"agent_id\": \"data_processor\",\n      \"role\": \"record_updater\",\n      \"outputs\": [\"{{ $('Lose Email').item.json.output }}\"]\n    }\n  ]\n}",
+        "jsonBody": "={\n  \"executionId\": \"{{ $runIndex }}-{{ $now.toMillis() }}\",\n  \"workflowId\": \"state_005\",\n  \"workflowName\": \"STATE-005 Simple: Required Field Null\",\n  \"startedAt\": \"{{ $now.minus({minutes: 1}).toISO() }}\",\n  \"finishedAt\": \"{{ $now.toISO() }}\",\n  \"status\": \"success\",\n  \"mode\": \"webhook\",\n  \"data\": {\n    \"failure_mode\": \"STATE-005\",\n    \"complexity\": \"simple\",\n    \"session_id\": \"{{ $('Initialize').item.json.session_id }}\"\n  }\n}",
         "options": {}
       },
       "id": "send_to_mao",

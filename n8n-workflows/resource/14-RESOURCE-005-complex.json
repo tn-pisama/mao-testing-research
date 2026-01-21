@@ -226,14 +226,14 @@
         "headerParameters": {
           "parameters": [
             {
-              "name": "X-N8N-Api-Key",
+              "name": "X-MAO-API-Key",
               "value": "mao_pmNhfBRfqd5G_YHubK0Jqk9ZHB6ItITkHFYP4ISns9c"
             }
           ]
         },
         "sendBody": true,
         "specifyBody": "json",
-        "jsonBody": "={\n  \"event_type\": \"workflow.completed\",\n  \"workflow_name\": \"RESOURCE-005 Complex: Conversation History Exhaustion\",\n  \"session_id\": \"{{ $('Initialize').item.json.session_id }}\",\n  \"failure_mode\": \"RESOURCE-005\",\n  \"complexity\": \"complex\",\n  \"expected_detection\": \"memory_exhaustion\",\n  \"resource_tracking\": {\n    \"context_limit\": {{ $('Initialize').item.json.context_limit }},\n    \"turn_1\": \"{{ $('Turn 1').item.json.output }}\",\n    \"turn_15\": \"{{ $('Turn 15').item.json.output }}\",\n    \"turn_20\": \"{{ $('Turn 20 (Full)').item.json.output }}\",\n    \"turn_25\": \"{{ $('Turn 25 (Lost Context)').item.json.output }}\",\n    \"exhaustion_type\": \"conversation_history_overflow\"\n  },\n  \"agents\": [\n    {\"agent_id\": \"turn1\", \"outputs\": [\"{{ $('Turn 1').item.json.output }}\"]},\n    {\"agent_id\": \"turn15\", \"outputs\": [\"{{ $('Turn 15').item.json.output }}\"]},\n    {\"agent_id\": \"turn20\", \"outputs\": [\"{{ $('Turn 20 (Full)').item.json.output }}\"]},\n    {\"agent_id\": \"turn25\", \"outputs\": [\"{{ $('Turn 25 (Lost Context)').item.json.output }}\"]}  \n  ]\n}",
+        "jsonBody": "={\n  \"executionId\": \"{{ $runIndex }}-{{ $now.toMillis() }}\",\n  \"workflowId\": \"resource_005\",\n  \"workflowName\": \"RESOURCE-005 Complex: Conversation History Exhaustion\",\n  \"startedAt\": \"{{ $now.minus({minutes: 1}).toISO() }}\",\n  \"finishedAt\": \"{{ $now.toISO() }}\",\n  \"status\": \"success\",\n  \"mode\": \"webhook\",\n  \"data\": {\n    \"failure_mode\": \"RESOURCE-005\",\n    \"complexity\": \"complex\",\n    \"session_id\": \"{{ $('Initialize').item.json.session_id }}\"\n  }\n}",
         "options": {}
       },
       "id": "send_to_mao",

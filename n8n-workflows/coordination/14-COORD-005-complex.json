@@ -237,14 +237,14 @@
         "headerParameters": {
           "parameters": [
             {
-              "name": "X-N8N-Api-Key",
+              "name": "X-MAO-API-Key",
               "value": "mao_pmNhfBRfqd5G_YHubK0Jqk9ZHB6ItITkHFYP4ISns9c"
             }
           ]
         },
         "sendBody": true,
         "specifyBody": "json",
-        "jsonBody": "={\n  \"event_type\": \"workflow.completed\",\n  \"workflow_name\": \"COORD-005 Complex: API Dependency Cascade\",\n  \"session_id\": \"{{ $('Initialize').item.json.session_id }}\",\n  \"failure_mode\": \"COORD-005\",\n  \"complexity\": \"complex\",\n  \"expected_detection\": \"cascade_failure\",\n  \"coordination_tracking\": {\n    \"fetcher\": \"{{ $('Fetcher (Timeout)').item.json.output }}\",\n    \"parser\": \"{{ $('Parser (Cascade)').item.json.output }}\",\n    \"enricher\": \"{{ $('Enricher (Cascade)').item.json.output }}\",\n    \"formatter\": \"{{ $('Formatter (Cascade)').item.json.output }}\",\n    \"cascade_chain\": [\"fetcher\", \"parser\", \"enricher\", \"formatter\"],\n    \"cascade_depth\": 3,\n    \"root_cause\": \"api_timeout\"\n  },\n  \"agents\": [\n    {\"agent_id\": \"fetcher\", \"outputs\": [\"{{ $('Fetcher (Timeout)').item.json.output }}\"]},\n    {\"agent_id\": \"parser\", \"outputs\": [\"{{ $('Parser (Cascade)').item.json.output }}\"]},\n    {\"agent_id\": \"enricher\", \"outputs\": [\"{{ $('Enricher (Cascade)').item.json.output }}\"]},\n    {\"agent_id\": \"formatter\", \"outputs\": [\"{{ $('Formatter (Cascade)').item.json.output }}\"]}  \n  ]\n}",
+        "jsonBody": "={\n  \"executionId\": \"{{ $runIndex }}-{{ $now.toMillis() }}\",\n  \"workflowId\": \"coord_005\",\n  \"workflowName\": \"COORD-005 Complex: API Dependency Cascade\",\n  \"startedAt\": \"{{ $now.minus({minutes: 1}).toISO() }}\",\n  \"finishedAt\": \"{{ $now.toISO() }}\",\n  \"status\": \"success\",\n  \"mode\": \"webhook\",\n  \"data\": {\n    \"failure_mode\": \"COORD-005\",\n    \"complexity\": \"complex\",\n    \"session_id\": \"{{ $('Initialize').item.json.session_id }}\"\n  }\n}",
         "options": {}
       },
       "id": "send_to_mao",

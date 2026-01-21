@@ -188,14 +188,14 @@
         "headerParameters": {
           "parameters": [
             {
-              "name": "X-N8N-Api-Key",
+              "name": "X-MAO-API-Key",
               "value": "mao_pmNhfBRfqd5G_YHubK0Jqk9ZHB6ItITkHFYP4ISns9c"
             }
           ]
         },
         "sendBody": true,
         "specifyBody": "json",
-        "jsonBody": "={\n  \"event_type\": \"workflow.completed\",\n  \"workflow_name\": \"STATE-004 VComplex: Referential Integrity Violation\",\n  \"session_id\": \"{{ $('Initialize').item.json.session_id }}\",\n  \"failure_mode\": \"STATE-004\",\n  \"complexity\": \"very_complex\",\n  \"expected_detection\": \"state_corruption\",\n  \"state_tracking\": {\n    \"initial_state\": {{ $('Initialize').item.json.database_state }},\n    \"agent_a_action\": \"{{ $('Agent A Delete User').item.json.output }}\",\n    \"agent_b_action\": \"{{ $('Agent B Create Order').item.json.output }}\",\n    \"integrity_report\": \"{{ $('Integrity Checker').item.json.output }}\",\n    \"violations\": [\n      \"Order 101 references deleted user_id 1\",\n      \"Order 103 references non-existent user_id 999\"\n    ],\n    \"cross_agent_corruption\": true\n  },\n  \"agents\": [\n    {\"agent_id\": \"agent_a\", \"role\": \"user_manager\", \"outputs\": [\"{{ $('Agent A Delete User').item.json.output }}\"]},\n    {\"agent_id\": \"agent_b\", \"role\": \"order_manager\", \"outputs\": [\"{{ $('Agent B Create Order').item.json.output }}\"]},\n    {\"agent_id\": \"integrity_checker\", \"role\": \"validator\", \"outputs\": [\"{{ $('Integrity Checker').item.json.output }}\"]}\n  ]\n}",
+        "jsonBody": "={\n  \"executionId\": \"{{ $runIndex }}-{{ $now.toMillis() }}\",\n  \"workflowId\": \"state_004\",\n  \"workflowName\": \"STATE-004 VComplex: Referential Integrity Violation\",\n  \"startedAt\": \"{{ $now.minus({minutes: 1}).toISO() }}\",\n  \"finishedAt\": \"{{ $now.toISO() }}\",\n  \"status\": \"success\",\n  \"mode\": \"webhook\",\n  \"data\": {\n    \"failure_mode\": \"STATE-004\",\n    \"complexity\": \"very_complex\",\n    \"session_id\": \"{{ $('Initialize').item.json.session_id }}\"\n  }\n}",
         "options": {}
       },
       "id": "send_to_mao",

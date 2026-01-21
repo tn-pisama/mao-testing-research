@@ -202,14 +202,14 @@
         "headerParameters": {
           "parameters": [
             {
-              "name": "X-N8N-Api-Key",
+              "name": "X-MAO-API-Key",
               "value": "mao_pmNhfBRfqd5G_YHubK0Jqk9ZHB6ItITkHFYP4ISns9c"
             }
           ]
         },
         "sendBody": true,
         "specifyBody": "json",
-        "jsonBody": "={\n  \"event_type\": \"workflow.completed\",\n  \"workflow_name\": \"STATE-002 Complex: User Profile Regression\",\n  \"session_id\": \"{{ $('Initialize').item.json.session_id }}\",\n  \"failure_mode\": \"STATE-002\",\n  \"complexity\": \"complex\",\n  \"expected_detection\": \"state_regression\",\n  \"state_tracking\": {\n    \"state_history\": [\n      {\"email\": \"john@old.com\", \"verified\": false},\n      {\"email\": \"john@new.com\", \"verified\": false},\n      {\"email\": \"john@new.com\", \"verified\": true},\n      {\"email\": \"john@old.com\", \"verified\": false}\n    ],\n    \"regression_detected\": \"email and verified reverted to original values\"\n  },\n  \"agents\": [\n    {\n      \"agent_id\": \"profile_updater\",\n      \"role\": \"profile_manager\",\n      \"outputs\": [\n        \"{{ $('Update Email').item.json.output }}\",\n        \"{{ $('Verify Email').item.json.output }}\",\n        \"{{ $('Sync (Regresses)').item.json.output }}\"\n      ]\n    }\n  ]\n}",
+        "jsonBody": "={\n  \"executionId\": \"{{ $runIndex }}-{{ $now.toMillis() }}\",\n  \"workflowId\": \"state_002\",\n  \"workflowName\": \"STATE-002 Complex: User Profile Regression\",\n  \"startedAt\": \"{{ $now.minus({minutes: 1}).toISO() }}\",\n  \"finishedAt\": \"{{ $now.toISO() }}\",\n  \"status\": \"success\",\n  \"mode\": \"webhook\",\n  \"data\": {\n    \"failure_mode\": \"STATE-002\",\n    \"complexity\": \"complex\",\n    \"session_id\": \"{{ $('Initialize').item.json.session_id }}\"\n  }\n}",
         "options": {}
       },
       "id": "send_to_mao",

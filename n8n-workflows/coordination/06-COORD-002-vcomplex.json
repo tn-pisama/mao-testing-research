@@ -264,14 +264,14 @@
         "headerParameters": {
           "parameters": [
             {
-              "name": "X-N8N-Api-Key",
+              "name": "X-MAO-API-Key",
               "value": "mao_pmNhfBRfqd5G_YHubK0Jqk9ZHB6ItITkHFYP4ISns9c"
             }
           ]
         },
         "sendBody": true,
         "specifyBody": "json",
-        "jsonBody": "={\n  \"event_type\": \"workflow.completed\",\n  \"workflow_name\": \"COORD-002 VComplex: Selective Broadcast Loss\",\n  \"session_id\": \"{{ $('Initialize').item.json.session_id }}\",\n  \"failure_mode\": \"COORD-002\",\n  \"complexity\": \"very_complex\",\n  \"expected_detection\": \"message_loss\",\n  \"coordination_tracking\": {\n    \"broadcast\": {{ $('Initialize').item.json.broadcast }},\n    \"broadcaster\": \"{{ $('Broadcaster').item.json.output }}\",\n    \"agent_1\": \"{{ $('Agent 1 (Got It)').item.json.output }}\",\n    \"agent_2\": \"{{ $('Agent 2 (Missed)').item.json.output }}\",\n    \"agent_3\": \"{{ $('Agent 3 (Got It)').item.json.output }}\",\n    \"agent_4\": \"{{ $('Agent 4 (Missed)').item.json.output }}\",\n    \"intended_recipients\": 4,\n    \"actual_recipients\": 2,\n    \"selective_loss\": true,\n    \"missed_agents\": [\"agent_2\", \"agent_4\"]\n  },\n  \"agents\": [\n    {\"agent_id\": \"broadcaster\", \"role\": \"sender\", \"outputs\": [\"{{ $('Broadcaster').item.json.output }}\"]},\n    {\"agent_id\": \"agent_1\", \"role\": \"recipient\", \"outputs\": [\"{{ $('Agent 1 (Got It)').item.json.output }}\"]},\n    {\"agent_id\": \"agent_2\", \"role\": \"recipient\", \"outputs\": [\"{{ $('Agent 2 (Missed)').item.json.output }}\"]},\n    {\"agent_id\": \"agent_3\", \"role\": \"recipient\", \"outputs\": [\"{{ $('Agent 3 (Got It)').item.json.output }}\"]},\n    {\"agent_id\": \"agent_4\", \"role\": \"recipient\", \"outputs\": [\"{{ $('Agent 4 (Missed)').item.json.output }}\"]}\n  ]\n}",
+        "jsonBody": "={\n  \"executionId\": \"{{ $runIndex }}-{{ $now.toMillis() }}\",\n  \"workflowId\": \"coord_002\",\n  \"workflowName\": \"COORD-002 VComplex: Selective Broadcast Loss\",\n  \"startedAt\": \"{{ $now.minus({minutes: 1}).toISO() }}\",\n  \"finishedAt\": \"{{ $now.toISO() }}\",\n  \"status\": \"success\",\n  \"mode\": \"webhook\",\n  \"data\": {\n    \"failure_mode\": \"COORD-002\",\n    \"complexity\": \"very_complex\",\n    \"session_id\": \"{{ $('Initialize').item.json.session_id }}\"\n  }\n}",
         "options": {}
       },
       "id": "send_to_mao",

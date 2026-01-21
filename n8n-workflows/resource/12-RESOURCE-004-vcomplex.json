@@ -226,14 +226,14 @@
         "headerParameters": {
           "parameters": [
             {
-              "name": "X-N8N-Api-Key",
+              "name": "X-MAO-API-Key",
               "value": "mao_pmNhfBRfqd5G_YHubK0Jqk9ZHB6ItITkHFYP4ISns9c"
             }
           ]
         },
         "sendBody": true,
         "specifyBody": "json",
-        "jsonBody": "={\n  \"event_type\": \"workflow.completed\",\n  \"workflow_name\": \"RESOURCE-004 VComplex: Ironic Cost Optimizer Overrun\",\n  \"session_id\": \"{{ $('Initialize').item.json.session_id }}\",\n  \"failure_mode\": \"RESOURCE-004\",\n  \"complexity\": \"very_complex\",\n  \"expected_detection\": \"cost_overrun\",\n  \"resource_tracking\": {\n    \"budget_usd\": {{ $('Initialize').item.json.budget }},\n    \"analyzer\": \"{{ $('Cost Analyzer (Expensive)').item.json.output }}\",\n    \"optimizer\": \"{{ $('Optimizer Agent (Expensive)').item.json.output }}\",\n    \"reporter\": \"{{ $('Report Generator (Expensive)').item.json.output }}\",\n    \"irony_analysis\": \"{{ $('Irony Analyzer').item.json.output }}\",\n    \"cost_type\": \"ironic_optimization_overrun\"\n  },\n  \"agents\": [\n    {\"agent_id\": \"analyzer\", \"outputs\": [\"{{ $('Cost Analyzer (Expensive)').item.json.output }}\"]},\n    {\"agent_id\": \"optimizer\", \"outputs\": [\"{{ $('Optimizer Agent (Expensive)').item.json.output }}\"]},\n    {\"agent_id\": \"reporter\", \"outputs\": [\"{{ $('Report Generator (Expensive)').item.json.output }}\"]}  \n  ]\n}",
+        "jsonBody": "={\n  \"executionId\": \"{{ $runIndex }}-{{ $now.toMillis() }}\",\n  \"workflowId\": \"resource_004\",\n  \"workflowName\": \"RESOURCE-004 VComplex: Ironic Cost Optimizer Overrun\",\n  \"startedAt\": \"{{ $now.minus({minutes: 1}).toISO() }}\",\n  \"finishedAt\": \"{{ $now.toISO() }}\",\n  \"status\": \"success\",\n  \"mode\": \"webhook\",\n  \"data\": {\n    \"failure_mode\": \"RESOURCE-004\",\n    \"complexity\": \"very_complex\",\n    \"session_id\": \"{{ $('Initialize').item.json.session_id }}\"\n  }\n}",
         "options": {}
       },
       "id": "send_to_mao",

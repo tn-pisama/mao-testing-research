@@ -302,14 +302,14 @@
         "headerParameters": {
           "parameters": [
             {
-              "name": "X-N8N-Api-Key",
+              "name": "X-MAO-API-Key",
               "value": "mao_pmNhfBRfqd5G_YHubK0Jqk9ZHB6ItITkHFYP4ISns9c"
             }
           ]
         },
         "sendBody": true,
         "specifyBody": "json",
-        "jsonBody": "={\n  \"event_type\": \"workflow.completed\",\n  \"workflow_name\": \"RESOURCE-001 VComplex: Multi-Agent Context Accumulation\",\n  \"session_id\": \"{{ $('Initialize').item.json.session_id }}\",\n  \"failure_mode\": \"RESOURCE-001\",\n  \"complexity\": \"very_complex\",\n  \"expected_detection\": \"token_explosion\",\n  \"resource_tracking\": {\n    \"initial_context\": \"{{ $('Initialize').item.json.initial_context }}\",\n    \"researcher\": \"{{ $('Research Agent').item.json.output }}\",\n    \"analyst\": \"{{ $('Analysis Agent').item.json.output }}\",\n    \"synthesizer\": \"{{ $('Synthesis Agent').item.json.output }}\",\n    \"validator\": \"{{ $('Validation Agent').item.json.output }}\",\n    \"reporter\": \"{{ $('Report Agent').item.json.output }}\",\n    \"analysis\": \"{{ $('Token Analyzer').item.json.output }}\",\n    \"explosion_type\": \"multi_agent_accumulation\"\n  },\n  \"agents\": [\n    {\"agent_id\": \"researcher\", \"outputs\": [\"{{ $('Research Agent').item.json.output }}\"]},\n    {\"agent_id\": \"analyst\", \"outputs\": [\"{{ $('Analysis Agent').item.json.output }}\"]},\n    {\"agent_id\": \"synthesizer\", \"outputs\": [\"{{ $('Synthesis Agent').item.json.output }}\"]},\n    {\"agent_id\": \"validator\", \"outputs\": [\"{{ $('Validation Agent').item.json.output }}\"]},\n    {\"agent_id\": \"reporter\", \"outputs\": [\"{{ $('Report Agent').item.json.output }}\"]}  \n  ]\n}",
+        "jsonBody": "={\n  \"executionId\": \"{{ $runIndex }}-{{ $now.toMillis() }}\",\n  \"workflowId\": \"resource_001\",\n  \"workflowName\": \"RESOURCE-001 VComplex: Multi-Agent Context Accumulation\",\n  \"startedAt\": \"{{ $now.minus({minutes: 1}).toISO() }}\",\n  \"finishedAt\": \"{{ $now.toISO() }}\",\n  \"status\": \"success\",\n  \"mode\": \"webhook\",\n  \"data\": {\n    \"failure_mode\": \"RESOURCE-001\",\n    \"complexity\": \"very_complex\",\n    \"session_id\": \"{{ $('Initialize').item.json.session_id }}\"\n  }\n}",
         "options": {}
       },
       "id": "send_to_mao",

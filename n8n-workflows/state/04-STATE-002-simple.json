@@ -188,14 +188,14 @@
         "headerParameters": {
           "parameters": [
             {
-              "name": "X-N8N-Api-Key",
+              "name": "X-MAO-API-Key",
               "value": "mao_pmNhfBRfqd5G_YHubK0Jqk9ZHB6ItITkHFYP4ISns9c"
             }
           ]
         },
         "sendBody": true,
         "specifyBody": "json",
-        "jsonBody": "={\n  \"event_type\": \"workflow.completed\",\n  \"workflow_name\": \"STATE-002 Simple: State Regression\",\n  \"session_id\": \"{{ $('Initialize').item.json.session_id }}\",\n  \"failure_mode\": \"STATE-002\",\n  \"complexity\": \"simple\",\n  \"expected_detection\": \"state_regression\",\n  \"state_tracking\": {\n    \"state_history\": [1, 2, 3, 1],\n    \"regression_detected\": \"counter went from 3 back to 1\"\n  },\n  \"agents\": [\n    {\n      \"agent_id\": \"counter_agent\",\n      \"role\": \"counter\",\n      \"outputs\": [\n        \"{{ $('Increment to 2').item.json.output }}\",\n        \"{{ $('Increment to 3').item.json.output }}\",\n        \"{{ $('Regress to 1').item.json.output }}\"\n      ]\n    }\n  ]\n}",
+        "jsonBody": "={\n  \"executionId\": \"{{ $runIndex }}-{{ $now.toMillis() }}\",\n  \"workflowId\": \"state_002\",\n  \"workflowName\": \"STATE-002 Simple: State Regression\",\n  \"startedAt\": \"{{ $now.minus({minutes: 1}).toISO() }}\",\n  \"finishedAt\": \"{{ $now.toISO() }}\",\n  \"status\": \"success\",\n  \"mode\": \"webhook\",\n  \"data\": {\n    \"failure_mode\": \"STATE-002\",\n    \"complexity\": \"simple\",\n    \"session_id\": \"{{ $('Initialize').item.json.session_id }}\"\n  }\n}",
         "options": {}
       },
       "id": "send_to_mao",

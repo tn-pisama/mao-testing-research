@@ -226,14 +226,14 @@
         "headerParameters": {
           "parameters": [
             {
-              "name": "X-N8N-Api-Key",
+              "name": "X-MAO-API-Key",
               "value": "mao_pmNhfBRfqd5G_YHubK0Jqk9ZHB6ItITkHFYP4ISns9c"
             }
           ]
         },
         "sendBody": true,
         "specifyBody": "json",
-        "jsonBody": "={\n  \"event_type\": \"workflow.completed\",\n  \"workflow_name\": \"RESOURCE-004 Complex: Gradual Cost Accumulation\",\n  \"session_id\": \"{{ $('Initialize').item.json.session_id }}\",\n  \"failure_mode\": \"RESOURCE-004\",\n  \"complexity\": \"complex\",\n  \"expected_detection\": \"cost_overrun\",\n  \"resource_tracking\": {\n    \"budget_usd\": {{ $('Initialize').item.json.budget }},\n    \"iter_1\": \"{{ $('Iteration 1').item.json.output }}\",\n    \"iter_10\": \"{{ $('Iteration 10').item.json.output }}\",\n    \"iter_20\": \"{{ $('Iteration 20 (Budget Hit)').item.json.output }}\",\n    \"iter_30\": \"{{ $('Iteration 30 (Over Budget)').item.json.output }}\",\n    \"cost_type\": \"gradual_accumulation\"\n  },\n  \"agents\": [\n    {\"agent_id\": \"iter1\", \"outputs\": [\"{{ $('Iteration 1').item.json.output }}\"]},\n    {\"agent_id\": \"iter10\", \"outputs\": [\"{{ $('Iteration 10').item.json.output }}\"]},\n    {\"agent_id\": \"iter20\", \"outputs\": [\"{{ $('Iteration 20 (Budget Hit)').item.json.output }}\"]},\n    {\"agent_id\": \"iter30\", \"outputs\": [\"{{ $('Iteration 30 (Over Budget)').item.json.output }}\"]}  \n  ]\n}",
+        "jsonBody": "={\n  \"executionId\": \"{{ $runIndex }}-{{ $now.toMillis() }}\",\n  \"workflowId\": \"resource_004\",\n  \"workflowName\": \"RESOURCE-004 Complex: Gradual Cost Accumulation\",\n  \"startedAt\": \"{{ $now.minus({minutes: 1}).toISO() }}\",\n  \"finishedAt\": \"{{ $now.toISO() }}\",\n  \"status\": \"success\",\n  \"mode\": \"webhook\",\n  \"data\": {\n    \"failure_mode\": \"RESOURCE-004\",\n    \"complexity\": \"complex\",\n    \"session_id\": \"{{ $('Initialize').item.json.session_id }}\"\n  }\n}",
         "options": {}
       },
       "id": "send_to_mao",

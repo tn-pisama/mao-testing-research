@@ -188,14 +188,14 @@
         "headerParameters": {
           "parameters": [
             {
-              "name": "X-N8N-Api-Key",
+              "name": "X-MAO-API-Key",
               "value": "mao_pmNhfBRfqd5G_YHubK0Jqk9ZHB6ItITkHFYP4ISns9c"
             }
           ]
         },
         "sendBody": true,
         "specifyBody": "json",
-        "jsonBody": "={\n  \"event_type\": \"workflow.completed\",\n  \"workflow_name\": \"STATE-006 Simple: Concurrent Write Conflict\",\n  \"session_id\": \"{{ $('Initialize').item.json.session_id }}\",\n  \"failure_mode\": \"STATE-006\",\n  \"complexity\": \"simple\",\n  \"expected_detection\": \"race_condition\",\n  \"state_tracking\": {\n    \"initial_balance\": 100,\n    \"writer_a\": \"{{ $('Writer A (+50)').item.json.output }}\",\n    \"writer_b\": \"{{ $('Writer B (-30)').item.json.output }}\",\n    \"merge_result\": \"{{ $('Merge (Race)').item.json.output }}\",\n    \"concurrent_reads\": true,\n    \"lost_update\": \"Writer A's +50\"\n  },\n  \"agents\": [\n    {\"agent_id\": \"writer_a\", \"role\": \"concurrent_writer\", \"outputs\": [\"{{ $('Writer A (+50)').item.json.output }}\"]},\n    {\"agent_id\": \"writer_b\", \"role\": \"concurrent_writer\", \"outputs\": [\"{{ $('Writer B (-30)').item.json.output }}\"]},\n    {\"agent_id\": \"merger\", \"role\": \"state_merger\", \"outputs\": [\"{{ $('Merge (Race)').item.json.output }}\"]}\n  ]\n}",
+        "jsonBody": "={\n  \"executionId\": \"{{ $runIndex }}-{{ $now.toMillis() }}\",\n  \"workflowId\": \"state_006\",\n  \"workflowName\": \"STATE-006 Simple: Concurrent Write Conflict\",\n  \"startedAt\": \"{{ $now.minus({minutes: 1}).toISO() }}\",\n  \"finishedAt\": \"{{ $now.toISO() }}\",\n  \"status\": \"success\",\n  \"mode\": \"webhook\",\n  \"data\": {\n    \"failure_mode\": \"STATE-006\",\n    \"complexity\": \"simple\",\n    \"session_id\": \"{{ $('Initialize').item.json.session_id }}\"\n  }\n}",
         "options": {}
       },
       "id": "send_to_mao",

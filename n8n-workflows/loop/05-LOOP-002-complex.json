@@ -334,14 +334,14 @@
         "headerParameters": {
           "parameters": [
             {
-              "name": "X-N8N-Api-Key",
+              "name": "X-MAO-API-Key",
               "value": "mao_pmNhfBRfqd5G_YHubK0Jqk9ZHB6ItITkHFYP4ISns9c"
             }
           ]
         },
         "sendBody": true,
         "specifyBody": "json",
-        "jsonBody": "={\n  \"event_type\": \"workflow.completed\",\n  \"workflow_name\": \"LOOP-002 Complex: News Aggregator Structural Loop\",\n  \"session_id\": \"{{ $('Initialize').item.json.session_id }}\",\n  \"failure_mode\": \"LOOP-002\",\n  \"complexity\": \"complex\",\n  \"expected_detection\": \"structural_loop\",\n  \"context\": {\n    \"pattern\": \"Source N (Name) complete. X articles found. Moving to next source...\",\n    \"sources_configured\": \"{{ $('Initialize').item.json.sources }}\",\n    \"api_calls\": 4\n  },\n  \"agents\": [\n    {\n      \"agent_id\": \"news_reporter\",\n      \"role\": \"status_reporter\",\n      \"outputs\": [\n        \"{{ $('Reporter 1').item.json.output }}\",\n        \"{{ $('Reporter 2').item.json.output }}\",\n        \"{{ $('Reporter 3').item.json.output }}\",\n        \"{{ $('Reporter 4').item.json.output }}\"\n      ]\n    }\n  ]\n}",
+        "jsonBody": "={\n  \"executionId\": \"{{ $runIndex }}-{{ $now.toMillis() }}\",\n  \"workflowId\": \"loop_002\",\n  \"workflowName\": \"LOOP-002 Complex: News Aggregator Structural Loop\",\n  \"startedAt\": \"{{ $now.minus({minutes: 1}).toISO() }}\",\n  \"finishedAt\": \"{{ $now.toISO() }}\",\n  \"status\": \"success\",\n  \"mode\": \"webhook\",\n  \"data\": {\n    \"failure_mode\": \"LOOP-002\",\n    \"complexity\": \"complex\",\n    \"session_id\": \"{{ $('Initialize').item.json.session_id }}\"\n  }\n}",
         "options": {}
       },
       "id": "send_to_mao",

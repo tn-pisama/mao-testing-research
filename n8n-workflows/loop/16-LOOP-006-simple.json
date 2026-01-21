@@ -226,14 +226,14 @@
         "headerParameters": {
           "parameters": [
             {
-              "name": "X-N8N-Api-Key",
+              "name": "X-MAO-API-Key",
               "value": "mao_pmNhfBRfqd5G_YHubK0Jqk9ZHB6ItITkHFYP4ISns9c"
             }
           ]
         },
         "sendBody": true,
         "specifyBody": "json",
-        "jsonBody": "={\n  \"event_type\": \"workflow.completed\",\n  \"workflow_name\": \"LOOP-006 Simple: Escalation Loop\",\n  \"session_id\": \"{{ $('Initialize').item.json.session_id }}\",\n  \"failure_mode\": \"LOOP-006\",\n  \"complexity\": \"simple\",\n  \"expected_detection\": \"escalation_loop\",\n  \"context\": {\n    \"complaint\": \"{{ $('Initialize').item.json.complaint }}\",\n    \"escalation_count\": 4,\n    \"resolution_achieved\": false\n  },\n  \"agents\": [\n    {\n      \"agent_id\": \"support_agent\",\n      \"role\": \"customer_support\",\n      \"outputs\": [\n        \"{{ $('Escalate 1').item.json.output }}\",\n        \"{{ $('Escalate 2').item.json.output }}\",\n        \"{{ $('Escalate 3').item.json.output }}\",\n        \"{{ $('Escalate 4').item.json.output }}\"\n      ]\n    }\n  ]\n}",
+        "jsonBody": "={\n  \"executionId\": \"{{ $runIndex }}-{{ $now.toMillis() }}\",\n  \"workflowId\": \"loop_006\",\n  \"workflowName\": \"LOOP-006 Simple: Escalation Loop\",\n  \"startedAt\": \"{{ $now.minus({minutes: 1}).toISO() }}\",\n  \"finishedAt\": \"{{ $now.toISO() }}\",\n  \"status\": \"success\",\n  \"mode\": \"webhook\",\n  \"data\": {\n    \"failure_mode\": \"LOOP-006\",\n    \"complexity\": \"simple\",\n    \"session_id\": \"{{ $('Initialize').item.json.session_id }}\"\n  }\n}",
         "options": {}
       },
       "id": "send_to_mao",

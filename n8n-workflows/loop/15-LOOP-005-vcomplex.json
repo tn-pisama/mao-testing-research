@@ -329,14 +329,14 @@
         "headerParameters": {
           "parameters": [
             {
-              "name": "X-N8N-Api-Key",
+              "name": "X-MAO-API-Key",
               "value": "mao_pmNhfBRfqd5G_YHubK0Jqk9ZHB6ItITkHFYP4ISns9c"
             }
           ]
         },
         "sendBody": true,
         "specifyBody": "json",
-        "jsonBody": "={\n  \"event_type\": \"workflow.completed\",\n  \"workflow_name\": \"LOOP-005 VComplex: Multi-Party Consensus Undone\",\n  \"session_id\": \"{{ $('Initialize').item.json.session_id }}\",\n  \"failure_mode\": \"LOOP-005\",\n  \"complexity\": \"very_complex\",\n  \"expected_detection\": \"conversation_circle\",\n  \"context\": {\n    \"topic\": \"{{ $('Initialize').item.json.topic }}\",\n    \"consensus_cycle\": \"React (agreed) -> reconsidered Vue -> back to React\",\n    \"participants\": [\"Alex\", \"Blake\", \"Casey\"]\n  },\n  \"agents\": [\n    {\n      \"agent_id\": \"alex\",\n      \"role\": \"team_lead\",\n      \"outputs\": [\"{{ $('Alex Proposes').item.json.output }}\", \"{{ $('Alex Reconsiders').item.json.output }}\", \"{{ $('Alex Returns to React').item.json.output }}\"]\n    },\n    {\n      \"agent_id\": \"blake\",\n      \"role\": \"developer\",\n      \"outputs\": [\"{{ $('Blake Agrees').item.json.output }}\", \"{{ $('Blake Wavers').item.json.output }}\"]\n    },\n    {\n      \"agent_id\": \"casey\",\n      \"role\": \"designer\",\n      \"outputs\": [\"{{ $('Casey Confirms').item.json.output }}\"]\n    }\n  ]\n}",
+        "jsonBody": "={\n  \"executionId\": \"{{ $runIndex }}-{{ $now.toMillis() }}\",\n  \"workflowId\": \"loop_005\",\n  \"workflowName\": \"LOOP-005 VComplex: Multi-Party Consensus Undone\",\n  \"startedAt\": \"{{ $now.minus({minutes: 1}).toISO() }}\",\n  \"finishedAt\": \"{{ $now.toISO() }}\",\n  \"status\": \"success\",\n  \"mode\": \"webhook\",\n  \"data\": {\n    \"failure_mode\": \"LOOP-005\",\n    \"complexity\": \"very_complex\",\n    \"session_id\": \"{{ $('Initialize').item.json.session_id }}\"\n  }\n}",
         "options": {}
       },
       "id": "send_to_mao",

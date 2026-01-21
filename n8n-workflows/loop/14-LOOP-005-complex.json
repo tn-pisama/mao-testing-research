@@ -284,14 +284,14 @@
         "headerParameters": {
           "parameters": [
             {
-              "name": "X-N8N-Api-Key",
+              "name": "X-MAO-API-Key",
               "value": "mao_pmNhfBRfqd5G_YHubK0Jqk9ZHB6ItITkHFYP4ISns9c"
             }
           ]
         },
         "sendBody": true,
         "specifyBody": "json",
-        "jsonBody": "={\n  \"event_type\": \"workflow.completed\",\n  \"workflow_name\": \"LOOP-005 Complex: Negotiation Circle\",\n  \"session_id\": \"{{ $('Initialize').item.json.session_id }}\",\n  \"failure_mode\": \"LOOP-005\",\n  \"complexity\": \"complex\",\n  \"expected_detection\": \"conversation_circle\",\n  \"context\": {\n    \"item\": \"{{ $('Initialize').item.json.item }}\",\n    \"negotiation_state\": {\n      \"seller_price\": 1000,\n      \"buyer_offer\": 700,\n      \"state_regression\": \"seller returns to original offer after counter\"\n    }\n  },\n  \"agents\": [\n    {\n      \"agent_id\": \"seller\",\n      \"role\": \"negotiator\",\n      \"outputs\": [\"{{ $('Seller Offer 1').item.json.output }}\", \"{{ $('Seller Response 2').item.json.output }}\", \"{{ $('Seller Response 3').item.json.output }}\"]\n    },\n    {\n      \"agent_id\": \"buyer\",\n      \"role\": \"negotiator\",\n      \"outputs\": [\"{{ $('Buyer Counter 1').item.json.output }}\", \"{{ $('Buyer Counter 2').item.json.output }}\"]\n    }\n  ]\n}",
+        "jsonBody": "={\n  \"executionId\": \"{{ $runIndex }}-{{ $now.toMillis() }}\",\n  \"workflowId\": \"loop_005\",\n  \"workflowName\": \"LOOP-005 Complex: Negotiation Circle\",\n  \"startedAt\": \"{{ $now.minus({minutes: 1}).toISO() }}\",\n  \"finishedAt\": \"{{ $now.toISO() }}\",\n  \"status\": \"success\",\n  \"mode\": \"webhook\",\n  \"data\": {\n    \"failure_mode\": \"LOOP-005\",\n    \"complexity\": \"complex\",\n    \"session_id\": \"{{ $('Initialize').item.json.session_id }}\"\n  }\n}",
         "options": {}
       },
       "id": "send_to_mao",

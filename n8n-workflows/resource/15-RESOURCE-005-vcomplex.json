@@ -302,14 +302,14 @@
         "headerParameters": {
           "parameters": [
             {
-              "name": "X-N8N-Api-Key",
+              "name": "X-MAO-API-Key",
               "value": "mao_pmNhfBRfqd5G_YHubK0Jqk9ZHB6ItITkHFYP4ISns9c"
             }
           ]
         },
         "sendBody": true,
         "specifyBody": "json",
-        "jsonBody": "={\n  \"event_type\": \"workflow.completed\",\n  \"workflow_name\": \"RESOURCE-005 VComplex: Distributed Multi-Agent Memory Pressure\",\n  \"session_id\": \"{{ $('Initialize').item.json.session_id }}\",\n  \"failure_mode\": \"RESOURCE-005\",\n  \"complexity\": \"very_complex\",\n  \"expected_detection\": \"memory_exhaustion\",\n  \"resource_tracking\": {\n    \"shared_context_limit\": {{ $('Initialize').item.json.shared_context_limit }},\n    \"agent_1\": \"{{ $('Agent 1 (Research)').item.json.output }}\",\n    \"agent_2\": \"{{ $('Agent 2 (Analysis)').item.json.output }}\",\n    \"agent_3\": \"{{ $('Agent 3 (Synthesis)').item.json.output }}\",\n    \"agent_4\": \"{{ $('Agent 4 (Validation)').item.json.output }}\",\n    \"agent_5\": \"{{ $('Agent 5 (Report - Degraded)').item.json.output }}\",\n    \"analysis\": \"{{ $('Memory Analyzer').item.json.output }}\",\n    \"exhaustion_type\": \"distributed_shared_context\"\n  },\n  \"agents\": [\n    {\"agent_id\": \"agent1\", \"outputs\": [\"{{ $('Agent 1 (Research)').item.json.output }}\"]},\n    {\"agent_id\": \"agent2\", \"outputs\": [\"{{ $('Agent 2 (Analysis)').item.json.output }}\"]},\n    {\"agent_id\": \"agent3\", \"outputs\": [\"{{ $('Agent 3 (Synthesis)').item.json.output }}\"]},\n    {\"agent_id\": \"agent4\", \"outputs\": [\"{{ $('Agent 4 (Validation)').item.json.output }}\"]},\n    {\"agent_id\": \"agent5\", \"outputs\": [\"{{ $('Agent 5 (Report - Degraded)').item.json.output }}\"]}  \n  ]\n}",
+        "jsonBody": "={\n  \"executionId\": \"{{ $runIndex }}-{{ $now.toMillis() }}\",\n  \"workflowId\": \"resource_005\",\n  \"workflowName\": \"RESOURCE-005 VComplex: Distributed Multi-Agent Memory Pressure\",\n  \"startedAt\": \"{{ $now.minus({minutes: 1}).toISO() }}\",\n  \"finishedAt\": \"{{ $now.toISO() }}\",\n  \"status\": \"success\",\n  \"mode\": \"webhook\",\n  \"data\": {\n    \"failure_mode\": \"RESOURCE-005\",\n    \"complexity\": \"very_complex\",\n    \"session_id\": \"{{ $('Initialize').item.json.session_id }}\"\n  }\n}",
         "options": {}
       },
       "id": "send_to_mao",

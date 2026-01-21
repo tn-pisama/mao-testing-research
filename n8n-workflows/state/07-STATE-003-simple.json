@@ -118,14 +118,14 @@
         "headerParameters": {
           "parameters": [
             {
-              "name": "X-N8N-Api-Key",
+              "name": "X-MAO-API-Key",
               "value": "mao_pmNhfBRfqd5G_YHubK0Jqk9ZHB6ItITkHFYP4ISns9c"
             }
           ]
         },
         "sendBody": true,
         "specifyBody": "json",
-        "jsonBody": "={\n  \"event_type\": \"workflow.completed\",\n  \"workflow_name\": \"STATE-003 Simple: Invalid Transition\",\n  \"session_id\": \"{{ $('Initialize').item.json.session_id }}\",\n  \"failure_mode\": \"STATE-003\",\n  \"complexity\": \"simple\",\n  \"expected_detection\": \"invalid_transition\",\n  \"state_tracking\": {\n    \"valid_transitions\": \"{{ $('Initialize').item.json.valid_transitions }}\",\n    \"actual_transition\": \"CREATED -> DELIVERED\",\n    \"skipped_states\": [\"PROCESSING\", \"SHIPPED\"]\n  },\n  \"agents\": [\n    {\n      \"agent_id\": \"order_processor\",\n      \"role\": \"order_management\",\n      \"outputs\": [\"{{ $('Invalid Transition').item.json.output }}\"]\n    }\n  ]\n}",
+        "jsonBody": "={\n  \"executionId\": \"{{ $runIndex }}-{{ $now.toMillis() }}\",\n  \"workflowId\": \"state_003\",\n  \"workflowName\": \"STATE-003 Simple: Invalid Transition\",\n  \"startedAt\": \"{{ $now.minus({minutes: 1}).toISO() }}\",\n  \"finishedAt\": \"{{ $now.toISO() }}\",\n  \"status\": \"success\",\n  \"mode\": \"webhook\",\n  \"data\": {\n    \"failure_mode\": \"STATE-003\",\n    \"complexity\": \"simple\",\n    \"session_id\": \"{{ $('Initialize').item.json.session_id }}\"\n  }\n}",
         "options": {}
       },
       "id": "send_to_mao",

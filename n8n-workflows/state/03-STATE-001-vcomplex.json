@@ -253,14 +253,14 @@
         "headerParameters": {
           "parameters": [
             {
-              "name": "X-N8N-Api-Key",
+              "name": "X-MAO-API-Key",
               "value": "mao_pmNhfBRfqd5G_YHubK0Jqk9ZHB6ItITkHFYP4ISns9c"
             }
           ]
         },
         "sendBody": true,
         "specifyBody": "json",
-        "jsonBody": "={\n  \"event_type\": \"workflow.completed\",\n  \"workflow_name\": \"STATE-001 VComplex: Multi-Stage Pipeline No-Op\",\n  \"session_id\": \"{{ $('Initialize').item.json.session_id }}\",\n  \"failure_mode\": \"STATE-001\",\n  \"complexity\": \"very_complex\",\n  \"expected_detection\": \"no_progress\",\n  \"state_tracking\": {\n    \"initial_document\": {{ $('Initialize').item.json.document }},\n    \"final_document\": \"{{ $('Pipeline Reporter').item.json.output }}\",\n    \"stages_claimed_success\": [\"extraction\", \"validation\", \"enrichment\"],\n    \"actual_changes\": \"none\"\n  },\n  \"agents\": [\n    {\"agent_id\": \"stage_1_extraction\", \"role\": \"extractor\", \"outputs\": [\"{{ $('Stage 1 Extraction').item.json.output }}\"]},\n    {\"agent_id\": \"stage_2_validation\", \"role\": \"validator\", \"outputs\": [\"{{ $('Stage 2 Validation').item.json.output }}\"]},\n    {\"agent_id\": \"stage_3_enrichment\", \"role\": \"enricher\", \"outputs\": [\"{{ $('Stage 3 Enrichment').item.json.output }}\"]},\n    {\"agent_id\": \"reporter\", \"role\": \"reporter\", \"outputs\": [\"{{ $('Pipeline Reporter').item.json.output }}\"]}\n  ]\n}",
+        "jsonBody": "={\n  \"executionId\": \"{{ $runIndex }}-{{ $now.toMillis() }}\",\n  \"workflowId\": \"state_001\",\n  \"workflowName\": \"STATE-001 VComplex: Multi-Stage Pipeline No-Op\",\n  \"startedAt\": \"{{ $now.minus({minutes: 1}).toISO() }}\",\n  \"finishedAt\": \"{{ $now.toISO() }}\",\n  \"status\": \"success\",\n  \"mode\": \"webhook\",\n  \"data\": {\n    \"failure_mode\": \"STATE-001\",\n    \"complexity\": \"very_complex\",\n    \"session_id\": \"{{ $('Initialize').item.json.session_id }}\"\n  }\n}",
         "options": {}
       },
       "id": "send_to_mao",

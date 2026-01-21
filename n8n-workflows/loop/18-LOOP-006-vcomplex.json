@@ -306,14 +306,14 @@
         "headerParameters": {
           "parameters": [
             {
-              "name": "X-N8N-Api-Key",
+              "name": "X-MAO-API-Key",
               "value": "mao_pmNhfBRfqd5G_YHubK0Jqk9ZHB6ItITkHFYP4ISns9c"
             }
           ]
         },
         "sendBody": true,
         "specifyBody": "json",
-        "jsonBody": "={\n  \"event_type\": \"workflow.completed\",\n  \"workflow_name\": \"LOOP-006 VComplex: Hierarchical Escalation Bounce\",\n  \"session_id\": \"{{ $('Initialize').item.json.session_id }}\",\n  \"failure_mode\": \"LOOP-006\",\n  \"complexity\": \"very_complex\",\n  \"expected_detection\": \"escalation_loop\",\n  \"context\": {\n    \"ticket\": \"{{ $('Initialize').item.json.ticket }}\",\n    \"escalation_path\": \"L1 -> L2 -> L3 -> L1 -> L2 (circular)\",\n    \"levels\": [\"L1 Support\", \"L2 Support\", \"L3 Engineering\"]\n  },\n  \"agents\": [\n    {\n      \"agent_id\": \"l1_support\",\n      \"role\": \"tier1_support\",\n      \"outputs\": [\"{{ $('L1 Support').item.json.output }}\", \"{{ $('L1 Support Round 2').item.json.output }}\"]\n    },\n    {\n      \"agent_id\": \"l2_support\",\n      \"role\": \"tier2_support\",\n      \"outputs\": [\"{{ $('L2 Support').item.json.output }}\", \"{{ $('L2 Support Round 2').item.json.output }}\"]\n    },\n    {\n      \"agent_id\": \"l3_engineering\",\n      \"role\": \"engineering\",\n      \"outputs\": [\"{{ $('L3 Engineering').item.json.output }}\"]\n    }\n  ]\n}",
+        "jsonBody": "={\n  \"executionId\": \"{{ $runIndex }}-{{ $now.toMillis() }}\",\n  \"workflowId\": \"loop_006\",\n  \"workflowName\": \"LOOP-006 VComplex: Hierarchical Escalation Bounce\",\n  \"startedAt\": \"{{ $now.minus({minutes: 1}).toISO() }}\",\n  \"finishedAt\": \"{{ $now.toISO() }}\",\n  \"status\": \"success\",\n  \"mode\": \"webhook\",\n  \"data\": {\n    \"failure_mode\": \"LOOP-006\",\n    \"complexity\": \"very_complex\",\n    \"session_id\": \"{{ $('Initialize').item.json.session_id }}\"\n  }\n}",
         "options": {}
       },
       "id": "send_to_mao",

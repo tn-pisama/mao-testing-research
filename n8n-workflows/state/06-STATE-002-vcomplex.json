@@ -188,14 +188,14 @@
         "headerParameters": {
           "parameters": [
             {
-              "name": "X-N8N-Api-Key",
+              "name": "X-MAO-API-Key",
               "value": "mao_pmNhfBRfqd5G_YHubK0Jqk9ZHB6ItITkHFYP4ISns9c"
             }
           ]
         },
         "sendBody": true,
         "specifyBody": "json",
-        "jsonBody": "={\n  \"event_type\": \"workflow.completed\",\n  \"workflow_name\": \"STATE-002 VComplex: Distributed State Merge Regression\",\n  \"session_id\": \"{{ $('Initialize').item.json.session_id }}\",\n  \"failure_mode\": \"STATE-002\",\n  \"complexity\": \"very_complex\",\n  \"expected_detection\": \"state_regression\",\n  \"state_tracking\": {\n    \"initial_state\": {{ $('Initialize').item.json.shared_state }},\n    \"alpha_update\": \"{{ $('Agent Alpha').item.json.output }}\",\n    \"beta_update\": \"{{ $('Agent Beta').item.json.output }}\",\n    \"merged_state\": \"{{ $('State Merger').item.json.output }}\",\n    \"regression\": \"Alpha's item was lost during merge\",\n    \"expected_merged\": {\"version\": 3, \"data\": {\"count\": 2, \"items\": [\"alpha_item\", \"beta_item\"]}}\n  },\n  \"agents\": [\n    {\"agent_id\": \"agent_alpha\", \"role\": \"worker\", \"outputs\": [\"{{ $('Agent Alpha').item.json.output }}\"]},\n    {\"agent_id\": \"agent_beta\", \"role\": \"worker\", \"outputs\": [\"{{ $('Agent Beta').item.json.output }}\"]},\n    {\"agent_id\": \"merger\", \"role\": \"coordinator\", \"outputs\": [\"{{ $('State Merger').item.json.output }}\"]}\n  ]\n}",
+        "jsonBody": "={\n  \"executionId\": \"{{ $runIndex }}-{{ $now.toMillis() }}\",\n  \"workflowId\": \"state_002\",\n  \"workflowName\": \"STATE-002 VComplex: Distributed State Merge Regression\",\n  \"startedAt\": \"{{ $now.minus({minutes: 1}).toISO() }}\",\n  \"finishedAt\": \"{{ $now.toISO() }}\",\n  \"status\": \"success\",\n  \"mode\": \"webhook\",\n  \"data\": {\n    \"failure_mode\": \"STATE-002\",\n    \"complexity\": \"very_complex\",\n    \"session_id\": \"{{ $('Initialize').item.json.session_id }}\"\n  }\n}",
         "options": {}
       },
       "id": "send_to_mao",

@@ -216,14 +216,14 @@
         "headerParameters": {
           "parameters": [
             {
-              "name": "X-N8N-Api-Key",
+              "name": "X-MAO-API-Key",
               "value": "mao_pmNhfBRfqd5G_YHubK0Jqk9ZHB6ItITkHFYP4ISns9c"
             }
           ]
         },
         "sendBody": true,
         "specifyBody": "json",
-        "jsonBody": "={\n  \"event_type\": \"workflow.completed\",\n  \"workflow_name\": \"RESOURCE-002 Complex: Cascading Timeout Chain\",\n  \"session_id\": \"{{ $('Initialize').item.json.session_id }}\",\n  \"failure_mode\": \"RESOURCE-002\",\n  \"complexity\": \"complex\",\n  \"expected_detection\": \"timeout\",\n  \"resource_tracking\": {\n    \"stage_1\": \"{{ $('Stage 1 Handler').item.json.output }}\",\n    \"stage_2\": \"{{ $('Stage 2 Handler').item.json.output }}\",\n    \"stage_3\": \"{{ $('Stage 3 Handler').item.json.output }}\",\n    \"timeout_chain\": [\"api_1\", \"api_1_retry\", \"stage_2\", \"stage_3\"],\n    \"timeout_type\": \"cascading_chain\"\n  },\n  \"agents\": [\n    {\"agent_id\": \"stage1\", \"outputs\": [\"{{ $('Stage 1 Handler').item.json.output }}\"]},\n    {\"agent_id\": \"stage2\", \"outputs\": [\"{{ $('Stage 2 Handler').item.json.output }}\"]},\n    {\"agent_id\": \"stage3\", \"outputs\": [\"{{ $('Stage 3 Handler').item.json.output }}\"]}  \n  ]\n}",
+        "jsonBody": "={\n  \"executionId\": \"{{ $runIndex }}-{{ $now.toMillis() }}\",\n  \"workflowId\": \"resource_002\",\n  \"workflowName\": \"RESOURCE-002 Complex: Cascading Timeout Chain\",\n  \"startedAt\": \"{{ $now.minus({minutes: 1}).toISO() }}\",\n  \"finishedAt\": \"{{ $now.toISO() }}\",\n  \"status\": \"success\",\n  \"mode\": \"webhook\",\n  \"data\": {\n    \"failure_mode\": \"RESOURCE-002\",\n    \"complexity\": \"complex\",\n    \"session_id\": \"{{ $('Initialize').item.json.session_id }}\"\n  }\n}",
         "options": {}
       },
       "id": "send_to_mao",

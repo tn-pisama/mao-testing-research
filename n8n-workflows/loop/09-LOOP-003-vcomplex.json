@@ -291,14 +291,14 @@
         "headerParameters": {
           "parameters": [
             {
-              "name": "X-N8N-Api-Key",
+              "name": "X-MAO-API-Key",
               "value": "mao_pmNhfBRfqd5G_YHubK0Jqk9ZHB6ItITkHFYP4ISns9c"
             }
           ]
         },
         "sendBody": true,
         "specifyBody": "json",
-        "jsonBody": "={\n  \"event_type\": \"workflow.completed\",\n  \"workflow_name\": \"LOOP-003 VComplex: Multi-Agent Semantic Discussion Loop\",\n  \"session_id\": \"{{ $('Initialize').item.json.session_id }}\",\n  \"failure_mode\": \"LOOP-003\",\n  \"complexity\": \"very_complex\",\n  \"expected_detection\": \"semantic_loop\",\n  \"context\": {\n    \"topic\": \"{{ $('Initialize').item.json.topic }}\",\n    \"semantic_conclusion\": \"it depends on context/requirements\",\n    \"detection_method\": \"semantic clustering across multiple agents\"\n  },\n  \"agents\": [\n    {\n      \"agent_id\": \"alice\",\n      \"role\": \"architect\",\n      \"outputs\": [\"{{ $('Alice Round 1').item.json.output }}\", \"{{ $('Alice Round 2').item.json.output }}\"]\n    },\n    {\n      \"agent_id\": \"bob\",\n      \"role\": \"developer\",\n      \"outputs\": [\"{{ $('Bob Round 1').item.json.output }}\", \"{{ $('Bob Round 2').item.json.output }}\"]\n    },\n    {\n      \"agent_id\": \"carol\",\n      \"role\": \"tech_lead\",\n      \"outputs\": [\"{{ $('Carol Round 1').item.json.output }}\"]\n    }\n  ]\n}",
+        "jsonBody": "={\n  \"executionId\": \"{{ $runIndex }}-{{ $now.toMillis() }}\",\n  \"workflowId\": \"loop_003\",\n  \"workflowName\": \"LOOP-003 VComplex: Multi-Agent Semantic Discussion Loop\",\n  \"startedAt\": \"{{ $now.minus({minutes: 1}).toISO() }}\",\n  \"finishedAt\": \"{{ $now.toISO() }}\",\n  \"status\": \"success\",\n  \"mode\": \"webhook\",\n  \"data\": {\n    \"failure_mode\": \"LOOP-003\",\n    \"complexity\": \"very_complex\",\n    \"session_id\": \"{{ $('Initialize').item.json.session_id }}\"\n  }\n}",
         "options": {}
       },
       "id": "send_to_mao",

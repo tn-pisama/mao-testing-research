@@ -226,14 +226,14 @@
         "headerParameters": {
           "parameters": [
             {
-              "name": "X-N8N-Api-Key",
+              "name": "X-MAO-API-Key",
               "value": "mao_pmNhfBRfqd5G_YHubK0Jqk9ZHB6ItITkHFYP4ISns9c"
             }
           ]
         },
         "sendBody": true,
         "specifyBody": "json",
-        "jsonBody": "={\n  \"event_type\": \"workflow.completed\",\n  \"workflow_name\": \"PERSONA-003 VComplex: Collective False Capability\",\n  \"session_id\": \"{{ $('Initialize').item.json.session_id }}\",\n  \"failure_mode\": \"PERSONA-003\",\n  \"complexity\": \"very_complex\",\n  \"expected_detection\": \"capability_claim\",\n  \"persona_tracking\": {\n    \"agent_capabilities\": {{ $('Initialize').item.json.agent_capabilities }},\n    \"research_claim\": \"{{ $('Research Claims').item.json.output }}\",\n    \"analysis_support\": \"{{ $('Analysis Supports').item.json.output }}\",\n    \"writer_failure\": \"{{ $('Writer Fails').item.json.output }}\",\n    \"audit_result\": \"{{ $('Capability Auditor').item.json.output }}\",\n    \"distributed_claim\": true,\n    \"no_single_agent_responsible\": true\n  },\n  \"agents\": [\n    {\"agent_id\": \"research\", \"role\": \"researcher\", \"outputs\": [\"{{ $('Research Claims').item.json.output }}\"]},\n    {\"agent_id\": \"analysis\", \"role\": \"analyst\", \"outputs\": [\"{{ $('Analysis Supports').item.json.output }}\"]},\n    {\"agent_id\": \"writer\", \"role\": \"writer\", \"outputs\": [\"{{ $('Writer Fails').item.json.output }}\"]},\n    {\"agent_id\": \"auditor\", \"role\": \"capability_auditor\", \"outputs\": [\"{{ $('Capability Auditor').item.json.output }}\"]}\n  ]\n}",
+        "jsonBody": "={\n  \"executionId\": \"{{ $runIndex }}-{{ $now.toMillis() }}\",\n  \"workflowId\": \"persona_003\",\n  \"workflowName\": \"PERSONA-003 VComplex: Collective False Capability\",\n  \"startedAt\": \"{{ $now.minus({minutes: 1}).toISO() }}\",\n  \"finishedAt\": \"{{ $now.toISO() }}\",\n  \"status\": \"success\",\n  \"mode\": \"webhook\",\n  \"data\": {\n    \"failure_mode\": \"PERSONA-003\",\n    \"complexity\": \"very_complex\",\n    \"session_id\": \"{{ $('Initialize').item.json.session_id }}\"\n  }\n}",
         "options": {}
       },
       "id": "send_to_mao",

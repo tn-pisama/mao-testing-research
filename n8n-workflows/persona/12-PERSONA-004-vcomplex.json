@@ -264,14 +264,14 @@
         "headerParameters": {
           "parameters": [
             {
-              "name": "X-N8N-Api-Key",
+              "name": "X-MAO-API-Key",
               "value": "mao_pmNhfBRfqd5G_YHubK0Jqk9ZHB6ItITkHFYP4ISns9c"
             }
           ]
         },
         "sendBody": true,
         "specifyBody": "json",
-        "jsonBody": "={\n  \"event_type\": \"workflow.completed\",\n  \"workflow_name\": \"PERSONA-004 VComplex: Coordinated Collapse\",\n  \"session_id\": \"{{ $('Initialize').item.json.session_id }}\",\n  \"failure_mode\": \"PERSONA-004\",\n  \"complexity\": \"very_complex\",\n  \"expected_detection\": \"persona_collapse\",\n  \"persona_tracking\": {\n    \"defined_personas\": {{ $('Initialize').item.json.personas }},\n    \"captain_initial\": \"{{ $('Captain (In Char)').item.json.output }}\",\n    \"engineer_initial\": \"{{ $('Engineer (In Char)').item.json.output }}\",\n    \"doctor_collapse\": \"{{ $('Doctor Collapses').item.json.output }}\",\n    \"captain_cascade\": \"{{ $('Captain Collapses').item.json.output }}\",\n    \"engineer_cascade\": \"{{ $('Engineer Collapses').item.json.output }}\",\n    \"collapse_pattern\": \"cascading\",\n    \"trigger_agent\": \"doctor\",\n    \"all_collapsed\": true\n  },\n  \"agents\": [\n    {\"agent_id\": \"captain\", \"role\": \"captain\", \"outputs\": [\"{{ $('Captain (In Char)').item.json.output }}\", \"{{ $('Captain Collapses').item.json.output }}\"]},\n    {\"agent_id\": \"engineer\", \"role\": \"engineer\", \"outputs\": [\"{{ $('Engineer (In Char)').item.json.output }}\", \"{{ $('Engineer Collapses').item.json.output }}\"]},\n    {\"agent_id\": \"doctor\", \"role\": \"doctor\", \"outputs\": [\"{{ $('Doctor Collapses').item.json.output }}\"]}\n  ]\n}",
+        "jsonBody": "={\n  \"executionId\": \"{{ $runIndex }}-{{ $now.toMillis() }}\",\n  \"workflowId\": \"persona_004\",\n  \"workflowName\": \"PERSONA-004 VComplex: Coordinated Collapse\",\n  \"startedAt\": \"{{ $now.minus({minutes: 1}).toISO() }}\",\n  \"finishedAt\": \"{{ $now.toISO() }}\",\n  \"status\": \"success\",\n  \"mode\": \"webhook\",\n  \"data\": {\n    \"failure_mode\": \"PERSONA-004\",\n    \"complexity\": \"very_complex\",\n    \"session_id\": \"{{ $('Initialize').item.json.session_id }}\"\n  }\n}",
         "options": {}
       },
       "id": "send_to_mao",

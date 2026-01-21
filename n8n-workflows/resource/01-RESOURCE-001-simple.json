@@ -112,14 +112,14 @@
         "headerParameters": {
           "parameters": [
             {
-              "name": "X-N8N-Api-Key",
+              "name": "X-MAO-API-Key",
               "value": "mao_pmNhfBRfqd5G_YHubK0Jqk9ZHB6ItITkHFYP4ISns9c"
             }
           ]
         },
         "sendBody": true,
         "specifyBody": "json",
-        "jsonBody": "={\n  \"event_type\": \"workflow.completed\",\n  \"workflow_name\": \"RESOURCE-001 Simple: Verbose Response\",\n  \"session_id\": \"{{ $('Initialize').item.json.session_id }}\",\n  \"failure_mode\": \"RESOURCE-001\",\n  \"complexity\": \"simple\",\n  \"expected_detection\": \"token_explosion\",\n  \"resource_tracking\": {\n    \"expected_tokens\": {{ $('Initialize').item.json.expected_tokens }},\n    \"agent_output\": \"{{ $('Verbose Agent').item.json.output }}\",\n    \"explosion_type\": \"single_response_verbosity\"\n  },\n  \"agents\": [\n    {\"agent_id\": \"verbose_agent\", \"outputs\": [\"{{ $('Verbose Agent').item.json.output }}\"]}\n  ]\n}",
+        "jsonBody": "={\n  \"executionId\": \"{{ $runIndex }}-{{ $now.toMillis() }}\",\n  \"workflowId\": \"resource_001\",\n  \"workflowName\": \"RESOURCE-001 Simple: Verbose Response\",\n  \"startedAt\": \"{{ $now.minus({minutes: 1}).toISO() }}\",\n  \"finishedAt\": \"{{ $now.toISO() }}\",\n  \"status\": \"success\",\n  \"mode\": \"webhook\",\n  \"data\": {\n    \"failure_mode\": \"RESOURCE-001\",\n    \"complexity\": \"simple\",\n    \"session_id\": \"{{ $('Initialize').item.json.session_id }}\"\n  }\n}",
         "options": {}
       },
       "id": "send_to_mao",

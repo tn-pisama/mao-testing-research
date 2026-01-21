@@ -344,14 +344,14 @@
         "headerParameters": {
           "parameters": [
             {
-              "name": "X-N8N-Api-Key",
+              "name": "X-MAO-API-Key",
               "value": "mao_pmNhfBRfqd5G_YHubK0Jqk9ZHB6ItITkHFYP4ISns9c"
             }
           ]
         },
         "sendBody": true,
         "specifyBody": "json",
-        "jsonBody": "={\n  \"event_type\": \"workflow.completed\",\n  \"workflow_name\": \"LOOP-002 VComplex: Distributed Worker Reports\",\n  \"session_id\": \"{{ $('Initialize').item.json.session_id }}\",\n  \"failure_mode\": \"LOOP-002\",\n  \"complexity\": \"very_complex\",\n  \"expected_detection\": \"structural_loop\",\n  \"context\": {\n    \"job_id\": \"{{ $('Initialize').item.json.job_id }}\",\n    \"worker_pattern\": \"[Worker X] Task N assigned. Status: PROCESSING. Progress: N%. Awaiting coordination...\",\n    \"coordinator_pattern\": \"[Coordinator] All workers reporting. Status check round N complete. Re-checking worker status...\"\n  },\n  \"agents\": [\n    {\n      \"agent_id\": \"worker_alpha\",\n      \"role\": \"distributed_worker\",\n      \"outputs\": [\"{{ $('Worker Alpha').item.json.output }}\", \"{{ $('Worker Alpha Round 2').item.json.output }}\"]\n    },\n    {\n      \"agent_id\": \"worker_beta\",\n      \"role\": \"distributed_worker\",\n      \"outputs\": [\"{{ $('Worker Beta').item.json.output }}\"]\n    },\n    {\n      \"agent_id\": \"worker_gamma\",\n      \"role\": \"distributed_worker\",\n      \"outputs\": [\"{{ $('Worker Gamma').item.json.output }}\"]\n    },\n    {\n      \"agent_id\": \"coordinator\",\n      \"role\": \"orchestrator\",\n      \"outputs\": [\"{{ $('Coordinator Round 1').item.json.output }}\", \"{{ $('Coordinator Round 2').item.json.output }}\"]\n    }\n  ]\n}",
+        "jsonBody": "={\n  \"executionId\": \"{{ $runIndex }}-{{ $now.toMillis() }}\",\n  \"workflowId\": \"loop_002\",\n  \"workflowName\": \"LOOP-002 VComplex: Distributed Worker Reports\",\n  \"startedAt\": \"{{ $now.minus({minutes: 1}).toISO() }}\",\n  \"finishedAt\": \"{{ $now.toISO() }}\",\n  \"status\": \"success\",\n  \"mode\": \"webhook\",\n  \"data\": {\n    \"failure_mode\": \"LOOP-002\",\n    \"complexity\": \"very_complex\",\n    \"session_id\": \"{{ $('Initialize').item.json.session_id }}\"\n  }\n}",
         "options": {}
       },
       "id": "send_to_mao",

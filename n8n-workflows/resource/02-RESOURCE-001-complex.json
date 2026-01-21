@@ -182,14 +182,14 @@
         "headerParameters": {
           "parameters": [
             {
-              "name": "X-N8N-Api-Key",
+              "name": "X-MAO-API-Key",
               "value": "mao_pmNhfBRfqd5G_YHubK0Jqk9ZHB6ItITkHFYP4ISns9c"
             }
           ]
         },
         "sendBody": true,
         "specifyBody": "json",
-        "jsonBody": "={\n  \"event_type\": \"workflow.completed\",\n  \"workflow_name\": \"RESOURCE-001 Complex: Exponential Output Growth\",\n  \"session_id\": \"{{ $('Initialize').item.json.session_id }}\",\n  \"failure_mode\": \"RESOURCE-001\",\n  \"complexity\": \"complex\",\n  \"expected_detection\": \"token_explosion\",\n  \"resource_tracking\": {\n    \"iteration_1\": \"{{ $('Iteration 1').item.json.output }}\",\n    \"iteration_2\": \"{{ $('Iteration 2').item.json.output }}\",\n    \"iteration_3\": \"{{ $('Iteration 3').item.json.output }}\",\n    \"initial_tokens\": 5,\n    \"final_tokens\": 800,\n    \"growth_pattern\": \"exponential\",\n    \"explosion_type\": \"iterative_expansion\"\n  },\n  \"agents\": [\n    {\"agent_id\": \"iter1\", \"outputs\": [\"{{ $('Iteration 1').item.json.output }}\"]},\n    {\"agent_id\": \"iter2\", \"outputs\": [\"{{ $('Iteration 2').item.json.output }}\"]},\n    {\"agent_id\": \"iter3\", \"outputs\": [\"{{ $('Iteration 3').item.json.output }}\"]}  \n  ]\n}",
+        "jsonBody": "={\n  \"executionId\": \"{{ $runIndex }}-{{ $now.toMillis() }}\",\n  \"workflowId\": \"resource_001\",\n  \"workflowName\": \"RESOURCE-001 Complex: Exponential Output Growth\",\n  \"startedAt\": \"{{ $now.minus({minutes: 1}).toISO() }}\",\n  \"finishedAt\": \"{{ $now.toISO() }}\",\n  \"status\": \"success\",\n  \"mode\": \"webhook\",\n  \"data\": {\n    \"failure_mode\": \"RESOURCE-001\",\n    \"complexity\": \"complex\",\n    \"session_id\": \"{{ $('Initialize').item.json.session_id }}\"\n  }\n}",
         "options": {}
       },
       "id": "send_to_mao",

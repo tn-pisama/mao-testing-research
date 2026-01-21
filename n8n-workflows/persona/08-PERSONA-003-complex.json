@@ -202,14 +202,14 @@
         "headerParameters": {
           "parameters": [
             {
-              "name": "X-N8N-Api-Key",
+              "name": "X-MAO-API-Key",
               "value": "mao_pmNhfBRfqd5G_YHubK0Jqk9ZHB6ItITkHFYP4ISns9c"
             }
           ]
         },
         "sendBody": true,
         "specifyBody": "json",
-        "jsonBody": "={\n  \"event_type\": \"workflow.completed\",\n  \"workflow_name\": \"PERSONA-003 Complex: Overstated Real-Time Access\",\n  \"session_id\": \"{{ $('Initialize').item.json.session_id }}\",\n  \"failure_mode\": \"PERSONA-003\",\n  \"complexity\": \"complex\",\n  \"expected_detection\": \"capability_claim\",\n  \"persona_tracking\": {\n    \"actual_capabilities\": {{ $('Initialize').item.json.capabilities }},\n    \"stock_claim\": \"{{ $('Claim Real-Time Stock').item.json.output }}\",\n    \"weather_claim\": \"{{ $('Claim Live Weather').item.json.output }}\",\n    \"analysis\": \"{{ $('Capability Analyzer').item.json.output }}\",\n    \"overstatement_pattern\": \"presents_cached_as_live\"\n  },\n  \"agents\": [\n    {\n      \"agent_id\": \"financial_assistant\",\n      \"role\": \"assistant\",\n      \"outputs\": [\n        \"{{ $('Claim Real-Time Stock').item.json.output }}\",\n        \"{{ $('Claim Live Weather').item.json.output }}\"\n      ]\n    },\n    {\"agent_id\": \"analyzer\", \"role\": \"capability_checker\", \"outputs\": [\"{{ $('Capability Analyzer').item.json.output }}\"]}\n  ]\n}",
+        "jsonBody": "={\n  \"executionId\": \"{{ $runIndex }}-{{ $now.toMillis() }}\",\n  \"workflowId\": \"persona_003\",\n  \"workflowName\": \"PERSONA-003 Complex: Overstated Real-Time Access\",\n  \"startedAt\": \"{{ $now.minus({minutes: 1}).toISO() }}\",\n  \"finishedAt\": \"{{ $now.toISO() }}\",\n  \"status\": \"success\",\n  \"mode\": \"webhook\",\n  \"data\": {\n    \"failure_mode\": \"PERSONA-003\",\n    \"complexity\": \"complex\",\n    \"session_id\": \"{{ $('Initialize').item.json.session_id }}\"\n  }\n}",
         "options": {}
       },
       "id": "send_to_mao",

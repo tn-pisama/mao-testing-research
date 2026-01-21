@@ -346,14 +346,14 @@
         "headerParameters": {
           "parameters": [
             {
-              "name": "X-N8N-Api-Key",
+              "name": "X-MAO-API-Key",
               "value": "mao_pmNhfBRfqd5G_YHubK0Jqk9ZHB6ItITkHFYP4ISns9c"
             }
           ]
         },
         "sendBody": true,
         "specifyBody": "json",
-        "jsonBody": "={\n  \"event_type\": \"workflow.completed\",\n  \"workflow_name\": \"COORD-006 VComplex: Byzantine Consensus Failure\",\n  \"session_id\": \"{{ $('Initialize').item.json.session_id }}\",\n  \"failure_mode\": \"COORD-006\",\n  \"complexity\": \"very_complex\",\n  \"expected_detection\": \"coordination_overhead\",\n  \"coordination_tracking\": {\n    \"decision\": \"{{ $('Initialize').item.json.decision }}\",\n    \"round_1\": {\n      \"v1\": \"{{ $('Voter 1 Round 1').item.json.output }}\",\n      \"v2\": \"{{ $('Voter 2 Round 1').item.json.output }}\",\n      \"v3\": \"{{ $('Voter 3 Round 1').item.json.output }}\"\n    },\n    \"round_2\": {\n      \"v1\": \"{{ $('Voter 1 Round 2').item.json.output }}\",\n      \"v2\": \"{{ $('Voter 2 Round 2').item.json.output }}\",\n      \"v3\": \"{{ $('Voter 3 Round 2').item.json.output }}\"\n    },\n    \"analysis\": \"{{ $('Consensus Analyzer').item.json.output }}\",\n    \"overhead_type\": \"byzantine_consensus\"\n  },\n  \"agents\": [\n    {\"agent_id\": \"voter_1\", \"outputs\": [\"{{ $('Voter 1 Round 1').item.json.output }}\", \"{{ $('Voter 1 Round 2').item.json.output }}\"]},\n    {\"agent_id\": \"voter_2\", \"outputs\": [\"{{ $('Voter 2 Round 1').item.json.output }}\", \"{{ $('Voter 2 Round 2').item.json.output }}\"]},\n    {\"agent_id\": \"voter_3\", \"outputs\": [\"{{ $('Voter 3 Round 1').item.json.output }}\", \"{{ $('Voter 3 Round 2').item.json.output }}\"]}  \n  ]\n}",
+        "jsonBody": "={\n  \"executionId\": \"{{ $runIndex }}-{{ $now.toMillis() }}\",\n  \"workflowId\": \"coord_006\",\n  \"workflowName\": \"COORD-006 VComplex: Byzantine Consensus Failure\",\n  \"startedAt\": \"{{ $now.minus({minutes: 1}).toISO() }}\",\n  \"finishedAt\": \"{{ $now.toISO() }}\",\n  \"status\": \"success\",\n  \"mode\": \"webhook\",\n  \"data\": {\n    \"failure_mode\": \"COORD-006\",\n    \"complexity\": \"very_complex\",\n    \"session_id\": \"{{ $('Initialize').item.json.session_id }}\"\n  }\n}",
         "options": {}
       },
       "id": "send_to_mao",

@@ -264,14 +264,14 @@
         "headerParameters": {
           "parameters": [
             {
-              "name": "X-N8N-Api-Key",
+              "name": "X-MAO-API-Key",
               "value": "mao_pmNhfBRfqd5G_YHubK0Jqk9ZHB6ItITkHFYP4ISns9c"
             }
           ]
         },
         "sendBody": true,
         "specifyBody": "json",
-        "jsonBody": "={\n  \"event_type\": \"workflow.completed\",\n  \"workflow_name\": \"PERSONA-002 VComplex: Agents Swap Roles\",\n  \"session_id\": \"{{ $('Initialize').item.json.session_id }}\",\n  \"failure_mode\": \"PERSONA-002\",\n  \"complexity\": \"very_complex\",\n  \"expected_detection\": \"role_confusion\",\n  \"persona_tracking\": {\n    \"role_assignments\": {{ $('Initialize').item.json.role_assignments }},\n    \"writer_correct\": \"{{ $('Writer Creates').item.json.output }}\",\n    \"approver_correct\": \"{{ $('Approver Reviews').item.json.output }}\",\n    \"writer_swapped\": \"{{ $('Writer Swaps Role').item.json.output }}\",\n    \"approver_swapped\": \"{{ $('Approver Swaps Role').item.json.output }}\",\n    \"validation\": \"{{ $('Role Validator').item.json.output }}\",\n    \"violation_type\": \"mutual_role_swap\",\n    \"compliance_impact\": \"separation_of_duties_violation\"\n  },\n  \"agents\": [\n    {\"agent_id\": \"writer\", \"role\": \"writer\", \"outputs\": [\"{{ $('Writer Creates').item.json.output }}\", \"{{ $('Writer Swaps Role').item.json.output }}\"]},\n    {\"agent_id\": \"approver\", \"role\": \"approver\", \"outputs\": [\"{{ $('Approver Reviews').item.json.output }}\", \"{{ $('Approver Swaps Role').item.json.output }}\"]},\n    {\"agent_id\": \"validator\", \"role\": \"role_validator\", \"outputs\": [\"{{ $('Role Validator').item.json.output }}\"]}\n  ]\n}",
+        "jsonBody": "={\n  \"executionId\": \"{{ $runIndex }}-{{ $now.toMillis() }}\",\n  \"workflowId\": \"persona_002\",\n  \"workflowName\": \"PERSONA-002 VComplex: Agents Swap Roles\",\n  \"startedAt\": \"{{ $now.minus({minutes: 1}).toISO() }}\",\n  \"finishedAt\": \"{{ $now.toISO() }}\",\n  \"status\": \"success\",\n  \"mode\": \"webhook\",\n  \"data\": {\n    \"failure_mode\": \"PERSONA-002\",\n    \"complexity\": \"very_complex\",\n    \"session_id\": \"{{ $('Initialize').item.json.session_id }}\"\n  }\n}",
         "options": {}
       },
       "id": "send_to_mao",

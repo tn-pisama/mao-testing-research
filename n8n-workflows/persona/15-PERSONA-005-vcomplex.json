@@ -264,14 +264,14 @@
         "headerParameters": {
           "parameters": [
             {
-              "name": "X-N8N-Api-Key",
+              "name": "X-MAO-API-Key",
               "value": "mao_pmNhfBRfqd5G_YHubK0Jqk9ZHB6ItITkHFYP4ISns9c"
             }
           ]
         },
         "sendBody": true,
         "specifyBody": "json",
-        "jsonBody": "={\n  \"event_type\": \"workflow.completed\",\n  \"workflow_name\": \"PERSONA-005 VComplex: Complete Persona Swap\",\n  \"session_id\": \"{{ $('Initialize').item.json.session_id }}\",\n  \"failure_mode\": \"PERSONA-005\",\n  \"complexity\": \"very_complex\",\n  \"expected_detection\": \"cross_contamination\",\n  \"persona_tracking\": {\n    \"defined_personas\": {{ $('Initialize').item.json.personas }},\n    \"lawyer_initial\": \"{{ $('Lawyer Initial').item.json.output }}\",\n    \"marketer_initial\": \"{{ $('Marketer Initial').item.json.output }}\",\n    \"lawyer_swapped\": \"{{ $('Lawyer Becomes Marketer').item.json.output }}\",\n    \"marketer_swapped\": \"{{ $('Marketer Becomes Lawyer').item.json.output }}\",\n    \"analysis\": \"{{ $('Swap Analyzer').item.json.output }}\",\n    \"contamination_type\": \"complete_persona_swap\",\n    \"bidirectional\": true\n  },\n  \"agents\": [\n    {\"agent_id\": \"lawyer\", \"role\": \"legal_advisor\", \"outputs\": [\"{{ $('Lawyer Initial').item.json.output }}\", \"{{ $('Lawyer Becomes Marketer').item.json.output }}\"]},\n    {\"agent_id\": \"marketer\", \"role\": \"marketing_lead\", \"outputs\": [\"{{ $('Marketer Initial').item.json.output }}\", \"{{ $('Marketer Becomes Lawyer').item.json.output }}\"]},\n    {\"agent_id\": \"analyzer\", \"role\": \"persona_analyzer\", \"outputs\": [\"{{ $('Swap Analyzer').item.json.output }}\"]}\n  ]\n}",
+        "jsonBody": "={\n  \"executionId\": \"{{ $runIndex }}-{{ $now.toMillis() }}\",\n  \"workflowId\": \"persona_005\",\n  \"workflowName\": \"PERSONA-005 VComplex: Complete Persona Swap\",\n  \"startedAt\": \"{{ $now.minus({minutes: 1}).toISO() }}\",\n  \"finishedAt\": \"{{ $now.toISO() }}\",\n  \"status\": \"success\",\n  \"mode\": \"webhook\",\n  \"data\": {\n    \"failure_mode\": \"PERSONA-005\",\n    \"complexity\": \"very_complex\",\n    \"session_id\": \"{{ $('Initialize').item.json.session_id }}\"\n  }\n}",
         "options": {}
       },
       "id": "send_to_mao",

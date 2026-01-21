@@ -112,14 +112,14 @@
         "headerParameters": {
           "parameters": [
             {
-              "name": "X-N8N-Api-Key",
+              "name": "X-MAO-API-Key",
               "value": "mao_pmNhfBRfqd5G_YHubK0Jqk9ZHB6ItITkHFYP4ISns9c"
             }
           ]
         },
         "sendBody": true,
         "specifyBody": "json",
-        "jsonBody": "={\n  \"event_type\": \"workflow.completed\",\n  \"workflow_name\": \"RESOURCE-004 Simple: Direct Cost Spike\",\n  \"session_id\": \"{{ $('Initialize').item.json.session_id }}\",\n  \"failure_mode\": \"RESOURCE-004\",\n  \"complexity\": \"simple\",\n  \"expected_detection\": \"cost_overrun\",\n  \"resource_tracking\": {\n    \"budget_usd\": {{ $('Initialize').item.json.budget_limit }},\n    \"agent_output\": \"{{ $('Expensive Agent').item.json.output }}\",\n    \"cost_type\": \"single_expensive_call\"\n  },\n  \"agents\": [\n    {\"agent_id\": \"expensive_agent\", \"outputs\": [\"{{ $('Expensive Agent').item.json.output }}\"]}\n  ]\n}",
+        "jsonBody": "={\n  \"executionId\": \"{{ $runIndex }}-{{ $now.toMillis() }}\",\n  \"workflowId\": \"resource_004\",\n  \"workflowName\": \"RESOURCE-004 Simple: Direct Cost Spike\",\n  \"startedAt\": \"{{ $now.minus({minutes: 1}).toISO() }}\",\n  \"finishedAt\": \"{{ $now.toISO() }}\",\n  \"status\": \"success\",\n  \"mode\": \"webhook\",\n  \"data\": {\n    \"failure_mode\": \"RESOURCE-004\",\n    \"complexity\": \"simple\",\n    \"session_id\": \"{{ $('Initialize').item.json.session_id }}\"\n  }\n}",
         "options": {}
       },
       "id": "send_to_mao",

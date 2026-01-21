@@ -182,14 +182,14 @@
         "headerParameters": {
           "parameters": [
             {
-              "name": "X-N8N-Api-Key",
+              "name": "X-MAO-API-Key",
               "value": "mao_pmNhfBRfqd5G_YHubK0Jqk9ZHB6ItITkHFYP4ISns9c"
             }
           ]
         },
         "sendBody": true,
         "specifyBody": "json",
-        "jsonBody": "={\n  \"event_type\": \"workflow.completed\",\n  \"workflow_name\": \"COORD-003 Simple: Two-Party Deadlock\",\n  \"session_id\": \"{{ $('Initialize').item.json.session_id }}\",\n  \"failure_mode\": \"COORD-003\",\n  \"complexity\": \"simple\",\n  \"expected_detection\": \"deadlock\",\n  \"coordination_tracking\": {\n    \"agent_a\": \"{{ $('Agent A Waits').item.json.output }}\",\n    \"agent_b\": \"{{ $('Agent B Waits').item.json.output }}\",\n    \"detection\": \"{{ $('Deadlock Detector').item.json.output }}\",\n    \"deadlock_type\": \"two_party_cyclic\"\n  },\n  \"agents\": [\n    {\"agent_id\": \"agent_a\", \"role\": \"resource_holder\", \"outputs\": [\"{{ $('Agent A Waits').item.json.output }}\"]},\n    {\"agent_id\": \"agent_b\", \"role\": \"resource_holder\", \"outputs\": [\"{{ $('Agent B Waits').item.json.output }}\"]}\n  ]\n}",
+        "jsonBody": "={\n  \"executionId\": \"{{ $runIndex }}-{{ $now.toMillis() }}\",\n  \"workflowId\": \"coord_003\",\n  \"workflowName\": \"COORD-003 Simple: Two-Party Deadlock\",\n  \"startedAt\": \"{{ $now.minus({minutes: 1}).toISO() }}\",\n  \"finishedAt\": \"{{ $now.toISO() }}\",\n  \"status\": \"success\",\n  \"mode\": \"webhook\",\n  \"data\": {\n    \"failure_mode\": \"COORD-003\",\n    \"complexity\": \"simple\",\n    \"session_id\": \"{{ $('Initialize').item.json.session_id }}\"\n  }\n}",
         "options": {}
       },
       "id": "send_to_mao",

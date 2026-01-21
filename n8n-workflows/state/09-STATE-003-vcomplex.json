@@ -188,14 +188,14 @@
         "headerParameters": {
           "parameters": [
             {
-              "name": "X-N8N-Api-Key",
+              "name": "X-MAO-API-Key",
               "value": "mao_pmNhfBRfqd5G_YHubK0Jqk9ZHB6ItITkHFYP4ISns9c"
             }
           ]
         },
         "sendBody": true,
         "specifyBody": "json",
-        "jsonBody": "={\n  \"event_type\": \"workflow.completed\",\n  \"workflow_name\": \"STATE-003 VComplex: Distributed FSM Violation\",\n  \"session_id\": \"{{ $('Initialize').item.json.session_id }}\",\n  \"failure_mode\": \"STATE-003\",\n  \"complexity\": \"very_complex\",\n  \"expected_detection\": \"invalid_transition\",\n  \"state_tracking\": {\n    \"initial_state\": {{ $('Initialize').item.json.global_state }},\n    \"fsm_definition\": \"IDLE -> WORKING -> DONE\",\n    \"agent_a_transition\": \"IDLE -> WORKING (valid)\",\n    \"agent_b_transition\": \"IDLE -> DONE (INVALID)\",\n    \"cross_agent_violation\": true\n  },\n  \"agents\": [\n    {\"agent_id\": \"agent_a\", \"role\": \"worker\", \"outputs\": [\"{{ $('Agent A Start').item.json.output }}\"]},\n    {\"agent_id\": \"agent_b\", \"role\": \"worker\", \"outputs\": [\"{{ $('Agent B Invalid').item.json.output }}\"]},\n    {\"agent_id\": \"coordinator\", \"role\": \"orchestrator\", \"outputs\": [\"{{ $('Coordinator Check').item.json.output }}\"]}\n  ]\n}",
+        "jsonBody": "={\n  \"executionId\": \"{{ $runIndex }}-{{ $now.toMillis() }}\",\n  \"workflowId\": \"state_003\",\n  \"workflowName\": \"STATE-003 VComplex: Distributed FSM Violation\",\n  \"startedAt\": \"{{ $now.minus({minutes: 1}).toISO() }}\",\n  \"finishedAt\": \"{{ $now.toISO() }}\",\n  \"status\": \"success\",\n  \"mode\": \"webhook\",\n  \"data\": {\n    \"failure_mode\": \"STATE-003\",\n    \"complexity\": \"very_complex\",\n    \"session_id\": \"{{ $('Initialize').item.json.session_id }}\"\n  }\n}",
         "options": {}
       },
       "id": "send_to_mao",

@@ -144,14 +144,14 @@
         "headerParameters": {
           "parameters": [
             {
-              "name": "X-N8N-Api-Key",
+              "name": "X-MAO-API-Key",
               "value": "mao_pmNhfBRfqd5G_YHubK0Jqk9ZHB6ItITkHFYP4ISns9c"
             }
           ]
         },
         "sendBody": true,
         "specifyBody": "json",
-        "jsonBody": "={\n  \"event_type\": \"workflow.completed\",\n  \"workflow_name\": \"COORD-004 Simple: Priority Queue Violation\",\n  \"session_id\": \"{{ $('Initialize').item.json.session_id }}\",\n  \"failure_mode\": \"COORD-004\",\n  \"complexity\": \"simple\",\n  \"expected_detection\": \"priority_inversion\",\n  \"coordination_tracking\": {\n    \"queue_state\": \"{{ $('Task Queue').item.json.output }}\",\n    \"urgent_task\": \"{{ $('Urgent Task Blocked').item.json.output }}\",\n    \"inversion_type\": \"queue_order_violation\"\n  },\n  \"agents\": [\n    {\"agent_id\": \"queue\", \"role\": \"scheduler\", \"outputs\": [\"{{ $('Task Queue').item.json.output }}\"]},\n    {\"agent_id\": \"urgent_task\", \"role\": \"high_priority\", \"outputs\": [\"{{ $('Urgent Task Blocked').item.json.output }}\"]}\n  ]\n}",
+        "jsonBody": "={\n  \"executionId\": \"{{ $runIndex }}-{{ $now.toMillis() }}\",\n  \"workflowId\": \"coord_004\",\n  \"workflowName\": \"COORD-004 Simple: Priority Queue Violation\",\n  \"startedAt\": \"{{ $now.minus({minutes: 1}).toISO() }}\",\n  \"finishedAt\": \"{{ $now.toISO() }}\",\n  \"status\": \"success\",\n  \"mode\": \"webhook\",\n  \"data\": {\n    \"failure_mode\": \"COORD-004\",\n    \"complexity\": \"simple\",\n    \"session_id\": \"{{ $('Initialize').item.json.session_id }}\"\n  }\n}",
         "options": {}
       },
       "id": "send_to_mao",

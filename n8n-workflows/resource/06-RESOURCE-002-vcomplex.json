@@ -243,14 +243,14 @@
         "headerParameters": {
           "parameters": [
             {
-              "name": "X-N8N-Api-Key",
+              "name": "X-MAO-API-Key",
               "value": "mao_pmNhfBRfqd5G_YHubK0Jqk9ZHB6ItITkHFYP4ISns9c"
             }
           ]
         },
         "sendBody": true,
         "specifyBody": "json",
-        "jsonBody": "={\n  \"event_type\": \"workflow.completed\",\n  \"workflow_name\": \"RESOURCE-002 VComplex: Timeout with Partial State Corruption\",\n  \"session_id\": \"{{ $('Initialize').item.json.session_id }}\",\n  \"failure_mode\": \"RESOURCE-002\",\n  \"complexity\": \"very_complex\",\n  \"expected_detection\": \"timeout\",\n  \"resource_tracking\": {\n    \"transaction_id\": \"{{ $('Initialize').item.json.transaction_id }}\",\n    \"initiator\": \"{{ $('Transaction Initiator').item.json.output }}\",\n    \"credit_handler\": \"{{ $('Credit Handler').item.json.output }}\",\n    \"recovery\": \"{{ $('Recovery Agent (Also Timeout)').item.json.output }}\",\n    \"analysis\": \"{{ $('Failure Analyzer').item.json.output }}\",\n    \"timeout_type\": \"timeout_cascade_with_corruption\",\n    \"compound_failures\": [\"RESOURCE-002\", \"STATE-004\"]\n  },\n  \"agents\": [\n    {\"agent_id\": \"initiator\", \"outputs\": [\"{{ $('Transaction Initiator').item.json.output }}\"]},\n    {\"agent_id\": \"credit_handler\", \"outputs\": [\"{{ $('Credit Handler').item.json.output }}\"]},\n    {\"agent_id\": \"recovery\", \"outputs\": [\"{{ $('Recovery Agent (Also Timeout)').item.json.output }}\"]}\n  ]\n}",
+        "jsonBody": "={\n  \"executionId\": \"{{ $runIndex }}-{{ $now.toMillis() }}\",\n  \"workflowId\": \"resource_002\",\n  \"workflowName\": \"RESOURCE-002 VComplex: Timeout with Partial State Corruption\",\n  \"startedAt\": \"{{ $now.minus({minutes: 1}).toISO() }}\",\n  \"finishedAt\": \"{{ $now.toISO() }}\",\n  \"status\": \"success\",\n  \"mode\": \"webhook\",\n  \"data\": {\n    \"failure_mode\": \"RESOURCE-002\",\n    \"complexity\": \"very_complex\",\n    \"session_id\": \"{{ $('Initialize').item.json.session_id }}\"\n  }\n}",
         "options": {}
       },
       "id": "send_to_mao",

@@ -164,14 +164,14 @@
         "headerParameters": {
           "parameters": [
             {
-              "name": "X-N8N-Api-Key",
+              "name": "X-MAO-API-Key",
               "value": "mao_pmNhfBRfqd5G_YHubK0Jqk9ZHB6ItITkHFYP4ISns9c"
             }
           ]
         },
         "sendBody": true,
         "specifyBody": "json",
-        "jsonBody": "={\n  \"event_type\": \"workflow.completed\",\n  \"workflow_name\": \"STATE-005 Complex: Partial Object Loss\",\n  \"session_id\": \"{{ $('Initialize').item.json.session_id }}\",\n  \"failure_mode\": \"STATE-005\",\n  \"complexity\": \"complex\",\n  \"expected_detection\": \"state_loss\",\n  \"state_tracking\": {\n    \"original_state\": {{ $('Initialize').item.json.order_data }},\n    \"after_validation\": \"{{ $('Validate (Loses Address)').item.json.output }}\",\n    \"shipping_result\": \"{{ $('Ship (Fails)').item.json.output }}\",\n    \"lost_data\": \"customer.address nested object\",\n    \"data_structure_depth\": 3\n  },\n  \"agents\": [\n    {\n      \"agent_id\": \"order_processor\",\n      \"role\": \"order_management\",\n      \"outputs\": [\n        \"{{ $('Validate (Loses Address)').item.json.output }}\",\n        \"{{ $('Ship (Fails)').item.json.output }}\"\n      ]\n    }\n  ]\n}",
+        "jsonBody": "={\n  \"executionId\": \"{{ $runIndex }}-{{ $now.toMillis() }}\",\n  \"workflowId\": \"state_005\",\n  \"workflowName\": \"STATE-005 Complex: Partial Object Loss\",\n  \"startedAt\": \"{{ $now.minus({minutes: 1}).toISO() }}\",\n  \"finishedAt\": \"{{ $now.toISO() }}\",\n  \"status\": \"success\",\n  \"mode\": \"webhook\",\n  \"data\": {\n    \"failure_mode\": \"STATE-005\",\n    \"complexity\": \"complex\",\n    \"session_id\": \"{{ $('Initialize').item.json.session_id }}\"\n  }\n}",
         "options": {}
       },
       "id": "send_to_mao",

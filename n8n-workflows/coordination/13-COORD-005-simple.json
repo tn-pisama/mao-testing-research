@@ -144,14 +144,14 @@
         "headerParameters": {
           "parameters": [
             {
-              "name": "X-N8N-Api-Key",
+              "name": "X-MAO-API-Key",
               "value": "mao_pmNhfBRfqd5G_YHubK0Jqk9ZHB6ItITkHFYP4ISns9c"
             }
           ]
         },
         "sendBody": true,
         "specifyBody": "json",
-        "jsonBody": "={\n  \"event_type\": \"workflow.completed\",\n  \"workflow_name\": \"COORD-005 Simple: Direct Cascade Failure\",\n  \"session_id\": \"{{ $('Initialize').item.json.session_id }}\",\n  \"failure_mode\": \"COORD-005\",\n  \"complexity\": \"simple\",\n  \"expected_detection\": \"cascade_failure\",\n  \"coordination_tracking\": {\n    \"agent_a\": \"{{ $('Agent A (Fails)').item.json.output }}\",\n    \"agent_b\": \"{{ $('Agent B (Cascade Fails)').item.json.output }}\",\n    \"cascade_type\": \"direct_dependency\",\n    \"root_cause\": \"agent_a\"\n  },\n  \"agents\": [\n    {\"agent_id\": \"agent_a\", \"role\": \"data_fetcher\", \"outputs\": [\"{{ $('Agent A (Fails)').item.json.output }}\"]},\n    {\"agent_id\": \"agent_b\", \"role\": \"data_processor\", \"outputs\": [\"{{ $('Agent B (Cascade Fails)').item.json.output }}\"]}\n  ]\n}",
+        "jsonBody": "={\n  \"executionId\": \"{{ $runIndex }}-{{ $now.toMillis() }}\",\n  \"workflowId\": \"coord_005\",\n  \"workflowName\": \"COORD-005 Simple: Direct Cascade Failure\",\n  \"startedAt\": \"{{ $now.minus({minutes: 1}).toISO() }}\",\n  \"finishedAt\": \"{{ $now.toISO() }}\",\n  \"status\": \"success\",\n  \"mode\": \"webhook\",\n  \"data\": {\n    \"failure_mode\": \"COORD-005\",\n    \"complexity\": \"simple\",\n    \"session_id\": \"{{ $('Initialize').item.json.session_id }}\"\n  }\n}",
         "options": {}
       },
       "id": "send_to_mao",

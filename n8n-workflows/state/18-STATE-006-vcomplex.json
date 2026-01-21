@@ -226,14 +226,14 @@
         "headerParameters": {
           "parameters": [
             {
-              "name": "X-N8N-Api-Key",
+              "name": "X-MAO-API-Key",
               "value": "mao_pmNhfBRfqd5G_YHubK0Jqk9ZHB6ItITkHFYP4ISns9c"
             }
           ]
         },
         "sendBody": true,
         "specifyBody": "json",
-        "jsonBody": "={\n  \"event_type\": \"workflow.completed\",\n  \"workflow_name\": \"STATE-006 VComplex: Distributed Causal Ordering Violation\",\n  \"session_id\": \"{{ $('Initialize').item.json.session_id }}\",\n  \"failure_mode\": \"STATE-006\",\n  \"complexity\": \"very_complex\",\n  \"expected_detection\": \"race_condition\",\n  \"state_tracking\": {\n    \"initial_state\": {{ $('Initialize').item.json.distributed_state }},\n    \"node_a_update\": \"{{ $('Node A Update').item.json.output }}\",\n    \"node_b_receive\": \"{{ $('Node B Receive').item.json.output }}\",\n    \"node_c_stale\": \"{{ $('Node C Stale Update').item.json.output }}\",\n    \"consistency_report\": \"{{ $('Consistency Checker').item.json.output }}\",\n    \"distributed_system\": true,\n    \"vector_clock_analysis\": true,\n    \"network_partition_simulation\": true\n  },\n  \"agents\": [\n    {\"agent_id\": \"node_a\", \"role\": \"distributed_node\", \"outputs\": [\"{{ $('Node A Update').item.json.output }}\"]},\n    {\"agent_id\": \"node_b\", \"role\": \"distributed_node\", \"outputs\": [\"{{ $('Node B Receive').item.json.output }}\"]},\n    {\"agent_id\": \"node_c\", \"role\": \"distributed_node\", \"outputs\": [\"{{ $('Node C Stale Update').item.json.output }}\"]},\n    {\"agent_id\": \"checker\", \"role\": \"consistency_checker\", \"outputs\": [\"{{ $('Consistency Checker').item.json.output }}\"]}\n  ]\n}",
+        "jsonBody": "={\n  \"executionId\": \"{{ $runIndex }}-{{ $now.toMillis() }}\",\n  \"workflowId\": \"state_006\",\n  \"workflowName\": \"STATE-006 VComplex: Distributed Causal Ordering Violation\",\n  \"startedAt\": \"{{ $now.minus({minutes: 1}).toISO() }}\",\n  \"finishedAt\": \"{{ $now.toISO() }}\",\n  \"status\": \"success\",\n  \"mode\": \"webhook\",\n  \"data\": {\n    \"failure_mode\": \"STATE-006\",\n    \"complexity\": \"very_complex\",\n    \"session_id\": \"{{ $('Initialize').item.json.session_id }}\"\n  }\n}",
         "options": {}
       },
       "id": "send_to_mao",

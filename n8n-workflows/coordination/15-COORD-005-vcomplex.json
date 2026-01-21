@@ -372,14 +372,14 @@
         "headerParameters": {
           "parameters": [
             {
-              "name": "X-N8N-Api-Key",
+              "name": "X-MAO-API-Key",
               "value": "mao_pmNhfBRfqd5G_YHubK0Jqk9ZHB6ItITkHFYP4ISns9c"
             }
           ]
         },
         "sendBody": true,
         "specifyBody": "json",
-        "jsonBody": "={\n  \"event_type\": \"workflow.completed\",\n  \"workflow_name\": \"COORD-005 VComplex: Network-Wide Cascade Failure\",\n  \"session_id\": \"{{ $('Initialize').item.json.session_id }}\",\n  \"failure_mode\": \"COORD-005\",\n  \"complexity\": \"very_complex\",\n  \"expected_detection\": \"cascade_failure\",\n  \"coordination_tracking\": {\n    \"hub\": \"{{ $('Hub (Fails)').item.json.output }}\",\n    \"branch_a\": \"{{ $('Branch A (Cascade)').item.json.output }}\",\n    \"branch_b\": \"{{ $('Branch B (Cascade)').item.json.output }}\",\n    \"branch_c\": \"{{ $('Branch C (Cascade)').item.json.output }}\",\n    \"leaf_a1\": \"{{ $('Leaf A1 (Cascade)').item.json.output }}\",\n    \"leaf_b1\": \"{{ $('Leaf B1 (Cascade)').item.json.output }}\",\n    \"leaf_b2\": \"{{ $('Leaf B2 (Cascade)').item.json.output }}\",\n    \"analysis\": \"{{ $('Cascade Analyzer').item.json.output }}\",\n    \"cascade_type\": \"network_wide\",\n    \"topology\": \"hub_and_spoke\"\n  },\n  \"agents\": [\n    {\"agent_id\": \"hub\", \"outputs\": [\"{{ $('Hub (Fails)').item.json.output }}\"]},\n    {\"agent_id\": \"branch_a\", \"outputs\": [\"{{ $('Branch A (Cascade)').item.json.output }}\"]},\n    {\"agent_id\": \"branch_b\", \"outputs\": [\"{{ $('Branch B (Cascade)').item.json.output }}\"]},\n    {\"agent_id\": \"branch_c\", \"outputs\": [\"{{ $('Branch C (Cascade)').item.json.output }}\"]},\n    {\"agent_id\": \"leaf_a1\", \"outputs\": [\"{{ $('Leaf A1 (Cascade)').item.json.output }}\"]},\n    {\"agent_id\": \"leaf_b1\", \"outputs\": [\"{{ $('Leaf B1 (Cascade)').item.json.output }}\"]},\n    {\"agent_id\": \"leaf_b2\", \"outputs\": [\"{{ $('Leaf B2 (Cascade)').item.json.output }}\"]}  \n  ]\n}",
+        "jsonBody": "={\n  \"executionId\": \"{{ $runIndex }}-{{ $now.toMillis() }}\",\n  \"workflowId\": \"coord_005\",\n  \"workflowName\": \"COORD-005 VComplex: Network-Wide Cascade Failure\",\n  \"startedAt\": \"{{ $now.minus({minutes: 1}).toISO() }}\",\n  \"finishedAt\": \"{{ $now.toISO() }}\",\n  \"status\": \"success\",\n  \"mode\": \"webhook\",\n  \"data\": {\n    \"failure_mode\": \"COORD-005\",\n    \"complexity\": \"very_complex\",\n    \"session_id\": \"{{ $('Initialize').item.json.session_id }}\"\n  }\n}",
         "options": {}
       },
       "id": "send_to_mao",

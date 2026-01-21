@@ -188,14 +188,14 @@
         "headerParameters": {
           "parameters": [
             {
-              "name": "X-N8N-Api-Key",
+              "name": "X-MAO-API-Key",
               "value": "mao_pmNhfBRfqd5G_YHubK0Jqk9ZHB6ItITkHFYP4ISns9c"
             }
           ]
         },
         "sendBody": true,
         "specifyBody": "json",
-        "jsonBody": "={\n  \"event_type\": \"workflow.completed\",\n  \"workflow_name\": \"STATE-005 VComplex: Context Truncation Loss\",\n  \"session_id\": \"{{ $('Initialize').item.json.session_id }}\",\n  \"failure_mode\": \"STATE-005\",\n  \"complexity\": \"very_complex\",\n  \"expected_detection\": \"state_loss\",\n  \"state_tracking\": {\n    \"original_context\": {{ $('Initialize').item.json.full_context }},\n    \"truncated_handoff\": \"{{ $('Agent A Truncates').item.json.output }}\",\n    \"violation_result\": \"{{ $('Agent B Violates').item.json.output }}\",\n    \"audit_report\": \"{{ $('Context Auditor').item.json.output }}\",\n    \"context_window_simulation\": true,\n    \"safety_critical_loss\": true\n  },\n  \"agents\": [\n    {\"agent_id\": \"agent_a\", \"role\": \"context_summarizer\", \"outputs\": [\"{{ $('Agent A Truncates').item.json.output }}\"]},\n    {\"agent_id\": \"agent_b\", \"role\": \"action_executor\", \"outputs\": [\"{{ $('Agent B Violates').item.json.output }}\"]},\n    {\"agent_id\": \"auditor\", \"role\": \"context_auditor\", \"outputs\": [\"{{ $('Context Auditor').item.json.output }}\"]}\n  ]\n}",
+        "jsonBody": "={\n  \"executionId\": \"{{ $runIndex }}-{{ $now.toMillis() }}\",\n  \"workflowId\": \"state_005\",\n  \"workflowName\": \"STATE-005 VComplex: Context Truncation Loss\",\n  \"startedAt\": \"{{ $now.minus({minutes: 1}).toISO() }}\",\n  \"finishedAt\": \"{{ $now.toISO() }}\",\n  \"status\": \"success\",\n  \"mode\": \"webhook\",\n  \"data\": {\n    \"failure_mode\": \"STATE-005\",\n    \"complexity\": \"very_complex\",\n    \"session_id\": \"{{ $('Initialize').item.json.session_id }}\"\n  }\n}",
         "options": {}
       },
       "id": "send_to_mao",

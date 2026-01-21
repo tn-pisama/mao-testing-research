@@ -258,14 +258,14 @@
         "headerParameters": {
           "parameters": [
             {
-              "name": "X-N8N-Api-Key",
+              "name": "X-MAO-API-Key",
               "value": "mao_pmNhfBRfqd5G_YHubK0Jqk9ZHB6ItITkHFYP4ISns9c"
             }
           ]
         },
         "sendBody": true,
         "specifyBody": "json",
-        "jsonBody": "={\n  \"event_type\": \"workflow.completed\",\n  \"workflow_name\": \"RESOURCE-003 VComplex: Retry Storm from Rate Limits\",\n  \"session_id\": \"{{ $('Initialize').item.json.session_id }}\",\n  \"failure_mode\": \"RESOURCE-003\",\n  \"complexity\": \"very_complex\",\n  \"expected_detection\": \"rate_limit\",\n  \"resource_tracking\": {\n    \"worker_1\": \"{{ $('Worker 1 (No Backoff)').item.json.output }}\",\n    \"worker_2\": \"{{ $('Worker 2 (No Backoff)').item.json.output }}\",\n    \"worker_3\": \"{{ $('Worker 3 (No Backoff)').item.json.output }}\",\n    \"monitor\": \"{{ $('API Monitor').item.json.output }}\",\n    \"analysis\": \"{{ $('Storm Analyzer').item.json.output }}\",\n    \"rate_limit_type\": \"retry_storm_amplification\"\n  },\n  \"agents\": [\n    {\"agent_id\": \"worker1\", \"outputs\": [\"{{ $('Worker 1 (No Backoff)').item.json.output }}\"]},\n    {\"agent_id\": \"worker2\", \"outputs\": [\"{{ $('Worker 2 (No Backoff)').item.json.output }}\"]},\n    {\"agent_id\": \"worker3\", \"outputs\": [\"{{ $('Worker 3 (No Backoff)').item.json.output }}\"]}  \n  ]\n}",
+        "jsonBody": "={\n  \"executionId\": \"{{ $runIndex }}-{{ $now.toMillis() }}\",\n  \"workflowId\": \"resource_003\",\n  \"workflowName\": \"RESOURCE-003 VComplex: Retry Storm from Rate Limits\",\n  \"startedAt\": \"{{ $now.minus({minutes: 1}).toISO() }}\",\n  \"finishedAt\": \"{{ $now.toISO() }}\",\n  \"status\": \"success\",\n  \"mode\": \"webhook\",\n  \"data\": {\n    \"failure_mode\": \"RESOURCE-003\",\n    \"complexity\": \"very_complex\",\n    \"session_id\": \"{{ $('Initialize').item.json.session_id }}\"\n  }\n}",
         "options": {}
       },
       "id": "send_to_mao",

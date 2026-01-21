@@ -188,14 +188,14 @@
         "headerParameters": {
           "parameters": [
             {
-              "name": "X-N8N-Api-Key",
+              "name": "X-MAO-API-Key",
               "value": "mao_pmNhfBRfqd5G_YHubK0Jqk9ZHB6ItITkHFYP4ISns9c"
             }
           ]
         },
         "sendBody": true,
         "specifyBody": "json",
-        "jsonBody": "={\n  \"event_type\": \"workflow.completed\",\n  \"workflow_name\": \"PERSONA-005 Simple: Vocabulary Contamination\",\n  \"session_id\": \"{{ $('Initialize').item.json.session_id }}\",\n  \"failure_mode\": \"PERSONA-005\",\n  \"complexity\": \"simple\",\n  \"expected_detection\": \"cross_contamination\",\n  \"persona_tracking\": {\n    \"defined_personas\": {{ $('Initialize').item.json.personas }},\n    \"agent_a_initial\": \"{{ $('Agent A Initial').item.json.output }}\",\n    \"agent_b_response\": \"{{ $('Agent B Response').item.json.output }}\",\n    \"agent_a_contaminated\": \"{{ $('Agent A Contaminated').item.json.output }}\",\n    \"contamination_type\": \"vocabulary\",\n    \"source_agent\": \"B\",\n    \"target_agent\": \"A\",\n    \"borrowed_element\": \"catchphrase\"\n  },\n  \"agents\": [\n    {\"agent_id\": \"agent_a\", \"role\": \"professional\", \"outputs\": [\"{{ $('Agent A Initial').item.json.output }}\", \"{{ $('Agent A Contaminated').item.json.output }}\"]},\n    {\"agent_id\": \"agent_b\", \"role\": \"casual\", \"outputs\": [\"{{ $('Agent B Response').item.json.output }}\"]}\n  ]\n}",
+        "jsonBody": "={\n  \"executionId\": \"{{ $runIndex }}-{{ $now.toMillis() }}\",\n  \"workflowId\": \"persona_005\",\n  \"workflowName\": \"PERSONA-005 Simple: Vocabulary Contamination\",\n  \"startedAt\": \"{{ $now.minus({minutes: 1}).toISO() }}\",\n  \"finishedAt\": \"{{ $now.toISO() }}\",\n  \"status\": \"success\",\n  \"mode\": \"webhook\",\n  \"data\": {\n    \"failure_mode\": \"PERSONA-005\",\n    \"complexity\": \"simple\",\n    \"session_id\": \"{{ $('Initialize').item.json.session_id }}\"\n  }\n}",
         "options": {}
       },
       "id": "send_to_mao",

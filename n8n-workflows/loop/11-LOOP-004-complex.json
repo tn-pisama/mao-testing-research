@@ -340,14 +340,14 @@
         "headerParameters": {
           "parameters": [
             {
-              "name": "X-N8N-Api-Key",
+              "name": "X-MAO-API-Key",
               "value": "mao_pmNhfBRfqd5G_YHubK0Jqk9ZHB6ItITkHFYP4ISns9c"
             }
           ]
         },
         "sendBody": true,
         "specifyBody": "json",
-        "jsonBody": "={\n  \"event_type\": \"workflow.completed\",\n  \"workflow_name\": \"LOOP-004 Complex: Research Tool Cycle Without Progress\",\n  \"session_id\": \"{{ $('Initialize').item.json.session_id }}\",\n  \"failure_mode\": \"LOOP-004\",\n  \"complexity\": \"complex\",\n  \"expected_detection\": \"tool_cycle\",\n  \"context\": {\n    \"research_goal\": \"{{ $('Initialize').item.json.research_goal }}\",\n    \"tool_pattern\": \"fetch -> analyze (never concludes, keeps fetching)\",\n    \"queries_used\": [\"renewable energy statistics\", \"solar energy adoption rates\", \"wind energy statistics\", \"renewable energy overview\"],\n    \"progress_made\": false\n  },\n  \"agents\": [\n    {\n      \"agent_id\": \"research_analyst\",\n      \"role\": \"data_analyst\",\n      \"tool_calls\": [\"fetch\", \"analyze\", \"fetch\", \"analyze\", \"fetch\", \"analyze\", \"fetch\", \"analyze\"],\n      \"outputs\": [\n        \"{{ $('Analyze Data 1').item.json.output }}\",\n        \"{{ $('Analyze Data 2').item.json.output }}\",\n        \"{{ $('Analyze Data 3').item.json.output }}\",\n        \"{{ $('Analyze Data 4').item.json.output }}\"\n      ]\n    }\n  ]\n}",
+        "jsonBody": "={\n  \"executionId\": \"{{ $runIndex }}-{{ $now.toMillis() }}\",\n  \"workflowId\": \"loop_004\",\n  \"workflowName\": \"LOOP-004 Complex: Research Tool Cycle Without Progress\",\n  \"startedAt\": \"{{ $now.minus({minutes: 1}).toISO() }}\",\n  \"finishedAt\": \"{{ $now.toISO() }}\",\n  \"status\": \"success\",\n  \"mode\": \"webhook\",\n  \"data\": {\n    \"failure_mode\": \"LOOP-004\",\n    \"complexity\": \"complex\",\n    \"session_id\": \"{{ $('Initialize').item.json.session_id }}\"\n  }\n}",
         "options": {}
       },
       "id": "send_to_mao",

@@ -264,14 +264,14 @@
         "headerParameters": {
           "parameters": [
             {
-              "name": "X-N8N-Api-Key",
+              "name": "X-MAO-API-Key",
               "value": "mao_pmNhfBRfqd5G_YHubK0Jqk9ZHB6ItITkHFYP4ISns9c"
             }
           ]
         },
         "sendBody": true,
         "specifyBody": "json",
-        "jsonBody": "={\n  \"event_type\": \"workflow.completed\",\n  \"workflow_name\": \"COORD-001 VComplex: Round Robin Loss\",\n  \"session_id\": \"{{ $('Initialize').item.json.session_id }}\",\n  \"failure_mode\": \"COORD-001\",\n  \"complexity\": \"very_complex\",\n  \"expected_detection\": \"handoff_failure\",\n  \"coordination_tracking\": {\n    \"tasks\": {{ $('Initialize').item.json.tasks }},\n    \"dispatcher\": \"{{ $('Dispatcher').item.json.output }}\",\n    \"worker_1\": \"{{ $('Worker 1').item.json.output }}\",\n    \"worker_2\": \"{{ $('Worker 2').item.json.output }}\",\n    \"worker_3\": \"{{ $('Worker 3').item.json.output }}\",\n    \"reconciliation\": \"{{ $('Reconciler').item.json.output }}\",\n    \"distribution_pattern\": \"round_robin\",\n    \"task_loss_detected\": true\n  },\n  \"agents\": [\n    {\"agent_id\": \"dispatcher\", \"role\": \"task_distributor\", \"outputs\": [\"{{ $('Dispatcher').item.json.output }}\"]},\n    {\"agent_id\": \"worker_1\", \"role\": \"worker\", \"outputs\": [\"{{ $('Worker 1').item.json.output }}\"]},\n    {\"agent_id\": \"worker_2\", \"role\": \"worker\", \"outputs\": [\"{{ $('Worker 2').item.json.output }}\"]},\n    {\"agent_id\": \"worker_3\", \"role\": \"worker\", \"outputs\": [\"{{ $('Worker 3').item.json.output }}\"]},\n    {\"agent_id\": \"reconciler\", \"role\": \"auditor\", \"outputs\": [\"{{ $('Reconciler').item.json.output }}\"]}\n  ]\n}",
+        "jsonBody": "={\n  \"executionId\": \"{{ $runIndex }}-{{ $now.toMillis() }}\",\n  \"workflowId\": \"coord_001\",\n  \"workflowName\": \"COORD-001 VComplex: Round Robin Loss\",\n  \"startedAt\": \"{{ $now.minus({minutes: 1}).toISO() }}\",\n  \"finishedAt\": \"{{ $now.toISO() }}\",\n  \"status\": \"success\",\n  \"mode\": \"webhook\",\n  \"data\": {\n    \"failure_mode\": \"COORD-001\",\n    \"complexity\": \"very_complex\",\n    \"session_id\": \"{{ $('Initialize').item.json.session_id }}\"\n  }\n}",
         "options": {}
       },
       "id": "send_to_mao",

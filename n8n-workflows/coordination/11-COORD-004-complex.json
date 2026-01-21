@@ -188,14 +188,14 @@
         "headerParameters": {
           "parameters": [
             {
-              "name": "X-N8N-Api-Key",
+              "name": "X-MAO-API-Key",
               "value": "mao_pmNhfBRfqd5G_YHubK0Jqk9ZHB6ItITkHFYP4ISns9c"
             }
           ]
         },
         "sendBody": true,
         "specifyBody": "json",
-        "jsonBody": "={\n  \"event_type\": \"workflow.completed\",\n  \"workflow_name\": \"COORD-004 Complex: Resource-Based Priority Inversion\",\n  \"session_id\": \"{{ $('Initialize').item.json.session_id }}\",\n  \"failure_mode\": \"COORD-004\",\n  \"complexity\": \"complex\",\n  \"expected_detection\": \"priority_inversion\",\n  \"coordination_tracking\": {\n    \"shared_resource\": \"{{ $('Initialize').item.json.shared_resource }}\",\n    \"low_priority\": \"{{ $('Low Priority (Holds Resource)').item.json.output }}\",\n    \"high_priority\": \"{{ $('High Priority (Blocked)').item.json.output }}\",\n    \"analysis\": \"{{ $('Resource Manager').item.json.output }}\",\n    \"inversion_type\": \"resource_based\"\n  },\n  \"agents\": [\n    {\"agent_id\": \"low_task\", \"role\": \"resource_holder\", \"outputs\": [\"{{ $('Low Priority (Holds Resource)').item.json.output }}\"]},\n    {\"agent_id\": \"high_task\", \"role\": \"blocked_requester\", \"outputs\": [\"{{ $('High Priority (Blocked)').item.json.output }}\"]},\n    {\"agent_id\": \"analyzer\", \"role\": \"resource_manager\", \"outputs\": [\"{{ $('Resource Manager').item.json.output }}\"]}\n  ]\n}",
+        "jsonBody": "={\n  \"executionId\": \"{{ $runIndex }}-{{ $now.toMillis() }}\",\n  \"workflowId\": \"coord_004\",\n  \"workflowName\": \"COORD-004 Complex: Resource-Based Priority Inversion\",\n  \"startedAt\": \"{{ $now.minus({minutes: 1}).toISO() }}\",\n  \"finishedAt\": \"{{ $now.toISO() }}\",\n  \"status\": \"success\",\n  \"mode\": \"webhook\",\n  \"data\": {\n    \"failure_mode\": \"COORD-004\",\n    \"complexity\": \"complex\",\n    \"session_id\": \"{{ $('Initialize').item.json.session_id }}\"\n  }\n}",
         "options": {}
       },
       "id": "send_to_mao",

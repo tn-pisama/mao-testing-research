@@ -112,14 +112,14 @@
         "headerParameters": {
           "parameters": [
             {
-              "name": "X-N8N-Api-Key",
+              "name": "X-MAO-API-Key",
               "value": "mao_pmNhfBRfqd5G_YHubK0Jqk9ZHB6ItITkHFYP4ISns9c"
             }
           ]
         },
         "sendBody": true,
         "specifyBody": "json",
-        "jsonBody": "={\n  \"event_type\": \"workflow.completed\",\n  \"workflow_name\": \"STATE-004 Simple: Invalid Age Value\",\n  \"session_id\": \"{{ $('Initialize').item.json.session_id }}\",\n  \"failure_mode\": \"STATE-004\",\n  \"complexity\": \"simple\",\n  \"expected_detection\": \"state_corruption\",\n  \"state_tracking\": {\n    \"original_state\": {{ $('Initialize').item.json.user_record }},\n    \"corrupted_state\": \"{{ $('Corrupt Age').item.json.output }}\",\n    \"violation\": \"age field has invalid negative value\",\n    \"schema_rule\": \"age must be >= 0\"\n  },\n  \"agents\": [\n    {\n      \"agent_id\": \"data_processor\",\n      \"role\": \"record_updater\",\n      \"outputs\": [\"{{ $('Corrupt Age').item.json.output }}\"]\n    }\n  ]\n}",
+        "jsonBody": "={\n  \"executionId\": \"{{ $runIndex }}-{{ $now.toMillis() }}\",\n  \"workflowId\": \"state_004\",\n  \"workflowName\": \"STATE-004 Simple: Invalid Age Value\",\n  \"startedAt\": \"{{ $now.minus({minutes: 1}).toISO() }}\",\n  \"finishedAt\": \"{{ $now.toISO() }}\",\n  \"status\": \"success\",\n  \"mode\": \"webhook\",\n  \"data\": {\n    \"failure_mode\": \"STATE-004\",\n    \"complexity\": \"simple\",\n    \"session_id\": \"{{ $('Initialize').item.json.session_id }}\"\n  }\n}",
         "options": {}
       },
       "id": "send_to_mao",

@@ -308,14 +308,14 @@
         "headerParameters": {
           "parameters": [
             {
-              "name": "X-N8N-Api-Key",
+              "name": "X-MAO-API-Key",
               "value": "mao_pmNhfBRfqd5G_YHubK0Jqk9ZHB6ItITkHFYP4ISns9c"
             }
           ]
         },
         "sendBody": true,
         "specifyBody": "json",
-        "jsonBody": "={\n  \"event_type\": \"workflow.completed\",\n  \"workflow_name\": \"LOOP-004 VComplex: Cross-Agent Tool Cycle\",\n  \"session_id\": \"{{ $('Initialize').item.json.session_id }}\",\n  \"failure_mode\": \"LOOP-004\",\n  \"complexity\": \"very_complex\",\n  \"expected_detection\": \"tool_cycle\",\n  \"context\": {\n    \"task\": \"{{ $('Initialize').item.json.task }}\",\n    \"cross_agent_pattern\": \"A(search) -> B(verify) -> A(search) -> B(verify)\",\n    \"tools_by_agent\": {\n      \"agent_a\": [\"search\", \"search\"],\n      \"agent_b\": [\"verify\", \"verify\"]\n    }\n  },\n  \"agents\": [\n    {\n      \"agent_id\": \"agent_a\",\n      \"role\": \"searcher\",\n      \"tool_calls\": [\"search\", \"search\"],\n      \"outputs\": [\"{{ $('Agent A Round 1').item.json.output }}\", \"{{ $('Agent A Round 2').item.json.output }}\"]\n    },\n    {\n      \"agent_id\": \"agent_b\",\n      \"role\": \"verifier\",\n      \"tool_calls\": [\"verify\", \"verify\"],\n      \"outputs\": [\"{{ $('Agent B Round 1').item.json.output }}\", \"{{ $('Agent B Round 2').item.json.output }}\"]\n    }\n  ]\n}",
+        "jsonBody": "={\n  \"executionId\": \"{{ $runIndex }}-{{ $now.toMillis() }}\",\n  \"workflowId\": \"loop_004\",\n  \"workflowName\": \"LOOP-004 VComplex: Cross-Agent Tool Cycle\",\n  \"startedAt\": \"{{ $now.minus({minutes: 1}).toISO() }}\",\n  \"finishedAt\": \"{{ $now.toISO() }}\",\n  \"status\": \"success\",\n  \"mode\": \"webhook\",\n  \"data\": {\n    \"failure_mode\": \"LOOP-004\",\n    \"complexity\": \"very_complex\",\n    \"session_id\": \"{{ $('Initialize').item.json.session_id }}\"\n  }\n}",
         "options": {}
       },
       "id": "send_to_mao",

@@ -239,14 +239,14 @@
         "headerParameters": {
           "parameters": [
             {
-              "name": "X-N8N-Api-Key",
+              "name": "X-MAO-API-Key",
               "value": "mao_pmNhfBRfqd5G_YHubK0Jqk9ZHB6ItITkHFYP4ISns9c"
             }
           ]
         },
         "sendBody": true,
         "specifyBody": "json",
-        "jsonBody": "={\n  \"event_type\": \"workflow.completed\",\n  \"workflow_name\": \"LOOP-006 Complex: Failed Escalation Retry\",\n  \"session_id\": \"{{ $('Initialize').item.json.session_id }}\",\n  \"failure_mode\": \"LOOP-006\",\n  \"complexity\": \"complex\",\n  \"expected_detection\": \"escalation_loop\",\n  \"context\": {\n    \"issue\": \"{{ $('Initialize').item.json.issue }}\",\n    \"api_failures\": 3,\n    \"retry_pattern\": \"escalate -> fail -> retry (same approach)\"\n  },\n  \"agents\": [\n    {\n      \"agent_id\": \"support_bot\",\n      \"role\": \"automated_support\",\n      \"actions\": [\"escalate_api_call\", \"escalate_api_call\", \"escalate_api_call\"],\n      \"outputs\": [\n        \"{{ $('Bot Response 1').item.json.output }}\",\n        \"{{ $('Bot Response 2').item.json.output }}\",\n        \"{{ $('Bot Response 3').item.json.output }}\"\n      ]\n    }\n  ]\n}",
+        "jsonBody": "={\n  \"executionId\": \"{{ $runIndex }}-{{ $now.toMillis() }}\",\n  \"workflowId\": \"loop_006\",\n  \"workflowName\": \"LOOP-006 Complex: Failed Escalation Retry\",\n  \"startedAt\": \"{{ $now.minus({minutes: 1}).toISO() }}\",\n  \"finishedAt\": \"{{ $now.toISO() }}\",\n  \"status\": \"success\",\n  \"mode\": \"webhook\",\n  \"data\": {\n    \"failure_mode\": \"LOOP-006\",\n    \"complexity\": \"complex\",\n    \"session_id\": \"{{ $('Initialize').item.json.session_id }}\"\n  }\n}",
         "options": {}
       },
       "id": "send_to_mao",

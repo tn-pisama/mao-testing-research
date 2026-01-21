@@ -202,14 +202,14 @@
         "headerParameters": {
           "parameters": [
             {
-              "name": "X-N8N-Api-Key",
+              "name": "X-MAO-API-Key",
               "value": "mao_pmNhfBRfqd5G_YHubK0Jqk9ZHB6ItITkHFYP4ISns9c"
             }
           ]
         },
         "sendBody": true,
         "specifyBody": "json",
-        "jsonBody": "={\n  \"event_type\": \"workflow.completed\",\n  \"workflow_name\": \"PERSONA-005 Complex: Style Contamination\",\n  \"session_id\": \"{{ $('Initialize').item.json.session_id }}\",\n  \"failure_mode\": \"PERSONA-005\",\n  \"complexity\": \"complex\",\n  \"expected_detection\": \"cross_contamination\",\n  \"persona_tracking\": {\n    \"defined_personas\": {{ $('Initialize').item.json.personas }},\n    \"formal_initial\": \"{{ $('Formal Initial').item.json.output }}\",\n    \"casual_response\": \"{{ $('Casual Response').item.json.output }}\",\n    \"formal_contaminated\": \"{{ $('Formal Contaminated').item.json.output }}\",\n    \"contamination_type\": \"style_markers\",\n    \"source\": \"casual_agent\",\n    \"target\": \"formal_agent\"\n  },\n  \"agents\": [\n    {\"agent_id\": \"formal_agent\", \"role\": \"formal\", \"outputs\": [\"{{ $('Formal Initial').item.json.output }}\", \"{{ $('Formal Contaminated').item.json.output }}\"]},\n    {\"agent_id\": \"casual_agent\", \"role\": \"casual\", \"outputs\": [\"{{ $('Casual Response').item.json.output }}\"]}\n  ]\n}",
+        "jsonBody": "={\n  \"executionId\": \"{{ $runIndex }}-{{ $now.toMillis() }}\",\n  \"workflowId\": \"persona_005\",\n  \"workflowName\": \"PERSONA-005 Complex: Style Contamination\",\n  \"startedAt\": \"{{ $now.minus({minutes: 1}).toISO() }}\",\n  \"finishedAt\": \"{{ $now.toISO() }}\",\n  \"status\": \"success\",\n  \"mode\": \"webhook\",\n  \"data\": {\n    \"failure_mode\": \"PERSONA-005\",\n    \"complexity\": \"complex\",\n    \"session_id\": \"{{ $('Initialize').item.json.session_id }}\"\n  }\n}",
         "options": {}
       },
       "id": "send_to_mao",

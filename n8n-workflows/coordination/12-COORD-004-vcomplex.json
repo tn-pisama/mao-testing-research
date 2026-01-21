@@ -264,14 +264,14 @@
         "headerParameters": {
           "parameters": [
             {
-              "name": "X-N8N-Api-Key",
+              "name": "X-MAO-API-Key",
               "value": "mao_pmNhfBRfqd5G_YHubK0Jqk9ZHB6ItITkHFYP4ISns9c"
             }
           ]
         },
         "sendBody": true,
         "specifyBody": "json",
-        "jsonBody": "={\n  \"event_type\": \"workflow.completed\",\n  \"workflow_name\": \"COORD-004 VComplex: Transitive Priority Inversion Chain\",\n  \"session_id\": \"{{ $('Initialize').item.json.session_id }}\",\n  \"failure_mode\": \"COORD-004\",\n  \"complexity\": \"very_complex\",\n  \"expected_detection\": \"priority_inversion\",\n  \"coordination_tracking\": {\n    \"resources\": {{ $('Initialize').item.json.resources }},\n    \"low\": \"{{ $('Low Priority (P1)').item.json.output }}\",\n    \"medium\": \"{{ $('Medium Priority (P5)').item.json.output }}\",\n    \"high\": \"{{ $('High Priority (P10)').item.json.output }}\",\n    \"critical\": \"{{ $('Critical Priority (P100)').item.json.output }}\",\n    \"analysis\": \"{{ $('Inversion Analyzer').item.json.output }}\",\n    \"inversion_type\": \"transitive_chain\"\n  },\n  \"agents\": [\n    {\"agent_id\": \"low\", \"priority\": 1, \"outputs\": [\"{{ $('Low Priority (P1)').item.json.output }}\"]},\n    {\"agent_id\": \"medium\", \"priority\": 5, \"outputs\": [\"{{ $('Medium Priority (P5)').item.json.output }}\"]},\n    {\"agent_id\": \"high\", \"priority\": 10, \"outputs\": [\"{{ $('High Priority (P10)').item.json.output }}\"]},\n    {\"agent_id\": \"critical\", \"priority\": 100, \"outputs\": [\"{{ $('Critical Priority (P100)').item.json.output }}\"]}  \n  ]\n}",
+        "jsonBody": "={\n  \"executionId\": \"{{ $runIndex }}-{{ $now.toMillis() }}\",\n  \"workflowId\": \"coord_004\",\n  \"workflowName\": \"COORD-004 VComplex: Transitive Priority Inversion Chain\",\n  \"startedAt\": \"{{ $now.minus({minutes: 1}).toISO() }}\",\n  \"finishedAt\": \"{{ $now.toISO() }}\",\n  \"status\": \"success\",\n  \"mode\": \"webhook\",\n  \"data\": {\n    \"failure_mode\": \"COORD-004\",\n    \"complexity\": \"very_complex\",\n    \"session_id\": \"{{ $('Initialize').item.json.session_id }}\"\n  }\n}",
         "options": {}
       },
       "id": "send_to_mao",

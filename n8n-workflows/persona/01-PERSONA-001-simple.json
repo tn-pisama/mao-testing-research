@@ -150,14 +150,14 @@
         "headerParameters": {
           "parameters": [
             {
-              "name": "X-N8N-Api-Key",
+              "name": "X-MAO-API-Key",
               "value": "mao_pmNhfBRfqd5G_YHubK0Jqk9ZHB6ItITkHFYP4ISns9c"
             }
           ]
         },
         "sendBody": true,
         "specifyBody": "json",
-        "jsonBody": "={\n  \"event_type\": \"workflow.completed\",\n  \"workflow_name\": \"PERSONA-001 Simple: Casual Style Drift\",\n  \"session_id\": \"{{ $('Initialize').item.json.session_id }}\",\n  \"failure_mode\": \"PERSONA-001\",\n  \"complexity\": \"simple\",\n  \"expected_detection\": \"persona_drift\",\n  \"persona_tracking\": {\n    \"defined_persona\": {{ $('Initialize').item.json.persona }},\n    \"turn_1\": \"{{ $('Turn 1 (Formal)').item.json.output }}\",\n    \"turn_2\": \"{{ $('Turn 2 (Drifts)').item.json.output }}\",\n    \"drift_type\": \"style\",\n    \"drift_direction\": \"formal -> casual\"\n  },\n  \"agents\": [\n    {\n      \"agent_id\": \"professional_assistant\",\n      \"role\": \"assistant\",\n      \"outputs\": [\n        \"{{ $('Turn 1 (Formal)').item.json.output }}\",\n        \"{{ $('Turn 2 (Drifts)').item.json.output }}\"\n      ]\n    }\n  ]\n}",
+        "jsonBody": "={\n  \"executionId\": \"{{ $runIndex }}-{{ $now.toMillis() }}\",\n  \"workflowId\": \"persona_001\",\n  \"workflowName\": \"PERSONA-001 Simple: Casual Style Drift\",\n  \"startedAt\": \"{{ $now.minus({minutes: 1}).toISO() }}\",\n  \"finishedAt\": \"{{ $now.toISO() }}\",\n  \"status\": \"success\",\n  \"mode\": \"webhook\",\n  \"data\": {\n    \"failure_mode\": \"PERSONA-001\",\n    \"complexity\": \"simple\",\n    \"session_id\": \"{{ $('Initialize').item.json.session_id }}\"\n  }\n}",
         "options": {}
       },
       "id": "send_to_mao",

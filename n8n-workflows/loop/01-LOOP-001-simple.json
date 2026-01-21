@@ -226,14 +226,14 @@
         "headerParameters": {
           "parameters": [
             {
-              "name": "X-N8N-Api-Key",
+              "name": "X-MAO-API-Key",
               "value": "mao_pmNhfBRfqd5G_YHubK0Jqk9ZHB6ItITkHFYP4ISns9c"
             }
           ]
         },
         "sendBody": true,
         "specifyBody": "json",
-        "jsonBody": "={\n  \"event_type\": \"workflow.completed\",\n  \"workflow_name\": \"LOOP-001 Simple: Exact Message Loop\",\n  \"session_id\": \"{{ $('Initialize').item.json.session_id }}\",\n  \"failure_mode\": \"LOOP-001\",\n  \"complexity\": \"simple\",\n  \"expected_detection\": \"exact_message_loop\",\n  \"agents\": [\n    {\n      \"agent_id\": \"clarify_agent\",\n      \"role\": \"assistant\",\n      \"outputs\": [\n        \"{{ $('Clarify Agent 1').item.json.output }}\",\n        \"{{ $('Clarify Agent 2').item.json.output }}\",\n        \"{{ $('Clarify Agent 3').item.json.output }}\",\n        \"{{ $('Clarify Agent 4').item.json.output }}\"\n      ]\n    }\n  ]\n}",
+        "jsonBody": "={\n  \"executionId\": \"{{ $runIndex }}-{{ $now.toMillis() }}\",\n  \"workflowId\": \"loop_001\",\n  \"workflowName\": \"LOOP-001 Simple: Exact Message Loop\",\n  \"startedAt\": \"{{ $now.minus({minutes: 1}).toISO() }}\",\n  \"finishedAt\": \"{{ $now.toISO() }}\",\n  \"status\": \"success\",\n  \"mode\": \"webhook\",\n  \"data\": {\n    \"failure_mode\": \"LOOP-001\",\n    \"complexity\": \"simple\",\n    \"session_id\": \"{{ $('Initialize').item.json.session_id }}\"\n  }\n}",
         "options": {}
       },
       "id": "send_to_mao",

@@ -140,14 +140,14 @@
         "headerParameters": {
           "parameters": [
             {
-              "name": "X-N8N-Api-Key",
+              "name": "X-MAO-API-Key",
               "value": "mao_pmNhfBRfqd5G_YHubK0Jqk9ZHB6ItITkHFYP4ISns9c"
             }
           ]
         },
         "sendBody": true,
         "specifyBody": "json",
-        "jsonBody": "={\n  \"event_type\": \"workflow.completed\",\n  \"workflow_name\": \"STATE-001 Simple: No Progress\",\n  \"session_id\": \"{{ $('Initialize').item.json.session_id }}\",\n  \"failure_mode\": \"STATE-001\",\n  \"complexity\": \"simple\",\n  \"expected_detection\": \"no_progress\",\n  \"state_tracking\": {\n    \"state_before\": {{ $('Initialize').item.json.state_before }},\n    \"state_after\": \"{{ $('Capture State').item.json.state_after }}\",\n    \"expected_change\": \"processed should be true, entities should be populated\"\n  },\n  \"agents\": [\n    {\n      \"agent_id\": \"processor\",\n      \"role\": \"document_processor\",\n      \"outputs\": [\"{{ $('Processor').item.json.output }}\"]\n    }\n  ]\n}",
+        "jsonBody": "={\n  \"executionId\": \"{{ $runIndex }}-{{ $now.toMillis() }}\",\n  \"workflowId\": \"state_001\",\n  \"workflowName\": \"STATE-001 Simple: No Progress\",\n  \"startedAt\": \"{{ $now.minus({minutes: 1}).toISO() }}\",\n  \"finishedAt\": \"{{ $now.toISO() }}\",\n  \"status\": \"success\",\n  \"mode\": \"webhook\",\n  \"data\": {\n    \"failure_mode\": \"STATE-001\",\n    \"complexity\": \"simple\",\n    \"session_id\": \"{{ $('Initialize').item.json.session_id }}\"\n  }\n}",
         "options": {}
       },
       "id": "send_to_mao",

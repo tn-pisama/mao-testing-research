@@ -202,14 +202,14 @@
         "headerParameters": {
           "parameters": [
             {
-              "name": "X-N8N-Api-Key",
+              "name": "X-MAO-API-Key",
               "value": "mao_pmNhfBRfqd5G_YHubK0Jqk9ZHB6ItITkHFYP4ISns9c"
             }
           ]
         },
         "sendBody": true,
         "specifyBody": "json",
-        "jsonBody": "={\n  \"event_type\": \"workflow.completed\",\n  \"workflow_name\": \"PERSONA-002 Complex: Read-Only Agent Writes\",\n  \"session_id\": \"{{ $('Initialize').item.json.session_id }}\",\n  \"failure_mode\": \"PERSONA-002\",\n  \"complexity\": \"complex\",\n  \"expected_detection\": \"role_confusion\",\n  \"persona_tracking\": {\n    \"role_definition\": {{ $('Initialize').item.json.role_definition }},\n    \"query_1\": \"{{ $('Query (Read)').item.json.output }}\",\n    \"query_2\": \"{{ $('Query (Violates)').item.json.output }}\",\n    \"audit_result\": \"{{ $('Permission Auditor').item.json.output }}\",\n    \"violation_type\": \"permission_boundary\",\n    \"data_risk\": \"potential_data_loss\"\n  },\n  \"agents\": [\n    {\"agent_id\": \"data_analyst\", \"role\": \"analyst\", \"outputs\": [\"{{ $('Query (Read)').item.json.output }}\", \"{{ $('Query (Violates)').item.json.output }}\"]},\n    {\"agent_id\": \"permission_auditor\", \"role\": \"auditor\", \"outputs\": [\"{{ $('Permission Auditor').item.json.output }}\"]}\n  ]\n}",
+        "jsonBody": "={\n  \"executionId\": \"{{ $runIndex }}-{{ $now.toMillis() }}\",\n  \"workflowId\": \"persona_002\",\n  \"workflowName\": \"PERSONA-002 Complex: Read-Only Agent Writes\",\n  \"startedAt\": \"{{ $now.minus({minutes: 1}).toISO() }}\",\n  \"finishedAt\": \"{{ $now.toISO() }}\",\n  \"status\": \"success\",\n  \"mode\": \"webhook\",\n  \"data\": {\n    \"failure_mode\": \"PERSONA-002\",\n    \"complexity\": \"complex\",\n    \"session_id\": \"{{ $('Initialize').item.json.session_id }}\"\n  }\n}",
         "options": {}
       },
       "id": "send_to_mao",

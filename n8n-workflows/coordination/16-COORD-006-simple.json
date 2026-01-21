@@ -150,14 +150,14 @@
         "headerParameters": {
           "parameters": [
             {
-              "name": "X-N8N-Api-Key",
+              "name": "X-MAO-API-Key",
               "value": "mao_pmNhfBRfqd5G_YHubK0Jqk9ZHB6ItITkHFYP4ISns9c"
             }
           ]
         },
         "sendBody": true,
         "specifyBody": "json",
-        "jsonBody": "={\n  \"event_type\": \"workflow.completed\",\n  \"workflow_name\": \"COORD-006 Simple: High Message-to-Action Ratio\",\n  \"session_id\": \"{{ $('Initialize').item.json.session_id }}\",\n  \"failure_mode\": \"COORD-006\",\n  \"complexity\": \"simple\",\n  \"expected_detection\": \"coordination_overhead\",\n  \"coordination_tracking\": {\n    \"task\": \"{{ $('Initialize').item.json.task }}\",\n    \"agent_a\": \"{{ $('Agent A (Verbose)').item.json.output }}\",\n    \"agent_b\": \"{{ $('Agent B (Also Verbose)').item.json.output }}\",\n    \"total_messages\": 10,\n    \"actual_actions\": 1,\n    \"overhead_ratio\": \"10:1\",\n    \"overhead_type\": \"excessive_verbosity\"\n  },\n  \"agents\": [\n    {\"agent_id\": \"agent_a\", \"outputs\": [\"{{ $('Agent A (Verbose)').item.json.output }}\"]},\n    {\"agent_id\": \"agent_b\", \"outputs\": [\"{{ $('Agent B (Also Verbose)').item.json.output }}\"]}\n  ]\n}",
+        "jsonBody": "={\n  \"executionId\": \"{{ $runIndex }}-{{ $now.toMillis() }}\",\n  \"workflowId\": \"coord_006\",\n  \"workflowName\": \"COORD-006 Simple: High Message-to-Action Ratio\",\n  \"startedAt\": \"{{ $now.minus({minutes: 1}).toISO() }}\",\n  \"finishedAt\": \"{{ $now.toISO() }}\",\n  \"status\": \"success\",\n  \"mode\": \"webhook\",\n  \"data\": {\n    \"failure_mode\": \"COORD-006\",\n    \"complexity\": \"simple\",\n    \"session_id\": \"{{ $('Initialize').item.json.session_id }}\"\n  }\n}",
         "options": {}
       },
       "id": "send_to_mao",

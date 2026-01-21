@@ -226,14 +226,14 @@
         "headerParameters": {
           "parameters": [
             {
-              "name": "X-N8N-Api-Key",
+              "name": "X-MAO-API-Key",
               "value": "mao_pmNhfBRfqd5G_YHubK0Jqk9ZHB6ItITkHFYP4ISns9c"
             }
           ]
         },
         "sendBody": true,
         "specifyBody": "json",
-        "jsonBody": "={\n  \"event_type\": \"workflow.completed\",\n  \"workflow_name\": \"COORD-006 Complex: Redundant Confirmation Loop\",\n  \"session_id\": \"{{ $('Initialize').item.json.session_id }}\",\n  \"failure_mode\": \"COORD-006\",\n  \"complexity\": \"complex\",\n  \"expected_detection\": \"coordination_overhead\",\n  \"coordination_tracking\": {\n    \"decision\": \"{{ $('Initialize').item.json.decision }}\",\n    \"requester\": \"{{ $('Requester (Redundant)').item.json.output }}\",\n    \"approver\": \"{{ $('Approver (Redundant)').item.json.output }}\",\n    \"verifier\": \"{{ $('Verifier (Meta-Redundant)').item.json.output }}\",\n    \"analysis\": \"{{ $('Overhead Analyzer').item.json.output }}\",\n    \"overhead_type\": \"redundant_confirmation\"\n  },\n  \"agents\": [\n    {\"agent_id\": \"requester\", \"outputs\": [\"{{ $('Requester (Redundant)').item.json.output }}\"]},\n    {\"agent_id\": \"approver\", \"outputs\": [\"{{ $('Approver (Redundant)').item.json.output }}\"]},\n    {\"agent_id\": \"verifier\", \"outputs\": [\"{{ $('Verifier (Meta-Redundant)').item.json.output }}\"]}  \n  ]\n}",
+        "jsonBody": "={\n  \"executionId\": \"{{ $runIndex }}-{{ $now.toMillis() }}\",\n  \"workflowId\": \"coord_006\",\n  \"workflowName\": \"COORD-006 Complex: Redundant Confirmation Loop\",\n  \"startedAt\": \"{{ $now.minus({minutes: 1}).toISO() }}\",\n  \"finishedAt\": \"{{ $now.toISO() }}\",\n  \"status\": \"success\",\n  \"mode\": \"webhook\",\n  \"data\": {\n    \"failure_mode\": \"COORD-006\",\n    \"complexity\": \"complex\",\n    \"session_id\": \"{{ $('Initialize').item.json.session_id }}\"\n  }\n}",
         "options": {}
       },
       "id": "send_to_mao",

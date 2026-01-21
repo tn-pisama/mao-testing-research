@@ -150,14 +150,14 @@
         "headerParameters": {
           "parameters": [
             {
-              "name": "X-N8N-Api-Key",
+              "name": "X-MAO-API-Key",
               "value": "mao_pmNhfBRfqd5G_YHubK0Jqk9ZHB6ItITkHFYP4ISns9c"
             }
           ]
         },
         "sendBody": true,
         "specifyBody": "json",
-        "jsonBody": "={\n  \"event_type\": \"workflow.completed\",\n  \"workflow_name\": \"COORD-001 Simple: Missing Acknowledgment\",\n  \"session_id\": \"{{ $('Initialize').item.json.session_id }}\",\n  \"failure_mode\": \"COORD-001\",\n  \"complexity\": \"simple\",\n  \"expected_detection\": \"handoff_failure\",\n  \"coordination_tracking\": {\n    \"task\": {{ $('Initialize').item.json.task }},\n    \"handoff\": \"{{ $('Agent A Handoff').item.json.output }}\",\n    \"receiver\": \"{{ $('Agent B No Ack').item.json.output }}\",\n    \"ack_received\": false,\n    \"failure_type\": \"missing_acknowledgment\"\n  },\n  \"agents\": [\n    {\"agent_id\": \"agent_a\", \"role\": \"sender\", \"outputs\": [\"{{ $('Agent A Handoff').item.json.output }}\"]},\n    {\"agent_id\": \"agent_b\", \"role\": \"receiver\", \"outputs\": [\"{{ $('Agent B No Ack').item.json.output }}\"]}\n  ]\n}",
+        "jsonBody": "={\n  \"executionId\": \"{{ $runIndex }}-{{ $now.toMillis() }}\",\n  \"workflowId\": \"coord_001\",\n  \"workflowName\": \"COORD-001 Simple: Missing Acknowledgment\",\n  \"startedAt\": \"{{ $now.minus({minutes: 1}).toISO() }}\",\n  \"finishedAt\": \"{{ $now.toISO() }}\",\n  \"status\": \"success\",\n  \"mode\": \"webhook\",\n  \"data\": {\n    \"failure_mode\": \"COORD-001\",\n    \"complexity\": \"simple\",\n    \"session_id\": \"{{ $('Initialize').item.json.session_id }}\"\n  }\n}",
         "options": {}
       },
       "id": "send_to_mao",

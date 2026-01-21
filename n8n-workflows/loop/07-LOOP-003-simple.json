@@ -226,14 +226,14 @@
         "headerParameters": {
           "parameters": [
             {
-              "name": "X-N8N-Api-Key",
+              "name": "X-MAO-API-Key",
               "value": "mao_pmNhfBRfqd5G_YHubK0Jqk9ZHB6ItITkHFYP4ISns9c"
             }
           ]
         },
         "sendBody": true,
         "specifyBody": "json",
-        "jsonBody": "={\n  \"event_type\": \"workflow.completed\",\n  \"workflow_name\": \"LOOP-003 Simple: Semantic Loop - Paraphrased Help\",\n  \"session_id\": \"{{ $('Initialize').item.json.session_id }}\",\n  \"failure_mode\": \"LOOP-003\",\n  \"complexity\": \"simple\",\n  \"expected_detection\": \"semantic_loop\",\n  \"context\": {\n    \"user_request\": \"{{ $('Initialize').item.json.user_request }}\",\n    \"semantic_meaning\": \"offering to help without actually helping\",\n    \"detection_method\": \"embedding similarity > 0.9\"\n  },\n  \"agents\": [\n    {\n      \"agent_id\": \"helper\",\n      \"role\": \"assistant\",\n      \"outputs\": [\n        \"{{ $('Helper 1').item.json.output }}\",\n        \"{{ $('Helper 2').item.json.output }}\",\n        \"{{ $('Helper 3').item.json.output }}\",\n        \"{{ $('Helper 4').item.json.output }}\"\n      ]\n    }\n  ]\n}",
+        "jsonBody": "={\n  \"executionId\": \"{{ $runIndex }}-{{ $now.toMillis() }}\",\n  \"workflowId\": \"loop_003\",\n  \"workflowName\": \"LOOP-003 Simple: Semantic Loop - Paraphrased Help\",\n  \"startedAt\": \"{{ $now.minus({minutes: 1}).toISO() }}\",\n  \"finishedAt\": \"{{ $now.toISO() }}\",\n  \"status\": \"success\",\n  \"mode\": \"webhook\",\n  \"data\": {\n    \"failure_mode\": \"LOOP-003\",\n    \"complexity\": \"simple\",\n    \"session_id\": \"{{ $('Initialize').item.json.session_id }}\"\n  }\n}",
         "options": {}
       },
       "id": "send_to_mao",

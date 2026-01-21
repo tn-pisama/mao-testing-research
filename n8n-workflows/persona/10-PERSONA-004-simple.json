@@ -150,14 +150,14 @@
         "headerParameters": {
           "parameters": [
             {
-              "name": "X-N8N-Api-Key",
+              "name": "X-MAO-API-Key",
               "value": "mao_pmNhfBRfqd5G_YHubK0Jqk9ZHB6ItITkHFYP4ISns9c"
             }
           ]
         },
         "sendBody": true,
         "specifyBody": "json",
-        "jsonBody": "={\n  \"event_type\": \"workflow.completed\",\n  \"workflow_name\": \"PERSONA-004 Simple: Character Breaks\",\n  \"session_id\": \"{{ $('Initialize').item.json.session_id }}\",\n  \"failure_mode\": \"PERSONA-004\",\n  \"complexity\": \"simple\",\n  \"expected_detection\": \"persona_collapse\",\n  \"persona_tracking\": {\n    \"defined_persona\": {{ $('Initialize').item.json.persona }},\n    \"turn_1\": \"{{ $('Turn 1 (In Character)').item.json.output }}\",\n    \"turn_2\": \"{{ $('Turn 2 (Collapses)').item.json.output }}\",\n    \"collapse_type\": \"character_to_generic_ai\",\n    \"collapse_trigger\": \"challenging_question\"\n  },\n  \"agents\": [\n    {\n      \"agent_id\": \"sherlock_roleplay\",\n      \"role\": \"character_roleplay\",\n      \"outputs\": [\n        \"{{ $('Turn 1 (In Character)').item.json.output }}\",\n        \"{{ $('Turn 2 (Collapses)').item.json.output }}\"\n      ]\n    }\n  ]\n}",
+        "jsonBody": "={\n  \"executionId\": \"{{ $runIndex }}-{{ $now.toMillis() }}\",\n  \"workflowId\": \"persona_004\",\n  \"workflowName\": \"PERSONA-004 Simple: Character Breaks\",\n  \"startedAt\": \"{{ $now.minus({minutes: 1}).toISO() }}\",\n  \"finishedAt\": \"{{ $now.toISO() }}\",\n  \"status\": \"success\",\n  \"mode\": \"webhook\",\n  \"data\": {\n    \"failure_mode\": \"PERSONA-004\",\n    \"complexity\": \"simple\",\n    \"session_id\": \"{{ $('Initialize').item.json.session_id }}\"\n  }\n}",
         "options": {}
       },
       "id": "send_to_mao",

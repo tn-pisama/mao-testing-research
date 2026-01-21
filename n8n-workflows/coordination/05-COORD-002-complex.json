@@ -202,14 +202,14 @@
         "headerParameters": {
           "parameters": [
             {
-              "name": "X-N8N-Api-Key",
+              "name": "X-MAO-API-Key",
               "value": "mao_pmNhfBRfqd5G_YHubK0Jqk9ZHB6ItITkHFYP4ISns9c"
             }
           ]
         },
         "sendBody": true,
         "specifyBody": "json",
-        "jsonBody": "={\n  \"event_type\": \"workflow.completed\",\n  \"workflow_name\": \"COORD-002 Complex: Truncated Message\",\n  \"session_id\": \"{{ $('Initialize').item.json.session_id }}\",\n  \"failure_mode\": \"COORD-002\",\n  \"complexity\": \"complex\",\n  \"expected_detection\": \"message_loss\",\n  \"coordination_tracking\": {\n    \"original_message\": {{ $('Initialize').item.json.full_message }},\n    \"sender\": \"{{ $('Sender (Full)').item.json.output }}\",\n    \"receiver\": \"{{ $('Receiver (Truncated)').item.json.output }}\",\n    \"comparison\": \"{{ $('Message Comparator').item.json.output }}\",\n    \"partial_delivery\": true\n  },\n  \"agents\": [\n    {\"agent_id\": \"sender\", \"role\": \"message_sender\", \"outputs\": [\"{{ $('Sender (Full)').item.json.output }}\"]},\n    {\"agent_id\": \"receiver\", \"role\": \"message_receiver\", \"outputs\": [\"{{ $('Receiver (Truncated)').item.json.output }}\"]},\n    {\"agent_id\": \"comparator\", \"role\": \"integrity_checker\", \"outputs\": [\"{{ $('Message Comparator').item.json.output }}\"]}\n  ]\n}",
+        "jsonBody": "={\n  \"executionId\": \"{{ $runIndex }}-{{ $now.toMillis() }}\",\n  \"workflowId\": \"coord_002\",\n  \"workflowName\": \"COORD-002 Complex: Truncated Message\",\n  \"startedAt\": \"{{ $now.minus({minutes: 1}).toISO() }}\",\n  \"finishedAt\": \"{{ $now.toISO() }}\",\n  \"status\": \"success\",\n  \"mode\": \"webhook\",\n  \"data\": {\n    \"failure_mode\": \"COORD-002\",\n    \"complexity\": \"complex\",\n    \"session_id\": \"{{ $('Initialize').item.json.session_id }}\"\n  }\n}",
         "options": {}
       },
       "id": "send_to_mao",

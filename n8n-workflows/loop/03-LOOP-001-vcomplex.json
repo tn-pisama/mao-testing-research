@@ -292,14 +292,14 @@
         "headerParameters": {
           "parameters": [
             {
-              "name": "X-N8N-Api-Key",
+              "name": "X-MAO-API-Key",
               "value": "mao_pmNhfBRfqd5G_YHubK0Jqk9ZHB6ItITkHFYP4ISns9c"
             }
           ]
         },
         "sendBody": true,
         "specifyBody": "json",
-        "jsonBody": "={\n  \"event_type\": \"workflow.completed\",\n  \"workflow_name\": \"LOOP-001 VComplex: Circular Delegation\",\n  \"session_id\": \"{{ $('Initialize').item.json.session_id }}\",\n  \"failure_mode\": \"LOOP-001\",\n  \"complexity\": \"very_complex\",\n  \"expected_detection\": \"exact_message_loop\",\n  \"context\": {\n    \"task\": \"{{ $('Initialize').item.json.task }}\",\n    \"handoff_pattern\": \"A->B->A->B->A (circular)\",\n    \"managers\": [\"{{ $('Get Manager A').item.json.name }}\", \"{{ $('Get Manager B').item.json.name }}\"]\n  },\n  \"agents\": [\n    {\n      \"agent_id\": \"manager_a\",\n      \"role\": \"approver\",\n      \"outputs\": [\n        \"{{ $('Manager A (Turn 1)').item.json.output }}\",\n        \"{{ $('Manager A (Turn 2)').item.json.output }}\",\n        \"{{ $('Manager A (Turn 3)').item.json.output }}\"\n      ]\n    },\n    {\n      \"agent_id\": \"manager_b\",\n      \"role\": \"approver\",\n      \"outputs\": [\n        \"{{ $('Manager B (Turn 1)').item.json.output }}\",\n        \"{{ $('Manager B (Turn 2)').item.json.output }}\"\n      ]\n    }\n  ]\n}",
+        "jsonBody": "={\n  \"executionId\": \"{{ $runIndex }}-{{ $now.toMillis() }}\",\n  \"workflowId\": \"loop_001\",\n  \"workflowName\": \"LOOP-001 VComplex: Circular Delegation\",\n  \"startedAt\": \"{{ $now.minus({minutes: 1}).toISO() }}\",\n  \"finishedAt\": \"{{ $now.toISO() }}\",\n  \"status\": \"success\",\n  \"mode\": \"webhook\",\n  \"data\": {\n    \"failure_mode\": \"LOOP-001\",\n    \"complexity\": \"very_complex\",\n    \"session_id\": \"{{ $('Initialize').item.json.session_id }}\"\n  }\n}",
         "options": {}
       },
       "id": "send_to_mao",
