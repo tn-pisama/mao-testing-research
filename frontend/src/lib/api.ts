@@ -805,15 +805,19 @@ export function createApiClient(token?: string | null, tenantId?: string | null)
       if (params.page) query.set('page', String(params.page))
       if (params.perPage) query.set('per_page', String(params.perPage))
       if (params.type) query.set('detection_type', params.type)
-      
+
       return fetchApi<Detection[]>(`/tenants/{tenant_id}/detections?${query}`, opts)
     },
 
-    async validateDetection(id: string, falsePositive: boolean, notes?: string) {
+    async getDetection(id: string) {
+      return fetchApi<Detection>(`/tenants/{tenant_id}/detections/${id}`, opts)
+    },
+
+    async validateDetection(id: string, params: { false_positive: boolean; notes?: string }) {
       return fetchApi<Detection>(`/tenants/{tenant_id}/detections/${id}/validate`, {
         ...opts,
         method: 'POST',
-        body: { false_positive: falsePositive, notes },
+        body: params,
       })
     },
 

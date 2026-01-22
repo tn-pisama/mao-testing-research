@@ -134,6 +134,8 @@ export default function RegressionPage() {
   const [isRunning, setIsRunning] = useState(false)
   const [isLoading, setIsLoading] = useState(true)
   const [isDemoMode, setIsDemoMode] = useState(false)
+  const [showCreateModal, setShowCreateModal] = useState(false)
+  const [isCreating, setIsCreating] = useState(false)
 
   const loadData = useCallback(async () => {
     setIsLoading(true)
@@ -202,6 +204,33 @@ export default function RegressionPage() {
     }
   }
 
+  const createBaseline = async (name: string, model: string, description: string) => {
+    setIsCreating(true)
+    try {
+      const token = await getToken()
+      const api = createApiClient(token, tenantId)
+      await api.createBaseline(name, description, model)
+      await loadData()
+      setShowCreateModal(false)
+    } catch (err) {
+      console.error('Failed to create baseline:', err)
+      // For demo mode, add a mock baseline
+      if (isDemoMode) {
+        const newBaseline: DisplayBaseline = {
+          id: `bl-${Date.now()}`,
+          name,
+          model,
+          promptCount: 0,
+          createdAt: new Date().toLocaleDateString(),
+          lastTested: 'Never'
+        }
+        setBaselines(prev => [newBaseline, ...prev])
+        setShowCreateModal(false)
+      }
+    }
+    setIsCreating(false)
+  }
+
   const severityColor = (severity: string) => {
     switch (severity) {
       case 'critical': return 'text-red-400 bg-red-400/10'
@@ -235,7 +264,11 @@ export default function RegressionPage() {
             </p>
           </div>
           <div className="flex gap-2">
-            <Button variant="secondary" leftIcon={<Plus size={16} />}>
+            <Button
+              variant="secondary"
+              leftIcon={<Plus size={16} />}
+              onClick={() => setShowCreateModal(true)}
+            >
               Create Baseline
             </Button>
             <Button
@@ -394,7 +427,111 @@ export default function RegressionPage() {
             </div>
           </div>
         )}
+
+        {/* Create Baseline Modal */}
+        {showCreateModal && (
+          <CreateBaselineModal
+            isCreating={isCreating}
+            onClose={() => setShowCreateModal(false)}
+            onCreate={createBaseline}
+          />
+        )}
       </div>
     </Layout>
+  )
+}
+
+interface CreateBaselineModalProps {
+  isCreating: boolean
+  onClose: () => void
+  onCreate: (name: string, model: string, description: string) => void
+}
+
+function CreateBaselineModal({ isCreating, onClose, onCreate }: CreateBaselineModalProps) {
+  const [name, setName] = useState('')
+  const [model, setModel] = useState('')
+  const [description, setDescription] = useState('')
+
+  const handleSubmit = (e: React.FormEvent) => {
+    e.preventDefault()
+    if (name && model) {
+      onCreate(name, model, description)
+    }
+  }
+
+  return (
+    <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50">
+      <div className="bg-slate-800 rounded-xl p-6 border border-slate-700 w-full max-w-md">
+        <h2 className="text-lg font-semibold text-white mb-4">Create Baseline</h2>
+        <form onSubmit={handleSubmit} className="space-y-4">
+          <div>
+            <label className="text-sm font-medium text-slate-300 block mb-2">
+              Baseline Name *
+            </label>
+            <input
+              type="text"
+              value={name}
+              onChange={(e) => setName(e.target.value)}
+              placeholder="e.g., Production Prompts v3.0"
+              className="w-full bg-slate-900 border border-slate-600 rounded-lg p-3 text-white text-sm focus:border-cyan-500 focus:outline-none"
+              required
+            />
+          </div>
+
+          <div>
+            <label className="text-sm font-medium text-slate-300 block mb-2">
+              Model *
+            </label>
+            <select
+              value={model}
+              onChange={(e) => setModel(e.target.value)}
+              className="w-full bg-slate-900 border border-slate-600 rounded-lg p-3 text-white text-sm focus:border-cyan-500 focus:outline-none"
+              required
+            >
+              <option value="">Select a model...</option>
+              <option value="gpt-4o">GPT-4o</option>
+              <option value="gpt-4o-mini">GPT-4o Mini</option>
+              <option value="gpt-4-turbo">GPT-4 Turbo</option>
+              <option value="claude-3-5-sonnet">Claude 3.5 Sonnet</option>
+              <option value="claude-3-opus">Claude 3 Opus</option>
+              <option value="gemini-pro">Gemini Pro</option>
+              <option value="other">Other</option>
+            </select>
+          </div>
+
+          <div>
+            <label className="text-sm font-medium text-slate-300 block mb-2">
+              Description
+            </label>
+            <textarea
+              value={description}
+              onChange={(e) => setDescription(e.target.value)}
+              placeholder="Describe the purpose of this baseline..."
+              rows={3}
+              className="w-full bg-slate-900 border border-slate-600 rounded-lg p-3 text-white text-sm focus:border-cyan-500 focus:outline-none resize-none"
+            />
+          </div>
+
+          <div className="flex gap-3 pt-2">
+            <Button
+              type="submit"
+              disabled={!name || !model || isCreating}
+              loading={isCreating}
+              className="flex-1"
+            >
+              Create Baseline
+            </Button>
+            <Button
+              type="button"
+              variant="secondary"
+              onClick={onClose}
+              disabled={isCreating}
+            >
+              Cancel
+            </Button>
+          </div>
+        </form>
+      </div>
+    </div>
   )
 }

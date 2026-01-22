@@ -2,7 +2,7 @@
 
 export const dynamic = 'force-dynamic'
 
-import { useState, useEffect, useCallback } from 'react'
+import { useState, useEffect, useCallback, useRef } from 'react'
 import { useSafeAuth as useAuth } from '@/hooks/useSafeAuth'
 import { useTenant } from '@/hooks/useTenant'
 import {
@@ -59,6 +59,9 @@ export default function ImportPage() {
   // Config fields
   const [configUrl, setConfigUrl] = useState('')
   const [configApiKey, setConfigApiKey] = useState('')
+  const [selectedFile, setSelectedFile] = useState<File | null>(null)
+  const [isDragging, setIsDragging] = useState(false)
+  const fileInputRef = useRef<HTMLInputElement>(null)
 
   const loadJobs = useCallback(async () => {
     setIsLoading(true)
@@ -78,6 +81,36 @@ export default function ImportPage() {
     loadJobs()
   }, [loadJobs])
 
+  const handleFileSelect = (file: File) => {
+    const validTypes = ['application/json', 'text/plain']
+    const validExtensions = ['.json', '.jsonl']
+    const hasValidExt = validExtensions.some(ext => file.name.toLowerCase().endsWith(ext))
+
+    if (!validTypes.includes(file.type) && !hasValidExt) {
+      setError('Please select a JSON or JSONL file')
+      return
+    }
+    setSelectedFile(file)
+    setError(null)
+  }
+
+  const handleDrop = (e: React.DragEvent) => {
+    e.preventDefault()
+    setIsDragging(false)
+    if (e.dataTransfer.files.length > 0) {
+      handleFileSelect(e.dataTransfer.files[0])
+    }
+  }
+
+  const handleDragOver = (e: React.DragEvent) => {
+    e.preventDefault()
+    setIsDragging(true)
+  }
+
+  const handleDragLeave = () => {
+    setIsDragging(false)
+  }
+
   const createJob = async () => {
     setIsCreating(true)
     setError(null)
@@ -86,15 +119,44 @@ export default function ImportPage() {
       const token = await getToken()
       const api = createApiClient(token, tenantId)
 
-      const config: Record<string, any> = {}
-      if (configUrl) config.url = configUrl
-      if (configApiKey) config.api_key = configApiKey
+      // Handle file upload for JSON/JSONL
+      if ((selectedSource === 'json' || selectedSource === 'jsonl') && selectedFile) {
+        const fileContent = await selectedFile.text()
+        let traces: any[] = []
 
-      await api.createImportJob(selectedSource, config)
+        try {
+          if (selectedSource === 'jsonl') {
+            // Parse JSONL (one JSON object per line)
+            traces = fileContent
+              .split('\n')
+              .filter(line => line.trim())
+              .map(line => JSON.parse(line))
+          } else {
+            // Parse regular JSON
+            const parsed = JSON.parse(fileContent)
+            traces = Array.isArray(parsed) ? parsed : [parsed]
+          }
+        } catch (parseErr) {
+          setError('Failed to parse file. Please ensure it contains valid JSON.')
+          setIsCreating(false)
+          return
+        }
+
+        // Create import job with trace data
+        await api.createImportJob(selectedSource, { traces, filename: selectedFile.name })
+      } else {
+        // Handle LangSmith/OTEL imports
+        const config: Record<string, any> = {}
+        if (configUrl) config.url = configUrl
+        if (configApiKey) config.api_key = configApiKey
+        await api.createImportJob(selectedSource, config)
+      }
+
       await loadJobs()
       setShowCreateForm(false)
       setConfigUrl('')
       setConfigApiKey('')
+      setSelectedFile(null)
     } catch (err) {
       console.error('Failed to create import job:', err)
       setError('Failed to create import job. Please try again.')
@@ -212,14 +274,55 @@ export default function ImportPage() {
                 )}
 
                 {(selectedSource === 'json' || selectedSource === 'jsonl') && (
-                  <div className="p-4 border-2 border-dashed border-slate-600 rounded-lg text-center">
-                    <FileJson className="w-12 h-12 text-slate-500 mx-auto mb-2" />
-                    <p className="text-slate-400 text-sm">
-                      Drag and drop a {selectedSource.toUpperCase()} file here, or click to browse
-                    </p>
-                    <p className="text-slate-500 text-xs mt-1">
-                      File upload coming soon
-                    </p>
+                  <div
+                    onDrop={handleDrop}
+                    onDragOver={handleDragOver}
+                    onDragLeave={handleDragLeave}
+                    onClick={() => fileInputRef.current?.click()}
+                    className={`p-6 border-2 border-dashed rounded-lg text-center cursor-pointer transition-colors ${
+                      isDragging
+                        ? 'border-blue-500 bg-blue-500/10'
+                        : selectedFile
+                        ? 'border-emerald-500 bg-emerald-500/10'
+                        : 'border-slate-600 hover:border-slate-500'
+                    }`}
+                  >
+                    <input
+                      ref={fileInputRef}
+                      type="file"
+                      accept=".json,.jsonl"
+                      onChange={(e) => e.target.files?.[0] && handleFileSelect(e.target.files[0])}
+                      className="hidden"
+                    />
+                    {selectedFile ? (
+                      <>
+                        <CheckCircle className="w-10 h-10 text-emerald-400 mx-auto mb-2" />
+                        <p className="text-emerald-400 font-medium">{selectedFile.name}</p>
+                        <p className="text-slate-500 text-xs mt-1">
+                          {(selectedFile.size / 1024).toFixed(1)} KB
+                        </p>
+                        <button
+                          type="button"
+                          onClick={(e) => {
+                            e.stopPropagation()
+                            setSelectedFile(null)
+                          }}
+                          className="mt-2 text-slate-400 hover:text-white text-xs underline"
+                        >
+                          Choose a different file
+                        </button>
+                      </>
+                    ) : (
+                      <>
+                        <FileJson className="w-10 h-10 text-slate-500 mx-auto mb-2" />
+                        <p className="text-slate-400 text-sm">
+                          Drag and drop a {selectedSource.toUpperCase()} file here
+                        </p>
+                        <p className="text-slate-500 text-xs mt-1">
+                          or click to browse
+                        </p>
+                      </>
+                    )}
                   </div>
                 )}
 
@@ -230,7 +333,7 @@ export default function ImportPage() {
                 <div className="flex gap-3 pt-2">
                   <Button
                     onClick={createJob}
-                    disabled={isCreating}
+                    disabled={isCreating || ((selectedSource === 'json' || selectedSource === 'jsonl') && !selectedFile)}
                     loading={isCreating}
                     className="flex-1"
                   >
