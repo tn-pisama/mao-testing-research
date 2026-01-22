@@ -5,14 +5,19 @@ Conversation Summarization for Long Contexts
 This module provides tools for handling long conversation traces that exceed
 context window limits. It includes:
 
-1. ConversationSummarizer - Summarizes conversations using Claude Haiku
+1. ConversationSummarizer - Summarizes conversations using Gemini 2.5 Flash
 2. SlidingWindowManager - Manages context windows with summarization
 3. Token counting utilities
 
 Used by the turn-aware detection system to handle MAST-Data traces that
 can contain 300K+ character trajectories.
 
-Version: 1.0
+Version: 2.0 (Jan 2026)
+
+Migration Note:
+- Migrated from Claude Haiku 3.5 (deprecated Feb 2026) to Gemini 2.5 Flash
+- 81% cost savings: $0.80/$4.00 -> $0.15/$0.60 per 1M tokens
+- Falls back to Claude Haiku 4.5 if Gemini unavailable
 """
 
 import os
@@ -21,6 +26,7 @@ import logging
 from dataclasses import dataclass, field
 from typing import List, Dict, Any, Optional, Tuple
 from functools import lru_cache
+from enum import Enum
 
 import httpx
 import tiktoken
@@ -32,12 +38,29 @@ logger = logging.getLogger(__name__)
 DEFAULT_MAX_TOKENS = 8000
 DEFAULT_SUMMARY_MAX_TOKENS = 2000
 DEFAULT_OVERLAP_TOKENS = 500
-HAIKU_MODEL = "claude-3-5-haiku-20241022"
+
+# Model configuration (Jan 2026)
+# Primary: Gemini 2.5 Flash - 81% cheaper than Haiku 3.5
+# Fallback: Claude Haiku 4.5 (Haiku 3.5 deprecated Feb 2026)
+GEMINI_MODEL = "gemini-2.5-flash"
+HAIKU_MODEL = "claude-haiku-4-5-20260115"  # Fallback only
+LEGACY_HAIKU_MODEL = "claude-3-5-haiku-20241022"  # DEPRECATED
+
+
+class SummarizerProvider(Enum):
+    """Summarization model provider."""
+    GEMINI = "gemini"
+    ANTHROPIC = "anthropic"
 
 
 def get_anthropic_api_key() -> str:
     """Get Anthropic API key from environment."""
     return os.getenv("ANTHROPIC_API_KEY", "")
+
+
+def get_google_api_key() -> str:
+    """Get Google API key from environment."""
+    return os.getenv("GOOGLE_API_KEY", os.getenv("GEMINI_API_KEY", ""))
 
 
 @lru_cache(maxsize=1)
@@ -69,7 +92,8 @@ class SummarizationResult:
     summary_tokens: int
     compression_ratio: float
     turns_summarized: int
-    model_used: str = HAIKU_MODEL
+    model_used: str = GEMINI_MODEL
+    provider: str = "gemini"
     cached: bool = False
 
 
@@ -86,27 +110,43 @@ class ContextWindow:
 class ConversationSummarizer:
     """Summarizes multi-turn conversations to fit context windows.
 
-    Uses Claude Haiku for fast, cost-effective summarization that
-    preserves key information for failure detection.
+    Uses Gemini 2.5 Flash (primary) or Claude Haiku 4.5 (fallback)
+    for fast, cost-effective summarization that preserves key
+    information for failure detection.
+
+    Migration Note (Jan 2026):
+    - Primary: Gemini 2.5 Flash ($0.15/$0.60 per 1M)
+    - Fallback: Claude Haiku 4.5 ($1.00/$5.00 per 1M)
+    - Deprecated: Claude Haiku 3.5 (Feb 2026 sunset)
     """
 
     def __init__(
         self,
-        api_key: Optional[str] = None,
+        anthropic_api_key: Optional[str] = None,
+        google_api_key: Optional[str] = None,
         max_summary_tokens: int = DEFAULT_SUMMARY_MAX_TOKENS,
         cache_summaries: bool = True,
+        prefer_provider: SummarizerProvider = SummarizerProvider.GEMINI,
     ):
-        self.api_key = api_key or get_anthropic_api_key()
+        self.anthropic_api_key = anthropic_api_key or get_anthropic_api_key()
+        self.google_api_key = google_api_key or get_google_api_key()
         self.max_summary_tokens = max_summary_tokens
         self.cache_summaries = cache_summaries
+        self.prefer_provider = prefer_provider
         self._cache: Dict[str, SummarizationResult] = {}
         self._anthropic_client: Optional[Anthropic] = None
+        # Gemini client initialized lazily
+
+    @property
+    def api_key(self) -> str:
+        """Legacy property for backward compatibility."""
+        return self.anthropic_api_key
 
     @property
     def anthropic_client(self) -> Anthropic:
         """Lazy initialization of Anthropic client."""
         if self._anthropic_client is None:
-            self._anthropic_client = Anthropic(api_key=self.api_key)
+            self._anthropic_client = Anthropic(api_key=self.anthropic_api_key)
         return self._anthropic_client
 
     def _get_cache_key(self, turns: List[Dict[str, Any]]) -> str:
@@ -171,8 +211,8 @@ class ConversationSummarizer:
             preserve_failures,
         )
 
-        # Call Claude Haiku
-        summary = self._call_claude(prompt, max_output_tokens)
+        # Call LLM (Gemini primary, Claude fallback)
+        summary, model_used, provider = self._call_llm(prompt, max_output_tokens)
         summary_tokens = count_tokens(summary)
 
         result = SummarizationResult(
@@ -181,6 +221,8 @@ class ConversationSummarizer:
             summary_tokens=summary_tokens,
             compression_ratio=summary_tokens / original_tokens if original_tokens > 0 else 1.0,
             turns_summarized=len(turns),
+            model_used=model_used,
+            provider=provider,
         )
 
         # Cache result
@@ -250,30 +292,75 @@ Provide a structured summary that captures the conversation flow. Maximum {max_t
 
 SUMMARY:"""
 
-    def _call_claude(self, prompt: str, max_tokens: int) -> str:
+    def _call_llm(self, prompt: str, max_tokens: int) -> Tuple[str, str, str]:
+        """Call LLM API for summarization with provider fallback.
+
+        Returns:
+            Tuple of (summary_text, model_used, provider)
+        """
+        # Try Gemini first (primary - 81% cheaper)
+        if self.prefer_provider == SummarizerProvider.GEMINI and self.google_api_key:
+            try:
+                return self._call_gemini(prompt, max_tokens)
+            except Exception as e:
+                logger.warning(f"Gemini API failed, falling back to Claude: {e}")
+
+        # Fall back to Claude Haiku 4.5
+        if self.anthropic_api_key:
+            try:
+                return self._call_claude(prompt, max_tokens)
+            except Exception as e:
+                logger.error(f"Claude API also failed: {e}")
+
+        # Last resort: fallback summarization
+        return self._fallback_summarize(prompt), "fallback", "local"
+
+    def _call_gemini(self, prompt: str, max_tokens: int) -> Tuple[str, str, str]:
+        """Call Google Gemini API for summarization."""
+        import json
+
+        url = f"https://generativelanguage.googleapis.com/v1beta/models/{GEMINI_MODEL}:generateContent"
+
+        headers = {
+            "Content-Type": "application/json",
+        }
+
+        data = {
+            "contents": [{"parts": [{"text": prompt}]}],
+            "generationConfig": {
+                "maxOutputTokens": max_tokens,
+                "temperature": 0.3,
+            }
+        }
+
+        response = httpx.post(
+            f"{url}?key={self.google_api_key}",
+            headers=headers,
+            json=data,
+            timeout=60.0
+        )
+        response.raise_for_status()
+
+        result = response.json()
+        text = result["candidates"][0]["content"]["parts"][0]["text"]
+
+        return text, GEMINI_MODEL, "gemini"
+
+    def _call_claude(self, prompt: str, max_tokens: int) -> Tuple[str, str, str]:
         """Call Claude API for summarization using official SDK."""
-        if not self.api_key:
-            logger.warning("No Anthropic API key configured, using fallback summarization")
-            return self._fallback_summarize(prompt)
+        if not self.anthropic_api_key:
+            raise ValueError("No Anthropic API key configured")
 
-        try:
-            response = self.anthropic_client.messages.create(
-                model=HAIKU_MODEL,
-                max_tokens=max_tokens,
-                messages=[
-                    {"role": "user", "content": prompt},
-                ],
-            )
+        response = self.anthropic_client.messages.create(
+            model=HAIKU_MODEL,
+            max_tokens=max_tokens,
+            messages=[
+                {"role": "user", "content": prompt},
+            ],
+        )
 
-            # Extract text from response (SDK returns typed objects)
-            return response.content[0].text
-
-        except APIError as e:
-            logger.error(f"Claude API error: {e}")
-            return self._fallback_summarize(prompt)
-        except Exception as e:
-            logger.error(f"Claude API call failed: {e}")
-            return self._fallback_summarize(prompt)
+        # Extract text from response (SDK returns typed objects)
+        return response.content[0].text, HAIKU_MODEL, "anthropic"
 
     def _fallback_summarize(self, prompt: str) -> str:
         """Fallback summarization when API is unavailable.
