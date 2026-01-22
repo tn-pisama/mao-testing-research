@@ -103,17 +103,17 @@ Agent: "Could you clarify? Performance, UI, or code quality?"
 Verdict: NO - Properly asked for clarification"""
     },
     MASTFailureMode.F8: {
-        "name": "Task Derailment",
-        "definition": """FM-2.3: Deviation from the intended objective or focus of a given task,
-resulting in irrelevant or unproductive actions. Look for: agent shifting focus to unrelated work,
-pursuing tangential goals, or losing track of the original objective.""",
-        "positive_example": """Task: "Fix the login bug"
-Agent: "While looking at login, the CSS is ugly. Let me redesign the UI..."
-Agent: "Now adding dark mode..."
-Verdict: YES - Derailed from bug fix to unrelated UI work""",
-        "negative_example": """Task: "Fix the login bug"
-Agent: "Found bug in password check. Fixed. Testing now."
-Verdict: NO - Stayed focused on task"""
+        "name": "Information Withholding",
+        "definition": """FM-2.3: Failure to share necessary information between agents or with the user,
+leading to incomplete understanding or suboptimal decisions. Look for: agent not providing requested info,
+ignoring questions, withholding context needed by others, or not sharing relevant findings.""",
+        "positive_example": """User: "What error message did you see?"
+Agent: "I fixed the issue. Moving on to the next task."
+[Never shared the error message despite being asked]
+Verdict: YES - Withheld requested information""",
+        "negative_example": """User: "What error message did you see?"
+Agent: "The error was 'ConnectionTimeout after 30s'. I fixed it by increasing the timeout."
+Verdict: NO - Shared the requested information"""
     },
     MASTFailureMode.F9: {
         "name": "Role Usurpation",
@@ -271,6 +271,49 @@ NOT derailment if:
 - Complete abandonment of task = HIGH confidence YES
 - Significant distraction but task attempted = MEDIUM confidence YES
 - Minor tangent with task completed = NO
+
+Now apply this analysis to the trace below:
+""",
+    MASTFailureMode.F8: """## Chain-of-Thought Analysis for Information Withholding (F8)
+
+Before making your judgment, work through these steps carefully:
+
+### Step 1: Identify Information Requests
+- What questions were asked by users or other agents?
+- What information was explicitly requested?
+- What context would be expected to be shared?
+
+### Step 2: Trace Information Sharing
+For each request/question:
+- Was a direct answer provided?
+- Was the response substantive or evasive?
+- Was relevant context included in the response?
+
+### Step 3: Detect Withholding Patterns
+Look for these specific indicators:
+- Ignored questions (no acknowledgment)
+- Deflection ("Let's move on" without answering)
+- Partial responses that omit key details
+- Generic answers that don't address specifics
+- Refusal to share without justification
+- Proceeding without sharing relevant findings
+
+### Step 4: Distinguish from Legitimate Non-Sharing
+NOT withholding if:
+- Information genuinely unknown ("I don't have that data")
+- Security/privacy constraints acknowledged
+- Question acknowledged with plan to address later
+- Clarification requested before answering
+
+### Step 5: Assess Impact
+- Did withholding prevent task completion?
+- Did other agents/users make suboptimal decisions?
+- Was critical context missing from handoffs?
+
+### Step 6: Calculate Severity
+- Ignoring direct questions = HIGH confidence YES
+- Omitting critical context = MEDIUM confidence YES
+- Minor details not shared = LOW confidence or NO
 
 Now apply this analysis to the trace below:
 """,

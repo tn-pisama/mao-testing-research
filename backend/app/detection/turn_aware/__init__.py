@@ -55,8 +55,12 @@ _DETECTOR_MODULES = {
     'TurnAwareClarificationRequestDetector': '.clarification',
     'LLMDerailmentDetector': '.hybrid',
     'HybridDerailmentDetector': '.hybrid',
+    'LLMInformationWithholdingDetector': '.hybrid',
+    'HybridInformationWithholdingDetector': '.hybrid',
     'LLMRoleUsurpationDetector': '.hybrid',
     'HybridRoleUsurpationDetector': '.hybrid',
+    'LLMQualityGateBypassDetector': '.hybrid',
+    'HybridQualityGateBypassDetector': '.hybrid',
     'analyze_conversation_turns': '.hybrid',
 }
 
@@ -111,7 +115,11 @@ __all__ = [
     'TurnAwareClarificationRequestDetector',
     'LLMDerailmentDetector',
     'HybridDerailmentDetector',
+    'LLMInformationWithholdingDetector',
+    'HybridInformationWithholdingDetector',
     'LLMRoleUsurpationDetector',
     'HybridRoleUsurpationDetector',
+    'LLMQualityGateBypassDetector',
+    'HybridQualityGateBypassDetector',
     'analyze_conversation_turns',
 ]
