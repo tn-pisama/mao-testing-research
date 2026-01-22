@@ -274,15 +274,15 @@ async def list_workflows(
     db: AsyncSession = Depends(get_db),
 ):
     await set_tenant_context(db, tenant_id)
-    
+
     result = await db.execute(
         select(N8nWorkflow).where(N8nWorkflow.tenant_id == UUID(tenant_id))
     )
     workflows = result.scalars().all()
-    
+
     base_url = str(request.base_url).rstrip("/")
     webhook_url = f"{base_url}/api/v1/n8n/webhook"
-    
+
     return [
         N8nWorkflowResponse(
             id=str(w.id),
@@ -293,3 +293,136 @@ async def list_workflows(
         )
         for w in workflows
     ]
+
+
+class N8nSyncRequest(BaseModel):
+    workflow_id: Optional[str] = None
+    limit: int = Field(default=20, ge=1, le=100)
+
+
+class N8nSyncResponse(BaseModel):
+    synced_count: int
+    traces_created: int
+    errors: List[str] = Field(default_factory=list)
+
+
+@router.post("/sync", response_model=N8nSyncResponse)
+async def sync_n8n_executions(
+    request_data: N8nSyncRequest,
+    background_tasks: BackgroundTasks,
+    tenant_id: str = Depends(get_current_tenant),
+    db: AsyncSession = Depends(get_db),
+):
+    """
+    Pull recent executions from n8n cloud and store as traces.
+
+    This provides an alternative to push-based webhooks by allowing
+    the MAO platform to pull historical execution data from n8n.
+    """
+    import os
+    from app.integrations.n8n_client import N8nApiClient, N8nApiError
+
+    await set_tenant_context(db, tenant_id)
+
+    n8n_host = os.getenv("N8N_HOST")
+    n8n_api_key = os.getenv("N8N_API_KEY")
+
+    if not n8n_host or not n8n_api_key:
+        raise HTTPException(
+            status_code=400,
+            detail="n8n integration not configured. Set N8N_HOST and N8N_API_KEY environment variables."
+        )
+
+    synced_count = 0
+    traces_created = 0
+    errors: List[str] = []
+
+    try:
+        async with N8nApiClient(n8n_host, n8n_api_key) as client:
+            executions = await client.get_executions(
+                workflow_id=request_data.workflow_id,
+                limit=request_data.limit,
+            )
+
+            for execution in executions:
+                try:
+                    # Check if we already have this execution
+                    exec_id = execution.get("id", "")
+                    existing = await db.execute(
+                        select(Trace).where(
+                            Trace.tenant_id == UUID(tenant_id),
+                            Trace.session_id == str(exec_id),
+                        )
+                    )
+                    if existing.scalar_one_or_none():
+                        continue  # Skip already imported executions
+
+                    # Parse execution to MAO format
+                    workflow_name = execution.get("workflowData", {}).get("name", "Unknown Workflow")
+                    workflow_id = execution.get("workflowId", "")
+                    started_at = execution.get("startedAt")
+                    finished_at = execution.get("stoppedAt")
+                    status = execution.get("status", "unknown")
+
+                    # Create trace
+                    trace = Trace(
+                        tenant_id=UUID(tenant_id),
+                        session_id=str(exec_id),
+                        framework="n8n",
+                        status="completed" if status == "success" else "error",
+                        created_at=datetime.fromisoformat(started_at.replace("Z", "+00:00")) if started_at else datetime.utcnow(),
+                        completed_at=datetime.fromisoformat(finished_at.replace("Z", "+00:00")) if finished_at else None,
+                    )
+                    db.add(trace)
+                    await db.flush()
+
+                    # Parse execution data to states if available
+                    exec_data = execution.get("data", {})
+                    result_data = exec_data.get("resultData", {})
+                    run_data = result_data.get("runData", {})
+
+                    seq = 0
+                    for node_name, node_runs in run_data.items():
+                        for run in node_runs:
+                            state = State(
+                                trace_id=trace.id,
+                                tenant_id=UUID(tenant_id),
+                                sequence_num=seq,
+                                agent_id=node_name,
+                                state_delta={
+                                    "node": node_name,
+                                    "startTime": run.get("startTime"),
+                                    "executionTime": run.get("executionTime"),
+                                },
+                                state_hash=f"{exec_id}_{node_name}_{seq}",
+                                latency_ms=run.get("executionTime", 0),
+                            )
+                            db.add(state)
+                            seq += 1
+
+                    synced_count += 1
+                    traces_created += 1
+
+                except Exception as e:
+                    errors.append(f"Failed to import execution {execution.get('id', 'unknown')}: {str(e)}")
+                    logger.warning(f"Failed to import n8n execution: {e}")
+
+            await db.commit()
+
+    except N8nApiError as e:
+        raise HTTPException(
+            status_code=502,
+            detail=f"Failed to fetch executions from n8n: {e.message}"
+        )
+    except Exception as e:
+        logger.error(f"Sync failed: {e}")
+        raise HTTPException(
+            status_code=500,
+            detail=f"Sync failed: {str(e)}"
+        )
+
+    return N8nSyncResponse(
+        synced_count=synced_count,
+        traces_created=traces_created,
+        errors=errors,
+    )

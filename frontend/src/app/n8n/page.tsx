@@ -6,7 +6,7 @@ import { useState, useEffect, useCallback } from 'react'
 import { useSafeAuth as useAuth } from '@/hooks/useSafeAuth'
 import { useTenant } from '@/hooks/useTenant'
 import {
-  Workflow, Plus, Link, Copy, CheckCircle, ExternalLink, Loader2
+  Workflow, Plus, Link, Copy, CheckCircle, ExternalLink, Loader2, RefreshCw
 } from 'lucide-react'
 import { Layout } from '@/components/common/Layout'
 import { Button } from '@/components/ui/Button'
@@ -51,6 +51,8 @@ export default function N8nPage() {
   const [newWorkflowName, setNewWorkflowName] = useState('')
   const [copiedUrl, setCopiedUrl] = useState<string | null>(null)
   const [error, setError] = useState<string | null>(null)
+  const [isSyncing, setIsSyncing] = useState(false)
+  const [syncResult, setSyncResult] = useState<{ synced: number; errors: string[] } | null>(null)
 
   const loadWorkflows = useCallback(async () => {
     setIsLoading(true)
@@ -108,6 +110,30 @@ export default function N8nPage() {
     setTimeout(() => setCopiedUrl(null), 2000)
   }
 
+  const syncFromN8n = async () => {
+    setIsSyncing(true)
+    setSyncResult(null)
+    setError(null)
+
+    try {
+      const token = await getToken()
+      const api = createApiClient(token, tenantId)
+      const result = await api.syncN8nExecutions(undefined, 50)
+
+      setSyncResult({
+        synced: result.synced_count,
+        errors: result.errors,
+      })
+
+      // Refresh workflows list after sync
+      await loadWorkflows()
+    } catch (err) {
+      console.error('Failed to sync from n8n:', err)
+      setError('Failed to sync executions from n8n. Check backend logs.')
+    }
+    setIsSyncing(false)
+  }
+
   return (
     <Layout>
       <div className="p-6 max-w-4xl mx-auto">
@@ -123,13 +149,40 @@ export default function N8nPage() {
               Connect n8n workflows for automated trace ingestion
             </p>
           </div>
-          <Button
-            onClick={() => setShowRegisterForm(true)}
-            leftIcon={<Plus size={16} />}
-          >
-            Register Workflow
-          </Button>
+          <div className="flex items-center gap-3">
+            <Button
+              onClick={syncFromN8n}
+              variant="secondary"
+              leftIcon={<RefreshCw size={16} className={isSyncing ? 'animate-spin' : ''} />}
+              disabled={isSyncing}
+            >
+              {isSyncing ? 'Syncing...' : 'Sync from n8n'}
+            </Button>
+            <Button
+              onClick={() => setShowRegisterForm(true)}
+              leftIcon={<Plus size={16} />}
+            >
+              Register Workflow
+            </Button>
+          </div>
         </div>
+
+        {/* Sync Result Notification */}
+        {syncResult && (
+          <div className={`mb-4 p-4 rounded-lg border ${syncResult.errors.length > 0 ? 'bg-yellow-900/20 border-yellow-600' : 'bg-emerald-900/20 border-emerald-600'}`}>
+            <div className="flex items-center gap-2">
+              <CheckCircle className={`w-5 h-5 ${syncResult.errors.length > 0 ? 'text-yellow-400' : 'text-emerald-400'}`} />
+              <span className="text-white font-medium">
+                Synced {syncResult.synced} execution{syncResult.synced !== 1 ? 's' : ''} from n8n Cloud
+              </span>
+            </div>
+            {syncResult.errors.length > 0 && (
+              <div className="mt-2 text-sm text-yellow-400">
+                {syncResult.errors.length} error{syncResult.errors.length !== 1 ? 's' : ''} occurred during sync
+              </div>
+            )}
+          </div>
+        )}
 
         {/* Register Form Modal */}
         {showRegisterForm && (
@@ -236,10 +289,11 @@ export default function N8nPage() {
                         </a>
                       )}
                       <a
-                        href={`https://n8n.io`}
+                        href={`https://pisama.app.n8n.cloud`}
                         target="_blank"
                         rel="noopener noreferrer"
                         className="text-slate-400 hover:text-white transition-colors"
+                        title="Open in n8n Cloud"
                       >
                         <ExternalLink size={18} />
                       </a>

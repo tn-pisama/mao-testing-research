@@ -772,6 +772,31 @@ export interface QualityDimensionsResponse {
   orchestration_dimensions: QualityDimensionInfo[]
 }
 
+export interface FeedbackStats {
+  total_feedback: number
+  true_positives: number
+  false_positives: number
+  false_negatives: number
+  true_negatives: number
+  precision: number
+  recall: number
+  f1_score: number
+  by_framework: Record<string, { total: number; correct: number; incorrect: number }>
+  by_detection_type: Record<string, { total: number; correct: number; incorrect: number }>
+  by_method: Record<string, { total: number; correct: number; incorrect: number }>
+}
+
+export interface ThresholdRecommendation {
+  framework: string
+  current_structural_threshold: number
+  current_semantic_threshold: number
+  recommended_structural_threshold: number
+  recommended_semantic_threshold: number
+  confidence: number
+  sample_size: number
+  reasoning: string
+}
+
 export function createApiClient(token?: string | null, tenantId?: string | null) {
   const opts = { token, tenantId }
   
@@ -1201,6 +1226,17 @@ export function createApiClient(token?: string | null, tenantId?: string | null)
       return fetchApi<N8nWorkflow[]>(`/tenants/{tenant_id}/n8n/workflows`, opts)
     },
 
+    async syncN8nExecutions(workflowId?: string, limit: number = 20) {
+      return fetchApi<{ synced_count: number; traces_created: number; errors: string[] }>(
+        `/tenants/{tenant_id}/n8n/sync`,
+        {
+          ...opts,
+          method: 'POST',
+          body: { workflow_id: workflowId, limit },
+        }
+      )
+    },
+
     // Security endpoints
     async checkInjection(text: string, context?: string, isUserInput: boolean = true) {
       return fetchApi<InjectionCheckResult>(`/tenants/{tenant_id}/security/injection/check`, {
@@ -1361,6 +1397,23 @@ export function createApiClient(token?: string | null, tenantId?: string | null)
           body: { workflow, trace_id: traceId, max_suggestions: maxSuggestions },
         }
       )
+    },
+
+    // Feedback/Tuning endpoints
+    async getFeedbackStats() {
+      return fetchApi<FeedbackStats>(`/tenants/{tenant_id}/feedback/stats`, opts)
+    },
+
+    async getThresholdRecommendations() {
+      return fetchApi<ThresholdRecommendation[]>(`/tenants/{tenant_id}/feedback/recommendations`, opts)
+    },
+
+    async submitFeedback(detectionId: string, isCorrect: boolean, notes?: string) {
+      return fetchApi<{ id: string; status: string }>(`/tenants/{tenant_id}/feedback`, {
+        ...opts,
+        method: 'POST',
+        body: { detection_id: detectionId, is_correct: isCorrect, notes },
+      })
     },
   }
 }
