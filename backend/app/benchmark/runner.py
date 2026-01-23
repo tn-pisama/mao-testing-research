@@ -453,7 +453,7 @@ class BenchmarkRunner:
 
         # Run turn-aware detection for semantic modes (unless skipped for LLM)
         # NOTE: F12 excluded - hybrid/LLM detection performs worse than keyword matching
-        turn_aware_modes = {"F6", "F8", "F9", "F10"}  # Modes handled by turn-aware detectors
+        turn_aware_modes = {"F6", "F7", "F8", "F9", "F10"}  # Modes handled by turn-aware detectors
         modes_to_run = [m for m in turn_aware_modes if m not in skip_modes]
         if modes_to_run:
             turn_aware_attempts = self._run_turn_aware_detectors(records, modes_to_run)
@@ -517,6 +517,7 @@ class BenchmarkRunner:
         try:
             from app.benchmark.trajectory_parser import parse_trajectory_to_turns
             from app.detection.turn_aware.derailment import TurnAwareDerailmentDetector
+            from app.detection.turn_aware.context_neglect import TurnAwareContextNeglectDetector
             from app.detection.turn_aware.withholding import TurnAwareInformationWithholdingDetector
             from app.detection.turn_aware.role_usurpation import TurnAwareRoleUsurpationDetector
             from app.detection.turn_aware.hybrid import HybridOutputValidationDetector
@@ -529,6 +530,9 @@ class BenchmarkRunner:
         detectors = {}
         if "F6" in modes:
             detectors["F6"] = ("turn_aware_derailment", None)  # Created per-record with framework
+        if "F7" in modes:
+            # Lower min_issues_to_flag from 2 to 1 for better recall
+            detectors["F7"] = ("turn_aware_context_neglect", TurnAwareContextNeglectDetector(min_issues_to_flag=1))
         if "F8" in modes:
             detectors["F8"] = ("turn_aware_withholding", TurnAwareInformationWithholdingDetector())
         if "F9" in modes:
@@ -571,6 +575,16 @@ class BenchmarkRunner:
                         )
                         result = detector.detect(turns)
                         detector_name = "turn_aware_derailment"
+
+                    elif mode == "F7":
+                        # Context neglect detector
+                        detector = detectors["F7"][1]
+                        metadata = {
+                            "task_description": record.task,
+                            "framework": record.framework,
+                        }
+                        result = detector.detect(turns=turns, conversation_metadata=metadata)
+                        detector_name = "turn_aware_context_neglect"
 
                     elif mode == "F8":
                         # Withholding detector
