@@ -452,6 +452,7 @@ class BenchmarkRunner:
         }
 
         # Run turn-aware detection for semantic modes (unless skipped for LLM)
+        # NOTE: F11 excluded - turn-aware detection performs worse than keyword matching (tested 2026-01-23)
         # NOTE: F12 excluded - hybrid/LLM detection performs worse than keyword matching
         turn_aware_modes = {"F6", "F7", "F8", "F9", "F10"}  # Modes handled by turn-aware detectors
         modes_to_run = [m for m in turn_aware_modes if m not in skip_modes]
