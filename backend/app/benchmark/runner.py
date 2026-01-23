@@ -535,7 +535,8 @@ class BenchmarkRunner:
             # Lower min_issues_to_flag from 2 to 1 for better recall
             detectors["F7"] = ("turn_aware_context_neglect", TurnAwareContextNeglectDetector(min_issues_to_flag=1))
         if "F8" in modes:
-            detectors["F8"] = ("turn_aware_withholding", TurnAwareInformationWithholdingDetector())
+            # Lower min_issues_to_flag from 3 to 1 for better recall (like F7)
+            detectors["F8"] = ("turn_aware_withholding", TurnAwareInformationWithholdingDetector(min_issues_to_flag=1))
         if "F9" in modes:
             detectors["F9"] = ("turn_aware_role_usurpation", TurnAwareRoleUsurpationDetector())
         if "F10" in modes:
