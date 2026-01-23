@@ -1,9 +1,13 @@
 """
-F4: Loss of Conversation History Detector
-=========================================
+Conversation History Loss Detector
+==================================
 
-Per MAST (FM-1.4): Unexpected context truncation, disregarding recent
-interaction history and reverting to an antecedent conversational state.
+NOTE: This detector was originally labeled as F4 based on an older definition.
+However, per MAST (mast_loader.py), F4 is "Inadequate Tool Provision" (FM-1.4),
+not "Loss of Conversation History".
+
+This detector's logic (repeated questions, lost decisions, context reset) is
+closer to F7 "Context Neglect" (FM-2.2). It should NOT be used for F4 benchmarking.
 
 Detects:
 1. Repeated questions - asking questions already answered earlier
@@ -26,10 +30,13 @@ logger = logging.getLogger(__name__)
 
 
 class TurnAwareConversationHistoryDetector(TurnAwareDetector):
-    """Detects F4: Loss of Conversation History in multi-agent conversations.
+    """Detects conversation history loss in multi-agent conversations.
 
-    Per MAST (FM-1.4): Unexpected context truncation, disregarding recent
-    interaction history and reverting to an antecedent conversational state.
+    WARNING: This detector was mislabeled as F4. Per MAST ground truth:
+    - F4 = "Inadequate Tool Provision" (FM-1.4) - about missing tools
+    - This detector's patterns are closer to F7 "Context Neglect" (FM-2.2)
+
+    Do NOT use this detector for F4 benchmarking - it will produce incorrect results.
 
     Detects:
     1. Repeated questions - asking questions already answered earlier
@@ -39,8 +46,10 @@ class TurnAwareConversationHistoryDetector(TurnAwareDetector):
     """
 
     name = "TurnAwareConversationHistoryDetector"
-    version = "1.0"
-    supported_failure_modes = ["F4"]
+    version = "1.1"  # Updated for definition correction
+    # NOTE: "F4" kept for backward compatibility but should not be used
+    # This detector's logic matches F7 (Context Neglect), not F4 (Tool Provision)
+    supported_failure_modes = ["F4"]  # DEPRECATED - see class docstring
 
     # Context loss indicators - phrases suggesting forgotten context
     CONTEXT_LOSS_INDICATORS = [

@@ -39,7 +39,7 @@ class TurnAwareContextNeglectDetector(EmbeddingMixin, TurnAwareDetector):
     - Semantic similarity to detect topic alignment even with different words
     - Information density analysis for substantive responses
 
-    Based on MAST research (NeurIPS 2025): FM-1.4 Loss of Conversation History (12%)
+    Based on MAST research: FM-2.2 Context Neglect (Category 2: Execution Failures)
     """
 
     name = "TurnAwareContextNeglectDetector"
