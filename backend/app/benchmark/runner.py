@@ -165,8 +165,10 @@ class BenchmarkRunner:
         use_ml_detector: bool = True,
         use_llm_detector: bool = False,
         use_hybrid_detector: bool = False,
+        use_ml_llm_verification: bool = False,
         llm_model: str = "haiku",
         llm_modes: Optional[List[str]] = None,
+        verify_modes: Optional[List[str]] = None,
         max_llm_records: Optional[int] = None,
     ) -> BenchmarkResult:
         """Run full benchmark.
@@ -176,8 +178,10 @@ class BenchmarkRunner:
             use_ml_detector: Whether to use ML detector (requires training)
             use_llm_detector: Whether to use LLM detector for semantic modes
             use_hybrid_detector: Whether to use hybrid turn-aware + LLM detection
+            use_ml_llm_verification: Whether to use ML + LLM verification pipeline
             llm_model: LLM model to use ('haiku', 'sonnet', 'opus')
             llm_modes: Failure modes for LLM detection (default: F6,F8,F9,F13)
+            verify_modes: Modes to verify with LLM when using ML+LLM (default: F1,F3,F5,F7,F8,F12)
             max_llm_records: Maximum records for LLM detection (cost control)
 
         Returns:
@@ -254,6 +258,30 @@ class BenchmarkRunner:
             except Exception as e:
                 logger.error(f"Hybrid detection failed: {e}")
                 result.errors.append(f"Hybrid detection: {str(e)}")
+
+        # Run ML + LLM verification pipeline if enabled
+        # This overrides standard ML detection for specified modes
+        if use_ml_llm_verification:
+            logger.info("Running ML + LLM verification pipeline...")
+            try:
+                ml_llm_attempts = self._run_ml_with_llm_verification(
+                    records,
+                    modes=self.failure_modes,
+                    verify_modes=verify_modes,
+                    llm_model=llm_model,
+                )
+                # Replace previous ML attempts with ML+LLM results
+                # Remove existing attempts for modes covered by ML+LLM
+                covered_modes = set(a.failure_mode for a in ml_llm_attempts)
+                result.attempts = [
+                    a for a in result.attempts
+                    if a.failure_mode not in covered_modes
+                ]
+                result.attempts.extend(ml_llm_attempts)
+                logger.info(f"ML+LLM verification complete: {len(ml_llm_attempts)} attempts")
+            except Exception as e:
+                logger.error(f"ML+LLM verification failed: {e}")
+                result.errors.append(f"ML+LLM verification: {str(e)}")
 
         # Count detections
         result.total_detections = sum(1 for a in result.attempts if a.detected)
@@ -1361,3 +1389,335 @@ Respond in JSON format:
         result = self._ml_detector.train(train_data)
 
         return result
+
+    def _run_ml_with_llm_verification(
+        self,
+        records: List[MASTRecord],
+        modes: Optional[List[str]] = None,
+        verify_modes: Optional[List[str]] = None,
+        llm_model: str = "haiku",
+    ) -> List[DetectionAttempt]:
+        """Run ML + LLM verification pipeline.
+
+        Strategy: ML detects first (high recall) -> LLM verifies positives (filters FP)
+
+        This approach combines:
+        - ML detector: Fast, free, high recall (~85%)
+        - LLM verification: Filters false positives to improve precision
+        - Multi-provider LLM: Uses optimal model per failure mode (Gemini/Claude/OpenAI)
+
+        Modes with high FP rates (F1, F3, F5, F7, F8, F12) benefit most from
+        LLM verification.
+
+        Args:
+            records: List of MASTRecord to process
+            modes: Failure modes to detect (default: all)
+            verify_modes: Modes to verify with LLM (default: F1,F3,F5,F7,F8,F12)
+            llm_model: LLM model for verification (used as fallback, tier-based selection preferred)
+
+        Returns:
+            List of DetectionAttempt with ML detection + LLM verification
+        """
+        import os
+
+        # Default modes to verify (high FP rate from ML analysis)
+        VERIFY_MODES = verify_modes or ["F1", "F3", "F5", "F7", "F8", "F12"]
+        VERIFY_MODES = set(VERIFY_MODES)
+
+        # Use all modes if not specified
+        if modes is None:
+            modes = self.failure_modes
+        modes = [m for m in modes if m in self.failure_modes]
+
+        if not modes:
+            return []
+
+        # Check if ML detector is available and trained
+        if self._ml_detector is None:
+            try:
+                from app.detection_enterprise.ml_detector_v3 import MultiTaskDetector
+                self._ml_detector = MultiTaskDetector()
+            except ImportError:
+                logger.error("ML detector not available")
+                return []
+
+        if not self._ml_detector.is_trained:
+            logger.error("ML detector not trained, cannot run ML+LLM verification")
+            return []
+
+        # Check for any LLM API key (multi-provider support)
+        has_api_key = bool(
+            self._api_key or
+            os.getenv("ANTHROPIC_API_KEY") or
+            os.getenv("OPENAI_API_KEY") or
+            os.getenv("GOOGLE_API_KEY") or
+            os.getenv("GEMINI_API_KEY")
+        )
+
+        attempts = []
+        llm_queue = []  # Queue for LLM verification
+
+        # Phase 1: ML Detection (fast, free, high recall)
+        logger.info("Phase 1: Running ML detection...")
+        batch_input = [
+            {"trace": {"trajectory": r.trajectory}}
+            for r in records
+        ]
+
+        start_time = time.time()
+        try:
+            # predict_batch returns List[Dict[mode, bool]] or List[Dict[mode, Tuple[bool, float]]]
+            ml_results = self._ml_detector.predict_batch(batch_input)
+            ml_latency = (time.time() - start_time) * 1000 / len(records)
+        except Exception as e:
+            logger.error(f"ML detection failed: {e}")
+            return []
+
+        # Process ML results
+        for record, preds in zip(records, ml_results):
+            for mode in modes:
+                if mode not in preds:
+                    continue
+
+                pred = preds[mode]
+                # Handle both bool and tuple formats
+                if isinstance(pred, tuple):
+                    detected, confidence = pred
+                else:
+                    detected = bool(pred)
+                    confidence = 0.75 if detected else 0.25
+
+                # If ML detected AND mode benefits from verification
+                if detected and mode in VERIFY_MODES and has_api_key:
+                    # Queue for LLM verification
+                    llm_queue.append((record, mode, confidence, ml_latency))
+                else:
+                    # Accept ML result directly (high confidence modes or negatives)
+                    attempts.append(DetectionAttempt(
+                        record_id=record.trace_id,
+                        failure_mode=mode,
+                        detector_name="ml_direct",
+                        detected=detected,
+                        confidence=confidence,
+                        latency_ms=ml_latency,
+                    ))
+
+        logger.info(f"ML detection: {len(attempts)} direct, {len(llm_queue)} queued for LLM")
+
+        # Phase 2: LLM Verification of ML Positives (using multi-provider MASTLLMJudge)
+        if llm_queue:
+            if not has_api_key:
+                logger.warning("No API keys found, skipping LLM verification")
+                # Add queued items as ML-only results
+                for record, mode, confidence, latency in llm_queue:
+                    attempts.append(DetectionAttempt(
+                        record_id=record.trace_id,
+                        failure_mode=mode,
+                        detector_name="ml_no_llm_key",
+                        detected=True,
+                        confidence=confidence,
+                        latency_ms=latency,
+                    ))
+            else:
+                logger.info(f"Phase 2: LLM verification of {len(llm_queue)} ML positives (multi-provider)...")
+                try:
+                    verified_attempts = self._run_llm_verification_multiprovider(llm_queue)
+                    attempts.extend(verified_attempts)
+                except Exception as e:
+                    logger.error(f"LLM verification failed: {e}")
+                    # Fall back to ML-only results
+                    for record, mode, confidence, latency in llm_queue:
+                        attempts.append(DetectionAttempt(
+                            record_id=record.trace_id,
+                            failure_mode=mode,
+                            detector_name="ml_llm_failed",
+                            detected=True,
+                            confidence=confidence * 0.8,  # Discount for no verification
+                            latency_ms=latency,
+                        ))
+
+        return attempts
+
+    def _run_llm_verification_multiprovider(
+        self,
+        queue: List[Tuple[MASTRecord, str, float, float]],
+    ) -> List[DetectionAttempt]:
+        """Verify ML positives with LLM using multi-provider MASTLLMJudge.
+
+        Uses the 3-tier model selection:
+        - Tier 1 (Gemini Flash Lite): Low-stakes modes (F3, F7, F11, F12)
+        - Tier 2 (Sonnet 4 / O3): Default modes (F1, F5)
+        - Tier 3 (Sonnet 4 Thinking): High-stakes modes (F8)
+
+        Args:
+            queue: List of (record, mode, ml_confidence, ml_latency)
+
+        Returns:
+            List of DetectionAttempt with LLM-verified results
+        """
+        from app.detection.llm_judge import MASTLLMJudge, MASTFailureMode
+        from app.detection.llm_judge._models import get_model_for_failure_mode
+
+        attempts = []
+        total = len(queue)
+        processed = 0
+
+        # Group by failure mode for optimal model selection
+        by_mode: Dict[str, List[Tuple]] = {}
+        for item in queue:
+            record, mode, ml_confidence, ml_latency = item
+            if mode not in by_mode:
+                by_mode[mode] = []
+            by_mode[mode].append(item)
+
+        logger.info(f"LLM verification: {total} items across {len(by_mode)} modes")
+
+        # Process each mode with optimal model
+        for mode, items in by_mode.items():
+            # Get optimal model for this failure mode (3-tier selection)
+            # Using cost_optimized=False to avoid slow O3, use faster Gemini/Claude
+            model_key = get_model_for_failure_mode(mode, cost_optimized=False)
+            logger.info(f"  {mode}: {len(items)} items using {model_key}")
+
+            # Create judge with optimal model
+            try:
+                judge = MASTLLMJudge(
+                    model_key=model_key,
+                    cache_enabled=True,
+                    rag_enabled=False,  # Skip RAG for verification (faster)
+                    use_openai_fallback=True,
+                )
+            except Exception as e:
+                logger.error(f"Failed to create judge for {mode}: {e}")
+                # Fall back to ML results
+                for record, _, ml_confidence, ml_latency in items:
+                    attempts.append(DetectionAttempt(
+                        record_id=record.trace_id,
+                        failure_mode=mode,
+                        detector_name="ml_llm_init_error",
+                        detected=True,
+                        confidence=ml_confidence * 0.8,
+                        latency_ms=ml_latency,
+                        error=str(e),
+                    ))
+                continue
+
+            # Get failure mode enum
+            try:
+                failure_mode_enum = MASTFailureMode(mode)
+            except ValueError:
+                logger.warning(f"Unknown failure mode: {mode}")
+                continue
+
+            # Verify each item
+            for record, _, ml_confidence, ml_latency in items:
+                start_time = time.time()
+                try:
+                    # Use MASTLLMJudge for evaluation
+                    result = judge.evaluate(
+                        failure_mode=failure_mode_enum,
+                        task=record.task[:1000],
+                        trace_summary=record.trajectory[:5000],
+                        key_events=[],
+                        full_conversation=record.trajectory[:40000],
+                    )
+
+                    llm_latency = result.latency_ms
+
+                    # Combine ML and LLM results
+                    if result.verdict == "YES":
+                        # LLM confirmed: boost confidence
+                        final_detected = True
+                        final_confidence = min(0.95, ml_confidence + 0.15)
+                        detector_name = f"ml_llm_confirmed_{model_key}"
+                    elif result.verdict == "NO":
+                        # LLM rejected: filter false positive
+                        final_detected = False
+                        final_confidence = max(0.05, ml_confidence - 0.4)
+                        detector_name = f"ml_llm_filtered_{model_key}"
+                    else:
+                        # Uncertain: use ML result with slight discount
+                        final_detected = True
+                        final_confidence = ml_confidence * 0.9
+                        detector_name = f"ml_llm_uncertain_{model_key}"
+
+                    attempts.append(DetectionAttempt(
+                        record_id=record.trace_id,
+                        failure_mode=mode,
+                        detector_name=detector_name,
+                        detected=final_detected,
+                        confidence=final_confidence,
+                        latency_ms=ml_latency + llm_latency,
+                        raw_result={
+                            "llm_verdict": result.verdict,
+                            "llm_confidence": result.confidence,
+                            "llm_cost": result.cost_usd,
+                            "model": result.model_used,
+                            "provider": getattr(result, 'provider', 'unknown'),
+                            "reasoning": result.reasoning[:200] if result.reasoning else "",
+                        },
+                    ))
+
+                except Exception as e:
+                    llm_latency = (time.time() - start_time) * 1000
+                    logger.warning(f"LLM verification failed for {record.trace_id}/{mode}: {e}")
+                    # Fall back to ML result
+                    attempts.append(DetectionAttempt(
+                        record_id=record.trace_id,
+                        failure_mode=mode,
+                        detector_name="ml_llm_error",
+                        detected=True,
+                        confidence=ml_confidence * 0.85,
+                        latency_ms=ml_latency + llm_latency,
+                        error=str(e),
+                    ))
+
+                processed += 1
+                if processed % 50 == 0:
+                    logger.info(f"  Progress: {processed}/{total}")
+
+        return attempts
+
+    def _build_verification_prompt(self, record: MASTRecord, mode: str) -> str:
+        """Build compact prompt for LLM verification of ML detection.
+
+        This prompt is designed to be:
+        - Focused: Only verify this specific failure mode
+        - Compact: Minimize tokens while providing enough context
+        - Binary: Request clear YES/NO verdict
+        """
+        mode_name = FAILURE_MODE_NAMES.get(mode, mode)
+
+        # Mode-specific verification questions
+        mode_questions = {
+            "F1": "Does the agent misunderstand or incorrectly implement the task requirements?",
+            "F3": "Does the agent encounter resource limitations, timeouts, or capacity issues?",
+            "F5": "Does the agent get stuck in a loop, repeating the same actions without progress?",
+            "F7": "Does the agent ignore or forget important context from earlier in the conversation?",
+            "F8": "Does the agent fail to share or communicate important information?",
+            "F12": "Does the agent produce incorrect output or fail to validate its results?",
+        }
+        question = mode_questions.get(mode, f"Does this trace exhibit {mode} ({mode_name})?")
+
+        # Truncate trajectory for verification (shorter than full evaluation)
+        trajectory = record.trajectory[:40000]
+
+        prompt = f"""You are verifying an ML detector's prediction for failure mode {mode} ({mode_name}).
+
+The ML model predicted this trace has {mode}. Your task is to verify: {question}
+
+**Task:** {record.task[:500]}
+
+**Trace (truncated):**
+```
+{trajectory}
+```
+
+Does this trace exhibit {mode} ({mode_name})?
+
+Respond in JSON:
+```json
+{{"verdict": "YES" or "NO", "confidence": 0.0-1.0, "reasoning": "brief explanation"}}
+```
+"""
+        return prompt

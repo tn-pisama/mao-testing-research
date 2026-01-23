@@ -107,6 +107,16 @@ def cli():
     help="Use hybrid turn-aware + LLM detection for semantic modes (F6,F8,F9,F13)",
 )
 @click.option(
+    "--ml-llm/--no-ml-llm",
+    default=False,
+    help="Use ML + LLM verification (ML detects, LLM verifies positives)",
+)
+@click.option(
+    "--verify-modes",
+    default="F1,F3,F5,F7,F8,F12",
+    help="Comma-separated modes for LLM verification with --ml-llm (default: F1,F3,F5,F7,F8,F12)",
+)
+@click.option(
     "--api-key",
     envvar="ANTHROPIC_API_KEY",
     help="Anthropic API key for LLM/hybrid detection",
@@ -131,6 +141,8 @@ def run(
     llm_modes: Optional[str],
     max_llm_records: Optional[int],
     hybrid: bool,
+    ml_llm: bool,
+    verify_modes: str,
     api_key: Optional[str],
     verbose: bool,
 ):
@@ -150,6 +162,12 @@ def run(
 
         # Cost-controlled LLM run
         python -m app.benchmark.cli run data.jsonl --no-ml --llm --max-llm-records 50
+
+        # ML + LLM verification (train first, then verify ML positives with LLM)
+        python -m app.benchmark.cli run data.jsonl --train --ml-llm -o ml_llm_report.md
+
+        # ML + LLM verification with specific verify modes
+        python -m app.benchmark.cli run data.jsonl --train --ml-llm --verify-modes F7,F8,F12
     """
     setup_logging(verbose)
 
@@ -221,13 +239,27 @@ def run(
         click.echo(f"  Modes: {llm_modes_list or ['F6', 'F8', 'F9', 'F13']}")
         click.echo(f"  API key: {'set' if api_key else 'NOT SET (turn-aware only)'}")
 
+    # Parse verify modes for ML+LLM
+    verify_modes_list = None
+    if verify_modes:
+        verify_modes_list = [m.strip().upper() for m in verify_modes.split(",")]
+
+    # Show ML+LLM verification info
+    if ml_llm:
+        click.echo(f"ML + LLM verification enabled")
+        click.echo(f"  Verify modes: {verify_modes_list or ['F1', 'F3', 'F5', 'F7', 'F8', 'F12']}")
+        click.echo(f"  LLM model: {llm_model}")
+        click.echo(f"  API key: {'set' if api_key else 'NOT SET (ML only)'}")
+
     result = runner.run(
         progress_callback=progress_callback,
         use_ml_detector=use_ml,
         use_llm_detector=llm,
         use_hybrid_detector=hybrid,
+        use_ml_llm_verification=ml_llm,
         llm_model=llm_model,
         llm_modes=llm_modes_list,
+        verify_modes=verify_modes_list,
         max_llm_records=max_llm_records,
     )
     click.echo()  # Newline after progress
