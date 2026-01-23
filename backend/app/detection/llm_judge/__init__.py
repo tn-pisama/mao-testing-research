@@ -28,6 +28,13 @@ from ._dataclasses import (
 
 # Model configuration and selection
 from ._models import (
+    # Multi-provider support
+    MODELS,
+    ModelConfig,
+    ModelProvider,
+    get_model_config,
+    get_recommended_models_by_tier,
+    # Legacy backward compatibility
     CLAUDE_MODELS,
     LOW_STAKES_MODEL_KEY,
     DEFAULT_MODEL_KEY,
@@ -57,7 +64,13 @@ __all__ = [
     "JudgmentResult",
     "JudgeCostTracker",
     "ClaudeModelConfig",
-    # Model configuration
+    # Multi-provider model configuration
+    "MODELS",
+    "ModelConfig",
+    "ModelProvider",
+    "get_model_config",
+    "get_recommended_models_by_tier",
+    # Legacy model configuration
     "CLAUDE_MODELS",
     "LOW_STAKES_MODEL_KEY",
     "DEFAULT_MODEL_KEY",

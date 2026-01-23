@@ -20,6 +20,12 @@ from anthropic import Anthropic, APIError, RateLimitError, APITimeoutError
 from ._enums import MASTFailureMode
 from ._dataclasses import JudgmentResult, ClaudeModelConfig
 from ._models import (
+    # Multi-provider support (primary)
+    MODELS,
+    ModelConfig,
+    ModelProvider,
+    get_model_config,
+    # Legacy backward compatibility
     CLAUDE_MODELS,
     DEFAULT_MODEL_KEY,
     get_cost_tracker,
@@ -77,6 +83,7 @@ class MASTLLMJudge:
         self,
         api_key: Optional[str] = None,
         openai_api_key: Optional[str] = None,
+        google_api_key: Optional[str] = None,
         cache_enabled: bool = True,
         max_cache_size: int = 1000,
         rag_enabled: bool = True,
@@ -85,13 +92,44 @@ class MASTLLMJudge:
         use_openai_fallback: bool = True,
         model_key: str = DEFAULT_MODEL_KEY,
     ):
-        # Model configuration
-        if model_key not in CLAUDE_MODELS:
-            raise ValueError(
-                f"Unknown model_key '{model_key}'. Available: {list(CLAUDE_MODELS.keys())}"
-            )
+        # Model configuration - try multi-provider first, fallback to Claude-only
         self.model_key = model_key
-        self.model_config = CLAUDE_MODELS[model_key]
+
+        if model_key in MODELS:
+            # Use new multi-provider registry
+            self._multi_provider_config = get_model_config(model_key)
+            self._provider = self._multi_provider_config.provider
+
+            # Create backward-compatible ClaudeModelConfig view
+            self.model_config = ClaudeModelConfig(
+                model_id=self._multi_provider_config.model_id,
+                input_price_per_1m=self._multi_provider_config.input_price_per_1m,
+                output_price_per_1m=self._multi_provider_config.output_price_per_1m,
+                thinking_price_per_1m=self._multi_provider_config.thinking_price_per_1m,
+                use_extended_thinking=self._multi_provider_config.supports_thinking and "thinking" in model_key,
+                thinking_budget=self._multi_provider_config.thinking_budget,
+                context_window=self._multi_provider_config.context_window,
+            )
+        elif model_key in CLAUDE_MODELS:
+            # Backward compatibility with legacy Claude-only config
+            self.model_config = CLAUDE_MODELS[model_key]
+            self._multi_provider_config = ModelConfig(
+                model_id=self.model_config.model_id,
+                provider=ModelProvider.ANTHROPIC,
+                input_price_per_1m=self.model_config.input_price_per_1m,
+                output_price_per_1m=self.model_config.output_price_per_1m,
+                thinking_price_per_1m=self.model_config.thinking_price_per_1m,
+                supports_thinking=self.model_config.use_extended_thinking,
+                thinking_budget=self.model_config.thinking_budget,
+                context_window=self.model_config.context_window,
+            )
+            self._provider = ModelProvider.ANTHROPIC
+        else:
+            raise ValueError(
+                f"Unknown model_key '{model_key}'. "
+                f"Available multi-provider: {list(MODELS.keys())}, "
+                f"Legacy Claude: {list(CLAUDE_MODELS.keys())}"
+            )
 
         # For backward compatibility, expose MODEL as instance attribute
         self.MODEL = self.model_config.model_id
@@ -100,6 +138,7 @@ class MASTLLMJudge:
 
         self._api_key = api_key
         self._openai_api_key = openai_api_key
+        self._google_api_key = google_api_key
         self.cache_enabled = cache_enabled
         self._cache: Dict[str, JudgmentResult] = {}
         self._max_cache_size = max_cache_size
@@ -128,6 +167,13 @@ class MASTLLMJudge:
         if self._openai_api_key:
             return self._openai_api_key
         return os.getenv("OPENAI_API_KEY", "")
+
+    @property
+    def google_api_key(self) -> str:
+        """Get Google API key from explicit setting or environment."""
+        if self._google_api_key:
+            return self._google_api_key
+        return os.getenv("GOOGLE_API_KEY", os.getenv("GEMINI_API_KEY", ""))
 
     @property
     def anthropic_client(self) -> Anthropic:
@@ -459,10 +505,16 @@ Important guidelines:
         input_tokens: int,
         output_tokens: int,
         is_openai: bool = False,
+        is_gemini: bool = False,
         thinking_tokens: int = 0,
     ) -> float:
         """Calculate cost in USD including thinking tokens for extended thinking."""
-        if is_openai:
+        if is_gemini or self._provider == ModelProvider.GOOGLE:
+            # Use multi-provider config for Gemini
+            input_cost = (input_tokens / 1_000_000) * self._multi_provider_config.input_price_per_1m
+            output_cost = (output_tokens / 1_000_000) * self._multi_provider_config.output_price_per_1m
+            thinking_cost = 0.0
+        elif is_openai:
             input_cost = (input_tokens / 1_000_000) * self.OPENAI_INPUT_PRICE_PER_1M
             output_cost = (output_tokens / 1_000_000) * self.OPENAI_OUTPUT_PRICE_PER_1M
             thinking_cost = 0.0
@@ -552,6 +604,149 @@ Important guidelines:
                 raise
 
         raise Exception(f"OpenAI API failed after {max_retries} retries")
+
+    def _call_gemini(
+        self,
+        prompt: str,
+        timeout: float = 60.0,
+        max_retries: int = 3,
+    ) -> Tuple[str, int, int, float]:
+        """Call Google Gemini API with retry logic.
+
+        Returns:
+            Tuple of (content, input_tokens, output_tokens, latency_ms)
+
+        Raises:
+            Exception if API call fails after retries
+        """
+        start_time = time.time()
+
+        url = f"https://generativelanguage.googleapis.com/v1beta/models/{self.MODEL}:generateContent"
+
+        for attempt in range(max_retries):
+            try:
+                with httpx.Client(timeout=timeout) as client:
+                    response = client.post(
+                        f"{url}?key={self.google_api_key}",
+                        headers={"Content-Type": "application/json"},
+                        json={
+                            "contents": [{"parts": [{"text": prompt}]}],
+                            "generationConfig": {
+                                "maxOutputTokens": 1000,
+                                "temperature": 0.3,
+                            },
+                            "safetySettings": [
+                                {"category": "HARM_CATEGORY_DANGEROUS_CONTENT", "threshold": "BLOCK_NONE"},
+                                {"category": "HARM_CATEGORY_HARASSMENT", "threshold": "BLOCK_NONE"},
+                                {"category": "HARM_CATEGORY_HATE_SPEECH", "threshold": "BLOCK_NONE"},
+                                {"category": "HARM_CATEGORY_SEXUALLY_EXPLICIT", "threshold": "BLOCK_NONE"},
+                            ]
+                        },
+                    )
+
+                    latency_ms = int((time.time() - start_time) * 1000)
+
+                    if response.status_code == 429:
+                        # Rate limited
+                        wait_time = (2 ** attempt) * 2
+                        logger.warning(f"Gemini rate limit (attempt {attempt + 1}/{max_retries}), waiting {wait_time}s")
+                        time.sleep(wait_time)
+                        continue
+
+                    if response.status_code != 200:
+                        raise Exception(f"Gemini API error: {response.status_code} - {response.text[:200]}")
+
+                    data = response.json()
+
+                    # Handle potential safety blocks
+                    if "candidates" not in data or not data["candidates"]:
+                        block_reason = data.get("promptFeedback", {}).get("blockReason", "unknown")
+                        raise Exception(f"Gemini blocked response: {block_reason}")
+
+                    content = data["candidates"][0]["content"]["parts"][0]["text"]
+
+                    # Gemini provides usage metadata (sometimes)
+                    usage = data.get("usageMetadata", {})
+                    input_tokens = usage.get("promptTokenCount", len(prompt) // 4)
+                    output_tokens = usage.get("candidatesTokenCount", len(content) // 4)
+
+                    return content, input_tokens, output_tokens, latency_ms
+
+            except httpx.TimeoutException:
+                if attempt < max_retries - 1:
+                    wait_time = (2 ** attempt) * 2
+                    logger.warning(f"Gemini timeout (attempt {attempt + 1}/{max_retries}), retrying in {wait_time}s")
+                    time.sleep(wait_time)
+                    continue
+                raise
+
+        raise Exception(f"Gemini API failed after {max_retries} retries")
+
+    def _call_claude(
+        self,
+        prompt: str,
+        timeout: float = 60.0,
+    ) -> Tuple[str, int, int, int, float, str]:
+        """Call Anthropic Claude API using official SDK.
+
+        Returns:
+            Tuple of (content, input_tokens, output_tokens, thinking_tokens, latency_ms, thinking_content)
+
+        Raises:
+            Various Anthropic API exceptions
+        """
+        start_time = time.time()
+
+        # Build messages
+        messages = [{"role": "user", "content": prompt}]
+        system_prompt = "You are an expert evaluator of AI agent behavior. Always respond with valid JSON."
+
+        # For extended thinking, prepend system context to user message
+        if self.model_config.use_extended_thinking:
+            messages[0]["content"] = system_prompt + "\n\n" + prompt
+            system_prompt = None
+
+        # Build API call parameters
+        api_params = {
+            "model": self.MODEL,
+            "max_tokens": 16000 if self.model_config.use_extended_thinking else 1000,
+            "messages": messages,
+        }
+
+        if system_prompt:
+            api_params["system"] = system_prompt
+
+        if self.model_config.use_extended_thinking:
+            api_params["thinking"] = {
+                "type": "enabled",
+                "budget_tokens": self.model_config.thinking_budget,
+            }
+
+        # Call Claude API
+        response = self.anthropic_client.messages.create(**api_params)
+
+        latency_ms = int((time.time() - start_time) * 1000)
+
+        # Extract content
+        content = ""
+        thinking_content = ""
+        for block in response.content:
+            if block.type == "thinking":
+                thinking_content = block.thinking
+            elif block.type == "text":
+                content = block.text
+
+        # Token usage
+        input_tokens = response.usage.input_tokens
+        output_tokens = response.usage.output_tokens
+        thinking_tokens = 0
+
+        if self.model_config.use_extended_thinking:
+            thinking_tokens = getattr(response.usage, 'cache_creation_input_tokens', 0) or 0
+            if thinking_tokens == 0:
+                thinking_tokens = len(thinking_content) // 4 if thinking_content else 0
+
+        return content, input_tokens, output_tokens, thinking_tokens, latency_ms, thinking_content
 
     def _parse_response(self, content: str, failure_mode: MASTFailureMode) -> Tuple[str, float, str]:
         """Parse LLM response into verdict, confidence, reasoning.
@@ -738,73 +933,34 @@ Important guidelines:
             knowledge_context=knowledge_context,
         )
 
-        # Try Claude API first using official Anthropic SDK
+        # Try primary provider based on model config
         start_time = time.time()
         use_fallback = False
-        claude_error = None
+        primary_error = None
+        thinking_content = ""
 
         try:
-            # Build messages
-            messages = [{"role": "user", "content": prompt}]
+            if self._provider == ModelProvider.GOOGLE:
+                # Call Gemini
+                content, input_tokens, output_tokens, latency_ms = self._call_gemini(prompt, timeout)
+                thinking_tokens = 0
 
-            # Prepare system prompt
-            system_prompt = "You are an expert evaluator of AI agent behavior. Always respond with valid JSON."
+            elif self._provider == ModelProvider.OPENAI:
+                # Call OpenAI
+                content, input_tokens, output_tokens, latency_ms = self._call_openai(prompt, timeout)
+                thinking_tokens = 0
 
-            # For extended thinking, prepend system context to user message
-            if self.model_config.use_extended_thinking:
-                messages[0]["content"] = system_prompt + "\n\n" + prompt
-                system_prompt = None  # Don't use separate system param with extended thinking
-
-            # Build API call parameters
-            api_params = {
-                "model": self.MODEL,
-                "max_tokens": 16000 if self.model_config.use_extended_thinking else 1000,
-                "messages": messages,
-            }
-
-            # Add system prompt if not using extended thinking
-            if system_prompt:
-                api_params["system"] = system_prompt
-
-            # Add extended thinking configuration
-            if self.model_config.use_extended_thinking:
-                api_params["thinking"] = {
-                    "type": "enabled",
-                    "budget_tokens": self.model_config.thinking_budget,
-                }
-
-            # Call Claude API using SDK
-            response = self.anthropic_client.messages.create(**api_params)
-
-            latency_ms = int((time.time() - start_time) * 1000)
-
-            # Extract content - handle extended thinking response format
-            content = ""
-            thinking_content = ""
-            for block in response.content:
-                if block.type == "thinking":
-                    thinking_content = block.thinking
-                elif block.type == "text":
-                    content = block.text
-
-            # Extract token usage (SDK provides typed objects)
-            input_tokens = response.usage.input_tokens
-            output_tokens = response.usage.output_tokens
-            thinking_tokens = 0
-
-            # Extended thinking has separate thinking token count
-            if self.model_config.use_extended_thinking:
-                # Check for cache_creation_input_tokens in usage
-                thinking_tokens = getattr(response.usage, 'cache_creation_input_tokens', 0) or 0
-                if thinking_tokens == 0:
-                    # Estimate from thinking content if not reported
-                    thinking_tokens = len(thinking_content) // 4 if thinking_content else 0
+            else:  # ModelProvider.ANTHROPIC
+                # Call Claude
+                content, input_tokens, output_tokens, thinking_tokens, latency_ms, thinking_content = self._call_claude(prompt, timeout)
 
             total_tokens = input_tokens + output_tokens + thinking_tokens
 
-            # Calculate cost including thinking tokens
+            # Calculate cost
             cost = self._calculate_cost(
                 input_tokens, output_tokens,
+                is_openai=(self._provider == ModelProvider.OPENAI),
+                is_gemini=(self._provider == ModelProvider.GOOGLE),
                 thinking_tokens=thinking_tokens
             )
 
@@ -826,6 +982,7 @@ Important guidelines:
                 cost_usd=cost,
                 cached=False,
                 latency_ms=latency_ms,
+                provider=self._provider.value,  # Set provider
             )
 
             # Cache result
@@ -836,27 +993,27 @@ Important guidelines:
 
             thinking_info = f", thinking={thinking_tokens}" if thinking_tokens else ""
             logger.info(
-                f"MAST Judge ({self.model_key}): {failure_mode.value} -> {verdict} "
+                f"MAST Judge ({self.model_key}, {self._provider.value}): {failure_mode.value} -> {verdict} "
                 f"(conf={confidence:.2f}, tokens={total_tokens}{thinking_info}, cost=${cost:.4f})"
             )
 
             return result
 
         except RateLimitError as e:
-            claude_error = f"Claude API rate limit: {str(e)}"
-            logger.warning(claude_error)
+            primary_error = f"{self._provider.value} API rate limit: {str(e)}"
+            logger.warning(primary_error)
             use_fallback = True
         except APITimeoutError as e:
-            claude_error = f"Claude API timeout: {str(e)}"
-            logger.warning(claude_error)
+            primary_error = f"{self._provider.value} API timeout: {str(e)}"
+            logger.warning(primary_error)
             use_fallback = True
         except APIError as e:
-            claude_error = f"Claude API error: {str(e)}"
-            logger.warning(claude_error)
+            primary_error = f"{self._provider.value} API error: {str(e)}"
+            logger.warning(primary_error)
             use_fallback = True
         except Exception as e:
-            claude_error = f"Claude API exception: {str(e)}"
-            logger.warning(claude_error)
+            primary_error = f"{self._provider.value} API exception: {str(e)}"
+            logger.warning(primary_error)
             use_fallback = True
 
         # Fallback to OpenAI GPT-4 if Claude fails
@@ -890,7 +1047,7 @@ Important guidelines:
                 get_cost_tracker().record(result)
 
                 logger.info(
-                    f"MAST Judge (OpenAI): {failure_mode.value} -> {verdict} "
+                    f"MAST Judge (OpenAI fallback): {failure_mode.value} -> {verdict} "
                     f"(conf={confidence:.2f}, tokens={total_tokens}, cost=${cost:.4f})"
                 )
 
@@ -902,13 +1059,14 @@ Important guidelines:
                     failure_mode=failure_mode,
                     verdict="UNCERTAIN",
                     confidence=0.0,
-                    reasoning=f"Both Claude and OpenAI APIs failed. Claude: {claude_error}. OpenAI: {str(e)}",
+                    reasoning=f"Both primary and OpenAI APIs failed. Primary ({self._provider.value}): {primary_error}. OpenAI: {str(e)}",
                     raw_response="",
                     model_used="none",
                     tokens_used=0,
                     cost_usd=0.0,
                     cached=False,
                     latency_ms=0,
+                    provider="none",
                 )
 
         # No fallback available
@@ -916,13 +1074,14 @@ Important guidelines:
             failure_mode=failure_mode,
             verdict="UNCERTAIN",
             confidence=0.0,
-            reasoning=f"API error: {claude_error}",
+            reasoning=f"API error ({self._provider.value}): {primary_error}",
             raw_response="",
             model_used=self.MODEL,
             tokens_used=0,
             cost_usd=0.0,
             cached=False,
             latency_ms=int((time.time() - start_time) * 1000),
+            provider=self._provider.value,
         )
 
     def evaluate_batch(

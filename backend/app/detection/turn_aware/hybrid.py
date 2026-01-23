@@ -1505,13 +1505,13 @@ class LLMOutputValidationDetector:
     """
 
     name = "LLMOutputValidationDetector"
-    version = "1.0"
+    version = "1.1"  # v1.1: Lower confidence threshold, count UNCERTAIN as positive
     supported_failure_modes = ["F12"]
 
     def __init__(
         self,
         api_key: Optional[str] = None,
-        confidence_threshold: float = 0.6,
+        confidence_threshold: float = 0.5,  # Lowered from 0.6 for better recall
     ):
         self.api_key = api_key
         self.confidence_threshold = confidence_threshold
@@ -1652,7 +1652,11 @@ class LLMOutputValidationDetector:
             )
 
         # Convert LLM verdict to detection result
-        detected = result.verdict == "YES" and result.confidence >= self.confidence_threshold
+        # F12 is subtle - count YES and UNCERTAIN (with moderate confidence) as positive
+        # This improves recall for the nuanced F12 cases
+        is_yes = result.verdict == "YES" and result.confidence >= self.confidence_threshold
+        is_uncertain_positive = result.verdict == "UNCERTAIN" and result.confidence >= 0.55
+        detected = is_yes or is_uncertain_positive
 
         if detected:
             if result.confidence >= 0.85:
