@@ -306,6 +306,12 @@ class N8nSyncResponse(BaseModel):
     errors: List[str] = Field(default_factory=list)
 
 
+class N8nSyncStatusResponse(BaseModel):
+    auto_sync_enabled: bool
+    sync_interval_minutes: int
+    n8n_configured: bool
+
+
 @router.post("/sync", response_model=N8nSyncResponse)
 async def sync_n8n_executions(
     request_data: N8nSyncRequest,
@@ -425,4 +431,34 @@ async def sync_n8n_executions(
         synced_count=synced_count,
         traces_created=traces_created,
         errors=errors,
+    )
+
+
+@router.get("/sync/status", response_model=N8nSyncStatusResponse)
+async def get_sync_status(
+    tenant_id: str = Depends(get_current_tenant),
+    db: AsyncSession = Depends(get_db),
+):
+    """
+    Get the current n8n sync status and configuration.
+
+    Returns information about auto-sync configuration, including whether
+    n8n is configured, the sync interval, and if auto-sync is enabled.
+    """
+    import os
+
+    await set_tenant_context(db, tenant_id)
+
+    # Get tenant settings
+    result = await db.execute(
+        select(Tenant).where(Tenant.id == UUID(tenant_id))
+    )
+    tenant = result.scalar_one_or_none()
+
+    settings = tenant.settings if tenant else {}
+
+    return N8nSyncStatusResponse(
+        auto_sync_enabled=settings.get("n8n_auto_sync_enabled", True),
+        sync_interval_minutes=int(os.getenv("N8N_SYNC_INTERVAL_MINUTES", "5")),
+        n8n_configured=bool(os.getenv("N8N_HOST") and os.getenv("N8N_API_KEY")),
     )

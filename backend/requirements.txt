@@ -28,3 +28,4 @@ testcontainers[postgres]==3.7.1
 locust==2.21.0
 bandit==1.7.7
 safety==2.3.5
+apscheduler==3.10.4

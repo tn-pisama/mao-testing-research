@@ -50,8 +50,15 @@ def validate_cors_origins(origins: list[str], allow_credentials: bool) -> list[s
 
 @asynccontextmanager
 async def lifespan(app: FastAPI):
+    # Start background scheduler for n8n sync
+    from app.workers.scheduler import start_scheduler, stop_scheduler
+    await start_scheduler()
+
     # Embedding model is lazy-loaded on first use to speed up startup
     yield
+
+    # Cleanup
+    await stop_scheduler()
     await rate_limiter.close()
 
 
