@@ -393,6 +393,8 @@ class BenchmarkRunner:
                 "resource", "memory", "timeout", "limit", "exceed",
                 "out of memory", "rate limit", "quota", "capacity",
                 "too many", "maximum", "exceeded",
+                # Added high-precision patterns only
+                "insufficient", "inefficient",
             ],
             "F4": [
                 "tool not found", "no such", "undefined function",
@@ -454,6 +456,7 @@ class BenchmarkRunner:
         # Run turn-aware detection for semantic modes (unless skipped for LLM)
         # NOTE: F11 excluded - turn-aware detection performs worse than keyword matching (tested 2026-01-23)
         # NOTE: F12 excluded - hybrid/LLM detection performs worse than keyword matching
+        # NOTE: F13 excluded - turn-aware detection performs worse than keyword matching (tested 2026-01-23, F1=0.000 vs 0.308)
         turn_aware_modes = {"F6", "F7", "F8", "F9", "F10"}  # Modes handled by turn-aware detectors
         modes_to_run = [m for m in turn_aware_modes if m not in skip_modes]
         if modes_to_run:
@@ -523,6 +526,7 @@ class BenchmarkRunner:
             from app.detection.turn_aware.role_usurpation import TurnAwareRoleUsurpationDetector
             from app.detection.turn_aware.hybrid import HybridOutputValidationDetector
             from app.detection.turn_aware.hybrid import HybridCommunicationBreakdownDetector
+            from app.detection.turn_aware.quality_gate import TurnAwareQualityGateBypassDetector
         except ImportError as e:
             logger.warning(f"Turn-aware detector import failed: {e}")
             return attempts
@@ -543,6 +547,9 @@ class BenchmarkRunner:
             detectors["F10"] = ("hybrid_communication_breakdown", HybridCommunicationBreakdownDetector())
         if "F12" in modes:
             detectors["F12"] = ("hybrid_output_validation", HybridOutputValidationDetector())
+        if "F13" in modes:
+            # Default min_issues=1 for recall
+            detectors["F13"] = ("turn_aware_quality_gate", TurnAwareQualityGateBypassDetector(min_issues_to_flag=1))
 
         for record in records:
             start_time = time.time()
@@ -627,6 +634,16 @@ class BenchmarkRunner:
                         }
                         result = detector.detect(turns=turns, conversation_metadata=metadata)
                         detector_name = "hybrid_output_validation"
+
+                    elif mode == "F13":
+                        # Quality gate bypass detector
+                        detector = detectors["F13"][1]
+                        metadata = {
+                            "task_description": record.task,
+                            "framework": record.framework,
+                        }
+                        result = detector.detect(turns=turns, conversation_metadata=metadata)
+                        detector_name = "turn_aware_quality_gate"
                     else:
                         continue
 
