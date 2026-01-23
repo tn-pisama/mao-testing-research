@@ -3,9 +3,12 @@
 export const dynamic = 'force-dynamic'
 
 import { useState, useEffect, useCallback } from 'react'
-import { CheckCircle2, XCircle, HelpCircle, SkipForward, Filter, ChevronLeft, ChevronRight } from 'lucide-react'
+import { useSafeAuth as useAuth } from '@/hooks/useSafeAuth'
+import { useTenant } from '@/hooks/useTenant'
+import { CheckCircle2, XCircle, HelpCircle, SkipForward, Filter, ChevronLeft, ChevronRight, AlertCircle } from 'lucide-react'
 import { Layout } from '@/components/common/Layout'
 import { Button } from '@/components/ui/Button'
+import { createApiClient, Detection as ApiDetection } from '@/lib/api'
 
 interface Detection {
   id: string
@@ -16,55 +19,42 @@ interface Detection {
   confidence: number
 }
 
-const DEMO_DETECTIONS: Detection[] = [
-  {
-    id: 'det-001',
-    type: 'infinite_loop',
-    traceId: 'trace-abc123',
-    agentType: 'LangChain ReAct',
-    pattern: 'search_tool called 8 times with query "meaning of life"',
-    confidence: 94.2
-  },
-  {
-    id: 'det-002',
-    type: 'state_corruption',
-    traceId: 'trace-def456',
-    agentType: 'CrewAI Research Crew',
-    pattern: 'state.balance changed from 1000 to -999999 without transaction',
-    confidence: 87.5
-  },
-  {
-    id: 'det-003',
-    type: 'persona_drift',
-    traceId: 'trace-ghi789',
-    agentType: 'AutoGen Assistant',
-    pattern: 'researcher agent started writing poetry instead of analyzing data',
-    confidence: 72.3
-  },
-  {
-    id: 'det-004',
-    type: 'deadlock',
-    traceId: 'trace-jkl012',
-    agentType: 'CrewAI Writer Crew',
-    pattern: 'agent_a waiting for agent_b, agent_b waiting for agent_a',
-    confidence: 91.8
-  },
-]
-
 export default function ReviewPage() {
+  const { getToken } = useAuth()
+  const { tenantId } = useTenant()
   const [detections, setDetections] = useState<Detection[]>([])
   const [currentIndex, setCurrentIndex] = useState(0)
   const [filter, setFilter] = useState('all')
   const [reviewed, setReviewed] = useState(0)
   const [showFeedback, setShowFeedback] = useState<string | null>(null)
   const [isLoading, setIsLoading] = useState(true)
+  const [error, setError] = useState<string | null>(null)
+
+  const loadDetections = useCallback(async () => {
+    setIsLoading(true)
+    setError(null)
+    try {
+      const token = await getToken()
+      const api = createApiClient(token, tenantId)
+      const data = await api.getDetections({ perPage: 50, page: 1, type: filter === 'all' ? undefined : filter })
+      setDetections(data.map((d: ApiDetection) => ({
+        id: d.id,
+        type: d.detection_type,
+        traceId: d.trace_id,
+        agentType: d.method,
+        pattern: d.explanation || d.detection_type,
+        confidence: d.confidence * 100
+      })))
+    } catch (err) {
+      console.error('Failed to load detections:', err)
+      setError('Failed to load detections for review.')
+    }
+    setIsLoading(false)
+  }, [getToken, tenantId, filter])
 
   useEffect(() => {
-    setTimeout(() => {
-      setDetections(DEMO_DETECTIONS)
-      setIsLoading(false)
-    }, 500)
-  }, [])
+    loadDetections()
+  }, [loadDetections])
 
   const current = detections[currentIndex]
   const pending = detections.length - reviewed
@@ -116,6 +106,19 @@ export default function ReviewPage() {
         <div className="p-6 animate-pulse">
           <div className="h-8 w-64 bg-slate-700 rounded mb-6" />
           <div className="h-64 bg-slate-700 rounded-xl" />
+        </div>
+      </Layout>
+    )
+  }
+
+  if (error) {
+    return (
+      <Layout>
+        <div className="p-6 flex flex-col items-center justify-center h-[60vh]">
+          <AlertCircle className="text-red-400 mb-4" size={64} />
+          <h2 className="text-xl font-semibold text-white mb-2">Failed to load detections</h2>
+          <p className="text-slate-400 mb-4">{error}</p>
+          <Button onClick={loadDetections}>Try Again</Button>
         </div>
       </Layout>
     )

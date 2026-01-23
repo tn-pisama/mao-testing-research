@@ -320,9 +320,9 @@ function ConfigureModal({ integrationId, integration, onClose }: ConfigureModalP
   }
 
   return (
-    <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50">
+    <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50" role="dialog" aria-modal="true" aria-labelledby="integration-config-title">
       <div className="bg-slate-800 rounded-xl p-6 border border-slate-700 w-full max-w-md">
-        <h2 className="text-lg font-semibold text-white mb-4">
+        <h2 id="integration-config-title" className="text-lg font-semibold text-white mb-4">
           Configure {integration?.name || 'Webhook'}
         </h2>
 
@@ -330,20 +330,23 @@ function ConfigureModal({ integrationId, integration, onClose }: ConfigureModalP
           {integrationId === 'slack' && (
             <>
               <div>
-                <label className="text-sm font-medium text-slate-300 block mb-2">
+                <label htmlFor="slack-webhook-url" className="text-sm font-medium text-slate-300 block mb-2">
                   Webhook URL
                 </label>
                 <input
+                  id="slack-webhook-url"
                   type="text"
                   placeholder="https://hooks.slack.com/services/..."
+                  aria-required="true"
                   className="w-full bg-slate-900 border border-slate-600 rounded-lg p-3 text-white text-sm focus:border-blue-500 focus:outline-none"
                 />
               </div>
               <div>
-                <label className="text-sm font-medium text-slate-300 block mb-2">
+                <label htmlFor="slack-channel" className="text-sm font-medium text-slate-300 block mb-2">
                   Channel
                 </label>
                 <input
+                  id="slack-channel"
                   type="text"
                   defaultValue="#alerts"
                   className="w-full bg-slate-900 border border-slate-600 rounded-lg p-3 text-white text-sm focus:border-blue-500 focus:outline-none"
@@ -355,20 +358,23 @@ function ConfigureModal({ integrationId, integration, onClose }: ConfigureModalP
           {integrationId === 'webhook' && (
             <>
               <div>
-                <label className="text-sm font-medium text-slate-300 block mb-2">
+                <label htmlFor="webhook-endpoint" className="text-sm font-medium text-slate-300 block mb-2">
                   Endpoint URL
                 </label>
                 <input
+                  id="webhook-endpoint"
                   type="text"
                   placeholder="https://your-service.com/webhook"
+                  aria-required="true"
                   className="w-full bg-slate-900 border border-slate-600 rounded-lg p-3 text-white text-sm focus:border-blue-500 focus:outline-none"
                 />
               </div>
               <div>
-                <label className="text-sm font-medium text-slate-300 block mb-2">
+                <label htmlFor="webhook-secret" className="text-sm font-medium text-slate-300 block mb-2">
                   Secret (optional)
                 </label>
                 <input
+                  id="webhook-secret"
                   type="password"
                   placeholder="Signing secret for verification"
                   className="w-full bg-slate-900 border border-slate-600 rounded-lg p-3 text-white text-sm focus:border-blue-500 focus:outline-none"
@@ -380,20 +386,22 @@ function ConfigureModal({ integrationId, integration, onClose }: ConfigureModalP
           {integrationId === 'datadog' && (
             <>
               <div>
-                <label className="text-sm font-medium text-slate-300 block mb-2">
+                <label htmlFor="datadog-api-key" className="text-sm font-medium text-slate-300 block mb-2">
                   API Key
                 </label>
                 <input
+                  id="datadog-api-key"
                   type="password"
                   placeholder="Datadog API key"
+                  aria-required="true"
                   className="w-full bg-slate-900 border border-slate-600 rounded-lg p-3 text-white text-sm focus:border-blue-500 focus:outline-none"
                 />
               </div>
               <div>
-                <label className="text-sm font-medium text-slate-300 block mb-2">
+                <label htmlFor="datadog-site" className="text-sm font-medium text-slate-300 block mb-2">
                   Site
                 </label>
-                <select className="w-full bg-slate-900 border border-slate-600 rounded-lg p-3 text-white text-sm focus:border-blue-500 focus:outline-none">
+                <select id="datadog-site" className="w-full bg-slate-900 border border-slate-600 rounded-lg p-3 text-white text-sm focus:border-blue-500 focus:outline-none">
                   <option value="us1">US1 (datadoghq.com)</option>
                   <option value="us3">US3 (us3.datadoghq.com)</option>
                   <option value="us5">US5 (us5.datadoghq.com)</option>
@@ -405,7 +413,7 @@ function ConfigureModal({ integrationId, integration, onClose }: ConfigureModalP
 
           {!['slack', 'webhook', 'datadog'].includes(integrationId) && (
             <div className="text-center py-4 text-slate-400">
-              <p className="text-sm">Configuration coming soon</p>
+              <p className="text-sm">Additional configuration options are not yet available</p>
             </div>
           )}
 

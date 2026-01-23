@@ -1,7 +1,11 @@
 'use client'
 
-import { useState, useEffect } from 'react'
+import { useState, useEffect, useCallback } from 'react'
+import { useSafeAuth as useAuth } from '@/hooks/useSafeAuth'
+import { useTenant } from '@/hooks/useTenant'
 import { Layout } from '@/components/common/Layout'
+import { Button } from '@/components/ui/Button'
+import { createApiClient } from '@/lib/api'
 import {
   Sliders,
   Target,
@@ -38,88 +42,56 @@ interface ThresholdRecommendation {
   reasoning: string
 }
 
-// Demo data - replace with API calls in production
-const DEMO_STATS: FeedbackStats = {
-  total_feedback: 127,
-  true_positives: 89,
-  false_positives: 18,
-  false_negatives: 12,
-  true_negatives: 8,
-  precision: 0.832,
-  recall: 0.881,
-  f1_score: 0.856,
-  by_framework: {
-    langgraph: { total: 45, correct: 38, incorrect: 7 },
-    autogen: { total: 32, correct: 26, incorrect: 6 },
-    crewai: { total: 28, correct: 24, incorrect: 4 },
-    langchain: { total: 22, correct: 20, incorrect: 2 },
-  },
-  by_detection_type: {
-    infinite_loop: { total: 67, correct: 58, incorrect: 9 },
-    state_corruption: { total: 31, correct: 26, incorrect: 5 },
-    persona_drift: { total: 29, correct: 24, incorrect: 5 },
-  },
-  by_method: {
-    structural: { total: 52, correct: 47, incorrect: 5 },
-    semantic: { total: 43, correct: 35, incorrect: 8 },
-    hash: { total: 32, correct: 26, incorrect: 6 },
-  },
-}
-
-const DEMO_RECOMMENDATIONS: ThresholdRecommendation[] = [
-  {
-    framework: 'autogen',
-    current_structural_threshold: 0.90,
-    current_semantic_threshold: 0.80,
-    recommended_structural_threshold: 0.91,
-    recommended_semantic_threshold: 0.81,
-    confidence: 0.64,
-    sample_size: 32,
-    reasoning: 'Moderate false positive rate (18.8%). Recommend slight threshold increase.',
-  },
-  {
-    framework: 'langgraph',
-    current_structural_threshold: 0.92,
-    current_semantic_threshold: 0.88,
-    recommended_structural_threshold: 0.92,
-    recommended_semantic_threshold: 0.88,
-    confidence: 0.90,
-    sample_size: 45,
-    reasoning: 'False positive rate (15.6%) is acceptable. No changes recommended.',
-  },
-  {
-    framework: 'crewai',
-    current_structural_threshold: 0.88,
-    current_semantic_threshold: 0.82,
-    recommended_structural_threshold: 0.86,
-    recommended_semantic_threshold: 0.80,
-    confidence: 0.56,
-    sample_size: 28,
-    reasoning: 'Very low false positive rate (14.3%). Could decrease thresholds to catch more issues.',
-  },
-]
-
 export default function ThresholdTuningPage() {
+  const { getToken } = useAuth()
+  const { tenantId } = useTenant()
   const [stats, setStats] = useState<FeedbackStats | null>(null)
   const [recommendations, setRecommendations] = useState<ThresholdRecommendation[]>([])
   const [loading, setLoading] = useState(true)
+  const [error, setError] = useState<string | null>(null)
   const [selectedFramework, setSelectedFramework] = useState<string | null>(null)
 
+  const loadData = useCallback(async () => {
+    setLoading(true)
+    setError(null)
+    try {
+      const token = await getToken()
+      const api = createApiClient(token, tenantId)
+      const [statsData, recsData] = await Promise.all([
+        api.getFeedbackStats(),
+        api.getThresholdRecommendations(),
+      ])
+      setStats(statsData)
+      setRecommendations(recsData)
+    } catch (err) {
+      console.error('Failed to load tuning data:', err)
+      setError('Failed to load threshold tuning data.')
+    }
+    setLoading(false)
+  }, [getToken, tenantId])
+
   useEffect(() => {
-    // In production, fetch from API
-    // For now, use demo data
-    setTimeout(() => {
-      setStats(DEMO_STATS)
-      setRecommendations(DEMO_RECOMMENDATIONS)
-      setLoading(false)
-    }, 500)
-  }, [])
+    loadData()
+  }, [loadData])
 
   if (loading) {
     return (
       <Layout>
         <div className="p-8 flex items-center justify-center min-h-[60vh]">
           <RefreshCw className="animate-spin text-slate-400" size={32} />
+        </div>
+      </Layout>
+    )
+  }
+
+  if (error) {
+    return (
+      <Layout>
+        <div className="p-8 flex flex-col items-center justify-center min-h-[60vh]">
+          <AlertCircle className="text-red-400 mb-4" size={48} />
+          <h2 className="text-xl font-semibold text-white mb-2">Failed to load tuning data</h2>
+          <p className="text-slate-400 mb-4">{error}</p>
+          <Button onClick={loadData}>Try Again</Button>
         </div>
       </Layout>
     )

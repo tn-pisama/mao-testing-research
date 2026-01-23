@@ -32,43 +32,6 @@ interface ReplayResultDisplay {
   similarity: number
 }
 
-const DEMO_BUNDLES: DisplayBundle[] = [
-  {
-    id: 'rb-001',
-    name: 'Customer Support Flow',
-    traceId: 'trace-abc123',
-    createdAt: '2024-12-28',
-    eventCount: 47,
-    duration: '2m 34s',
-    status: 'ready'
-  },
-  {
-    id: 'rb-002',
-    name: 'Code Review Agent',
-    traceId: 'trace-def456',
-    createdAt: '2024-12-27',
-    eventCount: 23,
-    duration: '1m 12s',
-    status: 'completed'
-  },
-  {
-    id: 'rb-003',
-    name: 'Research Pipeline',
-    traceId: 'trace-ghi789',
-    createdAt: '2024-12-26',
-    eventCount: 89,
-    duration: '5m 45s',
-    status: 'ready'
-  },
-]
-
-const DEMO_RESULTS: ReplayResultDisplay[] = [
-  { step: 1, original: 'Analyzed user query...', replayed: 'Analyzed user query...', match: true, similarity: 1.0 },
-  { step: 2, original: 'Retrieved 5 documents from KB', replayed: 'Retrieved 5 documents from KB', match: true, similarity: 1.0 },
-  { step: 3, original: 'Generated response with citations', replayed: 'Generated response with sources', match: false, similarity: 0.87 },
-  { step: 4, original: 'Applied formatting rules', replayed: 'Applied formatting rules', match: true, similarity: 1.0 },
-]
-
 function formatDuration(ms: number): string {
   const seconds = Math.floor(ms / 1000)
   const minutes = Math.floor(seconds / 60)
@@ -108,21 +71,20 @@ export default function ReplayPage() {
   const [replayMode, setReplayMode] = useState<'full' | 'partial' | 'whatif'>('full')
   const [showResults, setShowResults] = useState(false)
   const [isLoading, setIsLoading] = useState(true)
-  const [isDemoMode, setIsDemoMode] = useState(false)
+  const [error, setError] = useState<string | null>(null)
   const [overallSimilarity, setOverallSimilarity] = useState(0)
 
   const loadBundles = useCallback(async () => {
     setIsLoading(true)
+    setError(null)
     try {
       const token = await getToken()
       const api = createApiClient(token, tenantId)
       const bundlesData = await api.getReplayBundles(20, 0)
       setBundles(bundlesData.map(mapBundleToDisplay))
-      setIsDemoMode(false)
     } catch (err) {
-      console.warn('API unavailable, using demo data:', err)
-      setBundles(DEMO_BUNDLES)
-      setIsDemoMode(true)
+      console.error('Failed to load replay bundles:', err)
+      setError('Failed to load replay bundles.')
     }
     setIsLoading(false)
   }, [getToken, tenantId])
@@ -134,6 +96,7 @@ export default function ReplayPage() {
   const startReplay = async () => {
     if (!selectedBundle) return
     setIsReplaying(true)
+    setError(null)
 
     try {
       const token = await getToken()
@@ -150,16 +113,9 @@ export default function ReplayPage() {
       setReplayResults(comparison.diffs.map(mapDiffToResult))
       setOverallSimilarity(comparison.overall_similarity)
       setShowResults(true)
-      setIsDemoMode(false)
     } catch (err) {
-      console.warn('Replay API unavailable, using demo results:', err)
-      // Fallback to demo results
-      setTimeout(() => {
-        setReplayResults(DEMO_RESULTS)
-        setOverallSimilarity(0.968)
-        setShowResults(true)
-        setIsDemoMode(true)
-      }, 1500)
+      console.error('Replay failed:', err)
+      setError('Failed to run replay. Please try again.')
     }
 
     setIsReplaying(false)
@@ -176,11 +132,6 @@ export default function ReplayPage() {
             <h1 className="text-2xl font-bold text-white flex items-center gap-2">
               <RotateCcw className="text-purple-400" />
               Deterministic Replay
-              {isDemoMode && (
-                <span className="text-xs bg-amber-500/20 text-amber-400 px-2 py-1 rounded-full ml-2">
-                  Demo Mode
-                </span>
-              )}
             </h1>
             <p className="text-slate-400 text-sm mt-1">
               Record and replay agent executions for debugging and testing
@@ -200,6 +151,18 @@ export default function ReplayPage() {
             </Button>
           </div>
         </div>
+
+        {error && (
+          <div className="mb-6 p-4 bg-red-500/10 border border-red-500/30 rounded-lg flex items-center justify-between">
+            <div className="flex items-center gap-3">
+              <AlertCircle className="w-5 h-5 text-red-400" />
+              <p className="text-red-300">{error}</p>
+            </div>
+            <Button variant="secondary" size="sm" onClick={loadBundles}>
+              Retry
+            </Button>
+          </div>
+        )}
 
         <div className="grid lg:grid-cols-3 gap-6 mb-6">
           <div className="lg:col-span-2">

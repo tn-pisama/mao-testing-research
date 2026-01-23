@@ -295,13 +295,13 @@ function CreateApiKeyModal({ onClose, onCreated }: CreateApiKeyModalProps) {
   }
 
   return (
-    <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50">
+    <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50" role="dialog" aria-modal="true" aria-labelledby="create-api-key-title">
       <div className="bg-slate-800 rounded-xl p-6 border border-slate-700 w-full max-w-md">
         {newKey ? (
           <>
             <div className="flex items-center gap-2 mb-4">
               <CheckCircle className="text-emerald-400" size={20} />
-              <h2 className="text-lg font-semibold text-white">API Key Created</h2>
+              <h2 id="create-api-key-title" className="text-lg font-semibold text-white">API Key Created</h2>
             </div>
 
             <div className="p-4 bg-slate-900 rounded-lg mb-4">
@@ -328,18 +328,20 @@ function CreateApiKeyModal({ onClose, onCreated }: CreateApiKeyModalProps) {
           </>
         ) : (
           <>
-            <h2 className="text-lg font-semibold text-white mb-4">Create API Key</h2>
+            <h2 id="create-api-key-title" className="text-lg font-semibold text-white mb-4">Create API Key</h2>
 
             <div className="space-y-4">
               <div>
-                <label className="text-sm font-medium text-slate-300 block mb-2">
+                <label htmlFor="api-key-name" className="text-sm font-medium text-slate-300 block mb-2">
                   Key Name
                 </label>
                 <input
+                  id="api-key-name"
                   type="text"
                   value={name}
                   onChange={(e) => setName(e.target.value)}
                   placeholder="e.g., Production API Key"
+                  aria-required="true"
                   className="w-full bg-slate-900 border border-slate-600 rounded-lg p-3 text-white text-sm focus:border-blue-500 focus:outline-none"
                 />
               </div>

@@ -39,59 +39,6 @@ interface DisplayFingerprint {
   status: 'stable' | 'updated' | 'deprecated'
 }
 
-const DEMO_BASELINES: DisplayBaseline[] = [
-  {
-    id: 'bl-001',
-    name: 'Production Prompts v2.1',
-    model: 'gpt-4o-2024-08-06',
-    promptCount: 47,
-    createdAt: '2024-12-15',
-    lastTested: '2024-12-29'
-  },
-  {
-    id: 'bl-002',
-    name: 'Customer Service Prompts',
-    model: 'claude-3-5-sonnet-20241022',
-    promptCount: 23,
-    createdAt: '2024-12-10',
-    lastTested: '2024-12-28'
-  },
-]
-
-const DEMO_ALERTS: DisplayDriftAlert[] = [
-  {
-    id: 'da-001',
-    severity: 'high',
-    type: 'semantic',
-    prompt: 'Summarize the following document...',
-    similarity: 0.67,
-    detectedAt: '2024-12-29 09:15'
-  },
-  {
-    id: 'da-002',
-    severity: 'medium',
-    type: 'performance',
-    prompt: 'Generate a response to customer complaint...',
-    similarity: 0.82,
-    detectedAt: '2024-12-29 08:30'
-  },
-  {
-    id: 'da-003',
-    severity: 'low',
-    type: 'format',
-    prompt: 'Extract entities from the text...',
-    similarity: 0.91,
-    detectedAt: '2024-12-28 16:45'
-  },
-]
-
-const DEMO_FINGERPRINTS: DisplayFingerprint[] = [
-  { model: 'gpt-4o', version: '2024-08-06', provider: 'OpenAI', lastSeen: '2024-12-29', status: 'stable' },
-  { model: 'gpt-4o', version: '2024-11-20', provider: 'OpenAI', lastSeen: '2024-12-29', status: 'updated' },
-  { model: 'claude-3-5-sonnet', version: '20241022', provider: 'Anthropic', lastSeen: '2024-12-29', status: 'stable' },
-  { model: 'gpt-4-turbo', version: '2024-04-09', provider: 'OpenAI', lastSeen: '2024-12-20', status: 'deprecated' },
-]
-
 function mapBaseline(b: Baseline): DisplayBaseline {
   return {
     id: b.id,
@@ -133,12 +80,13 @@ export default function RegressionPage() {
   const [selectedBaseline, setSelectedBaseline] = useState<string | null>(null)
   const [isRunning, setIsRunning] = useState(false)
   const [isLoading, setIsLoading] = useState(true)
-  const [isDemoMode, setIsDemoMode] = useState(false)
+  const [error, setError] = useState<string | null>(null)
   const [showCreateModal, setShowCreateModal] = useState(false)
   const [isCreating, setIsCreating] = useState(false)
 
   const loadData = useCallback(async () => {
     setIsLoading(true)
+    setError(null)
     try {
       const token = await getToken()
       const api = createApiClient(token, tenantId)
@@ -152,13 +100,9 @@ export default function RegressionPage() {
       setBaselines(baselinesData.map(mapBaseline))
       setAlerts(alertsData.map(mapDriftAlert))
       setFingerprints(fingerprintsData.map(mapFingerprint))
-      setIsDemoMode(false)
     } catch (err) {
-      console.warn('API unavailable, using demo data:', err)
-      setBaselines(DEMO_BASELINES)
-      setAlerts(DEMO_ALERTS)
-      setFingerprints(DEMO_FINGERPRINTS)
-      setIsDemoMode(true)
+      console.error('Failed to load regression data:', err)
+      setError('Failed to load regression data.')
     }
     setIsLoading(false)
   }, [getToken, tenantId])
@@ -181,10 +125,9 @@ export default function RegressionPage() {
       // Refresh alerts after test
       const alertsData = await api.getDriftAlerts(undefined, 20)
       setAlerts(alertsData.map(mapDriftAlert))
-      setIsDemoMode(false)
     } catch (err) {
-      console.warn('Regression test API unavailable:', err)
-      setIsDemoMode(true)
+      console.error('Regression test failed:', err)
+      setError('Failed to run regression test. Please try again.')
     }
 
     setIsRunning(false)
@@ -214,19 +157,7 @@ export default function RegressionPage() {
       setShowCreateModal(false)
     } catch (err) {
       console.error('Failed to create baseline:', err)
-      // For demo mode, add a mock baseline
-      if (isDemoMode) {
-        const newBaseline: DisplayBaseline = {
-          id: `bl-${Date.now()}`,
-          name,
-          model,
-          promptCount: 0,
-          createdAt: new Date().toLocaleDateString(),
-          lastTested: 'Never'
-        }
-        setBaselines(prev => [newBaseline, ...prev])
-        setShowCreateModal(false)
-      }
+      setError('Failed to create baseline. Please try again.')
     }
     setIsCreating(false)
   }
@@ -253,11 +184,6 @@ export default function RegressionPage() {
             <h1 className="text-2xl font-bold text-white flex items-center gap-2">
               <GitBranch className="text-cyan-400" />
               Model Regression Testing
-              {isDemoMode && (
-                <span className="text-xs bg-amber-500/20 text-amber-400 px-2 py-1 rounded-full ml-2">
-                  Demo Mode
-                </span>
-              )}
             </h1>
             <p className="text-slate-400 text-sm mt-1">
               Detect behavioral drift when models are updated
@@ -281,6 +207,18 @@ export default function RegressionPage() {
             </Button>
           </div>
         </div>
+
+        {error && (
+          <div className="mb-6 p-4 bg-red-500/10 border border-red-500/30 rounded-lg flex items-center justify-between">
+            <div className="flex items-center gap-3">
+              <AlertTriangle className="w-5 h-5 text-red-400" />
+              <p className="text-red-300">{error}</p>
+            </div>
+            <Button variant="secondary" size="sm" onClick={loadData}>
+              Retry
+            </Button>
+          </div>
+        )}
 
         <div className="grid lg:grid-cols-4 gap-4 mb-6">
           <div className="bg-slate-800 rounded-xl p-4 border border-slate-700">

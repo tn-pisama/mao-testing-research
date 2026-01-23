@@ -9,63 +9,7 @@ import { Layout } from '@/components/common/Layout'
 import { TracePasteInput } from '@/components/diagnose/TracePasteInput'
 import { DiagnosisResults } from '@/components/diagnose/DiagnosisResults'
 import { createApiClient, DiagnoseResult } from '@/lib/api'
-import { AlertCircle, Loader2, Search, Sparkles } from 'lucide-react'
-
-// Demo data for when API is unavailable
-const DEMO_RESULT: DiagnoseResult = {
-  trace_id: 'demo-trace-001',
-  analyzed_at: new Date().toISOString(),
-  has_failures: true,
-  failure_count: 2,
-  primary_failure: {
-    category: 'loop',
-    detected: true,
-    confidence: 0.87,
-    severity: 'high',
-    title: 'Loop Detected',
-    description: 'Detected repetitive pattern using semantic analysis. Loop starts at step 3 with length 4.',
-    evidence: [{ loop_start: 3, loop_length: 4, pattern: 'search -> analyze -> search' }],
-    affected_spans: ['span-3', 'span-4', 'span-5', 'span-6', 'span-7'],
-    suggested_fix: 'Add loop detection guard or break condition to prevent infinite loops.',
-  },
-  all_detections: [
-    {
-      category: 'loop',
-      detected: true,
-      confidence: 0.87,
-      severity: 'high',
-      title: 'Loop Detected',
-      description: 'Detected repetitive pattern using semantic analysis.',
-      evidence: [{ loop_start: 3, loop_length: 4 }],
-      affected_spans: ['span-3', 'span-4', 'span-5'],
-      suggested_fix: 'Add loop detection guard.',
-    },
-    {
-      category: 'context_overflow',
-      detected: true,
-      confidence: 0.72,
-      severity: 'medium',
-      title: 'Context Window Warning',
-      description: 'Token usage (6,500) is at 79.5% of estimated limit (8,192).',
-      evidence: [{ total_tokens: 6500, limit: 8192, usage_percent: 79.5 }],
-      affected_spans: [],
-      suggested_fix: 'Monitor token usage and consider summarization.',
-    },
-  ],
-  total_spans: 12,
-  error_spans: 0,
-  total_tokens: 6500,
-  duration_ms: 4523,
-  root_cause_explanation: 'The agent entered a repetitive loop pattern. Detected repetitive pattern using semantic analysis. Loop starts at step 3 with length 4. This typically happens when the agent doesn\'t recognize it has already attempted an action, or when the exit condition for a loop is never satisfied.\n\nSuggested fix: Add loop detection guard or break condition to prevent infinite loops.',
-  self_healing_available: true,
-  auto_fix_preview: {
-    description: 'Apply fix for loop',
-    confidence: 0.87,
-    action: 'Add loop detection guard or break condition to prevent infinite loops.',
-  },
-  detection_time_ms: 342,
-  detectors_run: ['loop', 'overflow', 'tool_issues'],
-}
+import { AlertCircle, Loader2, Search } from 'lucide-react'
 
 export default function DiagnosePage() {
   const { getToken } = useAuth()
@@ -75,7 +19,6 @@ export default function DiagnosePage() {
   const [isAnalyzing, setIsAnalyzing] = useState(false)
   const [result, setResult] = useState<DiagnoseResult | null>(null)
   const [error, setError] = useState<string | null>(null)
-  const [isDemoMode, setIsDemoMode] = useState(false)
 
   const handleAnalyze = useCallback(async () => {
     if (!traceContent.trim()) {
@@ -92,12 +35,9 @@ export default function DiagnosePage() {
       const api = createApiClient(token, tenantId)
       const diagnosis = await api.diagnoseTrace(traceContent, format)
       setResult(diagnosis)
-      setIsDemoMode(false)
     } catch (err) {
-      console.warn('API unavailable, using demo data:', err)
-      // Use demo data when API is unavailable
-      setResult(DEMO_RESULT)
-      setIsDemoMode(true)
+      console.error('Failed to analyze trace:', err)
+      setError('Failed to analyze trace. Please check your connection and try again.')
     } finally {
       setIsAnalyzing(false)
     }
@@ -127,16 +67,6 @@ export default function DiagnosePage() {
             Paste your trace and find out why your AI agent failed - and how to fix it.
           </p>
         </div>
-
-        {/* Demo Mode Banner */}
-        {isDemoMode && result && (
-          <div className="mb-6 p-4 bg-amber-500/10 border border-amber-500/30 rounded-lg flex items-center gap-3">
-            <Sparkles className="w-5 h-5 text-amber-400" />
-            <p className="text-amber-300 text-sm">
-              Demo mode: Showing sample diagnosis. Connect to backend for real analysis.
-            </p>
-          </div>
-        )}
 
         {/* Main Content */}
         <div className="grid lg:grid-cols-2 gap-6">

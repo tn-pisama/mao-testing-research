@@ -10,7 +10,7 @@ import {
 } from 'lucide-react'
 import { Layout } from '@/components/common/Layout'
 import { Button } from '@/components/ui/Button'
-import { createApiClient, AccuracyMetric, IntegrationStatus, Handoff } from '@/lib/api'
+import { createApiClient, AccuracyMetric, IntegrationStatus } from '@/lib/api'
 
 interface TestRun {
   id: string
@@ -20,60 +20,29 @@ interface TestRun {
   total: number
 }
 
-// Fallback demo data
-const DEMO_ACCURACY: AccuracyMetric[] = [
-  { detection_type: 'specification_mismatch', label: 'Spec Mismatch (F1)', accuracy: 94.1, trend: 'up', change: 1.2, category: 'system' },
-  { detection_type: 'poor_decomposition', label: 'Decomposition (F2)', accuracy: 91.8, trend: 'stable', change: 0.1, category: 'system' },
-  { detection_type: 'loop_detection', label: 'Loop Detection (F3)', accuracy: 91.4, trend: 'up', change: 0.8, category: 'system' },
-  { detection_type: 'tool_provision', label: 'Tool Provision (F4)', accuracy: 89.2, trend: 'up', change: 2.1, category: 'system' },
-  { detection_type: 'flawed_workflow', label: 'Workflow (F5)', accuracy: 88.5, trend: 'up', change: 0.5, category: 'system' },
-  { detection_type: 'task_derailment', label: 'Derailment (F6)', accuracy: 88.5, trend: 'down', change: -0.3, category: 'inter-agent' },
-  { detection_type: 'context_neglect', label: 'Context Neglect (F7)', accuracy: 92.3, trend: 'up', change: 1.5, category: 'inter-agent' },
-  { detection_type: 'information_withholding', label: 'Withholding (F8)', accuracy: 87.2, trend: 'stable', change: 0.2, category: 'inter-agent' },
-  { detection_type: 'coordination_failure', label: 'Coordination (F9)', accuracy: 85.9, trend: 'up', change: 1.1, category: 'inter-agent' },
-  { detection_type: 'communication_breakdown', label: 'Communication (F10)', accuracy: 90.1, trend: 'up', change: 0.9, category: 'inter-agent' },
-  { detection_type: 'state_corruption', label: 'Corruption (F11)', accuracy: 93.5, trend: 'up', change: 1.8, category: 'verification' },
-  { detection_type: 'persona_drift', label: 'Persona Drift (F12)', accuracy: 86.7, trend: 'stable', change: 0.0, category: 'verification' },
-  { detection_type: 'quality_gate_bypass', label: 'Quality Gate (F13)', accuracy: 91.2, trend: 'up', change: 2.3, category: 'verification' },
-  { detection_type: 'completion_misjudgment', label: 'Completion (F14)', accuracy: 88.9, trend: 'up', change: 1.4, category: 'verification' },
-]
-
-const DEMO_INTEGRATIONS: IntegrationStatus[] = [
-  { name: 'LangGraph', version: '0.2.x', passed: 47, total: 50 },
-  { name: 'AutoGen', version: '0.4.x', passed: 42, total: 45 },
-  { name: 'CrewAI', version: '0.6.x', passed: 38, total: 40 },
-  { name: 'n8n', version: '1.x', passed: 28, total: 30 },
-  { name: 'Semantic Kernel', version: '1.x', passed: 23, total: 25 },
-]
-
-const DEMO_HANDOFFS: Array<{
+interface HandoffData {
   id: string
   from: string
   to: string
   status: 'success' | 'failed' | 'warning'
   latency: number
   dataLoss: boolean
-}> = [
-  { id: 'h1', from: 'Planner', to: 'Researcher', status: 'success', latency: 245, dataLoss: false },
-  { id: 'h2', from: 'Researcher', to: 'Analyzer', status: 'success', latency: 312, dataLoss: false },
-  { id: 'h3', from: 'Analyzer', to: 'Writer', status: 'warning', latency: 1250, dataLoss: false },
-  { id: 'h4', from: 'Writer', to: 'Reviewer', status: 'failed', latency: 0, dataLoss: true },
-  { id: 'h5', from: 'Reviewer', to: 'Publisher', status: 'success', latency: 189, dataLoss: false },
-]
+}
 
 export default function TestingPage() {
   const { getToken } = useAuth()
   const [isLoading, setIsLoading] = useState(true)
   const [isRunning, setIsRunning] = useState(false)
-  const [isDemoMode, setIsDemoMode] = useState(false)
+  const [error, setError] = useState<string | null>(null)
   const [accuracy, setAccuracy] = useState<AccuracyMetric[]>([])
   const [integrations, setIntegrations] = useState<IntegrationStatus[]>([])
   const [recentRuns, setRecentRuns] = useState<TestRun[]>([])
-  const [handoffs, setHandoffs] = useState<typeof DEMO_HANDOFFS>([])
+  const [handoffs, setHandoffs] = useState<HandoffData[]>([])
   const [activeTab, setActiveTab] = useState<'accuracy' | 'handoffs'>('accuracy')
 
   const loadData = useCallback(async () => {
     setIsLoading(true)
+    setError(null)
     try {
       const token = await getToken()
       const api = createApiClient(token)
@@ -85,22 +54,11 @@ export default function TestingPage() {
 
       setAccuracy(accuracyData)
       setIntegrations(integrationsData)
-      setRecentRuns([
-        { id: '1', timestamp: new Date().toISOString().slice(0, 16).replace('T', ' '), name: 'Golden Dataset', passed: 420, total: 420 },
-        { id: '2', timestamp: new Date().toISOString().slice(0, 16).replace('T', ' '), name: 'Integration Suite', passed: 178, total: 190 },
-      ])
-      setHandoffs(DEMO_HANDOFFS)
-      setIsDemoMode(false)
+      setRecentRuns([])
+      setHandoffs([])
     } catch (err) {
-      console.warn('API unavailable, using demo data:', err)
-      setAccuracy(DEMO_ACCURACY)
-      setIntegrations(DEMO_INTEGRATIONS)
-      setRecentRuns([
-        { id: '1', timestamp: '2024-12-29 14:32', name: 'Golden Dataset', passed: 420, total: 420 },
-        { id: '2', timestamp: '2024-12-29 14:30', name: 'Integration Suite', passed: 178, total: 190 },
-      ])
-      setHandoffs(DEMO_HANDOFFS)
-      setIsDemoMode(true)
+      console.error('Failed to load testing data:', err)
+      setError('Failed to load testing data. Please try again.')
     }
     setIsLoading(false)
   }, [getToken])
@@ -149,7 +107,6 @@ export default function TestingPage() {
             <h1 className="text-2xl font-bold text-white">Testing Dashboard</h1>
             <p className="text-slate-400 text-sm mt-1">
               MAST 14-Mode Detection Accuracy
-              {isDemoMode && <span className="ml-2 text-amber-400">(Demo Mode)</span>}
             </p>
           </div>
           <Button
@@ -160,6 +117,18 @@ export default function TestingPage() {
             {isRunning ? 'Running...' : 'Run Tests'}
           </Button>
         </div>
+
+        {error && (
+          <div className="mb-6 p-4 bg-red-500/10 border border-red-500/30 rounded-lg flex items-center justify-between">
+            <div className="flex items-center gap-3">
+              <AlertCircle className="w-5 h-5 text-red-400" />
+              <p className="text-red-300">{error}</p>
+            </div>
+            <Button variant="secondary" size="sm" onClick={loadData}>
+              Retry
+            </Button>
+          </div>
+        )}
 
         <div className="flex gap-2 mb-6">
           <button
