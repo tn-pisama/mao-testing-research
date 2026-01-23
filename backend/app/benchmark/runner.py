@@ -453,7 +453,7 @@ class BenchmarkRunner:
 
         # Run turn-aware detection for semantic modes (unless skipped for LLM)
         # NOTE: F12 excluded - hybrid/LLM detection performs worse than keyword matching
-        turn_aware_modes = {"F6", "F8", "F9"}  # Modes handled by turn-aware detectors
+        turn_aware_modes = {"F6", "F8", "F9", "F10"}  # Modes handled by turn-aware detectors
         modes_to_run = [m for m in turn_aware_modes if m not in skip_modes]
         if modes_to_run:
             turn_aware_attempts = self._run_turn_aware_detectors(records, modes_to_run)
@@ -520,6 +520,7 @@ class BenchmarkRunner:
             from app.detection.turn_aware.withholding import TurnAwareInformationWithholdingDetector
             from app.detection.turn_aware.role_usurpation import TurnAwareRoleUsurpationDetector
             from app.detection.turn_aware.hybrid import HybridOutputValidationDetector
+            from app.detection.turn_aware.hybrid import HybridCommunicationBreakdownDetector
         except ImportError as e:
             logger.warning(f"Turn-aware detector import failed: {e}")
             return attempts
@@ -532,6 +533,8 @@ class BenchmarkRunner:
             detectors["F8"] = ("turn_aware_withholding", TurnAwareInformationWithholdingDetector())
         if "F9" in modes:
             detectors["F9"] = ("turn_aware_role_usurpation", TurnAwareRoleUsurpationDetector())
+        if "F10" in modes:
+            detectors["F10"] = ("hybrid_communication_breakdown", HybridCommunicationBreakdownDetector())
         if "F12" in modes:
             detectors["F12"] = ("hybrid_output_validation", HybridOutputValidationDetector())
 
@@ -588,6 +591,16 @@ class BenchmarkRunner:
                         }
                         result = detector.detect(turns=turns, conversation_metadata=metadata)
                         detector_name = "turn_aware_role_usurpation"
+
+                    elif mode == "F10":
+                        # Communication breakdown hybrid detector (pattern + LLM escalation)
+                        detector = detectors["F10"][1]
+                        metadata = {
+                            "task_description": record.task,
+                            "framework": record.framework,
+                        }
+                        result = detector.detect(turns=turns, conversation_metadata=metadata)
+                        detector_name = "hybrid_communication_breakdown"
 
                     elif mode == "F12":
                         # Output validation hybrid detector (pattern + LLM escalation)
