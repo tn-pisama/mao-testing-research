@@ -280,6 +280,9 @@ class OrchestrationQualityScorer:
         evidence["total_nodes"] = total_nodes
         evidence["nodes_with_connections"] = connected_nodes
 
+        # Initialize connection_coverage to avoid UnboundLocalError with empty workflows
+        connection_coverage = 0.0
+
         if total_nodes > 0:
             connection_coverage = connected_nodes / total_nodes
             evidence["connection_coverage"] = connection_coverage
