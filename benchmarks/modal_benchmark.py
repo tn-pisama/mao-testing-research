@@ -3,6 +3,7 @@ Modal GPU Benchmark for MAST Detection
 
 Run with:
     modal run benchmarks/modal_benchmark.py
+    modal run benchmarks/modal_benchmark.py --ml-v4  # Run v4 ML detector
 
 Cost: ~$0.14 for 50 traces on A10G GPU
 """
@@ -13,12 +14,14 @@ import modal
 app = modal.App("mast-benchmark")
 
 # Define the image with all dependencies
+# Cache buster: v4-focal-loss-2026-01-24
 image = (
     modal.Image.debian_slim(python_version="3.11")
     .pip_install(
         "sentence-transformers",
         "torch",
         "numpy",
+        "scikit-learn",
         "pydantic",
         "pydantic-settings",
         "sqlalchemy",
@@ -30,6 +33,10 @@ image = (
         "tiktoken",
         "click",  # CLI framework
         "tabulate",  # Table formatting
+        "datasets",  # For SetFit if enabled
+        "colorama",
+        "rich",
+        "python-dateutil",  # Force rebuild for runner.py focal loss fix
     )
     .add_local_dir("backend", remote_path="/app/backend", copy=True)
     .add_local_dir("benchmarks", remote_path="/app/benchmarks", copy=True)
@@ -48,7 +55,7 @@ image = (
         modal.Secret.from_name("anthropic-api-key-4"),
     ],  # 4 API keys for 4x throughput via round-robin
 )
-def run_benchmark(sample_size: int = None, mode: str = None, hybrid: bool = True):
+def run_benchmark(sample_size: int = None, mode: str = None, hybrid: bool = True, ml_v4: bool = False):
     """Run MAST benchmark on GPU with optional hybrid LLM detection."""
     import subprocess
     import os
@@ -75,9 +82,14 @@ def run_benchmark(sample_size: int = None, mode: str = None, hybrid: bool = True
     cmd = [
         "python", "-u", "-m", "app.benchmark.cli", "run",
         "/app/data/mast/MAD_full_dataset.json",
-        "--no-ml",  # Skip ML models, use rule-based + LLM
         "-o", "/tmp/modal_hybrid_report.md",
     ]
+
+    # ML detector options
+    if ml_v4:
+        cmd.extend(["--ml-v4", "--train"])  # Use v4 with GPU-accelerated training
+    else:
+        cmd.append("--no-ml")  # Skip ML models, use rule-based + LLM
 
     if mode:
         cmd.extend(["--modes", mode])
@@ -110,15 +122,16 @@ def run_benchmark(sample_size: int = None, mode: str = None, hybrid: bool = True
 
 
 @app.local_entrypoint()
-def main(sample: int = None, mode: str = None, hybrid: bool = True):
+def main(sample: int = None, mode: str = None, hybrid: bool = True, ml_v4: bool = False):
     """Local entrypoint for running the benchmark."""
     print(f"Starting MAST benchmark on Modal A10G GPU")
     print(f"  Sample size: {sample or 'full dataset'}")
     print(f"  Mode: {mode or 'all'}")
     print(f"  Hybrid (LLM escalation): {hybrid}")
+    print(f"  ML v4 detector: {ml_v4}")
     print()
 
-    exit_code = run_benchmark.remote(sample_size=sample, mode=mode, hybrid=hybrid)
+    exit_code = run_benchmark.remote(sample_size=sample, mode=mode, hybrid=hybrid, ml_v4=ml_v4)
 
     if exit_code == 0:
         print("\n✅ Benchmark completed successfully!")

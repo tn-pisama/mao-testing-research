@@ -1397,9 +1397,9 @@ Respond in JSON format:
                 use_contrastive_finetuning=False,  # Disabled - slow on CPU with e5-large
                 contrastive_iterations=5,
                 use_chunked_encoding=True,
-                use_label_gcn=True,
+                use_label_gcn=False,  # Disabled - might hurt more than help
                 use_adaptive_thresholding=True,  # New: adaptive IDF+KNN thresholds
-                loss_type="asl",
+                loss_type="asl",  # Switch back to ASL (Focal gave worse results)
                 cv_folds=5,
             )
         else:

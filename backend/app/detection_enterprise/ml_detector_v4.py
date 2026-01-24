@@ -722,8 +722,8 @@ class MultiTaskDetectorV4:
         hidden_dims: List[int] = None,
         dropout: float = 0.3,
 
-        # Loss configuration
-        loss_type: str = "asl",  # "asl", "focal", "bce"
+        # Loss configuration - Use Focal Loss (ASL gamma=4.0 caused over-prediction)
+        loss_type: str = "focal",  # "asl", "focal", "bce"
         asl_gamma_neg: float = 4.0,
         asl_gamma_pos: float = 1.0,
         asl_clip: float = 0.05,
@@ -1386,10 +1386,10 @@ def train_v4(data_path: Path, output_dir: Optional[Path] = None) -> Tuple[MultiT
         hidden_dims=[512, 256, 128],
         dropout=0.3,
 
-        # Loss
-        loss_type="asl",
-        asl_gamma_neg=4.0,
-        asl_gamma_pos=1.0,
+        # Loss - Use Focal Loss (ASL gamma=4.0 caused over-prediction)
+        loss_type="focal",
+        focal_alpha=0.25,
+        focal_gamma=2.0,
         label_smoothing=0.05,
 
         # Training
