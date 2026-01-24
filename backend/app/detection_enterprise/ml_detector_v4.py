@@ -267,6 +267,125 @@ def _create_label_gcn(num_labels: int, embed_dim: int = 128, hidden_dim: int = 2
 
 
 # =============================================================================
+# Adaptive Thresholding (IDF+KNN)
+# =============================================================================
+
+class AdaptiveThresholder:
+    """Adaptive thresholding using global (IDF) and local (KNN) signals.
+
+    Based on arXiv 2505.03118: "Adaptive Thresholding for Multi-Label
+    Classification via Global-Local Signal Fusion"
+
+    Instead of a fixed 0.5 threshold, computes per-label, per-instance
+    thresholds that adapt to:
+    1. Global label frequency (IDF) - rare labels get lower thresholds
+    2. Local neighborhood (KNN) - similar samples inform threshold
+    """
+
+    def __init__(
+        self,
+        k: int = 10,
+        alpha: float = 0.5,
+        min_threshold: float = 0.1,
+        max_threshold: float = 0.9,
+    ):
+        """Initialize adaptive thresholder.
+
+        Args:
+            k: Number of neighbors for KNN
+            alpha: Weight between local (1.0) and global (0.0) signals
+            min_threshold: Minimum allowed threshold
+            max_threshold: Maximum allowed threshold
+        """
+        self.k = k
+        self.alpha = alpha
+        self.min_threshold = min_threshold
+        self.max_threshold = max_threshold
+
+        self.idf_weights = None
+        self.train_embeddings = None
+        self.train_labels = None
+        self._knn = None
+
+    def fit(self, embeddings: np.ndarray, labels: np.ndarray):
+        """Fit thresholder on training data.
+
+        Args:
+            embeddings: Training embeddings (n_samples, embed_dim)
+            labels: Training labels (n_samples, n_labels)
+        """
+        from sklearn.neighbors import NearestNeighbors
+
+        N = len(labels)
+        df = labels.sum(axis=0) + 1  # Document frequency per label
+        self.idf_weights = np.log(N / df)  # Inverse document frequency
+
+        self.train_embeddings = embeddings
+        self.train_labels = labels
+
+        # Pre-fit KNN for efficiency
+        self._knn = NearestNeighbors(n_neighbors=min(self.k, len(embeddings)))
+        self._knn.fit(embeddings)
+
+        logger.info(f"Fitted adaptive thresholder: k={self.k}, alpha={self.alpha}")
+        logger.info(f"  IDF range: [{self.idf_weights.min():.2f}, {self.idf_weights.max():.2f}]")
+
+    def predict_thresholds(self, embeddings: np.ndarray) -> np.ndarray:
+        """Compute adaptive thresholds for each sample and label.
+
+        Args:
+            embeddings: Query embeddings (n_samples, embed_dim)
+
+        Returns:
+            Thresholds of shape (n_samples, n_labels)
+        """
+        if self._knn is None:
+            raise ValueError("Thresholder not fitted. Call fit() first.")
+
+        thresholds = []
+
+        for emb in embeddings:
+            # Find K nearest neighbors
+            _, indices = self._knn.kneighbors([emb])
+            neighbor_labels = self.train_labels[indices[0]]
+
+            # Local signal: label frequency in neighborhood
+            local_freq = neighbor_labels.mean(axis=0)  # (n_labels,)
+
+            # Global signal: IDF-based (rare labels -> lower threshold)
+            # Normalize IDF to [0, 1] range and invert (high IDF = rare = lower threshold)
+            idf_normalized = self.idf_weights / (self.idf_weights.max() + 1e-6)
+            global_signal = 1 - idf_normalized  # Rare labels get lower values
+
+            # Combine signals: threshold = alpha * local + (1-alpha) * global
+            # Lower threshold = more lenient (more likely to predict positive)
+            threshold = self.alpha * local_freq + (1 - self.alpha) * global_signal
+
+            # Apply bounds
+            threshold = np.clip(threshold, self.min_threshold, self.max_threshold)
+            thresholds.append(threshold)
+
+        return np.array(thresholds)
+
+    def apply(
+        self,
+        probabilities: np.ndarray,
+        embeddings: np.ndarray,
+    ) -> np.ndarray:
+        """Apply adaptive thresholds to probabilities.
+
+        Args:
+            probabilities: Predicted probabilities (n_samples, n_labels)
+            embeddings: Query embeddings (n_samples, embed_dim)
+
+        Returns:
+            Binary predictions (n_samples, n_labels)
+        """
+        thresholds = self.predict_thresholds(embeddings)
+        return (probabilities >= thresholds).astype(int)
+
+
+# =============================================================================
 # Long-Context Chunked Encoder
 # =============================================================================
 
@@ -279,17 +398,19 @@ class ChunkedTextEncoder:
 
     def __init__(
         self,
-        model_name: str = "all-mpnet-base-v2",
+        model_name: str = "intfloat/e5-large-v2",  # Upgraded from all-mpnet-base-v2
         chunk_size: int = 6000,
         chunk_overlap: int = 1000,
         max_chunks: int = 10,
         pooling: str = "attention",  # "attention", "mean", "max"
+        device: str = "cpu",  # Use CPU to avoid MPS OOM
     ):
         self.model_name = model_name
         self.chunk_size = chunk_size
         self.chunk_overlap = chunk_overlap
         self.max_chunks = max_chunks
         self.pooling = pooling
+        self.device = device
 
         self._embedder = None
         self._attention_weights = None
@@ -298,8 +419,8 @@ class ChunkedTextEncoder:
     def embedder(self):
         if self._embedder is None:
             from sentence_transformers import SentenceTransformer
-            self._embedder = SentenceTransformer(self.model_name)
-            logger.info(f"Loaded {self.model_name} for chunked encoding")
+            self._embedder = SentenceTransformer(self.model_name, device=self.device)
+            logger.info(f"Loaded {self.model_name} for chunked encoding on {self.device}")
         return self._embedder
 
     @property
@@ -396,13 +517,14 @@ class ContrastiveFineTuner:
 
     def __init__(
         self,
-        model_name: str = "all-mpnet-base-v2",
-        num_iterations: int = 20,
-        num_pairs_per_label: int = 20,
-        batch_size: int = 16,
+        model_name: str = "intfloat/e5-large-v2",  # Upgraded from all-mpnet-base-v2
+        num_iterations: int = 10,  # Reduced from 20 for memory
+        num_pairs_per_label: int = 10,  # Reduced from 20 for memory
+        batch_size: int = 8,  # Reduced from 16 for memory
         learning_rate: float = 2e-5,
         warmup_ratio: float = 0.1,
         use_hard_negatives: bool = True,
+        device: str = "cpu",  # Use CPU to avoid MPS OOM
     ):
         self.model_name = model_name
         self.num_iterations = num_iterations
@@ -411,6 +533,7 @@ class ContrastiveFineTuner:
         self.learning_rate = learning_rate
         self.warmup_ratio = warmup_ratio
         self.use_hard_negatives = use_hard_negatives
+        self.device = device
 
         self._model = None
 
@@ -418,7 +541,8 @@ class ContrastiveFineTuner:
     def model(self):
         if self._model is None:
             from sentence_transformers import SentenceTransformer
-            self._model = SentenceTransformer(self.model_name)
+            self._model = SentenceTransformer(self.model_name, device=self.device)
+            logger.info(f"Loaded {self.model_name} on {self.device} for contrastive fine-tuning")
         return self._model
 
     def _create_pairs(
@@ -570,9 +694,9 @@ class MultiTaskDetectorV4:
     def __init__(
         self,
         # Embedding configuration
-        embedding_model: str = "all-mpnet-base-v2",
-        use_contrastive_finetuning: bool = True,
-        contrastive_iterations: int = 10,
+        embedding_model: str = "intfloat/e5-large-v2",  # Upgraded from all-mpnet-base-v2 (MTEB +2 pts)
+        use_contrastive_finetuning: bool = False,  # Disabled by default (slow on CPU with e5-large)
+        contrastive_iterations: int = 5,  # Reduced for faster training when enabled
 
         # Long-context configuration
         use_chunked_encoding: bool = True,
@@ -602,6 +726,11 @@ class MultiTaskDetectorV4:
         epochs: int = 50,
         batch_size: int = 32,
         cv_folds: int = 5,
+
+        # Adaptive thresholding configuration (arXiv 2505.03118)
+        use_adaptive_thresholding: bool = True,
+        adaptive_k: int = 10,
+        adaptive_alpha: float = 0.5,
 
         # Reproducibility
         random_seed: Optional[int] = 42,
@@ -633,6 +762,11 @@ class MultiTaskDetectorV4:
         self.epochs = epochs
         self.batch_size = batch_size
         self.cv_folds = cv_folds
+
+        self.use_adaptive_thresholding = use_adaptive_thresholding
+        self.adaptive_k = adaptive_k
+        self.adaptive_alpha = adaptive_alpha
+
         self.random_seed = random_seed
 
         # Components (initialized during training)
@@ -640,10 +774,12 @@ class MultiTaskDetectorV4:
         self._chunked_encoder = None
         self._contrastive_finetuner = None
         self._label_gcn = None
+        self._adaptive_thresholder = None
         self.model = None
         self.scaler = None
         self.is_trained = False
         self.thresholds: Dict[str, float] = {mode: 0.5 for mode in FAILURE_MODES}
+        self._train_embeddings = None  # Store for adaptive thresholding
 
     @property
     def embedder(self):
@@ -667,6 +803,7 @@ class MultiTaskDetectorV4:
                     chunk_size=self.chunk_size,
                     max_chunks=self.max_chunks,
                     pooling="attention",
+                    device="cpu",  # Use CPU to avoid MPS OOM
                 )
                 # Share the embedder if fine-tuned
                 if self._embedder is not None:
@@ -675,8 +812,17 @@ class MultiTaskDetectorV4:
         return self.embedder
 
     def _extract_text(self, record: Dict) -> str:
-        """Extract text from record (full trajectory, no truncation for chunked)."""
+        """Extract text from record (full trajectory, no truncation for chunked).
+
+        For e5 models, adds instruction prefix for better classification performance.
+        """
         trajectory = record.get("trace", {}).get("trajectory", "") or ""
+
+        # Add instruction prefix for e5 models (improves classification)
+        if "e5" in self.embedding_model.lower():
+            prefix = "query: Classify failure modes in this LLM agent trace: "
+            trajectory = prefix + trajectory
+
         if self.use_chunked_encoding:
             return trajectory  # Full text, chunking handles length
         return trajectory[:15000]  # Legacy truncation
@@ -834,6 +980,7 @@ class MultiTaskDetectorV4:
                 model_name=self.embedding_model,
                 num_iterations=self.contrastive_iterations,
                 use_hard_negatives=True,
+                device="cpu",  # Use CPU to avoid MPS OOM
             )
             self.embedder = self._contrastive_finetuner.fine_tune(texts, y)
 
@@ -1032,6 +1179,19 @@ class MultiTaskDetectorV4:
 
         logger.info(f"\n  MACRO F1: {macro_f1:.3f}")
 
+        # Step 5: Fit adaptive thresholder (if enabled)
+        if self.use_adaptive_thresholding:
+            logger.info("\n=== Phase 5: Adaptive Thresholding ===")
+            self._adaptive_thresholder = AdaptiveThresholder(
+                k=self.adaptive_k,
+                alpha=self.adaptive_alpha,
+            )
+            # Store scaled training embeddings for adaptive thresholding
+            self._train_embeddings = X_train
+            self._train_labels = y_train
+            self._adaptive_thresholder.fit(X_train, y_train)
+            logger.info("Adaptive thresholder fitted and ready")
+
         self.is_trained = True
         return results
 
@@ -1066,16 +1226,30 @@ class MultiTaskDetectorV4:
             outputs = self.model(X_t)
             probs = torch.sigmoid(outputs).cpu().numpy()
 
-        # Apply thresholds
-        results = []
-        for i in range(len(records)):
-            pred_dict = {}
-            for j, mode in enumerate(FAILURE_MODES):
-                threshold = self.thresholds.get(mode, 0.5)
-                detected = bool(probs[i, j] > threshold)
-                confidence = float(probs[i, j])
-                pred_dict[mode] = (detected, confidence)
-            results.append(pred_dict)
+        # Apply thresholds (adaptive or fixed)
+        if self.use_adaptive_thresholding and self._adaptive_thresholder is not None:
+            # Use adaptive per-sample thresholds
+            adaptive_thresholds = self._adaptive_thresholder.predict_thresholds(X)
+            results = []
+            for i in range(len(records)):
+                pred_dict = {}
+                for j, mode in enumerate(FAILURE_MODES):
+                    threshold = adaptive_thresholds[i, j]
+                    detected = bool(probs[i, j] > threshold)
+                    confidence = float(probs[i, j])
+                    pred_dict[mode] = (detected, confidence)
+                results.append(pred_dict)
+        else:
+            # Use fixed per-mode thresholds (fallback)
+            results = []
+            for i in range(len(records)):
+                pred_dict = {}
+                for j, mode in enumerate(FAILURE_MODES):
+                    threshold = self.thresholds.get(mode, 0.5)
+                    detected = bool(probs[i, j] > threshold)
+                    confidence = float(probs[i, j])
+                    pred_dict[mode] = (detected, confidence)
+                results.append(pred_dict)
 
         return results
 
@@ -1104,6 +1278,9 @@ class MultiTaskDetectorV4:
             "use_label_gcn": self.use_label_gcn,
             "hidden_dims": self.hidden_dims,
             "loss_type": self.loss_type,
+            "use_adaptive_thresholding": self.use_adaptive_thresholding,
+            "adaptive_k": self.adaptive_k,
+            "adaptive_alpha": self.adaptive_alpha,
         }
         with open(path / "config.json", "w") as f:
             json.dump(config, f)
@@ -1111,6 +1288,15 @@ class MultiTaskDetectorV4:
         # Save fine-tuned embedder if used
         if self.use_contrastive_finetuning and self._embedder is not None:
             self._embedder.save(str(path / "embedder"))
+
+        # Save adaptive thresholder if used
+        if self.use_adaptive_thresholding and self._adaptive_thresholder is not None:
+            with open(path / "adaptive_thresholder.pkl", "wb") as f:
+                pickle.dump({
+                    "thresholder": self._adaptive_thresholder,
+                    "train_embeddings": self._train_embeddings,
+                    "train_labels": self._train_labels,
+                }, f)
 
         logger.info(f"Model saved to {path}")
 
@@ -1151,6 +1337,15 @@ class MultiTaskDetectorV4:
         detector.model.load_state_dict(state_dict)
         detector.model.to(device)
         detector.model.eval()
+
+        # Load adaptive thresholder if exists
+        adaptive_path = path / "adaptive_thresholder.pkl"
+        if adaptive_path.exists():
+            with open(adaptive_path, "rb") as f:
+                adaptive_data = pickle.load(f)
+                detector._adaptive_thresholder = adaptive_data["thresholder"]
+                detector._train_embeddings = adaptive_data["train_embeddings"]
+                detector._train_labels = adaptive_data["train_labels"]
 
         detector.is_trained = True
         logger.info(f"Model loaded from {path}")

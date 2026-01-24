@@ -122,7 +122,7 @@ class FailureExampleRetriever:
 
         db_session = session or self._session
         if db_session is None:
-            logger.warning("No database session provided, returning empty results")
+            logger.debug("No database session provided (optional), returning empty results")
             return []
 
         # Get or compute embedding
@@ -248,7 +248,7 @@ class FailureExampleRetriever:
 
         db_session = session or self._session
         if db_session is None:
-            logger.warning("No database session provided, returning empty results")
+            logger.debug("No database session provided (optional), returning empty results")
             return []
 
         # Get or compute embedding
@@ -377,7 +377,7 @@ class FailureExampleRetriever:
 
         db_session = session or self._session
         if db_session is None:
-            logger.warning("No database session provided, returning empty results")
+            logger.debug("No database session provided (optional), returning empty results")
             return {"positives": [], "negatives": [], "hard_negatives": []}
 
         # Get embedding
@@ -499,7 +499,7 @@ class FailureExampleRetriever:
         """
         db_session = session or self._session
         if db_session is None:
-            logger.warning("No database session provided, returning empty results")
+            logger.debug("No database session provided (optional), returning empty results")
             return {"positives": [], "negatives": [], "hard_negatives": []}
 
         # Get embedding

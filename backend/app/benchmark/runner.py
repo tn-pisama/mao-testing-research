@@ -1394,10 +1394,11 @@ Respond in JSON format:
             logger.info("Using ML Detector v4 (best-in-class improvements)")
             self._ml_detector = MultiTaskDetectorV4(
                 epochs=epochs,
-                use_contrastive_finetuning=True,
-                contrastive_iterations=10,
+                use_contrastive_finetuning=False,  # Disabled - slow on CPU with e5-large
+                contrastive_iterations=5,
                 use_chunked_encoding=True,
                 use_label_gcn=True,
+                use_adaptive_thresholding=True,  # New: adaptive IDF+KNN thresholds
                 loss_type="asl",
                 cv_folds=5,
             )
