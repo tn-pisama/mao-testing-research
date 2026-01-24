@@ -403,14 +403,19 @@ class ChunkedTextEncoder:
         chunk_overlap: int = 1000,
         max_chunks: int = 10,
         pooling: str = "attention",  # "attention", "mean", "max"
-        device: str = "cpu",  # Use CPU to avoid MPS OOM
+        device: str = None,  # Auto-detect: CUDA > CPU (skip MPS for OOM issues)
     ):
         self.model_name = model_name
         self.chunk_size = chunk_size
         self.chunk_overlap = chunk_overlap
         self.max_chunks = max_chunks
         self.pooling = pooling
-        self.device = device
+        # Auto-detect device - prefer CUDA, skip MPS (OOM issues), fallback to CPU
+        if device is None:
+            import torch
+            self.device = "cuda" if torch.cuda.is_available() else "cpu"
+        else:
+            self.device = device
 
         self._embedder = None
         self._attention_weights = None
@@ -524,7 +529,7 @@ class ContrastiveFineTuner:
         learning_rate: float = 2e-5,
         warmup_ratio: float = 0.1,
         use_hard_negatives: bool = True,
-        device: str = "cpu",  # Use CPU to avoid MPS OOM
+        device: str = None,  # Auto-detect: CUDA > CPU (skip MPS for OOM issues)
     ):
         self.model_name = model_name
         self.num_iterations = num_iterations
@@ -533,7 +538,12 @@ class ContrastiveFineTuner:
         self.learning_rate = learning_rate
         self.warmup_ratio = warmup_ratio
         self.use_hard_negatives = use_hard_negatives
-        self.device = device
+        # Auto-detect device - prefer CUDA, skip MPS (OOM issues), fallback to CPU
+        if device is None:
+            import torch
+            self.device = "cuda" if torch.cuda.is_available() else "cpu"
+        else:
+            self.device = device
 
         self._model = None
 
@@ -803,7 +813,7 @@ class MultiTaskDetectorV4:
                     chunk_size=self.chunk_size,
                     max_chunks=self.max_chunks,
                     pooling="attention",
-                    device="cpu",  # Use CPU to avoid MPS OOM
+                    # device auto-detected by ChunkedTextEncoder
                 )
                 # Share the embedder if fine-tuned
                 if self._embedder is not None:
@@ -980,7 +990,7 @@ class MultiTaskDetectorV4:
                 model_name=self.embedding_model,
                 num_iterations=self.contrastive_iterations,
                 use_hard_negatives=True,
-                device="cpu",  # Use CPU to avoid MPS OOM
+                # device auto-detected by ContrastiveFineTuner
             )
             self.embedder = self._contrastive_finetuner.fine_tune(texts, y)
 
@@ -1016,9 +1026,9 @@ class MultiTaskDetectorV4:
         if self.use_label_gcn and hasattr(self.model, 'init_gcn_from_labels'):
             self.model.init_gcn_from_labels(y_train)
 
-        # Setup device
-        device = torch.device("mps" if torch.backends.mps.is_available() else
-                             "cuda" if torch.cuda.is_available() else "cpu")
+        # Setup device - prioritize CUDA (Modal GPU) > MPS (Mac) > CPU
+        device = torch.device("cuda" if torch.cuda.is_available() else
+                             "mps" if torch.backends.mps.is_available() else "cpu")
         self.model.to(device)
         logger.info(f"Training on {device}")
 
@@ -1332,7 +1342,8 @@ class MultiTaskDetectorV4:
         output_dim = len(FAILURE_MODES)
         detector.model = detector._build_classifier(input_dim, output_dim)
 
-        device = torch.device("mps" if torch.backends.mps.is_available() else "cpu")
+        device = torch.device("cuda" if torch.cuda.is_available() else
+                              "mps" if torch.backends.mps.is_available() else "cpu")
         state_dict = torch.load(path / "model.pt", map_location=device)
         detector.model.load_state_dict(state_dict)
         detector.model.to(device)
