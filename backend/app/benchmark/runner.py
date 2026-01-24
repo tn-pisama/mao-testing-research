@@ -491,6 +491,12 @@ class BenchmarkRunner:
             turn_aware_attempts = self._run_turn_aware_detectors(records, modes_to_run)
             attempts.extend(turn_aware_attempts)
 
+        # Run n8n-specific structural detectors for n8n framework
+        n8n_records = [r for r in records if "n8n" in (r.framework or "").lower()]
+        if n8n_records:
+            n8n_attempts = self._run_n8n_structural_detectors(n8n_records, skip_modes)
+            attempts.extend(n8n_attempts)
+
         for record in records:
             trajectory_lower = record.trajectory.lower()
 
@@ -701,6 +707,111 @@ class BenchmarkRunner:
                         error=str(e),
                     ))
 
+        return attempts
+
+    def _run_n8n_structural_detectors(
+        self,
+        records: List[MASTRecord],
+        skip_modes: Optional[set] = None,
+    ) -> List[DetectionAttempt]:
+        """Run n8n-specific structural detectors.
+
+        These detectors analyze workflow structure rather than conversational patterns:
+        - Schema mismatch between nodes (F12)
+        - Graph cycles and coordination failure (F11)
+        - Resource/token explosion (F3, F6)
+
+        Args:
+            records: List of n8n records to process
+            skip_modes: Modes to skip (handled by LLM detection)
+
+        Returns:
+            List of DetectionAttempt for n8n-specific modes
+        """
+        skip_modes = skip_modes or set()
+        attempts = []
+
+        try:
+            from app.benchmark.trajectory_parser import parse_trajectory_to_turns
+            from app.detection.n8n import (
+                N8NSchemaDetector,
+                N8NCycleDetector,
+                N8NResourceDetector,
+            )
+        except ImportError as e:
+            logger.warning(f"n8n structural detectors not available: {e}")
+            return attempts
+
+        # Initialize detectors
+        schema_detector = N8NSchemaDetector()
+        cycle_detector = N8NCycleDetector()
+        resource_detector = N8NResourceDetector()
+
+        # Map detectors to failure modes
+        detector_map = {
+            "F12": ("n8n_schema", schema_detector),
+            "F11": ("n8n_cycle", cycle_detector),
+            "F3": ("n8n_resource", resource_detector),
+            "F6": ("n8n_resource", resource_detector),  # Resource detector also handles F6
+        }
+
+        for record in records:
+            start_time = time.time()
+            try:
+                # Parse trajectory into turns
+                turns = parse_trajectory_to_turns(record.trajectory, record.framework)
+
+                if len(turns) < 2:
+                    # Not enough turns for structural analysis
+                    continue
+
+                metadata = {
+                    "task_description": record.task,
+                    "framework": record.framework,
+                }
+
+                # Run each detector for applicable modes
+                for mode in self.failure_modes:
+                    if mode in skip_modes or mode not in detector_map:
+                        continue
+
+                    detector_name, detector = detector_map[mode]
+                    mode_start = time.time()
+
+                    try:
+                        result = detector.detect(turns=turns, conversation_metadata=metadata)
+                        latency_ms = (time.time() - mode_start) * 1000
+
+                        # Only add n8n structural result if it detected something
+                        # or if the mode matches the primary detector mode
+                        # (avoid duplicates for F6 which shares detector with F3)
+                        is_primary = (mode == "F12" and detector_name == "n8n_schema") or \
+                                     (mode == "F11" and detector_name == "n8n_cycle") or \
+                                     (mode == "F3" and detector_name == "n8n_resource")
+
+                        # For F6, only use resource detector result if F6 is the detected mode
+                        if mode == "F6" and result.detected and result.failure_mode != "F6":
+                            continue
+
+                        if is_primary or result.detected:
+                            attempts.append(DetectionAttempt(
+                                record_id=record.trace_id,
+                                failure_mode=mode,
+                                detector_name=detector_name,
+                                detected=result.detected,
+                                confidence=result.confidence,
+                                latency_ms=latency_ms,
+                                raw_result=result,
+                            ))
+
+                    except Exception as e:
+                        latency_ms = (time.time() - mode_start) * 1000
+                        logger.debug(f"n8n detector {detector_name} failed for {record.trace_id}/{mode}: {e}")
+
+            except Exception as e:
+                logger.warning(f"n8n structural detection failed for {record.trace_id}: {e}")
+
+        logger.info(f"n8n structural detection: {len(attempts)} attempts for {len(records)} records")
         return attempts
 
     def _run_llm_detection(

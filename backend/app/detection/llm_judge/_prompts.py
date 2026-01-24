@@ -427,3 +427,254 @@ KNOWLEDGE_AUGMENTED_MODES = {
     MASTFailureMode.F4: "F4",  # Inadequate Tool Provision -> Tool Catalog
     MASTFailureMode.F9: "F9",  # Role Usurpation -> Role Specs
 }
+
+
+# ============================================================================
+# N8N WORKFLOW-SPECIFIC FAILURE DEFINITIONS
+# ============================================================================
+# n8n failures manifest STRUCTURALLY, not conversationally:
+# - Data flows explicitly via $json between nodes
+# - "Roles" are node types with defined purposes
+# - Loops are graph cycles, not semantic repetition
+# - Quality gates are missing validation nodes, not dialogue about tests
+# - State is observable in node outputs
+#
+# These definitions help the LLM judge understand n8n-specific failure patterns.
+
+N8N_FAILURE_DEFINITIONS = {
+    MASTFailureMode.F3: {
+        "name": "Resource Misallocation",
+        "n8n_definition": """In n8n workflows, resource misallocation occurs when nodes use
+excessive computational resources, make too many API calls, or process data inefficiently.
+Look for:
+- HTTP Request nodes called repeatedly in loops
+- Large data sets passed between nodes without pagination
+- Token/content explosion where output grows unboundedly
+- AI nodes processing the same data multiple times""",
+        "n8n_positive": """[Hourly Trigger] {"items": 1}
+[Get All Users] {"users": [...50,000 users...]}
+[Loop Each User] Iterating 50,000 times
+[AI Summary] Calling OpenAI API 50,000 times
+Verdict: YES - Massive resource waste: AI API called per user instead of batch""",
+        "n8n_negative": """[Hourly Trigger] {"items": 1}
+[Get Users - Paginated] {"users": [...100 users...], "page": 1}
+[AI Batch Summary] Calling OpenAI API once with batched data
+Verdict: NO - Efficient resource use with pagination and batching"""
+    },
+    MASTFailureMode.F6: {
+        "name": "Task Derailment",
+        "n8n_definition": """In n8n workflows, task derailment occurs when nodes execute
+operations unrelated to the workflow's purpose, or when AI nodes generate off-topic content.
+Look for:
+- AI nodes producing content outside the task scope
+- HTTP nodes calling APIs unrelated to workflow goal
+- Data transformation nodes adding unexpected fields
+- Workflow branches that don't contribute to the output""",
+        "n8n_positive": """[Webhook: Customer Order] {"order_id": 123, "items": [...]}
+[Get Order Details] {"order": {...}, "customer_email": "..."}
+[AI Agent] {"summary": "Order processed", "promotional_content": "Check out our sale!", "unsubscribe_campaign": "..."}
+[Send Email] Sends promotional email instead of order confirmation
+Verdict: YES - Workflow derailed from order processing into marketing""",
+        "n8n_negative": """[Webhook: Customer Order] {"order_id": 123}
+[Get Order Details] {"order": {...}}
+[Format Confirmation] {"subject": "Order 123 Confirmed", "body": "..."}
+[Send Email] Sends order confirmation as expected
+Verdict: NO - Each node performs its expected function for order processing"""
+    },
+    MASTFailureMode.F9: {
+        "name": "Role Usurpation",
+        "n8n_definition": """In n8n workflows, role usurpation occurs when a node performs
+operations outside its designated scope or purpose. Each node type has an expected role:
+- Trigger nodes: Initiate workflows
+- HTTP nodes: Make external API calls
+- AI nodes: Generate/analyze content
+- Set nodes: Transform data
+- Email nodes: Send notifications
+Look for nodes that exceed their role.""",
+        "n8n_positive": """[Hourly Trigger] {"timestamp": "..."}
+[Fetch Stock Prices] {"stocks": [...]} - OK, this is an HTTP node
+[AI Analyst] Generates analysis AND executes trades directly
+[Log Results] ...
+Verdict: YES - AI node should only analyze, not execute trades (that's a separate node's role)""",
+        "n8n_negative": """[Hourly Trigger] {"timestamp": "..."}
+[Fetch Stock Prices] {"stocks": [...]}
+[AI Analyst] {"analysis": "BUY signal for AAPL", "confidence": 0.8}
+[Execute Trade] Places trade based on AI analysis
+[Log Results] ...
+Verdict: NO - Each node stays within its role boundaries"""
+    },
+    MASTFailureMode.F11: {
+        "name": "Coordination Failure",
+        "n8n_definition": """In n8n workflows, coordination failure occurs when:
+- Parallel branches conflict (both write same data)
+- Circular delegation patterns emerge (A→B→C→A)
+- Race conditions in state updates
+- Nodes don't wait for required predecessors
+Look for patterns where workflow execution order causes conflicts.""",
+        "n8n_positive": """[Webhook] {"user_id": 123}
+[Split] Parallel branches start
+  [Branch A: Update Status] Updates user.status = "verified"
+  [Branch B: Send Email] Updates user.status = "contacted"
+[Merge] Conflict! Final status is non-deterministic
+Verdict: YES - Parallel branches both modify user.status causing data race""",
+        "n8n_negative": """[Webhook] {"user_id": 123}
+[Split] Parallel branches start
+  [Branch A: Verify Email] {"verification": "passed"}
+  [Branch B: Check Credit] {"credit_score": 750}
+[Merge] Combines results: {"verification": "passed", "credit_score": 750}
+[Update User] Sets status based on combined results
+Verdict: NO - Parallel branches work on independent data and merge cleanly"""
+    },
+    MASTFailureMode.F12: {
+        "name": "Output Validation Failure / Schema Mismatch",
+        "n8n_definition": """In n8n workflows, schema mismatch occurs when node outputs
+don't match the expected inputs of downstream nodes. This causes:
+- Undefined field access ($json.field is undefined)
+- Type errors (expected array, got object)
+- Data loss (fields present but ignored)
+Look for mismatched JSON structures between connected nodes.""",
+        "n8n_positive": """[API Node] Outputs: {"data": {"items": [...]}}
+[Transform Node] Expects: $json.items (direct access)
+[Error] Cannot read property 'items' - data is nested under 'data.items'
+Verdict: YES - Schema mismatch: node expects $json.items but got $json.data.items""",
+        "n8n_negative": """[API Node] Outputs: {"items": [...], "total": 100}
+[Transform Node] Accesses: $json.items, $json.total
+[Success] Both fields found and processed correctly
+Verdict: NO - Output schema matches expected input schema"""
+    },
+}
+
+
+# n8n-specific chain-of-thought prompts for structural analysis
+N8N_CHAIN_OF_THOUGHT_PROMPTS = {
+    MASTFailureMode.F6: """## n8n Workflow Analysis for Task Derailment (F6)
+
+Before making your judgment, analyze the workflow structure:
+
+### Step 1: Identify Workflow Purpose
+- What is the trigger event? (Webhook, Schedule, Manual)
+- What should the workflow accomplish?
+- What output is expected?
+
+### Step 2: Trace Data Flow Through Nodes
+For each node execution:
+- What data does it receive from previous node?
+- What operation does it perform?
+- Does this operation serve the workflow's purpose?
+
+### Step 3: Detect Derailment Patterns
+Look for n8n-specific derailment:
+- AI nodes generating unrelated content in output
+- HTTP nodes calling APIs not needed for the task
+- Additional operations added to node output beyond requirements
+- Branch nodes that lead nowhere useful
+
+### Step 4: Assess Impact
+- Did derailed actions prevent goal completion?
+- Did they introduce side effects (unwanted emails, API calls)?
+- Is the workflow output still correct?
+
+Now apply this analysis to the trace:
+""",
+    MASTFailureMode.F11: """## n8n Workflow Analysis for Coordination Failure (F11)
+
+Before making your judgment, analyze the workflow graph:
+
+### Step 1: Identify Parallel Execution
+- Are there Split/Merge nodes indicating parallel branches?
+- Do multiple nodes execute concurrently?
+- Are there any loops in the workflow?
+
+### Step 2: Trace State Modifications
+For each node:
+- What data does it modify?
+- Does any other node modify the same data?
+- Is there a race condition risk?
+
+### Step 3: Detect Coordination Issues
+Look for:
+- Both branches writing to same $json field
+- Circular patterns: A→B→A or A→B→C→A
+- Missing wait/sync points before merges
+- Retry loops without exit conditions
+
+### Step 4: Check for Graph Cycles
+- Does any node appear multiple times in execution?
+- Is there a pattern repeating (A,B,C,A,B,C)?
+- Do execution counts seem excessive?
+
+Now apply this analysis to the trace:
+""",
+    MASTFailureMode.F12: """## n8n Workflow Analysis for Schema Mismatch (F12)
+
+Before making your judgment, analyze the data schemas:
+
+### Step 1: Extract Node Outputs
+For each node:
+- What JSON structure does it output?
+- What fields are present?
+- What are the field types (string, number, array, object)?
+
+### Step 2: Identify Expected Inputs
+For each node:
+- What $json fields does it access?
+- What field types does it expect?
+- Are any fields marked as required?
+
+### Step 3: Compare Schemas
+Between consecutive nodes:
+- Do output fields match expected input fields?
+- Are types compatible (e.g., array vs object)?
+- Are nested paths correctly accessed ($json.data.items vs $json.items)?
+
+### Step 4: Detect Mismatch Patterns
+Look for:
+- "undefined" or null values in outputs
+- Type coercion errors
+- Missing fields in transformations
+- Schema drift over multiple nodes
+
+Now apply this analysis to the trace:
+""",
+}
+
+
+def get_failure_definition(mode: MASTFailureMode, framework: str = None) -> dict:
+    """Get failure definition, using n8n-specific version if applicable.
+
+    Args:
+        mode: The failure mode to get definition for
+        framework: Framework name (e.g., 'n8n', 'ChatDev', 'AG2')
+
+    Returns:
+        Dict with name, definition, and examples
+    """
+    if framework and 'n8n' in framework.lower() and mode in N8N_FAILURE_DEFINITIONS:
+        n8n_def = N8N_FAILURE_DEFINITIONS[mode]
+        base_def = MAST_FAILURE_DEFINITIONS.get(mode, {})
+
+        # Merge: use n8n definition but fall back to base for missing fields
+        return {
+            "name": n8n_def.get("name", base_def.get("name", "")),
+            "definition": n8n_def.get("n8n_definition", base_def.get("definition", "")),
+            "positive_example": n8n_def.get("n8n_positive", base_def.get("positive_example", "")),
+            "negative_example": n8n_def.get("n8n_negative", base_def.get("negative_example", "")),
+        }
+
+    return MAST_FAILURE_DEFINITIONS.get(mode, {})
+
+
+def get_chain_of_thought_prompt(mode: MASTFailureMode, framework: str = None) -> str:
+    """Get chain-of-thought prompt, using n8n-specific version if applicable.
+
+    Args:
+        mode: The failure mode
+        framework: Framework name
+
+    Returns:
+        Chain-of-thought prompt string
+    """
+    if framework and 'n8n' in framework.lower() and mode in N8N_CHAIN_OF_THOUGHT_PROMPTS:
+        return N8N_CHAIN_OF_THOUGHT_PROMPTS[mode]
+
+    return CHAIN_OF_THOUGHT_PROMPTS.get(mode, "")
