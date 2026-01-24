@@ -55,7 +55,7 @@ image = (
         modal.Secret.from_name("anthropic-api-key-4"),
     ],  # 4 API keys for 4x throughput via round-robin
 )
-def run_benchmark(sample_size: int = None, mode: str = None, hybrid: bool = True, ml_v4: bool = False):
+def run_benchmark(sample_size: int = None, mode: str = None, hybrid: bool = True, ml_v4: bool = False, data_path: str = None):
     """Run MAST benchmark on GPU with optional hybrid LLM detection."""
     import subprocess
     import os
@@ -78,10 +78,14 @@ def run_benchmark(sample_size: int = None, mode: str = None, hybrid: bool = True
     key_count = sum(1 for i in ['', '_2', '_3', '_4'] if f"ANTHROPIC_API_KEY{i}" in os.environ)
     print(f"Loaded {key_count} API keys for round-robin")
 
+    # Data path: default to MAST dataset, but allow custom n8n data
+    if data_path is None:
+        data_path = "/app/data/mast/MAD_full_dataset.json"
+
     # Build command using app.benchmark.cli (same as local)
     cmd = [
         "python", "-u", "-m", "app.benchmark.cli", "run",
-        "/app/data/mast/MAD_full_dataset.json",
+        data_path,
         "-o", "/tmp/modal_hybrid_report.md",
     ]
 
@@ -122,16 +126,27 @@ def run_benchmark(sample_size: int = None, mode: str = None, hybrid: bool = True
 
 
 @app.local_entrypoint()
-def main(sample: int = None, mode: str = None, hybrid: bool = True, ml_v4: bool = False):
+def main(sample: int = None, mode: str = None, hybrid: bool = True, ml_v4: bool = False, data: str = None):
     """Local entrypoint for running the benchmark."""
+    # Map local data paths to remote paths
+    data_path = None
+    if data:
+        if "n8n_mast_format" in data:
+            data_path = "/app/data/training/n8n_mast_format.json"
+        elif "unified" in data:
+            data_path = "/app/data/training/unified_training_data.json"
+        else:
+            data_path = data
+
     print(f"Starting MAST benchmark on Modal A10G GPU")
     print(f"  Sample size: {sample or 'full dataset'}")
     print(f"  Mode: {mode or 'all'}")
     print(f"  Hybrid (LLM escalation): {hybrid}")
     print(f"  ML v4 detector: {ml_v4}")
+    print(f"  Data: {data_path or 'MAST dataset (default)'}")
     print()
 
-    exit_code = run_benchmark.remote(sample_size=sample, mode=mode, hybrid=hybrid, ml_v4=ml_v4)
+    exit_code = run_benchmark.remote(sample_size=sample, mode=mode, hybrid=hybrid, ml_v4=ml_v4, data_path=data_path)
 
     if exit_code == 0:
         print("\n✅ Benchmark completed successfully!")
