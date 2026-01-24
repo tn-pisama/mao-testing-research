@@ -111,7 +111,7 @@ def run_benchmark(sample_size: int = None, mode: str = None, hybrid: bool = True
         cmd.append("--hybrid")
 
     print(f"Running: {' '.join(cmd)}")
-    print(f"API keys available: {key_count}")
+    print(f"API keys available: {anthropic_count + google_count}")
     print("=" * 60)
 
     # Run benchmark
