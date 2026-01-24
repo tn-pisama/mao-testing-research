@@ -1,5 +1,5 @@
 from pydantic_settings import BaseSettings
-from pydantic import Field, field_validator
+from pydantic import Field, field_validator, ConfigDict
 from functools import lru_cache
 from typing import Dict, Optional
 from dataclasses import dataclass
@@ -246,10 +246,11 @@ class FeatureFlags(BaseSettings):
             return False
         return getattr(self, feature, False)
 
-    class Config:
-        env_prefix = "FEATURE_"
-        env_file = ".env"
-        extra = "ignore"  # Ignore non-FEATURE_ prefixed env vars
+    model_config = ConfigDict(
+        env_prefix="FEATURE_",
+        env_file=".env",
+        extra="ignore",  # Ignore non-FEATURE_ prefixed env vars
+    )
 
 
 class Settings(BaseSettings):
@@ -302,10 +303,11 @@ class Settings(BaseSettings):
         if len(set(v)) < 8:
             raise ValueError("JWT_SECRET has insufficient entropy. Use a more random value.")
         return v
-    
-    class Config:
-        env_file = ".env"
-        extra = "ignore"
+
+    model_config = ConfigDict(
+        env_file=".env",
+        extra="ignore",
+    )
 
 
 @lru_cache()

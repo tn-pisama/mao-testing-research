@@ -1,7 +1,7 @@
 """Data models for quality assessment system."""
 
 from dataclasses import dataclass, field
-from datetime import datetime
+from datetime import datetime, UTC
 from enum import Enum
 from typing import List, Dict, Any, Optional
 import uuid
@@ -234,7 +234,7 @@ class QualityReport:
     orchestration_score: OrchestrationQualityScore
     improvements: List[QualityImprovement]
     summary: str = ""
-    generated_at: datetime = field(default_factory=datetime.utcnow)
+    generated_at: datetime = field(default_factory=lambda: datetime.now(UTC))
 
     @property
     def overall_grade(self) -> str:

@@ -105,7 +105,7 @@ from .improvement_suggester import (
 )
 
 from typing import Dict, Any, List, Optional
-from datetime import datetime
+from datetime import datetime, UTC
 
 
 class QualityAssessor:
@@ -192,7 +192,7 @@ class QualityAssessor:
             orchestration_score=orchestration_score,
             improvements=[],
             summary="",
-            generated_at=datetime.utcnow(),
+            generated_at=datetime.now(UTC),
         )
 
         # Generate improvements
