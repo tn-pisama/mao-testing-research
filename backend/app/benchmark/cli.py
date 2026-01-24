@@ -70,6 +70,11 @@ def cli():
     help="Train ML detector before running benchmark",
 )
 @click.option(
+    "--ml-v4/--no-ml-v4",
+    default=False,
+    help="Use ML Detector v4 with best-in-class improvements (SetFit, ASL, GCN, chunking)",
+)
+@click.option(
     "--epochs",
     default=50,
     help="Training epochs (if --train)",
@@ -134,6 +139,7 @@ def run(
     modes: Optional[str],
     use_ml: bool,
     train: bool,
+    ml_v4: bool,
     epochs: int,
     batch_size: int,
     llm: bool,
@@ -206,9 +212,10 @@ def run(
 
     # Train if requested
     if train and use_ml:
-        click.echo(f"Training ML detector ({epochs} epochs)...")
+        version_str = "v4 (best-in-class)" if ml_v4 else "v3"
+        click.echo(f"Training ML detector {version_str} ({epochs} epochs)...")
         try:
-            train_result = runner.train_ml_detector(epochs=epochs)
+            train_result = runner.train_ml_detector(epochs=epochs, use_v4=ml_v4)
             click.echo(f"Training complete: {train_result}")
         except Exception as e:
             click.echo(f"Training failed: {e}", err=True)

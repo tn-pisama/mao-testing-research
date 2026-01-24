@@ -1360,6 +1360,7 @@ Respond in JSON format:
         records: Optional[List[MASTRecord]] = None,
         epochs: int = 50,
         test_split: float = 0.2,
+        use_v4: bool = False,
     ) -> Dict[str, Any]:
         """Train ML detector on MAST data.
 
@@ -1367,12 +1368,16 @@ Respond in JSON format:
             records: Training records (default: use loader)
             epochs: Training epochs
             test_split: Fraction for test set
+            use_v4: Use ML Detector v4 with all improvements:
+                    - SetFit contrastive fine-tuning
+                    - Asymmetric Loss (ASL)
+                    - Label Correlation GCN
+                    - Long-context chunked encoding
+                    - Hierarchical contrastive learning
 
         Returns:
             Training results with metrics
         """
-        from app.detection_enterprise.ml_detector_v3 import MultiTaskDetector
-
         if records is None:
             records = list(self.loader)
 
@@ -1384,9 +1389,23 @@ Respond in JSON format:
                 "mast_annotation": record.raw_annotations,
             })
 
-        # Initialize and train
-        self._ml_detector = MultiTaskDetector(epochs=epochs)
-        result = self._ml_detector.train(train_data)
+        if use_v4:
+            from app.detection_enterprise.ml_detector_v4 import MultiTaskDetectorV4
+            logger.info("Using ML Detector v4 (best-in-class improvements)")
+            self._ml_detector = MultiTaskDetectorV4(
+                epochs=epochs,
+                use_contrastive_finetuning=True,
+                contrastive_iterations=10,
+                use_chunked_encoding=True,
+                use_label_gcn=True,
+                loss_type="asl",
+                cv_folds=5,
+            )
+        else:
+            from app.detection_enterprise.ml_detector_v3 import MultiTaskDetector
+            self._ml_detector = MultiTaskDetector(epochs=epochs)
+
+        result = self._ml_detector.train(train_data, test_split=test_split)
 
         return result
 
