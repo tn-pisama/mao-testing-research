@@ -25,9 +25,10 @@ import {
   Wrench,
 } from 'lucide-react'
 import Link from 'next/link'
-import { generateDemoDetections, generateDemoLoopAnalytics } from '@/lib/demo-data'
+import { generateDemoLoopAnalytics } from '@/lib/demo-data'
 import type { Detection } from '@/lib/api'
 import { useUserPreferences } from '@/lib/user-preferences'
+import { useDetections } from '@/hooks/useApiWithFallback'
 
 type DetectionType = 'all' | 'infinite_loop' | 'state_corruption' | 'persona_drift' | 'coordination_deadlock' | 'task_derailment' | 'context_neglect' | 'communication_breakdown' | 'specification_mismatch' | 'poor_decomposition' | 'flawed_workflow'
 type Severity = 'all' | 'low' | 'medium' | 'high' | 'critical'
@@ -71,17 +72,14 @@ export default function DetectionsPage() {
   const [severityFilter, setSeverityFilter] = useState<Severity>('all')
   const [searchQuery, setSearchQuery] = useState('')
   const [showValidated, setShowValidated] = useState(true)
-  const [isLoaded, setIsLoaded] = useState(false)
-  const [detections, setDetections] = useState<Detection[]>([])
   const { isN8nUser, showAdvancedFeatures } = useUserPreferences()
+
+  // Fetch real detections from API
+  const { detections, isLoading, isDemoMode } = useDetections({ perPage: 50 })
 
   // n8n users see simplified view with friendly terminology
   const showSimplifiedView = isN8nUser && !showAdvancedFeatures
-
-  useEffect(() => {
-    setDetections(generateDemoDetections(25))
-    setIsLoaded(true)
-  }, [])
+  const isLoaded = !isLoading
 
   const filteredDetections = useMemo(() => {
     return detections.filter((d) => {
@@ -152,6 +150,19 @@ export default function DetectionsPage() {
             Refresh
           </button>
         </div>
+
+        {isDemoMode && (
+          <div className="mb-6 p-4 rounded-xl bg-amber-500/10 border border-amber-500/30 flex items-start gap-3">
+            <AlertCircle size={20} className="text-amber-400 mt-0.5 flex-shrink-0" />
+            <div>
+              <h3 className="text-sm font-semibold text-amber-400 mb-1">Demo Mode</h3>
+              <p className="text-sm text-amber-300/80">
+                Unable to connect to API. Showing demo data for illustration purposes.
+                {' '}Please check your connection or contact support if this persists.
+              </p>
+            </div>
+          </div>
+        )}
 
         <div className="grid grid-cols-2 lg:grid-cols-4 gap-4 mb-6">
           <StatCard

@@ -1215,7 +1215,7 @@ export function createApiClient(token?: string | null, tenantId?: string | null)
 
     // N8n endpoints
     async registerN8nWorkflow(workflowId: string, workflowName?: string) {
-      return fetchApi<N8nWorkflow>(`/tenants/{tenant_id}/n8n/workflows`, {
+      return fetchApi<N8nWorkflow>(`/n8n/workflows`, {
         ...opts,
         method: 'POST',
         body: { workflow_id: workflowId, workflow_name: workflowName },
@@ -1223,12 +1223,12 @@ export function createApiClient(token?: string | null, tenantId?: string | null)
     },
 
     async listN8nWorkflows() {
-      return fetchApi<N8nWorkflow[]>(`/tenants/{tenant_id}/n8n/workflows`, opts)
+      return fetchApi<N8nWorkflow[]>(`/n8n/workflows`, opts)
     },
 
     async syncN8nExecutions(workflowId?: string, limit: number = 20) {
       return fetchApi<{ synced_count: number; traces_created: number; errors: string[] }>(
-        `/tenants/{tenant_id}/n8n/sync`,
+        `/n8n/sync`,
         {
           ...opts,
           method: 'POST',
