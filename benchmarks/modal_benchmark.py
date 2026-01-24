@@ -53,7 +53,11 @@ image = (
         modal.Secret.from_name("anthropic-api-key-2"),
         modal.Secret.from_name("anthropic-api-key-3"),
         modal.Secret.from_name("anthropic-api-key-4"),
-    ],  # 4 API keys for 4x throughput via round-robin
+        modal.Secret.from_name("google-api-key-1"),
+        modal.Secret.from_name("google-api-key-2"),
+        modal.Secret.from_name("google-api-key-3"),
+        modal.Secret.from_name("google-api-key-4"),
+    ],  # 8 API keys total: 4 Anthropic + 4 Google for parallel processing
 )
 def run_benchmark(sample_size: int = None, mode: str = None, hybrid: bool = True, ml_v4: bool = False, data_path: str = None):
     """Run MAST benchmark on GPU with optional hybrid LLM detection."""
@@ -74,9 +78,11 @@ def run_benchmark(sample_size: int = None, mode: str = None, hybrid: bool = True
 
     # Map Modal secret env vars to expected format for runner.py
     # Modal sets: ANTHROPIC_API_KEY, ANTHROPIC_API_KEY_2, ANTHROPIC_API_KEY_3, ANTHROPIC_API_KEY_4
+    #             GOOGLE_API_KEY, GOOGLE_API_KEY_2, GOOGLE_API_KEY_3, GOOGLE_API_KEY_4
     # Count available keys
-    key_count = sum(1 for i in ['', '_2', '_3', '_4'] if f"ANTHROPIC_API_KEY{i}" in os.environ)
-    print(f"Loaded {key_count} API keys for round-robin")
+    anthropic_count = sum(1 for i in ['', '_2', '_3', '_4'] if f"ANTHROPIC_API_KEY{i}" in os.environ)
+    google_count = sum(1 for i in ['', '_2', '_3', '_4'] if f"GOOGLE_API_KEY{i}" in os.environ)
+    print(f"Loaded {anthropic_count} Anthropic + {google_count} Google API keys for parallel processing")
 
     # Data path: default to MAST dataset, but allow custom n8n data
     if data_path is None:

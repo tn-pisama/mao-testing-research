@@ -755,15 +755,23 @@ class BenchmarkRunner:
         llm_modes: List[str],
         model: str,
         use_few_shot: bool,
+        max_concurrent: int = 20,  # Concurrent requests per API key
     ) -> List[DetectionAttempt]:
-        """Async implementation of LLM detection."""
+        """Async implementation of LLM detection with parallel processing.
+
+        Uses round-robin across multiple API keys for high throughput.
+        """
         from anthropic import AsyncAnthropic
 
-        if not self._api_key:
-            logger.error("ANTHROPIC_API_KEY not set, skipping LLM detection")
+        # Use multiple API keys if available, fall back to single key
+        api_keys = self._api_keys if self._api_keys else ([self._api_key] if self._api_key else [])
+        if not api_keys:
+            logger.error("No API keys set, skipping LLM detection")
             return []
 
-        client = AsyncAnthropic(api_key=self._api_key)
+        # Create multiple clients for round-robin (one per API key)
+        clients = [AsyncAnthropic(api_key=key) for key in api_keys]
+        num_clients = len(clients)
 
         # Model selection
         model_map = {
@@ -772,6 +780,11 @@ class BenchmarkRunner:
             "opus": "claude-opus-4-20250514",
         }
         model_id = model_map.get(model, model_map["haiku"])
+
+        # Total concurrent = max_concurrent * num_keys
+        total_concurrent = max_concurrent * num_clients
+        semaphore = asyncio.Semaphore(total_concurrent)
+        logger.info(f"LLM detection: {num_clients} API keys, {total_concurrent} total concurrent requests")
 
         # Get few-shot examples if enabled
         few_shot_examples = {}
@@ -782,38 +795,46 @@ class BenchmarkRunner:
             except ImportError:
                 logger.warning("Few-shot bank not available, proceeding without examples")
 
-        attempts = []
-        total = len(records) * len(llm_modes)
-        processed = 0
-
+        # Build queue of (record, mode) pairs
+        queue = []
         for record in records:
             for mode in llm_modes:
-                # Skip if mode not in ground truth
-                if mode not in record.ground_truth:
-                    continue
+                if mode in record.ground_truth:
+                    queue.append((record, mode))
 
+        logger.info(f"Processing {len(queue)} LLM detection requests in parallel...")
+
+        # Progress tracking
+        completed = [0]  # Use list for mutable closure
+        total = len(queue)
+
+        async def process_one(item: Tuple[MASTRecord, str], idx: int) -> DetectionAttempt:
+            """Process a single LLM detection request with round-robin client."""
+            record, mode = item
+            # Round-robin client selection based on index
+            client = clients[idx % num_clients]
+
+            async with semaphore:
                 start_time = time.time()
-
                 try:
-                    # Build prompt
                     prompt = self._build_llm_prompt(
                         record, mode, few_shot_examples.get(mode, {})
                     )
-
-                    # Call Claude
                     response = await client.messages.create(
                         model=model_id,
                         max_tokens=1000,
                         messages=[{"role": "user", "content": prompt}],
                     )
-
-                    # Parse response
                     content = response.content[0].text
                     detected, confidence, reasoning = self._parse_llm_response(content)
-
                     latency_ms = (time.time() - start_time) * 1000
 
-                    attempts.append(DetectionAttempt(
+                    # Progress tracking
+                    completed[0] += 1
+                    if completed[0] % 50 == 0:
+                        logger.info(f"LLM detection progress: {completed[0]}/{total}")
+
+                    return DetectionAttempt(
                         record_id=record.trace_id,
                         failure_mode=mode,
                         detector_name=f"llm_{model}",
@@ -821,16 +842,13 @@ class BenchmarkRunner:
                         confidence=confidence,
                         latency_ms=latency_ms,
                         raw_result={"reasoning": reasoning[:500]},
-                    ))
-
-                    processed += 1
-                    if processed % 10 == 0:
-                        logger.info(f"LLM detection progress: {processed}/{total}")
+                    )
 
                 except Exception as e:
                     latency_ms = (time.time() - start_time) * 1000
                     logger.warning(f"LLM detection failed for {record.trace_id}/{mode}: {e}")
-                    attempts.append(DetectionAttempt(
+                    completed[0] += 1
+                    return DetectionAttempt(
                         record_id=record.trace_id,
                         failure_mode=mode,
                         detector_name=f"llm_{model}",
@@ -838,9 +856,11 @@ class BenchmarkRunner:
                         confidence=0.0,
                         latency_ms=latency_ms,
                         error=str(e),
-                    ))
+                    )
 
-        return attempts
+        # Run all requests in parallel with asyncio.gather
+        results = await asyncio.gather(*[process_one(item, idx) for idx, item in enumerate(queue)])
+        return list(results)
 
     def _build_llm_prompt(
         self,
@@ -1226,7 +1246,7 @@ Respond in JSON format:
     async def _run_llm_escalation_async(
         self,
         queue: List[Tuple[MASTRecord, str, Any, float]],
-        max_concurrent: int = 5,  # Concurrent requests per key
+        max_concurrent: int = 20,  # Concurrent requests per key (increased for speed)
     ) -> List[DetectionAttempt]:
         """Async LLM escalation for ambiguous cases with parallel processing.
 
