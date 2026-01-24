@@ -343,7 +343,7 @@ class MASTLLMJudge:
                 session.close()
 
         except Exception as e:
-            logger.warning(f"Could not retrieve few-shot examples: {e}")
+            logger.debug(f"Few-shot examples unavailable (optional): {e}")
             return ""
 
     def _build_prompt(
@@ -707,9 +707,11 @@ Important guidelines:
             system_prompt = None
 
         # Build API call parameters
+        # Note: max_tokens must be > thinking.budget_tokens for extended thinking
+        thinking_budget = self.model_config.thinking_budget or 0
         api_params = {
             "model": self.MODEL,
-            "max_tokens": 16000 if self.model_config.use_extended_thinking else 1000,
+            "max_tokens": max(thinking_budget + 8000, 16000) if self.model_config.use_extended_thinking else 1000,
             "messages": messages,
         }
 
