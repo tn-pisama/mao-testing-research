@@ -127,6 +127,12 @@ def cli():
     help="Anthropic API key for LLM/hybrid detection",
 )
 @click.option(
+    "--sample", "-n",
+    type=int,
+    default=None,
+    help="Randomly sample N records from the dataset",
+)
+@click.option(
     "--verbose", "-v",
     is_flag=True,
     help="Verbose output",
@@ -150,6 +156,7 @@ def run(
     ml_llm: bool,
     verify_modes: str,
     api_key: Optional[str],
+    sample: Optional[int],
     verbose: bool,
 ):
     """Run MAST benchmark.
@@ -190,6 +197,13 @@ def run(
         click.echo(f"Filtered to {len(records):,} records for framework: {framework}")
         # Update loader with filtered records
         loader._records = records
+
+    # Sample records if specified
+    if sample and sample < len(loader._records):
+        import random
+        random.seed(42)  # Reproducible sampling
+        loader._records = random.sample(loader._records, sample)
+        click.echo(f"Sampled {sample:,} records from dataset")
 
     # Parse failure modes
     failure_modes = None
