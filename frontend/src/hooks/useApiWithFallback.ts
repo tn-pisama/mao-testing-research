@@ -2,6 +2,7 @@
 
 import { useState, useEffect, useCallback, useRef } from 'react'
 import { useSafeAuth as useAuth } from '@/hooks/useSafeAuth'
+import { useTenant } from '@/hooks/useTenant'
 import { createApiClient } from '@/lib/api'
 import {
   generateDemoLoopAnalytics,
@@ -13,6 +14,7 @@ import type { LoopAnalytics, CostAnalytics, Detection, Trace, QualityAssessment 
 
 export function useApiWithFallback() {
   const { getToken } = useAuth()
+  const { tenantId } = useTenant()
   const [isLoading, setIsLoading] = useState(true)
   const [isDemoMode, setIsDemoMode] = useState(true)
   const [error, setError] = useState<string | null>(null)
@@ -40,7 +42,7 @@ export function useApiWithFallback() {
   const loadRealData = useCallback(async () => {
     try {
       const token = await getToken()
-      const api = createApiClient(token)
+      const api = createApiClient(token, tenantId)
 
       // Add .catch() to ALL promises to handle partial failures gracefully
       const [loops, cost, dets, trc, qualityRes] = await Promise.all([
@@ -69,7 +71,7 @@ export function useApiWithFallback() {
       }
       return false
     }
-  }, [getToken])
+  }, [getToken, tenantId])
 
   const refresh = useCallback(async () => {
     setIsLoading(true)
@@ -124,6 +126,7 @@ export function useApiWithFallback() {
 
 export function useDetections(params?: { page?: number; perPage?: number; type?: string }) {
   const { getToken } = useAuth()
+  const { tenantId } = useTenant()
   const [detections, setDetections] = useState<Detection[]>([])
   const [isLoading, setIsLoading] = useState(true)
   const [isDemoMode, setIsDemoMode] = useState(false)
@@ -133,7 +136,7 @@ export function useDetections(params?: { page?: number; perPage?: number; type?:
       setIsLoading(true)
       try {
         const token = await getToken()
-        const api = createApiClient(token)
+        const api = createApiClient(token, tenantId)
         const data = await api.getDetections(params || {})
         setDetections(data)
         setIsDemoMode(false)
@@ -144,13 +147,14 @@ export function useDetections(params?: { page?: number; perPage?: number; type?:
       setIsLoading(false)
     }
     load()
-  }, [getToken, params])
+  }, [getToken, tenantId, params])
 
   return { detections, isLoading, isDemoMode }
 }
 
 export function useTraces(params?: { page?: number; perPage?: number; status?: string }) {
   const { getToken } = useAuth()
+  const { tenantId } = useTenant()
   const [traces, setTraces] = useState<Trace[]>([])
   const [total, setTotal] = useState(0)
   const [isLoading, setIsLoading] = useState(true)
@@ -161,7 +165,7 @@ export function useTraces(params?: { page?: number; perPage?: number; status?: s
       setIsLoading(true)
       try {
         const token = await getToken()
-        const api = createApiClient(token)
+        const api = createApiClient(token, tenantId)
         const data = await api.getTraces(params || {})
         setTraces(data.traces)
         setTotal(data.total)
@@ -175,7 +179,7 @@ export function useTraces(params?: { page?: number; perPage?: number; status?: s
       setIsLoading(false)
     }
     load()
-  }, [getToken, params])
+  }, [getToken, tenantId, params])
 
   return { traces, total, isLoading, isDemoMode }
 }
