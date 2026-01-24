@@ -357,14 +357,17 @@ class MASTLLMJudge:
         coordination_events: List[str] = None,
         rag_examples: str = "",
         knowledge_context: str = "",
+        framework: str = "",
     ) -> str:
         """Build the judge prompt with few-shot examples and enhanced context.
 
         Phase 3 Enhancement: Now includes conversation timeline for better context.
+        Phase 5 Enhancement: Framework-aware prompting for n8n and MAST.
 
         Args:
             rag_examples: Pre-formatted RAG examples from retrieval service
             knowledge_context: Domain knowledge for modes like F3, F4, F9
+            framework: Source framework (n8n, ChatDev, MetaGPT, etc.)
         """
 
         mode_def = MAST_FAILURE_DEFINITIONS.get(failure_mode)
@@ -447,9 +450,31 @@ Use these examples to calibrate your judgment. Pay special attention to:
 ---
 """
 
-        prompt = f"""You are an expert evaluator of AI agent behavior, specifically trained to detect failure modes in multi-agent systems. You are evaluating traces from the MAST benchmark dataset.
+        # Framework-aware context
+        framework_lower = framework.lower() if framework else ""
+        if "n8n" in framework_lower:
+            framework_context = """You are evaluating traces from **n8n workflow automation**. Key differences from conversational multi-agent systems:
+- Traces consist of node executions, not conversational turns
+- Each "[Node Name] {...}" block represents a node's output
+- Look for: repeated node executions, data flow issues, error propagation between nodes
+- Workflow failures manifest as: stuck loops, invalid data passing, missing error handling
 
-## Failure Mode: {failure_mode.value} - {mode_def['name']}
+"""
+        elif any(x in framework_lower for x in ["chatdev", "metagpt", "autogen", "crewai"]):
+            framework_context = f"""You are evaluating traces from **{framework}** (conversational multi-agent framework).
+- Traces are dialogue between multiple AI agents (Programmer, Designer, Reviewer, etc.)
+- Look for: role violations, communication breakdowns, coordination failures
+- Typical failures: agents talking past each other, ignoring instructions, scope creep
+
+"""
+        else:
+            framework_context = """You are evaluating traces from the MAST benchmark dataset (multi-agent systems).
+
+"""
+
+        prompt = f"""You are an expert evaluator of AI agent behavior, specifically trained to detect failure modes in multi-agent systems and workflow automation.
+
+{framework_context}## Failure Mode: {failure_mode.value} - {mode_def['name']}
 
 ### Definition:
 {mode_def['definition']}
@@ -824,6 +849,7 @@ Important guidelines:
         full_conversation: str = "",
         agent_interactions: Optional[List[str]] = None,
         coordination_events: Optional[List[str]] = None,
+        framework: str = "",
     ) -> JudgmentResult:
         """
         Evaluate a trace for a specific failure mode.
@@ -837,6 +863,7 @@ Important guidelines:
             full_conversation: Full conversation transcript for context
             agent_interactions: Agent-to-agent interaction patterns
             coordination_events: Coordination-related events
+            framework: Source framework (n8n, ChatDev, MetaGPT, etc.)
 
         Returns:
             JudgmentResult with verdict, confidence, and reasoning
@@ -933,6 +960,7 @@ Important guidelines:
             full_conversation, agent_interactions, coordination_events,
             rag_examples=rag_examples_str,
             knowledge_context=knowledge_context,
+            framework=framework,
         )
 
         # Try primary provider based on model config

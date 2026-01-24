@@ -64,7 +64,18 @@ class TurnAwareLoopDetector(EmbeddingMixin, TurnAwareDetector):
                 detector_name=self.name,
             )
 
-        agent_turns = [t for t in turns if t.participant_type == "agent"]
+        # Detect framework from metadata or turn metadata
+        framework = ""
+        if conversation_metadata:
+            framework = conversation_metadata.get("framework", "").lower()
+        if not framework and turns and turns[0].turn_metadata:
+            framework = turns[0].turn_metadata.get("framework", "").lower()
+
+        # For n8n, all turns are effectively "agent" turns (nodes)
+        if "n8n" in framework:
+            agent_turns = turns  # All n8n nodes are treated as agents
+        else:
+            agent_turns = [t for t in turns if t.participant_type == "agent"]
 
         if len(agent_turns) < 3:
             return TurnAwareDetectionResult(
@@ -128,6 +139,19 @@ class TurnAwareLoopDetector(EmbeddingMixin, TurnAwareDetector):
                 "description": f"Semantic loop: {semantic_loop['count']} semantically similar responses",
             })
             affected_turns.extend(semantic_loop["turns"])
+
+        # n8n-specific: Detect repeated node executions (workflow loops)
+        if "n8n" in framework:
+            n8n_loop = self._detect_n8n_workflow_loop(agent_turns)
+            if n8n_loop["detected"]:
+                loop_issues.append({
+                    "type": "n8n_workflow_loop",
+                    "node": n8n_loop["node"],
+                    "turns": n8n_loop["turns"],
+                    "repetition_count": n8n_loop["count"],
+                    "description": f"n8n workflow loop: node '{n8n_loop['node']}' executed {n8n_loop['count']} times",
+                })
+                affected_turns.extend(n8n_loop["turns"])
 
         if not loop_issues:
             return TurnAwareDetectionResult(
@@ -296,5 +320,64 @@ class TurnAwareLoopDetector(EmbeddingMixin, TurnAwareDetector):
 
         except Exception as e:
             logger.debug(f"Semantic loop detection failed: {e}")
+
+        return {"detected": False}
+
+    def _detect_n8n_workflow_loop(
+        self,
+        turns: List[TurnSnapshot],
+    ) -> Dict[str, Any]:
+        """Detect n8n workflow loops based on repeated node executions.
+
+        In n8n workflows, loops manifest as:
+        1. Same node executing multiple times with similar outputs
+        2. Retry patterns where nodes re-execute on failure
+        3. Workflow loops where execution cycles back to earlier nodes
+
+        Args:
+            turns: List of turns (n8n nodes)
+
+        Returns:
+            Dict with detection result, node name, turn numbers, and count
+        """
+        if len(turns) < 3:
+            return {"detected": False}
+
+        # Count node executions by participant_id (node name)
+        node_counts: Dict[str, List[int]] = {}
+        for turn in turns:
+            node_name = turn.participant_id
+            if node_name not in node_counts:
+                node_counts[node_name] = []
+            node_counts[node_name].append(turn.turn_number)
+
+        # Find nodes that execute too many times (potential loop)
+        for node_name, turn_numbers in node_counts.items():
+            if len(turn_numbers) >= self.min_repetitions:
+                # Check if outputs are similar (indicating stuck loop)
+                node_turns = [t for t in turns if t.participant_id == node_name]
+
+                # Check for identical content hashes
+                hashes = [t.content_hash for t in node_turns]
+                unique_hashes = set(hashes)
+
+                # If all executions produce same output, definitely a loop
+                if len(unique_hashes) == 1:
+                    return {
+                        "detected": True,
+                        "node": node_name,
+                        "turns": turn_numbers,
+                        "count": len(turn_numbers),
+                    }
+
+                # If >50% of outputs are identical, likely a loop
+                max_hash_count = max(hashes.count(h) for h in unique_hashes)
+                if max_hash_count >= len(hashes) * 0.5 and max_hash_count >= self.min_repetitions:
+                    return {
+                        "detected": True,
+                        "node": node_name,
+                        "turns": turn_numbers,
+                        "count": len(turn_numbers),
+                    }
 
         return {"detected": False}

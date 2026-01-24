@@ -84,11 +84,15 @@ Verdict: NO - Well-designed workflow with proper sequencing"""
         "name": "Task Derailment",
         "definition": """FM-2.1: Agent deviates from the assigned task, pursuing tangential or unrelated activities.
 Look for: scope creep, getting sidetracked by interesting but irrelevant work, abandoning the original task,
-or spending time on optimizations/features not requested.""",
+or spending time on optimizations/features not requested.
+For n8n workflows: Look for nodes that execute unrelated operations or workflow branches that don't contribute to the goal.""",
         "positive_example": """Task: "Fix the login bug"
 Agent: "While looking at login, I noticed the CSS could be better. Let me refactor all styles..."
 [Hours later, still doing CSS, login bug unfixed]
-Verdict: YES - Derailed from bug fix into unrelated CSS work""",
+Verdict: YES - Derailed from bug fix into unrelated CSS work
+
+n8n Example: Workflow for data extraction adds unexpected email notification nodes not in requirements.
+Verdict: YES - Workflow derailed from data extraction into email notifications""",
         "negative_example": """Task: "Fix the login bug"
 Agent: "Found the bug in auth.js line 42. Fixed. Login now works."
 Verdict: NO - Stayed focused on the assigned task"""
@@ -148,11 +152,15 @@ Verdict: NO - Clear communication and coordination"""
         "name": "Coordination Failure",
         "definition": """FM-2.6: Failure to properly coordinate actions between multiple agents, leading to
 conflicts, duplicated work, or missed dependencies. Look for: agents working on same thing without knowing,
-timing issues, dependency violations, or lack of synchronization between parallel activities.""",
+timing issues, dependency violations, or lack of synchronization between parallel activities.
+For n8n workflows: Look for parallel branches that produce conflicting state updates, race conditions, or nodes that don't wait for required predecessors.""",
         "positive_example": """Agent A: "Deploying version 1.0"
 Agent B: "Deploying version 1.1" [at same time]
 [Deployment conflict - no coordination]
-Verdict: YES - Failed to coordinate deployments""",
+Verdict: YES - Failed to coordinate deployments
+
+n8n Example: Parallel branches both write to the same database record, causing data race.
+Verdict: YES - Parallel nodes failed to coordinate database writes""",
         "negative_example": """Agent A: "Ready to deploy 1.0, waiting for B's approval"
 Agent B: "Approved. Proceed with deployment."
 Verdict: NO - Properly coordinated the deployment"""
@@ -162,11 +170,15 @@ Verdict: NO - Properly coordinated the deployment"""
         "name": "Output Validation Failure",
         "definition": """FM-3.1: Failure to properly validate outputs before delivery, resulting in incorrect,
 incomplete, or malformed results being passed on. Look for: not checking output format, missing validation
-of results, accepting invalid data, or delivering outputs that don't meet requirements.""",
+of results, accepting invalid data, or delivering outputs that don't meet requirements.
+For n8n workflows: Look for node outputs that don't match the expected schema of downstream nodes, data type mismatches, or missing required fields.""",
         "positive_example": """Task: "Return JSON response"
 Agent: "Here's the result: {invalid json syntax"
 [Delivered malformed JSON without validation]
-Verdict: YES - Failed to validate output format""",
+Verdict: YES - Failed to validate output format
+
+n8n Example: Node outputs {\"data\": [...]} but next node expects {\"items\": [...]}, causing schema mismatch.
+Verdict: YES - Node output schema doesn't match expected input of next node""",
         "negative_example": """Agent: "Validating JSON... Valid. Returning response."
 Verdict: NO - Properly validated output before delivery"""
     },

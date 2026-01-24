@@ -211,6 +211,17 @@ class MASTDataLoader:
         trace_data = data.get("trace", {})
         if isinstance(trace_data, dict):
             trajectory = trace_data.get("trajectory", "")
+        elif isinstance(trace_data, str):
+            # Try to parse as JSON or Python dict string
+            try:
+                import ast
+                parsed_trace = ast.literal_eval(trace_data)
+                if isinstance(parsed_trace, dict):
+                    trajectory = parsed_trace.get("trajectory", str(trace_data))
+                else:
+                    trajectory = str(trace_data)
+            except (ValueError, SyntaxError):
+                trajectory = str(trace_data)
         else:
             trajectory = str(trace_data)
 

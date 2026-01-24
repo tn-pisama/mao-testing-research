@@ -876,19 +876,23 @@ class BenchmarkRunner:
             "F6": """Task Derailment occurs when an agent deviates from the intended objective
 or focus of the task, pursuing unrelated work or losing track of the original goal.
 Signs include: implementing different features than requested, working on tangential
-problems, or shifting focus mid-task to unrelated concerns.""",
+problems, or shifting focus mid-task to unrelated concerns.
+For n8n workflows: nodes executing unrelated operations or workflow branches that don't contribute to the goal.""",
             "F8": """Information Withholding occurs when an agent fails to share or communicate
 important data or insights that could impact decision-making. Signs include: having
 relevant information but not mentioning it, hiding errors, or failing to communicate
-important findings to other agents.""",
+important findings to other agents.
+For n8n workflows: nodes not passing expected data to downstream nodes, error outputs not being surfaced.""",
             "F9": """Role Usurpation occurs when an agent acts outside their designated role
 or takes over responsibilities assigned to another agent. Signs include: a CEO writing
 code, a tester making design decisions, or any agent performing tasks outside their
-defined role boundaries.""",
+defined role boundaries.
+For n8n workflows: nodes modifying data outside their intended scope, or performing operations beyond their designated function.""",
             "F13": """Quality Gate Bypass occurs when testing, review, or validation steps
 are skipped, inadequate, or shallow. Signs include: tests that don't verify actual
 requirements, reviews that rubber-stamp without examination, or pushing code without
-proper quality checks.""",
+proper quality checks.
+For n8n workflows: missing validation nodes, error handling bypassed, outputs not validated before passing downstream.""",
         }
 
         definition = mode_definitions.get(mode, f"Failure mode {mode}: {mode_name}")
@@ -1119,8 +1123,17 @@ Respond in JSON format:
             "F13": TurnAwareQualityGateBypassDetector(),
         }
 
-        HIGH_THRESHOLD = 0.85  # Accept directly
-        LOW_THRESHOLD = 0.40   # Reject directly
+        # Framework-aware thresholds
+        # n8n workflows need more LLM escalation due to different patterns
+        def get_thresholds(framework: str) -> tuple:
+            """Get HIGH/LOW thresholds based on framework."""
+            framework_lower = (framework or "").lower()
+            if "n8n" in framework_lower:
+                # n8n: Lower thresholds to escalate more to LLM
+                # ML patterns don't match n8n workflow format well
+                return 0.70, 0.30
+            # Default for MAST conversational frameworks (ChatDev, MetaGPT, etc.)
+            return 0.85, 0.40
 
         attempts = []
         llm_queue = []  # Queue for LLM escalation
@@ -1138,6 +1151,9 @@ Respond in JSON format:
                 "trace_id": record.trace_id,
             }
 
+            # Get framework-aware thresholds for this record
+            HIGH_THRESHOLD, LOW_THRESHOLD = get_thresholds(record.framework)
+
             for mode in modes:
                 if mode not in record.ground_truth:
                     continue
@@ -1152,7 +1168,7 @@ Respond in JSON format:
                     result = detector.detect(turns=turns, conversation_metadata=metadata)
                     latency = (time.time() - start) * 1000
 
-                    # Confidence routing
+                    # Confidence routing (using framework-aware thresholds)
                     if result.confidence >= HIGH_THRESHOLD:
                         # High confidence - accept directly
                         attempts.append(DetectionAttempt(
@@ -1653,13 +1669,14 @@ Respond in JSON format:
             for record, _, ml_confidence, ml_latency in items:
                 start_time = time.time()
                 try:
-                    # Use MASTLLMJudge for evaluation
+                    # Use MASTLLMJudge for evaluation (framework-aware)
                     result = judge.evaluate(
                         failure_mode=failure_mode_enum,
                         task=record.task[:1000],
                         trace_summary=record.trajectory[:5000],
                         key_events=[],
                         full_conversation=record.trajectory[:40000],
+                        framework=record.framework,
                     )
 
                     llm_latency = result.latency_ms

@@ -40,6 +40,8 @@ def parse_trajectory_to_turns(
         return _parse_crewai(trajectory, max_turns)
     elif "camel" in framework_lower:
         return _parse_camel(trajectory, max_turns)
+    elif "n8n" in framework_lower:
+        return _parse_n8n(trajectory, max_turns)
     else:
         # Generic fallback parser
         return _parse_generic(trajectory, max_turns)
@@ -456,6 +458,95 @@ def _parse_camel(trajectory: str, max_turns: int) -> List[TurnSnapshot]:
         return _parse_generic(trajectory, max_turns)
 
     return turns
+
+
+def _parse_n8n(trajectory: str, max_turns: int) -> List[TurnSnapshot]:
+    """Parse n8n workflow execution trajectory format.
+
+    n8n format:
+    [Node Name] {"json": "content"} or [Node Name] [Node X executed]
+
+    Examples:
+        [Hourly Trigger] {"timestamp": "2026-01-24T10:00:52"}
+        [Coordinator LM] [Node Coordinator LM executed]
+        [Coordinator Agent] {"story_type": "top", ...}
+    """
+    turns = []
+    turn_number = 0
+
+    # Pattern: [Node Name] followed by content until next [Node Name] or end
+    # Content can be JSON {...}, array [...], or text like [Node X executed]
+    node_pattern = r'\[([^\]]+)\]\s*((?:\{[^[]*\}|\[[^\]]*\]|[^[]*)?)(?=\[|$)'
+
+    for match in re.finditer(node_pattern, trajectory, re.DOTALL):
+        if turn_number >= max_turns:
+            break
+
+        node_name = match.group(1).strip()
+        content = match.group(2).strip()
+
+        # Skip empty content
+        if not content or len(content) < 5:
+            continue
+
+        # Skip placeholder markers like "[Node X executed]"
+        if content.startswith('[Node ') and content.endswith(' executed]'):
+            continue
+
+        # Determine participant type based on node name
+        node_lower = node_name.lower()
+        if any(x in node_lower for x in ['agent', 'ai', 'llm', 'lm', 'openai', 'claude', 'gpt']):
+            participant_type = "agent"
+        elif any(x in node_lower for x in ['trigger', 'schedule', 'webhook', 'cron']):
+            participant_type = "system"
+        elif any(x in node_lower for x in ['http', 'api', 'request', 'fetch', 'get', 'post']):
+            participant_type = "tool"
+        elif any(x in node_lower for x in ['set', 'merge', 'split', 'filter', 'transform']):
+            participant_type = "system"
+        else:
+            participant_type = "agent"
+
+        turns.append(TurnSnapshot(
+            turn_number=turn_number,
+            participant_type=participant_type,
+            participant_id=node_name,
+            content=_clean_n8n_content(content),
+            turn_metadata={"framework": "n8n", "node": node_name},
+        ))
+        turn_number += 1
+
+    # Fallback to generic if no turns found
+    if not turns:
+        return _parse_generic(trajectory, max_turns)
+
+    return turns
+
+
+def _clean_n8n_content(content: str) -> str:
+    """Clean n8n node content for better detection.
+
+    Tries to extract meaningful text from JSON payloads.
+    """
+    content = content.strip()
+
+    # If it looks like JSON, try to extract key information
+    if content.startswith('{') and content.endswith('}'):
+        try:
+            import json
+            data = json.loads(content)
+            # Extract meaningful fields
+            meaningful_parts = []
+            for key, value in data.items():
+                if isinstance(value, str) and len(value) > 10:
+                    meaningful_parts.append(f"{key}: {value}")
+                elif isinstance(value, dict):
+                    meaningful_parts.append(f"{key}: {json.dumps(value, indent=2)}")
+            if meaningful_parts:
+                return '\n'.join(meaningful_parts)
+        except (json.JSONDecodeError, TypeError):
+            pass
+
+    return content
 
 
 def _parse_generic(trajectory: str, max_turns: int) -> List[TurnSnapshot]:
