@@ -451,3 +451,62 @@ def execution_history_inconsistent():
         {"output": {"answer": "B", "score": 0.8}},
         {"output": {"data": "C"}},
     ]
+
+
+# =============================================================================
+# Dataset Loading Fixtures
+# =============================================================================
+
+
+@pytest.fixture
+def n8n_workflow_files():
+    """Load all 4 n8n workflow JSON files from _archived/demo-agent/n8n-workflows/."""
+    import json
+    from pathlib import Path
+
+    base_path = Path(__file__).parent.parent.parent / "_archived" / "demo-agent" / "n8n-workflows"
+
+    workflows = {}
+    for filename in ["research-assistant-normal.json", "research-loop-buggy.json",
+                     "research-corruption.json", "research-drift.json"]:
+        filepath = base_path / filename
+        if filepath.exists():
+            with open(filepath) as f:
+                workflows[filename.replace(".json", "")] = json.load(f)
+
+    return workflows
+
+
+@pytest.fixture
+def golden_traces():
+    """Load golden_traces.jsonl (420 traces)."""
+    import json
+    from pathlib import Path
+
+    filepath = Path(__file__).parent.parent / "fixtures" / "golden" / "golden_traces.jsonl"
+
+    traces = []
+    if filepath.exists():
+        with open(filepath) as f:
+            for line in f:
+                if line.strip():
+                    traces.append(json.loads(line))
+
+    return traces
+
+
+@pytest.fixture
+def golden_traces_by_type(golden_traces):
+    """Group golden traces by detection type."""
+    by_type = {}
+
+    for trace in golden_traces:
+        # Detection type is nested in _golden_metadata
+        metadata = trace.get("_golden_metadata", {})
+        detection_type = metadata.get("detection_type", "unknown")
+
+        if detection_type not in by_type:
+            by_type[detection_type] = []
+        by_type[detection_type].append(trace)
+
+    return by_type
