@@ -23,6 +23,9 @@ class OrchestrationDimension(str, Enum):
     AGENT_COUPLING = "agent_coupling"
     OBSERVABILITY = "observability"
     BEST_PRACTICES = "best_practices"
+    DOCUMENTATION_QUALITY = "documentation_quality"
+    AI_ARCHITECTURE = "ai_architecture"
+    MAINTENANCE_QUALITY = "maintenance_quality"
 
 
 class Severity(str, Enum):

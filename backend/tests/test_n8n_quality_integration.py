@@ -276,6 +276,7 @@ Only respond to data analysis requests.""",
         orch = report.orchestration_score
         assert orch.workflow_id is not None
         assert 0 <= orch.overall_score <= 1
-        assert len(orch.dimensions) == 5
+        # Should have core 5 dimensions plus optional n8n-specific dimensions
+        assert len(orch.dimensions) >= 5
         assert orch.complexity_metrics is not None
 

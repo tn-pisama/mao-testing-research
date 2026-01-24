@@ -525,7 +525,7 @@ class TestOverallOrchestrationScoring:
     """Test overall orchestration scoring."""
 
     def test_all_dimensions_present(self):
-        """Verify all 5 orchestration dimensions are scored."""
+        """Verify all core orchestration dimensions are scored, plus n8n-specific ones."""
         scorer = OrchestrationQualityScorer()
         workflow = {
             "id": "test",
@@ -537,7 +537,9 @@ class TestOverallOrchestrationScoring:
         score = scorer.score_orchestration(workflow)
 
         dimension_names = {d.dimension for d in score.dimensions}
-        expected = {
+
+        # Core dimensions (always present)
+        core_dimensions = {
             OrchestrationDimension.DATA_FLOW_CLARITY.value,
             OrchestrationDimension.COMPLEXITY_MANAGEMENT.value,
             OrchestrationDimension.AGENT_COUPLING.value,
@@ -545,7 +547,18 @@ class TestOverallOrchestrationScoring:
             OrchestrationDimension.BEST_PRACTICES.value,
         }
 
-        assert dimension_names == expected
+        # n8n-specific dimensions (conditionally present)
+        n8n_dimensions = {
+            OrchestrationDimension.DOCUMENTATION_QUALITY.value,
+            OrchestrationDimension.AI_ARCHITECTURE.value,
+            OrchestrationDimension.MAINTENANCE_QUALITY.value,
+        }
+
+        # All core dimensions should be present
+        assert core_dimensions.issubset(dimension_names)
+
+        # For AI workflow, AI architecture should be present
+        assert OrchestrationDimension.AI_ARCHITECTURE.value in dimension_names
 
     def test_complexity_metrics_calculated(self):
         """Verify complexity metrics are calculated."""

@@ -1,30 +1,30 @@
 'use client'
 
-import { useAuth } from '@clerk/nextjs'
-
-const hasClerk = !!process.env.NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY
+import { useSession, signOut as nextAuthSignOut } from 'next-auth/react'
 
 /**
- * Safe wrapper around Clerk's useAuth hook.
+ * Wrapper around NextAuth's useSession hook for compatibility.
  *
- * Returns mock values when Clerk is not configured (CI builds, etc.).
+ * Provides a consistent API similar to the previous Clerk implementation.
  */
 export function useSafeAuth() {
-  // If Clerk is not configured, return mock auth state
-  if (!hasClerk) {
-    return {
-      isLoaded: true,
-      isSignedIn: false,
-      userId: null,
-      sessionId: null,
-      getToken: async () => null,
-      signOut: async () => {},
-      orgId: null,
-      orgRole: null,
-      orgSlug: null,
-    }
-  }
+  const { data: session, status } = useSession()
 
-  // eslint-disable-next-line react-hooks/rules-of-hooks
-  return useAuth()
+  return {
+    isLoaded: status !== 'loading',
+    isSignedIn: status === 'authenticated',
+    userId: session?.user?.id || null,
+    sessionId: session ? 'nextauth-session' : null,
+    getToken: async () => {
+      // Return the ID token from the session if available
+      return (session as any)?.idToken || null
+    },
+    signOut: async () => {
+      await nextAuthSignOut({ callbackUrl: '/' })
+    },
+    // Legacy compatibility fields (not used with Google OAuth)
+    orgId: null,
+    orgRole: null,
+    orgSlug: null,
+  }
 }

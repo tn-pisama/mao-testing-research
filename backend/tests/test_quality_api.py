@@ -209,17 +209,20 @@ class TestQualityDimensions:
         assert dimension_names == expected
 
     def test_orchestration_has_five_dimensions(self):
-        """Test that orchestration scores have 5 dimensions."""
+        """Test that orchestration scores have core 5 dimensions plus optional n8n-specific ones."""
         from app.enterprise.quality import QualityAssessor
 
         assessor = QualityAssessor(use_llm_judge=False)
         report = assessor.assess_workflow(SAMPLE_WORKFLOW)
 
-        assert len(report.orchestration_score.dimensions) == 5
+        # Should have at least the core 5 dimensions, possibly more with n8n enhancements
+        assert len(report.orchestration_score.dimensions) >= 5
 
         dimension_names = {d.dimension for d in report.orchestration_score.dimensions}
-        expected = {"data_flow_clarity", "complexity_management", "agent_coupling", "observability", "best_practices"}
-        assert dimension_names == expected
+        core_expected = {"data_flow_clarity", "complexity_management", "agent_coupling", "observability", "best_practices"}
+
+        # Core dimensions should always be present
+        assert core_expected.issubset(dimension_names)
 
 
 class TestQualitySuggestions:

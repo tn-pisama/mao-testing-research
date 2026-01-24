@@ -71,6 +71,19 @@ class OrchestrationQualityScorer:
         dimensions.append(self._score_observability(workflow))
         dimensions.append(self._score_best_practices(workflow))
 
+        # n8n-specific dimensions
+        doc_score = self._score_documentation_quality(workflow)
+        if doc_score:
+            dimensions.append(doc_score)
+
+        ai_arch_score = self._score_ai_architecture(workflow)
+        if ai_arch_score:
+            dimensions.append(ai_arch_score)
+
+        maint_score = self._score_maintenance_quality(workflow)
+        if maint_score:
+            dimensions.append(maint_score)
+
         # Calculate overall score
         total_weight = sum(d.weight for d in dimensions)
         overall_score = sum(d.score * d.weight for d in dimensions) / total_weight if total_weight > 0 else 0.0
@@ -724,6 +737,225 @@ class OrchestrationQualityScorer:
         return DimensionScore(
             dimension=OrchestrationDimension.BEST_PRACTICES.value,
             score=min(score, 1.0),
+            issues=issues,
+            evidence=evidence,
+            suggestions=suggestions,
+        )
+
+    def _score_documentation_quality(self, workflow: Dict[str, Any]) -> Optional[DimensionScore]:
+        """
+        Score based on sticky note presence and content.
+
+        Checks for:
+        - Presence of sticky notes
+        - Substantive content in notes
+        - Multiple documentation sections
+        """
+        nodes = workflow.get("nodes", [])
+        sticky_notes = [n for n in nodes if n.get("type") == "n8n-nodes-base.stickyNote"]
+
+        # Only score if workflow has nodes
+        if not nodes:
+            return None
+
+        issues = []
+        suggestions = []
+        evidence = {}
+        score = 0.5  # Base score
+
+        evidence["sticky_note_count"] = len(sticky_notes)
+        evidence["total_nodes"] = len(nodes)
+
+        if not sticky_notes:
+            issues.append("No documentation (sticky notes) found")
+            suggestions.append("Add sticky notes to document workflow sections")
+            score = 0.3
+        else:
+            score += 0.2  # Has documentation
+
+            # Check for substantive content
+            total_content = sum(
+                len(n.get("parameters", {}).get("content", ""))
+                for n in sticky_notes
+            )
+            evidence["total_documentation_chars"] = total_content
+
+            if total_content > 200:
+                score += 0.2  # Good documentation
+                if total_content > 500:
+                    score += 0.1  # Excellent documentation
+            else:
+                suggestions.append("Expand documentation with more details")
+
+            # Check for multiple sections
+            if len(sticky_notes) >= 3:
+                score += 0.1  # Multiple sections documented
+            elif len(sticky_notes) == 1:
+                suggestions.append("Consider adding more sticky notes for different sections")
+
+        return DimensionScore(
+            dimension=OrchestrationDimension.DOCUMENTATION_QUALITY.value,
+            score=min(score, 1.0),
+            weight=0.8,
+            issues=issues,
+            evidence=evidence,
+            suggestions=suggestions,
+        )
+
+    def _score_ai_architecture(self, workflow: Dict[str, Any]) -> Optional[DimensionScore]:
+        """
+        Score AI-specific connection patterns.
+
+        Checks for:
+        - AI-specific connection types (ai_languageModel, ai_tool, ai_memory, etc.)
+        - Sophisticated AI architecture
+        - Proper use of AI components
+        """
+        connections = workflow.get("connections", {})
+        nodes = workflow.get("nodes", [])
+
+        # Check if this is an AI workflow
+        ai_nodes = [
+            n for n in nodes
+            if "@n8n/n8n-nodes-langchain" in n.get("type", "") or "langchain" in n.get("type", "").lower()
+        ]
+
+        if not ai_nodes:
+            return None  # Not an AI workflow, don't score this dimension
+
+        issues = []
+        suggestions = []
+        evidence = {}
+
+        ai_connection_types = {
+            "ai_languageModel",
+            "ai_tool",
+            "ai_memory",
+            "ai_retriever",
+            "ai_embedding",
+            "ai_outputParser",
+            "ai_textSplitter",
+            "ai_vectorStore",
+        }
+
+        # Count AI-specific connections
+        ai_connections = 0
+        connection_types_used = set()
+
+        for node_connections in connections.values():
+            if isinstance(node_connections, dict):
+                for conn_type, conns in node_connections.items():
+                    if conn_type in ai_connection_types:
+                        if isinstance(conns, list):
+                            ai_connections += len(conns)
+                            connection_types_used.add(conn_type)
+
+        evidence["ai_node_count"] = len(ai_nodes)
+        evidence["ai_connections"] = ai_connections
+        evidence["ai_connection_types_used"] = list(connection_types_used)
+        evidence["unique_ai_connection_types"] = len(connection_types_used)
+
+        # Score based on AI architecture sophistication
+        score = 0.5  # Base score for having AI nodes
+
+        if ai_connections == 0:
+            issues.append("AI nodes present but no specialized AI connections configured")
+            suggestions.append("Connect AI nodes using ai_languageModel, ai_tool, or ai_memory connections")
+            score = 0.4
+        else:
+            # More connections = more sophisticated
+            score += min(ai_connections * 0.05, 0.25)
+
+            # Diversity of connection types
+            if len(connection_types_used) >= 3:
+                score += 0.15  # Using multiple AI component types
+            elif len(connection_types_used) >= 2:
+                score += 0.10
+
+            # Check for best practices
+            if "ai_memory" in connection_types_used:
+                score += 0.05  # Has memory
+            else:
+                suggestions.append("Consider adding memory to AI agents for context persistence")
+
+            if "ai_tool" in connection_types_used:
+                score += 0.05  # Has tools
+            else:
+                suggestions.append("Consider adding tools to AI agents for enhanced capabilities")
+
+        return DimensionScore(
+            dimension=OrchestrationDimension.AI_ARCHITECTURE.value,
+            score=min(score, 1.0),
+            weight=0.9,
+            issues=issues,
+            evidence=evidence,
+            suggestions=suggestions,
+        )
+
+    def _score_maintenance_quality(self, workflow: Dict[str, Any]) -> Optional[DimensionScore]:
+        """
+        Score workflow maintainability.
+
+        Checks for:
+        - Disabled nodes (dead code)
+        - Outdated typeVersions
+        - Unconfigured credentials
+        """
+        nodes = workflow.get("nodes", [])
+
+        if not nodes:
+            return None
+
+        issues = []
+        suggestions = []
+        evidence = {}
+        score = 1.0
+
+        # Check for disabled nodes (dead code)
+        disabled = [n for n in nodes if n.get("disabled")]
+        evidence["disabled_nodes"] = len(disabled)
+
+        if disabled:
+            score -= 0.2
+            issues.append(f"{len(disabled)} disabled node(s) left in workflow")
+            suggestions.append("Remove or re-enable disabled nodes to reduce confusion")
+
+        # Check for outdated typeVersions
+        old_versions = [n for n in nodes if n.get("typeVersion", 1) < 1]
+        evidence["outdated_nodes"] = len(old_versions)
+
+        if old_versions:
+            score -= 0.1
+            issues.append(f"{len(old_versions)} node(s) using deprecated versions")
+            suggestions.append("Update nodes to latest typeVersion for bug fixes and features")
+
+        # Check credential configuration
+        unconfigured_creds = []
+        for n in nodes:
+            creds = n.get("credentials", {})
+            for name, config in creds.items():
+                if isinstance(config, dict) and not config.get("id"):
+                    unconfigured_creds.append(name)
+
+        evidence["unconfigured_credentials"] = len(unconfigured_creds)
+
+        if unconfigured_creds:
+            score -= 0.15
+            issues.append(f"{len(unconfigured_creds)} unconfigured credential(s)")
+            suggestions.append("Configure all credentials before deployment")
+
+        # Check for workflow metadata
+        has_description = bool(workflow.get("meta", {}).get("description"))
+        evidence["has_workflow_description"] = has_description
+
+        if not has_description:
+            score -= 0.05
+            suggestions.append("Add workflow description in metadata for better maintainability")
+
+        return DimensionScore(
+            dimension=OrchestrationDimension.MAINTENANCE_QUALITY.value,
+            score=max(score, 0.0),
+            weight=0.7,
             issues=issues,
             evidence=evidence,
             suggestions=suggestions,

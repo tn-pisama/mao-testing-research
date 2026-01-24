@@ -272,6 +272,10 @@ class Settings(BaseSettings):
     clerk_webhook_secret: str = ""
     clerk_jwt_issuer: str = ""
     jwks_cache_ttl_seconds: int = 3600
+
+    # Google OAuth settings
+    google_client_id: str = ""
+    google_client_secret: str = ""
     
     rate_limit_requests: int = 100
     rate_limit_window_seconds: int = 60

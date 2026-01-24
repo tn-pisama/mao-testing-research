@@ -1,48 +1,57 @@
-import { clerkMiddleware, createRouteMatcher } from '@clerk/nextjs/server'
 import { NextResponse } from 'next/server'
 import type { NextRequest } from 'next/server'
+import { getToken } from 'next-auth/jwt'
 
-const isProtectedRoute = createRouteMatcher([
-  '/dashboard(.*)',
-  '/agents(.*)',
-  '/traces(.*)',
-  '/detections(.*)',
-  '/settings(.*)',
-  '/demo(.*)',
-  '/review(.*)',
-  '/testing(.*)',
-  '/docs(.*)',
-  '/chaos(.*)',
-  '/replay(.*)',
-  '/regression(.*)',
-  '/terms(.*)',
-])
+const protectedRoutes = [
+  '/dashboard',
+  '/agents',
+  '/traces',
+  '/detections',
+  '/settings',
+  '/demo',
+  '/review',
+  '/testing',
+  '/docs',
+  '/chaos',
+  '/replay',
+  '/regression',
+  '/terms',
+]
 
-const isPublicRoute = createRouteMatcher([
-  '/',
-  '/sign-in(.*)',
-  '/sign-up(.*)',
-])
+const publicRoutes = ['/', '/sign-in', '/sign-up']
 
-export default clerkMiddleware(async (auth, req) => {
+function isProtectedRoute(pathname: string): boolean {
+  return protectedRoutes.some(route => pathname.startsWith(route))
+}
+
+function isPublicRoute(pathname: string): boolean {
+  return publicRoutes.some(route => pathname === route || pathname.startsWith(route + '/'))
+}
+
+export async function middleware(req: NextRequest) {
   try {
-    if (isPublicRoute(req)) {
+    const { pathname } = req.nextUrl
+
+    if (isPublicRoute(pathname)) {
       return NextResponse.next()
     }
-    
-    const { userId } = await auth()
-    
-    if (isProtectedRoute(req) && !userId) {
-      const signInUrl = new URL('/', req.url)
+
+    const token = await getToken({
+      req,
+      secret: process.env.NEXTAUTH_SECRET
+    })
+
+    if (isProtectedRoute(pathname) && !token) {
+      const signInUrl = new URL('/sign-in', req.url)
       return NextResponse.redirect(signInUrl)
     }
-    
+
     return NextResponse.next()
   } catch (error) {
     console.error('Middleware auth error:', error)
     return NextResponse.next()
   }
-})
+}
 
 export const config = {
   matcher: [

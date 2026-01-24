@@ -30,20 +30,22 @@ class Tenant(Base):
 
 class User(Base):
     __tablename__ = "users"
-    
+
     id = Column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
-    clerk_user_id = Column(String(255), unique=True, nullable=False)
+    clerk_user_id = Column(String(255), unique=True, nullable=True)  # Made nullable for migration
+    google_user_id = Column(String(255), unique=True, nullable=True)  # New Google OAuth ID
     tenant_id = Column(UUID(as_uuid=True), ForeignKey("tenants.id"), nullable=True)
     email = Column(String(255), nullable=False)
     name = Column(String(255), nullable=True)
     role = Column(String(50), default="member")
     created_at = Column(DateTime(timezone=True), server_default=func.now())
     updated_at = Column(DateTime(timezone=True), server_default=func.now(), onupdate=func.now())
-    
+
     tenant = relationship("Tenant", back_populates="users")
-    
+
     __table_args__ = (
         Index("idx_users_clerk_id", "clerk_user_id"),
+        Index("idx_users_google_id", "google_user_id"),
         Index("idx_users_tenant", "tenant_id"),
     )
 
