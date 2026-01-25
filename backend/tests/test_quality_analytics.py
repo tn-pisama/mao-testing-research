@@ -8,8 +8,15 @@ from app.storage.models import WorkflowQualityAssessment
 
 
 @pytest.mark.asyncio
-async def test_quality_analytics_empty(client, test_tenant):
+async def test_quality_analytics_empty(client, test_tenant, db_session):
     """Test quality analytics with no assessments."""
+    from unittest.mock import MagicMock
+
+    # Configure mock to return empty list
+    mock_result = MagicMock()
+    mock_result.scalars.return_value.all.return_value = []
+    db_session.execute.return_value = mock_result
+
     response = await client.get(
         f"/api/v1/analytics/quality",
         headers={"X-Tenant-ID": str(test_tenant.id)},
@@ -31,44 +38,47 @@ async def test_quality_analytics_empty(client, test_tenant):
 @pytest.mark.asyncio
 async def test_quality_analytics_with_data(client, test_tenant, db_session):
     """Test quality analytics with sample assessments."""
-    # Create sample assessments
+    from unittest.mock import MagicMock
+
+    # Create sample assessments (mock objects)
     assessments = []
     for i in range(5):
-        assessment = WorkflowQualityAssessment(
-            tenant_id=test_tenant.id,
-            workflow_id=f"workflow-{i}",
-            workflow_name=f"Test Workflow {i}",
-            overall_score=70 + (i * 5),  # 70, 75, 80, 85, 90
-            overall_grade="B" if i < 2 else "B+" if i < 4 else "A",
-            agent_scores=[],
-            orchestration_score={
-                "dimensions": [
-                    {
-                        "dimension": "data_flow_clarity",
-                        "score": 0.8,
-                        "issues": ["Minor issue"],
-                    }
-                ]
-            },
-            improvements=[
+        assessment = MagicMock(spec=WorkflowQualityAssessment)
+        assessment.tenant_id = test_tenant.id
+        assessment.workflow_id = f"workflow-{i}"
+        assessment.workflow_name = f"Test Workflow {i}"
+        assessment.overall_score = 70 + (i * 5)  # 70, 75, 80, 85, 90
+        assessment.overall_grade = "B" if i < 2 else "B+" if i < 4 else "A"
+        assessment.agent_scores = []
+        assessment.orchestration_score = {
+            "dimensions": [
                 {
-                    "title": "Improve error handling",
-                    "severity": "medium",
-                },
-                {
-                    "title": "Add documentation",
-                    "severity": "low",
+                    "dimension": "data_flow_clarity",
+                    "score": 0.8,
+                    "issues": ["Minor issue"],
                 }
-            ],
-            total_issues=2,
-            critical_issues_count=0,
-            source="test",
-            created_at=datetime.utcnow() - timedelta(days=i),
-        )
-        db_session.add(assessment)
+            ]
+        }
+        assessment.improvements = [
+            {
+                "title": "Improve error handling",
+                "severity": "medium",
+            },
+            {
+                "title": "Add documentation",
+                "severity": "low",
+            }
+        ]
+        assessment.total_issues = 2
+        assessment.critical_issues_count = 0
+        assessment.source = "test"
+        assessment.created_at = datetime.utcnow() - timedelta(days=i)
         assessments.append(assessment)
 
-    await db_session.commit()
+    # Configure mock to return assessments
+    mock_result = MagicMock()
+    mock_result.scalars.return_value.all.return_value = assessments
+    db_session.execute.return_value = mock_result
 
     # Test analytics endpoint
     response = await client.get(
@@ -106,25 +116,30 @@ async def test_quality_analytics_with_data(client, test_tenant, db_session):
 @pytest.mark.asyncio
 async def test_quality_analytics_pagination(client, test_tenant, db_session):
     """Test quality analytics pagination."""
-    # Create many assessments spread over many days
-    for i in range(150):
-        assessment = WorkflowQualityAssessment(
-            tenant_id=test_tenant.id,
-            workflow_id=f"workflow-{i}",
-            workflow_name=f"Test Workflow {i}",
-            overall_score=50 + (i % 50),
-            overall_grade="C",
-            agent_scores=[],
-            orchestration_score={},
-            improvements=[],
-            total_issues=0,
-            critical_issues_count=0,
-            source="test",
-            created_at=datetime.utcnow() - timedelta(days=i),
-        )
-        db_session.add(assessment)
+    from unittest.mock import MagicMock
 
-    await db_session.commit()
+    # Create many assessments (mock objects)
+    assessments = []
+    for i in range(150):
+        assessment = MagicMock(spec=WorkflowQualityAssessment)
+        assessment.tenant_id = test_tenant.id
+        assessment.workflow_id = f"workflow-{i}"
+        assessment.workflow_name = f"Test Workflow {i}"
+        assessment.overall_score = 50 + (i % 50)
+        assessment.overall_grade = "C"
+        assessment.agent_scores = []
+        assessment.orchestration_score = {}
+        assessment.improvements = []
+        assessment.total_issues = 0
+        assessment.critical_issues_count = 0
+        assessment.source = "test"
+        assessment.created_at = datetime.utcnow() - timedelta(days=i)
+        assessments.append(assessment)
+
+    # Configure mock to return assessments
+    mock_result = MagicMock()
+    mock_result.scalars.return_value.all.return_value = assessments
+    db_session.execute.return_value = mock_result
 
     # Test first page
     response = await client.get(
@@ -158,41 +173,48 @@ async def test_quality_analytics_pagination(client, test_tenant, db_session):
 @pytest.mark.asyncio
 async def test_quality_analytics_category_breakdown(client, test_tenant, db_session):
     """Test category breakdown in analytics."""
-    # Create AI workflows
+    from unittest.mock import MagicMock
+
+    assessments = []
+
+    # Create AI workflows (mock objects)
     for i in range(3):
-        assessment = WorkflowQualityAssessment(
-            tenant_id=test_tenant.id,
-            workflow_id=f"ai-workflow-{i}",
-            workflow_name=f"AI Workflow {i}",
-            overall_score=80,
-            overall_grade="B+",
-            agent_scores=[],
-            orchestration_score={},
-            improvements=[],
-            total_issues=0,
-            critical_issues_count=0,
-            source="test",
-        )
-        db_session.add(assessment)
+        assessment = MagicMock(spec=WorkflowQualityAssessment)
+        assessment.tenant_id = test_tenant.id
+        assessment.workflow_id = f"ai-workflow-{i}"
+        assessment.workflow_name = f"AI Workflow {i}"
+        assessment.overall_score = 80
+        assessment.overall_grade = "B+"
+        assessment.agent_scores = []
+        assessment.orchestration_score = {}
+        assessment.improvements = []
+        assessment.total_issues = 0
+        assessment.critical_issues_count = 0
+        assessment.source = "test"
+        assessment.created_at = datetime.utcnow()
+        assessments.append(assessment)
 
-    # Create automation workflows
+    # Create automation workflows (mock objects)
     for i in range(2):
-        assessment = WorkflowQualityAssessment(
-            tenant_id=test_tenant.id,
-            workflow_id=f"workflow-{i}",
-            workflow_name=f"Automation Workflow {i}",
-            overall_score=70,
-            overall_grade="B",
-            agent_scores=[],
-            orchestration_score={},
-            improvements=[],
-            total_issues=0,
-            critical_issues_count=0,
-            source="test",
-        )
-        db_session.add(assessment)
+        assessment = MagicMock(spec=WorkflowQualityAssessment)
+        assessment.tenant_id = test_tenant.id
+        assessment.workflow_id = f"workflow-{i}"
+        assessment.workflow_name = f"Automation Workflow {i}"
+        assessment.overall_score = 70
+        assessment.overall_grade = "B"
+        assessment.agent_scores = []
+        assessment.orchestration_score = {}
+        assessment.improvements = []
+        assessment.total_issues = 0
+        assessment.critical_issues_count = 0
+        assessment.source = "test"
+        assessment.created_at = datetime.utcnow()
+        assessments.append(assessment)
 
-    await db_session.commit()
+    # Configure mock to return assessments
+    mock_result = MagicMock()
+    mock_result.scalars.return_value.all.return_value = assessments
+    db_session.execute.return_value = mock_result
 
     response = await client.get(
         f"/api/v1/analytics/quality",

@@ -10,98 +10,98 @@ from app.storage.models import WorkflowQualityAssessment, Trace, Detection
 @pytest.mark.asyncio
 async def test_correlate_with_trace_id(client, test_tenant, db_session):
     """Test correlation endpoint with trace_id."""
-    # Create a trace
-    trace = Trace(
-        id=uuid4(),
-        tenant_id=test_tenant.id,
-        session_id="test-session",
-        framework="n8n",
-        status="completed",
-        total_tokens=1000,
-        total_cost_cents=10,
-    )
-    db_session.add(trace)
-    await db_session.flush()
+    from unittest.mock import MagicMock
 
-    # Create quality assessment for this trace
-    assessment = WorkflowQualityAssessment(
-        tenant_id=test_tenant.id,
-        trace_id=trace.id,
-        workflow_id="test-workflow",
-        workflow_name="Test Workflow",
-        overall_score=50,  # Low score
-        overall_grade="C",
-        agent_scores=[
-            {
-                "agent_id": "agent-1",
-                "agent_name": "Test Agent",
-                "dimensions": [
-                    {
-                        "dimension": "role_clarity",
-                        "score": 0.3,  # Low score
-                        "issues": ["Poor role definition"],
-                    }
-                ]
-            }
-        ],
-        orchestration_score={
+    trace_id = uuid4()
+
+    # Create mock trace
+    mock_trace = MagicMock(spec=Trace)
+    mock_trace.id = trace_id
+    mock_trace.tenant_id = test_tenant.id
+    mock_trace.session_id = "test-session"
+    mock_trace.framework = "n8n"
+    mock_trace.status = "completed"
+    mock_trace.total_tokens = 1000
+    mock_trace.total_cost_cents = 10
+
+    # Create mock quality assessment
+    mock_assessment = MagicMock(spec=WorkflowQualityAssessment)
+    mock_assessment.tenant_id = test_tenant.id
+    mock_assessment.trace_id = trace_id
+    mock_assessment.workflow_id = "test-workflow"
+    mock_assessment.workflow_name = "Test Workflow"
+    mock_assessment.overall_score = 50
+    mock_assessment.overall_grade = "C"
+    mock_assessment.agent_scores = [
+        {
+            "agent_id": "agent-1",
+            "agent_name": "Test Agent",
             "dimensions": [
                 {
-                    "dimension": "complexity_management",
-                    "score": 0.4,
-                    "issues": ["High complexity"],
-                },
-                {
-                    "dimension": "data_flow_clarity",
-                    "score": 0.35,
-                    "issues": ["Unclear data flow"],
+                    "dimension": "role_clarity",
+                    "score": 0.3,
+                    "issues": ["Poor role definition"],
                 }
             ]
-        },
-        improvements=[
+        }
+    ]
+    mock_assessment.orchestration_score = {
+        "dimensions": [
             {
                 "dimension": "complexity_management",
-                "title": "Reduce complexity",
-                "severity": "high",
+                "score": 0.4,
+                "issues": ["High complexity"],
+            },
+            {
+                "dimension": "data_flow_clarity",
+                "score": 0.35,
+                "issues": ["Unclear data flow"],
             }
-        ],
-        total_issues=3,
-        critical_issues_count=1,
-        source="test",
-    )
-    db_session.add(assessment)
+        ]
+    }
+    mock_assessment.improvements = [
+        {
+            "dimension": "complexity_management",
+            "title": "Reduce complexity",
+            "severity": "high",
+        }
+    ]
+    mock_assessment.total_issues = 3
+    mock_assessment.critical_issues_count = 1
+    mock_assessment.source = "test"
 
-    # Create detections for this trace
-    detection1 = Detection(
-        id=uuid4(),
-        tenant_id=test_tenant.id,
-        trace_id=trace.id,
-        detection_type="infinite_loop",
-        confidence=85,
-        method="pattern_match",
-        details={"loop_length": 10},
-        validated=False,
-    )
-    detection2 = Detection(
-        id=uuid4(),
-        tenant_id=test_tenant.id,
-        trace_id=trace.id,
-        detection_type="persona_drift",
-        confidence=75,
-        method="semantic_analysis",
-        details={"drift_score": 0.8},
-        validated=False,
-    )
-    db_session.add(detection1)
-    db_session.add(detection2)
+    # Create mock detections
+    mock_detection1 = MagicMock(spec=Detection)
+    mock_detection1.id = uuid4()
+    mock_detection1.tenant_id = test_tenant.id
+    mock_detection1.trace_id = trace_id
+    mock_detection1.detection_type = "infinite_loop"
+    mock_detection1.confidence = 85
+    mock_detection1.method = "pattern_match"
+    mock_detection1.details = {"loop_length": 10}
+    mock_detection1.validated = False
 
-    await db_session.commit()
+    mock_detection2 = MagicMock(spec=Detection)
+    mock_detection2.id = uuid4()
+    mock_detection2.tenant_id = test_tenant.id
+    mock_detection2.trace_id = trace_id
+    mock_detection2.detection_type = "persona_drift"
+    mock_detection2.confidence = 75
+    mock_detection2.method = "semantic_analysis"
+    mock_detection2.details = {"drift_score": 0.8}
+    mock_detection2.validated = False
+
+    # Configure mock db_session to return these objects
+    mock_result = MagicMock()
+    mock_result.scalar_one_or_none.return_value = mock_assessment
+    mock_result.scalars.return_value.all.return_value = [mock_detection1, mock_detection2]
+    db_session.execute.return_value = mock_result
 
     # Test correlation endpoint
     response = await client.post(
         f"/api/v1/tenants/{test_tenant.id}/quality/correlate",
         headers={"X-Tenant-ID": str(test_tenant.id)},
-        json={"trace_id": str(trace.id)},
+        json={"trace_id": str(trace_id)},
     )
 
     assert response.status_code == 200
@@ -254,8 +254,15 @@ async def test_correlate_no_quality_issues(client, test_tenant):
 
 
 @pytest.mark.asyncio
-async def test_correlate_trace_not_found(client, test_tenant):
+async def test_correlate_trace_not_found(client, test_tenant, db_session):
     """Test correlation with non-existent trace."""
+    from unittest.mock import MagicMock
+
+    # Configure mock to return None (no assessment found)
+    mock_result = MagicMock()
+    mock_result.scalar_one_or_none.return_value = None
+    db_session.execute.return_value = mock_result
+
     response = await client.post(
         f"/api/v1/tenants/{test_tenant.id}/quality/correlate",
         headers={"X-Tenant-ID": str(test_tenant.id)},
