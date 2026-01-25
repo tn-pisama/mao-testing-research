@@ -7,3 +7,6 @@ out/
 npm-debug.log*
 .DS_Store
 .vercel
+terraform/oauth-setup/.terraform/
+terraform/oauth-setup/.terraform/
+terraform/oauth-setup/*.tfstate*

@@ -10,14 +10,17 @@ import { useSession, signOut as nextAuthSignOut } from 'next-auth/react'
 export function useSafeAuth() {
   const { data: session, status } = useSession()
 
+  // Type assertion for extended session
+  const extendedSession = session as any
+
   return {
     isLoaded: status !== 'loading',
     isSignedIn: status === 'authenticated',
-    userId: session?.user?.id || null,
+    userId: extendedSession?.user?.id || null,
     sessionId: session ? 'nextauth-session' : null,
     getToken: async () => {
       // Return the ID token from the session if available
-      return (session as any)?.idToken || null
+      return extendedSession?.idToken || null
     },
     signOut: async () => {
       await nextAuthSignOut({ callbackUrl: '/' })
