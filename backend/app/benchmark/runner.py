@@ -289,6 +289,75 @@ class BenchmarkRunner:
 
         return result
 
+    def run_n8n_benchmark(
+        self,
+        progress_callback: Optional[Callable[[int, int], None]] = None,
+    ) -> BenchmarkResult:
+        """Run benchmark using only n8n structural detectors.
+
+        This mode is specifically for evaluating n8n workflow detection,
+        independent of MAST conversational data. It:
+        1. Filters to n8n framework records only
+        2. Runs ONLY n8n structural detectors (F3, F6, F11, F12)
+        3. Skips turn-aware and keyword-based detection
+
+        Args:
+            progress_callback: Optional callback(processed, total) for progress
+
+        Returns:
+            BenchmarkResult with n8n-only detection attempts
+        """
+        result = BenchmarkResult(
+            run_id=str(uuid4())[:8],
+            started_at=datetime.utcnow(),
+        )
+
+        all_records = list(self.loader)
+
+        # Filter to n8n records only
+        n8n_records = [r for r in all_records if "n8n" in (r.framework or "").lower()]
+        result.total_records = len(n8n_records)
+
+        if not n8n_records:
+            logger.warning("No n8n records found in dataset")
+            result.completed_at = datetime.utcnow()
+            return result
+
+        logger.info(f"Running n8n-only benchmark on {len(n8n_records)} records")
+
+        # Collect ground truths for n8n records
+        for record in n8n_records:
+            result.ground_truths[record.trace_id] = record.ground_truth
+
+        # Run ONLY n8n structural detectors (no turn-aware, no keyword matching)
+        # These detect F3 (Resource), F6 (Derailment), F11 (Cycle), F12 (Schema)
+        n8n_modes = {"F3", "F6", "F11", "F12"}
+        active_modes = [m for m in self.failure_modes if m in n8n_modes]
+
+        if not active_modes:
+            logger.warning(f"No n8n-relevant modes in failure_modes: {self.failure_modes}")
+            result.completed_at = datetime.utcnow()
+            return result
+
+        try:
+            n8n_attempts = self._run_n8n_structural_detectors(n8n_records, skip_modes=set())
+            result.attempts.extend(n8n_attempts)
+            result.processed_records = len(n8n_records)
+            logger.info(f"n8n structural detection: {len(n8n_attempts)} attempts")
+        except Exception as e:
+            logger.error(f"n8n structural detection failed: {e}")
+            result.errors.append(str(e))
+
+        # Progress callback
+        if progress_callback:
+            progress_callback(result.processed_records, result.total_records)
+
+        # Count detections
+        result.total_detections = sum(1 for a in result.attempts if a.detected)
+        result.completed_at = datetime.utcnow()
+
+        return result
+
     def _process_batch(
         self,
         records: List[MASTRecord],

@@ -4,6 +4,7 @@ Modal GPU Benchmark for MAST Detection
 Run with:
     modal run benchmarks/modal_benchmark.py
     modal run benchmarks/modal_benchmark.py --ml-v4  # Run v4 ML detector
+    modal run benchmarks/modal_benchmark.py --n8n-only  # n8n structural detectors only
 
 Cost: ~$0.14 for 50 traces on A10G GPU
 """
@@ -59,7 +60,7 @@ image = (
         modal.Secret.from_name("google-api-key-4"),
     ],  # 8 API keys total: 4 Anthropic + 4 Google for parallel processing
 )
-def run_benchmark(sample_size: int = None, mode: str = None, hybrid: bool = True, ml_v4: bool = False, data_path: str = None):
+def run_benchmark(sample_size: int = None, mode: str = None, hybrid: bool = True, ml_v4: bool = False, data_path: str = None, n8n_only: bool = False):
     """Run MAST benchmark on GPU with optional hybrid LLM detection."""
     import subprocess
     import os
@@ -107,8 +108,11 @@ def run_benchmark(sample_size: int = None, mode: str = None, hybrid: bool = True
     if sample_size:
         cmd.extend(["--sample", str(sample_size)])
 
-    if hybrid:
+    if hybrid and not n8n_only:
         cmd.append("--hybrid")
+
+    if n8n_only:
+        cmd.append("--n8n-only")
 
     print(f"Running: {' '.join(cmd)}")
     print(f"API keys available: {anthropic_count + google_count}")
@@ -132,7 +136,7 @@ def run_benchmark(sample_size: int = None, mode: str = None, hybrid: bool = True
 
 
 @app.local_entrypoint()
-def main(sample: int = None, mode: str = None, hybrid: bool = True, ml_v4: bool = False, data: str = None):
+def main(sample: int = None, mode: str = None, hybrid: bool = True, ml_v4: bool = False, data: str = None, n8n_only: bool = False):
     """Local entrypoint for running the benchmark."""
     # Map local data paths to remote paths
     data_path = None
@@ -144,15 +148,20 @@ def main(sample: int = None, mode: str = None, hybrid: bool = True, ml_v4: bool 
         else:
             data_path = data
 
+    # For n8n-only mode, use n8n data by default
+    if n8n_only and data_path is None:
+        data_path = "/app/data/training/n8n_mast_format.json"
+
     print(f"Starting MAST benchmark on Modal A10G GPU")
     print(f"  Sample size: {sample or 'full dataset'}")
     print(f"  Mode: {mode or 'all'}")
     print(f"  Hybrid (LLM escalation): {hybrid}")
     print(f"  ML v4 detector: {ml_v4}")
+    print(f"  n8n-only: {n8n_only}")
     print(f"  Data: {data_path or 'MAST dataset (default)'}")
     print()
 
-    exit_code = run_benchmark.remote(sample_size=sample, mode=mode, hybrid=hybrid, ml_v4=ml_v4, data_path=data_path)
+    exit_code = run_benchmark.remote(sample_size=sample, mode=mode, hybrid=hybrid, ml_v4=ml_v4, data_path=data_path, n8n_only=n8n_only)
 
     if exit_code == 0:
         print("\n✅ Benchmark completed successfully!")

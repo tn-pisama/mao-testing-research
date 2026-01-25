@@ -133,6 +133,11 @@ def cli():
     help="Randomly sample N records from the dataset",
 )
 @click.option(
+    "--n8n-only/--no-n8n-only",
+    default=False,
+    help="Run n8n-only benchmark (filters to n8n records, uses only structural detectors)",
+)
+@click.option(
     "--verbose", "-v",
     is_flag=True,
     help="Verbose output",
@@ -157,6 +162,7 @@ def run(
     verify_modes: str,
     api_key: Optional[str],
     sample: Optional[int],
+    n8n_only: bool,
     verbose: bool,
 ):
     """Run MAST benchmark.
@@ -181,6 +187,9 @@ def run(
 
         # ML + LLM verification with specific verify modes
         python -m app.benchmark.cli run data.jsonl --train --ml-llm --verify-modes F7,F8,F12
+
+        # n8n-only benchmark (structural detectors only)
+        python -m app.benchmark.cli run data.jsonl --n8n-only -o n8n_report.md
     """
     setup_logging(verbose)
 
@@ -272,17 +281,26 @@ def run(
         click.echo(f"  LLM model: {llm_model}")
         click.echo(f"  API key: {'set' if api_key else 'NOT SET (ML only)'}")
 
-    result = runner.run(
-        progress_callback=progress_callback,
-        use_ml_detector=use_ml,
-        use_llm_detector=llm,
-        use_hybrid_detector=hybrid,
-        use_ml_llm_verification=ml_llm,
-        llm_model=llm_model,
-        llm_modes=llm_modes_list,
-        verify_modes=verify_modes_list,
-        max_llm_records=max_llm_records,
-    )
+    # Show n8n-only info
+    if n8n_only:
+        click.echo("n8n-only mode enabled (structural detectors for F3, F6, F11, F12)")
+
+    # Run benchmark
+    if n8n_only:
+        # n8n-only mode: use only structural detectors
+        result = runner.run_n8n_benchmark(progress_callback=progress_callback)
+    else:
+        result = runner.run(
+            progress_callback=progress_callback,
+            use_ml_detector=use_ml,
+            use_llm_detector=llm,
+            use_hybrid_detector=hybrid,
+            use_ml_llm_verification=ml_llm,
+            llm_model=llm_model,
+            llm_modes=llm_modes_list,
+            verify_modes=verify_modes_list,
+            max_llm_records=max_llm_records,
+        )
     click.echo()  # Newline after progress
     click.echo(f"Processed {result.processed_records:,} records, "
                f"{result.total_detections:,} detections")
