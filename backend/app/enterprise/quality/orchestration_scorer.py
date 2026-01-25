@@ -1039,10 +1039,17 @@ class OrchestrationQualityScorer:
         - Scattered vs organized layout
         """
         nodes = workflow.get("nodes", [])
-        positions = [
-            (n.get("position", {}).get("x", 0), n.get("position", {}).get("y", 0))
-            for n in nodes
-        ]
+        positions = []
+        for n in nodes:
+            pos = n.get("position", [0, 0])
+            # Handle both list [x, y] and dict {"x": x, "y": y} formats
+            if isinstance(pos, list):
+                x, y = pos[0] if len(pos) > 0 else 0, pos[1] if len(pos) > 1 else 0
+            elif isinstance(pos, dict):
+                x, y = pos.get("x", 0), pos.get("y", 0)
+            else:
+                x, y = 0, 0
+            positions.append((x, y))
 
         if len(positions) < 2:
             return None
