@@ -1,0 +1,35 @@
+{
+  "workflow_id": "unknown",
+  "workflow_name": "MAO Demo - Research Assistant (Normal)",
+  "overall_score": 0.736904761904762,
+  "overall_grade": "B",
+  "agent_scores": [],
+  "orchestration_score": {
+    "overall_score": 0.736904761904762,
+    "grade": "B",
+    "pattern": "linear",
+    "dimensions": {
+      "data_flow_clarity": 0.7,
+      "complexity_management": 1.0,
+      "agent_coupling": 0.9,
+      "observability": 0.85,
+      "best_practices": 0.8,
+      "documentation_quality": 0.3,
+      "ai_architecture": 0.4,
+      "maintenance_quality": 1.0,
+      "test_coverage": 0.4,
+      "layout_quality": 1.0
+    }
+  },
+  "improvements": [
+    {
+      "title": "Add error trigger for failure alerting",
+      "severity": "medium",
+      "effort": "medium",
+      "category": "observability",
+      "estimated_impact": "Enable proactive failure monitoring"
+    }
+  ],
+  "summary": "Overall quality: B (74%). Orchestration: B (linear pattern). 1 critical issue(s) to address. Priority fix: Add error trigger for failure alerting.",
+  "generated_at": "2026-01-25T07:47:04.950528+00:00"
+}

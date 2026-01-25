@@ -66,14 +66,11 @@ def format_improvements(improvements: list, max_display: int = 5) -> str:
 
         lines.append(f"\n  {i}. {severity_emoji} {improvement.title}")
         lines.append(f"     Problem: {improvement.description}")
-        lines.append(f"     Fix ({effort_text}): {improvement.recommendation}")
-        lines.append(f"     Impact: +{improvement.estimated_impact:.0%} to {improvement.dimension.value}")
-
-        if improvement.affected_nodes:
-            nodes = ", ".join(improvement.affected_nodes[:3])
-            if len(improvement.affected_nodes) > 3:
-                nodes += f" (+{len(improvement.affected_nodes) - 3} more)"
-            lines.append(f"     Nodes: {nodes}")
+        if improvement.suggested_change:
+            lines.append(f"     Fix ({effort_text}): {improvement.suggested_change}")
+        lines.append(f"     Category: {improvement.category}")
+        if improvement.estimated_impact:
+            lines.append(f"     Impact: {improvement.estimated_impact}")
 
     if len(improvements) > max_display:
         lines.append(f"\n  ... and {len(improvements) - max_display} more suggestions")
@@ -201,10 +198,10 @@ def main():
             "overall_grade": report.overall_grade,
             "agent_scores": [
                 {
-                    "node_name": a.node_name,
+                    "agent_name": a.agent_name,
                     "overall_score": a.overall_score,
                     "grade": a.grade,
-                    "dimensions": {d.dimension.value: d.score for d in a.dimensions}
+                    "dimensions": {(d.dimension if isinstance(d.dimension, str) else d.dimension.value): d.score for d in a.dimensions}
                 }
                 for a in report.agent_scores
             ],
@@ -212,14 +209,14 @@ def main():
                 "overall_score": report.orchestration_score.overall_score,
                 "grade": report.orchestration_score.grade,
                 "pattern": report.orchestration_score.detected_pattern,
-                "dimensions": {d.dimension.value: d.score for d in report.orchestration_score.dimensions}
+                "dimensions": {(d.dimension if isinstance(d.dimension, str) else d.dimension.value): d.score for d in report.orchestration_score.dimensions}
             },
             "improvements": [
                 {
                     "title": i.title,
                     "severity": i.severity.value,
                     "effort": i.effort.value,
-                    "dimension": i.dimension.value,
+                    "category": i.category,
                     "estimated_impact": i.estimated_impact
                 }
                 for i in report.improvements
