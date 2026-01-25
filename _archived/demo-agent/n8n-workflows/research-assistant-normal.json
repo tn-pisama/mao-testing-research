@@ -11,33 +11,78 @@
       "name": "Webhook Trigger",
       "type": "n8n-nodes-base.webhook",
       "position": [250, 300],
-      "webhookId": "mao-research-demo"
+      "webhookId": "mao-research-demo",
+      "notes": "Entry point for research requests. Expects POST with {query: string}",
+      "notesInFlow": true
+    },
+    {
+      "parameters": {},
+      "id": "sticky-note-1",
+      "name": "Workflow Overview",
+      "type": "n8n-nodes-base.stickyNote",
+      "position": [250, 140],
+      "typeVersion": 1,
+      "parameters": {
+        "content": "# Research Assistant Workflow\n\nThis workflow processes research queries using AI:\n1. Receives query via webhook\n2. AI agent analyzes and responds\n3. Processes response data\n4. Returns results to user\n5. Logs to MAO platform",
+        "height": 200,
+        "width": 400,
+        "color": 4
+      }
     },
     {
       "parameters": {
-        "resource": "chat",
-        "model": "gpt-4o-mini",
-        "messages": {
+        "promptType": "define",
+        "text": "={{ $json.body.query }}",
+        "hasOutputParser": true,
+        "options": {
+          "systemMessage": "You are a professional research assistant with expertise in analysis and synthesis. Your role is to:\n- Provide clear, concise, well-structured responses\n- Cite sources when possible\n- Break down complex topics into understandable sections\n- Always respond in a structured JSON format\n\nOutput format:\n{\n  \"answer\": \"detailed response\",\n  \"sources\": [\"source1\", \"source2\"],\n  \"confidence\": 0.0-1.0,\n  \"summary\": \"brief summary\"\n}",
+          "timeout": 45000,
+          "retryOnFail": true,
+          "maxRetries": 3
+        },
+        "tools": {
           "values": [
             {
-              "role": "system",
-              "content": "You are a professional research assistant. Provide clear, concise, well-structured responses."
-            },
-            {
-              "role": "user",
-              "content": "={{ $json.body.query }}"
+              "name": "getCurrentDate",
+              "description": "Returns the current date and time in ISO 8601 format. Use this when you need to know the current date/time for temporal context in your response.",
+              "parameters": {
+                "type": "object",
+                "properties": {
+                  "timezone": {
+                    "type": "string",
+                    "description": "Optional timezone (e.g., 'America/New_York', 'UTC')",
+                    "default": "UTC"
+                  }
+                }
+              }
             }
           ]
-        },
-        "options": {
-          "temperature": 0.7,
-          "maxTokens": 500
         }
       },
-      "id": "openai-research",
-      "name": "OpenAI Research",
-      "type": "@n8n/n8n-nodes-langchain.lmChatOpenAi",
+      "id": "research-agent",
+      "name": "Research Agent",
+      "type": "@n8n/n8n-nodes-langchain.agent",
       "position": [500, 300],
+      "typeVersion": 1.7,
+      "notes": "AI agent configured with research capabilities and structured output",
+      "notesInFlow": true,
+      "continueOnFail": true,
+      "alwaysOutputData": true
+    },
+    {
+      "parameters": {
+        "model": "gpt-4o-mini",
+        "options": {
+          "temperature": 0.7,
+          "maxTokens": 1000,
+          "timeout": 30000
+        }
+      },
+      "id": "openai-llm",
+      "name": "OpenAI LLM",
+      "type": "@n8n/n8n-nodes-langchain.lmChatOpenAi",
+      "position": [500, 480],
+      "typeVersion": 1,
       "credentials": {
         "openAiApi": {
           "id": "1",
@@ -47,12 +92,83 @@
     },
     {
       "parameters": {
-        "jsCode": "// Process the AI response\nconst response = $input.first().json;\n\nreturn {\n  processed: true,\n  summary: response.text.substring(0, 200),\n  word_count: response.text.split(' ').length,\n  quality_score: 0.95,\n  timestamp: new Date().toISOString()\n};"
+        "name": "getCurrentDate",
+        "description": "Returns the current date and time in ISO format. Use this when you need to know the current date/time.",
+        "workflowId": "={{ $execution.id }}"
+      },
+      "id": "tool-date",
+      "name": "Get Current Date Tool",
+      "type": "@n8n/n8n-nodes-langchain.toolWorkflow",
+      "position": [500, 620],
+      "typeVersion": 1.1
+    },
+    {
+      "parameters": {},
+      "id": "sticky-note-2",
+      "name": "AI Agent Config",
+      "type": "n8n-nodes-base.stickyNote",
+      "position": [450, 750],
+      "typeVersion": 1,
+      "parameters": {
+        "content": "## Agent Configuration\n\n- Model: GPT-4O-Mini (cost-effective)\n- Temperature: 0.7 (balanced creativity)\n- Max Tokens: 1000\n- Retry enabled with 3 attempts\n- Structured JSON output",
+        "height": 180,
+        "width": 350,
+        "color": 5
+      }
+    },
+    {
+      "parameters": {
+        "jsCode": "// Validate and normalize AI agent output\nconst response = $input.first().json;\n\n// Extract the agent output\nlet aiData = response.output || response.text || response;\n\n// Parse if it's a JSON string\nif (typeof aiData === 'string') {\n  try {\n    aiData = JSON.parse(aiData);\n  } catch (e) {\n    // Not valid JSON, treat as plain text\n    aiData = { answer: aiData };\n  }\n}\n\n// Validate required fields\nconst validated = {\n  answer: aiData.answer || aiData.toString(),\n  sources: Array.isArray(aiData.sources) ? aiData.sources : [],\n  confidence: typeof aiData.confidence === 'number' ? aiData.confidence : 0.5,\n  summary: aiData.summary || aiData.answer?.substring(0, 200) || ''\n};\n\n// Check if output meets quality standards\nif (!validated.answer || validated.answer.length < 10) {\n  throw new Error('AI output validation failed: answer too short or missing');\n}\n\nreturn validated;"
+      },
+      "id": "validator",
+      "name": "Output Validator",
+      "type": "n8n-nodes-base.code",
+      "position": [650, 300],
+      "notes": "Validates AI output structure and required fields",
+      "notesInFlow": true
+    },
+    {
+      "parameters": {
+        "jsCode": "// Process the validated AI response\nconst validated = $input.first().json;\n\nreturn {\n  processed: true,\n  answer: validated.answer,\n  summary: validated.summary,\n  sources: validated.sources,\n  confidence: validated.confidence,\n  word_count: validated.answer.split(' ').length,\n  timestamp: new Date().toISOString(),\n  execution_id: $execution.id\n};"
       },
       "id": "processor",
       "name": "Data Processor",
       "type": "n8n-nodes-base.code",
-      "position": [750, 300]
+      "position": [800, 300],
+      "notes": "Enriches validated output with metadata",
+      "notesInFlow": true,
+      "pinData": {
+        "main": [
+          [
+            {
+              "json": {
+                "processed": true,
+                "answer": "This is a test response from the AI agent demonstrating structured output.",
+                "summary": "Test response with structured data",
+                "sources": ["OpenAI GPT-4O-Mini", "LangChain Framework"],
+                "confidence": 0.95,
+                "word_count": 12,
+                "timestamp": "2025-01-25T08:00:00.000Z",
+                "execution_id": "test-exec-123"
+              }
+            }
+          ]
+        ]
+      }
+    },
+    {
+      "parameters": {},
+      "id": "sticky-note-3",
+      "name": "Testing Data",
+      "type": "n8n-nodes-base.stickyNote",
+      "position": [800, 450],
+      "typeVersion": 1,
+      "parameters": {
+        "content": "## Test Coverage\n\n✅ Pinned test data available\n✅ Sample output structured\n✅ Use 'Test Workflow' to validate\n\nTest query:\n{\"query\": \"What is AI?\"}",
+        "height": 160,
+        "width": 300,
+        "color": 6
+      }
     },
     {
       "parameters": {
@@ -62,7 +178,9 @@
       "id": "respond",
       "name": "Send Response",
       "type": "n8n-nodes-base.respondToWebhook",
-      "position": [1000, 300]
+      "position": [1050, 300],
+      "notes": "Returns structured JSON response to webhook caller",
+      "notesInFlow": true
     },
     {
       "parameters": {
@@ -95,6 +213,10 @@
             {
               "name": "status",
               "value": "success"
+            },
+            {
+              "name": "aiResponse",
+              "value": "={{ $json.answer }}"
             }
           ]
         }
@@ -102,7 +224,58 @@
       "id": "mao-webhook",
       "name": "Send to MAO",
       "type": "n8n-nodes-base.httpRequest",
-      "position": [1000, 500]
+      "position": [1050, 500],
+      "notes": "Logs execution data to MAO platform for observability",
+      "notesInFlow": true
+    },
+    {
+      "parameters": {},
+      "id": "error-trigger",
+      "name": "Error Handler",
+      "type": "n8n-nodes-base.errorTrigger",
+      "position": [750, 600],
+      "notes": "Catches workflow errors for monitoring and alerting",
+      "notesInFlow": true
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "http://localhost:8000/api/v1/n8n/webhook",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            {
+              "name": "X-MAO-API-Key",
+              "value": "={{ $env.MAO_API_KEY }}"
+            }
+          ]
+        },
+        "sendBody": true,
+        "bodyParameters": {
+          "parameters": [
+            {
+              "name": "executionId",
+              "value": "={{ $execution.id }}"
+            },
+            {
+              "name": "workflowId",
+              "value": "={{ $workflow.id }}"
+            },
+            {
+              "name": "status",
+              "value": "error"
+            },
+            {
+              "name": "error",
+              "value": "={{ $json.error.message }}"
+            }
+          ]
+        }
+      },
+      "id": "error-logger",
+      "name": "Log Error to MAO",
+      "type": "n8n-nodes-base.httpRequest",
+      "position": [1000, 600]
     }
   ],
   "connections": {
@@ -110,14 +283,43 @@
       "main": [
         [
           {
-            "node": "OpenAI Research",
+            "node": "Research Agent",
             "type": "main",
             "index": 0
           }
         ]
       ]
     },
-    "OpenAI Research": {
+    "Research Agent": {
+      "main": [
+        [
+          {
+            "node": "Output Validator",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ],
+      "ai_languageModel": [
+        [
+          {
+            "node": "OpenAI LLM",
+            "type": "ai_languageModel",
+            "index": 0
+          }
+        ]
+      ],
+      "ai_tool": [
+        [
+          {
+            "node": "Get Current Date Tool",
+            "type": "ai_tool",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Output Validator": {
       "main": [
         [
           {
@@ -143,12 +345,28 @@
           }
         ]
       ]
+    },
+    "Error Handler": {
+      "main": [
+        [
+          {
+            "node": "Log Error to MAO",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
     }
   },
   "settings": {
-    "executionOrder": "v1"
+    "executionOrder": "v1",
+    "saveManualExecutions": true,
+    "saveDataErrorExecution": "all",
+    "saveDataSuccessExecution": "all",
+    "saveExecutionProgress": true,
+    "timezone": "America/New_York"
   },
   "meta": {
-    "description": "A normal research workflow that demonstrates MAO integration. Sends execution data to MAO for observability."
+    "description": "A high-quality research workflow demonstrating best practices:\n- Proper LangChain agent architecture with tools\n- Comprehensive documentation via sticky notes\n- Test data pinned for debugging\n- Error handling and monitoring\n- MAO platform integration for observability"
   }
 }

@@ -410,9 +410,20 @@ class AgentQualityScorer:
 
         parameters = node.get("parameters", {})
 
-        # Check for tools/functions
+        # Check for tools/functions - handle both list and dict formats
         tools = parameters.get("tools", [])
+        if isinstance(tools, dict):
+            # Handle n8n format: {"values": [...]}
+            tools = tools.get("values", [])
+        elif not isinstance(tools, list):
+            tools = []
+
         functions = parameters.get("functions", [])
+        if isinstance(functions, dict):
+            functions = functions.get("values", [])
+        elif not isinstance(functions, list):
+            functions = []
+
         all_tools = tools + functions
 
         evidence["tool_count"] = len(all_tools)
