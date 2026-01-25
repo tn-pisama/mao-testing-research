@@ -68,3 +68,9 @@ logs/
 *.local
 models/
 _archived/
+
+# Terraform
+.terraform/
+*.tfstate
+*.tfstate.*
+.terraform.lock.hcl
