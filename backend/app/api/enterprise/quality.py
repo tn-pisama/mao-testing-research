@@ -17,9 +17,13 @@ from app.enterprise.quality import (
     OrchestrationQualityScore,
     Severity,
 )
+from app.detection.quality_correlation import (
+    correlate_quality_to_detections,
+    get_remediation_priority,
+)
 from app.core.auth import get_current_tenant
 from app.storage.database import get_db, set_tenant_context
-from app.storage.models import WorkflowQualityAssessment, Trace
+from app.storage.models import WorkflowQualityAssessment, Trace, Detection
 
 router = APIRouter(prefix="/quality", tags=["quality"])
 
@@ -327,6 +331,42 @@ class AssessAndSaveRequest(BaseModel):
     use_llm_analysis: bool = Field(default=False)
 
 
+# Correlation schemas
+
+class CorrelationRequest(BaseModel):
+    """Request to correlate quality with detections."""
+    trace_id: Optional[str] = Field(default=None, description="Trace ID to get detections from")
+    quality_report: Optional[dict] = Field(default=None, description="Quality report dict (if not using trace_id)")
+    detections: Optional[List[dict]] = Field(default=None, description="List of detection dicts (if not using trace_id)")
+
+
+class QualityDetectionCorrelation(BaseModel):
+    """A single quality-detection correlation."""
+    detection_id: str
+    detection_type: str
+    detection_confidence: int
+    related_quality_issues: List[dict]
+    explanation: str
+    severity: str
+
+
+class RemediationPriority(BaseModel):
+    """Prioritized remediation item."""
+    dimension: str
+    detection_type: str
+    priority_score: float
+    rationale: str
+    suggested_action: str
+
+
+class CorrelationResponse(BaseModel):
+    """Response from correlation endpoint."""
+    trace_id: Optional[str]
+    correlations: List[QualityDetectionCorrelation]
+    remediation_priorities: List[dict]
+    summary: str
+
+
 # Persistence endpoints
 
 @router.get("/tenants/{tenant_id}/assessments", response_model=AssessmentListResponse)
@@ -546,3 +586,115 @@ async def assess_and_save(
         )
     except Exception as e:
         raise HTTPException(status_code=500, detail=f"Assessment failed: {str(e)}")
+
+
+@router.post("/tenants/{tenant_id}/quality/correlate", response_model=CorrelationResponse)
+async def correlate_quality_to_detection(
+    request: CorrelationRequest,
+    tenant_id: UUID = Path(...),
+    db: AsyncSession = Depends(get_db),
+    tenant=Depends(get_current_tenant),
+):
+    """
+    Correlate quality issues with detection findings.
+
+    Input: trace_id OR (quality_report + detections)
+    Output: Root cause mapping + prioritized remediation
+    """
+    await set_tenant_context(db, str(tenant_id))
+
+    try:
+        quality_report = request.quality_report
+        detections = request.detections or []
+
+        # If trace_id provided, fetch quality assessment and detections
+        if request.trace_id:
+            trace_uuid = UUID(request.trace_id)
+
+            # Get quality assessment for this trace
+            assessment_result = await db.execute(
+                select(WorkflowQualityAssessment).where(
+                    WorkflowQualityAssessment.trace_id == trace_uuid,
+                    WorkflowQualityAssessment.tenant_id == tenant_id,
+                ).order_by(WorkflowQualityAssessment.created_at.desc())
+            )
+            assessment = assessment_result.scalar_one_or_none()
+
+            if not assessment:
+                raise HTTPException(
+                    status_code=404,
+                    detail=f"No quality assessment found for trace {request.trace_id}"
+                )
+
+            # Build quality report dict
+            quality_report = {
+                "workflow_id": assessment.workflow_id,
+                "workflow_name": assessment.workflow_name,
+                "overall_score": assessment.overall_score / 100.0,
+                "overall_grade": assessment.overall_grade,
+                "agent_scores": assessment.agent_scores or [],
+                "orchestration_score": assessment.orchestration_score or {},
+                "improvements": assessment.improvements or [],
+            }
+
+            # Get detections for this trace
+            detections_result = await db.execute(
+                select(Detection).where(
+                    Detection.trace_id == trace_uuid,
+                    Detection.tenant_id == tenant_id,
+                )
+            )
+            detection_objs = detections_result.scalars().all()
+
+            detections = [
+                {
+                    "id": str(d.id),
+                    "detection_type": d.detection_type,
+                    "confidence": d.confidence,
+                    "details": d.details,
+                }
+                for d in detection_objs
+            ]
+
+        if not quality_report:
+            raise HTTPException(
+                status_code=400,
+                detail="Either trace_id or quality_report must be provided"
+            )
+
+        # Perform correlation
+        correlation_result = correlate_quality_to_detections(
+            quality_report=quality_report,
+            detections=detections,
+        )
+
+        # Get remediation priorities
+        remediation = get_remediation_priority(
+            quality_report=quality_report,
+            detections=detections,
+        )
+
+        # Convert correlations to response format
+        correlations = [
+            QualityDetectionCorrelation(
+                detection_id=c.detection_id,
+                detection_type=c.detection_type,
+                detection_confidence=c.detection_confidence,
+                related_quality_issues=c.related_quality_issues,
+                explanation=c.explanation,
+                severity=c.severity,
+            )
+            for c in correlation_result.correlations
+        ]
+
+        return CorrelationResponse(
+            trace_id=request.trace_id,
+            correlations=correlations,
+            remediation_priorities=remediation,
+            summary=correlation_result.summary,
+        )
+
+    except HTTPException:
+        raise
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"Correlation failed: {str(e)}")

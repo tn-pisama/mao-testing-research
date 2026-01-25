@@ -26,6 +26,8 @@ class OrchestrationDimension(str, Enum):
     DOCUMENTATION_QUALITY = "documentation_quality"
     AI_ARCHITECTURE = "ai_architecture"
     MAINTENANCE_QUALITY = "maintenance_quality"
+    TEST_COVERAGE = "test_coverage"
+    LAYOUT_QUALITY = "layout_quality"
 
 
 class Severity(str, Enum):

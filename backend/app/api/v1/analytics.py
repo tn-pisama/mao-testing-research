@@ -5,9 +5,15 @@ from uuid import UUID
 from datetime import datetime, timedelta
 
 from app.storage.database import get_db, set_tenant_context
-from app.storage.models import Detection, Trace, State
+from app.storage.models import Detection, Trace, State, WorkflowQualityAssessment
 from app.core.auth import get_current_tenant
-from app.api.v1.schemas import AnalyticsLoopResponse, AnalyticsCostResponse
+from app.api.v1.schemas import (
+    AnalyticsLoopResponse,
+    AnalyticsCostResponse,
+    QualityAnalyticsResponse,
+    DailyScore,
+    IssueCount,
+)
 
 router = APIRouter(prefix="/analytics", tags=["analytics"])
 
@@ -140,4 +146,126 @@ async def get_cost_analytics(
         cost_by_framework=cost_by_framework,
         cost_by_day=cost_by_day[::-1],
         top_expensive_traces=top_expensive_data,
+    )
+
+
+@router.get("/quality", response_model=QualityAnalyticsResponse)
+async def get_quality_analytics(
+    page: int = Query(1, ge=1),
+    page_size: int = Query(100, ge=1, le=500),
+    tenant_id: str = Depends(get_current_tenant),
+    db: AsyncSession = Depends(get_db),
+):
+    """
+    Get quality analytics for all workflow assessments (all-time data).
+
+    Returns:
+    - score_distribution: Histogram of quality scores
+    - grade_breakdown: Count by grade (A, B, C, D, F)
+    - category_breakdown: Average score by workflow category
+    - trend: Daily average scores (all time)
+    - top_issues: Most common quality issues
+    """
+    await set_tenant_context(db, tenant_id)
+
+    # Get all assessments for this tenant
+    result = await db.execute(
+        select(WorkflowQualityAssessment).where(
+            WorkflowQualityAssessment.tenant_id == UUID(tenant_id)
+        )
+    )
+    all_assessments = result.scalars().all()
+
+    # Score distribution (0-10, 10-20, ..., 90-100)
+    score_distribution = {f"{i}-{i+10}": 0 for i in range(0, 100, 10)}
+    for a in all_assessments:
+        score_bucket = (a.overall_score // 10) * 10
+        if score_bucket >= 100:
+            score_bucket = 90
+        key = f"{score_bucket}-{score_bucket + 10}"
+        score_distribution[key] = score_distribution.get(key, 0) + 1
+
+    # Grade breakdown
+    grade_breakdown = {}
+    for a in all_assessments:
+        grade = a.overall_grade
+        grade_breakdown[grade] = grade_breakdown.get(grade, 0) + 1
+
+    # Category breakdown (by workflow type if available)
+    category_scores = {}
+    category_counts = {}
+    for a in all_assessments:
+        # Try to infer category from workflow_id or name
+        # For now, use a simple categorization
+        category = "general"
+        if a.workflow_id and "ai" in a.workflow_id.lower():
+            category = "ai_multi_agent"
+        elif a.workflow_name and "automation" in a.workflow_name.lower():
+            category = "automation"
+
+        if category not in category_scores:
+            category_scores[category] = 0.0
+            category_counts[category] = 0
+
+        category_scores[category] += a.overall_score / 100.0
+        category_counts[category] += 1
+
+    category_breakdown = {
+        cat: (category_scores[cat] / category_counts[cat]) if category_counts[cat] > 0 else 0.0
+        for cat in category_scores
+    }
+
+    # Trend (daily average scores)
+    daily_scores = {}
+    for a in all_assessments:
+        date_key = a.created_at.date().isoformat()
+        if date_key not in daily_scores:
+            daily_scores[date_key] = {"total": 0.0, "count": 0}
+        daily_scores[date_key]["total"] += a.overall_score / 100.0
+        daily_scores[date_key]["count"] += 1
+
+    trend = [
+        DailyScore(
+            date=date,
+            avg_score=data["total"] / data["count"] if data["count"] > 0 else 0.0,
+            count=data["count"]
+        )
+        for date, data in sorted(daily_scores.items())
+    ]
+
+    # Paginate trend
+    offset = (page - 1) * page_size
+    has_more = len(trend) > offset + page_size
+    trend = trend[offset:offset + page_size]
+
+    # Top issues (from improvements)
+    issue_counts = {}
+    issue_severity = {}
+    for a in all_assessments:
+        for imp in a.improvements or []:
+            issue_title = imp.get("title", "Unknown issue")
+            severity = imp.get("severity", "medium")
+            issue_counts[issue_title] = issue_counts.get(issue_title, 0) + 1
+            if issue_title not in issue_severity:
+                issue_severity[issue_title] = severity
+
+    top_issues = [
+        IssueCount(
+            issue=issue,
+            count=count,
+            severity=issue_severity.get(issue, "medium")
+        )
+        for issue, count in sorted(issue_counts.items(), key=lambda x: x[1], reverse=True)[:10]
+    ]
+
+    return QualityAnalyticsResponse(
+        score_distribution=score_distribution,
+        grade_breakdown=grade_breakdown,
+        category_breakdown=category_breakdown,
+        trend=trend,
+        top_issues=top_issues,
+        total_assessments=len(all_assessments),
+        page=page,
+        page_size=page_size,
+        has_more=has_more,
     )

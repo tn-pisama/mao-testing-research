@@ -342,3 +342,30 @@ class ConversationAnalyzeResponse(BaseModel):
     detections: List[Dict[str, Any]]
     failure_modes_detected: List[str]
     turn_issues: List[Dict[str, Any]] = []
+
+
+class DailyScore(BaseModel):
+    """Daily average quality score."""
+    date: str
+    avg_score: float
+    count: int
+
+
+class IssueCount(BaseModel):
+    """Quality issue count."""
+    issue: str
+    count: int
+    severity: str
+
+
+class QualityAnalyticsResponse(BaseModel):
+    """Response for quality analytics."""
+    score_distribution: Dict[str, int]
+    grade_breakdown: Dict[str, int]
+    category_breakdown: Dict[str, float]
+    trend: List[DailyScore]
+    top_issues: List[IssueCount]
+    total_assessments: int
+    page: int
+    page_size: int
+    has_more: bool

@@ -84,6 +84,14 @@ class OrchestrationQualityScorer:
         if maint_score:
             dimensions.append(maint_score)
 
+        test_cov_score = self._score_test_coverage(workflow)
+        if test_cov_score:
+            dimensions.append(test_cov_score)
+
+        layout_score = self._score_layout_quality(workflow)
+        if layout_score:
+            dimensions.append(layout_score)
+
         # Calculate overall score
         total_weight = sum(d.weight for d in dimensions)
         overall_score = sum(d.score * d.weight for d in dimensions) / total_weight if total_weight > 0 else 0.0
@@ -956,6 +964,127 @@ class OrchestrationQualityScorer:
             dimension=OrchestrationDimension.MAINTENANCE_QUALITY.value,
             score=max(score, 0.0),
             weight=0.7,
+            issues=issues,
+            evidence=evidence,
+            suggestions=suggestions,
+        )
+
+    def _score_test_coverage(self, workflow: Dict[str, Any]) -> Optional[DimensionScore]:
+        """
+        Score based on pinData presence (test data).
+
+        Checks for:
+        - Presence of pinData on nodes
+        - Coverage ratio of nodes with test data
+        """
+        nodes = workflow.get("nodes", [])
+
+        if not nodes:
+            return None
+
+        issues = []
+        suggestions = []
+        evidence = {}
+
+        # Check for pinData on nodes
+        nodes_with_test_data = [n for n in nodes if n.get("pinData")]
+        evidence["nodes_with_test_data"] = len(nodes_with_test_data)
+        evidence["total_nodes"] = len(nodes)
+
+        if not nodes_with_test_data:
+            return DimensionScore(
+                dimension=OrchestrationDimension.TEST_COVERAGE.value,
+                score=0.4,
+                weight=0.6,
+                issues=["No test data (pinData) found"],
+                suggestions=["Add test data to key nodes for debugging"],
+                evidence=evidence,
+            )
+
+        coverage_ratio = len(nodes_with_test_data) / len(nodes)
+        evidence["coverage_ratio"] = coverage_ratio
+        score = min(0.5 + (coverage_ratio * 0.5), 1.0)
+
+        if coverage_ratio < 0.3:
+            suggestions.append("Increase test data coverage on more nodes")
+        elif coverage_ratio >= 0.7:
+            # Good coverage
+            pass
+        else:
+            suggestions.append("Consider adding test data to more critical nodes")
+
+        return DimensionScore(
+            dimension=OrchestrationDimension.TEST_COVERAGE.value,
+            score=score,
+            weight=0.6,
+            issues=issues,
+            evidence=evidence,
+            suggestions=suggestions,
+        )
+
+    def _calculate_variance(self, values: List[float]) -> float:
+        """Calculate variance of a list of values."""
+        if not values:
+            return 0.0
+        mean = sum(values) / len(values)
+        return sum((x - mean) ** 2 for x in values) / len(values)
+
+    def _score_layout_quality(self, workflow: Dict[str, Any]) -> Optional[DimensionScore]:
+        """
+        Score layout organization based on node positions.
+
+        Checks for:
+        - Overlapping nodes
+        - Layout organization (grid alignment)
+        - Scattered vs organized layout
+        """
+        nodes = workflow.get("nodes", [])
+        positions = [
+            (n.get("position", {}).get("x", 0), n.get("position", {}).get("y", 0))
+            for n in nodes
+        ]
+
+        if len(positions) < 2:
+            return None
+
+        issues = []
+        suggestions = []
+        evidence = {}
+        score = 1.0
+
+        # Check for overlapping nodes (same position)
+        unique_positions = len(set(positions))
+        evidence["total_nodes"] = len(positions)
+        evidence["unique_positions"] = unique_positions
+
+        if len(positions) != unique_positions:
+            score -= 0.3
+            issues.append("Overlapping node positions detected")
+            suggestions.append("Ensure all nodes have unique positions")
+
+        # Check for grid alignment (organized layout)
+        x_coords = [p[0] for p in positions]
+        y_coords = [p[1] for p in positions]
+
+        # Variance check - high variance = scattered layout
+        x_variance = self._calculate_variance(x_coords)
+        y_variance = self._calculate_variance(y_coords)
+        evidence["x_variance"] = x_variance
+        evidence["y_variance"] = y_variance
+
+        if x_variance > 100000:  # Threshold for scattered
+            score -= 0.2
+            issues.append("Scattered horizontal layout")
+            suggestions.append("Organize nodes in a more structured layout")
+
+        if y_variance > 100000:
+            score -= 0.1
+            suggestions.append("Consider aligning nodes vertically for better readability")
+
+        return DimensionScore(
+            dimension=OrchestrationDimension.LAYOUT_QUALITY.value,
+            score=max(score, 0.0),
+            weight=0.4,  # Lower weight - less critical
             issues=issues,
             evidence=evidence,
             suggestions=suggestions,
