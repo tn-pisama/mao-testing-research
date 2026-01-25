@@ -49,14 +49,14 @@ class N8NResourceDetector(TurnAwareDetector):
 
     def __init__(
         self,
-        growth_rate_threshold: float = 5.0,
-        max_content_size: int = 50000,
-        api_call_threshold: int = 10,
+        growth_rate_threshold: float = 2.5,
+        max_content_size: int = 10000,
+        api_call_threshold: int = 5,
     ):
         """Initialize resource detector.
 
         Args:
-            growth_rate_threshold: Flag if content grows by this factor (5x = 500%)
+            growth_rate_threshold: Flag if content grows by this factor (2.5x = 250%)
             max_content_size: Maximum acceptable content size in characters
             api_call_threshold: Maximum healthy API calls to same endpoint
         """

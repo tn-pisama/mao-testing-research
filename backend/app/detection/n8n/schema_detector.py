@@ -46,13 +46,13 @@ class N8NSchemaDetector(TurnAwareDetector):
     def __init__(
         self,
         strict_mode: bool = False,
-        required_field_threshold: float = 0.5,
+        required_field_threshold: float = 0.3,
     ):
         """Initialize schema detector.
 
         Args:
             strict_mode: If True, flag any schema differences (not just breaking ones)
-            required_field_threshold: Fraction of fields that must match (0.5 = 50%)
+            required_field_threshold: Fraction of fields that must match to avoid flagging (0.3 = 30%)
         """
         self.strict_mode = strict_mode
         self.required_field_threshold = required_field_threshold
@@ -107,11 +107,14 @@ class N8NSchemaDetector(TurnAwareDetector):
                 })
                 affected_turns.extend([producer.turn_number, consumer.turn_number])
 
-        # Check for progressive schema drift
-        drift = self._detect_schema_drift(turns)
-        if drift["detected"]:
-            issues.append(drift)
-            affected_turns.extend(drift.get("turns", []))
+        # Check for progressive schema drift (only if we have error indicators)
+        # Drift detection alone causes too many false positives
+        has_error_indicators = any(i.get("type") == "schema_error" for i in issues)
+        if has_error_indicators:
+            drift = self._detect_schema_drift(turns)
+            if drift["detected"]:
+                issues.append(drift)
+                affected_turns.extend(drift.get("turns", []))
 
         if not issues:
             return TurnAwareDetectionResult(
@@ -376,8 +379,9 @@ class N8NSchemaDetector(TurnAwareDetector):
             if lost:
                 lost_fields.extend(lost)
 
-        # Significant drift if we lost >30% of original fields
-        if len(lost_fields) >= len(all_fields) * 0.3:
+        # Significant drift if we lost >60% of original fields
+        # (stricter threshold to reduce false positives)
+        if len(lost_fields) >= len(all_fields) * 0.6:
             return {
                 "detected": True,
                 "type": "schema_drift",
