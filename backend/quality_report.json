@@ -1,36 +1,36 @@
 {
   "workflow_id": "unknown",
-  "workflow_name": "MAO Demo - Research Assistant (Normal)",
-  "overall_score": 0.8078798534798535,
+  "workflow_name": "MAO Demo - Research Assistant (High Quality)",
+  "overall_score": 0.864904761904762,
   "overall_grade": "B+",
   "agent_scores": [
     {
       "agent_name": "Research Agent",
-      "overall_score": 0.799,
-      "grade": "B",
+      "overall_score": 0.8800000000000001,
+      "grade": "B+",
       "dimensions": {
-        "role_clarity": 0.745,
+        "role_clarity": 1.0,
         "output_consistency": 0.7,
         "error_handling": 0.8500000000000001,
         "tool_usage": 1.0,
-        "config_appropriateness": 0.7
+        "config_appropriateness": 0.85
       }
     }
   ],
   "orchestration_score": {
-    "overall_score": 0.8211996336996337,
+    "overall_score": 0.8422619047619048,
     "grade": "B+",
     "pattern": "parallel",
     "dimensions": {
-      "data_flow_clarity": 0.49999999999999994,
-      "complexity_management": 0.8,
+      "data_flow_clarity": 0.7,
+      "complexity_management": 1.0,
       "agent_coupling": 0.9,
       "observability": 1.0,
       "best_practices": 0.8,
-      "documentation_quality": 1.0,
-      "ai_architecture": 0.75,
+      "documentation_quality": 0.8999999999999999,
+      "ai_architecture": 0.55,
       "maintenance_quality": 1.0,
-      "test_coverage": 0.5384615384615384,
+      "test_coverage": 0.6,
       "layout_quality": 1.0
     }
   },
@@ -43,6 +43,6 @@
       "estimated_impact": "Catch output errors before downstream processing"
     }
   ],
-  "summary": "Overall quality: B+ (81%). 1 agents assessed (avg: 80%). Orchestration: B+ (parallel pattern). Priority fix: Add output validation node after Research Agent.",
-  "generated_at": "2026-01-25T07:59:17.917176+00:00"
+  "summary": "Overall quality: B+ (86%). 1 agents assessed (avg: 88%). Orchestration: B+ (parallel pattern). Priority fix: Add output validation node after Research Agent.",
+  "generated_at": "2026-01-25T08:04:44.843350+00:00"
 }
