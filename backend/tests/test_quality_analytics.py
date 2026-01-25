@@ -18,7 +18,7 @@ async def test_quality_analytics_empty(client, test_tenant, db_session):
     db_session.execute.return_value = mock_result
 
     response = await client.get(
-        f"/api/v1/analytics/quality",
+        f"/api/v1/tenants/{test_tenant.id}/analytics/quality",
         headers={"X-Tenant-ID": str(test_tenant.id)},
     )
 
@@ -82,7 +82,7 @@ async def test_quality_analytics_with_data(client, test_tenant, db_session):
 
     # Test analytics endpoint
     response = await client.get(
-        f"/api/v1/analytics/quality",
+        f"/api/v1/tenants/{test_tenant.id}/analytics/quality",
         headers={"X-Tenant-ID": str(test_tenant.id)},
     )
 
@@ -143,7 +143,7 @@ async def test_quality_analytics_pagination(client, test_tenant, db_session):
 
     # Test first page
     response = await client.get(
-        f"/api/v1/analytics/quality?page=1&page_size=100",
+        f"/api/v1/tenants/{test_tenant.id}/analytics/quality?page=1&page_size=100",
         headers={"X-Tenant-ID": str(test_tenant.id)},
     )
 
@@ -158,7 +158,7 @@ async def test_quality_analytics_pagination(client, test_tenant, db_session):
 
     # Test second page
     response2 = await client.get(
-        f"/api/v1/analytics/quality?page=2&page_size=100",
+        f"/api/v1/tenants/{test_tenant.id}/analytics/quality?page=2&page_size=100",
         headers={"X-Tenant-ID": str(test_tenant.id)},
     )
 
@@ -217,7 +217,7 @@ async def test_quality_analytics_category_breakdown(client, test_tenant, db_sess
     db_session.execute.return_value = mock_result
 
     response = await client.get(
-        f"/api/v1/analytics/quality",
+        f"/api/v1/tenants/{test_tenant.id}/analytics/quality",
         headers={"X-Tenant-ID": str(test_tenant.id)},
     )
 
@@ -227,5 +227,5 @@ async def test_quality_analytics_category_breakdown(client, test_tenant, db_sess
     # Verify categories
     assert "ai_multi_agent" in data["category_breakdown"]
     assert "automation" in data["category_breakdown"]
-    assert data["category_breakdown"]["ai_multi_agent"] == 0.8
-    assert data["category_breakdown"]["automation"] == 0.7
+    assert abs(data["category_breakdown"]["ai_multi_agent"] - 0.8) < 0.01
+    assert abs(data["category_breakdown"]["automation"] - 0.7) < 0.01

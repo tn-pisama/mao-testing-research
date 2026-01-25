@@ -18,7 +18,7 @@ from app.api.v1.schemas import (
     DiagnoseQuickCheckResponse,
 )
 from app.ingestion.importers import import_trace, detect_format
-from app.detection.orchestrator import DetectionOrchestrator, DiagnosisResult
+from app.detection_enterprise.orchestrator import DetectionOrchestrator, DiagnosisResult
 
 
 logger = logging.getLogger(__name__)

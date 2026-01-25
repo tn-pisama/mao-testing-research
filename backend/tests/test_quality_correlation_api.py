@@ -99,7 +99,7 @@ async def test_correlate_with_trace_id(client, test_tenant, db_session):
 
     # Test correlation endpoint
     response = await client.post(
-        f"/api/v1/tenants/{test_tenant.id}/quality/correlate",
+        f"/api/v1/quality/tenants/{test_tenant.id}/quality/correlate",
         headers={"X-Tenant-ID": str(test_tenant.id)},
         json={"trace_id": str(trace_id)},
     )
@@ -173,7 +173,7 @@ async def test_correlate_with_quality_report_and_detections(client, test_tenant)
     ]
 
     response = await client.post(
-        f"/api/v1/tenants/{test_tenant.id}/quality/correlate",
+        f"/api/v1/quality/tenants/{test_tenant.id}/quality/correlate",
         headers={"X-Tenant-ID": str(test_tenant.id)},
         json={
             "quality_report": quality_report,
@@ -237,7 +237,7 @@ async def test_correlate_no_quality_issues(client, test_tenant):
     ]
 
     response = await client.post(
-        f"/api/v1/tenants/{test_tenant.id}/quality/correlate",
+        f"/api/v1/quality/tenants/{test_tenant.id}/quality/correlate",
         headers={"X-Tenant-ID": str(test_tenant.id)},
         json={
             "quality_report": quality_report,
@@ -264,7 +264,7 @@ async def test_correlate_trace_not_found(client, test_tenant, db_session):
     db_session.execute.return_value = mock_result
 
     response = await client.post(
-        f"/api/v1/tenants/{test_tenant.id}/quality/correlate",
+        f"/api/v1/quality/tenants/{test_tenant.id}/quality/correlate",
         headers={"X-Tenant-ID": str(test_tenant.id)},
         json={"trace_id": str(uuid4())},
     )
@@ -277,7 +277,7 @@ async def test_correlate_trace_not_found(client, test_tenant, db_session):
 async def test_correlate_missing_input(client, test_tenant):
     """Test correlation without required input."""
     response = await client.post(
-        f"/api/v1/tenants/{test_tenant.id}/quality/correlate",
+        f"/api/v1/quality/tenants/{test_tenant.id}/quality/correlate",
         headers={"X-Tenant-ID": str(test_tenant.id)},
         json={},
     )
@@ -352,7 +352,7 @@ async def test_remediation_priority_ordering(client, test_tenant):
     ]
 
     response = await client.post(
-        f"/api/v1/tenants/{test_tenant.id}/quality/correlate",
+        f"/api/v1/quality/tenants/{test_tenant.id}/quality/correlate",
         headers={"X-Tenant-ID": str(test_tenant.id)},
         json={
             "quality_report": quality_report,

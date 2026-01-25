@@ -3,6 +3,8 @@ os.environ["TESTING"] = "1"
 os.environ.setdefault("JWT_SECRET", "xK9mPqL2vN7wR4tY8uJ3hB6gF5dC0aZS")
 os.environ.setdefault("DATABASE_URL", "postgresql+asyncpg://mao:mao@localhost:5432/mao")
 os.environ.setdefault("REDIS_URL", "redis://localhost:6379")
+os.environ.setdefault("FEATURE_ENTERPRISE_ENABLED", "true")
+os.environ.setdefault("FEATURE_QUALITY_ASSESSMENT", "true")
 
 import pytest
 import pytest_asyncio
@@ -347,17 +349,14 @@ async def client(test_tenant, db_session):
         app.dependency_overrides.pop(get_current_tenant, None)
 
 
-@pytest_asyncio.fixture(autouse=True)
+@pytest_asyncio.fixture
 async def mock_tenant_context():
-    """Auto-mock set_tenant_context for all tests."""
-    from app.storage import database
-    from unittest.mock import AsyncMock
+    """Mock set_tenant_context for tests that need it."""
+    from unittest.mock import patch, AsyncMock
 
-    original = getattr(database, 'set_tenant_context', None)
-    database.set_tenant_context = AsyncMock()
-    yield
-    if original is not None:
-        database.set_tenant_context = original
+    # Mock set_tenant_context without importing the module
+    with patch('app.storage.database.set_tenant_context', new_callable=AsyncMock) as mock:
+        yield mock
 
 
 # =============================================================================
