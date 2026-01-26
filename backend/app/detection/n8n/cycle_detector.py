@@ -16,7 +16,8 @@ based on the graph structure, unlike conversational agent turn-taking.
 import logging
 import re
 from collections import Counter
-from typing import Any, Dict, List, Optional, Tuple
+from difflib import SequenceMatcher
+from typing import Any, Dict, List, Optional, Set, Tuple
 
 from app.detection.turn_aware._base import (
     TurnSnapshot,
@@ -26,6 +27,20 @@ from app.detection.turn_aware._base import (
 )
 
 logger = logging.getLogger(__name__)
+
+# Benign patterns that indicate normal retry/pagination behavior (not a bug)
+BENIGN_LOOP_PATTERNS: Set[str] = {
+    "retry", "retrying", "attempt", "page", "pagination", "offset",
+    "cursor", "next", "previous", "batch", "chunk", "poll", "polling",
+    "heartbeat", "ping", "healthcheck", "status", "progress",
+}
+
+
+def content_similarity(a: str, b: str) -> float:
+    """Calculate similarity ratio between two strings (0.0 to 1.0)."""
+    if not a or not b:
+        return 0.0
+    return SequenceMatcher(None, a.lower(), b.lower()).ratio()
 
 
 def normalize_node_name(name: str) -> str:
@@ -90,17 +105,61 @@ class N8NCycleDetector(TurnAwareDetector):
 
     def __init__(
         self,
-        min_cycle_repetitions: int = 2,
+        min_cycle_repetitions: int = 3,  # Increased from 2 to reduce FP
         max_healthy_retries: int = 4,
+        content_similarity_threshold: float = 0.4,  # Minimum similarity to confirm loop
     ):
         """Initialize cycle detector.
 
         Args:
             min_cycle_repetitions: Minimum times a pattern must repeat to be a cycle
             max_healthy_retries: Maximum retries before flagging as problematic
+            content_similarity_threshold: Min content similarity to confirm real loop
         """
         self.min_cycle_repetitions = min_cycle_repetitions
         self.max_healthy_retries = max_healthy_retries
+        self.content_similarity_threshold = content_similarity_threshold
+
+    def _is_benign_loop(self, turns: List[TurnSnapshot]) -> bool:
+        """Check if the detected loop is actually benign behavior.
+
+        Benign loops include:
+        - Pagination (fetching pages of data)
+        - Polling (checking status repeatedly)
+        - Retry logic (automatic retries on failure)
+        """
+        for turn in turns:
+            content_lower = turn.content.lower()
+            node_lower = turn.participant_id.lower()
+            # Check if content or node name suggests benign pattern
+            for pattern in BENIGN_LOOP_PATTERNS:
+                if pattern in content_lower or pattern in node_lower:
+                    return True
+        return False
+
+    def _verify_content_similarity(
+        self, turns: List[TurnSnapshot], cycle_length: int
+    ) -> Tuple[bool, float]:
+        """Verify that loop iterations have similar content (not just same node names).
+
+        Returns:
+            Tuple of (is_similar, avg_similarity)
+        """
+        if len(turns) < cycle_length * 2:
+            return False, 0.0
+
+        similarities = []
+        for i in range(cycle_length, len(turns)):
+            prev_content = turns[i - cycle_length].content
+            curr_content = turns[i].content
+            sim = content_similarity(prev_content, curr_content)
+            similarities.append(sim)
+
+        if not similarities:
+            return False, 0.0
+
+        avg_sim = sum(similarities) / len(similarities)
+        return avg_sim >= self.content_similarity_threshold, avg_sim
 
     def detect(
         self,
@@ -167,6 +226,33 @@ class N8NCycleDetector(TurnAwareDetector):
                 detector_name=self.name,
             )
 
+        # Filter out benign loops (pagination, polling, retries)
+        if self._is_benign_loop(turns):
+            return TurnAwareDetectionResult(
+                detected=False,
+                severity=TurnAwareSeverity.NONE,
+                confidence=0.80,
+                failure_mode=None,
+                explanation="Loop pattern detected but appears to be benign (retry/pagination/polling)",
+                detector_name=self.name,
+            )
+
+        # Verify content similarity for the strongest issue
+        strongest_issue = max(issues, key=lambda i: i.get("repetitions", 0))
+        cycle_length = strongest_issue.get("cycle_length", 2)
+        is_similar, avg_similarity = self._verify_content_similarity(turns, cycle_length)
+
+        # If content isn't similar, this might be a false positive
+        if not is_similar and avg_similarity < 0.2:
+            return TurnAwareDetectionResult(
+                detected=False,
+                severity=TurnAwareSeverity.NONE,
+                confidence=0.75,
+                failure_mode=None,
+                explanation=f"Loop pattern detected but content differs between iterations (similarity: {avg_similarity:.2f})",
+                detector_name=self.name,
+            )
+
         # Determine severity based on cycle characteristics
         has_infinite = any(i.get("potentially_infinite", False) for i in issues)
         cycle_lengths = [i.get("cycle_length", 0) for i in issues]
@@ -179,19 +265,22 @@ class N8NCycleDetector(TurnAwareDetector):
         else:
             severity = TurnAwareSeverity.MINOR
 
-        confidence = min(0.95, 0.6 + len(issues) * 0.15)
+        # Adjust confidence based on content similarity
+        base_confidence = min(0.95, 0.6 + len(issues) * 0.15)
+        confidence = base_confidence * (0.5 + 0.5 * avg_similarity)  # Scale by similarity
 
         return TurnAwareDetectionResult(
             detected=True,
             severity=severity,
             confidence=confidence,
             failure_mode="F11",
-            explanation=f"Workflow cycle detected: {len(issues)} patterns found",
+            explanation=f"Workflow cycle detected: {len(issues)} patterns found (content similarity: {avg_similarity:.2f})",
             affected_turns=list(set(affected_turns)),
             evidence={
                 "issues": issues,
                 "total_nodes": len(turns),
                 "unique_nodes": len(set(t.participant_id for t in turns)),
+                "content_similarity": avg_similarity,
             },
             suggested_fix=(
                 "Add cycle-breaking conditions to prevent infinite loops. "
