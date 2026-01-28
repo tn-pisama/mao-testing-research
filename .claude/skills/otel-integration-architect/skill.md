@@ -86,3 +86,24 @@ When reviewing OTEL integration changes:
 ### Recommendation
 [APPROVE / REQUEST CHANGES]
 ```
+
+---
+
+## Resources
+
+**OpenLLMetry** - https://github.com/traceloop/openllmetry
+- Production-tested implementation of gen_ai.* semantic conventions
+- Multi-provider support (OpenAI, Anthropic, Cohere, Bedrock, etc.)
+- Vector DB instrumentation patterns (Pinecone, Chroma, Weaviate)
+- Reference for validating PISAMA's OTEL instrumentation compatibility
+
+**OTEL MCP Server** - https://github.com/traceloop/opentelemetry-mcp-server
+- MCP server for querying OpenTelemetry traces (Jaeger, Tempo, Traceloop)
+- Enables Claude to analyze distributed traces directly
+- Specialized for LLM observability with gen_ai semantic conventions
+- Optional integration for PISAMA CLI debugging workflows
+
+**Claude Cookbooks - Observability** - https://github.com/anthropics/claude-cookbooks
+- `observability/` folder with monitoring patterns for LLM applications
+- `building_evals.ipynb` - Automated evaluation patterns
+- `tool_use/` examples for tool integration best practices
