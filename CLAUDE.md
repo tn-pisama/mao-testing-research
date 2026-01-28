@@ -116,3 +116,47 @@ Multi-Agent Orchestration Testing Platform - Failure detection for LLM agent sys
 - Prefer editing existing files over creating new ones
 - Security-first approach (input validation, auth)
 - Test-driven development where applicable
+
+## Frontend Development
+
+### Tech Stack
+- Next.js 16 (App Router), React 18, TypeScript
+- TailwindCSS 3.4, Zustand, TanStack Query 5
+- Recharts, ReactFlow, D3 for visualization
+- NextAuth with Google OAuth
+
+### Key Directories
+| Directory | Purpose |
+|-----------|---------|
+| `frontend/src/app/` | Next.js App Router pages (~35 pages) |
+| `frontend/src/components/ui/` | Shared UI components (Button, Card, Badge, etc.) |
+| `frontend/src/components/` | Domain components (agents, traces, healing, charts) |
+| `frontend/src/hooks/` | Custom React hooks (useApiWithFallback, useSafeAuth, etc.) |
+| `frontend/src/lib/api.ts` | API client (1400+ lines, tenant-aware) |
+| `frontend/src/stores/` | Zustand state stores |
+| `frontend/tests/e2e/` | Playwright tests |
+
+### Conventions
+- All interactive components use `'use client'` directive
+- UI components use variant pattern with `clsx` + `tailwind-merge`
+- API client factory: `createApiClient(token, tenantId)`
+- Demo mode fallback for graceful API failures
+- Protected routes require authentication (middleware.ts)
+
+### State Management
+- **Zustand**: UI state (sidebar, selections, theme, filters)
+- **TanStack Query**: Server state (60s staleTime, no refetchOnWindowFocus)
+- **UserPreferences context**: User type (n8n_user vs developer)
+
+### Color Palette
+- Primary: Blue (#0ea5e9)
+- Danger: Red (#ef4444)
+- Warning: Amber (#f59e0b)
+- Success: Green (#22c55e)
+- Background: Slate-950, Slate-800
+
+### Frontend Testing
+- Framework: Playwright 1.41
+- Test files: `frontend/tests/e2e/`
+- Run: `cd frontend && npm run test:public`
+- Auth tests require setup: `npm run test:setup-auth` first
