@@ -253,4 +253,18 @@ For detailed benchmark commands and scripts:
 - `resources/benchmark-commands.md` - Full command reference
 - `backend/tests/benchmark/` - Benchmark test suite
 - `backend/app/benchmark/evaluate_mast.py` - Evaluation script
+
+### External References
+
+**Bloom** - https://github.com/safety-research/bloom
+- Automated behavioral evaluation pipeline with reproducible test generation
+- 4-stage process: Understanding → Ideation → Rollout → Judgment
+- Multi-model comparison for testing detectors across different configurations
+- Variation dimensions for testing edge cases (noise, pressure, etc.)
+
+**Anthropic Evals** - https://github.com/anthropics/evals
+- Model-written evaluation datasets for behavioral testing
+- Sycophancy, persona, and dangerous goal pursuit patterns
+- Methodology for expanding MAST taxonomy with new failure modes
+- Reference datasets for validating detection algorithms
 - `docs/BENCHMARK_RESULTS.md` - Historical results

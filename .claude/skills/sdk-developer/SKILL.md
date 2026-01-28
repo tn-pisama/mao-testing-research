@@ -256,3 +256,17 @@ For adapter templates and examples:
 - `resources/adapter-template.py` - Full adapter template
 - `packages/pisama-agent-sdk/adapters/n8n.py` - Reference implementation
 - `docs/SDK_DEVELOPMENT.md` - Detailed SDK guide
+
+### External References
+
+**OpenLLMetry** - https://github.com/traceloop/openllmetry
+- Production-tested OTEL instrumentation for LLM providers (OpenAI, Anthropic, Cohere)
+- Implements gen_ai.* semantic conventions that PISAMA SDK uses
+- Patterns for vector DB instrumentation (Pinecone, Chroma, Weaviate)
+- Reference for ensuring PISAMA SDK compatibility with standard observability tools
+
+**Claude Agent SDK** - https://github.com/anthropics/claude-agent-sdk-python
+- Hooks system for pre/post-tool processing (similar to PISAMA's detection points)
+- In-process MCP server pattern (cleaner than subprocess-based tools)
+- Comprehensive error handling types (CLINotFoundError, ProcessError, etc.)
+- Session management and multi-turn context handling patterns

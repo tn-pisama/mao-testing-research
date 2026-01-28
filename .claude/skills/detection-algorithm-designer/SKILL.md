@@ -352,3 +352,17 @@ For detailed specifications, I can load:
 - `resources/detection-patterns.md` - Common detection patterns with code
 - `resources/accuracy-benchmarks.md` - Expected accuracy by failure type
 - `resources/tier-migration-guide.md` - How to move algorithms between tiers
+
+### External References
+
+**Claude Agent SDK - Hooks** - https://github.com/anthropics/claude-agent-sdk-python
+- Pre/post-tool use hook patterns for deterministic processing
+- Reference for designing detection points at span boundaries
+- Error handling patterns and comprehensive error taxonomy
+- Session management for multi-turn agent context
+
+**Claude Security Review** - https://github.com/anthropics/claude-code-security-review
+- AI-powered security scanning patterns
+- Injection detection algorithms and prompt injection patterns
+- Automated review workflows applicable to self-healing approval flows
+- Reference for improving PISAMA's injection detector (backend/app/detection/injection.py)
