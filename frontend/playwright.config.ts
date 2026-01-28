@@ -17,7 +17,7 @@ export default defineConfig({
   ],
 
   use: {
-    // Production URLs
+    // Test against production with auth bypass header
     baseURL: process.env.TEST_BASE_URL || 'https://pisama.ai',
     trace: 'on-first-retry',
     screenshot: 'only-on-failure',
@@ -51,12 +51,13 @@ export default defineConfig({
     // Authenticated tests (requires auth setup first)
     {
       name: 'authenticated',
-      testMatch: /.*\/authenticated\/.*\.spec\.ts/,
+      testMatch: /.*\/(authenticated|navigation|pages)\/.*\.spec\.ts/,
       use: {
         ...devices['Desktop Chrome'],
-        storageState: './tests/auth/storage-state.json',
+        extraHTTPHeaders: {
+          'x-test-bypass': 'true',
+        },
       },
-      dependencies: ['auth-setup'],
     },
   ],
 

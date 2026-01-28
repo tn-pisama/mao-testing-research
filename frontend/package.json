@@ -15,6 +15,9 @@
     "test:public": "playwright test --project=public",
     "test:auth": "playwright test --project=authenticated",
     "test:all": "playwright test --project=api --project=public",
+    "test:nav": "playwright test --project=authenticated tests/e2e/navigation",
+    "test:pages": "playwright test --project=authenticated tests/e2e/pages",
+    "test:full": "playwright test --project=api --project=public --project=authenticated",
     "test:setup-auth": "playwright test auth.setup.ts --headed",
     "test:report": "playwright show-report"
   },
