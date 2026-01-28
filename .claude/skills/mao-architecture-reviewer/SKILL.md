@@ -1,16 +1,16 @@
 ---
 name: mao-architecture-reviewer
 description: |
-  Reviews MAO codebase changes for architectural consistency.
+  Reviews PISAMA codebase changes for architectural consistency.
   Use when modifying detection algorithms, SDK interfaces, backend services, or database schemas.
   Ensures OTEL compatibility, tiered detection patterns, cost-awareness, and framework-agnostic design.
   Automatically invoked when reviewing PRs, refactoring core components, or adding new features.
 allowed-tools: Read, Grep, Glob
 ---
 
-# MAO Architecture Review Skill
+# PISAMA Architecture Review Skill
 
-You are reviewing changes to the MAO Testing Platform codebase. Your job is to ensure architectural consistency and catch violations before they reach production.
+You are reviewing changes to the PISAMA codebase. Your job is to ensure architectural consistency and catch violations before they reach production.
 
 ## Core Architectural Principles
 

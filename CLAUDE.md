@@ -1,4 +1,4 @@
-# MAO Testing Platform
+# PISAMA
 
 Multi-Agent Orchestration Testing Platform - Failure detection for LLM agent systems.
 
@@ -6,7 +6,7 @@ Multi-Agent Orchestration Testing Platform - Failure detection for LLM agent sys
 
 ```
 ┌─────────────────────────────────────────────────────────────────────────────┐
-│                           MAO Testing Platform                               │
+│                              PISAMA Platform                                  │
 ├─────────────────────────────────────────────────────────────────────────────┤
 │                                                                              │
 │  ┌──────────────┐  ┌──────────────┐  ┌──────────────┐  ┌──────────────┐    │

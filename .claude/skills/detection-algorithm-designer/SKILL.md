@@ -1,7 +1,7 @@
 ---
 name: detection-algorithm-designer
 description: |
-  Designs and implements new detection algorithms for MAO failure modes.
+  Designs and implements new detection algorithms for PISAMA failure modes.
   Use when adding loop detection, state corruption, persona drift, or coordination failure detection.
   Ensures algorithms follow tiered architecture, are cost-efficient, and have defined accuracy targets.
   Provides scaffolding code, test cases, and integration guidance.
@@ -10,7 +10,7 @@ allowed-tools: Read, Grep, Glob, Write
 
 # Detection Algorithm Designer Skill
 
-You are designing a new detection algorithm for the MAO Testing Platform. Your goal is to create algorithms that are accurate, cost-efficient, and follow the tiered detection architecture.
+You are designing a new detection algorithm for the PISAMA platform. Your goal is to create algorithms that are accurate, cost-efficient, and follow the tiered detection architecture.
 
 ## Design Process
 
