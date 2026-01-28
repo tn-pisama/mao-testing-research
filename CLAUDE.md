@@ -44,14 +44,70 @@ Multi-Agent Orchestration Testing Platform - Failure detection for LLM agent sys
 | Directory | Purpose |
 |-----------|---------|
 | `backend/app/api/v1/` | REST API endpoints |
-| `backend/app/detection/` | Failure detection algorithms |
-| `backend/app/ingestion/` | Trace parsing (OTEL, n8n) |
+| `backend/app/detection/` | ICP-tier detection algorithms |
+| `backend/app/detection_enterprise/` | Enterprise ML/tiered detection |
+| `backend/app/detection/llm_judge/` | LLM-as-Judge verification |
+| `backend/app/ingestion/` | Trace parsing (OTEL, n8n, universal) |
 | `backend/app/storage/` | Database models and migrations |
 | `backend/app/fixes/` | AI-powered fix suggestions |
+| `backend/app/healing/` | Self-healing orchestration |
+| `backend/app/benchmark/` | MAST benchmark tooling |
 | `backend/app/core/` | Auth, security, rate limiting |
+| `backend/tests/` | pytest tests (87 files) |
 | `frontend/src/app/` | Next.js pages and components |
-| `sdk/mao_testing/` | Python SDK for instrumentation |
-| `mao/` | CLI and MCP server |
+| `packages/` | Python packages (pisama-core, agent-sdk) |
+| `cli/` | CLI with MCP server support |
+| `docs/` | Technical documentation (25+ files) |
+
+## Detection Algorithms
+
+### ICP Tier (Always Available)
+| Detector | Purpose |
+|----------|---------|
+| loop | Exact, structural, semantic loop detection |
+| corruption | State corruption and invalid transitions |
+| persona | Persona drift and role confusion |
+| coordination | Agent handoff and communication failures |
+| hallucination | Factual inaccuracy detection |
+| injection | Prompt injection attempts |
+| overflow | Context window exhaustion |
+| derailment | Task focus deviation |
+| context | Context neglect in responses |
+| communication | Inter-agent communication breakdown |
+| specification | Output vs spec mismatch |
+| decomposition | Task breakdown failures |
+| workflow | Workflow execution issues |
+| withholding | Information withholding |
+| completion | Premature/delayed task completion |
+| cost | Token/cost budget tracking |
+
+### Enterprise Tier (Feature Flags Required)
+- `ml_detection` flag: ML-based detection (ml_detector_v4), tiered escalation, LLM judge
+- `advanced_evals` flag: Quality gates, retrieval quality, role usurpation
+
+## Feature Flags
+
+| Flag | Tier | Features Enabled |
+|------|------|------------------|
+| (none) | ICP | All base detectors, basic healing |
+| `ml_detection` | Enterprise | ML detector v4, tiered detection, LLM judge |
+| `advanced_evals` | Enterprise | Quality gates, retrieval quality |
+
+## Testing
+
+- Test files: `test_*.py` in `backend/tests/`
+- Golden datasets: `backend/tests/fixtures/golden/`
+- Run tests: `pytest backend/tests/`
+- Test organization: unit, integration, e2e, detection_enterprise
+- E2E strategy: See `docs/E2E_TESTING_STRATEGY.md`
+
+## Architecture Principles
+
+1. **Tiered Detection**: Always start at Tier 1 (hash), escalate only if needed (Tier 2: state delta, Tier 3: embeddings, Tier 4: LLM, Tier 5: human)
+2. **OTEL-First**: All traces use OpenTelemetry with `gen_ai.*` semantic conventions
+3. **Framework-Agnostic Core**: No LangGraph/CrewAI/AutoGen imports in core - use adapters in packages/
+4. **Cost-Aware**: Track tokens, compute time, $ cost per detection (target: $0.05/trace)
+5. **Safety-First Healing**: Require checkpoints, rollback capability, approval policies for high-risk fixes
 
 ## Development Guidelines
 

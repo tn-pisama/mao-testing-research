@@ -10,7 +10,13 @@
     "build": "next build",
     "start": "next start",
     "lint": "echo 'Skipping lint - ESLint 9 config needs migration'",
-    "test": "playwright test"
+    "test": "playwright test",
+    "test:api": "playwright test --project=api",
+    "test:public": "playwright test --project=public",
+    "test:auth": "playwright test --project=authenticated",
+    "test:all": "playwright test --project=api --project=public",
+    "test:setup-auth": "playwright test auth.setup.ts --headed",
+    "test:report": "playwright show-report"
   },
   "dependencies": {
     "@clerk/nextjs": "^6.36.5",

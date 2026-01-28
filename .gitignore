@@ -40,10 +40,17 @@ htmlcov/
 .tox/
 .nox/
 
+# Playwright
+frontend/tests/auth/storage-state.json
+frontend/test-results/
+frontend/playwright-report/
+frontend/playwright/.cache/
+
 # Environment
 .env
 .env.*
 !.env.example
+!.env.test
 
 # Vercel
 .vercel

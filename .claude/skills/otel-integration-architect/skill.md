@@ -1,3 +1,12 @@
+---
+name: otel-integration-architect
+description: |
+  Designs OpenTelemetry integrations for PISAMA platform.
+  Use when adding OTEL ingestion, GenAI semantic conventions, or trace parsing.
+  Ensures OTLP/HTTP and OTLP/gRPC support with backward compatibility.
+allowed-tools: Read, Grep, Glob, Write
+---
+
 # OTEL Integration Architect Skill
 
 You are designing OpenTelemetry integrations for the PISAMA platform. Your goal is to ensure OTEL-native compatibility while maintaining backward compatibility with existing APIs.
