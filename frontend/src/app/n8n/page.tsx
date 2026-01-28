@@ -11,7 +11,7 @@ import {
 import { Layout } from '@/components/common/Layout'
 import { Button } from '@/components/ui/Button'
 import { QualityGradeBadge } from '@/components/quality/QualityGradeBadge'
-import { createApiClient, N8nWorkflow, QualityAssessment } from '@/lib/api'
+import { createApiClient, N8nWorkflow, N8nConnection, QualityAssessment } from '@/lib/api'
 
 interface DisplayWorkflow {
   id: string
@@ -53,6 +53,7 @@ export default function N8nPage() {
   const [error, setError] = useState<string | null>(null)
   const [isSyncing, setIsSyncing] = useState(false)
   const [syncResult, setSyncResult] = useState<{ synced: number; errors: string[] } | null>(null)
+  const [n8nInstanceUrl, setN8nInstanceUrl] = useState<string>('https://pisama.app.n8n.cloud')
 
   const loadWorkflows = useCallback(async () => {
     setIsLoading(true)
@@ -60,11 +61,18 @@ export default function N8nPage() {
       const token = await getToken()
       const api = createApiClient(token, tenantId)
 
-      // Load both workflows and quality assessments
-      const [workflowsData, qualityRes] = await Promise.all([
+      // Load workflows, quality assessments, and n8n connections
+      const [workflowsData, qualityRes, connectionsRes] = await Promise.all([
         api.listN8nWorkflows(),
         api.listQualityAssessments({ pageSize: 100 }).catch(() => ({ assessments: [] })),
+        api.listN8nConnections().catch(() => ({ items: [], total: 0 })),
       ])
+
+      // Use the first active connection's instance URL, or fallback to n8n Cloud
+      const activeConnection = connectionsRes.items?.find(conn => conn.is_active)
+      if (activeConnection?.instance_url) {
+        setN8nInstanceUrl(activeConnection.instance_url)
+      }
 
       setWorkflows(workflowsData.map(w => mapWorkflow(w, qualityRes.assessments)))
     } catch (err) {
@@ -289,11 +297,11 @@ export default function N8nPage() {
                         </a>
                       )}
                       <a
-                        href={`https://pisama.app.n8n.cloud`}
+                        href={n8nInstanceUrl}
                         target="_blank"
                         rel="noopener noreferrer"
                         className="text-slate-400 hover:text-white transition-colors"
-                        title="Open in n8n Cloud"
+                        title="Open in n8n"
                       >
                         <ExternalLink size={18} />
                       </a>
