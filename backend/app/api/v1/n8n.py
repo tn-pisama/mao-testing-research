@@ -462,3 +462,78 @@ async def get_sync_status(
         sync_interval_minutes=int(os.getenv("N8N_SYNC_INTERVAL_MINUTES", "5")),
         n8n_configured=bool(os.getenv("N8N_HOST") and os.getenv("N8N_API_KEY")),
     )
+
+
+class DiscoverWorkflowsRequest(BaseModel):
+    connection_id: str = Field(..., description="The n8n connection ID to use")
+
+
+class DiscoveredWorkflow(BaseModel):
+    id: str
+    name: str
+    active: bool
+    created_at: str
+    updated_at: str
+    nodes_count: int
+
+
+class DiscoverWorkflowsResponse(BaseModel):
+    workflows: List[DiscoveredWorkflow]
+    connection_name: str
+
+
+@router.post("/discover", response_model=DiscoverWorkflowsResponse)
+async def discover_workflows(
+    request_data: DiscoverWorkflowsRequest,
+    tenant_id: str = Depends(get_current_tenant),
+    db: AsyncSession = Depends(get_db),
+):
+    """
+    Discover workflows from a connected n8n instance.
+
+    This endpoint fetches all workflows from the specified n8n connection
+    so they can be registered for monitoring.
+    """
+    from app.integrations.n8n_client import N8nApiClient, N8nApiError
+    from app.storage.models import N8nConnection
+
+    await set_tenant_context(db, tenant_id)
+
+    # Get the connection
+    result = await db.execute(
+        select(N8nConnection).where(
+            N8nConnection.tenant_id == UUID(tenant_id),
+            N8nConnection.id == UUID(request_data.connection_id),
+        )
+    )
+    connection = result.scalar_one_or_none()
+
+    if not connection:
+        raise HTTPException(status_code=404, detail="Connection not found")
+
+    try:
+        async with N8nApiClient(connection.instance_url, connection.api_key) as client:
+            workflows = await client.list_workflows(limit=100)
+
+            discovered = [
+                DiscoveredWorkflow(
+                    id=w.get("id", ""),
+                    name=w.get("name", "Unnamed Workflow"),
+                    active=w.get("active", False),
+                    created_at=w.get("createdAt", ""),
+                    updated_at=w.get("updatedAt", ""),
+                    nodes_count=len(w.get("nodes", [])),
+                )
+                for w in workflows
+            ]
+
+            return DiscoverWorkflowsResponse(
+                workflows=discovered,
+                connection_name=connection.name,
+            )
+
+    except N8nApiError as e:
+        raise HTTPException(
+            status_code=502,
+            detail=f"Failed to fetch workflows from n8n: {e.message}"
+        )

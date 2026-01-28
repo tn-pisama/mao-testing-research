@@ -189,6 +189,28 @@ class N8nApiClient:
         result = await self._request("GET", "/executions", params=params)
         return result.get("data", [])
 
+    async def list_workflows(
+        self,
+        active: Optional[bool] = None,
+        limit: int = 100,
+    ) -> List[Dict[str, Any]]:
+        """
+        List workflows from the n8n instance.
+
+        Args:
+            active: Optional filter for active/inactive workflows
+            limit: Maximum number of workflows to return
+
+        Returns:
+            List of workflow data
+        """
+        params = {"limit": limit}
+        if active is not None:
+            params["active"] = str(active).lower()
+
+        result = await self._request("GET", "/workflows", params=params)
+        return result.get("data", [])
+
     async def test_connection(self) -> bool:
         """
         Test the connection to the n8n instance.

@@ -1237,6 +1237,27 @@ export function createApiClient(token?: string | null, tenantId?: string | null)
       )
     },
 
+    async discoverWorkflows(connectionId: string) {
+      return fetchApi<{
+        workflows: Array<{
+          id: string
+          name: string
+          active: boolean
+          created_at: string
+          updated_at: string
+          nodes_count: number
+        }>
+        connection_name: string
+      }>(
+        `/n8n/discover`,
+        {
+          ...opts,
+          method: 'POST',
+          body: { connection_id: connectionId },
+        }
+      )
+    },
+
     // Security endpoints
     async checkInjection(text: string, context?: string, isUserInput: boolean = true) {
       return fetchApi<InjectionCheckResult>(`/tenants/{tenant_id}/security/injection/check`, {
