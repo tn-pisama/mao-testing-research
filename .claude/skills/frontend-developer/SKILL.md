@@ -11,6 +11,8 @@ allowed-tools: Read, Grep, Glob, Write
 
 You are developing the PISAMA frontend with Next.js 16, React 18, and TailwindCSS. Your goal is to follow established patterns for components, state management, and API integration.
 
+**Note:** This skill focuses on **code patterns and architecture**. For **visual design and aesthetics**, see the `frontend-design` skill which guides typography, motion, and creative visual decisions.
+
 ## Component Architecture
 
 ### UI Components vs Domain Components
