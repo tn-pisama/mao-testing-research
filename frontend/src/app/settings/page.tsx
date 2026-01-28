@@ -76,12 +76,14 @@ export default function SettingsPage() {
 
         <div className="flex gap-6">
           <div className="w-48 flex-shrink-0">
-            <nav className="space-y-1">
+            <nav className="space-y-1" role="tablist">
               {tabs.map((tab) => {
                 const Icon = tab.icon
                 return (
                   <button
                     key={tab.id}
+                    role="tab"
+                    aria-selected={activeTab === tab.id}
                     onClick={() => setActiveTab(tab.id)}
                     className={clsx(
                       'w-full flex items-center gap-2 px-3 py-2 rounded-lg text-sm font-medium transition-colors',

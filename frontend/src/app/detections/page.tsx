@@ -316,103 +316,119 @@ export default function DetectionsPage() {
               </div>
 
               <div className="divide-y divide-slate-700/50">
-                {filteredDetections.map((detection) => {
-                  const typeConfig = detectionTypeConfig[detection.detection_type] || detectionTypeConfig.infinite_loop
-                  const severity = severityConfig[detection.details?.severity || 'medium']
-                  const TypeIcon = typeConfig.icon
-                  const displayLabel = showSimplifiedView
-                    ? (plainEnglishLabels[detection.detection_type] || typeConfig.label)
-                    : typeConfig.label
+                {filteredDetections.length === 0 ? (
+                  <div className="text-center py-12 px-4">
+                    <AlertTriangle size={48} className="mx-auto mb-4 text-slate-600 opacity-50" />
+                    <p className="text-slate-400 mb-2">
+                      {showSimplifiedView ? 'No problems found' : 'No detections found'}
+                    </p>
+                    <p className="text-sm text-slate-500">
+                      {typeFilter !== 'all' || severityFilter !== 'all'
+                        ? 'Try adjusting your filters to see more results'
+                        : showSimplifiedView
+                        ? 'Your workflows are running smoothly!'
+                        : 'Detections will appear here when issues are found in your traces'}
+                    </p>
+                  </div>
+                ) : (
+                  filteredDetections.map((detection) => {
+                    const typeConfig = detectionTypeConfig[detection.detection_type] || detectionTypeConfig.infinite_loop
+                    const severity = severityConfig[detection.details?.severity || 'medium']
+                    const TypeIcon = typeConfig.icon
+                    const displayLabel = showSimplifiedView
+                      ? (plainEnglishLabels[detection.detection_type] || typeConfig.label)
+                      : typeConfig.label
 
-                  return (
-                    <Link
-                      key={detection.id}
-                      href={showSimplifiedView ? `/healing?detection=${detection.id}` : `/traces/${detection.trace_id}`}
-                      className="flex items-center gap-4 p-4 hover:bg-slate-700/30 transition-colors"
-                    >
-                      <div className={clsx('p-2 rounded-lg', severity.bg)}>
-                        <TypeIcon size={16} className={typeConfig.color} />
-                      </div>
-
-                      <div className="flex-1 min-w-0">
-                        <div className="flex items-center gap-2 mb-1">
-                          <span className="font-medium text-white">{displayLabel}</span>
-                          <span className={clsx('text-xs px-2 py-0.5 rounded-full', severity.bg, severity.color)}>
-                            {severity.label}
-                          </span>
-                          {detection.validated && (
-                            <span className="text-xs px-2 py-0.5 rounded-full bg-emerald-500/20 text-emerald-400">
-                              {showSimplifiedView ? 'Confirmed' : 'Validated'}
-                            </span>
-                          )}
-                          {detection.false_positive && (
-                            <span className="text-xs px-2 py-0.5 rounded-full bg-slate-500/20 text-slate-400">
-                              {showSimplifiedView ? 'Not an Issue' : 'False Positive'}
-                            </span>
-                          )}
+                    return (
+                      <Link
+                        key={detection.id}
+                        href={showSimplifiedView ? `/healing?detection=${detection.id}` : `/traces/${detection.trace_id}`}
+                        className="flex items-center gap-4 p-4 hover:bg-slate-700/30 transition-colors"
+                      >
+                        <div className={clsx('p-2 rounded-lg', severity.bg)}>
+                          <TypeIcon size={16} className={typeConfig.color} />
                         </div>
-                        <div className="flex items-center gap-4 text-xs text-slate-400">
+
+                        <div className="flex-1 min-w-0">
+                          <div className="flex items-center gap-2 mb-1">
+                            <span className="font-medium text-white">{displayLabel}</span>
+                            <span className={clsx('text-xs px-2 py-0.5 rounded-full', severity.bg, severity.color)}>
+                              {severity.label}
+                            </span>
+                            {detection.validated && (
+                              <span className="text-xs px-2 py-0.5 rounded-full bg-emerald-500/20 text-emerald-400">
+                                {showSimplifiedView ? 'Confirmed' : 'Validated'}
+                              </span>
+                            )}
+                            {detection.false_positive && (
+                              <span className="text-xs px-2 py-0.5 rounded-full bg-slate-500/20 text-slate-400">
+                                {showSimplifiedView ? 'Not an Issue' : 'False Positive'}
+                              </span>
+                            )}
+                          </div>
+                          <div className="flex items-center gap-4 text-xs text-slate-400">
+                            {showSimplifiedView ? (
+                              <>
+                                <span>{formatDistanceToNow(new Date(detection.created_at), { addSuffix: true })}</span>
+                                {severity.label !== 'Low' && (
+                                  <span className="text-amber-400">Recommended to fix</span>
+                                )}
+                              </>
+                            ) : (
+                              <>
+                                <span>{Math.round(detection.confidence * 100)}% confidence</span>
+                                <span>via {detection.method.replace('_', ' ')}</span>
+                                <span>{detection.details?.affected_agents} agents affected</span>
+                              </>
+                            )}
+                          </div>
+                        </div>
+
+                        <div className="text-right">
                           {showSimplifiedView ? (
-                            <>
-                              <span>{formatDistanceToNow(new Date(detection.created_at), { addSuffix: true })}</span>
-                              {severity.label !== 'Low' && (
-                                <span className="text-amber-400">Recommended to fix</span>
-                              )}
-                            </>
+                            <div className="flex items-center gap-2">
+                              <Link
+                                href={`/healing?detection=${detection.id}`}
+                                onClick={(e) => e.stopPropagation()}
+                                className="flex items-center gap-1 px-3 py-1.5 text-sm bg-purple-600 hover:bg-purple-700 text-white rounded-lg transition-colors"
+                              >
+                                <Wrench size={14} />
+                                Fix
+                              </Link>
+                            </div>
                           ) : (
                             <>
-                              <span>{Math.round(detection.confidence * 100)}% confidence</span>
-                              <span>via {detection.method.replace('_', ' ')}</span>
-                              <span>{detection.details?.affected_agents} agents affected</span>
+                              <div className="text-xs text-slate-400 mb-1">
+                                {formatDistanceToNow(new Date(detection.created_at), { addSuffix: true })}
+                              </div>
+                              <div className="flex items-center gap-1">
+                                {!detection.validated && (
+                                  <>
+                                    <button
+                                      onClick={(e) => { e.preventDefault() }}
+                                      className="p-1.5 rounded hover:bg-emerald-500/20 text-slate-400 hover:text-emerald-400 transition-colors"
+                                      title="Mark as valid"
+                                    >
+                                      <ThumbsUp size={14} />
+                                    </button>
+                                    <button
+                                      onClick={(e) => { e.preventDefault() }}
+                                      className="p-1.5 rounded hover:bg-red-500/20 text-slate-400 hover:text-red-400 transition-colors"
+                                      title="Mark as false positive"
+                                    >
+                                      <ThumbsDown size={14} />
+                                    </button>
+                                  </>
+                                )}
+                                <ChevronRight size={14} className="text-slate-500" />
+                              </div>
                             </>
                           )}
                         </div>
-                      </div>
-
-                      <div className="text-right">
-                        {showSimplifiedView ? (
-                          <div className="flex items-center gap-2">
-                            <Link
-                              href={`/healing?detection=${detection.id}`}
-                              onClick={(e) => e.stopPropagation()}
-                              className="flex items-center gap-1 px-3 py-1.5 text-sm bg-purple-600 hover:bg-purple-700 text-white rounded-lg transition-colors"
-                            >
-                              <Wrench size={14} />
-                              Fix
-                            </Link>
-                          </div>
-                        ) : (
-                          <>
-                            <div className="text-xs text-slate-400 mb-1">
-                              {formatDistanceToNow(new Date(detection.created_at), { addSuffix: true })}
-                            </div>
-                            <div className="flex items-center gap-1">
-                              {!detection.validated && (
-                                <>
-                                  <button
-                                    onClick={(e) => { e.preventDefault() }}
-                                    className="p-1.5 rounded hover:bg-emerald-500/20 text-slate-400 hover:text-emerald-400 transition-colors"
-                                    title="Mark as valid"
-                                  >
-                                    <ThumbsUp size={14} />
-                                  </button>
-                                  <button
-                                    onClick={(e) => { e.preventDefault() }}
-                                    className="p-1.5 rounded hover:bg-red-500/20 text-slate-400 hover:text-red-400 transition-colors"
-                                    title="Mark as false positive"
-                                  >
-                                    <ThumbsDown size={14} />
-                                  </button>
-                                </>
-                              )}
-                              <ChevronRight size={14} className="text-slate-500" />
-                            </div>
-                          </>
-                        )}
-                      </div>
-                    </Link>
-                  )
-                })}
+                      </Link>
+                    )
+                  })
+                )}
               </div>
             </div>
           </div>

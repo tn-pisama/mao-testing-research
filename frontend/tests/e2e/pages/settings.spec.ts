@@ -33,7 +33,7 @@ test.describe('Settings Page', () => {
   })
 
   test('page is not blank', async ({ page }) => {
-    const bodyText = await page.locator('main, body').textContent()
+    const bodyText = await page.locator('main').first().textContent()
     expect(bodyText).toBeTruthy()
     expect(bodyText!.trim().length).toBeGreaterThan(50)
     console.log('✅ Settings page has content')
