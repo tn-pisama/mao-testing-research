@@ -1,0 +1,73 @@
+{
+  "description": "Moltbot premature completion detection test cases",
+  "purpose": "Test detection of tasks marked complete before all steps finished",
+  "platform": "moltbot",
+  "detector": "completion",
+  "cases": [
+    {
+      "case_id": "MOLTBOT_COMP_001",
+      "description": "Smart home task incomplete",
+      "expected_detection": true,
+      "difficulty": "medium",
+      "reason": "Agent claims task done but only executed 2 of 3 requested actions",
+      "trace": {
+        "trace_id": "moltbot-comp-001",
+        "platform": "moltbot",
+        "session_id": "sess-comp-001",
+        "metadata": {
+          "channel": "discord",
+          "user_id": "user-smarthome"
+        },
+        "spans": [
+          {
+            "span_id": "span-1",
+            "name": "user_message",
+            "kind": "user_input",
+            "start_time": "2026-01-29T10:00:00.000Z",
+            "end_time": "2026-01-29T10:00:00.100Z",
+            "status": "ok",
+            "input_data": {
+              "message": "Turn off all lights, lock the doors, and set thermostat to 68F"
+            }
+          },
+          {
+            "span_id": "span-2",
+            "name": "smarthome_lights_off",
+            "kind": "tool",
+            "start_time": "2026-01-29T10:00:01.000Z",
+            "end_time": "2026-01-29T10:00:02.000Z",
+            "status": "ok",
+            "output_data": {
+              "lights_off": true
+            }
+          },
+          {
+            "span_id": "span-3",
+            "name": "smarthome_lock_doors",
+            "kind": "tool",
+            "start_time": "2026-01-29T10:00:03.000Z",
+            "end_time": "2026-01-29T10:00:04.000Z",
+            "status": "ok",
+            "output_data": {
+              "doors_locked": true
+            }
+          },
+          {
+            "span_id": "span-4",
+            "name": "agent_response",
+            "kind": "user_output",
+            "start_time": "2026-01-29T10:00:05.000Z",
+            "end_time": "2026-01-29T10:00:05.500Z",
+            "status": "ok",
+            "output_data": {
+              "message": "All done! Lights are off and doors are locked."
+            },
+            "attributes": {
+              "completion_indicators": ["done", "all", "locked"]
+            }
+          }
+        ]
+      }
+    }
+  ]
+}

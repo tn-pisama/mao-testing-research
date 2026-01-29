@@ -1,0 +1,54 @@
+{
+  "description": "Moltbot context overflow detection test cases",
+  "purpose": "Test detection of context window exhaustion in long conversations",
+  "platform": "moltbot",
+  "detector": "overflow",
+  "cases": [
+    {
+      "case_id": "MOLTBOT_OVERFLOW_001",
+      "description": "Long conversation approaching token limit",
+      "expected_detection": true,
+      "difficulty": "medium",
+      "reason": "Conversation with 50+ turns accumulating tokens near limit",
+      "trace": {
+        "trace_id": "moltbot-overflow-001",
+        "platform": "moltbot",
+        "session_id": "sess-overflow-001",
+        "metadata": {
+          "channel": "whatsapp",
+          "user_id": "user-overflow"
+        },
+        "spans": [
+          {
+            "span_id": "span-1",
+            "name": "agent_turn",
+            "kind": "agent_turn",
+            "start_time": "2026-01-29T09:00:00.000Z",
+            "end_time": "2026-01-29T09:00:05.000Z",
+            "status": "ok",
+            "attributes": {
+              "model": "claude-opus-4-5",
+              "input_tokens": 5000,
+              "output_tokens": 500,
+              "total_context_tokens": 5500
+            }
+          },
+          {
+            "span_id": "span-50",
+            "name": "agent_turn",
+            "kind": "agent_turn",
+            "start_time": "2026-01-29T09:45:00.000Z",
+            "end_time": "2026-01-29T09:45:05.000Z",
+            "status": "ok",
+            "attributes": {
+              "model": "claude-opus-4-5",
+              "input_tokens": 95000,
+              "output_tokens": 800,
+              "total_context_tokens": 95800
+            }
+          }
+        ]
+      }
+    }
+  ]
+}

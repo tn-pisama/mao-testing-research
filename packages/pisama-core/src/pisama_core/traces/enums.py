@@ -11,6 +11,7 @@ class Platform(str, Enum):
     AUTOGEN = "autogen"
     CREWAI = "crewai"
     N8N = "n8n"
+    MOLTBOT = "moltbot"
     GENERIC = "generic"
 
     def __str__(self) -> str:

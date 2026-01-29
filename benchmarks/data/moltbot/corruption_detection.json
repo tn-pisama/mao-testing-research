@@ -1,0 +1,120 @@
+{
+  "description": "Moltbot state corruption detection test cases",
+  "purpose": "Test detection of persistent memory inconsistencies",
+  "platform": "moltbot",
+  "detector": "corruption",
+  "cases": [
+    {
+      "case_id": "MOLTBOT_CORRUPT_001",
+      "description": "Conflicting user preferences",
+      "expected_detection": true,
+      "difficulty": "hard",
+      "reason": "Agent stores contradictory facts about user preferences",
+      "trace": {
+        "trace_id": "moltbot-corrupt-001",
+        "platform": "moltbot",
+        "session_id": "sess-corrupt-001",
+        "metadata": {
+          "channel": "signal",
+          "user_id": "user-preferences"
+        },
+        "spans": [
+          {
+            "span_id": "span-1",
+            "name": "memory_write",
+            "kind": "system",
+            "start_time": "2026-01-29T08:00:00.000Z",
+            "end_time": "2026-01-29T08:00:00.100Z",
+            "status": "ok",
+            "input_data": {
+              "key": "user_preferences.timezone",
+              "value": "America/New_York"
+            }
+          },
+          {
+            "span_id": "span-2",
+            "name": "memory_write",
+            "kind": "system",
+            "start_time": "2026-01-29T10:00:00.000Z",
+            "end_time": "2026-01-29T10:00:00.100Z",
+            "status": "ok",
+            "input_data": {
+              "key": "user_preferences.timezone",
+              "value": "America/Los_Angeles"
+            }
+          },
+          {
+            "span_id": "span-3",
+            "name": "memory_read",
+            "kind": "system",
+            "start_time": "2026-01-29T10:05:00.000Z",
+            "end_time": "2026-01-29T10:05:00.100Z",
+            "status": "ok",
+            "input_data": {
+              "key": "user_preferences.timezone"
+            },
+            "output_data": {
+              "value": "America/New_York"
+            },
+            "attributes": {
+              "expected_value": "America/Los_Angeles",
+              "mismatch": true
+            }
+          }
+        ]
+      }
+    },
+    {
+      "case_id": "MOLTBOT_CORRUPT_002",
+      "description": "Session state inconsistency",
+      "expected_detection": true,
+      "difficulty": "medium",
+      "reason": "Agent has conflicting understanding of conversation state",
+      "trace": {
+        "trace_id": "moltbot-corrupt-002",
+        "platform": "moltbot",
+        "session_id": "sess-corrupt-002",
+        "metadata": {
+          "channel": "matrix",
+          "user_id": "user-state"
+        },
+        "spans": [
+          {
+            "span_id": "span-1",
+            "name": "agent_turn",
+            "kind": "agent_turn",
+            "start_time": "2026-01-29T10:00:00.000Z",
+            "end_time": "2026-01-29T10:00:01.000Z",
+            "status": "ok",
+            "attributes": {
+              "conversation_state": "greeting"
+            }
+          },
+          {
+            "span_id": "span-2",
+            "name": "agent_turn",
+            "kind": "agent_turn",
+            "start_time": "2026-01-29T10:01:00.000Z",
+            "end_time": "2026-01-29T10:01:01.000Z",
+            "status": "ok",
+            "attributes": {
+              "conversation_state": "task_execution"
+            }
+          },
+          {
+            "span_id": "span-3",
+            "name": "agent_turn",
+            "kind": "agent_turn",
+            "start_time": "2026-01-29T10:02:00.000Z",
+            "end_time": "2026-01-29T10:02:01.000Z",
+            "status": "ok",
+            "attributes": {
+              "conversation_state": "greeting"
+            },
+            "error_message": "State regression detected"
+          }
+        ]
+      }
+    }
+  ]
+}

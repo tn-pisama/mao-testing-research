@@ -1,0 +1,51 @@
+# PISAMA + Moltbot Integration Deployment
+# Usage: docker-compose -f docker-compose.yml -f docker-compose.moltbot.yml up
+
+version: '3.8'
+
+services:
+  # Moltbot AI Agent
+  moltbot:
+    build: ./docker/moltbot
+    ports:
+      - "18789:18789"
+    environment:
+      ANTHROPIC_API_KEY: ${ANTHROPIC_API_KEY}
+      NODE_ENV: development
+    volumes:
+      - moltbot_data:/root/.clawdbot
+      - ./docker/moltbot/moltbot.json:/root/.clawdbot/moltbot.json:ro
+    healthcheck:
+      test: ["CMD", "wget", "-q", "--spider", "http://127.0.0.1:18789/"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 30s
+    networks:
+      - pisama_network
+
+  # PISAMA Moltbot Adapter (observability sidecar)
+  moltbot-adapter:
+    build:
+      context: .
+      dockerfile: packages/pisama-moltbot-adapter/Dockerfile
+    environment:
+      MOLTBOT_GATEWAY_URL: ws://moltbot:18789
+      PISAMA_API_URL: http://backend:8000/api/v1
+      PISAMA_API_KEY: ${PISAMA_API_KEY}
+      LOG_LEVEL: info
+    depends_on:
+      moltbot:
+        condition: service_healthy
+      backend:
+        condition: service_started
+    networks:
+      - pisama_network
+    restart: unless-stopped
+
+networks:
+  pisama_network:
+    driver: bridge
+
+volumes:
+  moltbot_data:

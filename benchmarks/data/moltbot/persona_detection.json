@@ -1,0 +1,57 @@
+{
+  "description": "Moltbot persona drift detection test cases",
+  "purpose": "Test detection of personality changes across channels",
+  "platform": "moltbot",
+  "detector": "persona",
+  "cases": [
+    {
+      "case_id": "MOLTBOT_PERSONA_001",
+      "description": "Persona shift between WhatsApp and Slack",
+      "expected_detection": true,
+      "difficulty": "hard",
+      "reason": "Agent uses casual tone on WhatsApp but becomes formal on Slack",
+      "trace": {
+        "trace_id": "moltbot-persona-001",
+        "platform": "moltbot",
+        "session_id": "sess-persona-001",
+        "metadata": {
+          "user_id": "user-multi-channel"
+        },
+        "spans": [
+          {
+            "span_id": "span-1",
+            "name": "agent_response",
+            "kind": "user_output",
+            "start_time": "2026-01-29T10:00:00.000Z",
+            "end_time": "2026-01-29T10:00:01.000Z",
+            "status": "ok",
+            "output_data": {
+              "message": "Hey! Sure thing, I'll get that done for ya 😊",
+              "channel": "whatsapp"
+            },
+            "attributes": {
+              "tone": "casual",
+              "uses_emojis": true
+            }
+          },
+          {
+            "span_id": "span-2",
+            "name": "agent_response",
+            "kind": "user_output",
+            "start_time": "2026-01-29T10:05:00.000Z",
+            "end_time": "2026-01-29T10:05:01.000Z",
+            "status": "ok",
+            "output_data": {
+              "message": "Good afternoon. I have completed the requested task. Please find the report attached.",
+              "channel": "slack"
+            },
+            "attributes": {
+              "tone": "formal",
+              "uses_emojis": false
+            }
+          }
+        ]
+      }
+    }
+  ]
+}

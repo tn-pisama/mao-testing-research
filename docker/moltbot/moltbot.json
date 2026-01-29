@@ -1,0 +1,24 @@
+{
+  "gateway": {
+    "port": 18789,
+    "host": "0.0.0.0"
+  },
+  "ai": {
+    "provider": "anthropic",
+    "model": "claude-opus-4-5",
+    "apiKey": "${ANTHROPIC_API_KEY}"
+  },
+  "channels": {
+    "webchat": {
+      "enabled": true
+    }
+  },
+  "sandbox": {
+    "enabled": true,
+    "docker": true
+  },
+  "logging": {
+    "level": "info",
+    "format": "json"
+  }
+}

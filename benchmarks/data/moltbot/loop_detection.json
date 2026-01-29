@@ -1,0 +1,114 @@
+{
+  "description": "Moltbot tool loop detection test cases",
+  "purpose": "Test loop detection with Moltbot-specific tool patterns",
+  "platform": "moltbot",
+  "detector": "loop",
+  "cases": [
+    {
+      "case_id": "MOLTBOT_LOOP_001",
+      "description": "Infinite browser navigation loop",
+      "expected_detection": true,
+      "difficulty": "medium",
+      "reason": "Agent repeatedly navigating to same URL without progress",
+      "trace": {
+        "trace_id": "moltbot-loop-001",
+        "platform": "moltbot",
+        "session_id": "sess-001",
+        "metadata": {
+          "channel": "webchat",
+          "user_id": "user-123"
+        },
+        "spans": [
+          {
+            "span_id": "span-1",
+            "name": "browser_navigate",
+            "kind": "tool",
+            "start_time": "2026-01-29T10:00:00.000Z",
+            "end_time": "2026-01-29T10:00:01.000Z",
+            "status": "ok",
+            "input_data": {"url": "https://example.com/page1"},
+            "output_data": {"status": 200, "title": "Page 1"}
+          },
+          {
+            "span_id": "span-2",
+            "name": "browser_navigate",
+            "kind": "tool",
+            "start_time": "2026-01-29T10:00:02.000Z",
+            "end_time": "2026-01-29T10:00:03.000Z",
+            "status": "ok",
+            "input_data": {"url": "https://example.com/page1"},
+            "output_data": {"status": 200, "title": "Page 1"}
+          },
+          {
+            "span_id": "span-3",
+            "name": "browser_navigate",
+            "kind": "tool",
+            "start_time": "2026-01-29T10:00:04.000Z",
+            "end_time": "2026-01-29T10:00:05.000Z",
+            "status": "ok",
+            "input_data": {"url": "https://example.com/page1"},
+            "output_data": {"status": 200, "title": "Page 1"}
+          }
+        ]
+      }
+    },
+    {
+      "case_id": "MOLTBOT_LOOP_002",
+      "description": "File system search loop",
+      "expected_detection": true,
+      "difficulty": "hard",
+      "reason": "Agent repeatedly searching same directory with identical query",
+      "trace": {
+        "trace_id": "moltbot-loop-002",
+        "platform": "moltbot",
+        "session_id": "sess-002",
+        "metadata": {
+          "channel": "slack",
+          "user_id": "user-456"
+        },
+        "spans": [
+          {
+            "span_id": "span-1",
+            "name": "fs_search",
+            "kind": "tool",
+            "start_time": "2026-01-29T10:00:00.000Z",
+            "end_time": "2026-01-29T10:00:00.500Z",
+            "status": "ok",
+            "input_data": {"path": "/home/user/documents", "query": "*.pdf"},
+            "output_data": {"files": [], "count": 0}
+          },
+          {
+            "span_id": "span-2",
+            "name": "fs_search",
+            "kind": "tool",
+            "start_time": "2026-01-29T10:00:01.000Z",
+            "end_time": "2026-01-29T10:00:01.500Z",
+            "status": "ok",
+            "input_data": {"path": "/home/user/documents", "query": "*.pdf"},
+            "output_data": {"files": [], "count": 0}
+          },
+          {
+            "span_id": "span-3",
+            "name": "fs_search",
+            "kind": "tool",
+            "start_time": "2026-01-29T10:00:02.000Z",
+            "end_time": "2026-01-29T10:00:02.500Z",
+            "status": "ok",
+            "input_data": {"path": "/home/user/documents", "query": "*.pdf"},
+            "output_data": {"files": [], "count": 0}
+          },
+          {
+            "span_id": "span-4",
+            "name": "fs_search",
+            "kind": "tool",
+            "start_time": "2026-01-29T10:00:03.000Z",
+            "end_time": "2026-01-29T10:00:03.500Z",
+            "status": "ok",
+            "input_data": {"path": "/home/user/documents", "query": "*.pdf"},
+            "output_data": {"files": [], "count": 0}
+          }
+        ]
+      }
+    }
+  ]
+}

@@ -1,0 +1,65 @@
+{
+  "description": "Moltbot coordination failure detection test cases",
+  "purpose": "Test detection of multi-step task handoff failures",
+  "platform": "moltbot",
+  "detector": "coordination",
+  "cases": [
+    {
+      "case_id": "MOLTBOT_COORD_001",
+      "description": "Calendar and email coordination failure",
+      "expected_detection": true,
+      "difficulty": "medium",
+      "reason": "Agent creates calendar event but forgets to send confirmation email",
+      "trace": {
+        "trace_id": "moltbot-coord-001",
+        "platform": "moltbot",
+        "session_id": "sess-coord-001",
+        "metadata": {
+          "channel": "telegram",
+          "user_id": "user-coord"
+        },
+        "spans": [
+          {
+            "span_id": "span-1",
+            "name": "user_message",
+            "kind": "user_input",
+            "start_time": "2026-01-29T10:00:00.000Z",
+            "end_time": "2026-01-29T10:00:00.100Z",
+            "status": "ok",
+            "input_data": {
+              "message": "Schedule a meeting with John for tomorrow at 2pm and send him an email confirmation"
+            }
+          },
+          {
+            "span_id": "span-2",
+            "name": "calendar_create_event",
+            "kind": "tool",
+            "start_time": "2026-01-29T10:00:01.000Z",
+            "end_time": "2026-01-29T10:00:02.000Z",
+            "status": "ok",
+            "input_data": {
+              "title": "Meeting with John",
+              "date": "2026-01-30",
+              "time": "14:00"
+            },
+            "output_data": {
+              "event_id": "evt-123",
+              "created": true
+            }
+          },
+          {
+            "span_id": "span-3",
+            "name": "agent_response",
+            "kind": "user_output",
+            "start_time": "2026-01-29T10:00:03.000Z",
+            "end_time": "2026-01-29T10:00:03.500Z",
+            "status": "ok",
+            "output_data": {
+              "message": "I've created the meeting with John for tomorrow at 2pm."
+            }
+          }
+        ]
+      }
+    }
+  ]
+}
