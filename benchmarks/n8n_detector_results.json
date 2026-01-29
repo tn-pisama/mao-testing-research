@@ -1,0 +1,5046 @@
+{
+  "timestamp": "2026-01-28T20:06:55.526489",
+  "total_workflows": 84,
+  "results": [
+    {
+      "workflow_id": "06-LOOP-002-vcomplex",
+      "detector_name": "N8NCycleDetector",
+      "detected": true,
+      "confidence": 0.6666,
+      "failure_mode": "F11",
+      "expected_failure_mode": "F11",
+      "explanation": "Workflow cycle detected: 1 patterns found (content similarity: 0.78)",
+      "correct": true
+    },
+    {
+      "workflow_id": "06-LOOP-002-vcomplex",
+      "detector_name": "N8NSchemaDetector",
+      "detected": true,
+      "confidence": 0.7,
+      "failure_mode": "F12",
+      "expected_failure_mode": "F11",
+      "explanation": "Schema mismatch: 1 incompatibilities found between nodes",
+      "correct": false
+    },
+    {
+      "workflow_id": "06-LOOP-002-vcomplex",
+      "detector_name": "N8NResourceDetector",
+      "detected": false,
+      "confidence": 0.85,
+      "failure_mode": null,
+      "expected_failure_mode": "F11",
+      "explanation": "No resource abuse patterns detected",
+      "correct": false
+    },
+    {
+      "workflow_id": "06-LOOP-002-vcomplex",
+      "detector_name": "N8NTimeoutDetector",
+      "detected": false,
+      "confidence": 0.0,
+      "failure_mode": null,
+      "expected_failure_mode": "F11",
+      "explanation": "No timeout issues detected",
+      "correct": false
+    },
+    {
+      "workflow_id": "06-LOOP-002-vcomplex",
+      "detector_name": "N8NErrorDetector",
+      "detected": false,
+      "confidence": 0.0,
+      "failure_mode": null,
+      "expected_failure_mode": "F11",
+      "explanation": "No error handling issues detected",
+      "correct": false
+    },
+    {
+      "workflow_id": "06-LOOP-002-vcomplex",
+      "detector_name": "N8NComplexityDetector",
+      "detected": true,
+      "confidence": 0.75,
+      "failure_mode": "F15",
+      "expected_failure_mode": "F11",
+      "explanation": "Workflow handles 4 distinct concerns: other, notification, data_fetch, ai_processing",
+      "correct": false
+    },
+    {
+      "workflow_id": "07-LOOP-003-simple",
+      "detector_name": "N8NCycleDetector",
+      "detected": true,
+      "confidence": 0.6856,
+      "failure_mode": "F11",
+      "expected_failure_mode": "F11",
+      "explanation": "Workflow cycle detected: 1 patterns found (content similarity: 0.83)",
+      "correct": true
+    },
+    {
+      "workflow_id": "07-LOOP-003-simple",
+      "detector_name": "N8NSchemaDetector",
+      "detected": true,
+      "confidence": 0.7,
+      "failure_mode": "F12",
+      "expected_failure_mode": "F11",
+      "explanation": "Schema mismatch: 1 incompatibilities found between nodes",
+      "correct": false
+    },
+    {
+      "workflow_id": "07-LOOP-003-simple",
+      "detector_name": "N8NResourceDetector",
+      "detected": false,
+      "confidence": 0.85,
+      "failure_mode": null,
+      "expected_failure_mode": "F11",
+      "explanation": "No resource abuse patterns detected",
+      "correct": false
+    },
+    {
+      "workflow_id": "07-LOOP-003-simple",
+      "detector_name": "N8NTimeoutDetector",
+      "detected": false,
+      "confidence": 0.0,
+      "failure_mode": null,
+      "expected_failure_mode": "F11",
+      "explanation": "No timeout issues detected",
+      "correct": false
+    },
+    {
+      "workflow_id": "07-LOOP-003-simple",
+      "detector_name": "N8NErrorDetector",
+      "detected": false,
+      "confidence": 0.0,
+      "failure_mode": null,
+      "expected_failure_mode": "F11",
+      "explanation": "No error handling issues detected",
+      "correct": false
+    },
+    {
+      "workflow_id": "07-LOOP-003-simple",
+      "detector_name": "N8NComplexityDetector",
+      "detected": true,
+      "confidence": 0.75,
+      "failure_mode": "F15",
+      "expected_failure_mode": "F11",
+      "explanation": "Workflow handles 4 distinct concerns: other, notification, ai_processing, data_fetch",
+      "correct": false
+    },
+    {
+      "workflow_id": "14-LOOP-005-complex",
+      "detector_name": "N8NCycleDetector",
+      "detected": true,
+      "confidence": 0.6735,
+      "failure_mode": "F11",
+      "expected_failure_mode": "F11",
+      "explanation": "Workflow cycle detected: 1 patterns found (content similarity: 0.80)",
+      "correct": true
+    },
+    {
+      "workflow_id": "14-LOOP-005-complex",
+      "detector_name": "N8NSchemaDetector",
+      "detected": true,
+      "confidence": 0.7,
+      "failure_mode": "F12",
+      "expected_failure_mode": "F11",
+      "explanation": "Schema mismatch: 1 incompatibilities found between nodes",
+      "correct": false
+    },
+    {
+      "workflow_id": "14-LOOP-005-complex",
+      "detector_name": "N8NResourceDetector",
+      "detected": false,
+      "confidence": 0.85,
+      "failure_mode": null,
+      "expected_failure_mode": "F11",
+      "explanation": "No resource abuse patterns detected",
+      "correct": false
+    },
+    {
+      "workflow_id": "14-LOOP-005-complex",
+      "detector_name": "N8NTimeoutDetector",
+      "detected": false,
+      "confidence": 0.0,
+      "failure_mode": null,
+      "expected_failure_mode": "F11",
+      "explanation": "No timeout issues detected",
+      "correct": false
+    },
+    {
+      "workflow_id": "14-LOOP-005-complex",
+      "detector_name": "N8NErrorDetector",
+      "detected": false,
+      "confidence": 0.0,
+      "failure_mode": null,
+      "expected_failure_mode": "F11",
+      "explanation": "No error handling issues detected",
+      "correct": false
+    },
+    {
+      "workflow_id": "14-LOOP-005-complex",
+      "detector_name": "N8NComplexityDetector",
+      "detected": true,
+      "confidence": 0.75,
+      "failure_mode": "F15",
+      "expected_failure_mode": "F11",
+      "explanation": "Workflow handles 4 distinct concerns: other, notification, data_fetch, ai_processing",
+      "correct": false
+    },
+    {
+      "workflow_id": "01-LOOP-001-simple",
+      "detector_name": "N8NCycleDetector",
+      "detected": true,
+      "confidence": 0.6844,
+      "failure_mode": "F11",
+      "expected_failure_mode": "F11",
+      "explanation": "Workflow cycle detected: 1 patterns found (content similarity: 0.82)",
+      "correct": true
+    },
+    {
+      "workflow_id": "01-LOOP-001-simple",
+      "detector_name": "N8NSchemaDetector",
+      "detected": true,
+      "confidence": 0.7,
+      "failure_mode": "F12",
+      "expected_failure_mode": "F11",
+      "explanation": "Schema mismatch: 1 incompatibilities found between nodes",
+      "correct": false
+    },
+    {
+      "workflow_id": "01-LOOP-001-simple",
+      "detector_name": "N8NResourceDetector",
+      "detected": false,
+      "confidence": 0.85,
+      "failure_mode": null,
+      "expected_failure_mode": "F11",
+      "explanation": "No resource abuse patterns detected",
+      "correct": false
+    },
+    {
+      "workflow_id": "01-LOOP-001-simple",
+      "detector_name": "N8NTimeoutDetector",
+      "detected": false,
+      "confidence": 0.0,
+      "failure_mode": null,
+      "expected_failure_mode": "F11",
+      "explanation": "No timeout issues detected",
+      "correct": false
+    },
+    {
+      "workflow_id": "01-LOOP-001-simple",
+      "detector_name": "N8NErrorDetector",
+      "detected": false,
+      "confidence": 0.0,
+      "failure_mode": null,
+      "expected_failure_mode": "F11",
+      "explanation": "No error handling issues detected",
+      "correct": false
+    },
+    {
+      "workflow_id": "01-LOOP-001-simple",
+      "detector_name": "N8NComplexityDetector",
+      "detected": true,
+      "confidence": 0.75,
+      "failure_mode": "F15",
+      "expected_failure_mode": "F11",
+      "explanation": "Workflow handles 4 distinct concerns: other, notification, ai_processing, data_fetch",
+      "correct": false
+    },
+    {
+      "workflow_id": "08-LOOP-003-complex",
+      "detector_name": "N8NCycleDetector",
+      "detected": true,
+      "confidence": 0.8307,
+      "failure_mode": "F11",
+      "expected_failure_mode": "F11",
+      "explanation": "Workflow cycle detected: 2 patterns found (content similarity: 0.85)",
+      "correct": true
+    },
+    {
+      "workflow_id": "08-LOOP-003-complex",
+      "detector_name": "N8NSchemaDetector",
+      "detected": true,
+      "confidence": 0.7,
+      "failure_mode": "F12",
+      "expected_failure_mode": "F11",
+      "explanation": "Schema mismatch: 1 incompatibilities found between nodes",
+      "correct": false
+    },
+    {
+      "workflow_id": "08-LOOP-003-complex",
+      "detector_name": "N8NResourceDetector",
+      "detected": false,
+      "confidence": 0.85,
+      "failure_mode": null,
+      "expected_failure_mode": "F11",
+      "explanation": "No resource abuse patterns detected",
+      "correct": false
+    },
+    {
+      "workflow_id": "08-LOOP-003-complex",
+      "detector_name": "N8NTimeoutDetector",
+      "detected": false,
+      "confidence": 0.0,
+      "failure_mode": null,
+      "expected_failure_mode": "F11",
+      "explanation": "No timeout issues detected",
+      "correct": false
+    },
+    {
+      "workflow_id": "08-LOOP-003-complex",
+      "detector_name": "N8NErrorDetector",
+      "detected": false,
+      "confidence": 0.0,
+      "failure_mode": null,
+      "expected_failure_mode": "F11",
+      "explanation": "No error handling issues detected",
+      "correct": false
+    },
+    {
+      "workflow_id": "08-LOOP-003-complex",
+      "detector_name": "N8NComplexityDetector",
+      "detected": true,
+      "confidence": 0.75,
+      "failure_mode": "F15",
+      "expected_failure_mode": "F11",
+      "explanation": "Workflow handles 4 distinct concerns: other, notification, data_fetch, ai_processing",
+      "correct": false
+    },
+    {
+      "workflow_id": "17-LOOP-006-complex",
+      "detector_name": "N8NCycleDetector",
+      "detected": true,
+      "confidence": 0.8319,
+      "failure_mode": "F11",
+      "expected_failure_mode": "F11",
+      "explanation": "Workflow cycle detected: 2 patterns found (content similarity: 0.85)",
+      "correct": true
+    },
+    {
+      "workflow_id": "17-LOOP-006-complex",
+      "detector_name": "N8NSchemaDetector",
+      "detected": true,
+      "confidence": 0.95,
+      "failure_mode": "F12",
+      "expected_failure_mode": "F11",
+      "explanation": "Schema mismatch: 4 incompatibilities found between nodes",
+      "correct": false
+    },
+    {
+      "workflow_id": "17-LOOP-006-complex",
+      "detector_name": "N8NResourceDetector",
+      "detected": false,
+      "confidence": 0.85,
+      "failure_mode": null,
+      "expected_failure_mode": "F11",
+      "explanation": "No resource abuse patterns detected",
+      "correct": false
+    },
+    {
+      "workflow_id": "17-LOOP-006-complex",
+      "detector_name": "N8NTimeoutDetector",
+      "detected": false,
+      "confidence": 0.0,
+      "failure_mode": null,
+      "expected_failure_mode": "F11",
+      "explanation": "No timeout issues detected",
+      "correct": false
+    },
+    {
+      "workflow_id": "17-LOOP-006-complex",
+      "detector_name": "N8NErrorDetector",
+      "detected": false,
+      "confidence": 0.0,
+      "failure_mode": null,
+      "expected_failure_mode": "F11",
+      "explanation": "No error handling issues detected",
+      "correct": false
+    },
+    {
+      "workflow_id": "17-LOOP-006-complex",
+      "detector_name": "N8NComplexityDetector",
+      "detected": true,
+      "confidence": 0.75,
+      "failure_mode": "F15",
+      "expected_failure_mode": "F11",
+      "explanation": "Workflow handles 4 distinct concerns: other, notification, data_fetch, ai_processing",
+      "correct": false
+    },
+    {
+      "workflow_id": "12-LOOP-004-vcomplex",
+      "detector_name": "N8NCycleDetector",
+      "detected": true,
+      "confidence": 0.6123,
+      "failure_mode": "F11",
+      "expected_failure_mode": "F11",
+      "explanation": "Workflow cycle detected: 1 patterns found (content similarity: 0.63)",
+      "correct": true
+    },
+    {
+      "workflow_id": "12-LOOP-004-vcomplex",
+      "detector_name": "N8NSchemaDetector",
+      "detected": true,
+      "confidence": 0.7,
+      "failure_mode": "F12",
+      "expected_failure_mode": "F11",
+      "explanation": "Schema mismatch: 1 incompatibilities found between nodes",
+      "correct": false
+    },
+    {
+      "workflow_id": "12-LOOP-004-vcomplex",
+      "detector_name": "N8NResourceDetector",
+      "detected": false,
+      "confidence": 0.85,
+      "failure_mode": null,
+      "expected_failure_mode": "F11",
+      "explanation": "No resource abuse patterns detected",
+      "correct": false
+    },
+    {
+      "workflow_id": "12-LOOP-004-vcomplex",
+      "detector_name": "N8NTimeoutDetector",
+      "detected": false,
+      "confidence": 0.0,
+      "failure_mode": null,
+      "expected_failure_mode": "F11",
+      "explanation": "No timeout issues detected",
+      "correct": false
+    },
+    {
+      "workflow_id": "12-LOOP-004-vcomplex",
+      "detector_name": "N8NErrorDetector",
+      "detected": false,
+      "confidence": 0.0,
+      "failure_mode": null,
+      "expected_failure_mode": "F11",
+      "explanation": "No error handling issues detected",
+      "correct": false
+    },
+    {
+      "workflow_id": "12-LOOP-004-vcomplex",
+      "detector_name": "N8NComplexityDetector",
+      "detected": true,
+      "confidence": 0.75,
+      "failure_mode": "F15",
+      "expected_failure_mode": "F11",
+      "explanation": "Workflow handles 4 distinct concerns: other, notification, data_fetch, ai_processing",
+      "correct": false
+    },
+    {
+      "workflow_id": "04-LOOP-002-simple",
+      "detector_name": "N8NCycleDetector",
+      "detected": true,
+      "confidence": 0.6949,
+      "failure_mode": "F11",
+      "expected_failure_mode": "F11",
+      "explanation": "Workflow cycle detected: 1 patterns found (content similarity: 0.85)",
+      "correct": true
+    },
+    {
+      "workflow_id": "04-LOOP-002-simple",
+      "detector_name": "N8NSchemaDetector",
+      "detected": true,
+      "confidence": 0.7,
+      "failure_mode": "F12",
+      "expected_failure_mode": "F11",
+      "explanation": "Schema mismatch: 1 incompatibilities found between nodes",
+      "correct": false
+    },
+    {
+      "workflow_id": "04-LOOP-002-simple",
+      "detector_name": "N8NResourceDetector",
+      "detected": false,
+      "confidence": 0.85,
+      "failure_mode": null,
+      "expected_failure_mode": "F11",
+      "explanation": "No resource abuse patterns detected",
+      "correct": false
+    },
+    {
+      "workflow_id": "04-LOOP-002-simple",
+      "detector_name": "N8NTimeoutDetector",
+      "detected": false,
+      "confidence": 0.0,
+      "failure_mode": null,
+      "expected_failure_mode": "F11",
+      "explanation": "No timeout issues detected",
+      "correct": false
+    },
+    {
+      "workflow_id": "04-LOOP-002-simple",
+      "detector_name": "N8NErrorDetector",
+      "detected": false,
+      "confidence": 0.0,
+      "failure_mode": null,
+      "expected_failure_mode": "F11",
+      "explanation": "No error handling issues detected",
+      "correct": false
+    },
+    {
+      "workflow_id": "04-LOOP-002-simple",
+      "detector_name": "N8NComplexityDetector",
+      "detected": true,
+      "confidence": 0.75,
+      "failure_mode": "F15",
+      "expected_failure_mode": "F11",
+      "explanation": "Workflow handles 4 distinct concerns: other, notification, ai_processing, data_fetch",
+      "correct": false
+    },
+    {
+      "workflow_id": "03-LOOP-001-vcomplex",
+      "detector_name": "N8NCycleDetector",
+      "detected": true,
+      "confidence": 0.6649,
+      "failure_mode": "F11",
+      "expected_failure_mode": "F11",
+      "explanation": "Workflow cycle detected: 1 patterns found (content similarity: 0.77)",
+      "correct": true
+    },
+    {
+      "workflow_id": "03-LOOP-001-vcomplex",
+      "detector_name": "N8NSchemaDetector",
+      "detected": true,
+      "confidence": 0.7,
+      "failure_mode": "F12",
+      "expected_failure_mode": "F11",
+      "explanation": "Schema mismatch: 1 incompatibilities found between nodes",
+      "correct": false
+    },
+    {
+      "workflow_id": "03-LOOP-001-vcomplex",
+      "detector_name": "N8NResourceDetector",
+      "detected": false,
+      "confidence": 0.85,
+      "failure_mode": null,
+      "expected_failure_mode": "F11",
+      "explanation": "No resource abuse patterns detected",
+      "correct": false
+    },
+    {
+      "workflow_id": "03-LOOP-001-vcomplex",
+      "detector_name": "N8NTimeoutDetector",
+      "detected": false,
+      "confidence": 0.0,
+      "failure_mode": null,
+      "expected_failure_mode": "F11",
+      "explanation": "No timeout issues detected",
+      "correct": false
+    },
+    {
+      "workflow_id": "03-LOOP-001-vcomplex",
+      "detector_name": "N8NErrorDetector",
+      "detected": false,
+      "confidence": 0.0,
+      "failure_mode": null,
+      "expected_failure_mode": "F11",
+      "explanation": "No error handling issues detected",
+      "correct": false
+    },
+    {
+      "workflow_id": "03-LOOP-001-vcomplex",
+      "detector_name": "N8NComplexityDetector",
+      "detected": true,
+      "confidence": 0.75,
+      "failure_mode": "F15",
+      "expected_failure_mode": "F11",
+      "explanation": "Workflow handles 4 distinct concerns: other, notification, data_fetch, ai_processing",
+      "correct": false
+    },
+    {
+      "workflow_id": "18-LOOP-006-vcomplex",
+      "detector_name": "N8NCycleDetector",
+      "detected": true,
+      "confidence": 0.6596,
+      "failure_mode": "F11",
+      "expected_failure_mode": "F11",
+      "explanation": "Workflow cycle detected: 1 patterns found (content similarity: 0.76)",
+      "correct": true
+    },
+    {
+      "workflow_id": "18-LOOP-006-vcomplex",
+      "detector_name": "N8NSchemaDetector",
+      "detected": true,
+      "confidence": 0.7,
+      "failure_mode": "F12",
+      "expected_failure_mode": "F11",
+      "explanation": "Schema mismatch: 1 incompatibilities found between nodes",
+      "correct": false
+    },
+    {
+      "workflow_id": "18-LOOP-006-vcomplex",
+      "detector_name": "N8NResourceDetector",
+      "detected": false,
+      "confidence": 0.85,
+      "failure_mode": null,
+      "expected_failure_mode": "F11",
+      "explanation": "No resource abuse patterns detected",
+      "correct": false
+    },
+    {
+      "workflow_id": "18-LOOP-006-vcomplex",
+      "detector_name": "N8NTimeoutDetector",
+      "detected": false,
+      "confidence": 0.0,
+      "failure_mode": null,
+      "expected_failure_mode": "F11",
+      "explanation": "No timeout issues detected",
+      "correct": false
+    },
+    {
+      "workflow_id": "18-LOOP-006-vcomplex",
+      "detector_name": "N8NErrorDetector",
+      "detected": false,
+      "confidence": 0.0,
+      "failure_mode": null,
+      "expected_failure_mode": "F11",
+      "explanation": "No error handling issues detected",
+      "correct": false
+    },
+    {
+      "workflow_id": "18-LOOP-006-vcomplex",
+      "detector_name": "N8NComplexityDetector",
+      "detected": true,
+      "confidence": 0.75,
+      "failure_mode": "F15",
+      "expected_failure_mode": "F11",
+      "explanation": "Workflow handles 4 distinct concerns: other, notification, data_fetch, ai_processing",
+      "correct": false
+    },
+    {
+      "workflow_id": "13-LOOP-005-simple",
+      "detector_name": "N8NCycleDetector",
+      "detected": true,
+      "confidence": 0.6786,
+      "failure_mode": "F11",
+      "expected_failure_mode": "F11",
+      "explanation": "Workflow cycle detected: 1 patterns found (content similarity: 0.81)",
+      "correct": true
+    },
+    {
+      "workflow_id": "13-LOOP-005-simple",
+      "detector_name": "N8NSchemaDetector",
+      "detected": true,
+      "confidence": 0.7,
+      "failure_mode": "F12",
+      "expected_failure_mode": "F11",
+      "explanation": "Schema mismatch: 1 incompatibilities found between nodes",
+      "correct": false
+    },
+    {
+      "workflow_id": "13-LOOP-005-simple",
+      "detector_name": "N8NResourceDetector",
+      "detected": false,
+      "confidence": 0.85,
+      "failure_mode": null,
+      "expected_failure_mode": "F11",
+      "explanation": "No resource abuse patterns detected",
+      "correct": false
+    },
+    {
+      "workflow_id": "13-LOOP-005-simple",
+      "detector_name": "N8NTimeoutDetector",
+      "detected": false,
+      "confidence": 0.0,
+      "failure_mode": null,
+      "expected_failure_mode": "F11",
+      "explanation": "No timeout issues detected",
+      "correct": false
+    },
+    {
+      "workflow_id": "13-LOOP-005-simple",
+      "detector_name": "N8NErrorDetector",
+      "detected": false,
+      "confidence": 0.0,
+      "failure_mode": null,
+      "expected_failure_mode": "F11",
+      "explanation": "No error handling issues detected",
+      "correct": false
+    },
+    {
+      "workflow_id": "13-LOOP-005-simple",
+      "detector_name": "N8NComplexityDetector",
+      "detected": true,
+      "confidence": 0.75,
+      "failure_mode": "F15",
+      "expected_failure_mode": "F11",
+      "explanation": "Workflow handles 4 distinct concerns: other, notification, ai_processing, data_fetch",
+      "correct": false
+    },
+    {
+      "workflow_id": "09-LOOP-003-vcomplex",
+      "detector_name": "N8NCycleDetector",
+      "detected": true,
+      "confidence": 0.6352,
+      "failure_mode": "F11",
+      "expected_failure_mode": "F11",
+      "explanation": "Workflow cycle detected: 1 patterns found (content similarity: 0.69)",
+      "correct": true
+    },
+    {
+      "workflow_id": "09-LOOP-003-vcomplex",
+      "detector_name": "N8NSchemaDetector",
+      "detected": true,
+      "confidence": 0.7,
+      "failure_mode": "F12",
+      "expected_failure_mode": "F11",
+      "explanation": "Schema mismatch: 1 incompatibilities found between nodes",
+      "correct": false
+    },
+    {
+      "workflow_id": "09-LOOP-003-vcomplex",
+      "detector_name": "N8NResourceDetector",
+      "detected": false,
+      "confidence": 0.85,
+      "failure_mode": null,
+      "expected_failure_mode": "F11",
+      "explanation": "No resource abuse patterns detected",
+      "correct": false
+    },
+    {
+      "workflow_id": "09-LOOP-003-vcomplex",
+      "detector_name": "N8NTimeoutDetector",
+      "detected": false,
+      "confidence": 0.0,
+      "failure_mode": null,
+      "expected_failure_mode": "F11",
+      "explanation": "No timeout issues detected",
+      "correct": false
+    },
+    {
+      "workflow_id": "09-LOOP-003-vcomplex",
+      "detector_name": "N8NErrorDetector",
+      "detected": false,
+      "confidence": 0.0,
+      "failure_mode": null,
+      "expected_failure_mode": "F11",
+      "explanation": "No error handling issues detected",
+      "correct": false
+    },
+    {
+      "workflow_id": "09-LOOP-003-vcomplex",
+      "detector_name": "N8NComplexityDetector",
+      "detected": true,
+      "confidence": 0.75,
+      "failure_mode": "F15",
+      "expected_failure_mode": "F11",
+      "explanation": "Workflow handles 4 distinct concerns: other, notification, data_fetch, ai_processing",
+      "correct": false
+    },
+    {
+      "workflow_id": "15-LOOP-005-vcomplex",
+      "detector_name": "N8NCycleDetector",
+      "detected": true,
+      "confidence": 0.6834,
+      "failure_mode": "F11",
+      "expected_failure_mode": "F11",
+      "explanation": "Workflow cycle detected: 1 patterns found (content similarity: 0.82)",
+      "correct": true
+    },
+    {
+      "workflow_id": "15-LOOP-005-vcomplex",
+      "detector_name": "N8NSchemaDetector",
+      "detected": true,
+      "confidence": 0.7,
+      "failure_mode": "F12",
+      "expected_failure_mode": "F11",
+      "explanation": "Schema mismatch: 1 incompatibilities found between nodes",
+      "correct": false
+    },
+    {
+      "workflow_id": "15-LOOP-005-vcomplex",
+      "detector_name": "N8NResourceDetector",
+      "detected": false,
+      "confidence": 0.85,
+      "failure_mode": null,
+      "expected_failure_mode": "F11",
+      "explanation": "No resource abuse patterns detected",
+      "correct": false
+    },
+    {
+      "workflow_id": "15-LOOP-005-vcomplex",
+      "detector_name": "N8NTimeoutDetector",
+      "detected": false,
+      "confidence": 0.0,
+      "failure_mode": null,
+      "expected_failure_mode": "F11",
+      "explanation": "No timeout issues detected",
+      "correct": false
+    },
+    {
+      "workflow_id": "15-LOOP-005-vcomplex",
+      "detector_name": "N8NErrorDetector",
+      "detected": false,
+      "confidence": 0.0,
+      "failure_mode": null,
+      "expected_failure_mode": "F11",
+      "explanation": "No error handling issues detected",
+      "correct": false
+    },
+    {
+      "workflow_id": "15-LOOP-005-vcomplex",
+      "detector_name": "N8NComplexityDetector",
+      "detected": true,
+      "confidence": 0.75,
+      "failure_mode": "F15",
+      "expected_failure_mode": "F11",
+      "explanation": "Workflow handles 4 distinct concerns: other, notification, data_fetch, ai_processing",
+      "correct": false
+    },
+    {
+      "workflow_id": "05-LOOP-002-complex",
+      "detector_name": "N8NCycleDetector",
+      "detected": true,
+      "confidence": 0.6151,
+      "failure_mode": "F11",
+      "expected_failure_mode": "F11",
+      "explanation": "Workflow cycle detected: 1 patterns found (content similarity: 0.64)",
+      "correct": true
+    },
+    {
+      "workflow_id": "05-LOOP-002-complex",
+      "detector_name": "N8NSchemaDetector",
+      "detected": true,
+      "confidence": 0.7,
+      "failure_mode": "F12",
+      "expected_failure_mode": "F11",
+      "explanation": "Schema mismatch: 1 incompatibilities found between nodes",
+      "correct": false
+    },
+    {
+      "workflow_id": "05-LOOP-002-complex",
+      "detector_name": "N8NResourceDetector",
+      "detected": false,
+      "confidence": 0.85,
+      "failure_mode": null,
+      "expected_failure_mode": "F11",
+      "explanation": "No resource abuse patterns detected",
+      "correct": false
+    },
+    {
+      "workflow_id": "05-LOOP-002-complex",
+      "detector_name": "N8NTimeoutDetector",
+      "detected": false,
+      "confidence": 0.0,
+      "failure_mode": null,
+      "expected_failure_mode": "F11",
+      "explanation": "No timeout issues detected",
+      "correct": false
+    },
+    {
+      "workflow_id": "05-LOOP-002-complex",
+      "detector_name": "N8NErrorDetector",
+      "detected": false,
+      "confidence": 0.0,
+      "failure_mode": null,
+      "expected_failure_mode": "F11",
+      "explanation": "No error handling issues detected",
+      "correct": false
+    },
+    {
+      "workflow_id": "05-LOOP-002-complex",
+      "detector_name": "N8NComplexityDetector",
+      "detected": true,
+      "confidence": 0.75,
+      "failure_mode": "F15",
+      "expected_failure_mode": "F11",
+      "explanation": "Workflow handles 4 distinct concerns: other, notification, data_fetch, ai_processing",
+      "correct": false
+    },
+    {
+      "workflow_id": "11-LOOP-004-complex",
+      "detector_name": "N8NCycleDetector",
+      "detected": true,
+      "confidence": 0.8461,
+      "failure_mode": "F11",
+      "expected_failure_mode": "F11",
+      "explanation": "Workflow cycle detected: 2 patterns found (content similarity: 0.88)",
+      "correct": true
+    },
+    {
+      "workflow_id": "11-LOOP-004-complex",
+      "detector_name": "N8NSchemaDetector",
+      "detected": true,
+      "confidence": 0.7,
+      "failure_mode": "F12",
+      "expected_failure_mode": "F11",
+      "explanation": "Schema mismatch: 1 incompatibilities found between nodes",
+      "correct": false
+    },
+    {
+      "workflow_id": "11-LOOP-004-complex",
+      "detector_name": "N8NResourceDetector",
+      "detected": false,
+      "confidence": 0.85,
+      "failure_mode": null,
+      "expected_failure_mode": "F11",
+      "explanation": "No resource abuse patterns detected",
+      "correct": false
+    },
+    {
+      "workflow_id": "11-LOOP-004-complex",
+      "detector_name": "N8NTimeoutDetector",
+      "detected": false,
+      "confidence": 0.0,
+      "failure_mode": null,
+      "expected_failure_mode": "F11",
+      "explanation": "No timeout issues detected",
+      "correct": false
+    },
+    {
+      "workflow_id": "11-LOOP-004-complex",
+      "detector_name": "N8NErrorDetector",
+      "detected": false,
+      "confidence": 0.0,
+      "failure_mode": null,
+      "expected_failure_mode": "F11",
+      "explanation": "No error handling issues detected",
+      "correct": false
+    },
+    {
+      "workflow_id": "11-LOOP-004-complex",
+      "detector_name": "N8NComplexityDetector",
+      "detected": true,
+      "confidence": 0.75,
+      "failure_mode": "F15",
+      "expected_failure_mode": "F11",
+      "explanation": "Workflow handles 4 distinct concerns: other, notification, data_fetch, ai_processing",
+      "correct": false
+    },
+    {
+      "workflow_id": "10-LOOP-004-simple",
+      "detector_name": "N8NCycleDetector",
+      "detected": true,
+      "confidence": 0.8349,
+      "failure_mode": "F11",
+      "expected_failure_mode": "F11",
+      "explanation": "Workflow cycle detected: 2 patterns found (content similarity: 0.86)",
+      "correct": true
+    },
+    {
+      "workflow_id": "10-LOOP-004-simple",
+      "detector_name": "N8NSchemaDetector",
+      "detected": true,
+      "confidence": 0.7,
+      "failure_mode": "F12",
+      "expected_failure_mode": "F11",
+      "explanation": "Schema mismatch: 1 incompatibilities found between nodes",
+      "correct": false
+    },
+    {
+      "workflow_id": "10-LOOP-004-simple",
+      "detector_name": "N8NResourceDetector",
+      "detected": false,
+      "confidence": 0.85,
+      "failure_mode": null,
+      "expected_failure_mode": "F11",
+      "explanation": "No resource abuse patterns detected",
+      "correct": false
+    },
+    {
+      "workflow_id": "10-LOOP-004-simple",
+      "detector_name": "N8NTimeoutDetector",
+      "detected": false,
+      "confidence": 0.0,
+      "failure_mode": null,
+      "expected_failure_mode": "F11",
+      "explanation": "No timeout issues detected",
+      "correct": false
+    },
+    {
+      "workflow_id": "10-LOOP-004-simple",
+      "detector_name": "N8NErrorDetector",
+      "detected": false,
+      "confidence": 0.0,
+      "failure_mode": null,
+      "expected_failure_mode": "F11",
+      "explanation": "No error handling issues detected",
+      "correct": false
+    },
+    {
+      "workflow_id": "10-LOOP-004-simple",
+      "detector_name": "N8NComplexityDetector",
+      "detected": true,
+      "confidence": 0.75,
+      "failure_mode": "F15",
+      "expected_failure_mode": "F11",
+      "explanation": "Workflow handles 4 distinct concerns: other, notification, data_fetch, ai_processing",
+      "correct": false
+    },
+    {
+      "workflow_id": "16-LOOP-006-simple",
+      "detector_name": "N8NCycleDetector",
+      "detected": true,
+      "confidence": 0.6848,
+      "failure_mode": "F11",
+      "expected_failure_mode": "F11",
+      "explanation": "Workflow cycle detected: 1 patterns found (content similarity: 0.83)",
+      "correct": true
+    },
+    {
+      "workflow_id": "16-LOOP-006-simple",
+      "detector_name": "N8NSchemaDetector",
+      "detected": true,
+      "confidence": 0.7,
+      "failure_mode": "F12",
+      "expected_failure_mode": "F11",
+      "explanation": "Schema mismatch: 1 incompatibilities found between nodes",
+      "correct": false
+    },
+    {
+      "workflow_id": "16-LOOP-006-simple",
+      "detector_name": "N8NResourceDetector",
+      "detected": false,
+      "confidence": 0.85,
+      "failure_mode": null,
+      "expected_failure_mode": "F11",
+      "explanation": "No resource abuse patterns detected",
+      "correct": false
+    },
+    {
+      "workflow_id": "16-LOOP-006-simple",
+      "detector_name": "N8NTimeoutDetector",
+      "detected": false,
+      "confidence": 0.0,
+      "failure_mode": null,
+      "expected_failure_mode": "F11",
+      "explanation": "No timeout issues detected",
+      "correct": false
+    },
+    {
+      "workflow_id": "16-LOOP-006-simple",
+      "detector_name": "N8NErrorDetector",
+      "detected": false,
+      "confidence": 0.0,
+      "failure_mode": null,
+      "expected_failure_mode": "F11",
+      "explanation": "No error handling issues detected",
+      "correct": false
+    },
+    {
+      "workflow_id": "16-LOOP-006-simple",
+      "detector_name": "N8NComplexityDetector",
+      "detected": true,
+      "confidence": 0.75,
+      "failure_mode": "F15",
+      "expected_failure_mode": "F11",
+      "explanation": "Workflow handles 4 distinct concerns: other, notification, ai_processing, data_fetch",
+      "correct": false
+    },
+    {
+      "workflow_id": "02-LOOP-001-complex",
+      "detector_name": "N8NCycleDetector",
+      "detected": true,
+      "confidence": 0.833,
+      "failure_mode": "F11",
+      "expected_failure_mode": "F11",
+      "explanation": "Workflow cycle detected: 2 patterns found (content similarity: 0.85)",
+      "correct": true
+    },
+    {
+      "workflow_id": "02-LOOP-001-complex",
+      "detector_name": "N8NSchemaDetector",
+      "detected": true,
+      "confidence": 0.7,
+      "failure_mode": "F12",
+      "expected_failure_mode": "F11",
+      "explanation": "Schema mismatch: 1 incompatibilities found between nodes",
+      "correct": false
+    },
+    {
+      "workflow_id": "02-LOOP-001-complex",
+      "detector_name": "N8NResourceDetector",
+      "detected": false,
+      "confidence": 0.85,
+      "failure_mode": null,
+      "expected_failure_mode": "F11",
+      "explanation": "No resource abuse patterns detected",
+      "correct": false
+    },
+    {
+      "workflow_id": "02-LOOP-001-complex",
+      "detector_name": "N8NTimeoutDetector",
+      "detected": false,
+      "confidence": 0.0,
+      "failure_mode": null,
+      "expected_failure_mode": "F11",
+      "explanation": "No timeout issues detected",
+      "correct": false
+    },
+    {
+      "workflow_id": "02-LOOP-001-complex",
+      "detector_name": "N8NErrorDetector",
+      "detected": false,
+      "confidence": 0.0,
+      "failure_mode": null,
+      "expected_failure_mode": "F11",
+      "explanation": "No error handling issues detected",
+      "correct": false
+    },
+    {
+      "workflow_id": "02-LOOP-001-complex",
+      "detector_name": "N8NComplexityDetector",
+      "detected": true,
+      "confidence": 0.75,
+      "failure_mode": "F15",
+      "expected_failure_mode": "F11",
+      "explanation": "Workflow handles 4 distinct concerns: other, notification, data_fetch, ai_processing",
+      "correct": false
+    },
+    {
+      "workflow_id": "06-COORD-002-vcomplex",
+      "detector_name": "N8NCycleDetector",
+      "detected": false,
+      "confidence": 0.85,
+      "failure_mode": null,
+      "expected_failure_mode": "F11",
+      "explanation": "No cycle patterns detected in workflow execution",
+      "correct": false
+    },
+    {
+      "workflow_id": "06-COORD-002-vcomplex",
+      "detector_name": "N8NSchemaDetector",
+      "detected": true,
+      "confidence": 0.7,
+      "failure_mode": "F12",
+      "expected_failure_mode": "F11",
+      "explanation": "Schema mismatch: 1 incompatibilities found between nodes",
+      "correct": false
+    },
+    {
+      "workflow_id": "06-COORD-002-vcomplex",
+      "detector_name": "N8NResourceDetector",
+      "detected": false,
+      "confidence": 0.85,
+      "failure_mode": null,
+      "expected_failure_mode": "F11",
+      "explanation": "No resource abuse patterns detected",
+      "correct": false
+    },
+    {
+      "workflow_id": "06-COORD-002-vcomplex",
+      "detector_name": "N8NTimeoutDetector",
+      "detected": false,
+      "confidence": 0.0,
+      "failure_mode": null,
+      "expected_failure_mode": "F11",
+      "explanation": "No timeout issues detected",
+      "correct": false
+    },
+    {
+      "workflow_id": "06-COORD-002-vcomplex",
+      "detector_name": "N8NErrorDetector",
+      "detected": false,
+      "confidence": 0.0,
+      "failure_mode": null,
+      "expected_failure_mode": "F11",
+      "explanation": "No error handling issues detected",
+      "correct": false
+    },
+    {
+      "workflow_id": "06-COORD-002-vcomplex",
+      "detector_name": "N8NComplexityDetector",
+      "detected": true,
+      "confidence": 0.75,
+      "failure_mode": "F15",
+      "expected_failure_mode": "F11",
+      "explanation": "Workflow handles 4 distinct concerns: other, notification, ai_processing, data_fetch",
+      "correct": false
+    },
+    {
+      "workflow_id": "02-COORD-001-complex",
+      "detector_name": "N8NCycleDetector",
+      "detected": false,
+      "confidence": 0.85,
+      "failure_mode": null,
+      "expected_failure_mode": "F11",
+      "explanation": "No cycle patterns detected in workflow execution",
+      "correct": false
+    },
+    {
+      "workflow_id": "02-COORD-001-complex",
+      "detector_name": "N8NSchemaDetector",
+      "detected": true,
+      "confidence": 0.7,
+      "failure_mode": "F12",
+      "expected_failure_mode": "F11",
+      "explanation": "Schema mismatch: 1 incompatibilities found between nodes",
+      "correct": false
+    },
+    {
+      "workflow_id": "02-COORD-001-complex",
+      "detector_name": "N8NResourceDetector",
+      "detected": false,
+      "confidence": 0.85,
+      "failure_mode": null,
+      "expected_failure_mode": "F11",
+      "explanation": "No resource abuse patterns detected",
+      "correct": false
+    },
+    {
+      "workflow_id": "02-COORD-001-complex",
+      "detector_name": "N8NTimeoutDetector",
+      "detected": false,
+      "confidence": 0.0,
+      "failure_mode": null,
+      "expected_failure_mode": "F11",
+      "explanation": "No timeout issues detected",
+      "correct": false
+    },
+    {
+      "workflow_id": "02-COORD-001-complex",
+      "detector_name": "N8NErrorDetector",
+      "detected": false,
+      "confidence": 0.0,
+      "failure_mode": null,
+      "expected_failure_mode": "F11",
+      "explanation": "No error handling issues detected",
+      "correct": false
+    },
+    {
+      "workflow_id": "02-COORD-001-complex",
+      "detector_name": "N8NComplexityDetector",
+      "detected": true,
+      "confidence": 0.75,
+      "failure_mode": "F15",
+      "expected_failure_mode": "F11",
+      "explanation": "Workflow handles 4 distinct concerns: other, notification, data_fetch, ai_processing",
+      "correct": false
+    },
+    {
+      "workflow_id": "15-COORD-005-vcomplex",
+      "detector_name": "N8NCycleDetector",
+      "detected": false,
+      "confidence": 0.85,
+      "failure_mode": null,
+      "expected_failure_mode": "F11",
+      "explanation": "No cycle patterns detected in workflow execution",
+      "correct": false
+    },
+    {
+      "workflow_id": "15-COORD-005-vcomplex",
+      "detector_name": "N8NSchemaDetector",
+      "detected": true,
+      "confidence": 0.7,
+      "failure_mode": "F12",
+      "expected_failure_mode": "F11",
+      "explanation": "Schema mismatch: 1 incompatibilities found between nodes",
+      "correct": false
+    },
+    {
+      "workflow_id": "15-COORD-005-vcomplex",
+      "detector_name": "N8NResourceDetector",
+      "detected": false,
+      "confidence": 0.85,
+      "failure_mode": null,
+      "expected_failure_mode": "F11",
+      "explanation": "No resource abuse patterns detected",
+      "correct": false
+    },
+    {
+      "workflow_id": "15-COORD-005-vcomplex",
+      "detector_name": "N8NTimeoutDetector",
+      "detected": false,
+      "confidence": 0.0,
+      "failure_mode": null,
+      "expected_failure_mode": "F11",
+      "explanation": "No timeout issues detected",
+      "correct": false
+    },
+    {
+      "workflow_id": "15-COORD-005-vcomplex",
+      "detector_name": "N8NErrorDetector",
+      "detected": false,
+      "confidence": 0.0,
+      "failure_mode": null,
+      "expected_failure_mode": "F11",
+      "explanation": "No error handling issues detected",
+      "correct": false
+    },
+    {
+      "workflow_id": "15-COORD-005-vcomplex",
+      "detector_name": "N8NComplexityDetector",
+      "detected": true,
+      "confidence": 0.75,
+      "failure_mode": "F15",
+      "expected_failure_mode": "F11",
+      "explanation": "Workflow handles 4 distinct concerns: other, notification, ai_processing, data_fetch",
+      "correct": false
+    },
+    {
+      "workflow_id": "04-COORD-002-simple",
+      "detector_name": "N8NCycleDetector",
+      "detected": false,
+      "confidence": 0.85,
+      "failure_mode": null,
+      "expected_failure_mode": "F11",
+      "explanation": "No cycle patterns detected in workflow execution",
+      "correct": false
+    },
+    {
+      "workflow_id": "04-COORD-002-simple",
+      "detector_name": "N8NSchemaDetector",
+      "detected": true,
+      "confidence": 0.8,
+      "failure_mode": "F12",
+      "expected_failure_mode": "F11",
+      "explanation": "Schema mismatch: 2 incompatibilities found between nodes",
+      "correct": false
+    },
+    {
+      "workflow_id": "04-COORD-002-simple",
+      "detector_name": "N8NResourceDetector",
+      "detected": false,
+      "confidence": 0.85,
+      "failure_mode": null,
+      "expected_failure_mode": "F11",
+      "explanation": "No resource abuse patterns detected",
+      "correct": false
+    },
+    {
+      "workflow_id": "04-COORD-002-simple",
+      "detector_name": "N8NTimeoutDetector",
+      "detected": false,
+      "confidence": 0.0,
+      "failure_mode": null,
+      "expected_failure_mode": "F11",
+      "explanation": "No timeout issues detected",
+      "correct": false
+    },
+    {
+      "workflow_id": "04-COORD-002-simple",
+      "detector_name": "N8NErrorDetector",
+      "detected": false,
+      "confidence": 0.0,
+      "failure_mode": null,
+      "expected_failure_mode": "F11",
+      "explanation": "No error handling issues detected",
+      "correct": false
+    },
+    {
+      "workflow_id": "04-COORD-002-simple",
+      "detector_name": "N8NComplexityDetector",
+      "detected": true,
+      "confidence": 0.75,
+      "failure_mode": "F15",
+      "expected_failure_mode": "F11",
+      "explanation": "Workflow handles 4 distinct concerns: other, notification, ai_processing, data_fetch",
+      "correct": false
+    },
+    {
+      "workflow_id": "14-COORD-005-complex",
+      "detector_name": "N8NCycleDetector",
+      "detected": false,
+      "confidence": 0.85,
+      "failure_mode": null,
+      "expected_failure_mode": "F11",
+      "explanation": "No cycle patterns detected in workflow execution",
+      "correct": false
+    },
+    {
+      "workflow_id": "14-COORD-005-complex",
+      "detector_name": "N8NSchemaDetector",
+      "detected": true,
+      "confidence": 0.8,
+      "failure_mode": "F12",
+      "expected_failure_mode": "F11",
+      "explanation": "Schema mismatch: 2 incompatibilities found between nodes",
+      "correct": false
+    },
+    {
+      "workflow_id": "14-COORD-005-complex",
+      "detector_name": "N8NResourceDetector",
+      "detected": false,
+      "confidence": 0.85,
+      "failure_mode": null,
+      "expected_failure_mode": "F11",
+      "explanation": "No resource abuse patterns detected",
+      "correct": false
+    },
+    {
+      "workflow_id": "14-COORD-005-complex",
+      "detector_name": "N8NTimeoutDetector",
+      "detected": false,
+      "confidence": 0.0,
+      "failure_mode": null,
+      "expected_failure_mode": "F11",
+      "explanation": "No timeout issues detected",
+      "correct": false
+    },
+    {
+      "workflow_id": "14-COORD-005-complex",
+      "detector_name": "N8NErrorDetector",
+      "detected": false,
+      "confidence": 0.0,
+      "failure_mode": null,
+      "expected_failure_mode": "F11",
+      "explanation": "No error handling issues detected",
+      "correct": false
+    },
+    {
+      "workflow_id": "14-COORD-005-complex",
+      "detector_name": "N8NComplexityDetector",
+      "detected": true,
+      "confidence": 0.75,
+      "failure_mode": "F15",
+      "expected_failure_mode": "F11",
+      "explanation": "Workflow handles 4 distinct concerns: other, notification, data_fetch, ai_processing",
+      "correct": false
+    },
+    {
+      "workflow_id": "07-COORD-003-simple",
+      "detector_name": "N8NCycleDetector",
+      "detected": false,
+      "confidence": 0.85,
+      "failure_mode": null,
+      "expected_failure_mode": "F11",
+      "explanation": "No cycle patterns detected in workflow execution",
+      "correct": false
+    },
+    {
+      "workflow_id": "07-COORD-003-simple",
+      "detector_name": "N8NSchemaDetector",
+      "detected": true,
+      "confidence": 0.7,
+      "failure_mode": "F12",
+      "expected_failure_mode": "F11",
+      "explanation": "Schema mismatch: 1 incompatibilities found between nodes",
+      "correct": false
+    },
+    {
+      "workflow_id": "07-COORD-003-simple",
+      "detector_name": "N8NResourceDetector",
+      "detected": false,
+      "confidence": 0.85,
+      "failure_mode": null,
+      "expected_failure_mode": "F11",
+      "explanation": "No resource abuse patterns detected",
+      "correct": false
+    },
+    {
+      "workflow_id": "07-COORD-003-simple",
+      "detector_name": "N8NTimeoutDetector",
+      "detected": false,
+      "confidence": 0.0,
+      "failure_mode": null,
+      "expected_failure_mode": "F11",
+      "explanation": "No timeout issues detected",
+      "correct": false
+    },
+    {
+      "workflow_id": "07-COORD-003-simple",
+      "detector_name": "N8NErrorDetector",
+      "detected": false,
+      "confidence": 0.0,
+      "failure_mode": null,
+      "expected_failure_mode": "F11",
+      "explanation": "No error handling issues detected",
+      "correct": false
+    },
+    {
+      "workflow_id": "07-COORD-003-simple",
+      "detector_name": "N8NComplexityDetector",
+      "detected": true,
+      "confidence": 0.75,
+      "failure_mode": "F15",
+      "expected_failure_mode": "F11",
+      "explanation": "Workflow handles 4 distinct concerns: other, notification, ai_processing, data_fetch",
+      "correct": false
+    },
+    {
+      "workflow_id": "11-COORD-004-complex",
+      "detector_name": "N8NCycleDetector",
+      "detected": false,
+      "confidence": 0.85,
+      "failure_mode": null,
+      "expected_failure_mode": "F11",
+      "explanation": "No cycle patterns detected in workflow execution",
+      "correct": false
+    },
+    {
+      "workflow_id": "11-COORD-004-complex",
+      "detector_name": "N8NSchemaDetector",
+      "detected": true,
+      "confidence": 0.7,
+      "failure_mode": "F12",
+      "expected_failure_mode": "F11",
+      "explanation": "Schema mismatch: 1 incompatibilities found between nodes",
+      "correct": false
+    },
+    {
+      "workflow_id": "11-COORD-004-complex",
+      "detector_name": "N8NResourceDetector",
+      "detected": false,
+      "confidence": 0.85,
+      "failure_mode": null,
+      "expected_failure_mode": "F11",
+      "explanation": "No resource abuse patterns detected",
+      "correct": false
+    },
+    {
+      "workflow_id": "11-COORD-004-complex",
+      "detector_name": "N8NTimeoutDetector",
+      "detected": false,
+      "confidence": 0.0,
+      "failure_mode": null,
+      "expected_failure_mode": "F11",
+      "explanation": "No timeout issues detected",
+      "correct": false
+    },
+    {
+      "workflow_id": "11-COORD-004-complex",
+      "detector_name": "N8NErrorDetector",
+      "detected": false,
+      "confidence": 0.0,
+      "failure_mode": null,
+      "expected_failure_mode": "F11",
+      "explanation": "No error handling issues detected",
+      "correct": false
+    },
+    {
+      "workflow_id": "11-COORD-004-complex",
+      "detector_name": "N8NComplexityDetector",
+      "detected": true,
+      "confidence": 0.75,
+      "failure_mode": "F15",
+      "expected_failure_mode": "F11",
+      "explanation": "Workflow handles 4 distinct concerns: other, notification, ai_processing, data_fetch",
+      "correct": false
+    },
+    {
+      "workflow_id": "13-COORD-005-simple",
+      "detector_name": "N8NCycleDetector",
+      "detected": false,
+      "confidence": 0.85,
+      "failure_mode": null,
+      "expected_failure_mode": "F11",
+      "explanation": "No cycle patterns detected in workflow execution",
+      "correct": false
+    },
+    {
+      "workflow_id": "13-COORD-005-simple",
+      "detector_name": "N8NSchemaDetector",
+      "detected": true,
+      "confidence": 0.7,
+      "failure_mode": "F12",
+      "expected_failure_mode": "F11",
+      "explanation": "Schema mismatch: 1 incompatibilities found between nodes",
+      "correct": false
+    },
+    {
+      "workflow_id": "13-COORD-005-simple",
+      "detector_name": "N8NResourceDetector",
+      "detected": false,
+      "confidence": 0.85,
+      "failure_mode": null,
+      "expected_failure_mode": "F11",
+      "explanation": "No resource abuse patterns detected",
+      "correct": false
+    },
+    {
+      "workflow_id": "13-COORD-005-simple",
+      "detector_name": "N8NTimeoutDetector",
+      "detected": false,
+      "confidence": 0.0,
+      "failure_mode": null,
+      "expected_failure_mode": "F11",
+      "explanation": "No timeout issues detected",
+      "correct": false
+    },
+    {
+      "workflow_id": "13-COORD-005-simple",
+      "detector_name": "N8NErrorDetector",
+      "detected": false,
+      "confidence": 0.0,
+      "failure_mode": null,
+      "expected_failure_mode": "F11",
+      "explanation": "No error handling issues detected",
+      "correct": false
+    },
+    {
+      "workflow_id": "13-COORD-005-simple",
+      "detector_name": "N8NComplexityDetector",
+      "detected": true,
+      "confidence": 0.75,
+      "failure_mode": "F15",
+      "expected_failure_mode": "F11",
+      "explanation": "Workflow handles 4 distinct concerns: other, notification, ai_processing, data_fetch",
+      "correct": false
+    },
+    {
+      "workflow_id": "10-COORD-004-simple",
+      "detector_name": "N8NCycleDetector",
+      "detected": false,
+      "confidence": 0.85,
+      "failure_mode": null,
+      "expected_failure_mode": "F11",
+      "explanation": "No cycle patterns detected in workflow execution",
+      "correct": false
+    },
+    {
+      "workflow_id": "10-COORD-004-simple",
+      "detector_name": "N8NSchemaDetector",
+      "detected": true,
+      "confidence": 0.7,
+      "failure_mode": "F12",
+      "expected_failure_mode": "F11",
+      "explanation": "Schema mismatch: 1 incompatibilities found between nodes",
+      "correct": false
+    },
+    {
+      "workflow_id": "10-COORD-004-simple",
+      "detector_name": "N8NResourceDetector",
+      "detected": false,
+      "confidence": 0.85,
+      "failure_mode": null,
+      "expected_failure_mode": "F11",
+      "explanation": "No resource abuse patterns detected",
+      "correct": false
+    },
+    {
+      "workflow_id": "10-COORD-004-simple",
+      "detector_name": "N8NTimeoutDetector",
+      "detected": false,
+      "confidence": 0.0,
+      "failure_mode": null,
+      "expected_failure_mode": "F11",
+      "explanation": "No timeout issues detected",
+      "correct": false
+    },
+    {
+      "workflow_id": "10-COORD-004-simple",
+      "detector_name": "N8NErrorDetector",
+      "detected": false,
+      "confidence": 0.0,
+      "failure_mode": null,
+      "expected_failure_mode": "F11",
+      "explanation": "No error handling issues detected",
+      "correct": false
+    },
+    {
+      "workflow_id": "10-COORD-004-simple",
+      "detector_name": "N8NComplexityDetector",
+      "detected": true,
+      "confidence": 0.75,
+      "failure_mode": "F15",
+      "expected_failure_mode": "F11",
+      "explanation": "Workflow handles 4 distinct concerns: other, notification, ai_processing, data_fetch",
+      "correct": false
+    },
+    {
+      "workflow_id": "01-COORD-001-simple",
+      "detector_name": "N8NCycleDetector",
+      "detected": false,
+      "confidence": 0.85,
+      "failure_mode": null,
+      "expected_failure_mode": "F11",
+      "explanation": "No cycle patterns detected in workflow execution",
+      "correct": false
+    },
+    {
+      "workflow_id": "01-COORD-001-simple",
+      "detector_name": "N8NSchemaDetector",
+      "detected": true,
+      "confidence": 0.7,
+      "failure_mode": "F12",
+      "expected_failure_mode": "F11",
+      "explanation": "Schema mismatch: 1 incompatibilities found between nodes",
+      "correct": false
+    },
+    {
+      "workflow_id": "01-COORD-001-simple",
+      "detector_name": "N8NResourceDetector",
+      "detected": false,
+      "confidence": 0.85,
+      "failure_mode": null,
+      "expected_failure_mode": "F11",
+      "explanation": "No resource abuse patterns detected",
+      "correct": false
+    },
+    {
+      "workflow_id": "01-COORD-001-simple",
+      "detector_name": "N8NTimeoutDetector",
+      "detected": false,
+      "confidence": 0.0,
+      "failure_mode": null,
+      "expected_failure_mode": "F11",
+      "explanation": "No timeout issues detected",
+      "correct": false
+    },
+    {
+      "workflow_id": "01-COORD-001-simple",
+      "detector_name": "N8NErrorDetector",
+      "detected": false,
+      "confidence": 0.0,
+      "failure_mode": null,
+      "expected_failure_mode": "F11",
+      "explanation": "No error handling issues detected",
+      "correct": false
+    },
+    {
+      "workflow_id": "01-COORD-001-simple",
+      "detector_name": "N8NComplexityDetector",
+      "detected": true,
+      "confidence": 0.75,
+      "failure_mode": "F15",
+      "expected_failure_mode": "F11",
+      "explanation": "Workflow handles 4 distinct concerns: other, notification, ai_processing, data_fetch",
+      "correct": false
+    },
+    {
+      "workflow_id": "12-COORD-004-vcomplex",
+      "detector_name": "N8NCycleDetector",
+      "detected": false,
+      "confidence": 0.85,
+      "failure_mode": null,
+      "expected_failure_mode": "F11",
+      "explanation": "No cycle patterns detected in workflow execution",
+      "correct": false
+    },
+    {
+      "workflow_id": "12-COORD-004-vcomplex",
+      "detector_name": "N8NSchemaDetector",
+      "detected": true,
+      "confidence": 0.7,
+      "failure_mode": "F12",
+      "expected_failure_mode": "F11",
+      "explanation": "Schema mismatch: 1 incompatibilities found between nodes",
+      "correct": false
+    },
+    {
+      "workflow_id": "12-COORD-004-vcomplex",
+      "detector_name": "N8NResourceDetector",
+      "detected": false,
+      "confidence": 0.85,
+      "failure_mode": null,
+      "expected_failure_mode": "F11",
+      "explanation": "No resource abuse patterns detected",
+      "correct": false
+    },
+    {
+      "workflow_id": "12-COORD-004-vcomplex",
+      "detector_name": "N8NTimeoutDetector",
+      "detected": false,
+      "confidence": 0.0,
+      "failure_mode": null,
+      "expected_failure_mode": "F11",
+      "explanation": "No timeout issues detected",
+      "correct": false
+    },
+    {
+      "workflow_id": "12-COORD-004-vcomplex",
+      "detector_name": "N8NErrorDetector",
+      "detected": false,
+      "confidence": 0.0,
+      "failure_mode": null,
+      "expected_failure_mode": "F11",
+      "explanation": "No error handling issues detected",
+      "correct": false
+    },
+    {
+      "workflow_id": "12-COORD-004-vcomplex",
+      "detector_name": "N8NComplexityDetector",
+      "detected": true,
+      "confidence": 0.75,
+      "failure_mode": "F15",
+      "expected_failure_mode": "F11",
+      "explanation": "Workflow handles 4 distinct concerns: other, notification, ai_processing, data_fetch",
+      "correct": false
+    },
+    {
+      "workflow_id": "03-COORD-001-vcomplex",
+      "detector_name": "N8NCycleDetector",
+      "detected": true,
+      "confidence": 0.6877,
+      "failure_mode": "F11",
+      "expected_failure_mode": "F11",
+      "explanation": "Workflow cycle detected: 1 patterns found (content similarity: 0.83)",
+      "correct": true
+    },
+    {
+      "workflow_id": "03-COORD-001-vcomplex",
+      "detector_name": "N8NSchemaDetector",
+      "detected": true,
+      "confidence": 0.7,
+      "failure_mode": "F12",
+      "expected_failure_mode": "F11",
+      "explanation": "Schema mismatch: 1 incompatibilities found between nodes",
+      "correct": false
+    },
+    {
+      "workflow_id": "03-COORD-001-vcomplex",
+      "detector_name": "N8NResourceDetector",
+      "detected": false,
+      "confidence": 0.85,
+      "failure_mode": null,
+      "expected_failure_mode": "F11",
+      "explanation": "No resource abuse patterns detected",
+      "correct": false
+    },
+    {
+      "workflow_id": "03-COORD-001-vcomplex",
+      "detector_name": "N8NTimeoutDetector",
+      "detected": false,
+      "confidence": 0.0,
+      "failure_mode": null,
+      "expected_failure_mode": "F11",
+      "explanation": "No timeout issues detected",
+      "correct": false
+    },
+    {
+      "workflow_id": "03-COORD-001-vcomplex",
+      "detector_name": "N8NErrorDetector",
+      "detected": false,
+      "confidence": 0.0,
+      "failure_mode": null,
+      "expected_failure_mode": "F11",
+      "explanation": "No error handling issues detected",
+      "correct": false
+    },
+    {
+      "workflow_id": "03-COORD-001-vcomplex",
+      "detector_name": "N8NComplexityDetector",
+      "detected": true,
+      "confidence": 0.75,
+      "failure_mode": "F15",
+      "expected_failure_mode": "F11",
+      "explanation": "Workflow handles 4 distinct concerns: other, notification, ai_processing, data_fetch",
+      "correct": false
+    },
+    {
+      "workflow_id": "08-COORD-003-complex",
+      "detector_name": "N8NCycleDetector",
+      "detected": false,
+      "confidence": 0.85,
+      "failure_mode": null,
+      "expected_failure_mode": "F11",
+      "explanation": "No cycle patterns detected in workflow execution",
+      "correct": false
+    },
+    {
+      "workflow_id": "08-COORD-003-complex",
+      "detector_name": "N8NSchemaDetector",
+      "detected": true,
+      "confidence": 0.7,
+      "failure_mode": "F12",
+      "expected_failure_mode": "F11",
+      "explanation": "Schema mismatch: 1 incompatibilities found between nodes",
+      "correct": false
+    },
+    {
+      "workflow_id": "08-COORD-003-complex",
+      "detector_name": "N8NResourceDetector",
+      "detected": false,
+      "confidence": 0.85,
+      "failure_mode": null,
+      "expected_failure_mode": "F11",
+      "explanation": "No resource abuse patterns detected",
+      "correct": false
+    },
+    {
+      "workflow_id": "08-COORD-003-complex",
+      "detector_name": "N8NTimeoutDetector",
+      "detected": false,
+      "confidence": 0.0,
+      "failure_mode": null,
+      "expected_failure_mode": "F11",
+      "explanation": "No timeout issues detected",
+      "correct": false
+    },
+    {
+      "workflow_id": "08-COORD-003-complex",
+      "detector_name": "N8NErrorDetector",
+      "detected": false,
+      "confidence": 0.0,
+      "failure_mode": null,
+      "expected_failure_mode": "F11",
+      "explanation": "No error handling issues detected",
+      "correct": false
+    },
+    {
+      "workflow_id": "08-COORD-003-complex",
+      "detector_name": "N8NComplexityDetector",
+      "detected": true,
+      "confidence": 0.75,
+      "failure_mode": "F15",
+      "expected_failure_mode": "F11",
+      "explanation": "Workflow handles 4 distinct concerns: other, notification, ai_processing, data_fetch",
+      "correct": false
+    },
+    {
+      "workflow_id": "17-COORD-006-complex",
+      "detector_name": "N8NCycleDetector",
+      "detected": false,
+      "confidence": 0.85,
+      "failure_mode": null,
+      "expected_failure_mode": "F11",
+      "explanation": "No cycle patterns detected in workflow execution",
+      "correct": false
+    },
+    {
+      "workflow_id": "17-COORD-006-complex",
+      "detector_name": "N8NSchemaDetector",
+      "detected": true,
+      "confidence": 0.8,
+      "failure_mode": "F12",
+      "expected_failure_mode": "F11",
+      "explanation": "Schema mismatch: 2 incompatibilities found between nodes",
+      "correct": false
+    },
+    {
+      "workflow_id": "17-COORD-006-complex",
+      "detector_name": "N8NResourceDetector",
+      "detected": false,
+      "confidence": 0.85,
+      "failure_mode": null,
+      "expected_failure_mode": "F11",
+      "explanation": "No resource abuse patterns detected",
+      "correct": false
+    },
+    {
+      "workflow_id": "17-COORD-006-complex",
+      "detector_name": "N8NTimeoutDetector",
+      "detected": false,
+      "confidence": 0.0,
+      "failure_mode": null,
+      "expected_failure_mode": "F11",
+      "explanation": "No timeout issues detected",
+      "correct": false
+    },
+    {
+      "workflow_id": "17-COORD-006-complex",
+      "detector_name": "N8NErrorDetector",
+      "detected": false,
+      "confidence": 0.0,
+      "failure_mode": null,
+      "expected_failure_mode": "F11",
+      "explanation": "No error handling issues detected",
+      "correct": false
+    },
+    {
+      "workflow_id": "17-COORD-006-complex",
+      "detector_name": "N8NComplexityDetector",
+      "detected": true,
+      "confidence": 0.75,
+      "failure_mode": "F15",
+      "expected_failure_mode": "F11",
+      "explanation": "Workflow handles 4 distinct concerns: other, notification, ai_processing, data_fetch",
+      "correct": false
+    },
+    {
+      "workflow_id": "18-COORD-006-vcomplex",
+      "detector_name": "N8NCycleDetector",
+      "detected": false,
+      "confidence": 0.85,
+      "failure_mode": null,
+      "expected_failure_mode": "F11",
+      "explanation": "No cycle patterns detected in workflow execution",
+      "correct": false
+    },
+    {
+      "workflow_id": "18-COORD-006-vcomplex",
+      "detector_name": "N8NSchemaDetector",
+      "detected": true,
+      "confidence": 0.7,
+      "failure_mode": "F12",
+      "expected_failure_mode": "F11",
+      "explanation": "Schema mismatch: 1 incompatibilities found between nodes",
+      "correct": false
+    },
+    {
+      "workflow_id": "18-COORD-006-vcomplex",
+      "detector_name": "N8NResourceDetector",
+      "detected": false,
+      "confidence": 0.85,
+      "failure_mode": null,
+      "expected_failure_mode": "F11",
+      "explanation": "No resource abuse patterns detected",
+      "correct": false
+    },
+    {
+      "workflow_id": "18-COORD-006-vcomplex",
+      "detector_name": "N8NTimeoutDetector",
+      "detected": false,
+      "confidence": 0.0,
+      "failure_mode": null,
+      "expected_failure_mode": "F11",
+      "explanation": "No timeout issues detected",
+      "correct": false
+    },
+    {
+      "workflow_id": "18-COORD-006-vcomplex",
+      "detector_name": "N8NErrorDetector",
+      "detected": false,
+      "confidence": 0.0,
+      "failure_mode": null,
+      "expected_failure_mode": "F11",
+      "explanation": "No error handling issues detected",
+      "correct": false
+    },
+    {
+      "workflow_id": "18-COORD-006-vcomplex",
+      "detector_name": "N8NComplexityDetector",
+      "detected": true,
+      "confidence": 0.75,
+      "failure_mode": "F15",
+      "expected_failure_mode": "F11",
+      "explanation": "Workflow handles 4 distinct concerns: other, notification, ai_processing, data_fetch",
+      "correct": false
+    },
+    {
+      "workflow_id": "16-COORD-006-simple",
+      "detector_name": "N8NCycleDetector",
+      "detected": false,
+      "confidence": 0.85,
+      "failure_mode": null,
+      "expected_failure_mode": "F11",
+      "explanation": "No cycle patterns detected in workflow execution",
+      "correct": false
+    },
+    {
+      "workflow_id": "16-COORD-006-simple",
+      "detector_name": "N8NSchemaDetector",
+      "detected": true,
+      "confidence": 0.7,
+      "failure_mode": "F12",
+      "expected_failure_mode": "F11",
+      "explanation": "Schema mismatch: 1 incompatibilities found between nodes",
+      "correct": false
+    },
+    {
+      "workflow_id": "16-COORD-006-simple",
+      "detector_name": "N8NResourceDetector",
+      "detected": false,
+      "confidence": 0.85,
+      "failure_mode": null,
+      "expected_failure_mode": "F11",
+      "explanation": "No resource abuse patterns detected",
+      "correct": false
+    },
+    {
+      "workflow_id": "16-COORD-006-simple",
+      "detector_name": "N8NTimeoutDetector",
+      "detected": false,
+      "confidence": 0.0,
+      "failure_mode": null,
+      "expected_failure_mode": "F11",
+      "explanation": "No timeout issues detected",
+      "correct": false
+    },
+    {
+      "workflow_id": "16-COORD-006-simple",
+      "detector_name": "N8NErrorDetector",
+      "detected": false,
+      "confidence": 0.0,
+      "failure_mode": null,
+      "expected_failure_mode": "F11",
+      "explanation": "No error handling issues detected",
+      "correct": false
+    },
+    {
+      "workflow_id": "16-COORD-006-simple",
+      "detector_name": "N8NComplexityDetector",
+      "detected": true,
+      "confidence": 0.75,
+      "failure_mode": "F15",
+      "expected_failure_mode": "F11",
+      "explanation": "Workflow handles 4 distinct concerns: other, notification, ai_processing, data_fetch",
+      "correct": false
+    },
+    {
+      "workflow_id": "09-COORD-003-vcomplex",
+      "detector_name": "N8NCycleDetector",
+      "detected": true,
+      "confidence": 0.6781,
+      "failure_mode": "F11",
+      "expected_failure_mode": "F11",
+      "explanation": "Workflow cycle detected: 1 patterns found (content similarity: 0.81)",
+      "correct": true
+    },
+    {
+      "workflow_id": "09-COORD-003-vcomplex",
+      "detector_name": "N8NSchemaDetector",
+      "detected": true,
+      "confidence": 0.7,
+      "failure_mode": "F12",
+      "expected_failure_mode": "F11",
+      "explanation": "Schema mismatch: 1 incompatibilities found between nodes",
+      "correct": false
+    },
+    {
+      "workflow_id": "09-COORD-003-vcomplex",
+      "detector_name": "N8NResourceDetector",
+      "detected": false,
+      "confidence": 0.85,
+      "failure_mode": null,
+      "expected_failure_mode": "F11",
+      "explanation": "No resource abuse patterns detected",
+      "correct": false
+    },
+    {
+      "workflow_id": "09-COORD-003-vcomplex",
+      "detector_name": "N8NTimeoutDetector",
+      "detected": false,
+      "confidence": 0.0,
+      "failure_mode": null,
+      "expected_failure_mode": "F11",
+      "explanation": "No timeout issues detected",
+      "correct": false
+    },
+    {
+      "workflow_id": "09-COORD-003-vcomplex",
+      "detector_name": "N8NErrorDetector",
+      "detected": false,
+      "confidence": 0.0,
+      "failure_mode": null,
+      "expected_failure_mode": "F11",
+      "explanation": "No error handling issues detected",
+      "correct": false
+    },
+    {
+      "workflow_id": "09-COORD-003-vcomplex",
+      "detector_name": "N8NComplexityDetector",
+      "detected": true,
+      "confidence": 0.75,
+      "failure_mode": "F15",
+      "expected_failure_mode": "F11",
+      "explanation": "Workflow handles 4 distinct concerns: other, notification, ai_processing, data_fetch",
+      "correct": false
+    },
+    {
+      "workflow_id": "05-COORD-002-complex",
+      "detector_name": "N8NCycleDetector",
+      "detected": false,
+      "confidence": 0.85,
+      "failure_mode": null,
+      "expected_failure_mode": "F11",
+      "explanation": "No cycle patterns detected in workflow execution",
+      "correct": false
+    },
+    {
+      "workflow_id": "05-COORD-002-complex",
+      "detector_name": "N8NSchemaDetector",
+      "detected": true,
+      "confidence": 0.8,
+      "failure_mode": "F12",
+      "expected_failure_mode": "F11",
+      "explanation": "Schema mismatch: 2 incompatibilities found between nodes",
+      "correct": false
+    },
+    {
+      "workflow_id": "05-COORD-002-complex",
+      "detector_name": "N8NResourceDetector",
+      "detected": false,
+      "confidence": 0.85,
+      "failure_mode": null,
+      "expected_failure_mode": "F11",
+      "explanation": "No resource abuse patterns detected",
+      "correct": false
+    },
+    {
+      "workflow_id": "05-COORD-002-complex",
+      "detector_name": "N8NTimeoutDetector",
+      "detected": false,
+      "confidence": 0.0,
+      "failure_mode": null,
+      "expected_failure_mode": "F11",
+      "explanation": "No timeout issues detected",
+      "correct": false
+    },
+    {
+      "workflow_id": "05-COORD-002-complex",
+      "detector_name": "N8NErrorDetector",
+      "detected": false,
+      "confidence": 0.0,
+      "failure_mode": null,
+      "expected_failure_mode": "F11",
+      "explanation": "No error handling issues detected",
+      "correct": false
+    },
+    {
+      "workflow_id": "05-COORD-002-complex",
+      "detector_name": "N8NComplexityDetector",
+      "detected": true,
+      "confidence": 0.75,
+      "failure_mode": "F15",
+      "expected_failure_mode": "F11",
+      "explanation": "Workflow handles 4 distinct concerns: other, notification, data_fetch, ai_processing",
+      "correct": false
+    },
+    {
+      "workflow_id": "11-PERSONA-004-complex",
+      "detector_name": "N8NCycleDetector",
+      "detected": false,
+      "confidence": 0.85,
+      "failure_mode": null,
+      "expected_failure_mode": "F4",
+      "explanation": "No cycle patterns detected in workflow execution",
+      "correct": false
+    },
+    {
+      "workflow_id": "11-PERSONA-004-complex",
+      "detector_name": "N8NSchemaDetector",
+      "detected": true,
+      "confidence": 0.7,
+      "failure_mode": "F12",
+      "expected_failure_mode": "F4",
+      "explanation": "Schema mismatch: 1 incompatibilities found between nodes",
+      "correct": false
+    },
+    {
+      "workflow_id": "11-PERSONA-004-complex",
+      "detector_name": "N8NResourceDetector",
+      "detected": false,
+      "confidence": 0.85,
+      "failure_mode": null,
+      "expected_failure_mode": "F4",
+      "explanation": "No resource abuse patterns detected",
+      "correct": false
+    },
+    {
+      "workflow_id": "11-PERSONA-004-complex",
+      "detector_name": "N8NTimeoutDetector",
+      "detected": false,
+      "confidence": 0.0,
+      "failure_mode": null,
+      "expected_failure_mode": "F4",
+      "explanation": "No timeout issues detected",
+      "correct": false
+    },
+    {
+      "workflow_id": "11-PERSONA-004-complex",
+      "detector_name": "N8NErrorDetector",
+      "detected": false,
+      "confidence": 0.0,
+      "failure_mode": null,
+      "expected_failure_mode": "F4",
+      "explanation": "No error handling issues detected",
+      "correct": false
+    },
+    {
+      "workflow_id": "11-PERSONA-004-complex",
+      "detector_name": "N8NComplexityDetector",
+      "detected": true,
+      "confidence": 0.75,
+      "failure_mode": "F15",
+      "expected_failure_mode": "F4",
+      "explanation": "Workflow handles 4 distinct concerns: other, notification, data_fetch, ai_processing",
+      "correct": false
+    },
+    {
+      "workflow_id": "15-PERSONA-005-vcomplex",
+      "detector_name": "N8NCycleDetector",
+      "detected": false,
+      "confidence": 0.85,
+      "failure_mode": null,
+      "expected_failure_mode": "F4",
+      "explanation": "No cycle patterns detected in workflow execution",
+      "correct": false
+    },
+    {
+      "workflow_id": "15-PERSONA-005-vcomplex",
+      "detector_name": "N8NSchemaDetector",
+      "detected": true,
+      "confidence": 0.7,
+      "failure_mode": "F12",
+      "expected_failure_mode": "F4",
+      "explanation": "Schema mismatch: 1 incompatibilities found between nodes",
+      "correct": false
+    },
+    {
+      "workflow_id": "15-PERSONA-005-vcomplex",
+      "detector_name": "N8NResourceDetector",
+      "detected": false,
+      "confidence": 0.85,
+      "failure_mode": null,
+      "expected_failure_mode": "F4",
+      "explanation": "No resource abuse patterns detected",
+      "correct": false
+    },
+    {
+      "workflow_id": "15-PERSONA-005-vcomplex",
+      "detector_name": "N8NTimeoutDetector",
+      "detected": false,
+      "confidence": 0.0,
+      "failure_mode": null,
+      "expected_failure_mode": "F4",
+      "explanation": "No timeout issues detected",
+      "correct": false
+    },
+    {
+      "workflow_id": "15-PERSONA-005-vcomplex",
+      "detector_name": "N8NErrorDetector",
+      "detected": false,
+      "confidence": 0.0,
+      "failure_mode": null,
+      "expected_failure_mode": "F4",
+      "explanation": "No error handling issues detected",
+      "correct": false
+    },
+    {
+      "workflow_id": "15-PERSONA-005-vcomplex",
+      "detector_name": "N8NComplexityDetector",
+      "detected": true,
+      "confidence": 0.75,
+      "failure_mode": "F15",
+      "expected_failure_mode": "F4",
+      "explanation": "Workflow handles 4 distinct concerns: other, notification, ai_processing, data_fetch",
+      "correct": false
+    },
+    {
+      "workflow_id": "14-PERSONA-005-complex",
+      "detector_name": "N8NCycleDetector",
+      "detected": true,
+      "confidence": 0.6573,
+      "failure_mode": "F11",
+      "expected_failure_mode": "F4",
+      "explanation": "Workflow cycle detected: 1 patterns found (content similarity: 0.75)",
+      "correct": false
+    },
+    {
+      "workflow_id": "14-PERSONA-005-complex",
+      "detector_name": "N8NSchemaDetector",
+      "detected": true,
+      "confidence": 0.7,
+      "failure_mode": "F12",
+      "expected_failure_mode": "F4",
+      "explanation": "Schema mismatch: 1 incompatibilities found between nodes",
+      "correct": false
+    },
+    {
+      "workflow_id": "14-PERSONA-005-complex",
+      "detector_name": "N8NResourceDetector",
+      "detected": false,
+      "confidence": 0.85,
+      "failure_mode": null,
+      "expected_failure_mode": "F4",
+      "explanation": "No resource abuse patterns detected",
+      "correct": false
+    },
+    {
+      "workflow_id": "14-PERSONA-005-complex",
+      "detector_name": "N8NTimeoutDetector",
+      "detected": false,
+      "confidence": 0.0,
+      "failure_mode": null,
+      "expected_failure_mode": "F4",
+      "explanation": "No timeout issues detected",
+      "correct": false
+    },
+    {
+      "workflow_id": "14-PERSONA-005-complex",
+      "detector_name": "N8NErrorDetector",
+      "detected": false,
+      "confidence": 0.0,
+      "failure_mode": null,
+      "expected_failure_mode": "F4",
+      "explanation": "No error handling issues detected",
+      "correct": false
+    },
+    {
+      "workflow_id": "14-PERSONA-005-complex",
+      "detector_name": "N8NComplexityDetector",
+      "detected": true,
+      "confidence": 0.75,
+      "failure_mode": "F15",
+      "expected_failure_mode": "F4",
+      "explanation": "Workflow handles 4 distinct concerns: other, notification, data_fetch, ai_processing",
+      "correct": false
+    },
+    {
+      "workflow_id": "10-PERSONA-004-simple",
+      "detector_name": "N8NCycleDetector",
+      "detected": false,
+      "confidence": 0.85,
+      "failure_mode": null,
+      "expected_failure_mode": "F4",
+      "explanation": "No cycle patterns detected in workflow execution",
+      "correct": false
+    },
+    {
+      "workflow_id": "10-PERSONA-004-simple",
+      "detector_name": "N8NSchemaDetector",
+      "detected": true,
+      "confidence": 0.7,
+      "failure_mode": "F12",
+      "expected_failure_mode": "F4",
+      "explanation": "Schema mismatch: 1 incompatibilities found between nodes",
+      "correct": false
+    },
+    {
+      "workflow_id": "10-PERSONA-004-simple",
+      "detector_name": "N8NResourceDetector",
+      "detected": false,
+      "confidence": 0.85,
+      "failure_mode": null,
+      "expected_failure_mode": "F4",
+      "explanation": "No resource abuse patterns detected",
+      "correct": false
+    },
+    {
+      "workflow_id": "10-PERSONA-004-simple",
+      "detector_name": "N8NTimeoutDetector",
+      "detected": false,
+      "confidence": 0.0,
+      "failure_mode": null,
+      "expected_failure_mode": "F4",
+      "explanation": "No timeout issues detected",
+      "correct": false
+    },
+    {
+      "workflow_id": "10-PERSONA-004-simple",
+      "detector_name": "N8NErrorDetector",
+      "detected": false,
+      "confidence": 0.0,
+      "failure_mode": null,
+      "expected_failure_mode": "F4",
+      "explanation": "No error handling issues detected",
+      "correct": false
+    },
+    {
+      "workflow_id": "10-PERSONA-004-simple",
+      "detector_name": "N8NComplexityDetector",
+      "detected": true,
+      "confidence": 0.75,
+      "failure_mode": "F15",
+      "expected_failure_mode": "F4",
+      "explanation": "Workflow handles 4 distinct concerns: other, notification, ai_processing, data_fetch",
+      "correct": false
+    },
+    {
+      "workflow_id": "04-PERSONA-002-simple",
+      "detector_name": "N8NCycleDetector",
+      "detected": false,
+      "confidence": 0.85,
+      "failure_mode": null,
+      "expected_failure_mode": "F4",
+      "explanation": "No cycle patterns detected in workflow execution",
+      "correct": false
+    },
+    {
+      "workflow_id": "04-PERSONA-002-simple",
+      "detector_name": "N8NSchemaDetector",
+      "detected": true,
+      "confidence": 0.7,
+      "failure_mode": "F12",
+      "expected_failure_mode": "F4",
+      "explanation": "Schema mismatch: 1 incompatibilities found between nodes",
+      "correct": false
+    },
+    {
+      "workflow_id": "04-PERSONA-002-simple",
+      "detector_name": "N8NResourceDetector",
+      "detected": false,
+      "confidence": 0.85,
+      "failure_mode": null,
+      "expected_failure_mode": "F4",
+      "explanation": "No resource abuse patterns detected",
+      "correct": false
+    },
+    {
+      "workflow_id": "04-PERSONA-002-simple",
+      "detector_name": "N8NTimeoutDetector",
+      "detected": false,
+      "confidence": 0.0,
+      "failure_mode": null,
+      "expected_failure_mode": "F4",
+      "explanation": "No timeout issues detected",
+      "correct": false
+    },
+    {
+      "workflow_id": "04-PERSONA-002-simple",
+      "detector_name": "N8NErrorDetector",
+      "detected": false,
+      "confidence": 0.0,
+      "failure_mode": null,
+      "expected_failure_mode": "F4",
+      "explanation": "No error handling issues detected",
+      "correct": false
+    },
+    {
+      "workflow_id": "04-PERSONA-002-simple",
+      "detector_name": "N8NComplexityDetector",
+      "detected": true,
+      "confidence": 0.75,
+      "failure_mode": "F15",
+      "expected_failure_mode": "F4",
+      "explanation": "Workflow handles 4 distinct concerns: other, notification, ai_processing, data_fetch",
+      "correct": false
+    },
+    {
+      "workflow_id": "09-PERSONA-003-vcomplex",
+      "detector_name": "N8NCycleDetector",
+      "detected": false,
+      "confidence": 0.85,
+      "failure_mode": null,
+      "expected_failure_mode": "F4",
+      "explanation": "No cycle patterns detected in workflow execution",
+      "correct": false
+    },
+    {
+      "workflow_id": "09-PERSONA-003-vcomplex",
+      "detector_name": "N8NSchemaDetector",
+      "detected": true,
+      "confidence": 0.7,
+      "failure_mode": "F12",
+      "expected_failure_mode": "F4",
+      "explanation": "Schema mismatch: 1 incompatibilities found between nodes",
+      "correct": false
+    },
+    {
+      "workflow_id": "09-PERSONA-003-vcomplex",
+      "detector_name": "N8NResourceDetector",
+      "detected": false,
+      "confidence": 0.85,
+      "failure_mode": null,
+      "expected_failure_mode": "F4",
+      "explanation": "No resource abuse patterns detected",
+      "correct": false
+    },
+    {
+      "workflow_id": "09-PERSONA-003-vcomplex",
+      "detector_name": "N8NTimeoutDetector",
+      "detected": false,
+      "confidence": 0.0,
+      "failure_mode": null,
+      "expected_failure_mode": "F4",
+      "explanation": "No timeout issues detected",
+      "correct": false
+    },
+    {
+      "workflow_id": "09-PERSONA-003-vcomplex",
+      "detector_name": "N8NErrorDetector",
+      "detected": false,
+      "confidence": 0.0,
+      "failure_mode": null,
+      "expected_failure_mode": "F4",
+      "explanation": "No error handling issues detected",
+      "correct": false
+    },
+    {
+      "workflow_id": "09-PERSONA-003-vcomplex",
+      "detector_name": "N8NComplexityDetector",
+      "detected": true,
+      "confidence": 0.75,
+      "failure_mode": "F15",
+      "expected_failure_mode": "F4",
+      "explanation": "Workflow handles 4 distinct concerns: other, notification, ai_processing, data_fetch",
+      "correct": false
+    },
+    {
+      "workflow_id": "01-PERSONA-001-simple",
+      "detector_name": "N8NCycleDetector",
+      "detected": false,
+      "confidence": 0.85,
+      "failure_mode": null,
+      "expected_failure_mode": "F4",
+      "explanation": "No cycle patterns detected in workflow execution",
+      "correct": false
+    },
+    {
+      "workflow_id": "01-PERSONA-001-simple",
+      "detector_name": "N8NSchemaDetector",
+      "detected": true,
+      "confidence": 0.7,
+      "failure_mode": "F12",
+      "expected_failure_mode": "F4",
+      "explanation": "Schema mismatch: 1 incompatibilities found between nodes",
+      "correct": false
+    },
+    {
+      "workflow_id": "01-PERSONA-001-simple",
+      "detector_name": "N8NResourceDetector",
+      "detected": false,
+      "confidence": 0.85,
+      "failure_mode": null,
+      "expected_failure_mode": "F4",
+      "explanation": "No resource abuse patterns detected",
+      "correct": false
+    },
+    {
+      "workflow_id": "01-PERSONA-001-simple",
+      "detector_name": "N8NTimeoutDetector",
+      "detected": false,
+      "confidence": 0.0,
+      "failure_mode": null,
+      "expected_failure_mode": "F4",
+      "explanation": "No timeout issues detected",
+      "correct": false
+    },
+    {
+      "workflow_id": "01-PERSONA-001-simple",
+      "detector_name": "N8NErrorDetector",
+      "detected": false,
+      "confidence": 0.0,
+      "failure_mode": null,
+      "expected_failure_mode": "F4",
+      "explanation": "No error handling issues detected",
+      "correct": false
+    },
+    {
+      "workflow_id": "01-PERSONA-001-simple",
+      "detector_name": "N8NComplexityDetector",
+      "detected": true,
+      "confidence": 0.75,
+      "failure_mode": "F15",
+      "expected_failure_mode": "F4",
+      "explanation": "Workflow handles 4 distinct concerns: other, notification, ai_processing, data_fetch",
+      "correct": false
+    },
+    {
+      "workflow_id": "12-PERSONA-004-vcomplex",
+      "detector_name": "N8NCycleDetector",
+      "detected": false,
+      "confidence": 0.85,
+      "failure_mode": null,
+      "expected_failure_mode": "F4",
+      "explanation": "No cycle patterns detected in workflow execution",
+      "correct": false
+    },
+    {
+      "workflow_id": "12-PERSONA-004-vcomplex",
+      "detector_name": "N8NSchemaDetector",
+      "detected": true,
+      "confidence": 0.7,
+      "failure_mode": "F12",
+      "expected_failure_mode": "F4",
+      "explanation": "Schema mismatch: 1 incompatibilities found between nodes",
+      "correct": false
+    },
+    {
+      "workflow_id": "12-PERSONA-004-vcomplex",
+      "detector_name": "N8NResourceDetector",
+      "detected": false,
+      "confidence": 0.85,
+      "failure_mode": null,
+      "expected_failure_mode": "F4",
+      "explanation": "No resource abuse patterns detected",
+      "correct": false
+    },
+    {
+      "workflow_id": "12-PERSONA-004-vcomplex",
+      "detector_name": "N8NTimeoutDetector",
+      "detected": false,
+      "confidence": 0.0,
+      "failure_mode": null,
+      "expected_failure_mode": "F4",
+      "explanation": "No timeout issues detected",
+      "correct": false
+    },
+    {
+      "workflow_id": "12-PERSONA-004-vcomplex",
+      "detector_name": "N8NErrorDetector",
+      "detected": false,
+      "confidence": 0.0,
+      "failure_mode": null,
+      "expected_failure_mode": "F4",
+      "explanation": "No error handling issues detected",
+      "correct": false
+    },
+    {
+      "workflow_id": "12-PERSONA-004-vcomplex",
+      "detector_name": "N8NComplexityDetector",
+      "detected": true,
+      "confidence": 0.75,
+      "failure_mode": "F15",
+      "expected_failure_mode": "F4",
+      "explanation": "Workflow handles 4 distinct concerns: other, notification, ai_processing, data_fetch",
+      "correct": false
+    },
+    {
+      "workflow_id": "08-PERSONA-003-complex",
+      "detector_name": "N8NCycleDetector",
+      "detected": false,
+      "confidence": 0.85,
+      "failure_mode": null,
+      "expected_failure_mode": "F4",
+      "explanation": "No cycle patterns detected in workflow execution",
+      "correct": false
+    },
+    {
+      "workflow_id": "08-PERSONA-003-complex",
+      "detector_name": "N8NSchemaDetector",
+      "detected": true,
+      "confidence": 0.7,
+      "failure_mode": "F12",
+      "expected_failure_mode": "F4",
+      "explanation": "Schema mismatch: 1 incompatibilities found between nodes",
+      "correct": false
+    },
+    {
+      "workflow_id": "08-PERSONA-003-complex",
+      "detector_name": "N8NResourceDetector",
+      "detected": false,
+      "confidence": 0.85,
+      "failure_mode": null,
+      "expected_failure_mode": "F4",
+      "explanation": "No resource abuse patterns detected",
+      "correct": false
+    },
+    {
+      "workflow_id": "08-PERSONA-003-complex",
+      "detector_name": "N8NTimeoutDetector",
+      "detected": false,
+      "confidence": 0.0,
+      "failure_mode": null,
+      "expected_failure_mode": "F4",
+      "explanation": "No timeout issues detected",
+      "correct": false
+    },
+    {
+      "workflow_id": "08-PERSONA-003-complex",
+      "detector_name": "N8NErrorDetector",
+      "detected": false,
+      "confidence": 0.0,
+      "failure_mode": null,
+      "expected_failure_mode": "F4",
+      "explanation": "No error handling issues detected",
+      "correct": false
+    },
+    {
+      "workflow_id": "08-PERSONA-003-complex",
+      "detector_name": "N8NComplexityDetector",
+      "detected": true,
+      "confidence": 0.75,
+      "failure_mode": "F15",
+      "expected_failure_mode": "F4",
+      "explanation": "Workflow handles 4 distinct concerns: other, notification, data_fetch, ai_processing",
+      "correct": false
+    },
+    {
+      "workflow_id": "07-PERSONA-003-simple",
+      "detector_name": "N8NCycleDetector",
+      "detected": false,
+      "confidence": 0.85,
+      "failure_mode": null,
+      "expected_failure_mode": "F4",
+      "explanation": "No cycle patterns detected in workflow execution",
+      "correct": false
+    },
+    {
+      "workflow_id": "07-PERSONA-003-simple",
+      "detector_name": "N8NSchemaDetector",
+      "detected": true,
+      "confidence": 0.7,
+      "failure_mode": "F12",
+      "expected_failure_mode": "F4",
+      "explanation": "Schema mismatch: 1 incompatibilities found between nodes",
+      "correct": false
+    },
+    {
+      "workflow_id": "07-PERSONA-003-simple",
+      "detector_name": "N8NResourceDetector",
+      "detected": false,
+      "confidence": 0.85,
+      "failure_mode": null,
+      "expected_failure_mode": "F4",
+      "explanation": "No resource abuse patterns detected",
+      "correct": false
+    },
+    {
+      "workflow_id": "07-PERSONA-003-simple",
+      "detector_name": "N8NTimeoutDetector",
+      "detected": false,
+      "confidence": 0.0,
+      "failure_mode": null,
+      "expected_failure_mode": "F4",
+      "explanation": "No timeout issues detected",
+      "correct": false
+    },
+    {
+      "workflow_id": "07-PERSONA-003-simple",
+      "detector_name": "N8NErrorDetector",
+      "detected": false,
+      "confidence": 0.0,
+      "failure_mode": null,
+      "expected_failure_mode": "F4",
+      "explanation": "No error handling issues detected",
+      "correct": false
+    },
+    {
+      "workflow_id": "07-PERSONA-003-simple",
+      "detector_name": "N8NComplexityDetector",
+      "detected": true,
+      "confidence": 0.75,
+      "failure_mode": "F15",
+      "expected_failure_mode": "F4",
+      "explanation": "Workflow handles 4 distinct concerns: other, notification, ai_processing, data_fetch",
+      "correct": false
+    },
+    {
+      "workflow_id": "13-PERSONA-005-simple",
+      "detector_name": "N8NCycleDetector",
+      "detected": true,
+      "confidence": 0.6587,
+      "failure_mode": "F11",
+      "expected_failure_mode": "F4",
+      "explanation": "Workflow cycle detected: 1 patterns found (content similarity: 0.76)",
+      "correct": false
+    },
+    {
+      "workflow_id": "13-PERSONA-005-simple",
+      "detector_name": "N8NSchemaDetector",
+      "detected": true,
+      "confidence": 0.7,
+      "failure_mode": "F12",
+      "expected_failure_mode": "F4",
+      "explanation": "Schema mismatch: 1 incompatibilities found between nodes",
+      "correct": false
+    },
+    {
+      "workflow_id": "13-PERSONA-005-simple",
+      "detector_name": "N8NResourceDetector",
+      "detected": false,
+      "confidence": 0.85,
+      "failure_mode": null,
+      "expected_failure_mode": "F4",
+      "explanation": "No resource abuse patterns detected",
+      "correct": false
+    },
+    {
+      "workflow_id": "13-PERSONA-005-simple",
+      "detector_name": "N8NTimeoutDetector",
+      "detected": false,
+      "confidence": 0.0,
+      "failure_mode": null,
+      "expected_failure_mode": "F4",
+      "explanation": "No timeout issues detected",
+      "correct": false
+    },
+    {
+      "workflow_id": "13-PERSONA-005-simple",
+      "detector_name": "N8NErrorDetector",
+      "detected": false,
+      "confidence": 0.0,
+      "failure_mode": null,
+      "expected_failure_mode": "F4",
+      "explanation": "No error handling issues detected",
+      "correct": false
+    },
+    {
+      "workflow_id": "13-PERSONA-005-simple",
+      "detector_name": "N8NComplexityDetector",
+      "detected": true,
+      "confidence": 0.75,
+      "failure_mode": "F15",
+      "expected_failure_mode": "F4",
+      "explanation": "Workflow handles 4 distinct concerns: other, notification, ai_processing, data_fetch",
+      "correct": false
+    },
+    {
+      "workflow_id": "06-PERSONA-002-vcomplex",
+      "detector_name": "N8NCycleDetector",
+      "detected": false,
+      "confidence": 0.85,
+      "failure_mode": null,
+      "expected_failure_mode": "F4",
+      "explanation": "No cycle patterns detected in workflow execution",
+      "correct": false
+    },
+    {
+      "workflow_id": "06-PERSONA-002-vcomplex",
+      "detector_name": "N8NSchemaDetector",
+      "detected": true,
+      "confidence": 0.7,
+      "failure_mode": "F12",
+      "expected_failure_mode": "F4",
+      "explanation": "Schema mismatch: 1 incompatibilities found between nodes",
+      "correct": false
+    },
+    {
+      "workflow_id": "06-PERSONA-002-vcomplex",
+      "detector_name": "N8NResourceDetector",
+      "detected": false,
+      "confidence": 0.85,
+      "failure_mode": null,
+      "expected_failure_mode": "F4",
+      "explanation": "No resource abuse patterns detected",
+      "correct": false
+    },
+    {
+      "workflow_id": "06-PERSONA-002-vcomplex",
+      "detector_name": "N8NTimeoutDetector",
+      "detected": false,
+      "confidence": 0.0,
+      "failure_mode": null,
+      "expected_failure_mode": "F4",
+      "explanation": "No timeout issues detected",
+      "correct": false
+    },
+    {
+      "workflow_id": "06-PERSONA-002-vcomplex",
+      "detector_name": "N8NErrorDetector",
+      "detected": false,
+      "confidence": 0.0,
+      "failure_mode": null,
+      "expected_failure_mode": "F4",
+      "explanation": "No error handling issues detected",
+      "correct": false
+    },
+    {
+      "workflow_id": "06-PERSONA-002-vcomplex",
+      "detector_name": "N8NComplexityDetector",
+      "detected": true,
+      "confidence": 0.75,
+      "failure_mode": "F15",
+      "expected_failure_mode": "F4",
+      "explanation": "Workflow handles 4 distinct concerns: other, notification, ai_processing, data_fetch",
+      "correct": false
+    },
+    {
+      "workflow_id": "02-PERSONA-001-complex",
+      "detector_name": "N8NCycleDetector",
+      "detected": false,
+      "confidence": 0.85,
+      "failure_mode": null,
+      "expected_failure_mode": "F4",
+      "explanation": "No cycle patterns detected in workflow execution",
+      "correct": false
+    },
+    {
+      "workflow_id": "02-PERSONA-001-complex",
+      "detector_name": "N8NSchemaDetector",
+      "detected": true,
+      "confidence": 0.7,
+      "failure_mode": "F12",
+      "expected_failure_mode": "F4",
+      "explanation": "Schema mismatch: 1 incompatibilities found between nodes",
+      "correct": false
+    },
+    {
+      "workflow_id": "02-PERSONA-001-complex",
+      "detector_name": "N8NResourceDetector",
+      "detected": false,
+      "confidence": 0.85,
+      "failure_mode": null,
+      "expected_failure_mode": "F4",
+      "explanation": "No resource abuse patterns detected",
+      "correct": false
+    },
+    {
+      "workflow_id": "02-PERSONA-001-complex",
+      "detector_name": "N8NTimeoutDetector",
+      "detected": false,
+      "confidence": 0.0,
+      "failure_mode": null,
+      "expected_failure_mode": "F4",
+      "explanation": "No timeout issues detected",
+      "correct": false
+    },
+    {
+      "workflow_id": "02-PERSONA-001-complex",
+      "detector_name": "N8NErrorDetector",
+      "detected": false,
+      "confidence": 0.0,
+      "failure_mode": null,
+      "expected_failure_mode": "F4",
+      "explanation": "No error handling issues detected",
+      "correct": false
+    },
+    {
+      "workflow_id": "02-PERSONA-001-complex",
+      "detector_name": "N8NComplexityDetector",
+      "detected": true,
+      "confidence": 0.75,
+      "failure_mode": "F15",
+      "expected_failure_mode": "F4",
+      "explanation": "Workflow handles 4 distinct concerns: other, notification, data_fetch, ai_processing",
+      "correct": false
+    },
+    {
+      "workflow_id": "05-PERSONA-002-complex",
+      "detector_name": "N8NCycleDetector",
+      "detected": false,
+      "confidence": 0.85,
+      "failure_mode": null,
+      "expected_failure_mode": "F4",
+      "explanation": "No cycle patterns detected in workflow execution",
+      "correct": false
+    },
+    {
+      "workflow_id": "05-PERSONA-002-complex",
+      "detector_name": "N8NSchemaDetector",
+      "detected": true,
+      "confidence": 0.7,
+      "failure_mode": "F12",
+      "expected_failure_mode": "F4",
+      "explanation": "Schema mismatch: 1 incompatibilities found between nodes",
+      "correct": false
+    },
+    {
+      "workflow_id": "05-PERSONA-002-complex",
+      "detector_name": "N8NResourceDetector",
+      "detected": false,
+      "confidence": 0.85,
+      "failure_mode": null,
+      "expected_failure_mode": "F4",
+      "explanation": "No resource abuse patterns detected",
+      "correct": false
+    },
+    {
+      "workflow_id": "05-PERSONA-002-complex",
+      "detector_name": "N8NTimeoutDetector",
+      "detected": false,
+      "confidence": 0.0,
+      "failure_mode": null,
+      "expected_failure_mode": "F4",
+      "explanation": "No timeout issues detected",
+      "correct": false
+    },
+    {
+      "workflow_id": "05-PERSONA-002-complex",
+      "detector_name": "N8NErrorDetector",
+      "detected": false,
+      "confidence": 0.0,
+      "failure_mode": null,
+      "expected_failure_mode": "F4",
+      "explanation": "No error handling issues detected",
+      "correct": false
+    },
+    {
+      "workflow_id": "05-PERSONA-002-complex",
+      "detector_name": "N8NComplexityDetector",
+      "detected": true,
+      "confidence": 0.75,
+      "failure_mode": "F15",
+      "expected_failure_mode": "F4",
+      "explanation": "Workflow handles 4 distinct concerns: other, notification, data_fetch, ai_processing",
+      "correct": false
+    },
+    {
+      "workflow_id": "03-PERSONA-001-vcomplex",
+      "detector_name": "N8NCycleDetector",
+      "detected": false,
+      "confidence": 0.85,
+      "failure_mode": null,
+      "expected_failure_mode": "F4",
+      "explanation": "No cycle patterns detected in workflow execution",
+      "correct": false
+    },
+    {
+      "workflow_id": "03-PERSONA-001-vcomplex",
+      "detector_name": "N8NSchemaDetector",
+      "detected": true,
+      "confidence": 0.7,
+      "failure_mode": "F12",
+      "expected_failure_mode": "F4",
+      "explanation": "Schema mismatch: 1 incompatibilities found between nodes",
+      "correct": false
+    },
+    {
+      "workflow_id": "03-PERSONA-001-vcomplex",
+      "detector_name": "N8NResourceDetector",
+      "detected": false,
+      "confidence": 0.85,
+      "failure_mode": null,
+      "expected_failure_mode": "F4",
+      "explanation": "No resource abuse patterns detected",
+      "correct": false
+    },
+    {
+      "workflow_id": "03-PERSONA-001-vcomplex",
+      "detector_name": "N8NTimeoutDetector",
+      "detected": false,
+      "confidence": 0.0,
+      "failure_mode": null,
+      "expected_failure_mode": "F4",
+      "explanation": "No timeout issues detected",
+      "correct": false
+    },
+    {
+      "workflow_id": "03-PERSONA-001-vcomplex",
+      "detector_name": "N8NErrorDetector",
+      "detected": false,
+      "confidence": 0.0,
+      "failure_mode": null,
+      "expected_failure_mode": "F4",
+      "explanation": "No error handling issues detected",
+      "correct": false
+    },
+    {
+      "workflow_id": "03-PERSONA-001-vcomplex",
+      "detector_name": "N8NComplexityDetector",
+      "detected": true,
+      "confidence": 0.75,
+      "failure_mode": "F15",
+      "expected_failure_mode": "F4",
+      "explanation": "Workflow handles 4 distinct concerns: other, notification, ai_processing, data_fetch",
+      "correct": false
+    },
+    {
+      "workflow_id": "12-STATE-004-vcomplex",
+      "detector_name": "N8NCycleDetector",
+      "detected": false,
+      "confidence": 0.85,
+      "failure_mode": null,
+      "expected_failure_mode": "F2",
+      "explanation": "No cycle patterns detected in workflow execution",
+      "correct": false
+    },
+    {
+      "workflow_id": "12-STATE-004-vcomplex",
+      "detector_name": "N8NSchemaDetector",
+      "detected": true,
+      "confidence": 0.7,
+      "failure_mode": "F12",
+      "expected_failure_mode": "F2",
+      "explanation": "Schema mismatch: 1 incompatibilities found between nodes",
+      "correct": false
+    },
+    {
+      "workflow_id": "12-STATE-004-vcomplex",
+      "detector_name": "N8NResourceDetector",
+      "detected": false,
+      "confidence": 0.85,
+      "failure_mode": null,
+      "expected_failure_mode": "F2",
+      "explanation": "No resource abuse patterns detected",
+      "correct": false
+    },
+    {
+      "workflow_id": "12-STATE-004-vcomplex",
+      "detector_name": "N8NTimeoutDetector",
+      "detected": false,
+      "confidence": 0.0,
+      "failure_mode": null,
+      "expected_failure_mode": "F2",
+      "explanation": "No timeout issues detected",
+      "correct": false
+    },
+    {
+      "workflow_id": "12-STATE-004-vcomplex",
+      "detector_name": "N8NErrorDetector",
+      "detected": false,
+      "confidence": 0.0,
+      "failure_mode": null,
+      "expected_failure_mode": "F2",
+      "explanation": "No error handling issues detected",
+      "correct": false
+    },
+    {
+      "workflow_id": "12-STATE-004-vcomplex",
+      "detector_name": "N8NComplexityDetector",
+      "detected": true,
+      "confidence": 0.75,
+      "failure_mode": "F15",
+      "expected_failure_mode": "F2",
+      "explanation": "Workflow handles 4 distinct concerns: other, notification, ai_processing, data_fetch",
+      "correct": false
+    },
+    {
+      "workflow_id": "14-STATE-005-complex",
+      "detector_name": "N8NCycleDetector",
+      "detected": false,
+      "confidence": 0.85,
+      "failure_mode": null,
+      "expected_failure_mode": "F2",
+      "explanation": "No cycle patterns detected in workflow execution",
+      "correct": false
+    },
+    {
+      "workflow_id": "14-STATE-005-complex",
+      "detector_name": "N8NSchemaDetector",
+      "detected": true,
+      "confidence": 0.7,
+      "failure_mode": "F12",
+      "expected_failure_mode": "F2",
+      "explanation": "Schema mismatch: 1 incompatibilities found between nodes",
+      "correct": false
+    },
+    {
+      "workflow_id": "14-STATE-005-complex",
+      "detector_name": "N8NResourceDetector",
+      "detected": false,
+      "confidence": 0.85,
+      "failure_mode": null,
+      "expected_failure_mode": "F2",
+      "explanation": "No resource abuse patterns detected",
+      "correct": false
+    },
+    {
+      "workflow_id": "14-STATE-005-complex",
+      "detector_name": "N8NTimeoutDetector",
+      "detected": false,
+      "confidence": 0.0,
+      "failure_mode": null,
+      "expected_failure_mode": "F2",
+      "explanation": "No timeout issues detected",
+      "correct": false
+    },
+    {
+      "workflow_id": "14-STATE-005-complex",
+      "detector_name": "N8NErrorDetector",
+      "detected": false,
+      "confidence": 0.0,
+      "failure_mode": null,
+      "expected_failure_mode": "F2",
+      "explanation": "No error handling issues detected",
+      "correct": false
+    },
+    {
+      "workflow_id": "14-STATE-005-complex",
+      "detector_name": "N8NComplexityDetector",
+      "detected": true,
+      "confidence": 0.75,
+      "failure_mode": "F15",
+      "expected_failure_mode": "F2",
+      "explanation": "Workflow handles 4 distinct concerns: other, notification, data_fetch, ai_processing",
+      "correct": false
+    },
+    {
+      "workflow_id": "01-STATE-001-simple",
+      "detector_name": "N8NCycleDetector",
+      "detected": false,
+      "confidence": 0.85,
+      "failure_mode": null,
+      "expected_failure_mode": "F2",
+      "explanation": "No cycle patterns detected in workflow execution",
+      "correct": false
+    },
+    {
+      "workflow_id": "01-STATE-001-simple",
+      "detector_name": "N8NSchemaDetector",
+      "detected": true,
+      "confidence": 0.7,
+      "failure_mode": "F12",
+      "expected_failure_mode": "F2",
+      "explanation": "Schema mismatch: 1 incompatibilities found between nodes",
+      "correct": false
+    },
+    {
+      "workflow_id": "01-STATE-001-simple",
+      "detector_name": "N8NResourceDetector",
+      "detected": false,
+      "confidence": 0.85,
+      "failure_mode": null,
+      "expected_failure_mode": "F2",
+      "explanation": "No resource abuse patterns detected",
+      "correct": false
+    },
+    {
+      "workflow_id": "01-STATE-001-simple",
+      "detector_name": "N8NTimeoutDetector",
+      "detected": false,
+      "confidence": 0.0,
+      "failure_mode": null,
+      "expected_failure_mode": "F2",
+      "explanation": "No timeout issues detected",
+      "correct": false
+    },
+    {
+      "workflow_id": "01-STATE-001-simple",
+      "detector_name": "N8NErrorDetector",
+      "detected": false,
+      "confidence": 0.0,
+      "failure_mode": null,
+      "expected_failure_mode": "F2",
+      "explanation": "No error handling issues detected",
+      "correct": false
+    },
+    {
+      "workflow_id": "01-STATE-001-simple",
+      "detector_name": "N8NComplexityDetector",
+      "detected": true,
+      "confidence": 0.75,
+      "failure_mode": "F15",
+      "expected_failure_mode": "F2",
+      "explanation": "Workflow handles 4 distinct concerns: other, notification, ai_processing, data_fetch",
+      "correct": false
+    },
+    {
+      "workflow_id": "02-STATE-001-complex",
+      "detector_name": "N8NCycleDetector",
+      "detected": true,
+      "confidence": 0.6699,
+      "failure_mode": "F11",
+      "expected_failure_mode": "F2",
+      "explanation": "Workflow cycle detected: 1 patterns found (content similarity: 0.79)",
+      "correct": false
+    },
+    {
+      "workflow_id": "02-STATE-001-complex",
+      "detector_name": "N8NSchemaDetector",
+      "detected": true,
+      "confidence": 0.7,
+      "failure_mode": "F12",
+      "expected_failure_mode": "F2",
+      "explanation": "Schema mismatch: 1 incompatibilities found between nodes",
+      "correct": false
+    },
+    {
+      "workflow_id": "02-STATE-001-complex",
+      "detector_name": "N8NResourceDetector",
+      "detected": false,
+      "confidence": 0.85,
+      "failure_mode": null,
+      "expected_failure_mode": "F2",
+      "explanation": "No resource abuse patterns detected",
+      "correct": false
+    },
+    {
+      "workflow_id": "02-STATE-001-complex",
+      "detector_name": "N8NTimeoutDetector",
+      "detected": false,
+      "confidence": 0.0,
+      "failure_mode": null,
+      "expected_failure_mode": "F2",
+      "explanation": "No timeout issues detected",
+      "correct": false
+    },
+    {
+      "workflow_id": "02-STATE-001-complex",
+      "detector_name": "N8NErrorDetector",
+      "detected": false,
+      "confidence": 0.0,
+      "failure_mode": null,
+      "expected_failure_mode": "F2",
+      "explanation": "No error handling issues detected",
+      "correct": false
+    },
+    {
+      "workflow_id": "02-STATE-001-complex",
+      "detector_name": "N8NComplexityDetector",
+      "detected": true,
+      "confidence": 0.75,
+      "failure_mode": "F15",
+      "expected_failure_mode": "F2",
+      "explanation": "Workflow handles 4 distinct concerns: other, notification, data_fetch, ai_processing",
+      "correct": false
+    },
+    {
+      "workflow_id": "03-STATE-001-vcomplex",
+      "detector_name": "N8NCycleDetector",
+      "detected": false,
+      "confidence": 0.85,
+      "failure_mode": null,
+      "expected_failure_mode": "F2",
+      "explanation": "No cycle patterns detected in workflow execution",
+      "correct": false
+    },
+    {
+      "workflow_id": "03-STATE-001-vcomplex",
+      "detector_name": "N8NSchemaDetector",
+      "detected": true,
+      "confidence": 0.7,
+      "failure_mode": "F12",
+      "expected_failure_mode": "F2",
+      "explanation": "Schema mismatch: 1 incompatibilities found between nodes",
+      "correct": false
+    },
+    {
+      "workflow_id": "03-STATE-001-vcomplex",
+      "detector_name": "N8NResourceDetector",
+      "detected": false,
+      "confidence": 0.85,
+      "failure_mode": null,
+      "expected_failure_mode": "F2",
+      "explanation": "No resource abuse patterns detected",
+      "correct": false
+    },
+    {
+      "workflow_id": "03-STATE-001-vcomplex",
+      "detector_name": "N8NTimeoutDetector",
+      "detected": false,
+      "confidence": 0.0,
+      "failure_mode": null,
+      "expected_failure_mode": "F2",
+      "explanation": "No timeout issues detected",
+      "correct": false
+    },
+    {
+      "workflow_id": "03-STATE-001-vcomplex",
+      "detector_name": "N8NErrorDetector",
+      "detected": false,
+      "confidence": 0.0,
+      "failure_mode": null,
+      "expected_failure_mode": "F2",
+      "explanation": "No error handling issues detected",
+      "correct": false
+    },
+    {
+      "workflow_id": "03-STATE-001-vcomplex",
+      "detector_name": "N8NComplexityDetector",
+      "detected": true,
+      "confidence": 0.75,
+      "failure_mode": "F15",
+      "expected_failure_mode": "F2",
+      "explanation": "Workflow handles 4 distinct concerns: other, notification, data_fetch, ai_processing",
+      "correct": false
+    },
+    {
+      "workflow_id": "18-STATE-006-vcomplex",
+      "detector_name": "N8NCycleDetector",
+      "detected": false,
+      "confidence": 0.85,
+      "failure_mode": null,
+      "expected_failure_mode": "F2",
+      "explanation": "No cycle patterns detected in workflow execution",
+      "correct": false
+    },
+    {
+      "workflow_id": "18-STATE-006-vcomplex",
+      "detector_name": "N8NSchemaDetector",
+      "detected": true,
+      "confidence": 0.7,
+      "failure_mode": "F12",
+      "expected_failure_mode": "F2",
+      "explanation": "Schema mismatch: 1 incompatibilities found between nodes",
+      "correct": false
+    },
+    {
+      "workflow_id": "18-STATE-006-vcomplex",
+      "detector_name": "N8NResourceDetector",
+      "detected": false,
+      "confidence": 0.85,
+      "failure_mode": null,
+      "expected_failure_mode": "F2",
+      "explanation": "No resource abuse patterns detected",
+      "correct": false
+    },
+    {
+      "workflow_id": "18-STATE-006-vcomplex",
+      "detector_name": "N8NTimeoutDetector",
+      "detected": false,
+      "confidence": 0.0,
+      "failure_mode": null,
+      "expected_failure_mode": "F2",
+      "explanation": "No timeout issues detected",
+      "correct": false
+    },
+    {
+      "workflow_id": "18-STATE-006-vcomplex",
+      "detector_name": "N8NErrorDetector",
+      "detected": false,
+      "confidence": 0.0,
+      "failure_mode": null,
+      "expected_failure_mode": "F2",
+      "explanation": "No error handling issues detected",
+      "correct": false
+    },
+    {
+      "workflow_id": "18-STATE-006-vcomplex",
+      "detector_name": "N8NComplexityDetector",
+      "detected": true,
+      "confidence": 0.75,
+      "failure_mode": "F15",
+      "expected_failure_mode": "F2",
+      "explanation": "Workflow handles 4 distinct concerns: other, notification, ai_processing, data_fetch",
+      "correct": false
+    },
+    {
+      "workflow_id": "16-STATE-006-simple",
+      "detector_name": "N8NCycleDetector",
+      "detected": false,
+      "confidence": 0.85,
+      "failure_mode": null,
+      "expected_failure_mode": "F2",
+      "explanation": "No cycle patterns detected in workflow execution",
+      "correct": false
+    },
+    {
+      "workflow_id": "16-STATE-006-simple",
+      "detector_name": "N8NSchemaDetector",
+      "detected": true,
+      "confidence": 0.7,
+      "failure_mode": "F12",
+      "expected_failure_mode": "F2",
+      "explanation": "Schema mismatch: 1 incompatibilities found between nodes",
+      "correct": false
+    },
+    {
+      "workflow_id": "16-STATE-006-simple",
+      "detector_name": "N8NResourceDetector",
+      "detected": false,
+      "confidence": 0.85,
+      "failure_mode": null,
+      "expected_failure_mode": "F2",
+      "explanation": "No resource abuse patterns detected",
+      "correct": false
+    },
+    {
+      "workflow_id": "16-STATE-006-simple",
+      "detector_name": "N8NTimeoutDetector",
+      "detected": false,
+      "confidence": 0.0,
+      "failure_mode": null,
+      "expected_failure_mode": "F2",
+      "explanation": "No timeout issues detected",
+      "correct": false
+    },
+    {
+      "workflow_id": "16-STATE-006-simple",
+      "detector_name": "N8NErrorDetector",
+      "detected": false,
+      "confidence": 0.0,
+      "failure_mode": null,
+      "expected_failure_mode": "F2",
+      "explanation": "No error handling issues detected",
+      "correct": false
+    },
+    {
+      "workflow_id": "16-STATE-006-simple",
+      "detector_name": "N8NComplexityDetector",
+      "detected": true,
+      "confidence": 0.75,
+      "failure_mode": "F15",
+      "expected_failure_mode": "F2",
+      "explanation": "Workflow handles 4 distinct concerns: other, notification, ai_processing, data_fetch",
+      "correct": false
+    },
+    {
+      "workflow_id": "09-STATE-003-vcomplex",
+      "detector_name": "N8NCycleDetector",
+      "detected": false,
+      "confidence": 0.85,
+      "failure_mode": null,
+      "expected_failure_mode": "F2",
+      "explanation": "No cycle patterns detected in workflow execution",
+      "correct": false
+    },
+    {
+      "workflow_id": "09-STATE-003-vcomplex",
+      "detector_name": "N8NSchemaDetector",
+      "detected": true,
+      "confidence": 0.7,
+      "failure_mode": "F12",
+      "expected_failure_mode": "F2",
+      "explanation": "Schema mismatch: 1 incompatibilities found between nodes",
+      "correct": false
+    },
+    {
+      "workflow_id": "09-STATE-003-vcomplex",
+      "detector_name": "N8NResourceDetector",
+      "detected": false,
+      "confidence": 0.85,
+      "failure_mode": null,
+      "expected_failure_mode": "F2",
+      "explanation": "No resource abuse patterns detected",
+      "correct": false
+    },
+    {
+      "workflow_id": "09-STATE-003-vcomplex",
+      "detector_name": "N8NTimeoutDetector",
+      "detected": false,
+      "confidence": 0.0,
+      "failure_mode": null,
+      "expected_failure_mode": "F2",
+      "explanation": "No timeout issues detected",
+      "correct": false
+    },
+    {
+      "workflow_id": "09-STATE-003-vcomplex",
+      "detector_name": "N8NErrorDetector",
+      "detected": false,
+      "confidence": 0.0,
+      "failure_mode": null,
+      "expected_failure_mode": "F2",
+      "explanation": "No error handling issues detected",
+      "correct": false
+    },
+    {
+      "workflow_id": "09-STATE-003-vcomplex",
+      "detector_name": "N8NComplexityDetector",
+      "detected": true,
+      "confidence": 0.75,
+      "failure_mode": "F15",
+      "expected_failure_mode": "F2",
+      "explanation": "Workflow handles 4 distinct concerns: other, notification, ai_processing, data_fetch",
+      "correct": false
+    },
+    {
+      "workflow_id": "11-STATE-004-complex",
+      "detector_name": "N8NCycleDetector",
+      "detected": false,
+      "confidence": 0.85,
+      "failure_mode": null,
+      "expected_failure_mode": "F2",
+      "explanation": "No cycle patterns detected in workflow execution",
+      "correct": false
+    },
+    {
+      "workflow_id": "11-STATE-004-complex",
+      "detector_name": "N8NSchemaDetector",
+      "detected": true,
+      "confidence": 0.7,
+      "failure_mode": "F12",
+      "expected_failure_mode": "F2",
+      "explanation": "Schema mismatch: 1 incompatibilities found between nodes",
+      "correct": false
+    },
+    {
+      "workflow_id": "11-STATE-004-complex",
+      "detector_name": "N8NResourceDetector",
+      "detected": false,
+      "confidence": 0.85,
+      "failure_mode": null,
+      "expected_failure_mode": "F2",
+      "explanation": "No resource abuse patterns detected",
+      "correct": false
+    },
+    {
+      "workflow_id": "11-STATE-004-complex",
+      "detector_name": "N8NTimeoutDetector",
+      "detected": false,
+      "confidence": 0.0,
+      "failure_mode": null,
+      "expected_failure_mode": "F2",
+      "explanation": "No timeout issues detected",
+      "correct": false
+    },
+    {
+      "workflow_id": "11-STATE-004-complex",
+      "detector_name": "N8NErrorDetector",
+      "detected": false,
+      "confidence": 0.0,
+      "failure_mode": null,
+      "expected_failure_mode": "F2",
+      "explanation": "No error handling issues detected",
+      "correct": false
+    },
+    {
+      "workflow_id": "11-STATE-004-complex",
+      "detector_name": "N8NComplexityDetector",
+      "detected": true,
+      "confidence": 0.75,
+      "failure_mode": "F15",
+      "expected_failure_mode": "F2",
+      "explanation": "Workflow handles 4 distinct concerns: other, notification, data_fetch, ai_processing",
+      "correct": false
+    },
+    {
+      "workflow_id": "06-STATE-002-vcomplex",
+      "detector_name": "N8NCycleDetector",
+      "detected": false,
+      "confidence": 0.85,
+      "failure_mode": null,
+      "expected_failure_mode": "F2",
+      "explanation": "No cycle patterns detected in workflow execution",
+      "correct": false
+    },
+    {
+      "workflow_id": "06-STATE-002-vcomplex",
+      "detector_name": "N8NSchemaDetector",
+      "detected": true,
+      "confidence": 0.7,
+      "failure_mode": "F12",
+      "expected_failure_mode": "F2",
+      "explanation": "Schema mismatch: 1 incompatibilities found between nodes",
+      "correct": false
+    },
+    {
+      "workflow_id": "06-STATE-002-vcomplex",
+      "detector_name": "N8NResourceDetector",
+      "detected": false,
+      "confidence": 0.85,
+      "failure_mode": null,
+      "expected_failure_mode": "F2",
+      "explanation": "No resource abuse patterns detected",
+      "correct": false
+    },
+    {
+      "workflow_id": "06-STATE-002-vcomplex",
+      "detector_name": "N8NTimeoutDetector",
+      "detected": false,
+      "confidence": 0.0,
+      "failure_mode": null,
+      "expected_failure_mode": "F2",
+      "explanation": "No timeout issues detected",
+      "correct": false
+    },
+    {
+      "workflow_id": "06-STATE-002-vcomplex",
+      "detector_name": "N8NErrorDetector",
+      "detected": false,
+      "confidence": 0.0,
+      "failure_mode": null,
+      "expected_failure_mode": "F2",
+      "explanation": "No error handling issues detected",
+      "correct": false
+    },
+    {
+      "workflow_id": "06-STATE-002-vcomplex",
+      "detector_name": "N8NComplexityDetector",
+      "detected": true,
+      "confidence": 0.75,
+      "failure_mode": "F15",
+      "expected_failure_mode": "F2",
+      "explanation": "Workflow handles 4 distinct concerns: other, notification, ai_processing, data_fetch",
+      "correct": false
+    },
+    {
+      "workflow_id": "07-STATE-003-simple",
+      "detector_name": "N8NCycleDetector",
+      "detected": false,
+      "confidence": 0.85,
+      "failure_mode": null,
+      "expected_failure_mode": "F2",
+      "explanation": "No cycle patterns detected in workflow execution",
+      "correct": false
+    },
+    {
+      "workflow_id": "07-STATE-003-simple",
+      "detector_name": "N8NSchemaDetector",
+      "detected": true,
+      "confidence": 0.7,
+      "failure_mode": "F12",
+      "expected_failure_mode": "F2",
+      "explanation": "Schema mismatch: 1 incompatibilities found between nodes",
+      "correct": false
+    },
+    {
+      "workflow_id": "07-STATE-003-simple",
+      "detector_name": "N8NResourceDetector",
+      "detected": false,
+      "confidence": 0.85,
+      "failure_mode": null,
+      "expected_failure_mode": "F2",
+      "explanation": "No resource abuse patterns detected",
+      "correct": false
+    },
+    {
+      "workflow_id": "07-STATE-003-simple",
+      "detector_name": "N8NTimeoutDetector",
+      "detected": false,
+      "confidence": 0.0,
+      "failure_mode": null,
+      "expected_failure_mode": "F2",
+      "explanation": "No timeout issues detected",
+      "correct": false
+    },
+    {
+      "workflow_id": "07-STATE-003-simple",
+      "detector_name": "N8NErrorDetector",
+      "detected": false,
+      "confidence": 0.0,
+      "failure_mode": null,
+      "expected_failure_mode": "F2",
+      "explanation": "No error handling issues detected",
+      "correct": false
+    },
+    {
+      "workflow_id": "07-STATE-003-simple",
+      "detector_name": "N8NComplexityDetector",
+      "detected": true,
+      "confidence": 0.75,
+      "failure_mode": "F15",
+      "expected_failure_mode": "F2",
+      "explanation": "Workflow handles 4 distinct concerns: other, notification, ai_processing, data_fetch",
+      "correct": false
+    },
+    {
+      "workflow_id": "04-STATE-002-simple",
+      "detector_name": "N8NCycleDetector",
+      "detected": false,
+      "confidence": 0.85,
+      "failure_mode": null,
+      "expected_failure_mode": "F2",
+      "explanation": "No cycle patterns detected in workflow execution",
+      "correct": false
+    },
+    {
+      "workflow_id": "04-STATE-002-simple",
+      "detector_name": "N8NSchemaDetector",
+      "detected": true,
+      "confidence": 0.7,
+      "failure_mode": "F12",
+      "expected_failure_mode": "F2",
+      "explanation": "Schema mismatch: 1 incompatibilities found between nodes",
+      "correct": false
+    },
+    {
+      "workflow_id": "04-STATE-002-simple",
+      "detector_name": "N8NResourceDetector",
+      "detected": false,
+      "confidence": 0.85,
+      "failure_mode": null,
+      "expected_failure_mode": "F2",
+      "explanation": "No resource abuse patterns detected",
+      "correct": false
+    },
+    {
+      "workflow_id": "04-STATE-002-simple",
+      "detector_name": "N8NTimeoutDetector",
+      "detected": false,
+      "confidence": 0.0,
+      "failure_mode": null,
+      "expected_failure_mode": "F2",
+      "explanation": "No timeout issues detected",
+      "correct": false
+    },
+    {
+      "workflow_id": "04-STATE-002-simple",
+      "detector_name": "N8NErrorDetector",
+      "detected": false,
+      "confidence": 0.0,
+      "failure_mode": null,
+      "expected_failure_mode": "F2",
+      "explanation": "No error handling issues detected",
+      "correct": false
+    },
+    {
+      "workflow_id": "04-STATE-002-simple",
+      "detector_name": "N8NComplexityDetector",
+      "detected": true,
+      "confidence": 0.75,
+      "failure_mode": "F15",
+      "expected_failure_mode": "F2",
+      "explanation": "Workflow handles 4 distinct concerns: other, notification, ai_processing, data_fetch",
+      "correct": false
+    },
+    {
+      "workflow_id": "15-STATE-005-vcomplex",
+      "detector_name": "N8NCycleDetector",
+      "detected": false,
+      "confidence": 0.85,
+      "failure_mode": null,
+      "expected_failure_mode": "F2",
+      "explanation": "No cycle patterns detected in workflow execution",
+      "correct": false
+    },
+    {
+      "workflow_id": "15-STATE-005-vcomplex",
+      "detector_name": "N8NSchemaDetector",
+      "detected": true,
+      "confidence": 0.7,
+      "failure_mode": "F12",
+      "expected_failure_mode": "F2",
+      "explanation": "Schema mismatch: 1 incompatibilities found between nodes",
+      "correct": false
+    },
+    {
+      "workflow_id": "15-STATE-005-vcomplex",
+      "detector_name": "N8NResourceDetector",
+      "detected": false,
+      "confidence": 0.85,
+      "failure_mode": null,
+      "expected_failure_mode": "F2",
+      "explanation": "No resource abuse patterns detected",
+      "correct": false
+    },
+    {
+      "workflow_id": "15-STATE-005-vcomplex",
+      "detector_name": "N8NTimeoutDetector",
+      "detected": false,
+      "confidence": 0.0,
+      "failure_mode": null,
+      "expected_failure_mode": "F2",
+      "explanation": "No timeout issues detected",
+      "correct": false
+    },
+    {
+      "workflow_id": "15-STATE-005-vcomplex",
+      "detector_name": "N8NErrorDetector",
+      "detected": false,
+      "confidence": 0.0,
+      "failure_mode": null,
+      "expected_failure_mode": "F2",
+      "explanation": "No error handling issues detected",
+      "correct": false
+    },
+    {
+      "workflow_id": "15-STATE-005-vcomplex",
+      "detector_name": "N8NComplexityDetector",
+      "detected": true,
+      "confidence": 0.75,
+      "failure_mode": "F15",
+      "expected_failure_mode": "F2",
+      "explanation": "Workflow handles 4 distinct concerns: other, notification, ai_processing, data_fetch",
+      "correct": false
+    },
+    {
+      "workflow_id": "05-STATE-002-complex",
+      "detector_name": "N8NCycleDetector",
+      "detected": false,
+      "confidence": 0.85,
+      "failure_mode": null,
+      "expected_failure_mode": "F2",
+      "explanation": "No cycle patterns detected in workflow execution",
+      "correct": false
+    },
+    {
+      "workflow_id": "05-STATE-002-complex",
+      "detector_name": "N8NSchemaDetector",
+      "detected": true,
+      "confidence": 0.9,
+      "failure_mode": "F12",
+      "expected_failure_mode": "F2",
+      "explanation": "Schema mismatch: 3 incompatibilities found between nodes",
+      "correct": false
+    },
+    {
+      "workflow_id": "05-STATE-002-complex",
+      "detector_name": "N8NResourceDetector",
+      "detected": false,
+      "confidence": 0.85,
+      "failure_mode": null,
+      "expected_failure_mode": "F2",
+      "explanation": "No resource abuse patterns detected",
+      "correct": false
+    },
+    {
+      "workflow_id": "05-STATE-002-complex",
+      "detector_name": "N8NTimeoutDetector",
+      "detected": false,
+      "confidence": 0.0,
+      "failure_mode": null,
+      "expected_failure_mode": "F2",
+      "explanation": "No timeout issues detected",
+      "correct": false
+    },
+    {
+      "workflow_id": "05-STATE-002-complex",
+      "detector_name": "N8NErrorDetector",
+      "detected": false,
+      "confidence": 0.0,
+      "failure_mode": null,
+      "expected_failure_mode": "F2",
+      "explanation": "No error handling issues detected",
+      "correct": false
+    },
+    {
+      "workflow_id": "05-STATE-002-complex",
+      "detector_name": "N8NComplexityDetector",
+      "detected": true,
+      "confidence": 0.75,
+      "failure_mode": "F15",
+      "expected_failure_mode": "F2",
+      "explanation": "Workflow handles 4 distinct concerns: other, notification, data_fetch, ai_processing",
+      "correct": false
+    },
+    {
+      "workflow_id": "10-STATE-004-simple",
+      "detector_name": "N8NCycleDetector",
+      "detected": false,
+      "confidence": 0.85,
+      "failure_mode": null,
+      "expected_failure_mode": "F2",
+      "explanation": "No cycle patterns detected in workflow execution",
+      "correct": false
+    },
+    {
+      "workflow_id": "10-STATE-004-simple",
+      "detector_name": "N8NSchemaDetector",
+      "detected": true,
+      "confidence": 0.7,
+      "failure_mode": "F12",
+      "expected_failure_mode": "F2",
+      "explanation": "Schema mismatch: 1 incompatibilities found between nodes",
+      "correct": false
+    },
+    {
+      "workflow_id": "10-STATE-004-simple",
+      "detector_name": "N8NResourceDetector",
+      "detected": false,
+      "confidence": 0.85,
+      "failure_mode": null,
+      "expected_failure_mode": "F2",
+      "explanation": "No resource abuse patterns detected",
+      "correct": false
+    },
+    {
+      "workflow_id": "10-STATE-004-simple",
+      "detector_name": "N8NTimeoutDetector",
+      "detected": false,
+      "confidence": 0.0,
+      "failure_mode": null,
+      "expected_failure_mode": "F2",
+      "explanation": "No timeout issues detected",
+      "correct": false
+    },
+    {
+      "workflow_id": "10-STATE-004-simple",
+      "detector_name": "N8NErrorDetector",
+      "detected": false,
+      "confidence": 0.0,
+      "failure_mode": null,
+      "expected_failure_mode": "F2",
+      "explanation": "No error handling issues detected",
+      "correct": false
+    },
+    {
+      "workflow_id": "10-STATE-004-simple",
+      "detector_name": "N8NComplexityDetector",
+      "detected": true,
+      "confidence": 0.75,
+      "failure_mode": "F15",
+      "expected_failure_mode": "F2",
+      "explanation": "Workflow handles 4 distinct concerns: other, notification, ai_processing, data_fetch",
+      "correct": false
+    },
+    {
+      "workflow_id": "13-STATE-005-simple",
+      "detector_name": "N8NCycleDetector",
+      "detected": false,
+      "confidence": 0.85,
+      "failure_mode": null,
+      "expected_failure_mode": "F2",
+      "explanation": "No cycle patterns detected in workflow execution",
+      "correct": false
+    },
+    {
+      "workflow_id": "13-STATE-005-simple",
+      "detector_name": "N8NSchemaDetector",
+      "detected": true,
+      "confidence": 0.8,
+      "failure_mode": "F12",
+      "expected_failure_mode": "F2",
+      "explanation": "Schema mismatch: 2 incompatibilities found between nodes",
+      "correct": false
+    },
+    {
+      "workflow_id": "13-STATE-005-simple",
+      "detector_name": "N8NResourceDetector",
+      "detected": false,
+      "confidence": 0.85,
+      "failure_mode": null,
+      "expected_failure_mode": "F2",
+      "explanation": "No resource abuse patterns detected",
+      "correct": false
+    },
+    {
+      "workflow_id": "13-STATE-005-simple",
+      "detector_name": "N8NTimeoutDetector",
+      "detected": false,
+      "confidence": 0.0,
+      "failure_mode": null,
+      "expected_failure_mode": "F2",
+      "explanation": "No timeout issues detected",
+      "correct": false
+    },
+    {
+      "workflow_id": "13-STATE-005-simple",
+      "detector_name": "N8NErrorDetector",
+      "detected": false,
+      "confidence": 0.0,
+      "failure_mode": null,
+      "expected_failure_mode": "F2",
+      "explanation": "No error handling issues detected",
+      "correct": false
+    },
+    {
+      "workflow_id": "13-STATE-005-simple",
+      "detector_name": "N8NComplexityDetector",
+      "detected": true,
+      "confidence": 0.75,
+      "failure_mode": "F15",
+      "expected_failure_mode": "F2",
+      "explanation": "Workflow handles 4 distinct concerns: other, notification, ai_processing, data_fetch",
+      "correct": false
+    },
+    {
+      "workflow_id": "17-STATE-006-complex",
+      "detector_name": "N8NCycleDetector",
+      "detected": false,
+      "confidence": 0.85,
+      "failure_mode": null,
+      "expected_failure_mode": "F2",
+      "explanation": "No cycle patterns detected in workflow execution",
+      "correct": false
+    },
+    {
+      "workflow_id": "17-STATE-006-complex",
+      "detector_name": "N8NSchemaDetector",
+      "detected": true,
+      "confidence": 0.7,
+      "failure_mode": "F12",
+      "expected_failure_mode": "F2",
+      "explanation": "Schema mismatch: 1 incompatibilities found between nodes",
+      "correct": false
+    },
+    {
+      "workflow_id": "17-STATE-006-complex",
+      "detector_name": "N8NResourceDetector",
+      "detected": false,
+      "confidence": 0.85,
+      "failure_mode": null,
+      "expected_failure_mode": "F2",
+      "explanation": "No resource abuse patterns detected",
+      "correct": false
+    },
+    {
+      "workflow_id": "17-STATE-006-complex",
+      "detector_name": "N8NTimeoutDetector",
+      "detected": false,
+      "confidence": 0.0,
+      "failure_mode": null,
+      "expected_failure_mode": "F2",
+      "explanation": "No timeout issues detected",
+      "correct": false
+    },
+    {
+      "workflow_id": "17-STATE-006-complex",
+      "detector_name": "N8NErrorDetector",
+      "detected": false,
+      "confidence": 0.0,
+      "failure_mode": null,
+      "expected_failure_mode": "F2",
+      "explanation": "No error handling issues detected",
+      "correct": false
+    },
+    {
+      "workflow_id": "17-STATE-006-complex",
+      "detector_name": "N8NComplexityDetector",
+      "detected": true,
+      "confidence": 0.75,
+      "failure_mode": "F15",
+      "expected_failure_mode": "F2",
+      "explanation": "Workflow handles 4 distinct concerns: other, notification, data_fetch, ai_processing",
+      "correct": false
+    },
+    {
+      "workflow_id": "08-STATE-003-complex",
+      "detector_name": "N8NCycleDetector",
+      "detected": false,
+      "confidence": 0.85,
+      "failure_mode": null,
+      "expected_failure_mode": "F2",
+      "explanation": "No cycle patterns detected in workflow execution",
+      "correct": false
+    },
+    {
+      "workflow_id": "08-STATE-003-complex",
+      "detector_name": "N8NSchemaDetector",
+      "detected": true,
+      "confidence": 0.7,
+      "failure_mode": "F12",
+      "expected_failure_mode": "F2",
+      "explanation": "Schema mismatch: 1 incompatibilities found between nodes",
+      "correct": false
+    },
+    {
+      "workflow_id": "08-STATE-003-complex",
+      "detector_name": "N8NResourceDetector",
+      "detected": false,
+      "confidence": 0.85,
+      "failure_mode": null,
+      "expected_failure_mode": "F2",
+      "explanation": "No resource abuse patterns detected",
+      "correct": false
+    },
+    {
+      "workflow_id": "08-STATE-003-complex",
+      "detector_name": "N8NTimeoutDetector",
+      "detected": false,
+      "confidence": 0.0,
+      "failure_mode": null,
+      "expected_failure_mode": "F2",
+      "explanation": "No timeout issues detected",
+      "correct": false
+    },
+    {
+      "workflow_id": "08-STATE-003-complex",
+      "detector_name": "N8NErrorDetector",
+      "detected": false,
+      "confidence": 0.0,
+      "failure_mode": null,
+      "expected_failure_mode": "F2",
+      "explanation": "No error handling issues detected",
+      "correct": false
+    },
+    {
+      "workflow_id": "08-STATE-003-complex",
+      "detector_name": "N8NComplexityDetector",
+      "detected": true,
+      "confidence": 0.75,
+      "failure_mode": "F15",
+      "expected_failure_mode": "F2",
+      "explanation": "Workflow handles 4 distinct concerns: other, notification, data_fetch, ai_processing",
+      "correct": false
+    },
+    {
+      "workflow_id": "08-RESOURCE-003-complex",
+      "detector_name": "N8NCycleDetector",
+      "detected": false,
+      "confidence": 0.85,
+      "failure_mode": null,
+      "expected_failure_mode": "F3",
+      "explanation": "No cycle patterns detected in workflow execution",
+      "correct": false
+    },
+    {
+      "workflow_id": "08-RESOURCE-003-complex",
+      "detector_name": "N8NSchemaDetector",
+      "detected": true,
+      "confidence": 0.7,
+      "failure_mode": "F12",
+      "expected_failure_mode": "F3",
+      "explanation": "Schema mismatch: 1 incompatibilities found between nodes",
+      "correct": false
+    },
+    {
+      "workflow_id": "08-RESOURCE-003-complex",
+      "detector_name": "N8NResourceDetector",
+      "detected": false,
+      "confidence": 0.85,
+      "failure_mode": null,
+      "expected_failure_mode": "F3",
+      "explanation": "No resource abuse patterns detected",
+      "correct": false
+    },
+    {
+      "workflow_id": "08-RESOURCE-003-complex",
+      "detector_name": "N8NTimeoutDetector",
+      "detected": false,
+      "confidence": 0.0,
+      "failure_mode": null,
+      "expected_failure_mode": "F3",
+      "explanation": "No timeout issues detected",
+      "correct": false
+    },
+    {
+      "workflow_id": "08-RESOURCE-003-complex",
+      "detector_name": "N8NErrorDetector",
+      "detected": false,
+      "confidence": 0.0,
+      "failure_mode": null,
+      "expected_failure_mode": "F3",
+      "explanation": "No error handling issues detected",
+      "correct": false
+    },
+    {
+      "workflow_id": "08-RESOURCE-003-complex",
+      "detector_name": "N8NComplexityDetector",
+      "detected": true,
+      "confidence": 0.75,
+      "failure_mode": "F15",
+      "expected_failure_mode": "F3",
+      "explanation": "Workflow handles 4 distinct concerns: other, notification, ai_processing, data_fetch",
+      "correct": false
+    },
+    {
+      "workflow_id": "09-RESOURCE-003-vcomplex",
+      "detector_name": "N8NCycleDetector",
+      "detected": false,
+      "confidence": 0.85,
+      "failure_mode": null,
+      "expected_failure_mode": "F3",
+      "explanation": "No cycle patterns detected in workflow execution",
+      "correct": false
+    },
+    {
+      "workflow_id": "09-RESOURCE-003-vcomplex",
+      "detector_name": "N8NSchemaDetector",
+      "detected": true,
+      "confidence": 0.8,
+      "failure_mode": "F12",
+      "expected_failure_mode": "F3",
+      "explanation": "Schema mismatch: 2 incompatibilities found between nodes",
+      "correct": false
+    },
+    {
+      "workflow_id": "09-RESOURCE-003-vcomplex",
+      "detector_name": "N8NResourceDetector",
+      "detected": false,
+      "confidence": 0.85,
+      "failure_mode": null,
+      "expected_failure_mode": "F3",
+      "explanation": "No resource abuse patterns detected",
+      "correct": false
+    },
+    {
+      "workflow_id": "09-RESOURCE-003-vcomplex",
+      "detector_name": "N8NTimeoutDetector",
+      "detected": false,
+      "confidence": 0.0,
+      "failure_mode": null,
+      "expected_failure_mode": "F3",
+      "explanation": "No timeout issues detected",
+      "correct": false
+    },
+    {
+      "workflow_id": "09-RESOURCE-003-vcomplex",
+      "detector_name": "N8NErrorDetector",
+      "detected": false,
+      "confidence": 0.0,
+      "failure_mode": null,
+      "expected_failure_mode": "F3",
+      "explanation": "No error handling issues detected",
+      "correct": false
+    },
+    {
+      "workflow_id": "09-RESOURCE-003-vcomplex",
+      "detector_name": "N8NComplexityDetector",
+      "detected": true,
+      "confidence": 0.75,
+      "failure_mode": "F15",
+      "expected_failure_mode": "F3",
+      "explanation": "Workflow handles 4 distinct concerns: other, notification, ai_processing, data_fetch",
+      "correct": false
+    },
+    {
+      "workflow_id": "13-RESOURCE-005-simple",
+      "detector_name": "N8NCycleDetector",
+      "detected": false,
+      "confidence": 0.85,
+      "failure_mode": null,
+      "expected_failure_mode": "F3",
+      "explanation": "No cycle patterns detected in workflow execution",
+      "correct": false
+    },
+    {
+      "workflow_id": "13-RESOURCE-005-simple",
+      "detector_name": "N8NSchemaDetector",
+      "detected": true,
+      "confidence": 0.7,
+      "failure_mode": "F12",
+      "expected_failure_mode": "F3",
+      "explanation": "Schema mismatch: 1 incompatibilities found between nodes",
+      "correct": false
+    },
+    {
+      "workflow_id": "13-RESOURCE-005-simple",
+      "detector_name": "N8NResourceDetector",
+      "detected": false,
+      "confidence": 0.85,
+      "failure_mode": null,
+      "expected_failure_mode": "F3",
+      "explanation": "No resource abuse patterns detected",
+      "correct": false
+    },
+    {
+      "workflow_id": "13-RESOURCE-005-simple",
+      "detector_name": "N8NTimeoutDetector",
+      "detected": false,
+      "confidence": 0.0,
+      "failure_mode": null,
+      "expected_failure_mode": "F3",
+      "explanation": "No timeout issues detected",
+      "correct": false
+    },
+    {
+      "workflow_id": "13-RESOURCE-005-simple",
+      "detector_name": "N8NErrorDetector",
+      "detected": false,
+      "confidence": 0.0,
+      "failure_mode": null,
+      "expected_failure_mode": "F3",
+      "explanation": "No error handling issues detected",
+      "correct": false
+    },
+    {
+      "workflow_id": "13-RESOURCE-005-simple",
+      "detector_name": "N8NComplexityDetector",
+      "detected": true,
+      "confidence": 0.75,
+      "failure_mode": "F15",
+      "expected_failure_mode": "F3",
+      "explanation": "Workflow handles 4 distinct concerns: other, notification, ai_processing, data_fetch",
+      "correct": false
+    },
+    {
+      "workflow_id": "10-RESOURCE-004-simple",
+      "detector_name": "N8NCycleDetector",
+      "detected": false,
+      "confidence": 0.85,
+      "failure_mode": null,
+      "expected_failure_mode": "F3",
+      "explanation": "No cycle patterns detected in workflow execution",
+      "correct": false
+    },
+    {
+      "workflow_id": "10-RESOURCE-004-simple",
+      "detector_name": "N8NSchemaDetector",
+      "detected": true,
+      "confidence": 0.7,
+      "failure_mode": "F12",
+      "expected_failure_mode": "F3",
+      "explanation": "Schema mismatch: 1 incompatibilities found between nodes",
+      "correct": false
+    },
+    {
+      "workflow_id": "10-RESOURCE-004-simple",
+      "detector_name": "N8NResourceDetector",
+      "detected": false,
+      "confidence": 0.85,
+      "failure_mode": null,
+      "expected_failure_mode": "F3",
+      "explanation": "No resource abuse patterns detected",
+      "correct": false
+    },
+    {
+      "workflow_id": "10-RESOURCE-004-simple",
+      "detector_name": "N8NTimeoutDetector",
+      "detected": false,
+      "confidence": 0.0,
+      "failure_mode": null,
+      "expected_failure_mode": "F3",
+      "explanation": "No timeout issues detected",
+      "correct": false
+    },
+    {
+      "workflow_id": "10-RESOURCE-004-simple",
+      "detector_name": "N8NErrorDetector",
+      "detected": false,
+      "confidence": 0.0,
+      "failure_mode": null,
+      "expected_failure_mode": "F3",
+      "explanation": "No error handling issues detected",
+      "correct": false
+    },
+    {
+      "workflow_id": "10-RESOURCE-004-simple",
+      "detector_name": "N8NComplexityDetector",
+      "detected": true,
+      "confidence": 0.75,
+      "failure_mode": "F15",
+      "expected_failure_mode": "F3",
+      "explanation": "Workflow handles 4 distinct concerns: other, notification, ai_processing, data_fetch",
+      "correct": false
+    },
+    {
+      "workflow_id": "05-RESOURCE-002-complex",
+      "detector_name": "N8NCycleDetector",
+      "detected": false,
+      "confidence": 0.85,
+      "failure_mode": null,
+      "expected_failure_mode": "F3",
+      "explanation": "No cycle patterns detected in workflow execution",
+      "correct": false
+    },
+    {
+      "workflow_id": "05-RESOURCE-002-complex",
+      "detector_name": "N8NSchemaDetector",
+      "detected": true,
+      "confidence": 0.9,
+      "failure_mode": "F12",
+      "expected_failure_mode": "F3",
+      "explanation": "Schema mismatch: 3 incompatibilities found between nodes",
+      "correct": false
+    },
+    {
+      "workflow_id": "05-RESOURCE-002-complex",
+      "detector_name": "N8NResourceDetector",
+      "detected": false,
+      "confidence": 0.85,
+      "failure_mode": null,
+      "expected_failure_mode": "F3",
+      "explanation": "No resource abuse patterns detected",
+      "correct": false
+    },
+    {
+      "workflow_id": "05-RESOURCE-002-complex",
+      "detector_name": "N8NTimeoutDetector",
+      "detected": false,
+      "confidence": 0.0,
+      "failure_mode": null,
+      "expected_failure_mode": "F3",
+      "explanation": "No timeout issues detected",
+      "correct": false
+    },
+    {
+      "workflow_id": "05-RESOURCE-002-complex",
+      "detector_name": "N8NErrorDetector",
+      "detected": false,
+      "confidence": 0.0,
+      "failure_mode": null,
+      "expected_failure_mode": "F3",
+      "explanation": "No error handling issues detected",
+      "correct": false
+    },
+    {
+      "workflow_id": "05-RESOURCE-002-complex",
+      "detector_name": "N8NComplexityDetector",
+      "detected": true,
+      "confidence": 0.75,
+      "failure_mode": "F15",
+      "expected_failure_mode": "F3",
+      "explanation": "Workflow handles 4 distinct concerns: other, notification, data_fetch, ai_processing",
+      "correct": false
+    },
+    {
+      "workflow_id": "12-RESOURCE-004-vcomplex",
+      "detector_name": "N8NCycleDetector",
+      "detected": false,
+      "confidence": 0.85,
+      "failure_mode": null,
+      "expected_failure_mode": "F3",
+      "explanation": "No cycle patterns detected in workflow execution",
+      "correct": false
+    },
+    {
+      "workflow_id": "12-RESOURCE-004-vcomplex",
+      "detector_name": "N8NSchemaDetector",
+      "detected": true,
+      "confidence": 0.7,
+      "failure_mode": "F12",
+      "expected_failure_mode": "F3",
+      "explanation": "Schema mismatch: 1 incompatibilities found between nodes",
+      "correct": false
+    },
+    {
+      "workflow_id": "12-RESOURCE-004-vcomplex",
+      "detector_name": "N8NResourceDetector",
+      "detected": false,
+      "confidence": 0.85,
+      "failure_mode": null,
+      "expected_failure_mode": "F3",
+      "explanation": "No resource abuse patterns detected",
+      "correct": false
+    },
+    {
+      "workflow_id": "12-RESOURCE-004-vcomplex",
+      "detector_name": "N8NTimeoutDetector",
+      "detected": false,
+      "confidence": 0.0,
+      "failure_mode": null,
+      "expected_failure_mode": "F3",
+      "explanation": "No timeout issues detected",
+      "correct": false
+    },
+    {
+      "workflow_id": "12-RESOURCE-004-vcomplex",
+      "detector_name": "N8NErrorDetector",
+      "detected": false,
+      "confidence": 0.0,
+      "failure_mode": null,
+      "expected_failure_mode": "F3",
+      "explanation": "No error handling issues detected",
+      "correct": false
+    },
+    {
+      "workflow_id": "12-RESOURCE-004-vcomplex",
+      "detector_name": "N8NComplexityDetector",
+      "detected": true,
+      "confidence": 0.75,
+      "failure_mode": "F15",
+      "expected_failure_mode": "F3",
+      "explanation": "Workflow handles 4 distinct concerns: other, notification, ai_processing, data_fetch",
+      "correct": false
+    },
+    {
+      "workflow_id": "06-RESOURCE-002-vcomplex",
+      "detector_name": "N8NCycleDetector",
+      "detected": false,
+      "confidence": 0.85,
+      "failure_mode": null,
+      "expected_failure_mode": "F3",
+      "explanation": "No cycle patterns detected in workflow execution",
+      "correct": false
+    },
+    {
+      "workflow_id": "06-RESOURCE-002-vcomplex",
+      "detector_name": "N8NSchemaDetector",
+      "detected": true,
+      "confidence": 0.8,
+      "failure_mode": "F12",
+      "expected_failure_mode": "F3",
+      "explanation": "Schema mismatch: 2 incompatibilities found between nodes",
+      "correct": false
+    },
+    {
+      "workflow_id": "06-RESOURCE-002-vcomplex",
+      "detector_name": "N8NResourceDetector",
+      "detected": false,
+      "confidence": 0.85,
+      "failure_mode": null,
+      "expected_failure_mode": "F3",
+      "explanation": "No resource abuse patterns detected",
+      "correct": false
+    },
+    {
+      "workflow_id": "06-RESOURCE-002-vcomplex",
+      "detector_name": "N8NTimeoutDetector",
+      "detected": false,
+      "confidence": 0.0,
+      "failure_mode": null,
+      "expected_failure_mode": "F3",
+      "explanation": "No timeout issues detected",
+      "correct": false
+    },
+    {
+      "workflow_id": "06-RESOURCE-002-vcomplex",
+      "detector_name": "N8NErrorDetector",
+      "detected": false,
+      "confidence": 0.0,
+      "failure_mode": null,
+      "expected_failure_mode": "F3",
+      "explanation": "No error handling issues detected",
+      "correct": false
+    },
+    {
+      "workflow_id": "06-RESOURCE-002-vcomplex",
+      "detector_name": "N8NComplexityDetector",
+      "detected": true,
+      "confidence": 0.75,
+      "failure_mode": "F15",
+      "expected_failure_mode": "F3",
+      "explanation": "Workflow handles 4 distinct concerns: other, notification, ai_processing, data_fetch",
+      "correct": false
+    },
+    {
+      "workflow_id": "02-RESOURCE-001-complex",
+      "detector_name": "N8NCycleDetector",
+      "detected": true,
+      "confidence": 0.6715,
+      "failure_mode": "F11",
+      "expected_failure_mode": "F3",
+      "explanation": "Workflow cycle detected: 1 patterns found (content similarity: 0.79)",
+      "correct": false
+    },
+    {
+      "workflow_id": "02-RESOURCE-001-complex",
+      "detector_name": "N8NSchemaDetector",
+      "detected": true,
+      "confidence": 0.7,
+      "failure_mode": "F12",
+      "expected_failure_mode": "F3",
+      "explanation": "Schema mismatch: 1 incompatibilities found between nodes",
+      "correct": false
+    },
+    {
+      "workflow_id": "02-RESOURCE-001-complex",
+      "detector_name": "N8NResourceDetector",
+      "detected": false,
+      "confidence": 0.85,
+      "failure_mode": null,
+      "expected_failure_mode": "F3",
+      "explanation": "No resource abuse patterns detected",
+      "correct": false
+    },
+    {
+      "workflow_id": "02-RESOURCE-001-complex",
+      "detector_name": "N8NTimeoutDetector",
+      "detected": false,
+      "confidence": 0.0,
+      "failure_mode": null,
+      "expected_failure_mode": "F3",
+      "explanation": "No timeout issues detected",
+      "correct": false
+    },
+    {
+      "workflow_id": "02-RESOURCE-001-complex",
+      "detector_name": "N8NErrorDetector",
+      "detected": false,
+      "confidence": 0.0,
+      "failure_mode": null,
+      "expected_failure_mode": "F3",
+      "explanation": "No error handling issues detected",
+      "correct": false
+    },
+    {
+      "workflow_id": "02-RESOURCE-001-complex",
+      "detector_name": "N8NComplexityDetector",
+      "detected": true,
+      "confidence": 0.75,
+      "failure_mode": "F15",
+      "expected_failure_mode": "F3",
+      "explanation": "Workflow handles 4 distinct concerns: other, notification, ai_processing, data_fetch",
+      "correct": false
+    },
+    {
+      "workflow_id": "11-RESOURCE-004-complex",
+      "detector_name": "N8NCycleDetector",
+      "detected": false,
+      "confidence": 0.85,
+      "failure_mode": null,
+      "expected_failure_mode": "F3",
+      "explanation": "No cycle patterns detected in workflow execution",
+      "correct": false
+    },
+    {
+      "workflow_id": "11-RESOURCE-004-complex",
+      "detector_name": "N8NSchemaDetector",
+      "detected": true,
+      "confidence": 0.7,
+      "failure_mode": "F12",
+      "expected_failure_mode": "F3",
+      "explanation": "Schema mismatch: 1 incompatibilities found between nodes",
+      "correct": false
+    },
+    {
+      "workflow_id": "11-RESOURCE-004-complex",
+      "detector_name": "N8NResourceDetector",
+      "detected": false,
+      "confidence": 0.85,
+      "failure_mode": null,
+      "expected_failure_mode": "F3",
+      "explanation": "No resource abuse patterns detected",
+      "correct": false
+    },
+    {
+      "workflow_id": "11-RESOURCE-004-complex",
+      "detector_name": "N8NTimeoutDetector",
+      "detected": false,
+      "confidence": 0.0,
+      "failure_mode": null,
+      "expected_failure_mode": "F3",
+      "explanation": "No timeout issues detected",
+      "correct": false
+    },
+    {
+      "workflow_id": "11-RESOURCE-004-complex",
+      "detector_name": "N8NErrorDetector",
+      "detected": false,
+      "confidence": 0.0,
+      "failure_mode": null,
+      "expected_failure_mode": "F3",
+      "explanation": "No error handling issues detected",
+      "correct": false
+    },
+    {
+      "workflow_id": "11-RESOURCE-004-complex",
+      "detector_name": "N8NComplexityDetector",
+      "detected": true,
+      "confidence": 0.75,
+      "failure_mode": "F15",
+      "expected_failure_mode": "F3",
+      "explanation": "Workflow handles 4 distinct concerns: other, notification, ai_processing, data_fetch",
+      "correct": false
+    },
+    {
+      "workflow_id": "03-RESOURCE-001-vcomplex",
+      "detector_name": "N8NCycleDetector",
+      "detected": false,
+      "confidence": 0.85,
+      "failure_mode": null,
+      "expected_failure_mode": "F3",
+      "explanation": "No cycle patterns detected in workflow execution",
+      "correct": false
+    },
+    {
+      "workflow_id": "03-RESOURCE-001-vcomplex",
+      "detector_name": "N8NSchemaDetector",
+      "detected": true,
+      "confidence": 0.7,
+      "failure_mode": "F12",
+      "expected_failure_mode": "F3",
+      "explanation": "Schema mismatch: 1 incompatibilities found between nodes",
+      "correct": false
+    },
+    {
+      "workflow_id": "03-RESOURCE-001-vcomplex",
+      "detector_name": "N8NResourceDetector",
+      "detected": false,
+      "confidence": 0.85,
+      "failure_mode": null,
+      "expected_failure_mode": "F3",
+      "explanation": "No resource abuse patterns detected",
+      "correct": false
+    },
+    {
+      "workflow_id": "03-RESOURCE-001-vcomplex",
+      "detector_name": "N8NTimeoutDetector",
+      "detected": false,
+      "confidence": 0.0,
+      "failure_mode": null,
+      "expected_failure_mode": "F3",
+      "explanation": "No timeout issues detected",
+      "correct": false
+    },
+    {
+      "workflow_id": "03-RESOURCE-001-vcomplex",
+      "detector_name": "N8NErrorDetector",
+      "detected": false,
+      "confidence": 0.0,
+      "failure_mode": null,
+      "expected_failure_mode": "F3",
+      "explanation": "No error handling issues detected",
+      "correct": false
+    },
+    {
+      "workflow_id": "03-RESOURCE-001-vcomplex",
+      "detector_name": "N8NComplexityDetector",
+      "detected": true,
+      "confidence": 0.75,
+      "failure_mode": "F15",
+      "expected_failure_mode": "F3",
+      "explanation": "Workflow handles 4 distinct concerns: other, notification, ai_processing, data_fetch",
+      "correct": false
+    },
+    {
+      "workflow_id": "15-RESOURCE-005-vcomplex",
+      "detector_name": "N8NCycleDetector",
+      "detected": false,
+      "confidence": 0.85,
+      "failure_mode": null,
+      "expected_failure_mode": "F3",
+      "explanation": "No cycle patterns detected in workflow execution",
+      "correct": false
+    },
+    {
+      "workflow_id": "15-RESOURCE-005-vcomplex",
+      "detector_name": "N8NSchemaDetector",
+      "detected": true,
+      "confidence": 0.7,
+      "failure_mode": "F12",
+      "expected_failure_mode": "F3",
+      "explanation": "Schema mismatch: 1 incompatibilities found between nodes",
+      "correct": false
+    },
+    {
+      "workflow_id": "15-RESOURCE-005-vcomplex",
+      "detector_name": "N8NResourceDetector",
+      "detected": false,
+      "confidence": 0.85,
+      "failure_mode": null,
+      "expected_failure_mode": "F3",
+      "explanation": "No resource abuse patterns detected",
+      "correct": false
+    },
+    {
+      "workflow_id": "15-RESOURCE-005-vcomplex",
+      "detector_name": "N8NTimeoutDetector",
+      "detected": false,
+      "confidence": 0.0,
+      "failure_mode": null,
+      "expected_failure_mode": "F3",
+      "explanation": "No timeout issues detected",
+      "correct": false
+    },
+    {
+      "workflow_id": "15-RESOURCE-005-vcomplex",
+      "detector_name": "N8NErrorDetector",
+      "detected": false,
+      "confidence": 0.0,
+      "failure_mode": null,
+      "expected_failure_mode": "F3",
+      "explanation": "No error handling issues detected",
+      "correct": false
+    },
+    {
+      "workflow_id": "15-RESOURCE-005-vcomplex",
+      "detector_name": "N8NComplexityDetector",
+      "detected": true,
+      "confidence": 0.75,
+      "failure_mode": "F15",
+      "expected_failure_mode": "F3",
+      "explanation": "Workflow handles 4 distinct concerns: other, notification, ai_processing, data_fetch",
+      "correct": false
+    },
+    {
+      "workflow_id": "04-RESOURCE-002-simple",
+      "detector_name": "N8NCycleDetector",
+      "detected": false,
+      "confidence": 0.85,
+      "failure_mode": null,
+      "expected_failure_mode": "F3",
+      "explanation": "No cycle patterns detected in workflow execution",
+      "correct": false
+    },
+    {
+      "workflow_id": "04-RESOURCE-002-simple",
+      "detector_name": "N8NSchemaDetector",
+      "detected": true,
+      "confidence": 0.8,
+      "failure_mode": "F12",
+      "expected_failure_mode": "F3",
+      "explanation": "Schema mismatch: 2 incompatibilities found between nodes",
+      "correct": false
+    },
+    {
+      "workflow_id": "04-RESOURCE-002-simple",
+      "detector_name": "N8NResourceDetector",
+      "detected": false,
+      "confidence": 0.85,
+      "failure_mode": null,
+      "expected_failure_mode": "F3",
+      "explanation": "No resource abuse patterns detected",
+      "correct": false
+    },
+    {
+      "workflow_id": "04-RESOURCE-002-simple",
+      "detector_name": "N8NTimeoutDetector",
+      "detected": false,
+      "confidence": 0.0,
+      "failure_mode": null,
+      "expected_failure_mode": "F3",
+      "explanation": "No timeout issues detected",
+      "correct": false
+    },
+    {
+      "workflow_id": "04-RESOURCE-002-simple",
+      "detector_name": "N8NErrorDetector",
+      "detected": false,
+      "confidence": 0.0,
+      "failure_mode": null,
+      "expected_failure_mode": "F3",
+      "explanation": "No error handling issues detected",
+      "correct": false
+    },
+    {
+      "workflow_id": "04-RESOURCE-002-simple",
+      "detector_name": "N8NComplexityDetector",
+      "detected": true,
+      "confidence": 0.75,
+      "failure_mode": "F15",
+      "expected_failure_mode": "F3",
+      "explanation": "Workflow handles 4 distinct concerns: other, notification, data_fetch, ai_processing",
+      "correct": false
+    },
+    {
+      "workflow_id": "07-RESOURCE-003-simple",
+      "detector_name": "N8NCycleDetector",
+      "detected": false,
+      "confidence": 0.85,
+      "failure_mode": null,
+      "expected_failure_mode": "F3",
+      "explanation": "No cycle patterns detected in workflow execution",
+      "correct": false
+    },
+    {
+      "workflow_id": "07-RESOURCE-003-simple",
+      "detector_name": "N8NSchemaDetector",
+      "detected": true,
+      "confidence": 0.8,
+      "failure_mode": "F12",
+      "expected_failure_mode": "F3",
+      "explanation": "Schema mismatch: 2 incompatibilities found between nodes",
+      "correct": false
+    },
+    {
+      "workflow_id": "07-RESOURCE-003-simple",
+      "detector_name": "N8NResourceDetector",
+      "detected": false,
+      "confidence": 0.85,
+      "failure_mode": null,
+      "expected_failure_mode": "F3",
+      "explanation": "No resource abuse patterns detected",
+      "correct": false
+    },
+    {
+      "workflow_id": "07-RESOURCE-003-simple",
+      "detector_name": "N8NTimeoutDetector",
+      "detected": false,
+      "confidence": 0.0,
+      "failure_mode": null,
+      "expected_failure_mode": "F3",
+      "explanation": "No timeout issues detected",
+      "correct": false
+    },
+    {
+      "workflow_id": "07-RESOURCE-003-simple",
+      "detector_name": "N8NErrorDetector",
+      "detected": false,
+      "confidence": 0.0,
+      "failure_mode": null,
+      "expected_failure_mode": "F3",
+      "explanation": "No error handling issues detected",
+      "correct": false
+    },
+    {
+      "workflow_id": "07-RESOURCE-003-simple",
+      "detector_name": "N8NComplexityDetector",
+      "detected": true,
+      "confidence": 0.75,
+      "failure_mode": "F15",
+      "expected_failure_mode": "F3",
+      "explanation": "Workflow handles 4 distinct concerns: other, notification, ai_processing, data_fetch",
+      "correct": false
+    },
+    {
+      "workflow_id": "14-RESOURCE-005-complex",
+      "detector_name": "N8NCycleDetector",
+      "detected": false,
+      "confidence": 0.85,
+      "failure_mode": null,
+      "expected_failure_mode": "F3",
+      "explanation": "No cycle patterns detected in workflow execution",
+      "correct": false
+    },
+    {
+      "workflow_id": "14-RESOURCE-005-complex",
+      "detector_name": "N8NSchemaDetector",
+      "detected": true,
+      "confidence": 0.7,
+      "failure_mode": "F12",
+      "expected_failure_mode": "F3",
+      "explanation": "Schema mismatch: 1 incompatibilities found between nodes",
+      "correct": false
+    },
+    {
+      "workflow_id": "14-RESOURCE-005-complex",
+      "detector_name": "N8NResourceDetector",
+      "detected": false,
+      "confidence": 0.85,
+      "failure_mode": null,
+      "expected_failure_mode": "F3",
+      "explanation": "No resource abuse patterns detected",
+      "correct": false
+    },
+    {
+      "workflow_id": "14-RESOURCE-005-complex",
+      "detector_name": "N8NTimeoutDetector",
+      "detected": false,
+      "confidence": 0.0,
+      "failure_mode": null,
+      "expected_failure_mode": "F3",
+      "explanation": "No timeout issues detected",
+      "correct": false
+    },
+    {
+      "workflow_id": "14-RESOURCE-005-complex",
+      "detector_name": "N8NErrorDetector",
+      "detected": false,
+      "confidence": 0.0,
+      "failure_mode": null,
+      "expected_failure_mode": "F3",
+      "explanation": "No error handling issues detected",
+      "correct": false
+    },
+    {
+      "workflow_id": "14-RESOURCE-005-complex",
+      "detector_name": "N8NComplexityDetector",
+      "detected": true,
+      "confidence": 0.75,
+      "failure_mode": "F15",
+      "expected_failure_mode": "F3",
+      "explanation": "Workflow handles 4 distinct concerns: other, notification, ai_processing, data_fetch",
+      "correct": false
+    },
+    {
+      "workflow_id": "01-RESOURCE-001-simple",
+      "detector_name": "N8NCycleDetector",
+      "detected": false,
+      "confidence": 0.85,
+      "failure_mode": null,
+      "expected_failure_mode": "F3",
+      "explanation": "No cycle patterns detected in workflow execution",
+      "correct": false
+    },
+    {
+      "workflow_id": "01-RESOURCE-001-simple",
+      "detector_name": "N8NSchemaDetector",
+      "detected": true,
+      "confidence": 0.7,
+      "failure_mode": "F12",
+      "expected_failure_mode": "F3",
+      "explanation": "Schema mismatch: 1 incompatibilities found between nodes",
+      "correct": false
+    },
+    {
+      "workflow_id": "01-RESOURCE-001-simple",
+      "detector_name": "N8NResourceDetector",
+      "detected": false,
+      "confidence": 0.85,
+      "failure_mode": null,
+      "expected_failure_mode": "F3",
+      "explanation": "No resource abuse patterns detected",
+      "correct": false
+    },
+    {
+      "workflow_id": "01-RESOURCE-001-simple",
+      "detector_name": "N8NTimeoutDetector",
+      "detected": false,
+      "confidence": 0.0,
+      "failure_mode": null,
+      "expected_failure_mode": "F3",
+      "explanation": "No timeout issues detected",
+      "correct": false
+    },
+    {
+      "workflow_id": "01-RESOURCE-001-simple",
+      "detector_name": "N8NErrorDetector",
+      "detected": false,
+      "confidence": 0.0,
+      "failure_mode": null,
+      "expected_failure_mode": "F3",
+      "explanation": "No error handling issues detected",
+      "correct": false
+    },
+    {
+      "workflow_id": "01-RESOURCE-001-simple",
+      "detector_name": "N8NComplexityDetector",
+      "detected": true,
+      "confidence": 0.75,
+      "failure_mode": "F15",
+      "expected_failure_mode": "F3",
+      "explanation": "Workflow handles 4 distinct concerns: other, notification, ai_processing, data_fetch",
+      "correct": false
+    }
+  ]
+}
