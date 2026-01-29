@@ -17,9 +17,9 @@
 | `states` (from n8n traces) | **42** | Node execution states across n8n traces |
 | `detections` (from n8n traces) | **11** | Failure detections in n8n executions |
 
-### Content Stored (Not Just Metadata!)
+### Content Stored (Outputs Only, No Reasoning)
 
-✅ **We have FULL execution content**, not just trace metadata:
+⚠️ **We have execution outputs, but NOT internal reasoning/thinking**:
 
 **Traces contain**:
 - Session ID, framework, status
@@ -65,6 +65,39 @@
   "indicators": ["unverifiable_claim"]
 }
 ```
+
+### What We Have vs What We Don't Have
+
+✅ **What IS captured** (in all 42 states):
+- **Final outputs** from LLM calls
+- Node execution results
+- Model parameters (e.g., `claude-3-5-haiku-20241022`)
+- Input/output data
+- Error messages
+- Performance metrics (tokens, latency)
+
+❌ **What is NOT captured**:
+- **Internal reasoning/thinking** from Claude models
+- Extended thinking process (if enabled via API)
+- Chain-of-thought steps
+- Model's internal deliberation
+
+**Output keys found across all states**:
+- `analysis` - Analysis results
+- `response` - Model responses
+- `output` - Generic outputs
+- `score` - Scoring results
+- `key_topics` - Topic extraction
+- `overall_sentiment` - Sentiment analysis
+- `toxicity_score` - Safety scores
+- `injection_attempts_detected` - Security checks
+
+**Why no reasoning?**
+n8n's LangChain nodes capture only the final output from Claude API calls, not the extended thinking process. To capture reasoning, you would need to:
+1. Enable extended thinking in Claude API calls
+2. Explicitly extract the `thinking` field from API responses
+3. Store it separately in n8n workflow outputs
+4. Send it through the webhook to PISAMA
 
 ### Additional Context
 
