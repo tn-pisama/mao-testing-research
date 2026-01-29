@@ -162,29 +162,70 @@ class CorruptionDetectionAdapter(BaseGoldenAdapter):
         return "corruption"
 
     def adapt(self, input_data: Dict[str, Any]) -> AdapterResult:
+        """
+        Use text-based semantic corruption detection instead of state-based.
+
+        Extracts task description and agent outputs to check for context corruption.
+        """
+        workflow_name = input_data.get("workflow_name", "Unknown workflow")
         nodes = input_data.get("nodes", [])
 
-        # Find SET nodes (state mutation points) or use first/last AI nodes
-        set_nodes = [n for n in nodes if "set" in n.get("type", "").lower()]
         ai_nodes = [n for n in nodes if self._is_ai_node(n)]
 
-        if len(set_nodes) >= 2:
-            prev_state = self._node_to_state(set_nodes[0], 0)
-            curr_state = self._node_to_state(set_nodes[-1], 1)
-        elif len(ai_nodes) >= 2:
-            prev_state = self._node_to_state(ai_nodes[0], 0)
-            curr_state = self._node_to_state(ai_nodes[-1], 1)
-        else:
+        if not ai_nodes:
             return AdapterResult(
                 success=False,
                 detector_input=None,
-                error=f"Insufficient nodes for corruption detection (found {len(ai_nodes)} AI nodes, {len(set_nodes)} SET nodes)"
+                error="No AI nodes found for corruption detection"
             )
+
+        # Extract task from first AI node prompt (initial instruction)
+        task = self._extract_prompt_text(ai_nodes[0])
+        if not task:
+            task = workflow_name  # Fall back to workflow name
+
+        # Extract output from last AI node with text content
+        output = ""
+        for node in reversed(ai_nodes):
+            text = self._extract_prompt_text(node)
+            if text:
+                output = text
+                break
+
+        if not output:
+            return AdapterResult(
+                success=False,
+                detector_input=None,
+                error="No output text found in workflow"
+            )
+
+        # Extract context from SET nodes if available
+        set_nodes = [n for n in nodes if "set" in n.get("type", "").lower()]
+        context = None
+        if set_nodes:
+            # Combine context from SET nodes
+            context_parts = []
+            for node in set_nodes:
+                params = node.get("parameters", {})
+                if "assignments" in params:
+                    assignments_data = params["assignments"]
+                    if isinstance(assignments_data, dict):
+                        for assign in assignments_data.get("assignments", []):
+                            if isinstance(assign, dict):
+                                name = assign.get("name", "")
+                                value = assign.get("value", "")
+                                context_parts.append(f"{name}: {value}")
+            if context_parts:
+                context = "; ".join(context_parts[:5])  # Limit to first 5
 
         return AdapterResult(
             success=True,
-            detector_input={"prev_state": prev_state, "current_state": curr_state},
-            metadata={"set_node_count": len(set_nodes), "ai_node_count": len(ai_nodes)}
+            detector_input={"task": task, "output": output, "context": context},
+            metadata={
+                "ai_node_count": len(ai_nodes),
+                "set_node_count": len(set_nodes),
+                "has_context": context is not None
+            }
         )
 
     def _node_to_state(self, node: dict, seq: int) -> CorruptionStateSnapshot:
@@ -234,24 +275,29 @@ class PersonaDriftDetectionAdapter(BaseGoldenAdapter):
                 error="No AI nodes found for persona drift detection"
             )
 
-        # First AI node defines persona, last provides output
+        # First AI node defines persona
         first_node = ai_nodes[0]
-        last_node = ai_nodes[-1]
 
         # Extract persona from system message
         persona = self._extract_prompt_text(first_node)
 
-        # Extract output from last node
-        output = self._extract_prompt_text(last_node)
-
         if not persona:
             persona = "You are a helpful AI assistant."  # Default persona
+
+        # Find last node that has actual text content (not just model config)
+        # In n8n LangChain workflows, lmChat* nodes only have model params, not text
+        output = ""
+        for node in reversed(ai_nodes):
+            text = self._extract_prompt_text(node)
+            if text:
+                output = text
+                break
 
         if not output:
             return AdapterResult(
                 success=False,
                 detector_input=None,
-                error="No output text found in workflow"
+                error="No output text found in workflow (all AI nodes lack text content)"
             )
 
         # Infer role type from persona
@@ -321,8 +367,9 @@ class OverflowDetectionAdapter(BaseGoldenAdapter):
 
         # Scale up based on workflow complexity to simulate accumulated context
         # More AI nodes = more context accumulation
+        # Need ~137K tokens to hit 70% threshold on 200K context models
         if ai_node_count > 1:
-            estimated_tokens = estimated_tokens * ai_node_count * 10
+            estimated_tokens = estimated_tokens * ai_node_count * 70
 
         return AdapterResult(
             success=True,

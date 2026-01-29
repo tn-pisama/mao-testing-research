@@ -238,11 +238,12 @@ class GoldenDatasetTestHarness:
         )
 
     def _run_corruption_detection(self, detector_input: Dict) -> Any:
-        """Run corruption detector."""
+        """Run corruption detector using text-based semantic detection."""
         detector = SemanticCorruptionDetector()
-        return detector.detect_corruption_with_confidence(
-            prev_state=detector_input["prev_state"],
-            current_state=detector_input["current_state"],
+        return detector.detect_from_text(
+            task=detector_input["task"],
+            output=detector_input["output"],
+            context=detector_input.get("context"),
         )
 
     def _run_persona_detection(self, detector_input: Dict) -> Any:
