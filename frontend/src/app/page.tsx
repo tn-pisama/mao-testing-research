@@ -23,14 +23,14 @@ export default function Home() {
 
   if (!mounted) {
     return (
-      <main className="min-h-screen bg-slate-900 flex items-center justify-center">
-        <div className="text-white">Loading...</div>
+      <main className="min-h-screen bg-neutral-50 flex items-center justify-center">
+        <div className="text-neutral-900">Loading...</div>
       </main>
     )
   }
 
   return (
-    <main className="min-h-screen bg-slate-900">
+    <main className="min-h-screen bg-neutral-50">
       <LandingHeader onJoinWaitlist={() => setShowWaitlist(true)} />
       <HeroSection />
       <FeatureCards />

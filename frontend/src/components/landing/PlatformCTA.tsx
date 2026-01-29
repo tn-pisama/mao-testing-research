@@ -10,7 +10,7 @@ interface PlatformCTAProps {
 export function PlatformCTA({ onJoinWaitlist }: PlatformCTAProps) {
   return (
     <section className="py-16 text-center">
-      <h2 className="text-3xl font-bold text-white mb-4">Get Started</h2>
+      <h2 className="text-3xl font-bold text-neutral-900 mb-4">Get Started</h2>
       <div className="flex justify-center gap-4">
         {onJoinWaitlist && (
           <Button size="lg" variant="primary" onClick={onJoinWaitlist}>
