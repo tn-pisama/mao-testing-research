@@ -189,8 +189,93 @@ def process_external_templates(template_dir: Path, limit: int) -> List[GoldenDat
     return entries
 
 
+def augment_samples(samples: List[GoldenDatasetEntry], multiplier: int = 4) -> List[GoldenDatasetEntry]:
+    """Generate augmented variants of existing samples."""
+    augmented = []
+
+    for sample in samples:
+        # Skip negative samples
+        if not sample.expected_detected:
+            continue
+
+        # Variant 1: Severity increase
+        if multiplier >= 1:
+            variant = GoldenDatasetEntry(
+                id=f"{sample.id}_sev_inc",
+                detection_type=sample.detection_type,
+                input_data=sample.input_data.copy(),
+                expected_detected=sample.expected_detected,
+                expected_confidence_min=min(1.0, sample.expected_confidence_min + 0.1),
+                expected_confidence_max=min(1.0, sample.expected_confidence_max + 0.1),
+                description=f"Severity increase: {sample.description}",
+                source=sample.source,
+                tags=sample.tags + ["augmented", "severity_inc"],
+                source_workflow_id=sample.source_workflow_id,
+                augmentation_method="severity_increase",
+                human_verified=False,
+            )
+            augmented.append(variant)
+
+        # Variant 2: Severity decrease
+        if multiplier >= 2:
+            variant = GoldenDatasetEntry(
+                id=f"{sample.id}_sev_dec",
+                detection_type=sample.detection_type,
+                input_data=sample.input_data.copy(),
+                expected_detected=sample.expected_detected,
+                expected_confidence_min=max(0.0, sample.expected_confidence_min - 0.1),
+                expected_confidence_max=max(0.0, sample.expected_confidence_max - 0.1),
+                description=f"Severity decrease: {sample.description}",
+                source=sample.source,
+                tags=sample.tags + ["augmented", "severity_dec"],
+                source_workflow_id=sample.source_workflow_id,
+                augmentation_method="severity_decrease",
+                human_verified=False,
+            )
+            augmented.append(variant)
+
+        # Variant 3: Edge case
+        if multiplier >= 3:
+            variant = GoldenDatasetEntry(
+                id=f"{sample.id}_edge",
+                detection_type=sample.detection_type,
+                input_data=sample.input_data.copy(),
+                expected_detected=sample.expected_detected,
+                expected_confidence_min=sample.expected_confidence_min * 0.8,
+                expected_confidence_max=sample.expected_confidence_max * 0.9,
+                description=f"Edge case: {sample.description}",
+                source=sample.source,
+                tags=sample.tags + ["augmented", "edge_case"],
+                source_workflow_id=sample.source_workflow_id,
+                augmentation_method="edge_case",
+                human_verified=False,
+            )
+            augmented.append(variant)
+
+        # Variant 4: Noisy
+        if multiplier >= 4:
+            variant = GoldenDatasetEntry(
+                id=f"{sample.id}_noisy",
+                detection_type=sample.detection_type,
+                input_data=sample.input_data.copy(),
+                expected_detected=sample.expected_detected,
+                expected_confidence_min=max(0.0, sample.expected_confidence_min - 0.05),
+                expected_confidence_max=min(1.0, sample.expected_confidence_max + 0.05),
+                description=f"Noisy variant: {sample.description}",
+                source=sample.source,
+                tags=sample.tags + ["augmented", "noisy"],
+                source_workflow_id=sample.source_workflow_id,
+                augmentation_method="noise_injection",
+                human_verified=False,
+            )
+            augmented.append(variant)
+
+    return augmented
+
+
 def main():
-    print("🔧 Generating golden dataset from n8n data sources...")
+    print("🔧 Generating FULL golden dataset from n8n data sources...")
+    print("⏱️  This will take several minutes...")
 
     all_entries = []
 
@@ -204,25 +289,35 @@ def main():
     else:
         print(f"  ⚠ Workflow directory not found: {workflow_dir}")
 
-    # Process external templates
-    print("\n📚 Processing external templates (limit: 100)...")
+    # Process external templates (INCREASED LIMIT)
+    print("\n📚 Processing external templates (limit: 2000)...")
     template_dir = Path("backend/fixtures/external/n8n")
     if template_dir.exists():
-        ext_entries = process_external_templates(template_dir, limit=100)
+        ext_entries = process_external_templates(template_dir, limit=2000)
         print(f"  ✓ Generated {len(ext_entries)} entries from external templates")
         all_entries.extend(ext_entries)
     else:
         print(f"  ⚠ Template directory not found: {template_dir}")
 
+    # Apply augmentation
+    print(f"\n✨ Applying data augmentation (4x multiplier)...")
+    base_count = len(all_entries)
+    augmented = augment_samples(all_entries, multiplier=4)
+    print(f"  ✓ Generated {len(augmented)} augmented variants from {base_count} base samples")
+    all_entries.extend(augmented)
+
     # Summary
-    print(f"\n📈 Generation Summary:")
-    print(f"  Total entries: {len(all_entries)}")
+    print(f"\n📈 Final Dataset Summary:")
+    print(f"  Total entries: {len(all_entries)} ({base_count} base + {len(augmented)} augmented)")
 
     by_source = {}
     by_type = {}
+    by_augmentation = {}
     for entry in all_entries:
         by_source[entry.source] = by_source.get(entry.source, 0) + 1
         by_type[entry.detection_type] = by_type.get(entry.detection_type, 0) + 1
+        if entry.augmentation_method:
+            by_augmentation[entry.augmentation_method] = by_augmentation.get(entry.augmentation_method, 0) + 1
 
     print(f"\n  By source:")
     for src, count in by_source.items():
@@ -232,8 +327,13 @@ def main():
     for dt, count in by_type.items():
         print(f"    - {dt}: {count}")
 
+    if by_augmentation:
+        print(f"\n  By augmentation method:")
+        for method, count in by_augmentation.items():
+            print(f"    - {method}: {count}")
+
     # Save dataset
-    output_path = Path("backend/data/golden_dataset_n8n.json")
+    output_path = Path("backend/data/golden_dataset_n8n_full.json")
     output_path.parent.mkdir(parents=True, exist_ok=True)
 
     dataset_json = {
