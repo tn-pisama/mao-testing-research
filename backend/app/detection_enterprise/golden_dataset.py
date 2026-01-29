@@ -22,6 +22,10 @@ class GoldenDatasetEntry:
     source: str = "manual"
     created_at: str = field(default_factory=lambda: datetime.now(timezone.utc).isoformat())
     tags: List[str] = field(default_factory=list)
+    source_trace_id: Optional[str] = None
+    source_workflow_id: Optional[str] = None
+    augmentation_method: Optional[str] = None
+    human_verified: bool = False
     
     def to_labeled_sample(self) -> LabeledSample:
         return LabeledSample(
