@@ -6,6 +6,7 @@ import { useState, useEffect, useCallback } from 'react'
 import { useRouter } from 'next/navigation'
 import { useSafeAuth as useAuth } from '@/hooks/useSafeAuth'
 import { useTenant } from '@/hooks/useTenant'
+import { useExecutionStream, ExecutionEvent } from '@/hooks/useExecutionStream'
 import {
   Play,
   CheckCircle,
@@ -17,7 +18,8 @@ import {
   ExternalLink,
   Loader2,
   AlertCircle,
-  Search
+  Search,
+  Activity
 } from 'lucide-react'
 import { Layout } from '@/components/common/Layout'
 import { Button } from '@/components/ui/Button'
@@ -94,6 +96,43 @@ export default function ExecutionsPage() {
     loadExecutions()
   }, [loadExecutions])
 
+  // Handle real-time execution events
+  const handleExecutionEvent = useCallback((event: ExecutionEvent) => {
+    console.log('Received execution event:', event)
+
+    const newExecution: ExecutionDisplay = {
+      id: event.trace_id,
+      executionId: event.execution_id,
+      workflowName: event.workflow_name,
+      status: event.status === 'success' ? 'success' : event.status === 'error' ? 'error' : 'unknown',
+      startedAt: event.started_at ? new Date(event.started_at) : new Date(),
+      completedAt: event.finished_at ? new Date(event.finished_at) : undefined,
+      duration: event.started_at && event.finished_at
+        ? new Date(event.finished_at).getTime() - new Date(event.started_at).getTime()
+        : undefined,
+      tokenCount: 0, // Will be updated by backend
+    }
+
+    setExecutions(prev => {
+      // Check if execution already exists (update case)
+      const existingIndex = prev.findIndex(e => e.id === newExecution.id)
+      if (existingIndex >= 0) {
+        const updated = [...prev]
+        updated[existingIndex] = newExecution
+        return updated
+      }
+
+      // New execution - prepend to list
+      return [newExecution, ...prev]
+    })
+  }, [])
+
+  // Connect to real-time execution stream
+  const { isConnected } = useExecutionStream({
+    onExecution: handleExecutionEvent,
+    enabled: true,
+  })
+
   // Apply filters
   const filteredExecutions = executions.filter(execution => {
     if (statusFilter !== 'all' && execution.status !== statusFilter) {
@@ -152,6 +191,12 @@ export default function ExecutionsPage() {
                 <Play className="w-6 h-6 text-orange-400" />
               </div>
               <h1 className="text-2xl font-bold text-white">Workflow Executions</h1>
+              {isConnected && (
+                <div className="flex items-center gap-2 px-2 py-1 bg-emerald-500/20 rounded-lg border border-emerald-500/30">
+                  <Activity size={14} className="text-emerald-400 animate-pulse" />
+                  <span className="text-xs font-medium text-emerald-400">Live</span>
+                </div>
+              )}
             </div>
             <p className="text-slate-400">
               View and analyze your n8n workflow execution history
