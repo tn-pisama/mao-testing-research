@@ -10,7 +10,7 @@ interface LandingHeaderProps {
 export function LandingHeader({ onJoinWaitlist }: LandingHeaderProps) {
   return (
     <header className="flex items-center justify-between py-4 px-6">
-      <div className="text-xl font-bold text-white">MAO Testing</div>
+      <div className="text-xl font-bold text-neutral-900">MAO Testing</div>
       <div className="flex items-center gap-4">
         {onJoinWaitlist && (
           <Button variant="primary" onClick={onJoinWaitlist}>
