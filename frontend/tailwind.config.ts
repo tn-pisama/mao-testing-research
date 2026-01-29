@@ -10,29 +10,40 @@ const config: Config = {
     extend: {
       colors: {
         primary: {
-          50: '#f0f9ff',
-          100: '#e0f2fe',
-          200: '#bae6fd',
-          300: '#7dd3fc',
-          400: '#38bdf8',
-          500: '#0ea5e9',
-          600: '#0284c7',
-          700: '#0369a1',
-          800: '#075985',
-          900: '#0c4a6e',
+          400: '#667eea',
+          500: '#764ba2',
+          600: '#a855f7',
         },
-        danger: {
-          500: '#ef4444',
-          600: '#dc2626',
+        accent: {
+          400: '#ec4899',
+          500: '#a855f7',
+        },
+        success: {
+          500: '#10b981',
+          600: '#34d399',
         },
         warning: {
           500: '#f59e0b',
-          600: '#d97706',
+          600: '#fbbf24',
         },
-        success: {
-          500: '#22c55e',
-          600: '#16a34a',
+        danger: {
+          500: '#ef4444',
+          600: '#f87171',
         },
+      },
+      backgroundImage: {
+        'glass-gradient': 'linear-gradient(135deg, rgba(102, 126, 234, 0.1) 0%, rgba(118, 75, 162, 0.1) 100%)',
+        'purple-gradient': 'linear-gradient(135deg, #1e1b4b 0%, #312e81 100%)',
+      },
+      backdropBlur: {
+        xs: '2px',
+        sm: '4px',
+        md: '12px',
+        lg: '24px',
+        xl: '40px',
+      },
+      fontFamily: {
+        sans: ['"SF Pro Display"', '-apple-system', 'BlinkMacSystemFont', '"Segoe UI"', 'Roboto', 'Arial', 'sans-serif'],
       },
     },
   },
