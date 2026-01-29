@@ -7,7 +7,7 @@ export interface ButtonProps extends ButtonHTMLAttributes<HTMLButtonElement> {
   variant?: 'primary' | 'secondary' | 'ghost' | 'danger' | 'success' | 'warning'
   size?: 'sm' | 'md' | 'lg'
   isLoading?: boolean
-  loading?: boolean  // Alias for isLoading
+  loading?: boolean
   leftIcon?: ReactNode
   rightIcon?: ReactNode
 }
@@ -15,21 +15,21 @@ export interface ButtonProps extends ButtonHTMLAttributes<HTMLButtonElement> {
 export const Button = forwardRef<HTMLButtonElement, ButtonProps>(
   ({ className, variant = 'primary', size = 'md', isLoading, loading, disabled, children, leftIcon, rightIcon, ...props }, ref) => {
     const showLoading = isLoading || loading
-    const baseStyles = 'inline-flex items-center justify-center font-medium rounded-lg transition-colors focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-offset-slate-900 disabled:opacity-50 disabled:cursor-not-allowed'
+    const baseStyles = 'inline-flex items-center justify-center font-semibold rounded-xl transition-all duration-300 focus:outline-none focus:ring-2 focus:ring-primary-500 focus:ring-offset-2 focus:ring-offset-slate-900 disabled:opacity-50 disabled:cursor-not-allowed'
 
     const variants = {
-      primary: 'bg-blue-600 text-white hover:bg-blue-700 focus:ring-blue-500',
-      secondary: 'bg-slate-700 text-white hover:bg-slate-600 focus:ring-slate-500',
-      ghost: 'bg-transparent text-slate-300 hover:bg-slate-800 focus:ring-slate-500',
-      danger: 'bg-red-600 text-white hover:bg-red-700 focus:ring-red-500',
-      success: 'bg-green-600 text-white hover:bg-green-700 focus:ring-green-500',
-      warning: 'bg-yellow-600 text-white hover:bg-yellow-700 focus:ring-yellow-500',
+      primary: 'bg-gradient-primary text-white hover:shadow-[0_0_30px_rgba(139,92,246,0.5)] hover:scale-105',
+      secondary: 'bg-slate-800/50 text-white border border-slate-700 hover:border-primary-500 hover:bg-slate-800',
+      ghost: 'bg-transparent text-white hover:bg-white/10',
+      danger: 'bg-danger-500 text-white hover:bg-danger-600 hover:shadow-[0_0_20px_rgba(239,68,68,0.4)]',
+      success: 'bg-success-500 text-white hover:bg-success-600 hover:shadow-[0_0_20px_rgba(16,185,129,0.4)]',
+      warning: 'bg-warning-500 text-white hover:bg-warning-600 hover:shadow-[0_0_20px_rgba(245,158,11,0.4)]',
     }
 
     const sizes = {
-      sm: 'px-3 py-1.5 text-sm',
-      md: 'px-4 py-2 text-sm',
-      lg: 'px-6 py-3 text-base',
+      sm: 'px-4 py-2 text-sm',
+      md: 'px-6 py-3 text-base',
+      lg: 'px-8 py-4 text-lg',
     }
 
     return (

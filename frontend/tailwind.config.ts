@@ -10,29 +10,25 @@ const config: Config = {
     extend: {
       colors: {
         primary: {
-          50: '#f0f9ff',
-          100: '#e0f2fe',
-          200: '#bae6fd',
-          300: '#7dd3fc',
-          400: '#38bdf8',
-          500: '#0ea5e9',
-          600: '#0284c7',
-          700: '#0369a1',
-          800: '#075985',
-          900: '#0c4a6e',
+          500: '#8b5cf6',
+          600: '#7c3aed',
         },
-        danger: {
-          500: '#ef4444',
-          600: '#dc2626',
+        accent: {
+          pink: '#ec4899',
+          cyan: '#06b6d4',
+          yellow: '#fbbf24',
         },
-        warning: {
-          500: '#f59e0b',
-          600: '#d97706',
-        },
-        success: {
-          500: '#22c55e',
-          600: '#16a34a',
-        },
+        success: { 500: '#10b981' },
+        warning: { 500: '#f59e0b' },
+        danger: { 500: '#ef4444' },
+      },
+      backgroundImage: {
+        'gradient-primary': 'linear-gradient(135deg, #8b5cf6 0%, #3b82f6 100%)',
+        'gradient-accent': 'linear-gradient(135deg, #ec4899 0%, #8b5cf6 100%)',
+        'gradient-dark': 'linear-gradient(135deg, #1e1b4b 0%, #0f172a 100%)',
+      },
+      fontFamily: {
+        sans: ['Inter', '-apple-system', 'BlinkMacSystemFont', '"Segoe UI"', 'Roboto', 'Arial', 'sans-serif'],
       },
     },
   },
