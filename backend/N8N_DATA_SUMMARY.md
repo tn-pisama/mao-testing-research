@@ -68,19 +68,22 @@
 
 ### What We Have vs What We Don't Have
 
-✅ **What IS captured** (in all 42 states):
+✅ **What IS captured** (in all states):
 - **Final outputs** from LLM calls
 - Node execution results
 - Model parameters (e.g., `claude-3-5-haiku-20241022`)
+- Model config (temperature, max_tokens, top_p, etc.) - **NEW**
+- LLM prompts (no longer redacted) - **NEW**
+- Internal reasoning/thinking (via custom node) - **NEW**
 - Input/output data
 - Error messages
 - Performance metrics (tokens, latency)
 
-❌ **What is NOT captured**:
-- **Internal reasoning/thinking** from Claude models
-- Extended thinking process (if enabled via API)
-- Chain-of-thought steps
-- Model's internal deliberation
+✅ **Custom Claude Node Available**:
+- Customers can install `n8n-nodes-claude-thinking`
+- Captures extended thinking alongside responses
+- Fully compatible with PISAMA webhook ingestion
+- Located in: `n8n-nodes-claude-thinking/`
 
 **Output keys found across all states**:
 - `analysis` - Analysis results
@@ -92,12 +95,14 @@
 - `toxicity_score` - Safety scores
 - `injection_attempts_detected` - Security checks
 
-**Why no reasoning?**
-n8n's LangChain nodes capture only the final output from Claude API calls, not the extended thinking process. To capture reasoning, you would need to:
-1. Enable extended thinking in Claude API calls
-2. Explicitly extract the `thinking` field from API responses
-3. Store it separately in n8n workflow outputs
-4. Send it through the webhook to PISAMA
+**How to capture reasoning:**
+We've created a custom n8n node (`n8n-nodes-claude-thinking`) that:
+1. ✅ Enables extended thinking in Claude API calls
+2. ✅ Explicitly extracts the `thinking` field from API responses
+3. ✅ Stores it in structured n8n workflow outputs
+4. ✅ Sends it through the webhook to PISAMA
+
+Customers can install this node via npm and replace standard Claude nodes to capture full reasoning chains.
 
 ### Additional Context
 
