@@ -17,6 +17,55 @@
 | `states` (from n8n traces) | **42** | Node execution states across n8n traces |
 | `detections` (from n8n traces) | **11** | Failure detections in n8n executions |
 
+### Content Stored (Not Just Metadata!)
+
+✅ **We have FULL execution content**, not just trace metadata:
+
+**Traces contain**:
+- Session ID, framework, status
+- Timestamps (created_at, completed_at)
+- Token counts and cost tracking
+- Metadata (JSONB)
+
+**States contain** (42 states with full content):
+- `state_delta` (JSONB) - **Full node execution data**:
+  - Node name, node type (e.g., `@n8n/n8n-nodes-langchain.agent`)
+  - Input/output data
+  - Parameters (model, settings)
+  - Error information
+- `agent_id` - Agent that executed the state
+- `state_hash` - For loop detection
+- `token_count`, `latency_ms` - Performance metrics
+- `embedding` - Vector embeddings for semantic analysis
+
+**Detections contain**:
+- `detection_type` - Type of failure (hallucination, loop, etc.)
+- `confidence` - Detection confidence score
+- `method` - Detection algorithm used (heuristic, semantic, etc.)
+- `details` (JSONB) - **Full failure context**:
+  - Affected agent
+  - Failure indicators
+  - Additional context
+
+**Example state content**:
+```json
+{
+  "error": null,
+  "output": [{"json": {"response": "test coordinator output"}}],
+  "node_name": "Coordinator Agent",
+  "node_type": "@n8n/n8n-nodes-langchain.agent",
+  "parameters": {"model": "claude-3-5-haiku-20241022"}
+}
+```
+
+**Example detection content**:
+```json
+{
+  "agent_id": "Verification Agent",
+  "indicators": ["unverifiable_claim"]
+}
+```
+
 ### Additional Context
 
 **All Database Tables**:
