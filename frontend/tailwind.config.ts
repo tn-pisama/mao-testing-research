@@ -10,29 +10,31 @@ const config: Config = {
     extend: {
       colors: {
         primary: {
-          50: '#f0f9ff',
-          100: '#e0f2fe',
-          200: '#bae6fd',
-          300: '#7dd3fc',
-          400: '#38bdf8',
-          500: '#0ea5e9',
-          600: '#0284c7',
-          700: '#0369a1',
-          800: '#075985',
-          900: '#0c4a6e',
+          500: '#14b8a6',
+          600: '#0d9488',
         },
-        danger: {
-          500: '#ef4444',
-          600: '#dc2626',
+        accent: {
+          500: '#fb7185',
         },
-        warning: {
-          500: '#f59e0b',
-          600: '#d97706',
+        neutral: {
+          50: '#fafafa',
+          100: '#f5f5f5',
+          200: '#e7e7e7',
+          300: '#d4d4d4',
+          500: '#737373',
+          600: '#525252',
+          900: '#171717',
         },
-        success: {
-          500: '#22c55e',
-          600: '#16a34a',
-        },
+        success: { 500: '#10b981' },
+        warning: { 500: '#f59e0b' },
+        danger: { 500: '#ef4444' },
+      },
+      fontFamily: {
+        sans: ['"Plus Jakarta Sans"', 'Inter', '-apple-system', 'BlinkMacSystemFont', '"Segoe UI"', 'Roboto', 'Arial', 'sans-serif'],
+      },
+      spacing: {
+        '18': '4.5rem',
+        '22': '5.5rem',
       },
     },
   },
