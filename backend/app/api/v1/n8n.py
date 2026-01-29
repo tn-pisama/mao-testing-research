@@ -1,4 +1,5 @@
 from fastapi import APIRouter, Depends, HTTPException, Request, Header, BackgroundTasks
+from starlette.responses import StreamingResponse
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy import select, insert
 from sqlalchemy.dialects.postgresql import insert as pg_insert
@@ -15,6 +16,7 @@ from app.core.auth import get_current_tenant
 from app.core.n8n_security import verify_webhook_signature, redact_sensitive_data
 from app.ingestion.n8n_parser import n8n_parser
 from app.config import get_settings
+from app.core.redis_pubsub import publish_event, subscribe_events
 
 logger = logging.getLogger(__name__)
 
@@ -205,6 +207,21 @@ async def receive_n8n_webhook(
         db.add(db_state)
     
     await db.commit()
+
+    # Publish real-time execution event to Redis
+    await publish_event(
+        f"execution:{tenant_id}",
+        {
+            "type": "execution.created",
+            "trace_id": str(trace.id),
+            "execution_id": execution.id,
+            "workflow_id": payload.workflowId,
+            "workflow_name": payload.workflowName or f"Workflow {payload.workflowId[:8]}",
+            "status": execution.status,
+            "started_at": execution.started_at.isoformat() if execution.started_at else None,
+            "finished_at": execution.finished_at.isoformat() if execution.finished_at else None,
+        }
+    )
 
     # Trigger quality assessment if workflow definition is provided and feature is enabled
     quality_assessment_triggered = False
@@ -537,3 +554,48 @@ async def discover_workflows(
             status_code=502,
             detail=f"Failed to fetch workflows from n8n: {e.message}"
         )
+
+
+@router.get("/stream")
+async def stream_executions(
+    tenant_id: str = Depends(get_current_tenant),
+):
+    """
+    Server-Sent Events (SSE) endpoint for real-time execution updates.
+
+    Subscribes to Redis pub/sub channel for the tenant and streams execution
+    events as they happen. The client should connect using EventSource.
+
+    Example:
+        const eventSource = new EventSource('/api/v1/n8n/stream');
+        eventSource.onmessage = (event) => {
+            const data = JSON.parse(event.data);
+            console.log('New execution:', data);
+        };
+    """
+    logger.info(f"SSE stream started for tenant: {tenant_id}")
+
+    async def event_generator():
+        """Generate SSE events from Redis pub/sub."""
+        try:
+            async for event in subscribe_events(f"execution:{tenant_id}"):
+                yield event
+        except Exception as e:
+            logger.error(f"Error in SSE stream: {e}")
+            # Send error event to client
+            import json
+            error_data = json.dumps({
+                "type": "error",
+                "message": "Stream interrupted"
+            })
+            yield f"data: {error_data}\n\n"
+
+    return StreamingResponse(
+        event_generator(),
+        media_type="text/event-stream",
+        headers={
+            "Cache-Control": "no-cache",
+            "Connection": "keep-alive",
+            "X-Accel-Buffering": "no",  # Disable nginx buffering
+        }
+    )
