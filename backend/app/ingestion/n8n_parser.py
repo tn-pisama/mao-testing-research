@@ -89,20 +89,28 @@ class N8nParser:
     
     def parse_to_states(self, execution: N8nExecution, tenant_id: str) -> List[ParsedN8nState]:
         states = []
-        
+
         for seq, node in enumerate(execution.nodes):
+            # Extract model config before redaction
+            model_config = self._extract_model_config(node.parameters)
+
+            # Extract thinking/reasoning from custom Claude node output
+            reasoning = self._extract_reasoning(node.output)
+
             state_delta = redact_sensitive_data({
                 "node_name": node.name,
                 "node_type": node.type,
                 "parameters": node.parameters,
                 "output": node.output,
                 "error": node.error,
-            })
-            
+                "model_config": model_config,
+                "reasoning": reasoning,
+            }, skip_keys=["messages", "systemMessage", "prompt", "thinking", "reasoning"])
+
             is_ai = self._is_ai_node(node)
             ai_model = None
             token_count = 0
-            
+
             if is_ai:
                 ai_model = node.parameters.get("model", node.parameters.get("modelId"))
                 token_count = self._extract_token_count(node)
@@ -143,7 +151,49 @@ class N8nParser:
                 usage = first_output.get("usage", {})
                 return usage.get("total_tokens", 0)
         return 0
-    
+
+    def _extract_model_config(self, parameters: dict) -> dict:
+        """Extract model configuration from node parameters."""
+        config = {}
+
+        # Common LLM config fields
+        if "temperature" in parameters:
+            config["temperature"] = parameters["temperature"]
+        if "maxTokens" in parameters:
+            config["max_tokens"] = parameters["maxTokens"]
+        if "topP" in parameters:
+            config["top_p"] = parameters["topP"]
+        if "topK" in parameters:
+            config["top_k"] = parameters["topK"]
+        if "frequencyPenalty" in parameters:
+            config["frequency_penalty"] = parameters["frequencyPenalty"]
+        if "presencePenalty" in parameters:
+            config["presence_penalty"] = parameters["presencePenalty"]
+        if "stop" in parameters:
+            config["stop_sequences"] = parameters["stop"]
+
+        # Extended thinking flag (if present)
+        if "extendedThinking" in parameters or "extended_thinking" in parameters:
+            config["extended_thinking"] = parameters.get("extendedThinking", parameters.get("extended_thinking"))
+
+        return config
+
+    def _extract_reasoning(self, output: list) -> Optional[str]:
+        """Extract thinking/reasoning from node output (custom Claude node)."""
+        if not isinstance(output, list) or not output:
+            return None
+
+        for item in output:
+            if isinstance(item, dict) and "json" in item:
+                json_data = item["json"]
+                # Check for thinking field from custom Claude node
+                if isinstance(json_data, dict) and "thinking" in json_data:
+                    thinking = json_data["thinking"]
+                    if thinking:
+                        return thinking
+
+        return None
+
     def _parse_datetime(self, dt_str: Optional[str]) -> datetime:
         if not dt_str:
             return datetime.utcnow()

@@ -83,27 +83,42 @@ def validate_n8n_url(url: str) -> str:
     return url
 
 
-def redact_sensitive_data(data: dict) -> dict:
+def redact_sensitive_data(data: dict, skip_keys: Optional[list] = None) -> dict:
+    """
+    Redact sensitive data from a dictionary.
+
+    Args:
+        data: Dictionary to redact
+        skip_keys: List of keys to skip redaction for (e.g., prompts, messages)
+
+    Returns:
+        Dictionary with sensitive data redacted
+    """
     if not isinstance(data, dict):
         return data
-    
+
+    skip_keys = skip_keys or []
+
     result = {}
     for key, value in data.items():
-        if isinstance(value, str):
+        # Skip redaction for specified keys (e.g., prompts)
+        if key in skip_keys:
+            result[key] = value
+        elif isinstance(value, str):
             redacted = value
             for pattern in SENSITIVE_PATTERNS:
                 redacted = pattern.sub("[REDACTED]", redacted)
             result[key] = redacted
         elif isinstance(value, dict):
-            result[key] = redact_sensitive_data(value)
+            result[key] = redact_sensitive_data(value, skip_keys=skip_keys)
         elif isinstance(value, list):
             result[key] = [
-                redact_sensitive_data(item) if isinstance(item, dict) else item
+                redact_sensitive_data(item, skip_keys=skip_keys) if isinstance(item, dict) else item
                 for item in value
             ]
         else:
             result[key] = value
-    
+
     return result
 
 
