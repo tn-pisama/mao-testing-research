@@ -1,6 +1,6 @@
 'use client'
 
-import { Card } from '../ui/Card'
+import { Card, CardTitle } from '../ui/Card'
 
 export function FeatureCards() {
   return (
@@ -8,20 +8,20 @@ export function FeatureCards() {
       <div className="grid md:grid-cols-3 gap-6">
         <Card>
           <div className="p-6">
-            <h3 className="text-lg font-semibold text-white mb-2">Loop Detection</h3>
-            <p className="text-sm text-slate-400">Detect infinite loops in agent workflows</p>
+            <CardTitle>Loop Detection</CardTitle>
+            <p className="text-sm text-white/70 mt-2">Detect infinite loops in agent workflows</p>
           </div>
         </Card>
         <Card>
           <div className="p-6">
-            <h3 className="text-lg font-semibold text-white mb-2">State Analysis</h3>
-            <p className="text-sm text-slate-400">Track and analyze agent state changes</p>
+            <CardTitle>State Analysis</CardTitle>
+            <p className="text-sm text-white/70 mt-2">Track and analyze agent state changes</p>
           </div>
         </Card>
         <Card>
           <div className="p-6">
-            <h3 className="text-lg font-semibold text-white mb-2">Fix Suggestions</h3>
-            <p className="text-sm text-slate-400">AI-powered fix recommendations</p>
+            <CardTitle>Fix Suggestions</CardTitle>
+            <p className="text-sm text-white/70 mt-2">AI-powered fix recommendations</p>
           </div>
         </Card>
       </div>
