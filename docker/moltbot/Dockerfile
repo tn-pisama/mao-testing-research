@@ -1,11 +1,8 @@
 # Moltbot Docker Image for PISAMA Testing
 FROM node:22-alpine
 
-# Install pnpm
-RUN npm install -g pnpm@latest
-
-# Install Moltbot globally
-RUN pnpm add -g moltbot@latest
+# Install Moltbot globally via npm
+RUN npm install -g moltbot@latest
 
 # Create config directory
 RUN mkdir -p /root/.clawdbot
