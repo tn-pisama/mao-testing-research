@@ -10,12 +10,12 @@ export interface CardProps extends HTMLAttributes<HTMLDivElement> {
 
 export const Card = forwardRef<HTMLDivElement, CardProps>(
   ({ className, variant = 'default', padding = 'md', children, ...props }, ref) => {
-    const baseStyles = 'rounded-xl'
+    const baseStyles = 'rounded transition-all duration-200'
 
     const variants = {
-      default: 'bg-slate-800/50 border border-slate-700',
-      bordered: 'bg-transparent border-2 border-slate-600',
-      elevated: 'bg-slate-800 shadow-lg shadow-black/20',
+      default: 'bg-black/90 border border-primary-500/30 shadow-[0_0_15px_rgba(0,212,255,0.1)] hover:border-primary-500/60 hover:shadow-[0_0_20px_rgba(0,212,255,0.2)]',
+      bordered: 'bg-transparent border-2 border-primary-500/50 hover:border-primary-500',
+      elevated: 'bg-black/95 border border-primary-500/40 shadow-[0_0_25px_rgba(0,212,255,0.15)]',
     }
 
     const paddings = {
@@ -56,7 +56,7 @@ export interface CardTitleProps extends HTMLAttributes<HTMLHeadingElement> {}
 
 export const CardTitle = forwardRef<HTMLHeadingElement, CardTitleProps>(
   ({ className, children, ...props }, ref) => (
-    <h3 ref={ref} className={clsx('text-lg font-semibold text-white', className)} {...props}>
+    <h3 ref={ref} className={clsx('text-lg font-mono font-semibold text-primary-500', className)} {...props}>
       {children}
     </h3>
   )
@@ -68,7 +68,7 @@ export interface CardDescriptionProps extends HTMLAttributes<HTMLParagraphElemen
 
 export const CardDescription = forwardRef<HTMLParagraphElement, CardDescriptionProps>(
   ({ className, children, ...props }, ref) => (
-    <p ref={ref} className={clsx('text-sm text-slate-400', className)} {...props}>
+    <p ref={ref} className={clsx('text-sm text-white/60', className)} {...props}>
       {children}
     </p>
   )
