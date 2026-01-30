@@ -514,8 +514,8 @@ class OTELGoldenTraceTestHarness:
         """Run F8 Information Withholding detector."""
         detector = InformationWithholdingDetector()
         result = detector.detect(
-            internal_findings=detector_input["internal_findings"],
-            output=detector_input["output"],
+            internal_state=detector_input["internal_state"],
+            agent_output=detector_input["agent_output"],
         )
         return type('Result', (), {
             'detected': result.detected,
