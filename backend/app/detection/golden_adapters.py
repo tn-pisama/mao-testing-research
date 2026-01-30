@@ -142,12 +142,49 @@ class LoopDetectionAdapter(BaseGoldenAdapter):
 
 
 class CoordinationDetectionAdapter(BaseGoldenAdapter):
-    """Convert n8n workflow nodes to messages + agent_ids for coordination detection."""
+    """Convert n8n workflow nodes or Moltbot messages to coordination detector input."""
 
     def get_detection_type(self) -> str:
         return "coordination"
 
     def adapt(self, input_data: Dict[str, Any]) -> AdapterResult:
+        # Detect format: Moltbot vs n8n
+        if "messages" in input_data and "agent_ids" in input_data:
+            return self._adapt_moltbot(input_data)
+        else:
+            return self._adapt_n8n(input_data)
+
+    def _adapt_moltbot(self, input_data: Dict[str, Any]) -> AdapterResult:
+        """Adapt Moltbot coordination format."""
+        messages_data = input_data.get("messages", [])
+        agent_ids = input_data.get("agent_ids", [])
+
+        if not messages_data:
+            return AdapterResult(
+                success=False,
+                detector_input=None,
+                error="No messages found in coordination sample"
+            )
+
+        # Convert to Message objects
+        messages = []
+        for msg in messages_data:
+            messages.append(Message(
+                from_agent=msg.get("from_agent", ""),
+                to_agent=msg.get("to_agent", ""),
+                content=msg.get("content", ""),
+                timestamp=float(msg.get("timestamp", 0)),
+                acknowledged=msg.get("acknowledged", True),
+            ))
+
+        return AdapterResult(
+            success=True,
+            detector_input={"messages": messages, "agent_ids": agent_ids},
+            metadata={"message_count": len(messages), "agent_count": len(agent_ids), "format": "moltbot"}
+        )
+
+    def _adapt_n8n(self, input_data: Dict[str, Any]) -> AdapterResult:
+        """Adapt n8n workflow format."""
         nodes = input_data.get("nodes", [])
         messages = []
         agent_ids = set()
@@ -186,17 +223,57 @@ class CoordinationDetectionAdapter(BaseGoldenAdapter):
         return AdapterResult(
             success=True,
             detector_input={"messages": messages, "agent_ids": list(agent_ids)},
-            metadata={"message_count": len(messages), "agent_count": len(agent_ids)}
+            metadata={"message_count": len(messages), "agent_count": len(agent_ids), "format": "n8n"}
         )
 
 
 class CorruptionDetectionAdapter(BaseGoldenAdapter):
-    """Convert n8n workflow nodes to prev_state/current_state pair."""
+    """Convert n8n workflow nodes or Moltbot operations to corruption detector input."""
 
     def get_detection_type(self) -> str:
         return "corruption"
 
     def adapt(self, input_data: Dict[str, Any]) -> AdapterResult:
+        # Detect format: Moltbot vs n8n
+        if "task" in input_data and "operations" in input_data:
+            return self._adapt_moltbot(input_data)
+        else:
+            return self._adapt_n8n(input_data)
+
+    def _adapt_moltbot(self, input_data: Dict[str, Any]) -> AdapterResult:
+        """Adapt Moltbot corruption format (task + operations)."""
+        task = input_data.get("task", "")
+        operations = input_data.get("operations", [])
+
+        if not operations:
+            return AdapterResult(
+                success=False,
+                detector_input=None,
+                error="No operations found in corruption sample"
+            )
+
+        # Build context from operations
+        context_parts = []
+        for op in operations[:5]:  # Limit to first 5
+            op_type = op.get("op", "")
+            key = op.get("key", "")
+            value = op.get("value", "")
+            context_parts.append(f"{op_type} {key}={value}")
+
+        context = "; ".join(context_parts) if context_parts else None
+
+        # For corruption detection, we need to summarize the operations
+        output = f"Performed {len(operations)} operations on state"
+        if operations:
+            output += f": {', '.join(op.get('key', '') for op in operations[:3])}"
+
+        return AdapterResult(
+            success=True,
+            detector_input={"task": task, "output": output, "context": context},
+            metadata={"operation_count": len(operations), "format": "moltbot"}
+        )
+
+    def _adapt_n8n(self, input_data: Dict[str, Any]) -> AdapterResult:
         """
         Use text-based semantic corruption detection instead of state-based.
 
@@ -259,7 +336,8 @@ class CorruptionDetectionAdapter(BaseGoldenAdapter):
             metadata={
                 "ai_node_count": len(ai_nodes),
                 "set_node_count": len(set_nodes),
-                "has_context": context is not None
+                "has_context": context is not None,
+                "format": "n8n"
             }
         )
 
@@ -293,12 +371,57 @@ class CorruptionDetectionAdapter(BaseGoldenAdapter):
 
 
 class PersonaDriftDetectionAdapter(BaseGoldenAdapter):
-    """Convert n8n workflow nodes to Agent + output pairs."""
+    """Convert n8n workflow nodes or Moltbot interactions to persona drift detector input."""
 
     def get_detection_type(self) -> str:
         return "persona_drift"
 
     def adapt(self, input_data: Dict[str, Any]) -> AdapterResult:
+        # Detect format: Moltbot vs n8n
+        if "agent" in input_data and "interactions" in input_data:
+            return self._adapt_moltbot(input_data)
+        else:
+            return self._adapt_n8n(input_data)
+
+    def _adapt_moltbot(self, input_data: Dict[str, Any]) -> AdapterResult:
+        """Adapt Moltbot persona drift format (agent + interactions)."""
+        agent_data = input_data.get("agent", {})
+        interactions = input_data.get("interactions", [])
+
+        if not interactions:
+            return AdapterResult(
+                success=False,
+                detector_input=None,
+                error="No interactions found in persona drift sample"
+            )
+
+        # Build agent object
+        persona = agent_data.get("persona_description", "Professional assistant")
+        role_type = self._infer_role_type(persona)
+
+        agent = Agent(
+            id=agent_data.get("id", "agent"),
+            persona_description=persona,
+            allowed_actions=[],
+            role_type=role_type,
+        )
+
+        # Combine all interactions into output for analysis
+        outputs = [interaction.get("output", "") for interaction in interactions]
+        output = "\n\n".join(outputs)
+
+        return AdapterResult(
+            success=True,
+            detector_input={"agent": agent, "output": output},
+            metadata={
+                "role_type": role_type.value if role_type else None,
+                "interaction_count": len(interactions),
+                "format": "moltbot"
+            }
+        )
+
+    def _adapt_n8n(self, input_data: Dict[str, Any]) -> AdapterResult:
+        """Adapt n8n workflow format."""
         nodes = input_data.get("nodes", [])
 
         ai_nodes = [n for n in nodes if self._is_ai_node(n)]
@@ -348,7 +471,7 @@ class PersonaDriftDetectionAdapter(BaseGoldenAdapter):
         return AdapterResult(
             success=True,
             detector_input={"agent": agent, "output": output},
-            metadata={"role_type": role_type.value if role_type else None}
+            metadata={"role_type": role_type.value if role_type else None, "format": "n8n"}
         )
 
     def _infer_role_type(self, persona: str) -> Optional[RoleType]:
@@ -479,6 +602,64 @@ class CompletionDetectionAdapter(BaseGoldenAdapter):
         )
 
 
+class HallucinationDetectionAdapter(BaseGoldenAdapter):
+    """Convert Moltbot tool results to hallucination detector input."""
+
+    def get_detection_type(self) -> str:
+        return "hallucination"
+
+    def adapt(self, input_data: Dict[str, Any]) -> AdapterResult:
+        """Adapt Moltbot hallucination format."""
+        tool_output = input_data.get("tool_output", {})
+        agent_output = input_data.get("agent_output", "")
+
+        if not agent_output:
+            return AdapterResult(
+                success=False,
+                detector_input=None,
+                error="No agent output found in hallucination sample"
+            )
+
+        # Convert tool_output to tool_results format
+        tool_results = [tool_output] if tool_output else None
+
+        return AdapterResult(
+            success=True,
+            detector_input={
+                "output": agent_output,
+                "tool_results": tool_results,
+            },
+            metadata={"format": "moltbot"}
+        )
+
+
+class InjectionDetectionAdapter(BaseGoldenAdapter):
+    """Convert Moltbot user input to injection detector input."""
+
+    def get_detection_type(self) -> str:
+        return "injection"
+
+    def adapt(self, input_data: Dict[str, Any]) -> AdapterResult:
+        """Adapt Moltbot injection format."""
+        user_input = input_data.get("user_input", "")
+
+        if not user_input:
+            return AdapterResult(
+                success=False,
+                detector_input=None,
+                error="No user input found in injection sample"
+            )
+
+        return AdapterResult(
+            success=True,
+            detector_input={
+                "text": user_input,
+                "is_user_input": True,
+            },
+            metadata={"format": "moltbot"}
+        )
+
+
 # Registry of adapters by detection type
 ADAPTER_REGISTRY: Dict[str, BaseGoldenAdapter] = {
     "loop": LoopDetectionAdapter(),
@@ -487,6 +668,8 @@ ADAPTER_REGISTRY: Dict[str, BaseGoldenAdapter] = {
     "persona_drift": PersonaDriftDetectionAdapter(),
     "overflow": OverflowDetectionAdapter(),
     "completion": CompletionDetectionAdapter(),
+    "hallucination": HallucinationDetectionAdapter(),
+    "injection": InjectionDetectionAdapter(),
 }
 
 

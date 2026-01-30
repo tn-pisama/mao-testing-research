@@ -23,6 +23,8 @@ from app.detection.corruption import SemanticCorruptionDetector
 from app.detection.persona import PersonaConsistencyScorer
 from app.detection.overflow import ContextOverflowDetector
 from app.detection.completion import CompletionMisjudgmentDetector
+from app.detection.hallucination import HallucinationDetector
+from app.detection.injection import InjectionDetector
 from app.detection.golden_adapters import get_adapter
 
 
@@ -32,7 +34,7 @@ class HarnessConfig:
     dataset_path: Path
     output_dir: Path
     detectors: List[str] = field(default_factory=lambda: [
-        "loop", "coordination", "corruption", "persona_drift", "overflow", "completion"
+        "loop", "coordination", "corruption", "persona_drift", "overflow", "completion", "hallucination", "injection"
     ])
     sample_limit: Optional[int] = None
     save_misclassified: bool = True
@@ -71,6 +73,8 @@ class GoldenDatasetTestHarness:
             "persona_drift": self._run_persona_detection,
             "overflow": self._run_overflow_detection,
             "completion": self._run_completion_detection,
+            "hallucination": self._run_hallucination_detection,
+            "injection": self._run_injection_detection,
         }
 
     def run_all(self) -> Dict[str, DetectorTestResult]:
@@ -279,6 +283,22 @@ class GoldenDatasetTestHarness:
             task=detector_input["task"],
             agent_output=detector_input["agent_output"],
             subtasks=detector_input.get("subtasks"),
+        )
+
+    def _run_hallucination_detection(self, detector_input: Dict) -> Any:
+        """Run hallucination detector."""
+        detector = HallucinationDetector()
+        return detector.detect_hallucination(
+            output=detector_input["output"],
+            tool_results=detector_input.get("tool_results"),
+        )
+
+    def _run_injection_detection(self, detector_input: Dict) -> Any:
+        """Run injection detector."""
+        detector = InjectionDetector()
+        return detector.detect_injection(
+            text=detector_input["text"],
+            is_user_input=detector_input.get("is_user_input", True),
         )
 
     def generate_report(self, results: Dict[str, DetectorTestResult]) -> Dict:
