@@ -1484,6 +1484,181 @@ def generate_f13_quality_gate_negative() -> Dict[str, Any]:
     }
 
 
+# ============================================================================
+# BORDERLINE TRACE GENERATORS (Challenging Negatives - Near Detection Threshold)
+# ============================================================================
+
+def generate_f3_resource_borderline() -> Dict[str, Any]:
+    """Generate F3 borderline: high token usage just under 2000 threshold."""
+    trace_id = generate_trace_id()
+    root_span_id = generate_span_id()
+    start_time = datetime.utcnow() - timedelta(minutes=random.randint(5, 60))
+
+    spans = []
+    current_time = start_time
+
+    spans.append(create_base_span(
+        trace_id, root_span_id, None, "workflow.run",
+        "coordinator", current_time, 2000,
+        {"workflow.name": "report_generator"}
+    ))
+    current_time += timedelta(milliseconds=100)
+
+    # Borderline: 1900 tokens (just under 2000 threshold)
+    span1 = generate_span_id()
+    spans.append(create_base_span(
+        trace_id, span1, root_span_id, "generator.generate",
+        "generator", current_time, 800,
+        {
+            "gen_ai.action": "generate",
+            "gen_ai.tokens.input": 1200,
+            "gen_ai.tokens.output": 700,
+            "gen_ai.response.sample": "Generated comprehensive report with multiple sections...",
+        }
+    ))
+
+    return {
+        "resourceSpans": [{
+            "resource": {
+                "attributes": [
+                    {"key": "service.name", "value": {"stringValue": "report-generator"}},
+                    {"key": "mao.framework", "value": {"stringValue": "langgraph"}},
+                ]
+            },
+            "scopeSpans": [{
+                "scope": {"name": "mao-testing-sdk", "version": "1.0.0"},
+                "spans": spans,
+            }]
+        }],
+        "_golden_metadata": {
+            "detection_type": "F3_resource_misallocation",
+            "variant": "borderline",
+            "expected_detection": False,
+        }
+    }
+
+
+def generate_f13_quality_gate_borderline() -> Dict[str, Any]:
+    """Generate F13 borderline: 1 non-critical test failed but deployed."""
+    trace_id = generate_trace_id()
+    root_span_id = generate_span_id()
+    start_time = datetime.utcnow() - timedelta(minutes=random.randint(5, 60))
+
+    spans = []
+    current_time = start_time
+
+    spans.append(create_base_span(
+        trace_id, root_span_id, None, "workflow.run",
+        "coordinator", current_time, 4000,
+        {"workflow.name": "deployment_pipeline"}
+    ))
+    current_time += timedelta(milliseconds=100)
+
+    # Borderline: 1 non-critical test failed
+    span1 = generate_span_id()
+    spans.append(create_base_span(
+        trace_id, span1, root_span_id, "tester.run_tests",
+        "tester", current_time, 1000,
+        {
+            "gen_ai.action": "test",
+            "gen_ai.test_results": "17 passed, 1 failed (non-critical: deprecated API warning)",
+            "gen_ai.quality_gate.status": "passed_with_warnings",
+        }
+    ))
+    current_time += timedelta(milliseconds=1100)
+
+    # Deploy despite warning
+    span2 = generate_span_id()
+    spans.append(create_base_span(
+        trace_id, span2, root_span_id, "deployer.deploy",
+        "deployer", current_time, 1500,
+        {
+            "gen_ai.action": "deploy",
+            "gen_ai.response.sample": "Deployment successful. Note: 1 non-critical test warning acknowledged.",
+        }
+    ))
+
+    return {
+        "resourceSpans": [{
+            "resource": {
+                "attributes": [
+                    {"key": "service.name", "value": {"stringValue": "ci-cd-pipeline"}},
+                    {"key": "mao.framework", "value": {"stringValue": "crewai"}},
+                ]
+            },
+            "scopeSpans": [{
+                "scope": {"name": "mao-testing-sdk", "version": "1.0.0"},
+                "spans": spans,
+            }]
+        }],
+        "_golden_metadata": {
+            "detection_type": "F13_quality_gate_bypass",
+            "variant": "borderline",
+            "expected_detection": False,
+        }
+    }
+
+
+def generate_f8_withholding_borderline() -> Dict[str, Any]:
+    """Generate F8 borderline: vague mention of findings without details."""
+    trace_id = generate_trace_id()
+    root_span_id = generate_span_id()
+    start_time = datetime.utcnow() - timedelta(minutes=random.randint(5, 60))
+
+    spans = []
+    current_time = start_time
+
+    spans.append(create_base_span(
+        trace_id, root_span_id, None, "workflow.run",
+        "coordinator", current_time, 2000,
+        {"workflow.name": "security_analysis"}
+    ))
+    current_time += timedelta(milliseconds=100)
+
+    span1 = generate_span_id()
+    spans.append(create_base_span(
+        trace_id, span1, root_span_id, "analyzer.analyze",
+        "analyzer", current_time, 1000,
+        {
+            "gen_ai.action": "analyze",
+            # Borderline: vague internal findings
+            "gen_ai.internal_findings": "Found some potential issues in the authentication module that warrant attention",
+        }
+    ))
+    current_time += timedelta(milliseconds=1100)
+
+    span2 = generate_span_id()
+    spans.append(create_base_span(
+        trace_id, span2, root_span_id, "reporter.report",
+        "reporter", current_time, 400,
+        {
+            "gen_ai.action": "report",
+            # Borderline: vaguely mentions issues but no specifics
+            "gen_ai.response.sample": "The security analysis identified some areas that could be improved, particularly around authentication. Further investigation recommended.",
+        }
+    ))
+
+    return {
+        "resourceSpans": [{
+            "resource": {
+                "attributes": [
+                    {"key": "service.name", "value": {"stringValue": "security-scanner"}},
+                    {"key": "mao.framework", "value": {"stringValue": "autogen"}},
+                ]
+            },
+            "scopeSpans": [{
+                "scope": {"name": "mao-testing-sdk", "version": "1.0.0"},
+                "spans": spans,
+            }]
+        }],
+        "_golden_metadata": {
+            "detection_type": "F8_information_withholding",
+            "variant": "borderline",
+            "expected_detection": False,
+        }
+    }
+
+
 def generate_golden_dataset(
     count: int = 50,
     seed: int = None,
@@ -1547,13 +1722,25 @@ def generate_golden_dataset(
             for _ in range(samples_per_negative):
                 traces.append(neg_gen())
 
+        # Add borderline negative examples (challenging cases near thresholds)
+        borderline_generators = [
+            generate_f3_resource_borderline,
+            generate_f13_quality_gate_borderline,
+            generate_f8_withholding_borderline,
+        ]
+
+        samples_per_borderline = 10
+        for border_gen in borderline_generators:
+            for _ in range(samples_per_borderline):
+                traces.append(border_gen())
+
         # Add healthy traces (baseline negatives)
         num_healthy = len(traces) // 10
         for _ in range(num_healthy):
             traces.append(generate_healthy_trace())
 
         random.shuffle(traces)
-        print(f"Generated {len(traces)} MAST traces ({len(mast_generators)} failure types + {len(negative_generators)} negative types)")
+        print(f"Generated {len(traces)} MAST traces ({len(mast_generators)} failure types + {len(negative_generators)} negative + {len(borderline_generators)} borderline)")
         return traces
 
     else:
