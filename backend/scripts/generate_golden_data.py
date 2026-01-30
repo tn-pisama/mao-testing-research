@@ -1659,6 +1659,279 @@ def generate_f8_withholding_borderline() -> Dict[str, Any]:
     }
 
 
+def generate_f2_decomposition_borderline() -> Dict[str, Any]:
+    """Generate F2 borderline: suboptimal decomposition (2 subtasks instead of 5)."""
+    trace_id = generate_trace_id()
+    root_span_id = generate_span_id()
+    start_time = datetime.utcnow() - timedelta(minutes=random.randint(5, 60))
+
+    spans = []
+    current_time = start_time
+
+    # Borderline: Only 2 subtasks when 4-5 would be better
+    task = "Build a complete e-commerce website with user authentication, product catalog, shopping cart, and payment processing"
+    subtasks = ["Set up authentication", "Implement product catalog and checkout"]  # Lumped together
+
+    spans.append(create_base_span(
+        trace_id, root_span_id, None, "planner.decompose",
+        "planner", current_time, 500,
+        {
+            "gen_ai.task": task,
+            "gen_ai.subtasks": json.dumps(subtasks),
+        }
+    ))
+
+    return {
+        "resourceSpans": [{
+            "resource": {
+                "attributes": [
+                    {"key": "service.name", "value": {"stringValue": "task-planner"}},
+                    {"key": "mao.framework", "value": {"stringValue": "crewai"}},
+                ]
+            },
+            "scopeSpans": [{
+                "scope": {"name": "mao-testing-sdk", "version": "1.0.0"},
+                "spans": spans,
+            }]
+        }],
+        "_golden_metadata": {
+            "detection_type": "F2_poor_decomposition",
+            "variant": "borderline",
+            "expected_detection": False,
+        }
+    }
+
+
+def generate_f7_context_borderline() -> Dict[str, Any]:
+    """Generate F7 borderline: mentions context but doesn't fully address it."""
+    trace_id = generate_trace_id()
+    root_span_id = generate_span_id()
+    start_time = datetime.utcnow() - timedelta(minutes=random.randint(5, 60))
+
+    spans = []
+    current_time = start_time
+
+    spans.append(create_base_span(
+        trace_id, root_span_id, None, "workflow.run",
+        "coordinator", current_time, 3000,
+        {"workflow.name": "customer_support"}
+    ))
+    current_time += timedelta(milliseconds=100)
+
+    # First turn: User provides context
+    span1 = generate_span_id()
+    spans.append(create_base_span(
+        trace_id, span1, root_span_id, "user.message",
+        "user", current_time, 100,
+        {
+            "gen_ai.action": "message",
+            "gen_ai.response.sample": "I tried the troubleshooting steps you suggested yesterday (restarted the router, cleared cache) but the connection is still dropping every 15 minutes.",
+        }
+    ))
+    current_time += timedelta(milliseconds=150)
+
+    # Second turn: Agent mentions context but doesn't build on it
+    span2 = generate_span_id()
+    spans.append(create_base_span(
+        trace_id, span2, root_span_id, "agent.respond",
+        "support_agent", current_time, 400,
+        {
+            "gen_ai.action": "respond",
+            # Borderline: Acknowledges prior steps but doesn't actually build on them
+            "gen_ai.response.sample": "I understand you've tried restarting the router. Let's check if your firmware is up to date. Can you access your router settings?",
+        }
+    ))
+
+    return {
+        "resourceSpans": [{
+            "resource": {
+                "attributes": [
+                    {"key": "service.name", "value": {"stringValue": "support-bot"}},
+                    {"key": "mao.framework", "value": {"stringValue": "autogen"}},
+                ]
+            },
+            "scopeSpans": [{
+                "scope": {"name": "mao-testing-sdk", "version": "1.0.0"},
+                "spans": spans,
+            }]
+        }],
+        "_golden_metadata": {
+            "detection_type": "F7_context_neglect",
+            "variant": "borderline",
+            "expected_detection": False,
+        }
+    }
+
+
+def generate_f9_usurpation_borderline() -> Dict[str, Any]:
+    """Generate F9 borderline: agent does 2 related tasks (borderline role overlap)."""
+    trace_id = generate_trace_id()
+    root_span_id = generate_span_id()
+    start_time = datetime.utcnow() - timedelta(minutes=random.randint(5, 60))
+
+    spans = []
+    current_time = start_time
+
+    spans.append(create_base_span(
+        trace_id, root_span_id, None, "workflow.run",
+        "coordinator", current_time, 2000,
+        {"workflow.name": "code_review"}
+    ))
+    current_time += timedelta(milliseconds=100)
+
+    # Borderline: Developer writes code AND reviews it (related but usually separate roles)
+    span1 = generate_span_id()
+    spans.append(create_base_span(
+        trace_id, span1, root_span_id, "developer.work",
+        "developer", current_time, 1000,
+        {
+            "gen_ai.action": "write_and_review",
+            "gen_ai.role": "developer",
+            # Borderline: Doing both development and review (overlapping roles)
+            "gen_ai.response.sample": "I've implemented the authentication feature and also performed a code review. The implementation looks good, tests pass.",
+        }
+    ))
+
+    return {
+        "resourceSpans": [{
+            "resource": {
+                "attributes": [
+                    {"key": "service.name", "value": {"stringValue": "dev-workflow"}},
+                    {"key": "mao.framework", "value": {"stringValue": "crewai"}},
+                ]
+            },
+            "scopeSpans": [{
+                "scope": {"name": "mao-testing-sdk", "version": "1.0.0"},
+                "spans": spans,
+            }]
+        }],
+        "_golden_metadata": {
+            "detection_type": "F9_role_usurpation",
+            "variant": "borderline",
+            "expected_detection": False,
+        }
+    }
+
+
+def generate_f10_communication_borderline() -> Dict[str, Any]:
+    """Generate F10 borderline: partial acknowledgment of messages."""
+    trace_id = generate_trace_id()
+    root_span_id = generate_span_id()
+    start_time = datetime.utcnow() - timedelta(minutes=random.randint(5, 60))
+
+    spans = []
+    current_time = start_time
+
+    spans.append(create_base_span(
+        trace_id, root_span_id, None, "workflow.run",
+        "coordinator", current_time, 3000,
+        {"workflow.name": "team_coordination"}
+    ))
+    current_time += timedelta(milliseconds=100)
+
+    # Agent A sends message
+    span1 = generate_span_id()
+    spans.append(create_base_span(
+        trace_id, span1, root_span_id, "designer.send",
+        "designer", current_time, 300,
+        {
+            "gen_ai.action": "send_message",
+            "gen_ai.message.to": "developer",
+            "gen_ai.response.sample": "The UI mockups are ready. I've updated the color scheme and added the mobile responsive layouts.",
+        }
+    ))
+    current_time += timedelta(milliseconds=350)
+
+    # Agent B partially acknowledges (mentions mockups but not other details)
+    span2 = generate_span_id()
+    spans.append(create_base_span(
+        trace_id, span2, root_span_id, "developer.respond",
+        "developer", current_time, 400,
+        {
+            "gen_ai.action": "respond",
+            "gen_ai.message.to": "designer",
+            # Borderline: Acknowledges mockups but ignores color scheme and mobile layouts
+            "gen_ai.response.sample": "Thanks for the mockups. I'll start implementing the components.",
+            "gen_ai.communication.acknowledged": "true",  # Technically acknowledged
+        }
+    ))
+
+    return {
+        "resourceSpans": [{
+            "resource": {
+                "attributes": [
+                    {"key": "service.name", "value": {"stringValue": "team-workflow"}},
+                    {"key": "mao.framework", "value": {"stringValue": "autogen"}},
+                ]
+            },
+            "scopeSpans": [{
+                "scope": {"name": "mao-testing-sdk", "version": "1.0.0"},
+                "spans": spans,
+            }]
+        }],
+        "_golden_metadata": {
+            "detection_type": "F10_communication_breakdown",
+            "variant": "borderline",
+            "expected_detection": False,
+        }
+    }
+
+
+def generate_f14_completion_borderline() -> Dict[str, Any]:
+    """Generate F14 borderline: claims complete with 3 of 4 requirements met."""
+    trace_id = generate_trace_id()
+    root_span_id = generate_span_id()
+    start_time = datetime.utcnow() - timedelta(minutes=random.randint(5, 60))
+
+    spans = []
+    current_time = start_time
+
+    # Task with 4 requirements
+    task = "Generate quarterly report with: 1) Executive summary, 2) Financial analysis, 3) Market trends, 4) Recommendations for Q2"
+
+    spans.append(create_base_span(
+        trace_id, root_span_id, None, "workflow.run",
+        "coordinator", current_time, 3000,
+        {
+            "workflow.name": "report_generator",
+            "gen_ai.task": task,
+        }
+    ))
+    current_time += timedelta(milliseconds=100)
+
+    span1 = generate_span_id()
+    spans.append(create_base_span(
+        trace_id, span1, root_span_id, "generator.generate",
+        "generator", current_time, 1200,
+        {
+            "gen_ai.action": "generate",
+            # Borderline: Has 3 of 4 requirements (missing recommendations)
+            "gen_ai.response.sample": "Quarterly Report Q1 2025\n\nExecutive Summary: ...\nFinancial Analysis: Revenue increased 15%...\nMarket Trends: Strong growth in digital channels...\n\nReport complete.",
+            # Missing: Recommendations for Q2
+        }
+    ))
+
+    return {
+        "resourceSpans": [{
+            "resource": {
+                "attributes": [
+                    {"key": "service.name", "value": {"stringValue": "report-gen"}},
+                    {"key": "mao.framework", "value": {"stringValue": "crewai"}},
+                ]
+            },
+            "scopeSpans": [{
+                "scope": {"name": "mao-testing-sdk", "version": "1.0.0"},
+                "spans": spans,
+            }]
+        }],
+        "_golden_metadata": {
+            "detection_type": "F14_completion_misjudgment",
+            "variant": "borderline",
+            "expected_detection": False,
+        }
+    }
+
+
 def generate_golden_dataset(
     count: int = 50,
     seed: int = None,
@@ -1724,9 +1997,14 @@ def generate_golden_dataset(
 
         # Add borderline negative examples (challenging cases near thresholds)
         borderline_generators = [
+            generate_f2_decomposition_borderline,
             generate_f3_resource_borderline,
-            generate_f13_quality_gate_borderline,
+            generate_f7_context_borderline,
             generate_f8_withholding_borderline,
+            generate_f9_usurpation_borderline,
+            generate_f10_communication_borderline,
+            generate_f13_quality_gate_borderline,
+            generate_f14_completion_borderline,
         ]
 
         samples_per_borderline = 10
