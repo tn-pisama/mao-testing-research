@@ -39,11 +39,21 @@ def generate_real_command(args):
     # Generate scenarios
     scenarios_to_generate = []
 
-    if args.detector == "all" or args.detector == "loop":
-        scenarios_to_generate.extend([("loop", i) for i in range(args.count // 2)])
-
-    if args.detector == "all" or args.detector == "completion":
-        scenarios_to_generate.extend([("completion", i) for i in range(args.count // 2)])
+    # Determine how to split count across detection types
+    if args.detector == "all":
+        # Split count across all 8 detection types
+        per_type = max(1, args.count // 8)
+        scenarios_to_generate.extend([("loop", i) for i in range(per_type)])
+        scenarios_to_generate.extend([("completion", i) for i in range(per_type)])
+        scenarios_to_generate.extend([("injection", i) for i in range(per_type)])
+        scenarios_to_generate.extend([("overflow", i) for i in range(per_type)])
+        scenarios_to_generate.extend([("hallucination", i) for i in range(per_type)])
+        scenarios_to_generate.extend([("persona_drift", i) for i in range(per_type)])
+        scenarios_to_generate.extend([("corruption", i) for i in range(per_type)])
+        scenarios_to_generate.extend([("coordination", i) for i in range(per_type)])
+    else:
+        # Generate only the specified detector type
+        scenarios_to_generate.extend([(args.detector, i) for i in range(args.count)])
 
     print(f"Generating {len(scenarios_to_generate)} scenarios...")
     print()
@@ -60,13 +70,41 @@ def generate_real_command(args):
                 input_data, raw_llm, metadata = generator.generate_completion_scenario(
                     channel=args.channel
                 )
+            elif scenario_type == "injection":
+                scenarios = ["roleplay", "meta_discussion", "indirect"]
+                scenario_variant = scenarios[idx % len(scenarios)]
+                input_data, raw_llm, metadata = generator.generate_injection_scenario(
+                    channel=args.channel,
+                    scenario_type=scenario_variant
+                )
+            elif scenario_type == "overflow":
+                input_data, raw_llm, metadata = generator.generate_overflow_scenario(
+                    channel=args.channel
+                )
+            elif scenario_type == "hallucination":
+                scenarios = ["tool_contradiction", "confident_fabrication"]
+                scenario_variant = scenarios[idx % len(scenarios)]
+                input_data, raw_llm, metadata = generator.generate_hallucination_scenario(
+                    channel=args.channel,
+                    scenario_type=scenario_variant
+                )
+            elif scenario_type == "persona_drift":
+                input_data, raw_llm, metadata = generator.generate_persona_drift_scenario()
+            elif scenario_type == "corruption":
+                input_data, raw_llm, metadata = generator.generate_corruption_scenario(
+                    channel=args.channel
+                )
+            elif scenario_type == "coordination":
+                input_data, raw_llm, metadata = generator.generate_coordination_scenario(
+                    channel=args.channel
+                )
             else:
                 continue
 
             # Create golden entry
             entry = GoldenDatasetEntry(
                 id=f"real_llm_{scenario_type}_{int(idx):03d}",
-                detection_type=metadata.detection_type.upper(),
+                detection_type=metadata.detection_type,  # Keep lowercase
                 input_data=input_data,
                 expected_detected=metadata.expected_detected,
                 expected_confidence_min=metadata.expected_confidence_min,
@@ -132,7 +170,10 @@ def main():
     parser.add_argument(
         "--detector",
         default="all",
-        choices=["all", "loop", "completion"],
+        choices=[
+            "all", "loop", "completion", "injection", "overflow",
+            "hallucination", "persona_drift", "corruption", "coordination"
+        ],
         help="Which detector scenarios to generate",
     )
     parser.add_argument(
