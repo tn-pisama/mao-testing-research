@@ -398,8 +398,17 @@ class OTELGoldenTraceTestHarness:
     def _run_f2_decomposition(self, detector_input: Dict) -> Any:
         """Run F2 Poor Task Decomposition detector."""
         detector = TaskDecompositionDetector()
-        # Combine subtasks into a string for decomposition parameter
-        decomposition = "\n".join([f"- {st}" for st in detector_input.get("subtasks", [])])
+        # Format subtasks as numbered list (subtasks are dicts with 'id' and 'task' fields)
+        subtasks = detector_input.get("subtasks", [])
+        decomposition_lines = []
+        for i, st in enumerate(subtasks, 1):
+            if isinstance(st, dict):
+                task_desc = st.get('task', str(st))
+            else:
+                task_desc = str(st)
+            decomposition_lines.append(f"{i}. {task_desc}")
+        decomposition = "\n".join(decomposition_lines)
+
         result = detector.detect(
             task_description=detector_input["task"],
             decomposition=decomposition,

@@ -1,0 +1,892 @@
+{
+  "run_timestamp": "2026-01-30T07:51:33.066207",
+  "traces_path": "/Users/tuomonikulainen/mao-testing-research/backend/fixtures/golden/mast_traces.jsonl/golden_traces.jsonl",
+  "total_traces": 935,
+  "detectors_tested": [
+    "infinite_loop",
+    "coordination_deadlock",
+    "state_corruption",
+    "persona_drift",
+    "F1_spec_mismatch",
+    "F2_poor_decomposition",
+    "F3_resource_misallocation",
+    "F4_inadequate_tool",
+    "F5_flawed_workflow",
+    "F6_task_derailment",
+    "F7_context_neglect",
+    "F8_information_withholding",
+    "F9_role_usurpation",
+    "F10_communication_breakdown",
+    "F12_output_validation_failure",
+    "F13_quality_gate_bypass",
+    "F14_completion_misjudgment"
+  ],
+  "summary": {
+    "infinite_loop": {
+      "f1_score": 1.0,
+      "precision": 1.0,
+      "recall": 1.0,
+      "accuracy": 1.0,
+      "samples_tested": 50,
+      "optimal_threshold": 0.05
+    },
+    "coordination_deadlock": {
+      "f1_score": 1.0,
+      "precision": 1.0,
+      "recall": 1.0,
+      "accuracy": 1.0,
+      "samples_tested": 50,
+      "optimal_threshold": 0.05
+    },
+    "state_corruption": {
+      "f1_score": 0.0,
+      "precision": 0.0,
+      "recall": 0.0,
+      "accuracy": 0.0,
+      "samples_tested": 50,
+      "optimal_threshold": 0.5
+    },
+    "persona_drift": {
+      "f1_score": 1.0,
+      "precision": 1.0,
+      "recall": 1.0,
+      "accuracy": 1.0,
+      "samples_tested": 50,
+      "optimal_threshold": 0.05
+    },
+    "F1_spec_mismatch": {
+      "f1_score": 1.0,
+      "precision": 1.0,
+      "recall": 1.0,
+      "accuracy": 1.0,
+      "samples_tested": 50,
+      "optimal_threshold": 0.05
+    },
+    "F2_poor_decomposition": {
+      "f1_score": 1.0,
+      "precision": 1.0,
+      "recall": 1.0,
+      "accuracy": 1.0,
+      "samples_tested": 50,
+      "optimal_threshold": 0.05
+    },
+    "F3_resource_misallocation": {
+      "f1_score": 0.0,
+      "precision": 0.0,
+      "recall": 0.0,
+      "accuracy": 0.0,
+      "samples_tested": 50,
+      "optimal_threshold": 0.05
+    },
+    "F4_inadequate_tool": {
+      "f1_score": 1.0,
+      "precision": 1.0,
+      "recall": 1.0,
+      "accuracy": 1.0,
+      "samples_tested": 50,
+      "optimal_threshold": 0.05
+    },
+    "F5_flawed_workflow": {
+      "f1_score": 1.0,
+      "precision": 1.0,
+      "recall": 1.0,
+      "accuracy": 1.0,
+      "samples_tested": 50,
+      "optimal_threshold": 0.05
+    },
+    "F6_task_derailment": {
+      "f1_score": 1.0,
+      "precision": 1.0,
+      "recall": 1.0,
+      "accuracy": 1.0,
+      "samples_tested": 50,
+      "optimal_threshold": 0.05
+    },
+    "F7_context_neglect": {
+      "f1_score": 1.0,
+      "precision": 1.0,
+      "recall": 1.0,
+      "accuracy": 1.0,
+      "samples_tested": 50,
+      "optimal_threshold": 0.05
+    },
+    "F8_information_withholding": {
+      "f1_score": 1.0,
+      "precision": 1.0,
+      "recall": 1.0,
+      "accuracy": 1.0,
+      "samples_tested": 50,
+      "optimal_threshold": 0.05
+    },
+    "F9_role_usurpation": {
+      "f1_score": 0.0,
+      "precision": 0.0,
+      "recall": 0.0,
+      "accuracy": 0.0,
+      "samples_tested": 50,
+      "optimal_threshold": 0.5
+    },
+    "F10_communication_breakdown": {
+      "f1_score": 1.0,
+      "precision": 1.0,
+      "recall": 1.0,
+      "accuracy": 1.0,
+      "samples_tested": 50,
+      "optimal_threshold": 0.05
+    },
+    "F12_output_validation_failure": {
+      "f1_score": 0.0,
+      "precision": 0.0,
+      "recall": 0.0,
+      "accuracy": 0.0,
+      "samples_tested": 50,
+      "optimal_threshold": 0.05
+    },
+    "F13_quality_gate_bypass": {
+      "f1_score": 0.0,
+      "precision": 0.0,
+      "recall": 0.0,
+      "accuracy": 0.0,
+      "samples_tested": 50,
+      "optimal_threshold": 0.05
+    },
+    "F14_completion_misjudgment": {
+      "f1_score": 1.0,
+      "precision": 1.0,
+      "recall": 1.0,
+      "accuracy": 1.0,
+      "samples_tested": 50,
+      "optimal_threshold": 0.05
+    }
+  },
+  "details": {
+    "infinite_loop": {
+      "metrics": {
+        "true_positives": 50,
+        "true_negatives": 0,
+        "false_positives": 0,
+        "false_negatives": 0,
+        "total_samples": 50,
+        "precision": 1.0,
+        "recall": 1.0,
+        "f1_score": 1.0,
+        "accuracy": 1.0,
+        "specificity": 0.0
+      },
+      "calibration_error": 0.1499999999999999,
+      "execution_time": 0.004781246185302734,
+      "samples_skipped": 85,
+      "misclassified_count": 0,
+      "misclassified_samples": []
+    },
+    "coordination_deadlock": {
+      "metrics": {
+        "true_positives": 50,
+        "true_negatives": 0,
+        "false_positives": 0,
+        "false_negatives": 0,
+        "total_samples": 50,
+        "precision": 1.0,
+        "recall": 1.0,
+        "f1_score": 1.0,
+        "accuracy": 1.0,
+        "specificity": 0.0
+      },
+      "calibration_error": 0.050000000000000044,
+      "execution_time": 0.0018301010131835938,
+      "samples_skipped": 0,
+      "misclassified_count": 0,
+      "misclassified_samples": []
+    },
+    "state_corruption": {
+      "metrics": {
+        "true_positives": 0,
+        "true_negatives": 0,
+        "false_positives": 0,
+        "false_negatives": 50,
+        "total_samples": 50,
+        "precision": 0.0,
+        "recall": 0.0,
+        "f1_score": 0.0,
+        "accuracy": 0.0,
+        "specificity": 0.0
+      },
+      "calibration_error": 0.05,
+      "execution_time": 0.0014719963073730469,
+      "samples_skipped": 0,
+      "misclassified_count": 50,
+      "misclassified_samples": [
+        {
+          "ground_truth": true,
+          "predicted": false,
+          "confidence": 0.0,
+          "type": "false_negative",
+          "input_data": {},
+          "metadata": {}
+        },
+        {
+          "ground_truth": true,
+          "predicted": false,
+          "confidence": 0.0,
+          "type": "false_negative",
+          "input_data": {},
+          "metadata": {}
+        },
+        {
+          "ground_truth": true,
+          "predicted": false,
+          "confidence": 0.0,
+          "type": "false_negative",
+          "input_data": {},
+          "metadata": {}
+        },
+        {
+          "ground_truth": true,
+          "predicted": false,
+          "confidence": 0.0,
+          "type": "false_negative",
+          "input_data": {},
+          "metadata": {}
+        },
+        {
+          "ground_truth": true,
+          "predicted": false,
+          "confidence": 0.0,
+          "type": "false_negative",
+          "input_data": {},
+          "metadata": {}
+        },
+        {
+          "ground_truth": true,
+          "predicted": false,
+          "confidence": 0.0,
+          "type": "false_negative",
+          "input_data": {},
+          "metadata": {}
+        },
+        {
+          "ground_truth": true,
+          "predicted": false,
+          "confidence": 0.0,
+          "type": "false_negative",
+          "input_data": {},
+          "metadata": {}
+        },
+        {
+          "ground_truth": true,
+          "predicted": false,
+          "confidence": 0.0,
+          "type": "false_negative",
+          "input_data": {},
+          "metadata": {}
+        },
+        {
+          "ground_truth": true,
+          "predicted": false,
+          "confidence": 0.0,
+          "type": "false_negative",
+          "input_data": {},
+          "metadata": {}
+        },
+        {
+          "ground_truth": true,
+          "predicted": false,
+          "confidence": 0.0,
+          "type": "false_negative",
+          "input_data": {},
+          "metadata": {}
+        }
+      ]
+    },
+    "persona_drift": {
+      "metrics": {
+        "true_positives": 50,
+        "true_negatives": 0,
+        "false_positives": 0,
+        "false_negatives": 0,
+        "total_samples": 50,
+        "precision": 1.0,
+        "recall": 1.0,
+        "f1_score": 1.0,
+        "accuracy": 1.0,
+        "specificity": 0.0
+      },
+      "calibration_error": 0.34999999999999987,
+      "execution_time": 1.9097399711608887,
+      "samples_skipped": 0,
+      "misclassified_count": 0,
+      "misclassified_samples": []
+    },
+    "F1_spec_mismatch": {
+      "metrics": {
+        "true_positives": 50,
+        "true_negatives": 0,
+        "false_positives": 0,
+        "false_negatives": 0,
+        "total_samples": 50,
+        "precision": 1.0,
+        "recall": 1.0,
+        "f1_score": 1.0,
+        "accuracy": 1.0,
+        "specificity": 0.0
+      },
+      "calibration_error": 0.050000000000000044,
+      "execution_time": 0.3621809482574463,
+      "samples_skipped": 0,
+      "misclassified_count": 0,
+      "misclassified_samples": []
+    },
+    "F2_poor_decomposition": {
+      "metrics": {
+        "true_positives": 50,
+        "true_negatives": 0,
+        "false_positives": 0,
+        "false_negatives": 0,
+        "total_samples": 50,
+        "precision": 1.0,
+        "recall": 1.0,
+        "f1_score": 1.0,
+        "accuracy": 1.0,
+        "specificity": 0.0
+      },
+      "calibration_error": 0.75,
+      "execution_time": 0.0036468505859375,
+      "samples_skipped": 0,
+      "misclassified_count": 0,
+      "misclassified_samples": []
+    },
+    "F3_resource_misallocation": {
+      "metrics": {
+        "true_positives": 0,
+        "true_negatives": 0,
+        "false_positives": 0,
+        "false_negatives": 50,
+        "total_samples": 50,
+        "precision": 0.0,
+        "recall": 0.0,
+        "f1_score": 0.0,
+        "accuracy": 0.0,
+        "specificity": 0.0
+      },
+      "calibration_error": 0.8500000000000001,
+      "execution_time": 0.0019571781158447266,
+      "samples_skipped": 0,
+      "misclassified_count": 50,
+      "misclassified_samples": [
+        {
+          "ground_truth": true,
+          "predicted": false,
+          "confidence": 0.8,
+          "type": "false_negative",
+          "input_data": {},
+          "metadata": {}
+        },
+        {
+          "ground_truth": true,
+          "predicted": false,
+          "confidence": 0.8,
+          "type": "false_negative",
+          "input_data": {},
+          "metadata": {}
+        },
+        {
+          "ground_truth": true,
+          "predicted": false,
+          "confidence": 0.8,
+          "type": "false_negative",
+          "input_data": {},
+          "metadata": {}
+        },
+        {
+          "ground_truth": true,
+          "predicted": false,
+          "confidence": 0.8,
+          "type": "false_negative",
+          "input_data": {},
+          "metadata": {}
+        },
+        {
+          "ground_truth": true,
+          "predicted": false,
+          "confidence": 0.8,
+          "type": "false_negative",
+          "input_data": {},
+          "metadata": {}
+        },
+        {
+          "ground_truth": true,
+          "predicted": false,
+          "confidence": 0.8,
+          "type": "false_negative",
+          "input_data": {},
+          "metadata": {}
+        },
+        {
+          "ground_truth": true,
+          "predicted": false,
+          "confidence": 0.8,
+          "type": "false_negative",
+          "input_data": {},
+          "metadata": {}
+        },
+        {
+          "ground_truth": true,
+          "predicted": false,
+          "confidence": 0.8,
+          "type": "false_negative",
+          "input_data": {},
+          "metadata": {}
+        },
+        {
+          "ground_truth": true,
+          "predicted": false,
+          "confidence": 0.8,
+          "type": "false_negative",
+          "input_data": {},
+          "metadata": {}
+        },
+        {
+          "ground_truth": true,
+          "predicted": false,
+          "confidence": 0.8,
+          "type": "false_negative",
+          "input_data": {},
+          "metadata": {}
+        }
+      ]
+    },
+    "F4_inadequate_tool": {
+      "metrics": {
+        "true_positives": 50,
+        "true_negatives": 0,
+        "false_positives": 0,
+        "false_negatives": 0,
+        "total_samples": 50,
+        "precision": 1.0,
+        "recall": 1.0,
+        "f1_score": 1.0,
+        "accuracy": 1.0,
+        "specificity": 0.0
+      },
+      "calibration_error": 0.75,
+      "execution_time": 0.0012907981872558594,
+      "samples_skipped": 0,
+      "misclassified_count": 0,
+      "misclassified_samples": []
+    },
+    "F5_flawed_workflow": {
+      "metrics": {
+        "true_positives": 50,
+        "true_negatives": 0,
+        "false_positives": 0,
+        "false_negatives": 0,
+        "total_samples": 50,
+        "precision": 1.0,
+        "recall": 1.0,
+        "f1_score": 1.0,
+        "accuracy": 1.0,
+        "specificity": 0.0
+      },
+      "calibration_error": 0.050000000000000044,
+      "execution_time": 0.0012979507446289062,
+      "samples_skipped": 0,
+      "misclassified_count": 0,
+      "misclassified_samples": []
+    },
+    "F6_task_derailment": {
+      "metrics": {
+        "true_positives": 50,
+        "true_negatives": 0,
+        "false_positives": 0,
+        "false_negatives": 0,
+        "total_samples": 50,
+        "precision": 1.0,
+        "recall": 1.0,
+        "f1_score": 1.0,
+        "accuracy": 1.0,
+        "specificity": 0.0
+      },
+      "calibration_error": 0.050000000000000044,
+      "execution_time": 0.2551558017730713,
+      "samples_skipped": 0,
+      "misclassified_count": 0,
+      "misclassified_samples": []
+    },
+    "F7_context_neglect": {
+      "metrics": {
+        "true_positives": 50,
+        "true_negatives": 0,
+        "false_positives": 0,
+        "false_negatives": 0,
+        "total_samples": 50,
+        "precision": 1.0,
+        "recall": 1.0,
+        "f1_score": 1.0,
+        "accuracy": 1.0,
+        "specificity": 0.0
+      },
+      "calibration_error": 0.1499999999999999,
+      "execution_time": 0.0029211044311523438,
+      "samples_skipped": 0,
+      "misclassified_count": 0,
+      "misclassified_samples": []
+    },
+    "F8_information_withholding": {
+      "metrics": {
+        "true_positives": 50,
+        "true_negatives": 0,
+        "false_positives": 0,
+        "false_negatives": 0,
+        "total_samples": 50,
+        "precision": 1.0,
+        "recall": 1.0,
+        "f1_score": 1.0,
+        "accuracy": 1.0,
+        "specificity": 0.0
+      },
+      "calibration_error": 0.1499999999999999,
+      "execution_time": 0.34004902839660645,
+      "samples_skipped": 0,
+      "misclassified_count": 0,
+      "misclassified_samples": []
+    },
+    "F9_role_usurpation": {
+      "metrics": {
+        "true_positives": 0,
+        "true_negatives": 0,
+        "false_positives": 0,
+        "false_negatives": 50,
+        "total_samples": 50,
+        "precision": 0.0,
+        "recall": 0.0,
+        "f1_score": 0.0,
+        "accuracy": 0.0,
+        "specificity": 0.0
+      },
+      "calibration_error": 0.05,
+      "execution_time": 0.00471806526184082,
+      "samples_skipped": 0,
+      "misclassified_count": 50,
+      "misclassified_samples": [
+        {
+          "ground_truth": true,
+          "predicted": false,
+          "confidence": 0.0,
+          "type": "false_negative",
+          "input_data": {},
+          "metadata": {}
+        },
+        {
+          "ground_truth": true,
+          "predicted": false,
+          "confidence": 0.0,
+          "type": "false_negative",
+          "input_data": {},
+          "metadata": {}
+        },
+        {
+          "ground_truth": true,
+          "predicted": false,
+          "confidence": 0.0,
+          "type": "false_negative",
+          "input_data": {},
+          "metadata": {}
+        },
+        {
+          "ground_truth": true,
+          "predicted": false,
+          "confidence": 0.0,
+          "type": "false_negative",
+          "input_data": {},
+          "metadata": {}
+        },
+        {
+          "ground_truth": true,
+          "predicted": false,
+          "confidence": 0.0,
+          "type": "false_negative",
+          "input_data": {},
+          "metadata": {}
+        },
+        {
+          "ground_truth": true,
+          "predicted": false,
+          "confidence": 0.0,
+          "type": "false_negative",
+          "input_data": {},
+          "metadata": {}
+        },
+        {
+          "ground_truth": true,
+          "predicted": false,
+          "confidence": 0.0,
+          "type": "false_negative",
+          "input_data": {},
+          "metadata": {}
+        },
+        {
+          "ground_truth": true,
+          "predicted": false,
+          "confidence": 0.0,
+          "type": "false_negative",
+          "input_data": {},
+          "metadata": {}
+        },
+        {
+          "ground_truth": true,
+          "predicted": false,
+          "confidence": 0.0,
+          "type": "false_negative",
+          "input_data": {},
+          "metadata": {}
+        },
+        {
+          "ground_truth": true,
+          "predicted": false,
+          "confidence": 0.0,
+          "type": "false_negative",
+          "input_data": {},
+          "metadata": {}
+        }
+      ]
+    },
+    "F10_communication_breakdown": {
+      "metrics": {
+        "true_positives": 50,
+        "true_negatives": 0,
+        "false_positives": 0,
+        "false_negatives": 0,
+        "total_samples": 50,
+        "precision": 1.0,
+        "recall": 1.0,
+        "f1_score": 1.0,
+        "accuracy": 1.0,
+        "specificity": 0.0
+      },
+      "calibration_error": 0.050000000000000044,
+      "execution_time": 0.002660036087036133,
+      "samples_skipped": 0,
+      "misclassified_count": 0,
+      "misclassified_samples": []
+    },
+    "F12_output_validation_failure": {
+      "metrics": {
+        "true_positives": 0,
+        "true_negatives": 0,
+        "false_positives": 0,
+        "false_negatives": 50,
+        "total_samples": 50,
+        "precision": 0.0,
+        "recall": 0.0,
+        "f1_score": 0.0,
+        "accuracy": 0.0,
+        "specificity": 0.0
+      },
+      "calibration_error": 0.8500000000000001,
+      "execution_time": 0.0020117759704589844,
+      "samples_skipped": 0,
+      "misclassified_count": 50,
+      "misclassified_samples": [
+        {
+          "ground_truth": true,
+          "predicted": false,
+          "confidence": 0.8,
+          "type": "false_negative",
+          "input_data": {},
+          "metadata": {}
+        },
+        {
+          "ground_truth": true,
+          "predicted": false,
+          "confidence": 0.8,
+          "type": "false_negative",
+          "input_data": {},
+          "metadata": {}
+        },
+        {
+          "ground_truth": true,
+          "predicted": false,
+          "confidence": 0.8,
+          "type": "false_negative",
+          "input_data": {},
+          "metadata": {}
+        },
+        {
+          "ground_truth": true,
+          "predicted": false,
+          "confidence": 0.8,
+          "type": "false_negative",
+          "input_data": {},
+          "metadata": {}
+        },
+        {
+          "ground_truth": true,
+          "predicted": false,
+          "confidence": 0.8,
+          "type": "false_negative",
+          "input_data": {},
+          "metadata": {}
+        },
+        {
+          "ground_truth": true,
+          "predicted": false,
+          "confidence": 0.8,
+          "type": "false_negative",
+          "input_data": {},
+          "metadata": {}
+        },
+        {
+          "ground_truth": true,
+          "predicted": false,
+          "confidence": 0.8,
+          "type": "false_negative",
+          "input_data": {},
+          "metadata": {}
+        },
+        {
+          "ground_truth": true,
+          "predicted": false,
+          "confidence": 0.8,
+          "type": "false_negative",
+          "input_data": {},
+          "metadata": {}
+        },
+        {
+          "ground_truth": true,
+          "predicted": false,
+          "confidence": 0.8,
+          "type": "false_negative",
+          "input_data": {},
+          "metadata": {}
+        },
+        {
+          "ground_truth": true,
+          "predicted": false,
+          "confidence": 0.8,
+          "type": "false_negative",
+          "input_data": {},
+          "metadata": {}
+        }
+      ]
+    },
+    "F13_quality_gate_bypass": {
+      "metrics": {
+        "true_positives": 0,
+        "true_negatives": 0,
+        "false_positives": 0,
+        "false_negatives": 50,
+        "total_samples": 50,
+        "precision": 0.0,
+        "recall": 0.0,
+        "f1_score": 0.0,
+        "accuracy": 0.0,
+        "specificity": 0.0
+      },
+      "calibration_error": 0.8500000000000001,
+      "execution_time": 1.483558177947998,
+      "samples_skipped": 0,
+      "misclassified_count": 50,
+      "misclassified_samples": [
+        {
+          "ground_truth": true,
+          "predicted": false,
+          "confidence": 0.8,
+          "type": "false_negative",
+          "input_data": {},
+          "metadata": {}
+        },
+        {
+          "ground_truth": true,
+          "predicted": false,
+          "confidence": 0.8,
+          "type": "false_negative",
+          "input_data": {},
+          "metadata": {}
+        },
+        {
+          "ground_truth": true,
+          "predicted": false,
+          "confidence": 0.8,
+          "type": "false_negative",
+          "input_data": {},
+          "metadata": {}
+        },
+        {
+          "ground_truth": true,
+          "predicted": false,
+          "confidence": 0.8,
+          "type": "false_negative",
+          "input_data": {},
+          "metadata": {}
+        },
+        {
+          "ground_truth": true,
+          "predicted": false,
+          "confidence": 0.8,
+          "type": "false_negative",
+          "input_data": {},
+          "metadata": {}
+        },
+        {
+          "ground_truth": true,
+          "predicted": false,
+          "confidence": 0.8,
+          "type": "false_negative",
+          "input_data": {},
+          "metadata": {}
+        },
+        {
+          "ground_truth": true,
+          "predicted": false,
+          "confidence": 0.8,
+          "type": "false_negative",
+          "input_data": {},
+          "metadata": {}
+        },
+        {
+          "ground_truth": true,
+          "predicted": false,
+          "confidence": 0.8,
+          "type": "false_negative",
+          "input_data": {},
+          "metadata": {}
+        },
+        {
+          "ground_truth": true,
+          "predicted": false,
+          "confidence": 0.8,
+          "type": "false_negative",
+          "input_data": {},
+          "metadata": {}
+        },
+        {
+          "ground_truth": true,
+          "predicted": false,
+          "confidence": 0.8,
+          "type": "false_negative",
+          "input_data": {},
+          "metadata": {}
+        }
+      ]
+    },
+    "F14_completion_misjudgment": {
+      "metrics": {
+        "true_positives": 50,
+        "true_negatives": 0,
+        "false_positives": 0,
+        "false_negatives": 0,
+        "total_samples": 50,
+        "precision": 1.0,
+        "recall": 1.0,
+        "f1_score": 1.0,
+        "accuracy": 1.0,
+        "specificity": 0.0
+      },
+      "calibration_error": 0.25,
+      "execution_time": 0.007946014404296875,
+      "samples_skipped": 0,
+      "misclassified_count": 0,
+      "misclassified_samples": []
+    }
+  }
+}

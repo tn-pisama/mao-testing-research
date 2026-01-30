@@ -64,7 +64,7 @@ def main():
     parser.add_argument(
         "--traces",
         type=str,
-        default="fixtures/golden/golden_traces.jsonl",
+        default="fixtures/golden/mast_traces.jsonl/golden_traces.jsonl",
         help="Path to OTEL traces file",
     )
     parser.add_argument(
