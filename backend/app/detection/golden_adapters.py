@@ -436,21 +436,16 @@ class CompletionDetectionAdapter(BaseGoldenAdapter):
                 error="No messages found in completion sample"
             )
 
-        # Extract task from first user message
-        task = ""
+        # Extract task from first message and agent output from last agent message
+        task = messages[0].get("content", "") if messages else ""
+
+        # Get last agent message as output (any agent, not just "moltbot")
         agent_output = ""
-
-        for msg in messages:
-            from_agent = msg.get("from_agent", "")
+        for msg in reversed(messages):
             content = msg.get("content", "")
-
-            # First message is usually the task
-            if not task:
-                task = content
-
-            # Last agent message is the output
-            if from_agent == "moltbot":
+            if content:
                 agent_output = content
+                break
 
         if not agent_output:
             return AdapterResult(
