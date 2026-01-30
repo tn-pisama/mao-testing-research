@@ -604,8 +604,8 @@ class F8WithholdingOTELAdapter(BaseOTELAdapter):
         return OTELAdapterResult(
             success=True,
             detector_input={
-                'internal_findings': internal_findings,
-                'output': communicated_output,
+                'internal_state': internal_findings,
+                'agent_output': communicated_output,
             }
         )
 

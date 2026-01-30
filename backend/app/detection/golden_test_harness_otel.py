@@ -550,9 +550,24 @@ class OTELGoldenTraceTestHarness:
     def _run_f10_communication(self, detector_input: Dict) -> Any:
         """Run F10 Communication Breakdown detector."""
         detector = CommunicationBreakdownDetector()
+
+        messages = detector_input.get("messages", [])
+        if len(messages) < 2:
+            return type('Result', (), {
+                'detected': False,
+                'confidence': 0.0,
+                'raw_score': 0,
+            })()
+
+        # Extract sender and receiver messages
+        sender_msg = messages[0]
+        receiver_msg = messages[1]
+
         result = detector.detect(
-            messages=detector_input["messages"],
-            agent_roles=detector_input.get("agent_roles", {}),
+            sender_message=sender_msg.content,
+            receiver_response=receiver_msg.content,
+            sender_name=sender_msg.from_agent,
+            receiver_name=receiver_msg.to_agent,
         )
         return type('Result', (), {
             'detected': result.detected,
