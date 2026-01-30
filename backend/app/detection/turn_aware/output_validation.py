@@ -230,6 +230,17 @@ class TurnAwareOutputValidationDetector(EmbeddingMixin, TurnAwareDetector):
         """Detect explicit validation failures."""
         issues = []
         for turn in turns:
+            # Check for validation_failed flag in metadata
+            if turn.turn_metadata.get("validation_failed"):
+                issues.append({
+                    "type": "validation_failure",
+                    "turns": [turn.turn_number],
+                    "indicator": "validation_failed_flag",
+                    "description": "Explicit validation failure flag set",
+                })
+                continue
+
+            # Check for text indicators
             content_lower = turn.content.lower()
             for indicator in self.VALIDATION_FAILURES:
                 if indicator in content_lower:

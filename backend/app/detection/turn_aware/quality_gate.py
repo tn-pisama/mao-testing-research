@@ -188,8 +188,14 @@ class TurnAwareQualityGateBypassDetector(EmbeddingMixin, TurnAwareDetector):
         for issue in absent_issues:
             affected_turns.extend(issue.get("turns", []))
 
+        # 7. Check for test-then-deploy without results
+        test_deploy_issues = self._detect_test_deploy_bypass(turns)
+        issues.extend(test_deploy_issues)
+        for issue in test_deploy_issues:
+            affected_turns.extend(issue.get("turns", []))
+
         # Require at least one strong evidence issue for detection
-        strong_types = {"bypass", "warning_ignore", "rush", "rubber_stamp", "absent_verification"}
+        strong_types = {"bypass", "warning_ignore", "rush", "rubber_stamp", "absent_verification", "test_deploy_bypass"}
         has_strong_evidence = any(
             issue.get("type") in strong_types and issue.get("method") != "semantic"
             for issue in issues
@@ -492,6 +498,50 @@ class TurnAwareQualityGateBypassDetector(EmbeddingMixin, TurnAwareDetector):
                 "turns": [turns[-1].turn_number] if turns else [],
                 "description": "Task completed without any verification/testing mentioned",
             })
+
+        return issues
+
+    def _detect_test_deploy_bypass(self, turns: List[TurnSnapshot]) -> list:
+        """Detect test step followed by deploy without showing test results."""
+        issues = []
+
+        # Look for test → deploy sequence
+        test_keywords = ["test", "testing", "tester", "run_tests", "execute_tests"]
+        deploy_keywords = ["deploy", "deployment", "deployer", "release", "production", "publish"]
+        test_result_keywords = ["passed", "failed", "success", "error", "result", "output"]
+
+        test_turn_idx = None
+        deploy_turn_idx = None
+
+        for i, turn in enumerate(turns):
+            content_lower = turn.content.lower()
+            turn_name_lower = turn.participant_id.lower()
+
+            # Check if this is a test turn
+            if any(kw in content_lower or kw in turn_name_lower for kw in test_keywords):
+                test_turn_idx = i
+
+            # Check if this is a deploy turn
+            if any(kw in content_lower or kw in turn_name_lower for kw in deploy_keywords):
+                deploy_turn_idx = i
+
+        # If we have test → deploy sequence
+        if test_turn_idx is not None and deploy_turn_idx is not None and test_turn_idx < deploy_turn_idx:
+            # Check if there are test results between test and deploy
+            has_test_results = False
+            for i in range(test_turn_idx, deploy_turn_idx):
+                content_lower = turns[i].content.lower()
+                if any(kw in content_lower for kw in test_result_keywords):
+                    has_test_results = True
+                    break
+
+            # If no test results shown, flag it
+            if not has_test_results:
+                issues.append({
+                    "type": "test_deploy_bypass",
+                    "turns": [test_turn_idx, deploy_turn_idx],
+                    "description": "Tests run but results not shown before deployment",
+                })
 
         return issues
 

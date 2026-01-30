@@ -142,7 +142,7 @@ class TurnAwareRoleUsurpationDetector(EmbeddingMixin, TurnAwareDetector):
         (r"I(?:'ll|\s+will)\s+(?:decide|determine)\s+(?:to\s+|the\s+|which\s+)", "decision_overreach"),
     ]
 
-    def __init__(self, min_turns: int = 3, strict_mode: bool = False, min_violations: int = 1):
+    def __init__(self, min_turns: int = 2, strict_mode: bool = False, min_violations: int = 1):
         self.min_turns = min_turns
         self.strict_mode = strict_mode  # If True, be more aggressive in detection
         self.min_violations = min_violations  # Minimum violations to trigger detection
@@ -206,6 +206,12 @@ class TurnAwareRoleUsurpationDetector(EmbeddingMixin, TurnAwareDetector):
         explicit_violations = self._detect_explicit_usurpation(turns)
         violations.extend(explicit_violations)
         for v in explicit_violations:
+            affected_turns.extend(v.get("turns", []))
+
+        # 5b. Multi-task usurpation (agent doing multiple distinct tasks)
+        multi_task_violations = self._detect_multi_task_usurpation(turns)
+        violations.extend(multi_task_violations)
+        for v in multi_task_violations:
             affected_turns.extend(v.get("turns", []))
 
         # 6. Cascade indicators - DISABLED
@@ -681,6 +687,55 @@ class TurnAwareRoleUsurpationDetector(EmbeddingMixin, TurnAwareDetector):
                     break  # Only report first pattern match per turn
 
         return violations[:5]  # Limit to top 5
+
+    def _detect_multi_task_usurpation(self, turns: List[TurnSnapshot]) -> List[Dict[str, Any]]:
+        """Detect agents performing multiple distinct tasks that should be separate roles.
+
+        Pattern: "I've also [done X], [done Y], [done Z]" indicates role boundary violation.
+        """
+        violations = []
+
+        # Task verbs that typically belong to different roles
+        task_verbs = [
+            "written", "wrote", "created", "generated", "composed",
+            "edited", "revised", "modified", "updated", "changed",
+            "formatted", "styled", "designed", "structured",
+            "reviewed", "checked", "validated", "verified", "tested",
+            "scheduled", "planned", "organized", "arranged",
+            "published", "deployed", "released", "launched",
+            "approved", "authorized", "signed off",
+        ]
+
+        # Conjunction patterns indicating multiple tasks
+        multi_task_patterns = [
+            r"(?:i(?:'ve| have| also)?\s+(?:also|additionally)?\s+(?:written|wrote|created|edited|formatted|reviewed|scheduled|published|approved|tested|designed).*?(?:and|,)\s+(?:also\s+)?(?:written|wrote|created|edited|formatted|reviewed|scheduled|published|approved|tested|designed))",
+            r"by the way,?\s+i(?:'ve| have)?\s+(?:also|additionally)?\s+(?:written|wrote|created|edited|formatted|reviewed|scheduled|published)",
+        ]
+
+        for turn in turns:
+            if turn.participant_type != "agent":
+                continue
+
+            content_lower = turn.content.lower()
+
+            # Check for multi-task patterns
+            for pattern in multi_task_patterns:
+                if re.search(pattern, content_lower):
+                    # Count distinct task verbs mentioned
+                    task_count = sum(1 for verb in task_verbs if verb in content_lower)
+
+                    if task_count >= 3:  # At least 3 different tasks
+                        violations.append({
+                            "type": "multi_task_usurpation",
+                            "turns": [turn.turn_number],
+                            "agent": turn.participant_id,
+                            "task_count": task_count,
+                            "severity": "moderate",
+                            "description": f"Agent {turn.participant_id} performing {task_count} distinct tasks (role boundary violation)",
+                        })
+                        break  # Only report once per turn
+
+        return violations[:3]  # Limit to top 3
 
     def _detect_cascade_indicators(self, turns: List[TurnSnapshot]) -> List[Dict[str, Any]]:
         """Detect F9 cascade indicators: errors, complexity, recovery loops.

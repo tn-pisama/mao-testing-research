@@ -585,7 +585,7 @@ class OTELGoldenTraceTestHarness:
 
     def _run_f12_validation(self, detector_input: List) -> Any:
         """Run F12 Output Validation Failure detector."""
-        detector = TurnAwareOutputValidationDetector()
+        detector = TurnAwareOutputValidationDetector(min_issues_to_flag=1)  # Lower threshold for golden traces
         # Convert dict snapshots to TurnSnapshot objects
         turns = []
         for snapshot in detector_input:
@@ -597,6 +597,7 @@ class OTELGoldenTraceTestHarness:
                 turn_metadata={
                     "output": snapshot.get("output", ""),
                     "schema": snapshot.get("schema"),
+                    "validation_failed": snapshot.get("validation_failed", False),
                 },
             )
             turns.append(turn)

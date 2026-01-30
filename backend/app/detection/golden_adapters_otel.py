@@ -729,13 +729,15 @@ class F12ValidationOTELAdapter(BaseOTELAdapter):
             content = attrs.get('gen_ai.response.sample', '')
             schema = attrs.get('gen_ai.expected_schema')
             output = attrs.get('gen_ai.response.sample', '')
+            validation_failed = attrs.get('gen_ai.validation.failed', False)
 
-            if content or schema:
+            if content or schema or validation_failed:
                 turns.append({
                     'agent_id': agent_id,
                     'content': content,
                     'output': output,
                     'schema': schema,
+                    'validation_failed': validation_failed,
                     'sequence': seq,
                 })
 

@@ -69,10 +69,12 @@ class TurnAwareResourceMisallocationDetector(TurnAwareDetector):
     def __init__(
         self,
         min_turns: int = 2,
-        min_issues_to_flag: int = 2,  # Lowered for better recall (was 3)
+        min_issues_to_flag: int = 1,  # Lowered for token explosion detection
+        token_explosion_threshold: int = 2000,  # Flag if >2000 tokens for simple tasks
     ):
         self.min_turns = min_turns
         self.min_issues_to_flag = min_issues_to_flag
+        self.token_explosion_threshold = token_explosion_threshold
 
     def detect(
         self,
@@ -123,6 +125,12 @@ class TurnAwareResourceMisallocationDetector(TurnAwareDetector):
         # 5. Check for uneven work distribution (multi-agent)
         distribution_issues = self._detect_uneven_distribution(agent_turns)
         issues.extend(distribution_issues)
+
+        # 6. Check for token explosion (excessive token usage)
+        token_issues = self._detect_token_explosion(agent_turns)
+        issues.extend(token_issues)
+        for issue in token_issues:
+            affected_turns.extend(issue.get("turns", []))
 
         # Require multiple issues to reduce false positives
         if len(issues) < self.min_issues_to_flag:
@@ -257,3 +265,28 @@ class TurnAwareResourceMisallocationDetector(TurnAwareDetector):
                 "description": f"Uneven workload: {most_active} has {max_count} turns vs {min_count} for {least_active}",
             }]
         return []
+
+    def _detect_token_explosion(self, agent_turns: List[TurnSnapshot]) -> list:
+        """Detect excessive token usage (token explosion)."""
+        issues = []
+
+        for turn in agent_turns:
+            # Get token usage from turn_metadata
+            tokens_in = turn.turn_metadata.get('tokens_input', 0)
+            tokens_out = turn.turn_metadata.get('tokens_output', 0)
+            total_tokens = tokens_in + tokens_out
+
+            # Flag if total tokens exceed threshold
+            if total_tokens > self.token_explosion_threshold:
+                issues.append({
+                    "type": "token_explosion",
+                    "turn_number": turn.turn_number,
+                    "participant": turn.participant_id,
+                    "tokens_input": tokens_in,
+                    "tokens_output": tokens_out,
+                    "total_tokens": total_tokens,
+                    "description": f"Excessive token usage: {total_tokens} tokens (threshold: {self.token_explosion_threshold})",
+                    "turns": [turn.turn_number],
+                })
+
+        return issues

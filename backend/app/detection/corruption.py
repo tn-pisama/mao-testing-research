@@ -173,17 +173,55 @@ class SemanticCorruptionDetector:
         """Check if a change should be suppressed due to expected high velocity."""
         if self._is_high_velocity_field(field):
             return True
-        
+
         if type(value) in self.velocity_config.ignore_velocity_for_types:
             return False
-        
+
         velocity = self._update_velocity_tracking(field, timestamp)
-        
+
         if velocity > self.velocity_config.max_changes_per_window / self.velocity_config.window_seconds:
             return True
-        
+
         return False
-    
+
+    def _detect_type_drift(
+        self,
+        prev_state: StateSnapshot,
+        current_state: StateSnapshot,
+    ) -> List[CorruptionIssue]:
+        """Detect type changes in fields between states."""
+        issues = []
+        prev_data = prev_state.state_delta
+        curr_data = current_state.state_delta
+
+        # Check for type changes in common fields
+        common_fields = set(prev_data.keys()) & set(curr_data.keys())
+        for field in common_fields:
+            prev_val = prev_data[field]
+            curr_val = curr_data[field]
+
+            prev_type = type(prev_val)
+            curr_type = type(curr_val)
+
+            # Detect type drift (e.g., int -> str)
+            if prev_type != curr_type:
+                # Allow None transitions
+                if prev_val is None or curr_val is None:
+                    continue
+
+                # Allow numeric conversions (int <-> float)
+                if {prev_type, curr_type} <= {int, float}:
+                    continue
+
+                issues.append(CorruptionIssue(
+                    issue_type="type_drift",
+                    field=field,
+                    message=f"Type changed from {prev_type.__name__} to {curr_type.__name__}",
+                    severity="high",
+                ))
+
+        return issues
+
     def detect_corruption(
         self,
         prev_state: StateSnapshot,
@@ -191,18 +229,21 @@ class SemanticCorruptionDetector:
         schema: Optional[Schema] = None,
     ) -> List[CorruptionIssue]:
         issues = []
-        
+
         if schema:
             issues.extend(self._validate_schema(current_state, schema))
-        
+
+        # Detect type drift between states (even without schema)
+        issues.extend(self._detect_type_drift(prev_state, current_state))
+
         issues.extend(self._validate_cross_field_consistency(current_state))
         issues.extend(self._validate_domain_constraints(current_state))
         issues.extend(self._detect_hallucinated_references(prev_state, current_state))
         issues.extend(self._detect_value_copying(current_state))
         issues.extend(self._detect_suspicious_rapid_changes(prev_state, current_state))
-        
+
         filtered_issues = self._apply_velocity_filtering(issues, current_state)
-        
+
         return filtered_issues
     
     def detect_corruption_with_confidence(
@@ -319,26 +360,31 @@ class SemanticCorruptionDetector:
     ) -> List[CorruptionIssue]:
         """Filter out issues for fields with expected high velocity."""
         filtered = []
-        
+
         for issue in issues:
+            # Never suppress critical issues like type_drift
+            if issue.issue_type == "type_drift":
+                filtered.append(issue)
+                continue
+
             if issue.field is None:
                 filtered.append(issue)
                 continue
-            
+
             fields = issue.field.split(",")
             should_suppress = False
-            
+
             for field in fields:
                 field = field.strip()
                 value = state.state_delta.get(field)
-                
+
                 if self._should_suppress_for_velocity(field, value, state.timestamp):
                     should_suppress = True
                     break
-            
+
             if not should_suppress:
                 filtered.append(issue)
-        
+
         return filtered
     
     def _detect_suspicious_rapid_changes(

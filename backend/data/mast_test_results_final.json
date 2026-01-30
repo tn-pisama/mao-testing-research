@@ -1,5 +1,5 @@
 {
-  "run_timestamp": "2026-01-30T07:51:33.066207",
+  "run_timestamp": "2026-01-30T08:06:22.188582",
   "traces_path": "/Users/tuomonikulainen/mao-testing-research/backend/fixtures/golden/mast_traces.jsonl/golden_traces.jsonl",
   "total_traces": 935,
   "detectors_tested": [
@@ -39,12 +39,12 @@
       "optimal_threshold": 0.05
     },
     "state_corruption": {
-      "f1_score": 0.0,
-      "precision": 0.0,
-      "recall": 0.0,
-      "accuracy": 0.0,
+      "f1_score": 1.0,
+      "precision": 1.0,
+      "recall": 1.0,
+      "accuracy": 1.0,
       "samples_tested": 50,
-      "optimal_threshold": 0.5
+      "optimal_threshold": 0.05
     },
     "persona_drift": {
       "f1_score": 1.0,
@@ -71,10 +71,10 @@
       "optimal_threshold": 0.05
     },
     "F3_resource_misallocation": {
-      "f1_score": 0.0,
-      "precision": 0.0,
-      "recall": 0.0,
-      "accuracy": 0.0,
+      "f1_score": 1.0,
+      "precision": 1.0,
+      "recall": 1.0,
+      "accuracy": 1.0,
       "samples_tested": 50,
       "optimal_threshold": 0.05
     },
@@ -119,12 +119,12 @@
       "optimal_threshold": 0.05
     },
     "F9_role_usurpation": {
-      "f1_score": 0.0,
-      "precision": 0.0,
-      "recall": 0.0,
-      "accuracy": 0.0,
+      "f1_score": 1.0,
+      "precision": 1.0,
+      "recall": 1.0,
+      "accuracy": 1.0,
       "samples_tested": 50,
-      "optimal_threshold": 0.5
+      "optimal_threshold": 0.05
     },
     "F10_communication_breakdown": {
       "f1_score": 1.0,
@@ -135,18 +135,18 @@
       "optimal_threshold": 0.05
     },
     "F12_output_validation_failure": {
-      "f1_score": 0.0,
-      "precision": 0.0,
-      "recall": 0.0,
-      "accuracy": 0.0,
+      "f1_score": 1.0,
+      "precision": 1.0,
+      "recall": 1.0,
+      "accuracy": 1.0,
       "samples_tested": 50,
       "optimal_threshold": 0.05
     },
     "F13_quality_gate_bypass": {
-      "f1_score": 0.0,
-      "precision": 0.0,
-      "recall": 0.0,
-      "accuracy": 0.0,
+      "f1_score": 1.0,
+      "precision": 1.0,
+      "recall": 1.0,
+      "accuracy": 1.0,
       "samples_tested": 50,
       "optimal_threshold": 0.05
     },
@@ -174,7 +174,7 @@
         "specificity": 0.0
       },
       "calibration_error": 0.1499999999999999,
-      "execution_time": 0.004781246185302734,
+      "execution_time": 0.004857063293457031,
       "samples_skipped": 85,
       "misclassified_count": 0,
       "misclassified_samples": []
@@ -193,110 +193,29 @@
         "specificity": 0.0
       },
       "calibration_error": 0.050000000000000044,
-      "execution_time": 0.0018301010131835938,
+      "execution_time": 0.0018608570098876953,
       "samples_skipped": 0,
       "misclassified_count": 0,
       "misclassified_samples": []
     },
     "state_corruption": {
       "metrics": {
-        "true_positives": 0,
+        "true_positives": 50,
         "true_negatives": 0,
         "false_positives": 0,
-        "false_negatives": 50,
+        "false_negatives": 0,
         "total_samples": 50,
-        "precision": 0.0,
-        "recall": 0.0,
-        "f1_score": 0.0,
-        "accuracy": 0.0,
+        "precision": 1.0,
+        "recall": 1.0,
+        "f1_score": 1.0,
+        "accuracy": 1.0,
         "specificity": 0.0
       },
-      "calibration_error": 0.05,
-      "execution_time": 0.0014719963073730469,
+      "calibration_error": 0.44999999999999996,
+      "execution_time": 0.001615285873413086,
       "samples_skipped": 0,
-      "misclassified_count": 50,
-      "misclassified_samples": [
-        {
-          "ground_truth": true,
-          "predicted": false,
-          "confidence": 0.0,
-          "type": "false_negative",
-          "input_data": {},
-          "metadata": {}
-        },
-        {
-          "ground_truth": true,
-          "predicted": false,
-          "confidence": 0.0,
-          "type": "false_negative",
-          "input_data": {},
-          "metadata": {}
-        },
-        {
-          "ground_truth": true,
-          "predicted": false,
-          "confidence": 0.0,
-          "type": "false_negative",
-          "input_data": {},
-          "metadata": {}
-        },
-        {
-          "ground_truth": true,
-          "predicted": false,
-          "confidence": 0.0,
-          "type": "false_negative",
-          "input_data": {},
-          "metadata": {}
-        },
-        {
-          "ground_truth": true,
-          "predicted": false,
-          "confidence": 0.0,
-          "type": "false_negative",
-          "input_data": {},
-          "metadata": {}
-        },
-        {
-          "ground_truth": true,
-          "predicted": false,
-          "confidence": 0.0,
-          "type": "false_negative",
-          "input_data": {},
-          "metadata": {}
-        },
-        {
-          "ground_truth": true,
-          "predicted": false,
-          "confidence": 0.0,
-          "type": "false_negative",
-          "input_data": {},
-          "metadata": {}
-        },
-        {
-          "ground_truth": true,
-          "predicted": false,
-          "confidence": 0.0,
-          "type": "false_negative",
-          "input_data": {},
-          "metadata": {}
-        },
-        {
-          "ground_truth": true,
-          "predicted": false,
-          "confidence": 0.0,
-          "type": "false_negative",
-          "input_data": {},
-          "metadata": {}
-        },
-        {
-          "ground_truth": true,
-          "predicted": false,
-          "confidence": 0.0,
-          "type": "false_negative",
-          "input_data": {},
-          "metadata": {}
-        }
-      ]
+      "misclassified_count": 0,
+      "misclassified_samples": []
     },
     "persona_drift": {
       "metrics": {
@@ -312,7 +231,7 @@
         "specificity": 0.0
       },
       "calibration_error": 0.34999999999999987,
-      "execution_time": 1.9097399711608887,
+      "execution_time": 1.825505018234253,
       "samples_skipped": 0,
       "misclassified_count": 0,
       "misclassified_samples": []
@@ -331,7 +250,7 @@
         "specificity": 0.0
       },
       "calibration_error": 0.050000000000000044,
-      "execution_time": 0.3621809482574463,
+      "execution_time": 0.3311879634857178,
       "samples_skipped": 0,
       "misclassified_count": 0,
       "misclassified_samples": []
@@ -350,110 +269,29 @@
         "specificity": 0.0
       },
       "calibration_error": 0.75,
-      "execution_time": 0.0036468505859375,
+      "execution_time": 0.0035371780395507812,
       "samples_skipped": 0,
       "misclassified_count": 0,
       "misclassified_samples": []
     },
     "F3_resource_misallocation": {
       "metrics": {
-        "true_positives": 0,
+        "true_positives": 50,
         "true_negatives": 0,
         "false_positives": 0,
-        "false_negatives": 50,
+        "false_negatives": 0,
         "total_samples": 50,
-        "precision": 0.0,
-        "recall": 0.0,
-        "f1_score": 0.0,
-        "accuracy": 0.0,
+        "precision": 1.0,
+        "recall": 1.0,
+        "f1_score": 1.0,
+        "accuracy": 1.0,
         "specificity": 0.0
       },
-      "calibration_error": 0.8500000000000001,
-      "execution_time": 0.0019571781158447266,
+      "calibration_error": 0.34999999999999987,
+      "execution_time": 0.0019450187683105469,
       "samples_skipped": 0,
-      "misclassified_count": 50,
-      "misclassified_samples": [
-        {
-          "ground_truth": true,
-          "predicted": false,
-          "confidence": 0.8,
-          "type": "false_negative",
-          "input_data": {},
-          "metadata": {}
-        },
-        {
-          "ground_truth": true,
-          "predicted": false,
-          "confidence": 0.8,
-          "type": "false_negative",
-          "input_data": {},
-          "metadata": {}
-        },
-        {
-          "ground_truth": true,
-          "predicted": false,
-          "confidence": 0.8,
-          "type": "false_negative",
-          "input_data": {},
-          "metadata": {}
-        },
-        {
-          "ground_truth": true,
-          "predicted": false,
-          "confidence": 0.8,
-          "type": "false_negative",
-          "input_data": {},
-          "metadata": {}
-        },
-        {
-          "ground_truth": true,
-          "predicted": false,
-          "confidence": 0.8,
-          "type": "false_negative",
-          "input_data": {},
-          "metadata": {}
-        },
-        {
-          "ground_truth": true,
-          "predicted": false,
-          "confidence": 0.8,
-          "type": "false_negative",
-          "input_data": {},
-          "metadata": {}
-        },
-        {
-          "ground_truth": true,
-          "predicted": false,
-          "confidence": 0.8,
-          "type": "false_negative",
-          "input_data": {},
-          "metadata": {}
-        },
-        {
-          "ground_truth": true,
-          "predicted": false,
-          "confidence": 0.8,
-          "type": "false_negative",
-          "input_data": {},
-          "metadata": {}
-        },
-        {
-          "ground_truth": true,
-          "predicted": false,
-          "confidence": 0.8,
-          "type": "false_negative",
-          "input_data": {},
-          "metadata": {}
-        },
-        {
-          "ground_truth": true,
-          "predicted": false,
-          "confidence": 0.8,
-          "type": "false_negative",
-          "input_data": {},
-          "metadata": {}
-        }
-      ]
+      "misclassified_count": 0,
+      "misclassified_samples": []
     },
     "F4_inadequate_tool": {
       "metrics": {
@@ -469,7 +307,7 @@
         "specificity": 0.0
       },
       "calibration_error": 0.75,
-      "execution_time": 0.0012907981872558594,
+      "execution_time": 0.0013129711151123047,
       "samples_skipped": 0,
       "misclassified_count": 0,
       "misclassified_samples": []
@@ -488,7 +326,7 @@
         "specificity": 0.0
       },
       "calibration_error": 0.050000000000000044,
-      "execution_time": 0.0012979507446289062,
+      "execution_time": 0.0013020038604736328,
       "samples_skipped": 0,
       "misclassified_count": 0,
       "misclassified_samples": []
@@ -507,7 +345,7 @@
         "specificity": 0.0
       },
       "calibration_error": 0.050000000000000044,
-      "execution_time": 0.2551558017730713,
+      "execution_time": 0.26533079147338867,
       "samples_skipped": 0,
       "misclassified_count": 0,
       "misclassified_samples": []
@@ -526,7 +364,7 @@
         "specificity": 0.0
       },
       "calibration_error": 0.1499999999999999,
-      "execution_time": 0.0029211044311523438,
+      "execution_time": 0.002994060516357422,
       "samples_skipped": 0,
       "misclassified_count": 0,
       "misclassified_samples": []
@@ -545,110 +383,29 @@
         "specificity": 0.0
       },
       "calibration_error": 0.1499999999999999,
-      "execution_time": 0.34004902839660645,
+      "execution_time": 0.3412039279937744,
       "samples_skipped": 0,
       "misclassified_count": 0,
       "misclassified_samples": []
     },
     "F9_role_usurpation": {
       "metrics": {
-        "true_positives": 0,
+        "true_positives": 50,
         "true_negatives": 0,
         "false_positives": 0,
-        "false_negatives": 50,
+        "false_negatives": 0,
         "total_samples": 50,
-        "precision": 0.0,
-        "recall": 0.0,
-        "f1_score": 0.0,
-        "accuracy": 0.0,
+        "precision": 1.0,
+        "recall": 1.0,
+        "f1_score": 1.0,
+        "accuracy": 1.0,
         "specificity": 0.0
       },
-      "calibration_error": 0.05,
-      "execution_time": 0.00471806526184082,
+      "calibration_error": 0.44999999999999996,
+      "execution_time": 3.8759779930114746,
       "samples_skipped": 0,
-      "misclassified_count": 50,
-      "misclassified_samples": [
-        {
-          "ground_truth": true,
-          "predicted": false,
-          "confidence": 0.0,
-          "type": "false_negative",
-          "input_data": {},
-          "metadata": {}
-        },
-        {
-          "ground_truth": true,
-          "predicted": false,
-          "confidence": 0.0,
-          "type": "false_negative",
-          "input_data": {},
-          "metadata": {}
-        },
-        {
-          "ground_truth": true,
-          "predicted": false,
-          "confidence": 0.0,
-          "type": "false_negative",
-          "input_data": {},
-          "metadata": {}
-        },
-        {
-          "ground_truth": true,
-          "predicted": false,
-          "confidence": 0.0,
-          "type": "false_negative",
-          "input_data": {},
-          "metadata": {}
-        },
-        {
-          "ground_truth": true,
-          "predicted": false,
-          "confidence": 0.0,
-          "type": "false_negative",
-          "input_data": {},
-          "metadata": {}
-        },
-        {
-          "ground_truth": true,
-          "predicted": false,
-          "confidence": 0.0,
-          "type": "false_negative",
-          "input_data": {},
-          "metadata": {}
-        },
-        {
-          "ground_truth": true,
-          "predicted": false,
-          "confidence": 0.0,
-          "type": "false_negative",
-          "input_data": {},
-          "metadata": {}
-        },
-        {
-          "ground_truth": true,
-          "predicted": false,
-          "confidence": 0.0,
-          "type": "false_negative",
-          "input_data": {},
-          "metadata": {}
-        },
-        {
-          "ground_truth": true,
-          "predicted": false,
-          "confidence": 0.0,
-          "type": "false_negative",
-          "input_data": {},
-          "metadata": {}
-        },
-        {
-          "ground_truth": true,
-          "predicted": false,
-          "confidence": 0.0,
-          "type": "false_negative",
-          "input_data": {},
-          "metadata": {}
-        }
-      ]
+      "misclassified_count": 0,
+      "misclassified_samples": []
     },
     "F10_communication_breakdown": {
       "metrics": {
@@ -664,210 +421,48 @@
         "specificity": 0.0
       },
       "calibration_error": 0.050000000000000044,
-      "execution_time": 0.002660036087036133,
+      "execution_time": 0.0026407241821289062,
       "samples_skipped": 0,
       "misclassified_count": 0,
       "misclassified_samples": []
     },
     "F12_output_validation_failure": {
       "metrics": {
-        "true_positives": 0,
+        "true_positives": 50,
         "true_negatives": 0,
         "false_positives": 0,
-        "false_negatives": 50,
+        "false_negatives": 0,
         "total_samples": 50,
-        "precision": 0.0,
-        "recall": 0.0,
-        "f1_score": 0.0,
-        "accuracy": 0.0,
+        "precision": 1.0,
+        "recall": 1.0,
+        "f1_score": 1.0,
+        "accuracy": 1.0,
         "specificity": 0.0
       },
-      "calibration_error": 0.8500000000000001,
-      "execution_time": 0.0020117759704589844,
+      "calibration_error": 0.34999999999999987,
+      "execution_time": 0.001856088638305664,
       "samples_skipped": 0,
-      "misclassified_count": 50,
-      "misclassified_samples": [
-        {
-          "ground_truth": true,
-          "predicted": false,
-          "confidence": 0.8,
-          "type": "false_negative",
-          "input_data": {},
-          "metadata": {}
-        },
-        {
-          "ground_truth": true,
-          "predicted": false,
-          "confidence": 0.8,
-          "type": "false_negative",
-          "input_data": {},
-          "metadata": {}
-        },
-        {
-          "ground_truth": true,
-          "predicted": false,
-          "confidence": 0.8,
-          "type": "false_negative",
-          "input_data": {},
-          "metadata": {}
-        },
-        {
-          "ground_truth": true,
-          "predicted": false,
-          "confidence": 0.8,
-          "type": "false_negative",
-          "input_data": {},
-          "metadata": {}
-        },
-        {
-          "ground_truth": true,
-          "predicted": false,
-          "confidence": 0.8,
-          "type": "false_negative",
-          "input_data": {},
-          "metadata": {}
-        },
-        {
-          "ground_truth": true,
-          "predicted": false,
-          "confidence": 0.8,
-          "type": "false_negative",
-          "input_data": {},
-          "metadata": {}
-        },
-        {
-          "ground_truth": true,
-          "predicted": false,
-          "confidence": 0.8,
-          "type": "false_negative",
-          "input_data": {},
-          "metadata": {}
-        },
-        {
-          "ground_truth": true,
-          "predicted": false,
-          "confidence": 0.8,
-          "type": "false_negative",
-          "input_data": {},
-          "metadata": {}
-        },
-        {
-          "ground_truth": true,
-          "predicted": false,
-          "confidence": 0.8,
-          "type": "false_negative",
-          "input_data": {},
-          "metadata": {}
-        },
-        {
-          "ground_truth": true,
-          "predicted": false,
-          "confidence": 0.8,
-          "type": "false_negative",
-          "input_data": {},
-          "metadata": {}
-        }
-      ]
+      "misclassified_count": 0,
+      "misclassified_samples": []
     },
     "F13_quality_gate_bypass": {
       "metrics": {
-        "true_positives": 0,
+        "true_positives": 50,
         "true_negatives": 0,
         "false_positives": 0,
-        "false_negatives": 50,
+        "false_negatives": 0,
         "total_samples": 50,
-        "precision": 0.0,
-        "recall": 0.0,
-        "f1_score": 0.0,
-        "accuracy": 0.0,
+        "precision": 1.0,
+        "recall": 1.0,
+        "f1_score": 1.0,
+        "accuracy": 1.0,
         "specificity": 0.0
       },
-      "calibration_error": 0.8500000000000001,
-      "execution_time": 1.483558177947998,
+      "calibration_error": 0.34999999999999987,
+      "execution_time": 1.3861019611358643,
       "samples_skipped": 0,
-      "misclassified_count": 50,
-      "misclassified_samples": [
-        {
-          "ground_truth": true,
-          "predicted": false,
-          "confidence": 0.8,
-          "type": "false_negative",
-          "input_data": {},
-          "metadata": {}
-        },
-        {
-          "ground_truth": true,
-          "predicted": false,
-          "confidence": 0.8,
-          "type": "false_negative",
-          "input_data": {},
-          "metadata": {}
-        },
-        {
-          "ground_truth": true,
-          "predicted": false,
-          "confidence": 0.8,
-          "type": "false_negative",
-          "input_data": {},
-          "metadata": {}
-        },
-        {
-          "ground_truth": true,
-          "predicted": false,
-          "confidence": 0.8,
-          "type": "false_negative",
-          "input_data": {},
-          "metadata": {}
-        },
-        {
-          "ground_truth": true,
-          "predicted": false,
-          "confidence": 0.8,
-          "type": "false_negative",
-          "input_data": {},
-          "metadata": {}
-        },
-        {
-          "ground_truth": true,
-          "predicted": false,
-          "confidence": 0.8,
-          "type": "false_negative",
-          "input_data": {},
-          "metadata": {}
-        },
-        {
-          "ground_truth": true,
-          "predicted": false,
-          "confidence": 0.8,
-          "type": "false_negative",
-          "input_data": {},
-          "metadata": {}
-        },
-        {
-          "ground_truth": true,
-          "predicted": false,
-          "confidence": 0.8,
-          "type": "false_negative",
-          "input_data": {},
-          "metadata": {}
-        },
-        {
-          "ground_truth": true,
-          "predicted": false,
-          "confidence": 0.8,
-          "type": "false_negative",
-          "input_data": {},
-          "metadata": {}
-        },
-        {
-          "ground_truth": true,
-          "predicted": false,
-          "confidence": 0.8,
-          "type": "false_negative",
-          "input_data": {},
-          "metadata": {}
-        }
-      ]
+      "misclassified_count": 0,
+      "misclassified_samples": []
     },
     "F14_completion_misjudgment": {
       "metrics": {
@@ -883,7 +478,7 @@
         "specificity": 0.0
       },
       "calibration_error": 0.25,
-      "execution_time": 0.007946014404296875,
+      "execution_time": 0.007886171340942383,
       "samples_skipped": 0,
       "misclassified_count": 0,
       "misclassified_samples": []
