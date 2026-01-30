@@ -410,7 +410,7 @@ class F3ResourceMisallocationOTELAdapter(BaseOTELAdapter):
 
         return OTELAdapterResult(
             success=True,
-            detector_input={'turns': turns}
+            detector_input=turns  # Return list directly, not wrapped in dict
         )
 
 
@@ -541,7 +541,6 @@ class F7ContextNeglectOTELAdapter(BaseOTELAdapter):
         spans = self._extract_spans(trace)
 
         conversation_history = []
-        current_output = None
 
         for span in spans:
             attrs = self._parse_attributes(span)
@@ -562,15 +561,14 @@ class F7ContextNeglectOTELAdapter(BaseOTELAdapter):
             )
 
         # Last turn is current output, rest is context
-        current_output = conversation_history[-1]['content']
-        relevant_context = [turn['content'] for turn in conversation_history[:-1]]
+        output = conversation_history[-1]['content']
+        context = '\n'.join([turn['content'] for turn in conversation_history[:-1]])
 
         return OTELAdapterResult(
             success=True,
             detector_input={
-                'conversation_history': conversation_history,
-                'current_output': current_output,
-                'relevant_context': relevant_context,
+                'context': context,
+                'output': output,
             }
         )
 
@@ -607,7 +605,7 @@ class F8WithholdingOTELAdapter(BaseOTELAdapter):
             success=True,
             detector_input={
                 'internal_findings': internal_findings,
-                'communicated_output': communicated_output,
+                'output': communicated_output,
             }
         )
 
@@ -646,7 +644,7 @@ class F9UsurpationOTELAdapter(BaseOTELAdapter):
 
         return OTELAdapterResult(
             success=True,
-            detector_input={'turns': turns}
+            detector_input=turns  # Return list directly, not wrapped in dict
         )
 
 
@@ -710,36 +708,35 @@ class F12ValidationOTELAdapter(BaseOTELAdapter):
     def adapt(self, trace: Dict[str, Any]) -> OTELAdapterResult:
         spans = self._extract_spans(trace)
 
-        expected_schema = None
-        output = None
-        validation_errors = None
-
-        for span in spans:
+        # Build turn snapshots with validation info
+        turns = []
+        for seq, span in enumerate(spans):
             attrs = self._parse_attributes(span)
 
-            if 'gen_ai.expected_schema' in attrs:
-                expected_schema = attrs['gen_ai.expected_schema']
+            agent_id = attrs.get('gen_ai.agent.id', 'unknown')
+            content = attrs.get('gen_ai.response.sample', '')
+            schema = attrs.get('gen_ai.expected_schema')
+            output = attrs.get('gen_ai.response.sample', '')
 
-            if 'gen_ai.response.sample' in attrs:
-                output = attrs['gen_ai.response.sample']
+            if content or schema:
+                turns.append({
+                    'agent_id': agent_id,
+                    'content': content,
+                    'output': output,
+                    'schema': schema,
+                    'sequence': seq,
+                })
 
-            if 'gen_ai.validation.errors' in attrs:
-                validation_errors = attrs['gen_ai.validation.errors']
-
-        if not expected_schema or not output:
+        if len(turns) == 0:
             return OTELAdapterResult(
                 success=False,
                 detector_input=None,
-                error="Missing schema or output"
+                error="No validation data found"
             )
 
         return OTELAdapterResult(
             success=True,
-            detector_input={
-                'expected_schema': expected_schema,
-                'output': output,
-                'validation_errors': validation_errors,
-            }
+            detector_input=turns  # Return list directly
         )
 
 
@@ -752,23 +749,26 @@ class F13QualityGateOTELAdapter(BaseOTELAdapter):
     def adapt(self, trace: Dict[str, Any]) -> OTELAdapterResult:
         spans = self._extract_spans(trace)
 
-        gate_status = None
-        bypassed = False
-        test_results = None
-
-        for span in spans:
+        # Build turn snapshots with quality gate info
+        turns = []
+        for seq, span in enumerate(spans):
             attrs = self._parse_attributes(span)
 
-            if 'gen_ai.quality_gate.status' in attrs:
-                gate_status = attrs['gen_ai.quality_gate.status']
+            agent_id = attrs.get('gen_ai.agent.id', 'unknown')
+            content = attrs.get('gen_ai.response.sample', '')
+            gate_status = attrs.get('gen_ai.quality_gate.status')
+            bypassed = attrs.get('gen_ai.quality_gate.bypassed') == 'true'
 
-            if 'gen_ai.quality_gate.bypassed' in attrs:
-                bypassed = attrs['gen_ai.quality_gate.bypassed'] == 'true'
+            if gate_status or bypassed:
+                turns.append({
+                    'agent_id': agent_id,
+                    'content': content,
+                    'check_passed': gate_status == 'passed' if gate_status else False,
+                    'check_skipped': bypassed,
+                    'sequence': seq,
+                })
 
-            if 'gen_ai.test_results' in attrs:
-                test_results = attrs['gen_ai.test_results']
-
-        if gate_status is None and not bypassed:
+        if len(turns) == 0:
             return OTELAdapterResult(
                 success=False,
                 detector_input=None,
@@ -777,11 +777,7 @@ class F13QualityGateOTELAdapter(BaseOTELAdapter):
 
         return OTELAdapterResult(
             success=True,
-            detector_input={
-                'gate_status': gate_status,
-                'bypassed': bypassed,
-                'test_results': test_results,
-            }
+            detector_input=turns  # Return list directly
         )
 
 
@@ -817,12 +813,23 @@ class F14CompletionOTELAdapter(BaseOTELAdapter):
                 error="Missing task or output"
             )
 
+        # Parse missing_requirements if it's a JSON string
+        requirements = []
+        if missing_requirements:
+            try:
+                if isinstance(missing_requirements, str):
+                    requirements = json.loads(missing_requirements)
+                elif isinstance(missing_requirements, list):
+                    requirements = missing_requirements
+            except (json.JSONDecodeError, TypeError):
+                requirements = [missing_requirements] if missing_requirements else []
+
         return OTELAdapterResult(
             success=True,
             detector_input={
                 'task': task,
-                'agent_output': output,
-                'missing_requirements': missing_requirements,
+                'output': output,
+                'requirements': requirements,
             }
         )
 
