@@ -39,7 +39,7 @@ from app.detection.communication import CommunicationBreakdownDetector
 from app.detection.turn_aware.output_validation import TurnAwareOutputValidationDetector
 from app.detection.turn_aware.quality_gate import TurnAwareQualityGateBypassDetector
 from app.detection.completion import CompletionMisjudgmentDetector
-from app.models import TurnSnapshot
+from app.detection.turn_aware._base import TurnSnapshot
 
 
 @dataclass
