@@ -64,12 +64,47 @@ class BaseGoldenAdapter(ABC):
 
 
 class LoopDetectionAdapter(BaseGoldenAdapter):
-    """Convert n8n workflow nodes to List[StateSnapshot] for loop detection."""
+    """Convert n8n workflow nodes or Moltbot states to List[StateSnapshot] for loop detection."""
 
     def get_detection_type(self) -> str:
         return "loop"
 
     def adapt(self, input_data: Dict[str, Any]) -> AdapterResult:
+        # Detect format: Moltbot vs n8n
+        if "states" in input_data:
+            return self._adapt_moltbot(input_data)
+        else:
+            return self._adapt_n8n(input_data)
+
+    def _adapt_moltbot(self, input_data: Dict[str, Any]) -> AdapterResult:
+        """Adapt Moltbot states format."""
+        states = input_data.get("states", [])
+
+        if len(states) < 3:
+            return AdapterResult(
+                success=False,
+                detector_input=None,
+                error=f"Insufficient states for loop detection (found {len(states)}, need >= 3)"
+            )
+
+        # Convert Moltbot states to List[StateSnapshot]
+        snapshots = []
+        for seq, state in enumerate(states):
+            snapshots.append(LoopStateSnapshot(
+                agent_id=state.get("agent_id", "moltbot"),
+                state_delta=state.get("state_delta", {}),
+                content=state.get("content", ""),
+                sequence_num=seq,
+            ))
+
+        return AdapterResult(
+            success=True,
+            detector_input=snapshots,
+            metadata={"state_count": len(snapshots), "format": "moltbot"}
+        )
+
+    def _adapt_n8n(self, input_data: Dict[str, Any]) -> AdapterResult:
+        """Adapt n8n workflow format."""
         nodes = input_data.get("nodes", [])
         states = []
 
@@ -102,7 +137,7 @@ class LoopDetectionAdapter(BaseGoldenAdapter):
         return AdapterResult(
             success=True,
             detector_input=states,
-            metadata={"ai_node_count": len(ai_nodes), "total_nodes": len(nodes)}
+            metadata={"ai_node_count": len(ai_nodes), "total_nodes": len(nodes), "format": "n8n"}
         )
 
 
@@ -382,6 +417,73 @@ class OverflowDetectionAdapter(BaseGoldenAdapter):
         )
 
 
+class CompletionDetectionAdapter(BaseGoldenAdapter):
+    """Convert Moltbot messages/actions to completion detector input."""
+
+    def get_detection_type(self) -> str:
+        return "completion"
+
+    def adapt(self, input_data: Dict[str, Any]) -> AdapterResult:
+        """Adapt Moltbot completion format to detector input."""
+        messages = input_data.get("messages", [])
+        requested_actions = input_data.get("requested_actions", [])
+        completed_actions = input_data.get("completed_actions", [])
+
+        if not messages:
+            return AdapterResult(
+                success=False,
+                detector_input=None,
+                error="No messages found in completion sample"
+            )
+
+        # Extract task from first user message
+        task = ""
+        agent_output = ""
+
+        for msg in messages:
+            from_agent = msg.get("from_agent", "")
+            content = msg.get("content", "")
+
+            # First message is usually the task
+            if not task:
+                task = content
+
+            # Last agent message is the output
+            if from_agent == "moltbot":
+                agent_output = content
+
+        if not agent_output:
+            return AdapterResult(
+                success=False,
+                detector_input=None,
+                error="No agent output found in messages"
+            )
+
+        # Build subtasks from requested actions
+        subtasks = []
+        for action in requested_actions:
+            status = "complete" if action in completed_actions else "incomplete"
+            subtasks.append({
+                "name": action,
+                "status": status
+            })
+
+        return AdapterResult(
+            success=True,
+            detector_input={
+                "task": task,
+                "agent_output": agent_output,
+                "subtasks": subtasks if subtasks else None,
+            },
+            metadata={
+                "message_count": len(messages),
+                "requested_actions": len(requested_actions),
+                "completed_actions": len(completed_actions),
+                "format": "moltbot"
+            }
+        )
+
+
 # Registry of adapters by detection type
 ADAPTER_REGISTRY: Dict[str, BaseGoldenAdapter] = {
     "loop": LoopDetectionAdapter(),
@@ -389,6 +491,7 @@ ADAPTER_REGISTRY: Dict[str, BaseGoldenAdapter] = {
     "corruption": CorruptionDetectionAdapter(),
     "persona_drift": PersonaDriftDetectionAdapter(),
     "overflow": OverflowDetectionAdapter(),
+    "completion": CompletionDetectionAdapter(),
 }
 
 

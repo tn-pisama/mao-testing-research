@@ -91,13 +91,32 @@ class GoldenDataset:
             json.dump(data, f, indent=2)
     
     def load(self, path: Path) -> None:
+        if path.suffix == '.jsonl':
+            self.load_jsonl(path)
+        else:
+            self.load_json(path)
+
+    def load_json(self, path: Path) -> None:
+        """Load golden dataset from JSON format."""
         with open(path) as f:
             data = json.load(f)
-        
+
         for entry_data in data.get("entries", []):
             entry_data["detection_type"] = DetectionType(entry_data["detection_type"])
             entry = GoldenDatasetEntry(**entry_data)
             self.entries[entry.id] = entry
+
+    def load_jsonl(self, path: Path) -> None:
+        """Load golden dataset from JSONL format (one entry per line)."""
+        with open(path) as f:
+            for line in f:
+                line = line.strip()
+                if not line:
+                    continue
+                entry_data = json.loads(line)
+                entry_data["detection_type"] = DetectionType(entry_data["detection_type"])
+                entry = GoldenDatasetEntry(**entry_data)
+                self.entries[entry.id] = entry
     
     def summary(self) -> Dict[str, Any]:
         by_type = {}

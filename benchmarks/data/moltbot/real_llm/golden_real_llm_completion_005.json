@@ -1,6 +1,6 @@
 {
   "id": "real_llm_completion_005",
-  "detection_type": "COMPLETION",
+  "detection_type": "completion",
   "input_data": {
     "messages": [
       {

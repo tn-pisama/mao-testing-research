@@ -1,0 +1,112 @@
+[
+  {
+    "name": "Enterprise Light",
+    "port": 3001,
+    "description": "Professional B2B aesthetic",
+    "screenshots": [
+      "design-screenshots/3001-enterprise-light.png"
+    ],
+    "metrics": {
+      "backgroundColor": "rgb(250, 250, 250)",
+      "textColor": "rgb(82, 82, 82)",
+      "headingCount": 6,
+      "buttonCount": 5,
+      "linkCount": 2
+    },
+    "observations": [
+      "Button: {\"bg\":\"rgb(37, 99, 235)\",\"color\":\"rgb(255, 255, 255)\",\"borderRadius\":\"6px\",\"padding\":\"8px 16px\",\"fontSize\":\"16px\",\"fontWeight\":\"500\"}",
+      "Font: Inter, \"Inter Fallback\"",
+      "Has gradients: false",
+      "Has shadows: true",
+      "Has blur effects: false"
+    ]
+  },
+  {
+    "name": "Cyberpunk Dark",
+    "port": 3002,
+    "description": "Neon on black, developer-focused",
+    "screenshots": [
+      "design-screenshots/3002-cyberpunk-dark.png"
+    ],
+    "metrics": {
+      "backgroundColor": "rgb(10, 10, 10)",
+      "textColor": "rgb(255, 255, 255)",
+      "headingCount": 6,
+      "buttonCount": 5,
+      "linkCount": 2
+    },
+    "observations": [
+      "Button: {\"bg\":\"rgba(0, 0, 0, 0)\",\"color\":\"rgb(0, 212, 255)\",\"borderRadius\":\"4px\",\"padding\":\"8px 16px\",\"fontSize\":\"14px\",\"fontWeight\":\"500\"}",
+      "Font: Inter, \"Inter Fallback\"",
+      "Has gradients: false",
+      "Has shadows: true",
+      "Has blur effects: false"
+    ]
+  },
+  {
+    "name": "Glassmorphism",
+    "port": 3003,
+    "description": "Frosted glass effects, premium",
+    "screenshots": [
+      "design-screenshots/3003-glassmorphism.png"
+    ],
+    "metrics": {
+      "backgroundColor": "rgba(0, 0, 0, 0)",
+      "textColor": "rgb(255, 255, 255)",
+      "headingCount": 6,
+      "buttonCount": 5,
+      "linkCount": 2
+    },
+    "observations": [
+      "Button: {\"bg\":\"rgba(255, 255, 255, 0.1)\",\"color\":\"rgb(255, 255, 255)\",\"borderRadius\":\"16px\",\"padding\":\"12px 24px\",\"fontSize\":\"16px\",\"fontWeight\":\"500\"}",
+      "Font: Inter, \"Inter Fallback\"",
+      "Has gradients: true",
+      "Has shadows: true",
+      "Has blur effects: false"
+    ]
+  },
+  {
+    "name": "Nordic Minimal",
+    "port": 3004,
+    "description": "Ultra-clean, spacious",
+    "screenshots": [
+      "design-screenshots/3004-nordic-minimal.png"
+    ],
+    "metrics": {
+      "backgroundColor": "rgb(250, 250, 250)",
+      "textColor": "rgb(82, 82, 82)",
+      "headingCount": 6,
+      "buttonCount": 5,
+      "linkCount": 2
+    },
+    "observations": [
+      "Button: {\"bg\":\"rgb(20, 184, 166)\",\"color\":\"rgb(255, 255, 255)\",\"borderRadius\":\"8px\",\"padding\":\"12px 24px\",\"fontSize\":\"16px\",\"fontWeight\":\"500\"}",
+      "Font: Inter, \"Inter Fallback\"",
+      "Has gradients: false",
+      "Has shadows: false",
+      "Has blur effects: false"
+    ]
+  },
+  {
+    "name": "Vibrant Modern",
+    "port": 3005,
+    "description": "Purple-blue gradients, energetic",
+    "screenshots": [
+      "design-screenshots/3005-vibrant-modern.png"
+    ],
+    "metrics": {
+      "backgroundColor": "rgba(0, 0, 0, 0)",
+      "textColor": "rgb(255, 255, 255)",
+      "headingCount": 6,
+      "buttonCount": 5,
+      "linkCount": 2
+    },
+    "observations": [
+      "Button: {\"bg\":\"rgba(0, 0, 0, 0)\",\"color\":\"rgb(255, 255, 255)\",\"borderRadius\":\"12px\",\"padding\":\"12px 24px\",\"fontSize\":\"16px\",\"fontWeight\":\"600\"}",
+      "Font: Inter, \"Inter Fallback\"",
+      "Has gradients: true",
+      "Has shadows: false",
+      "Has blur effects: false"
+    ]
+  }
+]

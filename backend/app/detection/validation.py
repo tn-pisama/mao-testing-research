@@ -22,6 +22,7 @@ class DetectionType(Enum):
     WORKFLOW = "workflow"
     GROUNDING = "grounding"  # F15: OfficeQA-inspired
     RETRIEVAL_QUALITY = "retrieval_quality"  # F16: OfficeQA-inspired
+    COMPLETION = "completion"  # F14: Completion misjudgment
 
 
 @dataclass

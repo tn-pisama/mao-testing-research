@@ -1,6 +1,6 @@
 {
   "id": "real_llm_loop_006",
-  "detection_type": "LOOP",
+  "detection_type": "loop",
   "input_data": {
     "states": [
       {

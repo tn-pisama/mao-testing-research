@@ -55,7 +55,7 @@ Examples:
     parser.add_argument(
         "--detector",
         type=str,
-        choices=["loop", "coordination", "corruption", "persona_drift", "overflow"],
+        choices=["loop", "coordination", "corruption", "persona_drift", "overflow", "completion"],
         help="Test a specific detector"
     )
 
@@ -98,7 +98,7 @@ Examples:
 
     # Determine which detectors to test
     if args.all:
-        detectors = ["loop", "coordination", "corruption", "persona_drift", "overflow"]
+        detectors = ["loop", "coordination", "corruption", "persona_drift", "overflow", "completion"]
     elif args.detector:
         detectors = [args.detector]
     else:
