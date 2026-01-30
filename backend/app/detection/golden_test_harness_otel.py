@@ -418,11 +418,11 @@ class OTELGoldenTraceTestHarness:
         turns = []
         for snapshot in detector_input:
             turn = TurnSnapshot(
-                sequence=snapshot.get("sequence", 0),
-                agent_id=snapshot.get("agent_id", "unknown"),
+                turn_number=snapshot.get("sequence", 0),
+                participant_id=snapshot.get("agent_id", "unknown"),
                 participant_type="agent",
                 content=snapshot.get("content", ""),
-                metadata={
+                turn_metadata={
                     "tokens_input": snapshot.get("tokens_input", 0),
                     "tokens_output": snapshot.get("tokens_output", 0),
                 },
@@ -530,11 +530,11 @@ class OTELGoldenTraceTestHarness:
         turns = []
         for snapshot in detector_input:
             turn = TurnSnapshot(
-                sequence=snapshot.get("sequence", 0),
-                agent_id=snapshot.get("agent_id", "unknown"),
+                turn_number=snapshot.get("sequence", 0),
+                participant_id=snapshot.get("agent_id", "unknown"),
                 participant_type="agent",
                 content=snapshot.get("content", ""),
-                metadata={
+                turn_metadata={
                     "expected_role": snapshot.get("expected_role", ""),
                     "actual_action": snapshot.get("actual_action", ""),
                 },
@@ -567,11 +567,11 @@ class OTELGoldenTraceTestHarness:
         turns = []
         for snapshot in detector_input:
             turn = TurnSnapshot(
-                sequence=snapshot.get("sequence", 0),
-                agent_id=snapshot.get("agent_id", "unknown"),
+                turn_number=snapshot.get("sequence", 0),
+                participant_id=snapshot.get("agent_id", "unknown"),
                 participant_type="agent",
                 content=snapshot.get("content", ""),
-                metadata={
+                turn_metadata={
                     "output": snapshot.get("output", ""),
                     "schema": snapshot.get("schema"),
                 },
@@ -591,11 +591,11 @@ class OTELGoldenTraceTestHarness:
         turns = []
         for snapshot in detector_input:
             turn = TurnSnapshot(
-                sequence=snapshot.get("sequence", 0),
-                agent_id=snapshot.get("agent_id", "unknown"),
+                turn_number=snapshot.get("sequence", 0),
+                participant_id=snapshot.get("agent_id", "unknown"),
                 participant_type="agent",
                 content=snapshot.get("content", ""),
-                metadata={
+                turn_metadata={
                     "check_passed": snapshot.get("check_passed", False),
                     "check_skipped": snapshot.get("check_skipped", False),
                 },
@@ -613,8 +613,8 @@ class OTELGoldenTraceTestHarness:
         detector = CompletionMisjudgmentDetector()
         result = detector.detect(
             task=detector_input["task"],
-            output=detector_input["output"],
-            requirements=detector_input.get("requirements", []),
+            agent_output=detector_input["agent_output"],
+            success_criteria=detector_input.get("requirements", []),
         )
         return type('Result', (), {
             'detected': result.detected,

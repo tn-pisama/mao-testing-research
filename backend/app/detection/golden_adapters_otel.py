@@ -828,7 +828,7 @@ class F14CompletionOTELAdapter(BaseOTELAdapter):
             success=True,
             detector_input={
                 'task': task,
-                'output': output,
+                'agent_output': output,
                 'requirements': requirements,
             }
         )
