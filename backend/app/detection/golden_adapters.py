@@ -497,6 +497,25 @@ class OverflowDetectionAdapter(BaseGoldenAdapter):
         return "overflow"
 
     def adapt(self, input_data: Dict[str, Any]) -> AdapterResult:
+        # Detect format: Moltbot vs n8n
+        if "current_tokens" in input_data and "model" in input_data:
+            return self._adapt_moltbot(input_data)
+        else:
+            return self._adapt_n8n(input_data)
+
+    def _adapt_moltbot(self, input_data: Dict[str, Any]) -> AdapterResult:
+        """Adapt Moltbot overflow format."""
+        current_tokens = input_data.get("current_tokens", 0)
+        model = input_data.get("model", "gpt-4o")
+
+        return AdapterResult(
+            success=True,
+            detector_input={"current_tokens": current_tokens, "model": model},
+            metadata={"format": "moltbot"}
+        )
+
+    def _adapt_n8n(self, input_data: Dict[str, Any]) -> AdapterResult:
+        """Adapt n8n workflow format."""
         nodes = input_data.get("nodes", [])
 
         # Find LLM nodes with model config
@@ -535,7 +554,8 @@ class OverflowDetectionAdapter(BaseGoldenAdapter):
             metadata={
                 "ai_node_count": ai_node_count,
                 "total_chars": total_chars,
-                "estimated_tokens": estimated_tokens
+                "estimated_tokens": estimated_tokens,
+                "format": "n8n"
             }
         )
 
@@ -610,6 +630,7 @@ class HallucinationDetectionAdapter(BaseGoldenAdapter):
 
     def adapt(self, input_data: Dict[str, Any]) -> AdapterResult:
         """Adapt Moltbot hallucination format."""
+        tool_input = input_data.get("tool_input", {})
         tool_output = input_data.get("tool_output", {})
         agent_output = input_data.get("agent_output", "")
 
@@ -620,8 +641,22 @@ class HallucinationDetectionAdapter(BaseGoldenAdapter):
                 error="No agent output found in hallucination sample"
             )
 
-        # Convert tool_output to tool_results format
-        tool_results = [tool_output] if tool_output else None
+        # Convert tool_output to tool_results format that detector expects
+        # Detector expects: [{"tool": "...", "result": "..."}]
+        tool_results = None
+        if tool_output:
+            # Build result string from tool_output
+            if "error" in tool_output:
+                result_str = f"Error: {tool_output['error']}"
+            else:
+                result_str = str(tool_output)
+
+            tool_name = tool_input.get("path", "file_operation") if tool_input else "unknown"
+            tool_results = [{
+                "tool": tool_name,
+                "result": result_str,
+                "error": tool_output.get("error"),  # Also pass error flag
+            }]
 
         return AdapterResult(
             success=True,
@@ -629,7 +664,7 @@ class HallucinationDetectionAdapter(BaseGoldenAdapter):
                 "output": agent_output,
                 "tool_results": tool_results,
             },
-            metadata={"format": "moltbot"}
+            metadata={"format": "moltbot", "has_error": "error" in tool_output}
         )
 
 
