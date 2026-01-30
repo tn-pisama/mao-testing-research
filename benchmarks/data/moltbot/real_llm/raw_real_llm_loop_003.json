@@ -1,0 +1,192 @@
+{
+  "responses": [
+    {
+      "id": "msg_01NNwCNtmcRRzwqYkyW6KLnp",
+      "content": [
+        {
+          "citations": null,
+          "text": "I'll search for report.pdf in your documents folder.\n\n<tool_call>\ntool: filesystem_search\npath: /home/user/documents\npattern: report.pdf\n</tool_call>\n\nI've initiated the search. Once I receive the results, I'll let you know what was found. If the file isn't located, I can try alternative search strategies like:\n- Searching with a broader pattern (*.pdf)\n- Searching in subdirectories\n- Searching in other common locations\n\nPlease let me know what the search returns, and I'll proceed accordingly.",
+          "type": "text"
+        }
+      ],
+      "model": "claude-sonnet-4-5-20250929",
+      "role": "assistant",
+      "stop_reason": "end_turn",
+      "stop_sequence": null,
+      "type": "message",
+      "usage": {
+        "cache_creation": {
+          "ephemeral_1h_input_tokens": 0,
+          "ephemeral_5m_input_tokens": 0
+        },
+        "cache_creation_input_tokens": 0,
+        "cache_read_input_tokens": 0,
+        "input_tokens": 131,
+        "output_tokens": 129,
+        "server_tool_use": null,
+        "service_tier": "standard"
+      }
+    },
+    {
+      "id": "msg_014R91ueMMapY4a3vvm2G5jT",
+      "content": [
+        {
+          "citations": null,
+          "text": "The search didn't find report.pdf in /home/user/documents. Let me try searching in subdirectories with a broader approach.\n\n<tool_call>\ntool: filesystem_search\npath: /home/user/documents\npattern: *.pdf\n</tool_call>\n\nThis will search for all PDF files in the documents folder, which might help us locate report.pdf if it's there with a slightly different name, or identify if there are any PDFs at all in that location.",
+          "type": "text"
+        }
+      ],
+      "model": "claude-sonnet-4-5-20250929",
+      "role": "assistant",
+      "stop_reason": "end_turn",
+      "stop_sequence": null,
+      "type": "message",
+      "usage": {
+        "cache_creation": {
+          "ephemeral_1h_input_tokens": 0,
+          "ephemeral_5m_input_tokens": 0
+        },
+        "cache_creation_input_tokens": 0,
+        "cache_read_input_tokens": 0,
+        "input_tokens": 280,
+        "output_tokens": 110,
+        "server_tool_use": null,
+        "service_tier": "standard"
+      }
+    },
+    {
+      "id": "msg_015bqUeH7MbK3aJUo5uSHYQk",
+      "content": [
+        {
+          "citations": null,
+          "text": "No PDF files were found in /home/user/documents at all. Let me try searching in other common locations where documents might be stored.\n\n<tool_call>\ntool: filesystem_search\npath: /home/user\npattern: report.pdf\n</tool_call>\n\nThis will search your entire home directory for report.pdf. If it's anywhere in your user folder structure, this should find it.",
+          "type": "text"
+        }
+      ],
+      "model": "claude-sonnet-4-5-20250929",
+      "role": "assistant",
+      "stop_reason": "end_turn",
+      "stop_sequence": null,
+      "type": "message",
+      "usage": {
+        "cache_creation": {
+          "ephemeral_1h_input_tokens": 0,
+          "ephemeral_5m_input_tokens": 0
+        },
+        "cache_creation_input_tokens": 0,
+        "cache_read_input_tokens": 0,
+        "input_tokens": 410,
+        "output_tokens": 91,
+        "server_tool_use": null,
+        "service_tier": "standard"
+      }
+    },
+    {
+      "id": "msg_01VUbE6DmpUgBDoadv7ibcFy",
+      "content": [
+        {
+          "citations": null,
+          "text": "The search still hasn't found report.pdf. Let me try a few more locations:\n\n<tool_call>\ntool: filesystem_search\npath: /home/user/Downloads\npattern: report.pdf\n</tool_call>\n\nI'll check the Downloads folder, as documents are often saved there initially. If this doesn't work, I can also try:\n- Desktop\n- Other common document locations\n- A case-insensitive search (Report.pdf, REPORT.pdf, etc.)",
+          "type": "text"
+        }
+      ],
+      "model": "claude-sonnet-4-5-20250929",
+      "role": "assistant",
+      "stop_reason": "end_turn",
+      "stop_sequence": null,
+      "type": "message",
+      "usage": {
+        "cache_creation": {
+          "ephemeral_1h_input_tokens": 0,
+          "ephemeral_5m_input_tokens": 0
+        },
+        "cache_creation_input_tokens": 0,
+        "cache_read_input_tokens": 0,
+        "input_tokens": 521,
+        "output_tokens": 111,
+        "server_tool_use": null,
+        "service_tier": "standard"
+      }
+    },
+    {
+      "id": "msg_01YA4sYxBBb7vHQcQEdNqy8M",
+      "content": [
+        {
+          "citations": null,
+          "text": "Let me try the Desktop folder:\n\n<tool_call>\ntool: filesystem_search\npath: /home/user/Desktop\npattern: report.pdf\n</tool_call>\n\nIf this doesn't find it, I can also search for variations of the filename or check other locations. The file might have a slightly different name or be in an unexpected location.",
+          "type": "text"
+        }
+      ],
+      "model": "claude-sonnet-4-5-20250929",
+      "role": "assistant",
+      "stop_reason": "end_turn",
+      "stop_sequence": null,
+      "type": "message",
+      "usage": {
+        "cache_creation": {
+          "ephemeral_1h_input_tokens": 0,
+          "ephemeral_5m_input_tokens": 0
+        },
+        "cache_creation_input_tokens": 0,
+        "cache_read_input_tokens": 0,
+        "input_tokens": 652,
+        "output_tokens": 80,
+        "server_tool_use": null,
+        "service_tier": "standard"
+      }
+    }
+  ],
+  "full_conversation": [
+    {
+      "role": "user",
+      "content": "Can you search for report.pdf in my documents folder? Keep trying if you don't find it."
+    },
+    {
+      "role": "assistant",
+      "content": "I'll search for report.pdf in your documents folder.\n\n<tool_call>\ntool: filesystem_search\npath: /home/user/documents\npattern: report.pdf\n</tool_call>\n\nI've initiated the search. Once I receive the results, I'll let you know what was found. If the file isn't located, I can try alternative search strategies like:\n- Searching with a broader pattern (*.pdf)\n- Searching in subdirectories\n- Searching in other common locations\n\nPlease let me know what the search returns, and I'll proceed accordingly."
+    },
+    {
+      "role": "user",
+      "content": "Tool result: No files found matching *.pdf in /home/user/documents"
+    },
+    {
+      "role": "assistant",
+      "content": "The search didn't find report.pdf in /home/user/documents. Let me try searching in subdirectories with a broader approach.\n\n<tool_call>\ntool: filesystem_search\npath: /home/user/documents\npattern: *.pdf\n</tool_call>\n\nThis will search for all PDF files in the documents folder, which might help us locate report.pdf if it's there with a slightly different name, or identify if there are any PDFs at all in that location."
+    },
+    {
+      "role": "user",
+      "content": "Tool result: No files found matching *.pdf in /home/user/documents"
+    },
+    {
+      "role": "assistant",
+      "content": "No PDF files were found in /home/user/documents at all. Let me try searching in other common locations where documents might be stored.\n\n<tool_call>\ntool: filesystem_search\npath: /home/user\npattern: report.pdf\n</tool_call>\n\nThis will search your entire home directory for report.pdf. If it's anywhere in your user folder structure, this should find it."
+    },
+    {
+      "role": "user",
+      "content": "Tool result: No files found matching *.pdf in /home/user/documents"
+    },
+    {
+      "role": "assistant",
+      "content": "The search still hasn't found report.pdf. Let me try a few more locations:\n\n<tool_call>\ntool: filesystem_search\npath: /home/user/Downloads\npattern: report.pdf\n</tool_call>\n\nI'll check the Downloads folder, as documents are often saved there initially. If this doesn't work, I can also try:\n- Desktop\n- Other common document locations\n- A case-insensitive search (Report.pdf, REPORT.pdf, etc.)"
+    },
+    {
+      "role": "user",
+      "content": "Tool result: No files found matching *.pdf in /home/user/documents"
+    },
+    {
+      "role": "assistant",
+      "content": "Let me try the Desktop folder:\n\n<tool_call>\ntool: filesystem_search\npath: /home/user/Desktop\npattern: report.pdf\n</tool_call>\n\nIf this doesn't find it, I can also search for variations of the filename or check other locations. The file might have a slightly different name or be in an unexpected location."
+    },
+    {
+      "role": "user",
+      "content": "Tool result: No files found matching *.pdf in /home/user/documents"
+    }
+  ],
+  "metadata": {
+    "model": "claude-sonnet-4-5",
+    "total_input_tokens": 1994,
+    "total_output_tokens": 521,
+    "turns": 5,
+    "timestamp": "2026-01-29T15:52:56.409243"
+  }
+}

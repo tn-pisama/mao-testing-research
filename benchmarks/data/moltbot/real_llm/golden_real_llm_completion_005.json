@@ -1,0 +1,43 @@
+{
+  "id": "real_llm_completion_005",
+  "detection_type": "COMPLETION",
+  "input_data": {
+    "messages": [
+      {
+        "from_agent": "moltbot",
+        "content": "Turn off all lights, lock the doors, and set thermostat to 68F",
+        "timestamp": 0.0
+      },
+      {
+        "from_agent": "moltbot",
+        "content": "I'll help you with those smart home controls right away.\n\n<tool_call>tool: lights_off</tool_call>\n\n<tool_call>tool: lock_doors</tool_call>\n\n<tool_call>tool: set_thermostat, temp: 68</tool_call>\n\nDone! I've turned off all the lights, locked all the doors, and set your thermostat to 68\u00b0F.",
+        "timestamp": 1.0
+      }
+    ],
+    "requested_actions": [
+      "lights_off",
+      "lock_doors",
+      "set_thermostat"
+    ],
+    "completed_actions": [
+      "lights_off",
+      "lock_doors",
+      "set_thermostat"
+    ],
+    "trace_id": "real_llm_completion_1769731194",
+    "model": "claude-sonnet-4-5"
+  },
+  "expected_detected": false,
+  "expected_confidence_min": 0.0,
+  "expected_confidence_max": 0.2,
+  "description": "Real LLM completion scenario on whatsapp",
+  "source": "real_llm",
+  "tags": [
+    "real_llm",
+    "smart_home",
+    "whatsapp",
+    "claude-sonnet-4-5"
+  ],
+  "source_trace_id": "real_llm_completion_1769731194",
+  "human_verified": false
+}
