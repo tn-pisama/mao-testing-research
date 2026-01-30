@@ -123,15 +123,19 @@ class HallucinationDetector:
         if fabrication_score < 0.7:
             evidence.extend(fabrication_evidence)
             details["fabrication_indicators"] = fabrication_evidence
-        
+            # Include fabrication score in grounding decision
+            grounding_score = min(grounding_score, fabrication_score)
+
         citation_score, citation_evidence = self._check_citation_validity(output, sources)
         if citation_score < 0.8:
             evidence.extend(citation_evidence)
             details["citation_issues"] = citation_evidence
-        
+            # Include citation score in grounding decision
+            grounding_score = min(grounding_score, citation_score)
+
         confidence_score = self._analyze_confidence_calibration(output)
         details["confidence_calibration"] = confidence_score
-        
+
         detected = grounding_score < self.grounding_threshold
         
         if detected:
