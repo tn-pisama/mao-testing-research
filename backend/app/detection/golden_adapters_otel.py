@@ -122,7 +122,7 @@ class InfiniteLoopOTELAdapter(BaseOTELAdapter):
 
 
 class StateCorruptionOTELAdapter(BaseOTELAdapter):
-    """Convert OTEL traces to text-based corruption detection format."""
+    """Convert OTEL traces to StateSnapshot objects for structured corruption detection."""
 
     def get_detection_type(self) -> str:
         return "state_corruption"
@@ -144,14 +144,31 @@ class StateCorruptionOTELAdapter(BaseOTELAdapter):
                 error=f"Need at least 2 state transitions (found {len(state_spans)})"
             )
 
-        # Use first span as task context
-        first_span, first_attrs = state_spans[0]
-        task = first_span.get('name', 'Unknown task')
-
-        # Extract state deltas
+        # Extract state deltas and create StateSnapshot objects
         try:
-            prev_state = json.loads(first_attrs['gen_ai.state.delta'])
-            curr_state = json.loads(state_spans[1][1]['gen_ai.state.delta'])
+            first_span, first_attrs = state_spans[0]
+            second_span, second_attrs = state_spans[1]
+
+            prev_state_dict = json.loads(first_attrs['gen_ai.state.delta'])
+            curr_state_dict = json.loads(second_attrs['gen_ai.state.delta'])
+
+            # Get agent IDs
+            prev_agent = first_attrs.get('gen_ai.agent.id', 'unknown')
+            curr_agent = second_attrs.get('gen_ai.agent.id', 'unknown')
+
+            # Create StateSnapshot objects
+            prev_snapshot = CorruptionStateSnapshot(
+                state_delta=prev_state_dict,
+                agent_id=prev_agent,
+                timestamp=datetime.now(timezone.utc)
+            )
+
+            curr_snapshot = CorruptionStateSnapshot(
+                state_delta=curr_state_dict,
+                agent_id=curr_agent,
+                timestamp=datetime.now(timezone.utc)
+            )
+
         except (json.JSONDecodeError, TypeError, KeyError) as e:
             return OTELAdapterResult(
                 success=False,
@@ -159,21 +176,16 @@ class StateCorruptionOTELAdapter(BaseOTELAdapter):
                 error=f"Failed to parse state deltas: {e}"
             )
 
-        # Format as text for semantic detection
-        prev_text = ", ".join(f"{k}={v}" for k, v in prev_state.items())
-        curr_text = ", ".join(f"{k}={v}" for k, v in curr_state.items())
-
         return OTELAdapterResult(
             success=True,
             detector_input={
-                "task": task,
-                "output": curr_text,
-                "context": prev_text
+                "prev_state": prev_snapshot,
+                "current_state": curr_snapshot,
             },
             metadata={
                 "state_transitions": len(state_spans),
-                "prev_state": prev_state,
-                "curr_state": curr_state
+                "prev_state": prev_state_dict,
+                "curr_state": curr_state_dict
             }
         )
 
