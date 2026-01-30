@@ -188,8 +188,8 @@ class OTELGoldenTraceTestHarness:
 
             if trace_dtype == detector_type or (trace_dtype in type_map and type_map[trace_dtype] == detector_type):
                 matching_traces.append(trace)
-            elif metadata.get('expected_detection') == False and detector_type == 'infinite_loop':
-                # Include healthy traces as negatives
+            elif metadata.get('expected_detection') == False:
+                # Include healthy traces as negatives for ALL detectors
                 matching_traces.append(trace)
 
         print(f"Found {len(matching_traces)} traces for {detector_type}")

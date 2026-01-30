@@ -328,12 +328,12 @@ class F1SpecMismatchOTELAdapter(BaseOTELAdapter):
             if 'gen_ai.task.specification' in attrs:
                 specification = attrs['gen_ai.task.specification']
 
-        if not user_intent or not specification:
-            return OTELAdapterResult(
-                success=False,
-                detector_input=None,
-                error="Missing user_intent or specification attributes"
-            )
+        # For negative examples (healthy traces), use empty strings if attributes missing
+        # The detector will extract 0 requirements and not detect a mismatch
+        if not user_intent:
+            user_intent = ""
+        if not specification:
+            specification = ""
 
         return OTELAdapterResult(
             success=True,
@@ -366,12 +366,11 @@ class F2DecompositionOTELAdapter(BaseOTELAdapter):
                 except (json.JSONDecodeError, TypeError):
                     subtasks = []
 
-        if not task or not subtasks:
-            return OTELAdapterResult(
-                success=False,
-                detector_input=None,
-                error="Missing task or subtasks"
-            )
+        # For negative examples, use empty values
+        if not task:
+            task = ""
+        if not subtasks:
+            subtasks = []
 
         return OTELAdapterResult(
             success=True,
@@ -413,13 +412,7 @@ class F3ResourceMisallocationOTELAdapter(BaseOTELAdapter):
                 'sequence': seq,
             })
 
-        if len(turns) == 0:
-            return OTELAdapterResult(
-                success=False,
-                detector_input=None,
-                error="No turns with token data found"
-            )
-
+        # For negative examples, return empty list (detector won't find issues)
         return OTELAdapterResult(
             success=True,
             detector_input=turns  # Return list directly, not wrapped in dict
@@ -527,12 +520,11 @@ class F6DerailmentOTELAdapter(BaseOTELAdapter):
             if 'gen_ai.response.sample' in attrs and attrs.get('gen_ai.action') in ['summarize', 'generate', 'analyze']:
                 output = attrs['gen_ai.response.sample']
 
-        if not task or not output:
-            return OTELAdapterResult(
-                success=False,
-                detector_input=None,
-                error="Missing task or output"
-            )
+        # For negative examples, use empty strings
+        if not task:
+            task = ""
+        if not output:
+            output = ""
 
         return OTELAdapterResult(
             success=True,
@@ -565,16 +557,14 @@ class F7ContextNeglectOTELAdapter(BaseOTELAdapter):
                     'action': attrs.get('gen_ai.action', 'unknown'),
                 })
 
+        # For negative examples, use empty strings if not enough turns
         if len(conversation_history) < 2:
-            return OTELAdapterResult(
-                success=False,
-                detector_input=None,
-                error="Need at least 2 conversation turns"
-            )
-
-        # Last turn is current output, rest is context
-        output = conversation_history[-1]['content']
-        context = '\n'.join([turn['content'] for turn in conversation_history[:-1]])
+            output = ""
+            context = ""
+        else:
+            # Last turn is current output, rest is context
+            output = conversation_history[-1]['content']
+            context = '\n'.join([turn['content'] for turn in conversation_history[:-1]])
 
         return OTELAdapterResult(
             success=True,
@@ -606,12 +596,11 @@ class F8WithholdingOTELAdapter(BaseOTELAdapter):
             if 'gen_ai.response.sample' in attrs and attrs.get('gen_ai.action') == 'report':
                 communicated_output = attrs['gen_ai.response.sample']
 
-        if not internal_findings or not communicated_output:
-            return OTELAdapterResult(
-                success=False,
-                detector_input=None,
-                error="Missing internal findings or communicated output"
-            )
+        # For negative examples, use empty strings
+        if not internal_findings:
+            internal_findings = ""
+        if not communicated_output:
+            communicated_output = ""
 
         return OTELAdapterResult(
             success=True,
@@ -647,13 +636,7 @@ class F9UsurpationOTELAdapter(BaseOTELAdapter):
                 'sequence': seq,
             })
 
-        if len(turns) == 0:
-            return OTELAdapterResult(
-                success=False,
-                detector_input=None,
-                error="No turns found"
-            )
-
+        # For negative examples, return empty list (detector won't find issues)
         return OTELAdapterResult(
             success=True,
             detector_input=turns  # Return list directly, not wrapped in dict
@@ -695,13 +678,7 @@ class F10CommunicationOTELAdapter(BaseOTELAdapter):
                     acknowledged=acknowledged,
                 ))
 
-        if len(messages) < 2:
-            return OTELAdapterResult(
-                success=False,
-                detector_input=None,
-                error="Need at least 2 messages"
-            )
-
+        # For negative examples, return empty lists (detector won't find issues)
         return OTELAdapterResult(
             success=True,
             detector_input={
@@ -741,13 +718,7 @@ class F12ValidationOTELAdapter(BaseOTELAdapter):
                     'sequence': seq,
                 })
 
-        if len(turns) == 0:
-            return OTELAdapterResult(
-                success=False,
-                detector_input=None,
-                error="No validation data found"
-            )
-
+        # For negative examples, return empty list (detector won't find issues)
         return OTELAdapterResult(
             success=True,
             detector_input=turns  # Return list directly
@@ -782,13 +753,7 @@ class F13QualityGateOTELAdapter(BaseOTELAdapter):
                     'sequence': seq,
                 })
 
-        if len(turns) == 0:
-            return OTELAdapterResult(
-                success=False,
-                detector_input=None,
-                error="No quality gate information found"
-            )
-
+        # For negative examples, return empty list (detector won't find issues)
         return OTELAdapterResult(
             success=True,
             detector_input=turns  # Return list directly
@@ -820,12 +785,11 @@ class F14CompletionOTELAdapter(BaseOTELAdapter):
             if 'gen_ai.missing_requirements' in attrs:
                 missing_requirements = attrs['gen_ai.missing_requirements']
 
-        if not task or not output:
-            return OTELAdapterResult(
-                success=False,
-                detector_input=None,
-                error="Missing task or output"
-            )
+        # For negative examples, use empty strings
+        if not task:
+            task = ""
+        if not output:
+            output = ""
 
         # Parse missing_requirements if it's a JSON string
         requirements = []

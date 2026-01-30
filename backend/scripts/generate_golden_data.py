@@ -1273,6 +1273,217 @@ def generate_healthy_trace() -> Dict[str, Any]:
     }
 
 
+# ============================================================================
+# NEGATIVE TRACE GENERATORS (No Failure - Should NOT Trigger Detection)
+# ============================================================================
+
+def generate_f1_spec_mismatch_negative() -> Dict[str, Any]:
+    """Generate F1 negative: user intent and specification MATCH."""
+    trace_id = generate_trace_id()
+    root_span_id = generate_span_id()
+    start_time = datetime.utcnow() - timedelta(minutes=random.randint(5, 60))
+
+    spans = []
+    current_time = start_time
+
+    # Intent and spec are aligned
+    intent = "Build a recommendation engine that suggests products based on user behavior"
+    spec = "Implement a recommendation system using collaborative filtering to suggest products based on user activity"
+
+    spans.append(create_base_span(
+        trace_id, root_span_id, None, "workflow.run",
+        "coordinator", current_time, 2000,
+        {
+            "workflow.name": "product_recommender",
+            "gen_ai.task.user_intent": intent,
+            "gen_ai.task.specification": spec,
+        }
+    ))
+
+    return {
+        "resourceSpans": [{
+            "resource": {
+                "attributes": [
+                    {"key": "service.name", "value": {"stringValue": "product-recommender"}},
+                    {"key": "mao.framework", "value": {"stringValue": "langgraph"}},
+                ]
+            },
+            "scopeSpans": [{
+                "scope": {"name": "mao-testing-sdk", "version": "1.0.0"},
+                "spans": spans,
+            }]
+        }],
+        "_golden_metadata": {
+            "detection_type": "F1_spec_mismatch",
+            "variant": "negative",
+            "expected_detection": False,
+        }
+    }
+
+
+def generate_f3_resource_negative() -> Dict[str, Any]:
+    """Generate F3 negative: normal token usage (no explosion)."""
+    trace_id = generate_trace_id()
+    root_span_id = generate_span_id()
+    start_time = datetime.utcnow() - timedelta(minutes=random.randint(5, 60))
+
+    spans = []
+    current_time = start_time
+
+    spans.append(create_base_span(
+        trace_id, root_span_id, None, "workflow.run",
+        "coordinator", current_time, 2000,
+        {"workflow.name": "simple_task"}
+    ))
+    current_time += timedelta(milliseconds=100)
+
+    # Normal token usage (well under 2000 threshold)
+    span1 = generate_span_id()
+    spans.append(create_base_span(
+        trace_id, span1, root_span_id, "executor.execute",
+        "executor", current_time, 500,
+        {
+            "gen_ai.action": "execute",
+            "gen_ai.tokens.input": 300,
+            "gen_ai.tokens.output": 250,
+            "gen_ai.response.sample": "Task completed successfully.",
+        }
+    ))
+
+    return {
+        "resourceSpans": [{
+            "resource": {
+                "attributes": [
+                    {"key": "service.name", "value": {"stringValue": "task-executor"}},
+                    {"key": "mao.framework", "value": {"stringValue": "langgraph"}},
+                ]
+            },
+            "scopeSpans": [{
+                "scope": {"name": "mao-testing-sdk", "version": "1.0.0"},
+                "spans": spans,
+            }]
+        }],
+        "_golden_metadata": {
+            "detection_type": "F3_resource_misallocation",
+            "variant": "negative",
+            "expected_detection": False,
+        }
+    }
+
+
+def generate_f12_validation_negative() -> Dict[str, Any]:
+    """Generate F12 negative: validation passes."""
+    trace_id = generate_trace_id()
+    root_span_id = generate_span_id()
+    start_time = datetime.utcnow() - timedelta(minutes=random.randint(5, 60))
+
+    spans = []
+    current_time = start_time
+
+    spans.append(create_base_span(
+        trace_id, root_span_id, None, "workflow.run",
+        "coordinator", current_time, 3000,
+        {
+            "workflow.name": "data_formatter",
+            "gen_ai.expected_schema": '{"name": "string", "age": "number", "email": "string"}',
+        }
+    ))
+    current_time += timedelta(milliseconds=100)
+
+    span1 = generate_span_id()
+    spans.append(create_base_span(
+        trace_id, span1, root_span_id, "formatter.format",
+        "formatter", current_time, 500,
+        {
+            "gen_ai.action": "format_output",
+            # Valid output - matches schema
+            "gen_ai.response.sample": '{"name": "John Doe", "age": 30, "email": "john@example.com"}',
+            "gen_ai.validation.failed": "false",
+        }
+    ))
+
+    return {
+        "resourceSpans": [{
+            "resource": {
+                "attributes": [
+                    {"key": "service.name", "value": {"stringValue": "data-formatter"}},
+                    {"key": "mao.framework", "value": {"stringValue": "autogen"}},
+                ]
+            },
+            "scopeSpans": [{
+                "scope": {"name": "mao-testing-sdk", "version": "1.0.0"},
+                "spans": spans,
+            }]
+        }],
+        "_golden_metadata": {
+            "detection_type": "F12_output_validation_failure",
+            "variant": "negative",
+            "expected_detection": False,
+        }
+    }
+
+
+def generate_f13_quality_gate_negative() -> Dict[str, Any]:
+    """Generate F13 negative: tests pass before deployment."""
+    trace_id = generate_trace_id()
+    root_span_id = generate_span_id()
+    start_time = datetime.utcnow() - timedelta(minutes=random.randint(5, 60))
+
+    spans = []
+    current_time = start_time
+
+    spans.append(create_base_span(
+        trace_id, root_span_id, None, "workflow.run",
+        "coordinator", current_time, 4000,
+        {"workflow.name": "deployment_pipeline"}
+    ))
+    current_time += timedelta(milliseconds=100)
+
+    # Tests run and pass
+    span1 = generate_span_id()
+    spans.append(create_base_span(
+        trace_id, span1, root_span_id, "tester.run_tests",
+        "tester", current_time, 1000,
+        {
+            "gen_ai.action": "test",
+            "gen_ai.test_results": "18 passed, 0 failed",
+            "gen_ai.quality_gate.status": "passed",
+        }
+    ))
+    current_time += timedelta(milliseconds=1100)
+
+    # Deployment happens after tests pass
+    span2 = generate_span_id()
+    spans.append(create_base_span(
+        trace_id, span2, root_span_id, "deployer.deploy",
+        "deployer", current_time, 1500,
+        {
+            "gen_ai.action": "deploy",
+            "gen_ai.response.sample": "Deployment successful to production.",
+        }
+    ))
+
+    return {
+        "resourceSpans": [{
+            "resource": {
+                "attributes": [
+                    {"key": "service.name", "value": {"stringValue": "ci-cd-pipeline"}},
+                    {"key": "mao.framework", "value": {"stringValue": "crewai"}},
+                ]
+            },
+            "scopeSpans": [{
+                "scope": {"name": "mao-testing-sdk", "version": "1.0.0"},
+                "spans": spans,
+            }]
+        }],
+        "_golden_metadata": {
+            "detection_type": "F13_quality_gate_bypass",
+            "variant": "negative",
+            "expected_detection": False,
+        }
+    }
+
+
 def generate_golden_dataset(
     count: int = 50,
     seed: int = None,
@@ -1323,13 +1534,26 @@ def generate_golden_dataset(
             for _ in range(samples_per_type):
                 traces.append(generator())
 
-        # Add healthy traces (10% of dataset)
+        # Add detector-specific negative examples (10 per MAST detector)
+        negative_generators = [
+            generate_f1_spec_mismatch_negative,
+            generate_f3_resource_negative,
+            generate_f12_validation_negative,
+            generate_f13_quality_gate_negative,
+        ]
+
+        samples_per_negative = 10
+        for neg_gen in negative_generators:
+            for _ in range(samples_per_negative):
+                traces.append(neg_gen())
+
+        # Add healthy traces (baseline negatives)
         num_healthy = len(traces) // 10
         for _ in range(num_healthy):
             traces.append(generate_healthy_trace())
 
         random.shuffle(traces)
-        print(f"Generated {len(traces)} MAST traces ({len(mast_generators)} failure types)")
+        print(f"Generated {len(traces)} MAST traces ({len(mast_generators)} failure types + {len(negative_generators)} negative types)")
         return traces
 
     else:
