@@ -390,15 +390,841 @@ def generate_deadlock_trace(variant: str = "circular_wait") -> Dict[str, Any]:
     }
 
 
+# MAST Failure Mode Generators (F1-F14)
+
+def generate_f1_spec_mismatch_trace(variant: str = "default") -> Dict[str, Any]:
+    """Generate F1 Specification Mismatch trace.
+
+    User requests one thing but specification defines something different.
+    """
+    trace_id = generate_trace_id()
+    root_span_id = generate_span_id()
+    start_time = datetime.utcnow() - timedelta(minutes=random.randint(5, 60))
+
+    spans = []
+    current_time = start_time
+
+    # User intent: "Build a recommendation engine for products"
+    # Specification: "Create a product search filter"
+
+    spans.append(create_base_span(
+        trace_id, root_span_id, None, "workflow.run",
+        "coordinator", current_time, 2000,
+        {
+            "workflow.name": "product_system",
+            "gen_ai.task.user_intent": "Build a recommendation engine that suggests products based on user behavior and preferences",
+            "gen_ai.task.specification": "Implement a filtering system that allows users to search products by category and price range",
+        }
+    ))
+    current_time += timedelta(milliseconds=100)
+
+    span1 = generate_span_id()
+    spans.append(create_base_span(
+        trace_id, span1, root_span_id, "planner.analyze",
+        "planner", current_time, 500,
+        {
+            "gen_ai.action": "analyze_requirements",
+            "gen_ai.response.sample": "Analyzing task: create filtering system...",
+        }
+    ))
+    current_time += timedelta(milliseconds=550)
+
+    span2 = generate_span_id()
+    spans.append(create_base_span(
+        trace_id, span2, span1, "builder.implement",
+        "builder", current_time, 800,
+        {
+            "gen_ai.action": "implement",
+            "gen_ai.response.sample": "Implemented search filters for category and price. System complete.",
+        }
+    ))
+
+    return {
+        "resourceSpans": [{
+            "resource": {
+                "attributes": [
+                    {"key": "service.name", "value": {"stringValue": "product-builder"}},
+                    {"key": "mao.framework", "value": {"stringValue": "langgraph"}},
+                ]
+            },
+            "scopeSpans": [{
+                "scope": {"name": "mao-testing-sdk", "version": "1.0.0"},
+                "spans": spans,
+            }]
+        }],
+        "_golden_metadata": {
+            "detection_type": "F1_spec_mismatch",
+            "mast_annotation": {"1.1": 1},
+            "variant": variant,
+            "expected_detection": True,
+        }
+    }
+
+
+def generate_f2_poor_decomposition_trace(variant: str = "default") -> Dict[str, Any]:
+    """Generate F2 Poor Task Decomposition trace.
+
+    Task broken into illogical or incomplete subtasks.
+    """
+    trace_id = generate_trace_id()
+    root_span_id = generate_span_id()
+    start_time = datetime.utcnow() - timedelta(minutes=random.randint(5, 60))
+
+    spans = []
+    current_time = start_time
+
+    # Task: "Plan a company retreat"
+    # Poor decomposition: Missing key steps, illogical order
+
+    spans.append(create_base_span(
+        trace_id, root_span_id, None, "workflow.run",
+        "coordinator", current_time, 3000,
+        {
+            "workflow.name": "retreat_planner",
+            "gen_ai.task": "Plan a 3-day company retreat for 50 employees",
+        }
+    ))
+    current_time += timedelta(milliseconds=100)
+
+    # Poor decomposition: jumps to details without planning basics
+    subtasks = [
+        {"id": "1", "task": "Choose menu items for lunch", "dependencies": []},
+        {"id": "2", "task": "Pick hotel room colors", "dependencies": []},
+        {"id": "3", "task": "Send thank you emails", "dependencies": []},  # Premature
+    ]
+
+    span1 = generate_span_id()
+    spans.append(create_base_span(
+        trace_id, span1, root_span_id, "decomposer.plan",
+        "decomposer", current_time, 600,
+        {
+            "gen_ai.action": "decompose",
+            "gen_ai.subtasks": json.dumps(subtasks),
+        }
+    ))
+    current_time += timedelta(milliseconds=650)
+
+    # Subtask execution reveals missing dependencies
+    span2 = generate_span_id()
+    spans.append(create_base_span(
+        trace_id, span2, span1, "executor.execute_subtask",
+        "executor", current_time, 400,
+        {
+            "gen_ai.action": "execute",
+            "gen_ai.subtask_id": "1",
+            "gen_ai.response.sample": "Cannot choose menu without knowing venue or dietary restrictions",
+        }
+    ))
+
+    return {
+        "resourceSpans": [{
+            "resource": {
+                "attributes": [
+                    {"key": "service.name", "value": {"stringValue": "retreat-planner"}},
+                    {"key": "mao.framework", "value": {"stringValue": "crewai"}},
+                ]
+            },
+            "scopeSpans": [{
+                "scope": {"name": "mao-testing-sdk", "version": "1.0.0"},
+                "spans": spans,
+            }]
+        }],
+        "_golden_metadata": {
+            "detection_type": "F2_poor_decomposition",
+            "mast_annotation": {"1.2": 1},
+            "variant": variant,
+            "expected_detection": True,
+        }
+    }
+
+
+def generate_f3_resource_misallocation_trace(variant: str = "default") -> Dict[str, Any]:
+    """Generate F3 Resource Misallocation trace.
+
+    Agent uses excessive tokens/compute on trivial tasks.
+    """
+    trace_id = generate_trace_id()
+    root_span_id = generate_span_id()
+    start_time = datetime.utcnow() - timedelta(minutes=random.randint(5, 60))
+
+    spans = []
+    current_time = start_time
+
+    spans.append(create_base_span(
+        trace_id, root_span_id, None, "workflow.run",
+        "coordinator", current_time, 10000,
+        {"workflow.name": "simple_task_runner"}
+    ))
+    current_time += timedelta(milliseconds=100)
+
+    # Trivial task: "Add two numbers"
+    # But uses way too many resources
+    span1 = generate_span_id()
+    spans.append(create_base_span(
+        trace_id, span1, root_span_id, "calculator.add",
+        "calculator", current_time, 8000,
+        {
+            "gen_ai.action": "calculate",
+            "gen_ai.task": "Add 2 + 2",
+            "gen_ai.tokens.input": 5000,  # Excessive!
+            "gen_ai.tokens.output": 3000,  # Excessive!
+            "gen_ai.response.sample": "To add 2 and 2, I will first consider the mathematical principles... (continues for 3000 tokens)",
+        }
+    ))
+
+    return {
+        "resourceSpans": [{
+            "resource": {
+                "attributes": [
+                    {"key": "service.name", "value": {"stringValue": "calculator"}},
+                    {"key": "mao.framework", "value": {"stringValue": "autogen"}},
+                ]
+            },
+            "scopeSpans": [{
+                "scope": {"name": "mao-testing-sdk", "version": "1.0.0"},
+                "spans": spans,
+            }]
+        }],
+        "_golden_metadata": {
+            "detection_type": "F3_resource_misallocation",
+            "mast_annotation": {"1.3": 1},
+            "variant": variant,
+            "expected_detection": True,
+        }
+    }
+
+
+def generate_f4_inadequate_tool_trace(variant: str = "default") -> Dict[str, Any]:
+    """Generate F4 Inadequate Tool Provision trace.
+
+    Agent needs a tool but it's not provided.
+    """
+    trace_id = generate_trace_id()
+    root_span_id = generate_span_id()
+    start_time = datetime.utcnow() - timedelta(minutes=random.randint(5, 60))
+
+    spans = []
+    current_time = start_time
+
+    spans.append(create_base_span(
+        trace_id, root_span_id, None, "workflow.run",
+        "coordinator", current_time, 2000,
+        {
+            "workflow.name": "data_analyzer",
+            "gen_ai.task": "Analyze sales data from database",
+        }
+    ))
+    current_time += timedelta(milliseconds=100)
+
+    span1 = generate_span_id()
+    spans.append(create_base_span(
+        trace_id, span1, root_span_id, "analyzer.query_database",
+        "analyzer", current_time, 500,
+        {
+            "gen_ai.action": "query",
+            "gen_ai.tool.name": "database_query",
+            "gen_ai.tool.available": "false",
+            "gen_ai.response.sample": "Error: database_query tool not available. Cannot access sales data.",
+        }
+    ))
+    current_time += timedelta(milliseconds=550)
+
+    span2 = generate_span_id()
+    spans.append(create_base_span(
+        trace_id, span2, span1, "analyzer.fallback",
+        "analyzer", current_time, 300,
+        {
+            "gen_ai.action": "fallback",
+            "gen_ai.response.sample": "I apologize, I cannot analyze the sales data as I don't have database access.",
+        }
+    ))
+
+    return {
+        "resourceSpans": [{
+            "resource": {
+                "attributes": [
+                    {"key": "service.name", "value": {"stringValue": "data-analyzer"}},
+                    {"key": "mao.framework", "value": {"stringValue": "langgraph"}},
+                ]
+            },
+            "scopeSpans": [{
+                "scope": {"name": "mao-testing-sdk", "version": "1.0.0"},
+                "spans": spans,
+            }]
+        }],
+        "_golden_metadata": {
+            "detection_type": "F4_inadequate_tool",
+            "mast_annotation": {"1.4": 1},
+            "variant": variant,
+            "expected_detection": True,
+        }
+    }
+
+
+def generate_f5_flawed_workflow_trace(variant: str = "default") -> Dict[str, Any]:
+    """Generate F5 Flawed Workflow Design trace.
+
+    Workflow has cycles, missing error handlers, or structural issues.
+    """
+    trace_id = generate_trace_id()
+    root_span_id = generate_span_id()
+    start_time = datetime.utcnow() - timedelta(minutes=random.randint(5, 60))
+
+    spans = []
+    current_time = start_time
+
+    spans.append(create_base_span(
+        trace_id, root_span_id, None, "workflow.run",
+        "coordinator", current_time, 5000,
+        {
+            "workflow.name": "approval_workflow",
+            "gen_ai.workflow.has_cycles": "true",
+            "gen_ai.workflow.error_handling": "missing",
+        }
+    ))
+    current_time += timedelta(milliseconds=100)
+
+    # Workflow creates a cycle: A -> B -> C -> A
+    span1 = generate_span_id()
+    spans.append(create_base_span(
+        trace_id, span1, root_span_id, "step_a.process",
+        "agent_a", current_time, 500,
+        {"gen_ai.action": "process", "gen_ai.next_step": "step_b"}
+    ))
+    current_time += timedelta(milliseconds=550)
+
+    span2 = generate_span_id()
+    spans.append(create_base_span(
+        trace_id, span2, span1, "step_b.process",
+        "agent_b", current_time, 500,
+        {"gen_ai.action": "process", "gen_ai.next_step": "step_c"}
+    ))
+    current_time += timedelta(milliseconds=550)
+
+    span3 = generate_span_id()
+    spans.append(create_base_span(
+        trace_id, span3, span2, "step_c.process",
+        "agent_c", current_time, 500,
+        {"gen_ai.action": "process", "gen_ai.next_step": "step_a"}  # Cycle!
+    ))
+
+    return {
+        "resourceSpans": [{
+            "resource": {
+                "attributes": [
+                    {"key": "service.name", "value": {"stringValue": "approval-system"}},
+                    {"key": "mao.framework", "value": {"stringValue": "n8n"}},
+                ]
+            },
+            "scopeSpans": [{
+                "scope": {"name": "mao-testing-sdk", "version": "1.0.0"},
+                "spans": spans,
+            }]
+        }],
+        "_golden_metadata": {
+            "detection_type": "F5_flawed_workflow",
+            "mast_annotation": {"1.5": 1},
+            "variant": variant,
+            "expected_detection": True,
+        }
+    }
+
+
+def generate_f6_derailment_trace(variant: str = "default") -> Dict[str, Any]:
+    """Generate F6 Task Derailment trace.
+
+    Agent drifts away from the assigned task.
+    """
+    trace_id = generate_trace_id()
+    root_span_id = generate_span_id()
+    start_time = datetime.utcnow() - timedelta(minutes=random.randint(5, 60))
+
+    spans = []
+    current_time = start_time
+
+    spans.append(create_base_span(
+        trace_id, root_span_id, None, "workflow.run",
+        "coordinator", current_time, 3000,
+        {
+            "workflow.name": "summarizer",
+            "gen_ai.task": "Summarize the Q3 2025 financial report in 2-3 paragraphs",
+        }
+    ))
+    current_time += timedelta(milliseconds=100)
+
+    span1 = generate_span_id()
+    spans.append(create_base_span(
+        trace_id, span1, root_span_id, "summarizer.analyze",
+        "summarizer", current_time, 500,
+        {
+            "gen_ai.action": "summarize",
+            # Derailed output: talks about poetry instead of financial summary
+            "gen_ai.response.sample": "Spring brings flowers, summer brings heat, autumn leaves fall gracefully. The seasons change like the tides, eternal and beautiful. Poetry reminds us of life's cycles...",
+        }
+    ))
+
+    return {
+        "resourceSpans": [{
+            "resource": {
+                "attributes": [
+                    {"key": "service.name", "value": {"stringValue": "summarizer"}},
+                    {"key": "mao.framework", "value": {"stringValue": "langgraph"}},
+                ]
+            },
+            "scopeSpans": [{
+                "scope": {"name": "mao-testing-sdk", "version": "1.0.0"},
+                "spans": spans,
+            }]
+        }],
+        "_golden_metadata": {
+            "detection_type": "F6_task_derailment",
+            "mast_annotation": {"2.1": 1},
+            "variant": variant,
+            "expected_detection": True,
+        }
+    }
+
+
+def generate_f7_context_neglect_trace(variant: str = "default") -> Dict[str, Any]:
+    """Generate F7 Context Neglect trace.
+
+    Agent ignores relevant context from conversation history.
+    """
+    trace_id = generate_trace_id()
+    root_span_id = generate_span_id()
+    start_time = datetime.utcnow() - timedelta(minutes=random.randint(5, 60))
+
+    spans = []
+    current_time = start_time
+
+    spans.append(create_base_span(
+        trace_id, root_span_id, None, "workflow.run",
+        "coordinator", current_time, 4000,
+        {"workflow.name": "customer_support"}
+    ))
+    current_time += timedelta(milliseconds=100)
+
+    span1 = generate_span_id()
+    spans.append(create_base_span(
+        trace_id, span1, root_span_id, "assistant.provide_context",
+        "assistant", current_time, 300,
+        {
+            "gen_ai.action": "provide_context",
+            "gen_ai.response.sample": "The customer mentioned they are allergic to peanuts and cannot consume any nuts",
+        }
+    ))
+    current_time += timedelta(milliseconds=350)
+
+    span2 = generate_span_id()
+    spans.append(create_base_span(
+        trace_id, span2, span1, "recommender.suggest",
+        "recommender", current_time, 500,
+        {
+            "gen_ai.action": "recommend",
+            # Ignores allergy context!
+            "gen_ai.response.sample": "I recommend our delicious peanut butter cookies and almond trail mix!",
+        }
+    ))
+
+    return {
+        "resourceSpans": [{
+            "resource": {
+                "attributes": [
+                    {"key": "service.name", "value": {"stringValue": "support-agent"}},
+                    {"key": "mao.framework", "value": {"stringValue": "crewai"}},
+                ]
+            },
+            "scopeSpans": [{
+                "scope": {"name": "mao-testing-sdk", "version": "1.0.0"},
+                "spans": spans,
+            }]
+        }],
+        "_golden_metadata": {
+            "detection_type": "F7_context_neglect",
+            "mast_annotation": {"2.2": 1},
+            "variant": variant,
+            "expected_detection": True,
+        }
+    }
+
+
+def generate_f8_withholding_trace(variant: str = "default") -> Dict[str, Any]:
+    """Generate F8 Information Withholding trace.
+
+    Agent finds information but doesn't communicate it.
+    """
+    trace_id = generate_trace_id()
+    root_span_id = generate_span_id()
+    start_time = datetime.utcnow() - timedelta(minutes=random.randint(5, 60))
+
+    spans = []
+    current_time = start_time
+
+    spans.append(create_base_span(
+        trace_id, root_span_id, None, "workflow.run",
+        "coordinator", current_time, 3000,
+        {
+            "workflow.name": "investigator",
+            "gen_ai.task": "Investigate security vulnerabilities in the system",
+        }
+    ))
+    current_time += timedelta(milliseconds=100)
+
+    span1 = generate_span_id()
+    spans.append(create_base_span(
+        trace_id, span1, root_span_id, "investigator.scan",
+        "investigator", current_time, 800,
+        {
+            "gen_ai.action": "investigate",
+            "gen_ai.internal_findings": "Found 3 critical SQL injection vulnerabilities, 5 XSS risks, and missing authentication on /admin endpoint",
+        }
+    ))
+    current_time += timedelta(milliseconds=850)
+
+    span2 = generate_span_id()
+    spans.append(create_base_span(
+        trace_id, span2, span1, "investigator.report",
+        "investigator", current_time, 400,
+        {
+            "gen_ai.action": "report",
+            # Withholds the critical findings!
+            "gen_ai.response.sample": "The system appears to be functioning normally. No major issues detected.",
+        }
+    ))
+
+    return {
+        "resourceSpans": [{
+            "resource": {
+                "attributes": [
+                    {"key": "service.name", "value": {"stringValue": "security-investigator"}},
+                    {"key": "mao.framework", "value": {"stringValue": "autogen"}},
+                ]
+            },
+            "scopeSpans": [{
+                "scope": {"name": "mao-testing-sdk", "version": "1.0.0"},
+                "spans": spans,
+            }]
+        }],
+        "_golden_metadata": {
+            "detection_type": "F8_information_withholding",
+            "mast_annotation": {"2.3": 1},
+            "variant": variant,
+            "expected_detection": True,
+        }
+    }
+
+
+def generate_f9_usurpation_trace(variant: str = "default") -> Dict[str, Any]:
+    """Generate F9 Role Usurpation trace.
+
+    Agent performs tasks assigned to other agents.
+    """
+    trace_id = generate_trace_id()
+    root_span_id = generate_span_id()
+    start_time = datetime.utcnow() - timedelta(minutes=random.randint(5, 60))
+
+    spans = []
+    current_time = start_time
+
+    spans.append(create_base_span(
+        trace_id, root_span_id, None, "workflow.run",
+        "coordinator", current_time, 4000,
+        {"workflow.name": "content_pipeline"}
+    ))
+    current_time += timedelta(milliseconds=100)
+
+    span1 = generate_span_id()
+    spans.append(create_base_span(
+        trace_id, span1, root_span_id, "writer.write",
+        "writer", current_time, 600,
+        {
+            "gen_ai.action": "write",
+            "gen_ai.role": "content_writer",
+            "gen_ai.response.sample": "Here's the blog post: ... And by the way, I've also edited it for grammar, formatted it for publication, scheduled it for next Tuesday, and sent promotional emails to the subscriber list.",
+        }
+    ))
+
+    return {
+        "resourceSpans": [{
+            "resource": {
+                "attributes": [
+                    {"key": "service.name", "value": {"stringValue": "content-pipeline"}},
+                    {"key": "mao.framework", "value": {"stringValue": "crewai"}},
+                ]
+            },
+            "scopeSpans": [{
+                "scope": {"name": "mao-testing-sdk", "version": "1.0.0"},
+                "spans": spans,
+            }]
+        }],
+        "_golden_metadata": {
+            "detection_type": "F9_role_usurpation",
+            "mast_annotation": {"2.4": 1},
+            "variant": variant,
+            "expected_detection": True,
+        }
+    }
+
+
+def generate_f10_communication_breakdown_trace(variant: str = "default") -> Dict[str, Any]:
+    """Generate F10 Communication Breakdown trace.
+
+    Messages between agents are unclear or unacknowledged.
+    """
+    trace_id = generate_trace_id()
+    root_span_id = generate_span_id()
+    start_time = datetime.utcnow() - timedelta(minutes=random.randint(5, 60))
+
+    spans = []
+    current_time = start_time
+
+    spans.append(create_base_span(
+        trace_id, root_span_id, None, "workflow.run",
+        "coordinator", current_time, 3000,
+        {"workflow.name": "project_handoff"}
+    ))
+    current_time += timedelta(milliseconds=100)
+
+    span1 = generate_span_id()
+    spans.append(create_base_span(
+        trace_id, span1, root_span_id, "designer.send_message",
+        "designer", current_time, 400,
+        {
+            "gen_ai.action": "send_message",
+            "gen_ai.message.to": "developer",
+            "gen_ai.response.sample": "I've completed the designs. The files use our new color scheme.",
+        }
+    ))
+    current_time += timedelta(milliseconds=450)
+
+    span2 = generate_span_id()
+    spans.append(create_base_span(
+        trace_id, span2, span1, "developer.response",
+        "developer", current_time, 400,
+        {
+            "gen_ai.action": "respond",
+            # Doesn't acknowledge or ask for clarification
+            "gen_ai.response.sample": "Starting implementation...",
+            "gen_ai.communication.acknowledged": "false",
+        }
+    ))
+
+    return {
+        "resourceSpans": [{
+            "resource": {
+                "attributes": [
+                    {"key": "service.name", "value": {"stringValue": "project-handoff"}},
+                    {"key": "mao.framework", "value": {"stringValue": "langgraph"}},
+                ]
+            },
+            "scopeSpans": [{
+                "scope": {"name": "mao-testing-sdk", "version": "1.0.0"},
+                "spans": spans,
+            }]
+        }],
+        "_golden_metadata": {
+            "detection_type": "F10_communication_breakdown",
+            "mast_annotation": {"2.5": 1},
+            "variant": variant,
+            "expected_detection": True,
+        }
+    }
+
+
+# F11 coordination_deadlock already exists as generate_deadlock_trace()
+
+
+def generate_f12_validation_failure_trace(variant: str = "default") -> Dict[str, Any]:
+    """Generate F12 Output Validation Failure trace.
+
+    Agent output doesn't match expected schema or format.
+    """
+    trace_id = generate_trace_id()
+    root_span_id = generate_span_id()
+    start_time = datetime.utcnow() - timedelta(minutes=random.randint(5, 60))
+
+    spans = []
+    current_time = start_time
+
+    spans.append(create_base_span(
+        trace_id, root_span_id, None, "workflow.run",
+        "coordinator", current_time, 3000,
+        {
+            "workflow.name": "data_formatter",
+            "gen_ai.expected_schema": '{"name": "string", "age": "number", "email": "string"}',
+        }
+    ))
+    current_time += timedelta(milliseconds=100)
+
+    span1 = generate_span_id()
+    spans.append(create_base_span(
+        trace_id, span1, root_span_id, "formatter.format",
+        "formatter", current_time, 500,
+        {
+            "gen_ai.action": "format_output",
+            # Invalid output - doesn't match schema
+            "gen_ai.response.sample": '{"name": "John Doe", "age": "thirty", "phone": "555-1234"}',
+            "gen_ai.validation.failed": "true",
+            "gen_ai.validation.errors": "age should be number, not string; email field missing; unexpected field phone",
+        }
+    ))
+
+    return {
+        "resourceSpans": [{
+            "resource": {
+                "attributes": [
+                    {"key": "service.name", "value": {"stringValue": "data-formatter"}},
+                    {"key": "mao.framework", "value": {"stringValue": "langgraph"}},
+                ]
+            },
+            "scopeSpans": [{
+                "scope": {"name": "mao-testing-sdk", "version": "1.0.0"},
+                "spans": spans,
+            }]
+        }],
+        "_golden_metadata": {
+            "detection_type": "F12_output_validation_failure",
+            "mast_annotation": {"3.1": 1},
+            "variant": variant,
+            "expected_detection": True,
+        }
+    }
+
+
+def generate_f13_quality_gate_bypass_trace(variant: str = "default") -> Dict[str, Any]:
+    """Generate F13 Quality Gate Bypass trace.
+
+    Agent skips required validation steps or ignores test failures.
+    """
+    trace_id = generate_trace_id()
+    root_span_id = generate_span_id()
+    start_time = datetime.utcnow() - timedelta(minutes=random.randint(5, 60))
+
+    spans = []
+    current_time = start_time
+
+    spans.append(create_base_span(
+        trace_id, root_span_id, None, "workflow.run",
+        "coordinator", current_time, 4000,
+        {
+            "workflow.name": "deployment_pipeline",
+            "gen_ai.quality_gates_required": "true",
+        }
+    ))
+    current_time += timedelta(milliseconds=100)
+
+    span1 = generate_span_id()
+    spans.append(create_base_span(
+        trace_id, span1, root_span_id, "tester.run_tests",
+        "tester", current_time, 1000,
+        {
+            "gen_ai.action": "test",
+            "gen_ai.test_results": "15 passed, 3 failed",
+            "gen_ai.quality_gate.status": "failed",
+        }
+    ))
+    current_time += timedelta(milliseconds=1050)
+
+    span2 = generate_span_id()
+    spans.append(create_base_span(
+        trace_id, span2, span1, "deployer.deploy",
+        "deployer", current_time, 500,
+        {
+            "gen_ai.action": "deploy",
+            # Deploys despite failed tests!
+            "gen_ai.response.sample": "Deploying to production...",
+            "gen_ai.quality_gate.bypassed": "true",
+        }
+    ))
+
+    return {
+        "resourceSpans": [{
+            "resource": {
+                "attributes": [
+                    {"key": "service.name", "value": {"stringValue": "deployment-pipeline"}},
+                    {"key": "mao.framework", "value": {"stringValue": "autogen"}},
+                ]
+            },
+            "scopeSpans": [{
+                "scope": {"name": "mao-testing-sdk", "version": "1.0.0"},
+                "spans": spans,
+            }]
+        }],
+        "_golden_metadata": {
+            "detection_type": "F13_quality_gate_bypass",
+            "mast_annotation": {"3.2": 1},
+            "variant": variant,
+            "expected_detection": True,
+        }
+    }
+
+
+def generate_f14_completion_misjudgment_trace(variant: str = "default") -> Dict[str, Any]:
+    """Generate F14 Completion Misjudgment trace.
+
+    Agent claims task is complete when requirements are not met.
+    """
+    trace_id = generate_trace_id()
+    root_span_id = generate_span_id()
+    start_time = datetime.utcnow() - timedelta(minutes=random.randint(5, 60))
+
+    spans = []
+    current_time = start_time
+
+    spans.append(create_base_span(
+        trace_id, root_span_id, None, "workflow.run",
+        "coordinator", current_time, 3000,
+        {
+            "workflow.name": "report_generator",
+            "gen_ai.task": "Generate quarterly report with: executive summary, financial analysis, market trends, and recommendations",
+        }
+    ))
+    current_time += timedelta(milliseconds=100)
+
+    span1 = generate_span_id()
+    spans.append(create_base_span(
+        trace_id, span1, root_span_id, "generator.generate",
+        "generator", current_time, 800,
+        {
+            "gen_ai.action": "generate",
+            # Only completed 2 of 4 required sections
+            "gen_ai.response.sample": "Here is the quarterly report: Executive Summary: ... Financial Analysis: ... Task complete!",
+            "gen_ai.completion.premature": "true",
+            "gen_ai.missing_requirements": "market_trends, recommendations",
+        }
+    ))
+
+    return {
+        "resourceSpans": [{
+            "resource": {
+                "attributes": [
+                    {"key": "service.name", "value": {"stringValue": "report-generator"}},
+                    {"key": "mao.framework", "value": {"stringValue": "crewai"}},
+                ]
+            },
+            "scopeSpans": [{
+                "scope": {"name": "mao-testing-sdk", "version": "1.0.0"},
+                "spans": spans,
+            }]
+        }],
+        "_golden_metadata": {
+            "detection_type": "F14_completion_misjudgment",
+            "mast_annotation": {"3.3": 1},
+            "variant": variant,
+            "expected_detection": True,
+        }
+    }
+
+
 def generate_healthy_trace() -> Dict[str, Any]:
     """Generate a normal, healthy trace (no issues)."""
     trace_id = generate_trace_id()
     root_span_id = generate_span_id()
     start_time = datetime.utcnow() - timedelta(minutes=random.randint(5, 60))
-    
+
     spans = []
     current_time = start_time
-    
+
     spans.append(create_base_span(
         trace_id, root_span_id, None, "workflow.run",
         "coordinator", current_time, 2000,
@@ -450,56 +1276,112 @@ def generate_healthy_trace() -> Dict[str, Any]:
 def generate_golden_dataset(
     count: int = 50,
     seed: int = None,
+    include_mast: bool = False,
 ) -> List[Dict[str, Any]]:
-    """Generate a balanced dataset of golden traces."""
+    """Generate a balanced dataset of golden traces.
+
+    Args:
+        count: Number of traces to generate
+        seed: Random seed for reproducibility
+        include_mast: Include all MAST F1-F14 failure modes (generates ~700 traces)
+    """
     if seed:
         random.seed(seed)
-    
+
     traces = []
-    
-    loop_variants = ["structural", "hash", "semantic"]
-    corruption_variants = ["type_mismatch", "hallucinated_key", "cross_field"]
-    persona_variants = ["gradual", "sudden"]
-    deadlock_variants = ["circular_wait", "resource_contention"]
-    
-    per_type = count // 5
-    
-    for variant in loop_variants:
-        for _ in range(per_type // len(loop_variants) + 1):
-            traces.append(generate_infinite_loop_trace(variant))
-    
-    for variant in corruption_variants:
-        for _ in range(per_type // len(corruption_variants) + 1):
-            traces.append(generate_state_corruption_trace(variant))
-    
-    for variant in persona_variants:
-        for _ in range(per_type // len(persona_variants) + 1):
-            traces.append(generate_persona_drift_trace(variant))
-    
-    for variant in deadlock_variants:
-        for _ in range(per_type // len(deadlock_variants) + 1):
-            traces.append(generate_deadlock_trace(variant))
-    
-    for _ in range(per_type):
-        traces.append(generate_healthy_trace())
-    
-    random.shuffle(traces)
-    return traces[:count]
+
+    if include_mast:
+        # Generate comprehensive MAST dataset
+        # ~50 samples per failure mode × 14 modes = 700 traces
+        mast_generators = [
+            # Planning failures (FC1)
+            generate_f1_spec_mismatch_trace,
+            generate_f2_poor_decomposition_trace,
+            generate_f3_resource_misallocation_trace,
+            generate_f4_inadequate_tool_trace,
+            generate_f5_flawed_workflow_trace,
+            # Execution failures (FC2)
+            generate_f6_derailment_trace,
+            generate_f7_context_neglect_trace,
+            generate_f8_withholding_trace,
+            generate_f9_usurpation_trace,
+            generate_f10_communication_breakdown_trace,
+            generate_deadlock_trace,  # F11 coordination_deadlock
+            # Verification failures (FC3)
+            generate_f12_validation_failure_trace,
+            generate_f13_quality_gate_bypass_trace,
+            generate_f14_completion_misjudgment_trace,
+            # Legacy detectors
+            generate_infinite_loop_trace,
+            generate_state_corruption_trace,
+            generate_persona_drift_trace,
+        ]
+
+        samples_per_type = 50
+
+        for generator in mast_generators:
+            for _ in range(samples_per_type):
+                traces.append(generator())
+
+        # Add healthy traces (10% of dataset)
+        num_healthy = len(traces) // 10
+        for _ in range(num_healthy):
+            traces.append(generate_healthy_trace())
+
+        random.shuffle(traces)
+        print(f"Generated {len(traces)} MAST traces ({len(mast_generators)} failure types)")
+        return traces
+
+    else:
+        # Original balanced dataset (4 legacy types + healthy)
+        loop_variants = ["structural", "hash", "semantic"]
+        corruption_variants = ["type_mismatch", "hallucinated_key", "cross_field"]
+        persona_variants = ["gradual", "sudden"]
+        deadlock_variants = ["circular_wait", "resource_contention"]
+
+        per_type = count // 5
+
+        for variant in loop_variants:
+            for _ in range(per_type // len(loop_variants) + 1):
+                traces.append(generate_infinite_loop_trace(variant))
+
+        for variant in corruption_variants:
+            for _ in range(per_type // len(corruption_variants) + 1):
+                traces.append(generate_state_corruption_trace(variant))
+
+        for variant in persona_variants:
+            for _ in range(per_type // len(persona_variants) + 1):
+                traces.append(generate_persona_drift_trace(variant))
+
+        for variant in deadlock_variants:
+            for _ in range(per_type // len(deadlock_variants) + 1):
+                traces.append(generate_deadlock_trace(variant))
+
+        for _ in range(per_type):
+            traces.append(generate_healthy_trace())
+
+        random.shuffle(traces)
+        return traces[:count]
 
 
 def main():
     parser = argparse.ArgumentParser(description="Generate golden trace data")
     parser.add_argument("--output", "-o", default="fixtures/golden", help="Output directory")
-    parser.add_argument("--count", "-n", type=int, default=50, help="Number of traces")
+    parser.add_argument("--count", "-n", type=int, default=50, help="Number of traces (ignored if --all-mast)")
     parser.add_argument("--seed", "-s", type=int, help="Random seed for reproducibility")
     parser.add_argument("--format", "-f", choices=["jsonl", "json"], default="jsonl")
+    parser.add_argument("--all-mast", action="store_true", help="Generate comprehensive MAST F1-F14 dataset (~850 traces)")
     args = parser.parse_args()
-    
+
     output_dir = Path(args.output)
     output_dir.mkdir(parents=True, exist_ok=True)
-    
-    print(f"Generating {args.count} golden traces...")
-    traces = generate_golden_dataset(args.count, args.seed)
+
+    if args.all_mast:
+        print("Generating comprehensive MAST dataset (all F1-F14 failure modes)...")
+        traces = generate_golden_dataset(0, args.seed, include_mast=True)
+    else:
+        print(f"Generating {args.count} golden traces...")
+        traces = generate_golden_dataset(args.count, args.seed)
     
     by_type = {}
     for trace in traces:
