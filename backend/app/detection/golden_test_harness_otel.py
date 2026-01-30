@@ -26,6 +26,21 @@ from app.detection.corruption import SemanticCorruptionDetector
 from app.detection.persona import PersonaConsistencyScorer
 from app.detection.golden_adapters_otel import get_otel_adapter
 
+# MAST F1-F14 detectors
+from app.detection.specification import SpecificationMismatchDetector
+from app.detection.decomposition import TaskDecompositionDetector
+from app.detection.turn_aware.resource import TurnAwareResourceMisallocationDetector
+from app.detection.workflow import FlawedWorkflowDetector
+from app.detection.derailment import TaskDerailmentDetector
+from app.detection.context import ContextNeglectDetector
+from app.detection.withholding import InformationWithholdingDetector
+from app.detection.turn_aware.role_usurpation import TurnAwareRoleUsurpationDetector
+from app.detection.communication import CommunicationBreakdownDetector
+from app.detection.turn_aware.output_validation import TurnAwareOutputValidationDetector
+from app.detection.turn_aware.quality_gate import TurnAwareQualityGateBypassDetector
+from app.detection.completion import CompletionMisjudgmentDetector
+from app.models import TurnSnapshot
+
 
 @dataclass
 class OTELHarnessConfig:
@@ -33,7 +48,13 @@ class OTELHarnessConfig:
     traces_path: Path
     output_dir: Path
     detectors: List[str] = field(default_factory=lambda: [
-        "infinite_loop", "coordination_deadlock", "state_corruption", "persona_drift"
+        "infinite_loop", "coordination_deadlock", "state_corruption", "persona_drift",
+        # MAST F1-F14 (can be enabled individually)
+        "F1_spec_mismatch", "F2_poor_decomposition", "F3_resource_misallocation",
+        "F4_inadequate_tool", "F5_flawed_workflow", "F6_task_derailment",
+        "F7_context_neglect", "F8_information_withholding", "F9_role_usurpation",
+        "F10_communication_breakdown", "F12_output_validation_failure",
+        "F13_quality_gate_bypass", "F14_completion_misjudgment"
     ])
     sample_limit: Optional[int] = None
     save_misclassified: bool = True
@@ -73,10 +94,25 @@ class OTELGoldenTraceTestHarness:
     def _init_detectors(self) -> Dict[str, Callable]:
         """Initialize detector instances and their run methods."""
         return {
+            # Legacy detectors
             "infinite_loop": self._run_loop_detection,
             "coordination_deadlock": self._run_coordination_detection,
             "state_corruption": self._run_corruption_detection,
             "persona_drift": self._run_persona_detection,
+            # MAST F1-F14 detectors
+            "F1_spec_mismatch": self._run_f1_spec_mismatch,
+            "F2_poor_decomposition": self._run_f2_decomposition,
+            "F3_resource_misallocation": self._run_f3_resource_misallocation,
+            "F4_inadequate_tool": self._run_f4_tool_provision,
+            "F5_flawed_workflow": self._run_f5_workflow_design,
+            "F6_task_derailment": self._run_f6_derailment,
+            "F7_context_neglect": self._run_f7_context_neglect,
+            "F8_information_withholding": self._run_f8_withholding,
+            "F9_role_usurpation": self._run_f9_usurpation,
+            "F10_communication_breakdown": self._run_f10_communication,
+            "F12_output_validation_failure": self._run_f12_validation,
+            "F13_quality_gate_bypass": self._run_f13_quality_gate,
+            "F14_completion_misjudgment": self._run_f14_completion,
         }
 
     def run_all(self) -> Dict[str, OTELDetectorTestResult]:
@@ -134,6 +170,20 @@ class OTELGoldenTraceTestHarness:
                 'state_corruption': 'state_corruption',
                 'persona_drift': 'persona_drift',
                 'coordination_deadlock': 'coordination_deadlock',
+                # MAST F1-F14
+                'F1_spec_mismatch': 'F1_spec_mismatch',
+                'F2_poor_decomposition': 'F2_poor_decomposition',
+                'F3_resource_misallocation': 'F3_resource_misallocation',
+                'F4_inadequate_tool': 'F4_inadequate_tool',
+                'F5_flawed_workflow': 'F5_flawed_workflow',
+                'F6_task_derailment': 'F6_task_derailment',
+                'F7_context_neglect': 'F7_context_neglect',
+                'F8_information_withholding': 'F8_information_withholding',
+                'F9_role_usurpation': 'F9_role_usurpation',
+                'F10_communication_breakdown': 'F10_communication_breakdown',
+                'F12_output_validation_failure': 'F12_output_validation_failure',
+                'F13_quality_gate_bypass': 'F13_quality_gate_bypass',
+                'F14_completion_misjudgment': 'F14_completion_misjudgment',
             }
 
             if trace_dtype == detector_type or (trace_dtype in type_map and type_map[trace_dtype] == detector_type):
@@ -164,6 +214,20 @@ class OTELGoldenTraceTestHarness:
             'coordination_deadlock': DetectionType.COORDINATION,
             'state_corruption': DetectionType.CORRUPTION,
             'persona_drift': DetectionType.PERSONA_DRIFT,
+            # MAST F1-F14 (use generic or most relevant DetectionType)
+            'F1_spec_mismatch': DetectionType.CORRUPTION,  # Spec mismatch
+            'F2_poor_decomposition': DetectionType.CORRUPTION,  # Decomposition
+            'F3_resource_misallocation': DetectionType.CORRUPTION,  # Resource
+            'F4_inadequate_tool': DetectionType.CORRUPTION,  # Tool provision
+            'F5_flawed_workflow': DetectionType.CORRUPTION,  # Workflow
+            'F6_task_derailment': DetectionType.CORRUPTION,  # Derailment
+            'F7_context_neglect': DetectionType.CORRUPTION,  # Context
+            'F8_information_withholding': DetectionType.CORRUPTION,  # Withholding
+            'F9_role_usurpation': DetectionType.CORRUPTION,  # Usurpation
+            'F10_communication_breakdown': DetectionType.COORDINATION,  # Communication
+            'F12_output_validation_failure': DetectionType.CORRUPTION,  # Validation
+            'F13_quality_gate_bypass': DetectionType.CORRUPTION,  # Quality gate
+            'F14_completion_misjudgment': DetectionType.CORRUPTION,  # Completion
         }
         detection_type = detection_type_map.get(detector_type, DetectionType.LOOP)
 
@@ -315,6 +379,226 @@ class OTELGoldenTraceTestHarness:
             'detected': not result.consistent,  # Invert
             'confidence': result.confidence if not result.consistent else (1.0 - result.confidence),
             'raw_score': result.raw_score,
+        })()
+
+    # MAST F1-F14 detector methods
+
+    def _run_f1_spec_mismatch(self, detector_input: Dict) -> Any:
+        """Run F1 Specification Mismatch detector."""
+        detector = SpecificationMismatchDetector()
+        result = detector.detect(
+            user_intent=detector_input["user_intent"],
+            task_specification=detector_input["task_specification"],
+        )
+        return type('Result', (), {
+            'detected': result.detected,
+            'confidence': result.confidence,
+            'raw_score': getattr(result, 'severity', 0),
+        })()
+
+    def _run_f2_decomposition(self, detector_input: Dict) -> Any:
+        """Run F2 Poor Task Decomposition detector."""
+        detector = TaskDecompositionDetector()
+        # Combine subtasks into a string for decomposition parameter
+        decomposition = "\n".join([f"- {st}" for st in detector_input.get("subtasks", [])])
+        result = detector.detect(
+            task_description=detector_input["task"],
+            decomposition=decomposition,
+        )
+        return type('Result', (), {
+            'detected': result.detected,
+            'confidence': result.confidence,
+            'raw_score': getattr(result, 'severity', 0),
+        })()
+
+    def _run_f3_resource_misallocation(self, detector_input: List) -> Any:
+        """Run F3 Resource Misallocation detector."""
+        detector = TurnAwareResourceMisallocationDetector()
+        # Convert dict snapshots to TurnSnapshot objects
+        turns = []
+        for snapshot in detector_input:
+            turn = TurnSnapshot(
+                sequence=snapshot.get("sequence", 0),
+                agent_id=snapshot.get("agent_id", "unknown"),
+                participant_type="agent",
+                content=snapshot.get("content", ""),
+                metadata={
+                    "tokens_input": snapshot.get("tokens_input", 0),
+                    "tokens_output": snapshot.get("tokens_output", 0),
+                },
+            )
+            turns.append(turn)
+        result = detector.detect(turns=turns)
+        return type('Result', (), {
+            'detected': result.detected,
+            'confidence': result.confidence,
+            'raw_score': result.severity.value if hasattr(result, 'severity') else 0,
+        })()
+
+    def _run_f4_tool_provision(self, detector_input: Dict) -> Any:
+        """Run F4 Inadequate Tool Provision detector."""
+        # Note: Tool provision is typically detected at workflow level
+        # For now, use a simple heuristic based on tool failures
+        tool_failures = detector_input.get("tool_failures", [])
+        detected = len(tool_failures) > 0
+        confidence = min(len(tool_failures) * 0.3, 0.9) if detected else 0.1
+
+        return type('Result', (), {
+            'detected': detected,
+            'confidence': confidence,
+            'raw_score': len(tool_failures),
+        })()
+
+    def _run_f5_workflow_design(self, detector_input: Dict) -> Any:
+        """Run F5 Flawed Workflow Design detector."""
+        detector = FlawedWorkflowDetector()
+        result = detector.detect(
+            workflow_def=detector_input.get("workflow_def", {}),
+            execution_history=detector_input.get("execution_history", []),
+        )
+        return type('Result', (), {
+            'detected': result.detected,
+            'confidence': result.confidence,
+            'raw_score': getattr(result, 'severity', 0),
+        })()
+
+    def _run_f6_derailment(self, detector_input: Dict) -> Any:
+        """Run F6 Task Derailment detector."""
+        detector = TaskDerailmentDetector()
+        result = detector.detect(
+            task=detector_input["task"],
+            output=detector_input["output"],
+            context=detector_input.get("context"),
+        )
+        return type('Result', (), {
+            'detected': result.detected,
+            'confidence': result.confidence,
+            'raw_score': result.severity.value if hasattr(result, 'severity') else 0,
+        })()
+
+    def _run_f7_context_neglect(self, detector_input: Dict) -> Any:
+        """Run F7 Context Neglect detector."""
+        detector = ContextNeglectDetector()
+        result = detector.detect(
+            context=detector_input["context"],
+            output=detector_input["output"],
+        )
+        return type('Result', (), {
+            'detected': result.detected,
+            'confidence': result.confidence,
+            'raw_score': getattr(result, 'severity', 0),
+        })()
+
+    def _run_f8_withholding(self, detector_input: Dict) -> Any:
+        """Run F8 Information Withholding detector."""
+        detector = InformationWithholdingDetector()
+        result = detector.detect(
+            internal_findings=detector_input["internal_findings"],
+            output=detector_input["output"],
+        )
+        return type('Result', (), {
+            'detected': result.detected,
+            'confidence': result.confidence,
+            'raw_score': getattr(result, 'severity', 0),
+        })()
+
+    def _run_f9_usurpation(self, detector_input: List) -> Any:
+        """Run F9 Role Usurpation detector."""
+        detector = TurnAwareRoleUsurpationDetector()
+        # Convert dict snapshots to TurnSnapshot objects
+        turns = []
+        for snapshot in detector_input:
+            turn = TurnSnapshot(
+                sequence=snapshot.get("sequence", 0),
+                agent_id=snapshot.get("agent_id", "unknown"),
+                participant_type="agent",
+                content=snapshot.get("content", ""),
+                metadata={
+                    "expected_role": snapshot.get("expected_role", ""),
+                    "actual_action": snapshot.get("actual_action", ""),
+                },
+            )
+            turns.append(turn)
+        result = detector.detect(turns=turns)
+        return type('Result', (), {
+            'detected': result.detected,
+            'confidence': result.confidence,
+            'raw_score': result.severity.value if hasattr(result, 'severity') else 0,
+        })()
+
+    def _run_f10_communication(self, detector_input: Dict) -> Any:
+        """Run F10 Communication Breakdown detector."""
+        detector = CommunicationBreakdownDetector()
+        result = detector.detect(
+            messages=detector_input["messages"],
+            agent_roles=detector_input.get("agent_roles", {}),
+        )
+        return type('Result', (), {
+            'detected': result.detected,
+            'confidence': result.confidence,
+            'raw_score': getattr(result, 'severity', 0),
+        })()
+
+    def _run_f12_validation(self, detector_input: List) -> Any:
+        """Run F12 Output Validation Failure detector."""
+        detector = TurnAwareOutputValidationDetector()
+        # Convert dict snapshots to TurnSnapshot objects
+        turns = []
+        for snapshot in detector_input:
+            turn = TurnSnapshot(
+                sequence=snapshot.get("sequence", 0),
+                agent_id=snapshot.get("agent_id", "unknown"),
+                participant_type="agent",
+                content=snapshot.get("content", ""),
+                metadata={
+                    "output": snapshot.get("output", ""),
+                    "schema": snapshot.get("schema"),
+                },
+            )
+            turns.append(turn)
+        result = detector.detect(turns=turns)
+        return type('Result', (), {
+            'detected': result.detected,
+            'confidence': result.confidence,
+            'raw_score': result.severity.value if hasattr(result, 'severity') else 0,
+        })()
+
+    def _run_f13_quality_gate(self, detector_input: List) -> Any:
+        """Run F13 Quality Gate Bypass detector."""
+        detector = TurnAwareQualityGateBypassDetector()
+        # Convert dict snapshots to TurnSnapshot objects
+        turns = []
+        for snapshot in detector_input:
+            turn = TurnSnapshot(
+                sequence=snapshot.get("sequence", 0),
+                agent_id=snapshot.get("agent_id", "unknown"),
+                participant_type="agent",
+                content=snapshot.get("content", ""),
+                metadata={
+                    "check_passed": snapshot.get("check_passed", False),
+                    "check_skipped": snapshot.get("check_skipped", False),
+                },
+            )
+            turns.append(turn)
+        result = detector.detect(turns=turns)
+        return type('Result', (), {
+            'detected': result.detected,
+            'confidence': result.confidence,
+            'raw_score': result.severity.value if hasattr(result, 'severity') else 0,
+        })()
+
+    def _run_f14_completion(self, detector_input: Dict) -> Any:
+        """Run F14 Completion Misjudgment detector."""
+        detector = CompletionMisjudgmentDetector()
+        result = detector.detect(
+            task=detector_input["task"],
+            output=detector_input["output"],
+            requirements=detector_input.get("requirements", []),
+        )
+        return type('Result', (), {
+            'detected': result.detected,
+            'confidence': result.confidence,
+            'raw_score': getattr(result, 'severity', 0),
         })()
 
     def generate_report(self, results: Dict[str, OTELDetectorTestResult]) -> Dict:

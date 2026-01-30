@@ -30,12 +30,29 @@ def main():
     parser.add_argument(
         "--all",
         action="store_true",
-        help="Test all detectors",
+        help="Test all detectors (legacy + MAST F1-F14)",
+    )
+    parser.add_argument(
+        "--legacy-only",
+        action="store_true",
+        help="Test only legacy detectors (loop, coordination, corruption, persona)",
+    )
+    parser.add_argument(
+        "--mast-only",
+        action="store_true",
+        help="Test only MAST F1-F14 detectors",
     )
     parser.add_argument(
         "--detector",
         type=str,
-        choices=["infinite_loop", "coordination_deadlock", "state_corruption", "persona_drift"],
+        choices=[
+            "infinite_loop", "coordination_deadlock", "state_corruption", "persona_drift",
+            "F1_spec_mismatch", "F2_poor_decomposition", "F3_resource_misallocation",
+            "F4_inadequate_tool", "F5_flawed_workflow", "F6_task_derailment",
+            "F7_context_neglect", "F8_information_withholding", "F9_role_usurpation",
+            "F10_communication_breakdown", "F12_output_validation_failure",
+            "F13_quality_gate_bypass", "F14_completion_misjudgment"
+        ],
         help="Test specific detector",
     )
     parser.add_argument(
@@ -60,12 +77,25 @@ def main():
     args = parser.parse_args()
 
     # Determine which detectors to test
+    legacy_detectors = ["infinite_loop", "coordination_deadlock", "state_corruption", "persona_drift"]
+    mast_detectors = [
+        "F1_spec_mismatch", "F2_poor_decomposition", "F3_resource_misallocation",
+        "F4_inadequate_tool", "F5_flawed_workflow", "F6_task_derailment",
+        "F7_context_neglect", "F8_information_withholding", "F9_role_usurpation",
+        "F10_communication_breakdown", "F12_output_validation_failure",
+        "F13_quality_gate_bypass", "F14_completion_misjudgment"
+    ]
+
     if args.all:
-        detectors = ["infinite_loop", "coordination_deadlock", "state_corruption", "persona_drift"]
+        detectors = legacy_detectors + mast_detectors
+    elif args.legacy_only:
+        detectors = legacy_detectors
+    elif args.mast_only:
+        detectors = mast_detectors
     elif args.detector:
         detectors = [args.detector]
     else:
-        print("Error: Must specify --all or --detector")
+        print("Error: Must specify --all, --legacy-only, --mast-only, or --detector")
         parser.print_help()
         return 1
 
