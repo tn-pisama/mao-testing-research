@@ -1,0 +1,25 @@
+{
+  "generated_at": "2026-01-30T05:58:29.788563",
+  "total_traces": 935,
+  "by_detection_type": {
+    "F10_communication_breakdown": 50,
+    "F7_context_neglect": 50,
+    "F6_task_derailment": 50,
+    "infinite_loop": 50,
+    "coordination_deadlock": 50,
+    "F13_quality_gate_bypass": 50,
+    "F1_spec_mismatch": 50,
+    "F12_output_validation_failure": 50,
+    "healthy": 85,
+    "F3_resource_misallocation": 50,
+    "persona_drift": 50,
+    "F14_completion_misjudgment": 50,
+    "F9_role_usurpation": 50,
+    "F5_flawed_workflow": 50,
+    "F8_information_withholding": 50,
+    "state_corruption": 50,
+    "F4_inadequate_tool": 50,
+    "F2_poor_decomposition": 50
+  },
+  "seed": 42
+}
