@@ -295,12 +295,559 @@ class CoordinationDeadlockOTELAdapter(BaseOTELAdapter):
         )
 
 
+# MAST F1-F14 Adapters
+
+class F1SpecMismatchOTELAdapter(BaseOTELAdapter):
+    """Convert OTEL traces for F1 Specification Mismatch detection."""
+
+    def get_detection_type(self) -> str:
+        return "F1_spec_mismatch"
+
+    def adapt(self, trace: Dict[str, Any]) -> OTELAdapterResult:
+        spans = self._extract_spans(trace)
+
+        user_intent = None
+        specification = None
+
+        for span in spans:
+            attrs = self._parse_attributes(span)
+            if 'gen_ai.task.user_intent' in attrs:
+                user_intent = attrs['gen_ai.task.user_intent']
+            if 'gen_ai.task.specification' in attrs:
+                specification = attrs['gen_ai.task.specification']
+
+        if not user_intent or not specification:
+            return OTELAdapterResult(
+                success=False,
+                detector_input=None,
+                error="Missing user_intent or specification attributes"
+            )
+
+        return OTELAdapterResult(
+            success=True,
+            detector_input={
+                "user_intent": user_intent,
+                "task_specification": specification,
+            }
+        )
+
+
+class F2DecompositionOTELAdapter(BaseOTELAdapter):
+    """Convert OTEL traces for F2 Poor Task Decomposition detection."""
+
+    def get_detection_type(self) -> str:
+        return "F2_poor_decomposition"
+
+    def adapt(self, trace: Dict[str, Any]) -> OTELAdapterResult:
+        spans = self._extract_spans(trace)
+
+        task = None
+        subtasks = []
+
+        for span in spans:
+            attrs = self._parse_attributes(span)
+            if 'gen_ai.task' in attrs:
+                task = attrs['gen_ai.task']
+            if 'gen_ai.subtasks' in attrs:
+                try:
+                    subtasks = json.loads(attrs['gen_ai.subtasks'])
+                except (json.JSONDecodeError, TypeError):
+                    subtasks = []
+
+        if not task or not subtasks:
+            return OTELAdapterResult(
+                success=False,
+                detector_input=None,
+                error="Missing task or subtasks"
+            )
+
+        return OTELAdapterResult(
+            success=True,
+            detector_input={
+                "task": task,
+                "subtasks": subtasks,
+            }
+        )
+
+
+class F3ResourceMisallocationOTELAdapter(BaseOTELAdapter):
+    """Convert OTEL traces for F3 Resource Misallocation detection."""
+
+    def get_detection_type(self) -> str:
+        return "F3_resource_misallocation"
+
+    def adapt(self, trace: Dict[str, Any]) -> OTELAdapterResult:
+        spans = self._extract_spans(trace)
+
+        # Build turn snapshots with token usage
+        turns = []
+        for seq, span in enumerate(spans):
+            attrs = self._parse_attributes(span)
+
+            agent_id = attrs.get('gen_ai.agent.id', 'unknown')
+            content = attrs.get('gen_ai.response.sample', '')
+            task = attrs.get('gen_ai.task', '')
+
+            tokens_in = attrs.get('gen_ai.tokens.input', 0)
+            tokens_out = attrs.get('gen_ai.tokens.output', 0)
+
+            # Create turn-aware snapshot (simplified)
+            turns.append({
+                'agent_id': agent_id,
+                'content': content,
+                'task': task,
+                'tokens_input': tokens_in,
+                'tokens_output': tokens_out,
+                'sequence': seq,
+            })
+
+        if len(turns) == 0:
+            return OTELAdapterResult(
+                success=False,
+                detector_input=None,
+                error="No turns with token data found"
+            )
+
+        return OTELAdapterResult(
+            success=True,
+            detector_input={'turns': turns}
+        )
+
+
+class F4ToolProvisionOTELAdapter(BaseOTELAdapter):
+    """Convert OTEL traces for F4 Inadequate Tool Provision detection."""
+
+    def get_detection_type(self) -> str:
+        return "F4_inadequate_tool"
+
+    def adapt(self, trace: Dict[str, Any]) -> OTELAdapterResult:
+        spans = self._extract_spans(trace)
+
+        tool_failures = []
+        for span in spans:
+            attrs = self._parse_attributes(span)
+
+            tool_name = attrs.get('gen_ai.tool.name')
+            tool_available = attrs.get('gen_ai.tool.available', 'true')
+
+            if tool_name and tool_available == 'false':
+                tool_failures.append({
+                    'tool_name': tool_name,
+                    'agent_id': attrs.get('gen_ai.agent.id', 'unknown'),
+                    'action': attrs.get('gen_ai.action', 'unknown'),
+                })
+
+        if len(tool_failures) == 0:
+            return OTELAdapterResult(
+                success=False,
+                detector_input=None,
+                error="No tool failures detected"
+            )
+
+        return OTELAdapterResult(
+            success=True,
+            detector_input={'tool_failures': tool_failures}
+        )
+
+
+class F5WorkflowDesignOTELAdapter(BaseOTELAdapter):
+    """Convert OTEL traces for F5 Flawed Workflow Design detection."""
+
+    def get_detection_type(self) -> str:
+        return "F5_flawed_workflow"
+
+    def adapt(self, trace: Dict[str, Any]) -> OTELAdapterResult:
+        spans = self._extract_spans(trace)
+
+        workflow_issues = {}
+        nodes = []
+
+        for span in spans:
+            attrs = self._parse_attributes(span)
+
+            if 'gen_ai.workflow.has_cycles' in attrs:
+                workflow_issues['has_cycles'] = attrs['gen_ai.workflow.has_cycles'] == 'true'
+
+            if 'gen_ai.workflow.error_handling' in attrs:
+                workflow_issues['error_handling'] = attrs['gen_ai.workflow.error_handling']
+
+            # Build node graph for cycle detection
+            if 'gen_ai.next_step' in attrs:
+                nodes.append({
+                    'id': attrs.get('gen_ai.agent.id', 'unknown'),
+                    'next': attrs['gen_ai.next_step'],
+                })
+
+        if not workflow_issues and not nodes:
+            return OTELAdapterResult(
+                success=False,
+                detector_input=None,
+                error="No workflow design information found"
+            )
+
+        return OTELAdapterResult(
+            success=True,
+            detector_input={
+                'workflow_issues': workflow_issues,
+                'nodes': nodes,
+            }
+        )
+
+
+class F6DerailmentOTELAdapter(BaseOTELAdapter):
+    """Convert OTEL traces for F6 Task Derailment detection."""
+
+    def get_detection_type(self) -> str:
+        return "F6_task_derailment"
+
+    def adapt(self, trace: Dict[str, Any]) -> OTELAdapterResult:
+        spans = self._extract_spans(trace)
+
+        task = None
+        output = None
+
+        for span in spans:
+            attrs = self._parse_attributes(span)
+
+            if 'gen_ai.task' in attrs and not task:
+                task = attrs['gen_ai.task']
+
+            if 'gen_ai.response.sample' in attrs and attrs.get('gen_ai.action') in ['summarize', 'generate', 'analyze']:
+                output = attrs['gen_ai.response.sample']
+
+        if not task or not output:
+            return OTELAdapterResult(
+                success=False,
+                detector_input=None,
+                error="Missing task or output"
+            )
+
+        return OTELAdapterResult(
+            success=True,
+            detector_input={
+                'task': task,
+                'output': output,
+            }
+        )
+
+
+class F7ContextNeglectOTELAdapter(BaseOTELAdapter):
+    """Convert OTEL traces for F7 Context Neglect detection."""
+
+    def get_detection_type(self) -> str:
+        return "F7_context_neglect"
+
+    def adapt(self, trace: Dict[str, Any]) -> OTELAdapterResult:
+        spans = self._extract_spans(trace)
+
+        conversation_history = []
+        current_output = None
+
+        for span in spans:
+            attrs = self._parse_attributes(span)
+            content = attrs.get('gen_ai.response.sample', '')
+
+            if content:
+                conversation_history.append({
+                    'agent_id': attrs.get('gen_ai.agent.id', 'unknown'),
+                    'content': content,
+                    'action': attrs.get('gen_ai.action', 'unknown'),
+                })
+
+        if len(conversation_history) < 2:
+            return OTELAdapterResult(
+                success=False,
+                detector_input=None,
+                error="Need at least 2 conversation turns"
+            )
+
+        # Last turn is current output, rest is context
+        current_output = conversation_history[-1]['content']
+        relevant_context = [turn['content'] for turn in conversation_history[:-1]]
+
+        return OTELAdapterResult(
+            success=True,
+            detector_input={
+                'conversation_history': conversation_history,
+                'current_output': current_output,
+                'relevant_context': relevant_context,
+            }
+        )
+
+
+class F8WithholdingOTELAdapter(BaseOTELAdapter):
+    """Convert OTEL traces for F8 Information Withholding detection."""
+
+    def get_detection_type(self) -> str:
+        return "F8_information_withholding"
+
+    def adapt(self, trace: Dict[str, Any]) -> OTELAdapterResult:
+        spans = self._extract_spans(trace)
+
+        internal_findings = None
+        communicated_output = None
+
+        for span in spans:
+            attrs = self._parse_attributes(span)
+
+            if 'gen_ai.internal_findings' in attrs:
+                internal_findings = attrs['gen_ai.internal_findings']
+
+            if 'gen_ai.response.sample' in attrs and attrs.get('gen_ai.action') == 'report':
+                communicated_output = attrs['gen_ai.response.sample']
+
+        if not internal_findings or not communicated_output:
+            return OTELAdapterResult(
+                success=False,
+                detector_input=None,
+                error="Missing internal findings or communicated output"
+            )
+
+        return OTELAdapterResult(
+            success=True,
+            detector_input={
+                'internal_findings': internal_findings,
+                'communicated_output': communicated_output,
+            }
+        )
+
+
+class F9UsurpationOTELAdapter(BaseOTELAdapter):
+    """Convert OTEL traces for F9 Role Usurpation detection."""
+
+    def get_detection_type(self) -> str:
+        return "F9_role_usurpation"
+
+    def adapt(self, trace: Dict[str, Any]) -> OTELAdapterResult:
+        spans = self._extract_spans(trace)
+
+        # Build turn snapshots with roles
+        turns = []
+        for seq, span in enumerate(spans):
+            attrs = self._parse_attributes(span)
+
+            agent_id = attrs.get('gen_ai.agent.id', 'unknown')
+            content = attrs.get('gen_ai.response.sample', '')
+            role = attrs.get('gen_ai.role', agent_id)
+
+            turns.append({
+                'agent_id': agent_id,
+                'content': content,
+                'role_description': role,
+                'sequence': seq,
+            })
+
+        if len(turns) == 0:
+            return OTELAdapterResult(
+                success=False,
+                detector_input=None,
+                error="No turns found"
+            )
+
+        return OTELAdapterResult(
+            success=True,
+            detector_input={'turns': turns}
+        )
+
+
+class F10CommunicationOTELAdapter(BaseOTELAdapter):
+    """Convert OTEL traces for F10 Communication Breakdown detection."""
+
+    def get_detection_type(self) -> str:
+        return "F10_communication_breakdown"
+
+    def adapt(self, trace: Dict[str, Any]) -> OTELAdapterResult:
+        spans = self._extract_spans(trace)
+
+        messages = []
+        agent_ids = set()
+
+        for i, span in enumerate(spans):
+            attrs = self._parse_attributes(span)
+
+            agent_id = attrs.get('gen_ai.agent.id')
+            if not agent_id:
+                continue
+
+            agent_ids.add(agent_id)
+
+            # Look for message attributes
+            message_to = attrs.get('gen_ai.message.to')
+            content = attrs.get('gen_ai.response.sample', '')
+            acknowledged = attrs.get('gen_ai.communication.acknowledged', 'true') == 'true'
+
+            if content:
+                messages.append(Message(
+                    from_agent=agent_id,
+                    to_agent=message_to or 'broadcast',
+                    content=content,
+                    timestamp=float(i),
+                    acknowledged=acknowledged,
+                ))
+
+        if len(messages) < 2:
+            return OTELAdapterResult(
+                success=False,
+                detector_input=None,
+                error="Need at least 2 messages"
+            )
+
+        return OTELAdapterResult(
+            success=True,
+            detector_input={
+                'messages': messages,
+                'agent_ids': list(agent_ids),
+            }
+        )
+
+
+class F12ValidationOTELAdapter(BaseOTELAdapter):
+    """Convert OTEL traces for F12 Output Validation Failure detection."""
+
+    def get_detection_type(self) -> str:
+        return "F12_output_validation_failure"
+
+    def adapt(self, trace: Dict[str, Any]) -> OTELAdapterResult:
+        spans = self._extract_spans(trace)
+
+        expected_schema = None
+        output = None
+        validation_errors = None
+
+        for span in spans:
+            attrs = self._parse_attributes(span)
+
+            if 'gen_ai.expected_schema' in attrs:
+                expected_schema = attrs['gen_ai.expected_schema']
+
+            if 'gen_ai.response.sample' in attrs:
+                output = attrs['gen_ai.response.sample']
+
+            if 'gen_ai.validation.errors' in attrs:
+                validation_errors = attrs['gen_ai.validation.errors']
+
+        if not expected_schema or not output:
+            return OTELAdapterResult(
+                success=False,
+                detector_input=None,
+                error="Missing schema or output"
+            )
+
+        return OTELAdapterResult(
+            success=True,
+            detector_input={
+                'expected_schema': expected_schema,
+                'output': output,
+                'validation_errors': validation_errors,
+            }
+        )
+
+
+class F13QualityGateOTELAdapter(BaseOTELAdapter):
+    """Convert OTEL traces for F13 Quality Gate Bypass detection."""
+
+    def get_detection_type(self) -> str:
+        return "F13_quality_gate_bypass"
+
+    def adapt(self, trace: Dict[str, Any]) -> OTELAdapterResult:
+        spans = self._extract_spans(trace)
+
+        gate_status = None
+        bypassed = False
+        test_results = None
+
+        for span in spans:
+            attrs = self._parse_attributes(span)
+
+            if 'gen_ai.quality_gate.status' in attrs:
+                gate_status = attrs['gen_ai.quality_gate.status']
+
+            if 'gen_ai.quality_gate.bypassed' in attrs:
+                bypassed = attrs['gen_ai.quality_gate.bypassed'] == 'true'
+
+            if 'gen_ai.test_results' in attrs:
+                test_results = attrs['gen_ai.test_results']
+
+        if gate_status is None and not bypassed:
+            return OTELAdapterResult(
+                success=False,
+                detector_input=None,
+                error="No quality gate information found"
+            )
+
+        return OTELAdapterResult(
+            success=True,
+            detector_input={
+                'gate_status': gate_status,
+                'bypassed': bypassed,
+                'test_results': test_results,
+            }
+        )
+
+
+class F14CompletionOTELAdapter(BaseOTELAdapter):
+    """Convert OTEL traces for F14 Completion Misjudgment detection."""
+
+    def get_detection_type(self) -> str:
+        return "F14_completion_misjudgment"
+
+    def adapt(self, trace: Dict[str, Any]) -> OTELAdapterResult:
+        spans = self._extract_spans(trace)
+
+        task = None
+        output = None
+        missing_requirements = None
+
+        for span in spans:
+            attrs = self._parse_attributes(span)
+
+            if 'gen_ai.task' in attrs:
+                task = attrs['gen_ai.task']
+
+            if 'gen_ai.response.sample' in attrs:
+                output = attrs['gen_ai.response.sample']
+
+            if 'gen_ai.missing_requirements' in attrs:
+                missing_requirements = attrs['gen_ai.missing_requirements']
+
+        if not task or not output:
+            return OTELAdapterResult(
+                success=False,
+                detector_input=None,
+                error="Missing task or output"
+            )
+
+        return OTELAdapterResult(
+            success=True,
+            detector_input={
+                'task': task,
+                'agent_output': output,
+                'missing_requirements': missing_requirements,
+            }
+        )
+
+
 # Registry of OTEL adapters by detection type
 OTEL_ADAPTER_REGISTRY: Dict[str, BaseOTELAdapter] = {
+    # Legacy adapters
     "infinite_loop": InfiniteLoopOTELAdapter(),
     "state_corruption": StateCorruptionOTELAdapter(),
     "persona_drift": PersonaDriftOTELAdapter(),
     "coordination_deadlock": CoordinationDeadlockOTELAdapter(),
+    # MAST F1-F14 adapters
+    "F1_spec_mismatch": F1SpecMismatchOTELAdapter(),
+    "F2_poor_decomposition": F2DecompositionOTELAdapter(),
+    "F3_resource_misallocation": F3ResourceMisallocationOTELAdapter(),
+    "F4_inadequate_tool": F4ToolProvisionOTELAdapter(),
+    "F5_flawed_workflow": F5WorkflowDesignOTELAdapter(),
+    "F6_task_derailment": F6DerailmentOTELAdapter(),
+    "F7_context_neglect": F7ContextNeglectOTELAdapter(),
+    "F8_information_withholding": F8WithholdingOTELAdapter(),
+    "F9_role_usurpation": F9UsurpationOTELAdapter(),
+    "F10_communication_breakdown": F10CommunicationOTELAdapter(),
+    "F12_output_validation_failure": F12ValidationOTELAdapter(),
+    "F13_quality_gate_bypass": F13QualityGateOTELAdapter(),
+    "F14_completion_misjudgment": F14CompletionOTELAdapter(),
 }
 
 
