@@ -2,13 +2,15 @@
 
 export function HeroSection() {
   return (
-    <section className="py-20 text-center">
-      <h1 className="text-5xl font-mono font-bold text-primary-500 mb-6">
-        MAO Testing Platform
-      </h1>
-      <p className="text-xl text-white/70 max-w-2xl mx-auto">
-        Detect and fix failures in multi-agent orchestration systems
-      </p>
+    <section className="py-8">
+      <div className="font-mono">
+        <h1 className="text-4xl font-bold glow-text mb-2">
+          {'> MAO_TESTING_PLATFORM'}
+        </h1>
+        <p className="text-base text-[#00ffff] opacity-80">
+          {'// DETECT_AND_FIX_FAILURES_IN_MULTI_AGENT_SYSTEMS'}
+        </p>
+      </div>
     </section>
   )
 }
