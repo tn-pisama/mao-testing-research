@@ -9,16 +9,16 @@ interface LandingHeaderProps {
 
 export function LandingHeader({ onJoinWaitlist }: LandingHeaderProps) {
   return (
-    <header className="flex items-center justify-between py-4 px-6">
-      <div className="text-xl font-bold text-neutral-900">MAO Testing</div>
-      <div className="flex items-center gap-4">
+    <header className="flex items-center justify-between py-6 px-8 border-b border-neutral-200 bg-white">
+      <div className="text-base font-medium text-black">MAO Testing</div>
+      <div className="flex items-center gap-3">
         {onJoinWaitlist && (
-          <Button variant="primary" onClick={onJoinWaitlist}>
+          <Button variant="primary" onClick={onJoinWaitlist} size="sm">
             Join Waitlist
           </Button>
         )}
         <Link href="/dashboard">
-          <Button variant="secondary">Dashboard</Button>
+          <Button variant="secondary" size="sm">Dashboard</Button>
         </Link>
       </div>
     </header>
