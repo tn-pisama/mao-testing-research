@@ -36,6 +36,11 @@ export async function middleware(req: NextRequest) {
       return NextResponse.next()
     }
 
+    // Full auth bypass for local development
+    if (process.env.DISABLE_AUTH === 'true') {
+      return NextResponse.next()
+    }
+
     // Bypass auth for E2E tests (disabled in production for security)
     // Note: This only works for automated tests, not manual testing
     const testBypass = req.headers.get('x-test-bypass') === 'true'
