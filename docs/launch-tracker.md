@@ -12,7 +12,7 @@ Google Sheets-based tracking system for the 8-week PISAMA launch plan.
 
 ## Structure
 
-### Sheet1: Tasks (73 total)
+### Tasks Tab (73 total)
 | Column | Description |
 |--------|-------------|
 | A | Task ID (PIS-W{week}-{category}-{number}) |
@@ -22,14 +22,14 @@ Google Sheets-based tracking system for the 8-week PISAMA launch plan.
 | E | Priority (P0, P1, P2) |
 | F | Status (Todo, In Progress, Done, Blocked) |
 | G | Due Date |
-| H | Notes |
+| H | Notes (includes file locations for completed content) |
 
-### Dashboard: Metrics
-- Overall progress tracking
+### Dashboard Tab
+- Overall progress tracking (formulas: =COUNTIF, =COUNTIFS)
 - Tasks by week breakdown
 - Tasks by priority breakdown
 - Tasks by category breakdown
-- Auto-updating formulas
+- Auto-updating from Tasks tab data
 
 ## Task Breakdown by Week
 
@@ -89,5 +89,8 @@ Google Sheets-based tracking system for the 8-week PISAMA launch plan.
 ## Source
 Generated from: `~/.claude/plans/delegated-plotting-hopper.md` (PISAMA 360° Launch Plan)
 
-## Last Updated
-2026-02-02 - Initial setup with 73 curated actionable tasks
+## Updates
+- **2026-02-02**: Initial setup with 73 curated actionable tasks
+- **2026-02-02**: Generated all launch content (9 files, 4,126 lines)
+- **2026-02-02**: Renamed Sheet1 → Tasks, updated documentation
+- **2026-02-02**: Added file locations to completed content tasks
