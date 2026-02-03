@@ -12,13 +12,14 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy import select, update
 
 from app.storage.models import Tenant
-from app.config import settings
+from app.config import get_settings
 from .constants import PlanTier, get_span_limit, get_stripe_price_id, PLANS
 from .schemas import CheckoutResponse, PortalResponse, BillingStatus, UsageInfo
 
 logger = logging.getLogger(__name__)
 
 # Initialize Stripe
+settings = get_settings()
 stripe.api_key = settings.STRIPE_SECRET_KEY if hasattr(settings, 'STRIPE_SECRET_KEY') else None
 
 

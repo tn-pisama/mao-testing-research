@@ -11,8 +11,8 @@ from fastapi import APIRouter, Depends, HTTPException, Header, Request, status
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.storage.database import get_db
-from app.core.auth import get_current_tenant_id
-from app.config import settings
+from app.core.auth import get_current_tenant
+from app.config import get_settings
 from app.billing import (
     PlanInfo,
     CheckoutRequest,
@@ -58,7 +58,7 @@ async def list_plans():
 async def create_checkout(
     request: CheckoutRequest,
     db: AsyncSession = Depends(get_db),
-    tenant_id: str = Depends(get_current_tenant_id),
+    tenant_id: str = Depends(get_current_tenant),
 ):
     """
     Create a Stripe Checkout session to upgrade to a paid plan.
@@ -94,7 +94,7 @@ async def create_checkout(
 @router.get("/portal", response_model=PortalResponse)
 async def get_customer_portal(
     db: AsyncSession = Depends(get_db),
-    tenant_id: str = Depends(get_current_tenant_id),
+    tenant_id: str = Depends(get_current_tenant),
     return_url: str = None,
 ):
     """
@@ -129,7 +129,7 @@ async def get_customer_portal(
 @router.get("/status", response_model=BillingStatus)
 async def get_billing_status(
     db: AsyncSession = Depends(get_db),
-    tenant_id: str = Depends(get_current_tenant_id),
+    tenant_id: str = Depends(get_current_tenant),
 ):
     """
     Get current billing status for the tenant.
@@ -189,6 +189,7 @@ async def stripe_webhook(
     payload = await request.body()
 
     # Verify webhook signature
+    settings = get_settings()
     webhook_secret = getattr(settings, 'STRIPE_WEBHOOK_SECRET', None)
     if not webhook_secret:
         logger.error("STRIPE_WEBHOOK_SECRET not configured")

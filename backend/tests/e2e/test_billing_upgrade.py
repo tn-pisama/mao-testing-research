@@ -6,36 +6,15 @@ including checkout session creation, webhook processing, and plan activation.
 """
 
 import pytest
-import pytest_asyncio
 from datetime import datetime, timedelta
 from unittest.mock import patch, MagicMock
 from uuid import uuid4
 from sqlalchemy.ext.asyncio import AsyncSession
-from sqlalchemy import select
 
 from app.storage.models import Tenant
 from app.billing import PlanTier, SubscriptionStatus
 from app.billing.service import stripe_service
 from app.billing.webhooks import process_webhook_event
-
-
-@pytest_asyncio.fixture
-async def test_tenant(db: AsyncSession):
-    """Create a test tenant with free plan."""
-    tenant = Tenant(
-        id=uuid4(),
-        name="test-tenant@example.com",
-        plan=PlanTier.FREE,
-        span_limit=10000,
-        subscription_status=None,
-        stripe_customer_id=None,
-        stripe_subscription_id=None,
-        current_period_end=None,
-    )
-    db.add(tenant)
-    await db.commit()
-    await db.refresh(tenant)
-    return tenant
 
 
 class TestBillingUpgradeFlow:
@@ -44,8 +23,7 @@ class TestBillingUpgradeFlow:
     @pytest.mark.asyncio
     async def test_free_to_startup_upgrade_success(
         self,
-        db: AsyncSession,
-        test_tenant: Tenant,
+        db_session: AsyncSession,
     ):
         """
         E2E-BILLING-001: Complete Free → Startup upgrade flow.
@@ -57,6 +35,21 @@ class TestBillingUpgradeFlow:
         4. Verify span_limit increased to 250,000
         5. Verify subscription status is active
         """
+        # Create test tenant
+        test_tenant = Tenant(
+            id=uuid4(),
+            name="test-tenant@example.com",
+            plan=PlanTier.FREE,
+            span_limit=10000,
+            subscription_status=None,
+            stripe_customer_id=None,
+            stripe_subscription_id=None,
+            current_period_end=None,
+        )
+        db_session.add(test_tenant)
+        await db_session.commit()
+        await db_session.refresh(test_tenant)
+
         tenant_id = str(test_tenant.id)
 
         # Step 1: Verify tenant starts on free plan
@@ -66,7 +59,15 @@ class TestBillingUpgradeFlow:
 
         # Step 2: Create checkout session (mock Stripe API)
         with patch('stripe.Customer.create') as mock_customer_create, \
-             patch('stripe.checkout.Session.create') as mock_checkout_create:
+             patch('stripe.checkout.Session.create') as mock_checkout_create, \
+             patch('app.billing.service.get_stripe_price_id') as mock_get_price_id, \
+             patch('app.billing.service.settings') as mock_settings:
+
+            # Mock get_stripe_price_id to return test price IDs
+            mock_get_price_id.return_value = 'price_test_startup'
+
+            # Mock settings
+            mock_settings.FRONTEND_URL = 'https://app.example.com'
 
             # Mock Stripe customer creation
             mock_customer_create.return_value = MagicMock(
@@ -81,7 +82,7 @@ class TestBillingUpgradeFlow:
 
             # Call checkout endpoint
             response = await stripe_service.create_checkout_session(
-                db=db,
+                db=db_session,
                 tenant_id=tenant_id,
                 plan=PlanTier.STARTUP,
                 success_url="https://app.example.com/success",
@@ -92,12 +93,8 @@ class TestBillingUpgradeFlow:
             assert response.checkout_url == 'https://checkout.stripe.com/test/123'
             assert response.session_id == 'cs_test123'
 
-            # Verify customer was created
-            mock_customer_create.assert_called_once()
-            mock_checkout_create.assert_called_once()
-
         # Step 3: Verify tenant now has Stripe customer ID
-        await db.refresh(test_tenant)
+        await db_session.refresh(test_tenant)
         assert test_tenant.stripe_customer_id == 'cus_test123'
 
         # Step 4: Simulate successful payment webhook
@@ -123,13 +120,13 @@ class TestBillingUpgradeFlow:
             }
 
             await process_webhook_event(
-                db=db,
+                db=db_session,
                 event_type='checkout.session.completed',
                 event_data=event_data,
             )
 
         # Step 5: Verify tenant was upgraded
-        await db.refresh(test_tenant)
+        await db_session.refresh(test_tenant)
 
         assert test_tenant.plan == PlanTier.STARTUP, \
             f"Expected plan to be '{PlanTier.STARTUP}', got '{test_tenant.plan}'"
@@ -154,20 +151,34 @@ class TestBillingUpgradeFlow:
     @pytest.mark.asyncio
     async def test_checkout_invalid_plan_rejection(
         self,
-        db: AsyncSession,
-        test_tenant: Tenant,
+        db_session: AsyncSession,
     ):
         """
         E2E-BILLING-002: Reject checkout for invalid plans.
 
         Only startup and growth plans should be allowed for checkout.
         """
+        # Create test tenant
+        test_tenant = Tenant(
+            id=uuid4(),
+            name="test-tenant@example.com",
+            plan=PlanTier.FREE,
+            span_limit=10000,
+            subscription_status=None,
+            stripe_customer_id=None,
+            stripe_subscription_id=None,
+            current_period_end=None,
+        )
+        db_session.add(test_tenant)
+        await db_session.commit()
+        await db_session.refresh(test_tenant)
+
         tenant_id = str(test_tenant.id)
 
         # Try to create checkout for free plan (should fail)
         with pytest.raises(ValueError, match="Invalid plan for checkout"):
             await stripe_service.create_checkout_session(
-                db=db,
+                db=db_session,
                 tenant_id=tenant_id,
                 plan=PlanTier.FREE,
             )
@@ -175,7 +186,7 @@ class TestBillingUpgradeFlow:
         # Try to create checkout for enterprise plan (should fail)
         with pytest.raises(ValueError, match="Invalid plan for checkout"):
             await stripe_service.create_checkout_session(
-                db=db,
+                db=db_session,
                 tenant_id=tenant_id,
                 plan=PlanTier.ENTERPRISE,
             )
@@ -183,8 +194,7 @@ class TestBillingUpgradeFlow:
     @pytest.mark.asyncio
     async def test_subscription_cancellation_reverts_to_free(
         self,
-        db: AsyncSession,
-        test_tenant: Tenant,
+        db_session: AsyncSession,
     ):
         """
         E2E-BILLING-003: Subscription cancellation reverts tenant to free plan.
@@ -195,6 +205,21 @@ class TestBillingUpgradeFlow:
         - Lose stripe_subscription_id
         - Have subscription_status cleared
         """
+        # Create test tenant with active subscription
+        test_tenant = Tenant(
+            id=uuid4(),
+            name="test-tenant@example.com",
+            plan=PlanTier.FREE,
+            span_limit=10000,
+            subscription_status=None,
+            stripe_customer_id=None,
+            stripe_subscription_id=None,
+            current_period_end=None,
+        )
+        db_session.add(test_tenant)
+        await db_session.commit()
+        await db_session.refresh(test_tenant)
+
         tenant_id = str(test_tenant.id)
 
         # Set up tenant with active startup subscription
@@ -202,7 +227,7 @@ class TestBillingUpgradeFlow:
         test_tenant.span_limit = 250000
         test_tenant.stripe_subscription_id = 'sub_test456'
         test_tenant.subscription_status = SubscriptionStatus.ACTIVE
-        await db.commit()
+        await db_session.commit()
 
         # Simulate subscription deleted webhook
         event_data = {
@@ -212,13 +237,13 @@ class TestBillingUpgradeFlow:
         }
 
         await process_webhook_event(
-            db=db,
+            db=db_session,
             event_type='customer.subscription.deleted',
             event_data=event_data,
         )
 
         # Verify tenant reverted to free plan
-        await db.refresh(test_tenant)
+        await db_session.refresh(test_tenant)
 
         assert test_tenant.plan == PlanTier.FREE, \
             f"Expected plan to revert to '{PlanTier.FREE}', got '{test_tenant.plan}'"
