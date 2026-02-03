@@ -51,6 +51,11 @@ def update_tasks(dry_run=False):
             "notes": "E2E billing tests complete with 3 test cases: free→startup upgrade, invalid plan rejection, subscription cancellation. All tests passing with mocked Stripe API. File: backend/tests/test_billing_e2e.py"
         },
         {
+            "id": "PIS-W1-2-R-011",
+            "status": "Done",
+            "notes": "LinkedIn profile optimized using Builder Story Arc framework. Includes: optimized headline (3 variations), About section (2241 chars), experience bullets, skills prioritization, featured content strategy. Ready to copy-paste. File: content/career/linkedin-profile-optimized.md"
+        },
+        {
             "id": "PIS-W3-4-G-017",
             "status": "Done",
             "notes": "Hero section expanded, social proof added, demo video component created. Files: HeroSection.tsx, SocialProof.tsx, DemoVideo.tsx"
