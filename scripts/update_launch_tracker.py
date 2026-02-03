@@ -56,6 +56,11 @@ def update_tasks(dry_run=False):
             "notes": "LinkedIn profile optimized using Builder Story Arc framework. Includes: optimized headline (3 variations), About section (2241 chars), experience bullets, skills prioritization, featured content strategy. Ready to copy-paste. File: content/career/linkedin-profile-optimized.md"
         },
         {
+            "id": "PIS-W1-2-C-007",
+            "status": "Done",
+            "notes": "7 demo video talking point variations created (bullet outlines, not word-for-word scripts). Variations: pain-focused, solution-focused, demo-first, personal story, comparison, speed-focused, technical deep-dive. Includes recording reminders and platform recommendations. File: content/video/demo-talking-points.md"
+        },
+        {
             "id": "PIS-W3-4-G-017",
             "status": "Done",
             "notes": "Hero section expanded, social proof added, demo video component created. Files: HeroSection.tsx, SocialProof.tsx, DemoVideo.tsx"
