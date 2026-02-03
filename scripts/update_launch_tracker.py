@@ -46,6 +46,11 @@ def update_tasks(dry_run=False):
     # Tasks to mark as complete
     completed_tasks = [
         {
+            "id": "PIS-W1-2-B-006",
+            "status": "Done",
+            "notes": "E2E billing tests complete with 3 test cases: free→startup upgrade, invalid plan rejection, subscription cancellation. All tests passing with mocked Stripe API. File: backend/tests/test_billing_e2e.py"
+        },
+        {
             "id": "PIS-W3-4-G-017",
             "status": "Done",
             "notes": "Hero section expanded, social proof added, demo video component created. Files: HeroSection.tsx, SocialProof.tsx, DemoVideo.tsx"
