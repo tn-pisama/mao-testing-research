@@ -2,6 +2,7 @@
 
 import { Play } from 'lucide-react'
 import { useState } from 'react'
+import { analytics } from '@/lib/analytics'
 
 export function DemoVideo() {
   const [isPlaying, setIsPlaying] = useState(false)
@@ -35,7 +36,10 @@ export function DemoVideo() {
             // Placeholder with play button
             <div
               className="absolute inset-0 flex items-center justify-center cursor-pointer group"
-              onClick={() => setIsPlaying(true)}
+              onClick={() => {
+                analytics.videoPlay()
+                setIsPlaying(true)
+              }}
             >
               {/* Background image/gradient */}
               <div className="absolute inset-0 bg-gradient-to-br from-slate-800 to-slate-900" />

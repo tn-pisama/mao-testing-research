@@ -2,6 +2,7 @@
 
 import { useState } from 'react'
 import { WaitlistModal } from './WaitlistModal'
+import { analytics } from '@/lib/analytics'
 
 export function HeroSection() {
   const [isModalOpen, setIsModalOpen] = useState(false)
@@ -19,13 +20,19 @@ export function HeroSection() {
         {/* CTA Buttons */}
         <div className="flex flex-col sm:flex-row gap-4 justify-center mb-12">
           <button
-            onClick={() => setIsModalOpen(true)}
+            onClick={() => {
+              analytics.ctaClick('hero', 'Start Free Trial')
+              setIsModalOpen(true)
+            }}
             className="px-8 py-4 rounded-lg bg-sky-500 hover:bg-sky-600 text-white font-semibold text-lg transition-colors"
           >
             Start Free Trial
           </button>
           <button
-            onClick={() => setIsModalOpen(true)}
+            onClick={() => {
+              analytics.ctaClick('hero', 'Watch 4-Minute Demo')
+              setIsModalOpen(true)
+            }}
             className="px-8 py-4 rounded-lg bg-slate-800 hover:bg-slate-700 border border-slate-700 text-white font-semibold text-lg transition-colors"
           >
             Watch 4-Minute Demo

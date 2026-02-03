@@ -3,6 +3,7 @@
 import { useState } from 'react'
 import { X } from 'lucide-react'
 import { Button } from '../ui/Button'
+import { analytics } from '@/lib/analytics'
 
 interface WaitlistModalProps {
   isOpen: boolean
@@ -41,6 +42,11 @@ export function WaitlistModal({ isOpen, onClose }: WaitlistModalProps) {
         setStatus('success')
         setMessage(data.message || 'Thanks for signing up!')
         setEmail('')
+
+        // Track successful signup
+        analytics.waitlistSignup('modal')
+        analytics.emailSubmit('success', 'modal')
+
         // Auto-close after 2 seconds on success
         setTimeout(() => {
           onClose()
@@ -50,6 +56,7 @@ export function WaitlistModal({ isOpen, onClose }: WaitlistModalProps) {
       } else {
         setStatus('error')
         setMessage(data.error || 'Something went wrong. Please try again.')
+        analytics.emailSubmit('error', 'modal')
       }
     } catch (error) {
       setStatus('error')

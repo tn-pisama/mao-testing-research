@@ -1,6 +1,7 @@
 'use client'
 
 import { useState } from 'react'
+import { analytics } from '@/lib/analytics'
 
 export function EmailCapture() {
   const [email, setEmail] = useState('')
@@ -32,13 +33,19 @@ export function EmailCapture() {
         setStatus('success')
         setMessage(data.message || 'Thanks for signing up!')
         setEmail('')
+
+        // Track successful signup
+        analytics.waitlistSignup('inline')
+        analytics.emailSubmit('success', 'inline')
       } else {
         setStatus('error')
         setMessage(data.error || 'Something went wrong. Please try again.')
+        analytics.emailSubmit('error', 'inline')
       }
     } catch (error) {
       setStatus('error')
       setMessage('Network error. Please try again.')
+      analytics.emailSubmit('error', 'inline')
     }
   }
 

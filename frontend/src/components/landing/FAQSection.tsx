@@ -2,6 +2,7 @@
 
 import { useState } from 'react'
 import { ChevronDown } from 'lucide-react'
+import { analytics } from '@/lib/analytics'
 
 export function FAQSection() {
   const [openIndex, setOpenIndex] = useState<number | null>(0)
@@ -60,7 +61,14 @@ export function FAQSection() {
               className="bg-slate-800/50 border border-slate-700 rounded-lg overflow-hidden hover:border-sky-500/50 transition-colors"
             >
               <button
-                onClick={() => setOpenIndex(openIndex === index ? null : index)}
+                onClick={() => {
+                  const newIndex = openIndex === index ? null : index
+                  setOpenIndex(newIndex)
+                  // Track when opening (not closing)
+                  if (newIndex === index) {
+                    analytics.faqOpen(faq.question)
+                  }
+                }}
                 className="w-full flex items-center justify-between p-6 text-left"
               >
                 <span className="text-white font-medium pr-8">
