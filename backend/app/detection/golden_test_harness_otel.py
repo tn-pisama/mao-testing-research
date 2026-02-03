@@ -556,7 +556,11 @@ class OTELGoldenTraceTestHarness:
         })()
 
     def _run_f10_communication(self, detector_input: Dict) -> Any:
-        """Run F10 Communication Breakdown detector."""
+        """Run F10 Communication Breakdown detector.
+
+        Checks all sequential message pairs for communication breakdowns,
+        not just the first two messages.
+        """
         detector = CommunicationBreakdownDetector()
 
         messages = detector_input.get("messages", [])
@@ -567,20 +571,37 @@ class OTELGoldenTraceTestHarness:
                 'raw_score': 0,
             })()
 
-        # Extract sender and receiver messages
-        sender_msg = messages[0]
-        receiver_msg = messages[1]
+        # Check all sequential message pairs for breakdowns
+        all_detections = []
+        for i in range(len(messages) - 1):
+            sender_msg = messages[i]
+            receiver_msg = messages[i + 1]
 
-        result = detector.detect(
-            sender_message=sender_msg.content,
-            receiver_response=receiver_msg.content,
-            sender_name=sender_msg.from_agent,
-            receiver_name=receiver_msg.to_agent,
-        )
+            result = detector.detect(
+                sender_message=sender_msg.content,
+                receiver_response=receiver_msg.content,
+                sender_name=sender_msg.from_agent,
+                receiver_name=receiver_msg.to_agent,
+            )
+
+            if result.detected:
+                all_detections.append(result)
+
+        # Return breakdown if any pair failed
+        if all_detections:
+            # Use highest confidence detection
+            best_detection = max(all_detections, key=lambda d: d.confidence)
+            return type('Result', (), {
+                'detected': True,
+                'confidence': best_detection.confidence,
+                'raw_score': getattr(best_detection, 'severity', 0),
+            })()
+
+        # No breakdowns detected
         return type('Result', (), {
-            'detected': result.detected,
-            'confidence': result.confidence,
-            'raw_score': getattr(result, 'severity', 0),
+            'detected': False,
+            'confidence': 0.0,
+            'raw_score': 0,
         })()
 
     def _run_f12_validation(self, detector_input: List) -> Any:
