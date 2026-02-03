@@ -25,6 +25,7 @@ from app.api.v1 import (
     feedback,
     healing,
     settings as settings_router,
+    billing,
 )
 
 settings = get_settings()
@@ -137,6 +138,7 @@ app.include_router(conversations.router, prefix="/api/v1/tenants/{tenant_id}")  
 app.include_router(feedback.router, prefix="/api/v1/tenants/{tenant_id}")  # Detection feedback
 app.include_router(healing.router, prefix="/api/v1/tenants/{tenant_id}")  # Self-healing operations
 app.include_router(settings_router.router, prefix="/api/v1/tenants/{tenant_id}")  # Tenant settings
+app.include_router(billing.router, prefix="/api/v1")  # Stripe billing
 
 # Enterprise routers - conditionally included based on feature flags
 if enterprise_routers_loaded:

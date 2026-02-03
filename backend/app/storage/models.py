@@ -17,7 +17,15 @@ class Tenant(Base):
     clerk_org_id = Column(String(255), nullable=True, unique=True)
     settings = Column(JSONB, default=dict)
     created_at = Column(DateTime(timezone=True), server_default=func.now())
-    
+
+    # Billing fields
+    plan = Column(String(20), default="free", nullable=False)
+    stripe_customer_id = Column(String(255), unique=True, nullable=True)
+    stripe_subscription_id = Column(String(255), nullable=True)
+    subscription_status = Column(String(50), nullable=True)  # active, canceled, past_due, etc.
+    current_period_end = Column(DateTime(timezone=True), nullable=True)
+    span_limit = Column(Integer, default=10000, nullable=False)  # Free tier default
+
     traces = relationship("Trace", back_populates="tenant")
     detections = relationship("Detection", back_populates="tenant")
     users = relationship("User", back_populates="tenant")
