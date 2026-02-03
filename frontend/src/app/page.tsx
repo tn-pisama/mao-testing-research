@@ -6,8 +6,12 @@ import { useState, useEffect } from 'react'
 import {
   LandingHeader,
   HeroSection,
+  DemoVideo,
   FeatureCards,
+  SocialProof,
   QuickStart,
+  ComparisonTable,
+  FAQSection,
   PlatformCTA,
   WaitlistModal,
   Footer,
@@ -33,8 +37,12 @@ export default function Home() {
     <main className="min-h-screen bg-slate-900">
       <LandingHeader onJoinWaitlist={() => setShowWaitlist(true)} />
       <HeroSection />
+      <DemoVideo />
       <FeatureCards />
+      <SocialProof />
       <QuickStart />
+      <ComparisonTable />
+      <FAQSection />
       <PlatformCTA onJoinWaitlist={() => setShowWaitlist(true)} />
       <Footer />
 
