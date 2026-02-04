@@ -19,6 +19,7 @@ import {
   Sparkles,
   Wrench,
   Star,
+  User,
 } from 'lucide-react'
 import { useUserPreferences } from '@/lib/user-preferences'
 
@@ -56,10 +57,12 @@ const developerAgentItems: NavItem[] = [
 ]
 
 const n8nSettingsItems: NavItem[] = [
+  { label: 'Account', href: '/account', icon: User },
   { label: 'Settings', href: '/settings', icon: Settings },
 ]
 
 const developerSettingsItems: NavItem[] = [
+  { label: 'Account', href: '/account', icon: User },
   { label: 'API Keys', href: '/settings/api-keys', icon: Code2 },
   { label: 'Integrations', href: '/settings/integrations', icon: Box },
   { label: 'Settings', href: '/settings', icon: Settings },

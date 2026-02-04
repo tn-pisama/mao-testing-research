@@ -8,6 +8,7 @@ const protectedRoutes = [
   '/traces',
   '/detections',
   '/settings',
+  '/account',
   '/demo',
   '/review',
   '/testing',
