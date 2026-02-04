@@ -1,6 +1,7 @@
 'use client'
 
-import { Bell, Search, Menu, User } from 'lucide-react'
+import { Bell, Search, Menu, User, WifiOff, Wifi } from 'lucide-react'
+import { useApiWithFallback } from '@/hooks/useApiWithFallback'
 
 interface HeaderProps {
   onMenuClick?: () => void
@@ -9,6 +10,8 @@ interface HeaderProps {
 }
 
 export function Header({ onMenuClick, title, notificationCount = 0 }: HeaderProps) {
+  const { isDemoMode } = useApiWithFallback()
+
   return (
     <header className="flex items-center justify-between h-16 px-6 bg-slate-900 border-b border-slate-800">
       <div className="flex items-center gap-4">
@@ -24,6 +27,20 @@ export function Header({ onMenuClick, title, notificationCount = 0 }: HeaderProp
       </div>
 
       <div className="flex items-center gap-3">
+        {/* Demo Mode Indicator */}
+        {isDemoMode && (
+          <span className="flex items-center gap-1.5 px-2 py-1 text-xs font-medium rounded-full bg-amber-500/20 text-amber-400 border border-amber-500/30">
+            <WifiOff size={12} />
+            Demo Mode
+          </span>
+        )}
+        {!isDemoMode && (
+          <span className="flex items-center gap-1.5 px-2 py-1 text-xs font-medium rounded-full bg-green-500/20 text-green-400 border border-green-500/30">
+            <Wifi size={12} />
+            Live
+          </span>
+        )}
+
         {/* Search */}
         <div className="hidden md:flex items-center gap-2 px-3 py-2 bg-slate-800 rounded-lg">
           <Search size={18} className="text-slate-400" />

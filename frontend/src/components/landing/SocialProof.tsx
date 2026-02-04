@@ -29,19 +29,6 @@ export function SocialProof() {
   return (
     <section className="py-20 px-4 bg-slate-900/50">
       <div className="max-w-7xl mx-auto">
-        {/* Trusted By */}
-        <div className="text-center mb-16">
-          <p className="text-slate-400 text-sm uppercase tracking-wider mb-8">
-            Trusted by teams at
-          </p>
-          <div className="flex flex-wrap justify-center gap-8 items-center opacity-60">
-            {/* Placeholder logos - replace with actual company logos */}
-            <div className="text-slate-500 font-semibold text-lg">AgentCo</div>
-            <div className="text-slate-500 font-semibold text-lg">MultiAgent Labs</div>
-            <div className="text-slate-500 font-semibold text-lg">AI Support Tool</div>
-          </div>
-        </div>
-
         {/* Testimonials */}
         <div className="grid md:grid-cols-3 gap-8 mb-16">
           {testimonials.map((testimonial, index) => (
