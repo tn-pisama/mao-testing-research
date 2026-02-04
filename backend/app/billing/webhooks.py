@@ -10,7 +10,9 @@ from datetime import datetime
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy import select
 
-from app.storage.models import Tenant
+from app.storage.models import Tenant, User
+from app.notifications.email import EmailNotifier
+from app.config import get_settings
 from .service import stripe_service
 from .constants import SubscriptionStatus
 
@@ -181,7 +183,30 @@ async def handle_payment_failed(
 
     logger.warning(f"Payment failed for tenant {tenant.id}, marked as past_due")
 
-    # TODO: Send notification email
+    # Send notification email to owner
+    settings = get_settings()
+    owner_result = await db.execute(
+        select(User).where(User.tenant_id == tenant.id, User.role == "owner")
+    )
+    owner = owner_result.scalar_one_or_none()
+    if owner and owner.email:
+        notifier = EmailNotifier()
+        try:
+            await notifier.send(
+                to=owner.email,
+                subject="PISAMA: Payment Failed - Action Required",
+                body=f"""Your payment for PISAMA {tenant.plan} plan has failed.
+
+Please update your payment method to avoid service interruption.
+
+Update payment: {settings.FRONTEND_URL}/billing
+
+If you have questions, reply to this email.
+""",
+            )
+            logger.info(f"Sent payment failure notification to {owner.email}")
+        except Exception as e:
+            logger.error(f"Failed to send payment notification: {e}")
 
 
 # Event handler mapping

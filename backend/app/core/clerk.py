@@ -50,12 +50,15 @@ class ClerkAuth:
         jwks = await self.get_jwks()
         
         try:
+            # Conditionally verify audience if configured
+            decode_options = {"verify_aud": bool(settings.clerk_jwt_audience)}
             return jwt.decode(
                 token,
                 jwks,
                 algorithms=["RS256"],
                 issuer=self.issuer,
-                options={"verify_aud": False}
+                audience=settings.clerk_jwt_audience if settings.clerk_jwt_audience else None,
+                options=decode_options
             )
         except JWKError as e:
             raise JWTError(f"Key verification failed: {e}")

@@ -167,6 +167,9 @@ class HybridDetectionPipeline:
         if failure_mode in self.config.high_stakes_modes:
             model_key = self.config.high_stakes_model_key
             logger.info(f"Using high-stakes model ({model_key}) for {failure_mode}")
+        elif failure_mode in self.config.low_stakes_modes:
+            model_key = self.config.low_stakes_model_key
+            logger.info(f"Using low-stakes model ({model_key}) for {failure_mode}")
         else:
             model_key = self.config.default_model_key
 

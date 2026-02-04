@@ -271,6 +271,7 @@ class Settings(BaseSettings):
     clerk_secret_key: str = ""
     clerk_webhook_secret: str = ""
     clerk_jwt_issuer: str = ""
+    clerk_jwt_audience: str = ""  # Optional: Clerk Frontend API URL for audience verification
     jwks_cache_ttl_seconds: int = 3600
 
     # Google OAuth settings

@@ -7,11 +7,11 @@ Handles Stripe operations: checkout, customer portal, subscription management.
 import stripe
 import logging
 from typing import Optional, Dict
-from datetime import datetime
+from datetime import datetime, timedelta, timezone
 from sqlalchemy.ext.asyncio import AsyncSession
-from sqlalchemy import select, update
+from sqlalchemy import select, update, func
 
-from app.storage.models import Tenant
+from app.storage.models import Tenant, User, State
 from app.config import get_settings
 from .constants import PlanTier, get_span_limit, get_stripe_price_id, PLANS
 from .schemas import CheckoutResponse, PortalResponse, BillingStatus, UsageInfo
@@ -78,9 +78,17 @@ class StripeService:
         if tenant.stripe_customer_id:
             customer_id = tenant.stripe_customer_id
         else:
+            # Get owner's email for Stripe customer
+            owner_result = await db.execute(
+                select(User).where(User.tenant_id == tenant_id, User.role == "owner")
+            )
+            owner = owner_result.scalar_one_or_none()
+            owner_email = owner.email if owner else tenant.name
+
             # Create new customer
             customer = stripe.Customer.create(
-                email=tenant.name,  # TODO: Use actual tenant email when available
+                email=owner_email,
+                name=tenant.name,
                 metadata={"tenant_id": str(tenant_id)},
             )
             customer_id = customer.id
@@ -180,9 +188,19 @@ class StripeService:
         if not tenant:
             raise ValueError(f"Tenant not found: {tenant_id}")
 
-        # Get current span usage (TODO: Implement actual usage tracking)
-        # For now, return 0
-        span_count = 0
+        # Get billing period start (use current_period_start or default to 30 days ago)
+        if hasattr(tenant, 'current_period_start') and tenant.current_period_start:
+            period_start = tenant.current_period_start
+        else:
+            period_start = datetime.now(timezone.utc) - timedelta(days=30)
+
+        # Count states (spans) for this tenant in billing period
+        span_result = await db.execute(
+            select(func.count(State.id))
+            .where(State.tenant_id == tenant_id)
+            .where(State.created_at >= period_start)
+        )
+        span_count = span_result.scalar() or 0
 
         # Calculate usage percentage
         span_limit = tenant.span_limit or get_span_limit(tenant.plan)
