@@ -106,7 +106,7 @@ export function TabsList({ children, className }: TabsListProps) {
       role="tablist"
       aria-orientation="horizontal"
       onKeyDown={handleKeyDown}
-      className={clsx('flex gap-1 p-1 bg-slate-800 rounded-lg', className)}
+      className={clsx('flex gap-2 border-b border-primary-500/30', className)}
     >
       {children}
     </div>
@@ -143,10 +143,10 @@ export function TabsTrigger({ value, children, className }: TabsTriggerProps) {
       tabIndex={isActive ? 0 : -1}
       onClick={() => onValueChange(value)}
       className={clsx(
-        'px-4 py-2 text-sm font-medium rounded-md transition-colors focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2 focus:ring-offset-slate-800',
+        'px-4 py-2 font-mono font-medium border-b-2 transition-all duration-200 focus:outline-none focus:ring-2 focus:ring-primary-500 focus:ring-offset-2 focus:ring-offset-black',
         isActive
-          ? 'bg-blue-600 text-white'
-          : 'text-slate-400 hover:text-white hover:bg-slate-700',
+          ? 'text-primary-500 border-primary-500 shadow-[0_2px_8px_rgba(0,212,255,0.3)]'
+          : 'text-white/50 border-transparent hover:text-primary-500 hover:border-primary-500/50',
         className
       )}
     >

@@ -9,30 +9,39 @@ const config: Config = {
   theme: {
     extend: {
       colors: {
+        black: '#0a0a0a',
         primary: {
-          50: '#f0f9ff',
-          100: '#e0f2fe',
-          200: '#bae6fd',
-          300: '#7dd3fc',
-          400: '#38bdf8',
-          500: '#0ea5e9',
-          600: '#0284c7',
-          700: '#0369a1',
-          800: '#075985',
-          900: '#0c4a6e',
+          400: '#22d3ee',
+          500: '#00d4ff',
+          600: '#00ffff',
         },
-        danger: {
-          500: '#ef4444',
-          600: '#dc2626',
-        },
-        warning: {
-          500: '#f59e0b',
-          600: '#d97706',
+        accent: {
+          400: '#f472b6',
+          500: '#ff00ff',
+          600: '#ff00ff',
         },
         success: {
-          500: '#22c55e',
-          600: '#16a34a',
+          500: '#00ff88',
+          600: '#00ff88',
         },
+        warning: {
+          500: '#ffaa00',
+          600: '#ffaa00',
+        },
+        danger: {
+          500: '#ff0055',
+          600: '#ff0055',
+        },
+      },
+      fontFamily: {
+        sans: ['-apple-system', 'BlinkMacSystemFont', '"Segoe UI"', 'Roboto', 'Arial', 'sans-serif'],
+        mono: ['"JetBrains Mono"', 'ui-monospace', '"SF Mono"', 'Monaco', 'Consolas', 'monospace'],
+      },
+      boxShadow: {
+        'glow-cyan': '0 0 10px rgba(0, 212, 255, 0.5)',
+        'glow-magenta': '0 0 10px rgba(255, 0, 255, 0.5)',
+        'glow-green': '0 0 8px rgba(0, 255, 136, 0.4)',
+        'glow-red': '0 0 8px rgba(255, 0, 85, 0.4)',
       },
     },
   },

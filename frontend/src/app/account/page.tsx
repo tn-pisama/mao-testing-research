@@ -10,7 +10,7 @@ import { useRouter } from 'next/navigation'
 
 export default function AccountPage() {
   const { isSignedIn } = useSafeAuth()
-  const { tenant } = useTenant()
+  const { tenantId } = useTenant()
   const { data: session } = useSession()
   const router = useRouter()
 
@@ -80,13 +80,12 @@ export default function AccountPage() {
             </div>
 
             {/* Tenant/Organization */}
-            {tenant && (
+            {tenantId && tenantId !== 'default' && (
               <div className="flex items-start gap-3 py-3 border-t border-slate-700">
                 <Building2 size={18} className="text-slate-400 mt-0.5" />
                 <div className="flex-1">
                   <p className="text-sm text-slate-400">Organization</p>
-                  <p className="text-white">{tenant.name}</p>
-                  <p className="text-xs text-slate-500 mt-1">Plan: {tenant.plan}</p>
+                  <p className="text-white">{tenantId}</p>
                 </div>
               </div>
             )}

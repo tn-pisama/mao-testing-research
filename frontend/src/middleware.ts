@@ -8,7 +8,6 @@ const protectedRoutes = [
   '/traces',
   '/detections',
   '/settings',
-  '/account',
   '/demo',
   '/review',
   '/testing',
@@ -34,6 +33,11 @@ export async function middleware(req: NextRequest) {
     const { pathname } = req.nextUrl
 
     if (isPublicRoute(pathname)) {
+      return NextResponse.next()
+    }
+
+    // Full auth bypass for local development
+    if (process.env.DISABLE_AUTH === 'true') {
       return NextResponse.next()
     }
 

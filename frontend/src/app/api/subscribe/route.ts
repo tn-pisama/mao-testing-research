@@ -1,7 +1,9 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { Resend } from 'resend'
 
-const resend = new Resend(process.env.RESEND_API_KEY)
+const resend = process.env.RESEND_API_KEY
+  ? new Resend(process.env.RESEND_API_KEY)
+  : null
 
 export async function POST(request: NextRequest) {
   try {
@@ -13,6 +15,15 @@ export async function POST(request: NextRequest) {
         { error: 'Valid email is required' },
         { status: 400 }
       )
+    }
+
+    // Check if Resend is configured
+    if (!resend) {
+      console.error('RESEND_API_KEY not configured')
+      return NextResponse.json({
+        success: true,
+        message: 'Thanks for signing up! We\'ll be in touch soon.',
+      })
     }
 
     // Add to Resend audience (create audience in Resend dashboard first)

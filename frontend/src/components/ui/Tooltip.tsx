@@ -23,10 +23,10 @@ export function Tooltip({ content, children, position = 'top', className }: Tool
   }
 
   const arrowClasses = {
-    top: 'top-full left-1/2 -translate-x-1/2 border-t-slate-700 border-x-transparent border-b-transparent',
-    bottom: 'bottom-full left-1/2 -translate-x-1/2 border-b-slate-700 border-x-transparent border-t-transparent',
-    left: 'left-full top-1/2 -translate-y-1/2 border-l-slate-700 border-y-transparent border-r-transparent',
-    right: 'right-full top-1/2 -translate-y-1/2 border-r-slate-700 border-y-transparent border-l-transparent',
+    top: 'top-full left-1/2 -translate-x-1/2 border-t-black border-x-transparent border-b-transparent',
+    bottom: 'bottom-full left-1/2 -translate-x-1/2 border-b-black border-x-transparent border-t-transparent',
+    left: 'left-full top-1/2 -translate-y-1/2 border-l-black border-y-transparent border-r-transparent',
+    right: 'right-full top-1/2 -translate-y-1/2 border-r-black border-y-transparent border-l-transparent',
   }
 
   return (
@@ -44,7 +44,7 @@ export function Tooltip({ content, children, position = 'top', className }: Tool
           ref={tooltipRef}
           role="tooltip"
           className={clsx(
-            'absolute z-50 px-3 py-2 text-sm text-slate-200 bg-slate-800 border border-slate-700 rounded-lg shadow-lg whitespace-normal max-w-xs',
+            'absolute z-50 px-3 py-2 text-sm font-mono text-white bg-black border border-primary-500/50 rounded shadow-[0_0_15px_rgba(0,212,255,0.3)] whitespace-normal max-w-xs',
             positionClasses[position],
             className
           )}
@@ -138,10 +138,10 @@ export function TermTooltip({ term, children, showIcon = true }: TermTooltipProp
       }
       position="top"
     >
-      <span className="inline-flex items-center gap-1 border-b border-dashed border-slate-500 cursor-help">
+      <span className="inline-flex items-center gap-1 border-b border-dashed border-primary-500/50 cursor-help">
         {children || info.term}
         {showIcon && (
-          <svg className="w-3 h-3 text-slate-500" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+          <svg className="w-3 h-3 text-primary-500" fill="none" viewBox="0 0 24 24" stroke="currentColor">
             <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
           </svg>
         )}
