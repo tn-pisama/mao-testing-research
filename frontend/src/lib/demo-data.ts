@@ -22,6 +22,7 @@ import {
   HallucinationCheckResult,
   OverflowCheckResult,
   CostCalculation,
+  HandoffAnalysis,
 } from './api'
 
 const agentNames = [
@@ -1577,5 +1578,110 @@ export function generateDemoDiagnoseResult(traceId?: string): DiagnoseResult {
     agent_interactions: agentInteractions,
     bottlenecks,
     suggestions: suggestions.slice(0, randomInt(2, 4)),
+  }
+}
+
+// Generate demo handoff analysis with graph structure
+export function generateDemoHandoffAnalysis(workflow: QualityAssessment): HandoffAnalysis {
+  const agents = (workflow.agent_scores || []).map(a => a.agent_id)
+  const pattern = workflow.orchestration_score?.detected_pattern || 'sequential'
+  
+  if (agents.length === 0) {
+    return {
+      total_handoffs: 0,
+      successful_handoffs: 0,
+      failed_handoffs: 0,
+      avg_latency_ms: 0,
+      max_latency_ms: 0,
+      context_completeness: 1.0,
+      data_loss_detected: false,
+      circular_handoffs: [],
+      agents_involved: [],
+      handoff_graph: {},
+      issues: [],
+    }
+  }
+
+  // Build handoff graph based on detected pattern
+  let handoff_graph: Record<string, string[]> = {}
+  
+  if (pattern === 'sequential' || pattern === 'pipeline') {
+    // Chain: A → B → C → D
+    agents.forEach((agent, idx) => {
+      if (idx < agents.length - 1) {
+        handoff_graph[agent] = [agents[idx + 1]]
+      }
+    })
+  } else if (pattern === 'fan-out') {
+    // A → [B, C, D] → E (if enough agents)
+    if (agents.length >= 3) {
+      const firstAgent = agents[0]
+      const middleAgents = agents.slice(1, -1)
+      const lastAgent = agents[agents.length - 1]
+      
+      handoff_graph[firstAgent] = middleAgents
+      middleAgents.forEach(agent => {
+        handoff_graph[agent] = [lastAgent]
+      })
+    } else {
+      // Fallback to sequential
+      agents.forEach((agent, idx) => {
+        if (idx < agents.length - 1) {
+          handoff_graph[agent] = [agents[idx + 1]]
+        }
+      })
+    }
+  } else if (pattern === 'parallel') {
+    // All agents run in parallel, converge to last
+    if (agents.length >= 2) {
+      const parallelAgents = agents.slice(0, -1)
+      const finalAgent = agents[agents.length - 1]
+      parallelAgents.forEach(agent => {
+        handoff_graph[agent] = [finalAgent]
+      })
+    } else {
+      handoff_graph[agents[0]] = []
+    }
+  } else if (pattern === 'conditional') {
+    // Branching pattern: A → B or C → D
+    if (agents.length >= 3) {
+      handoff_graph[agents[0]] = [agents[1], agents[2]]
+      if (agents.length > 3) {
+        handoff_graph[agents[1]] = [agents[3]]
+        handoff_graph[agents[2]] = [agents[3]]
+      }
+    } else {
+      agents.forEach((agent, idx) => {
+        if (idx < agents.length - 1) {
+          handoff_graph[agent] = [agents[idx + 1]]
+        }
+      })
+    }
+  } else {
+    // Hierarchical or other patterns - default to sequential
+    agents.forEach((agent, idx) => {
+      if (idx < agents.length - 1) {
+        handoff_graph[agent] = [agents[idx + 1]]
+      }
+    })
+  }
+
+  // Calculate handoff counts
+  const totalHandoffs = Object.values(handoff_graph).reduce((sum, targets) => sum + targets.length, 0)
+  const failedHandoffs = workflow.overall_score < 0.7 ? randomInt(1, 3) : randomInt(0, 1)
+  const successfulHandoffs = totalHandoffs - failedHandoffs
+
+  return {
+    total_handoffs: totalHandoffs,
+    successful_handoffs: successfulHandoffs,
+    failed_handoffs: failedHandoffs,
+    avg_latency_ms: randomInt(50, 200),
+    max_latency_ms: randomInt(300, 800),
+    context_completeness: Math.max(0.7, workflow.overall_score + randomInt(-10, 10) / 100),
+    data_loss_detected: failedHandoffs > 0,
+    circular_handoffs: [], // No circular dependencies in demo data
+    agents_involved: agents,
+    handoff_graph,
+    issues: failedHandoffs > 0 ? ['Some handoffs failed due to timeout'] : [],
   }
 }
