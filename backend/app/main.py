@@ -26,6 +26,7 @@ from app.api.v1 import (
     healing,
     settings as settings_router,
     billing,
+    workflow_groups,
 )
 
 settings = get_settings()
@@ -139,6 +140,7 @@ app.include_router(feedback.router, prefix="/api/v1/tenants/{tenant_id}")  # Det
 app.include_router(healing.router, prefix="/api/v1/tenants/{tenant_id}")  # Self-healing operations
 app.include_router(settings_router.router, prefix="/api/v1/tenants/{tenant_id}")  # Tenant settings
 app.include_router(billing.router, prefix="/api/v1")  # Stripe billing
+app.include_router(workflow_groups.router, prefix="/api/v1/tenants/{tenant_id}")  # Workflow grouping
 
 # Enterprise routers - conditionally included based on feature flags
 if enterprise_routers_loaded:
