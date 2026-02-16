@@ -1,9 +1,10 @@
 'use client'
 
 import { useState } from 'react'
+import Link from 'next/link'
 import type { QualityAssessment } from '@/lib/api'
 import { QualityGradeBadge } from '@/components/quality/QualityGradeBadge'
-import { AlertCircle, Users, Clock } from 'lucide-react'
+import { AlertCircle, Users, Clock, ExternalLink } from 'lucide-react'
 import clsx from 'clsx'
 
 interface WorkflowListViewProps {
@@ -173,6 +174,16 @@ function WorkflowCard({ workflow, isSelected, onClick }: WorkflowCardProps) {
           <span>{formatTimeAgo(workflow.assessed_at)}</span>
         </div>
       )}
+
+      {/* View Full Button */}
+      <Link
+        href={`/workflows/${workflow.workflow_id}`}
+        onClick={(e) => e.stopPropagation()}
+        className="mt-3 w-full flex items-center justify-center gap-2 px-3 py-2 bg-blue-600 hover:bg-blue-500 text-white text-sm font-medium rounded-lg transition-colors"
+      >
+        <ExternalLink size={14} />
+        View Full Details
+      </Link>
     </div>
   )
 }
