@@ -89,13 +89,17 @@ export function QualitySuggestionsCard({
             )}
 
             <div className="space-y-3">
-              {sortedSuggestions.map((suggestion) => {
+              {sortedSuggestions.map((suggestion, index) => {
                 const config = severityConfig[suggestion.severity] || severityConfig.info
                 const Icon = config.icon
+                // Fallback to index if IDs are undefined
+                const key = suggestion.target_id && suggestion.id
+                  ? `${suggestion.target_id}-${suggestion.id}`
+                  : `suggestion-${index}`
 
                 return (
                   <div
-                    key={`${suggestion.target_id}-${suggestion.id}`}
+                    key={key}
                     className="p-3 bg-primary-500/10 rounded-lg border border-primary-500/30 hover:border-primary-500/50 hover:shadow-glow-green transition-all"
                   >
                     <div className="flex items-start gap-3">
