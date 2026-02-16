@@ -85,10 +85,10 @@ export function Sidebar({ isCollapsed = false, onToggle }: SidebarProps) {
       <Link
         href={item.href}
         className={clsx(
-          'flex items-center gap-3 px-3 py-2 rounded-lg transition-colors',
+          'flex items-center gap-3 px-3 py-2 rounded-lg transition-all duration-200 font-mono',
           isActive
-            ? 'bg-blue-600/20 text-blue-400'
-            : 'text-slate-400 hover:bg-slate-800 hover:text-slate-200'
+            ? 'bg-primary-500/20 text-primary-500 shadow-glow-green border border-primary-500/50'
+            : 'text-primary-400 hover:bg-primary-500/10 hover:text-primary-500 hover:shadow-glow-green'
         )}
       >
         <Icon size={20} />
@@ -96,7 +96,7 @@ export function Sidebar({ isCollapsed = false, onToggle }: SidebarProps) {
           <>
             <span className="flex-1">{item.label}</span>
             {item.badge && (
-              <span className="px-2 py-0.5 text-xs bg-blue-600 text-white rounded-full">
+              <span className="px-2 py-0.5 text-xs bg-primary-500/20 text-primary-500 border border-primary-500/50 rounded-full font-mono">
                 {item.badge}
               </span>
             )}
@@ -115,7 +115,7 @@ export function Sidebar({ isCollapsed = false, onToggle }: SidebarProps) {
     return (
       <div className="space-y-1">
         {title && !isCollapsed && (
-          <div className="px-3 py-2 text-xs font-semibold text-slate-500 uppercase tracking-wider">
+          <div className="px-3 py-2 text-xs font-semibold text-primary-500/60 uppercase tracking-wider font-mono">
             {title}
           </div>
         )}
@@ -132,17 +132,17 @@ export function Sidebar({ isCollapsed = false, onToggle }: SidebarProps) {
   return (
     <aside
       className={clsx(
-        'flex flex-col bg-slate-900 border-r border-slate-800 transition-all duration-300',
+        'flex flex-col bg-[#0a0a0a] border-r border-primary-500/30 shadow-[0_0_10px_rgba(0,255,136,0.1)] transition-all duration-300',
         isCollapsed ? 'w-16' : 'w-64'
       )}
     >
       {/* Logo */}
-      <div className="flex items-center h-16 px-4 border-b border-slate-800">
+      <div className="flex items-center h-16 px-4 border-b border-primary-500/30">
         <Link href="/" className="flex items-center gap-2">
-          <Shield className="h-8 w-8 text-blue-500" />
+          <Shield className="h-8 w-8 text-primary-500 shadow-glow-green" />
           {!isCollapsed && (
-            <span className="text-xl font-bold text-white">
-              {isSimplifiedView ? 'Workflow Guard' : 'MAO Testing'}
+            <span className="text-xl font-bold text-primary-500 font-mono glow-text">
+              {isSimplifiedView ? 'Workflow Guard' : 'PISAMA'}
             </span>
           )}
         </Link>
@@ -167,17 +167,17 @@ export function Sidebar({ isCollapsed = false, onToggle }: SidebarProps) {
       </nav>
 
       {/* Footer */}
-      <div className="p-4 border-t border-slate-800">
+      <div className="p-4 border-t border-primary-500/30">
         {!isCollapsed && (
-          <div className="text-xs text-slate-500">
+          <div className="text-xs text-primary-400 font-mono">
             {isSimplifiedView ? (
               <>
                 <div>Workflow Guard</div>
-                <div className="text-slate-600">Powered by MAO</div>
+                <div className="text-primary-500/60">Powered by PISAMA</div>
               </>
             ) : (
               <>
-                <div>MAO Testing Platform</div>
+                <div>PISAMA Platform</div>
                 <div>v1.0.0</div>
               </>
             )}

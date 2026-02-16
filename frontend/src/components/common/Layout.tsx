@@ -14,7 +14,7 @@ export function Layout({ children, title }: LayoutProps) {
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false)
 
   return (
-    <div className="flex h-screen bg-slate-950">
+    <div className="flex h-screen bg-black">
       {/* Desktop Sidebar */}
       <div className="hidden lg:flex">
         <Sidebar

@@ -13,17 +13,17 @@ export function Header({ onMenuClick, title, notificationCount = 0 }: HeaderProp
   const { isDemoMode } = useApiWithFallback()
 
   return (
-    <header className="flex items-center justify-between h-16 px-6 bg-slate-900 border-b border-slate-800">
+    <header className="flex items-center justify-between h-16 px-6 bg-[#0a0a0a] border-b border-primary-500/30 shadow-[0_0_10px_rgba(0,255,136,0.1)]">
       <div className="flex items-center gap-4">
         {onMenuClick && (
           <button
             onClick={onMenuClick}
-            className="p-2 text-slate-400 hover:text-white hover:bg-slate-800 rounded-lg lg:hidden"
+            className="p-2 text-primary-400 hover:text-primary-500 hover:bg-primary-500/10 hover:shadow-glow-green rounded-lg lg:hidden"
           >
             <Menu size={20} />
           </button>
         )}
-        {title && <h1 className="text-xl font-semibold text-white">{title}</h1>}
+        {title && <h1 className="text-xl font-semibold text-primary-500 font-mono">{title}</h1>}
       </div>
 
       <div className="flex items-center gap-3">
@@ -42,21 +42,21 @@ export function Header({ onMenuClick, title, notificationCount = 0 }: HeaderProp
         )}
 
         {/* Search */}
-        <div className="hidden md:flex items-center gap-2 px-3 py-2 bg-slate-800 rounded-lg">
-          <Search size={18} className="text-slate-400" />
+        <div className="hidden md:flex items-center gap-2 px-3 py-2 bg-black border border-primary-500/30 rounded-lg font-mono">
+          <Search size={18} className="text-primary-400" />
           <input
             type="text"
             placeholder="Search..."
-            className="bg-transparent border-none outline-none text-sm text-slate-300 placeholder-slate-500 w-48"
+            className="bg-transparent border-none outline-none text-sm text-primary-400 placeholder-primary-500/40 w-48"
           />
-          <kbd className="hidden lg:inline-flex px-2 py-0.5 text-xs bg-slate-700 text-slate-400 rounded">
+          <kbd className="hidden lg:inline-flex px-2 py-0.5 text-xs bg-primary-500/20 text-primary-500 border border-primary-500/30 rounded font-mono">
             ⌘K
           </kbd>
         </div>
 
         {/* Notifications */}
         <button
-          className="p-2 text-slate-400 hover:text-white hover:bg-slate-800 rounded-lg relative"
+          className="p-2 text-primary-400 hover:text-primary-500 hover:bg-primary-500/10 hover:shadow-glow-green rounded-lg relative"
           aria-label={`Notifications${notificationCount > 0 ? ` (${notificationCount} unread)` : ''}`}
         >
           <Bell size={20} />
@@ -66,7 +66,7 @@ export function Header({ onMenuClick, title, notificationCount = 0 }: HeaderProp
         </button>
 
         {/* User Menu */}
-        <button className="flex items-center gap-2 p-2 text-slate-400 hover:text-white hover:bg-slate-800 rounded-lg">
+        <button className="flex items-center gap-2 p-2 text-primary-400 hover:text-primary-500 hover:bg-primary-500/10 hover:shadow-glow-green rounded-lg">
           <User size={20} />
         </button>
       </div>
