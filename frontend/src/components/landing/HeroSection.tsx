@@ -5,7 +5,7 @@ export function HeroSection() {
     <section className="py-8">
       <div className="font-mono">
         <h1 className="text-4xl font-bold glow-text mb-2">
-          {'> MAO_TESTING_PLATFORM'}
+          {'> PISAMA_PLATFORM'}
         </h1>
         <p className="text-base text-[#00ffff] opacity-80">
           {'// DETECT_AND_FIX_FAILURES_IN_MULTI_AGENT_SYSTEMS'}
