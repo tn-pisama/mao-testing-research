@@ -4,6 +4,7 @@ import { useState, useEffect, useCallback, useRef } from 'react'
 import { useSafeAuth as useAuth } from '@/hooks/useSafeAuth'
 import { useTenant } from '@/hooks/useTenant'
 import { createApiClient } from '@/lib/api'
+import { useUIStore } from '@/stores/uiStore'
 import {
   generateDemoLoopAnalytics,
   generateDemoCostAnalytics,
@@ -28,6 +29,7 @@ import type { LoopAnalytics, CostAnalytics, Detection, Trace } from '@/lib/api'
 export function useApiWithFallback() {
   const { getToken } = useAuth()
   const { tenantId, isLoaded: tenantLoaded } = useTenant()
+  const { filterPreferences } = useUIStore()
   const [isLoading, setIsLoading] = useState(true)
   const [isDemoMode, setIsDemoMode] = useState(true)
   const [error, setError] = useState<string | null>(null)
@@ -95,7 +97,12 @@ export function useApiWithFallback() {
           console.warn('Traces failed:', err.message)
           return null
         }),
-        api.listQualityAssessments({ pageSize: 20 }).catch((err) => {
+        api.listQualityAssessments({
+          pageSize: 20,
+          groupId: filterPreferences.workflowGroupId && filterPreferences.workflowGroupId !== 'all'
+            ? filterPreferences.workflowGroupId
+            : undefined,
+        }).catch((err) => {
           console.warn('Quality assessments failed:', err.message)
           return null
         }),
@@ -152,7 +159,7 @@ export function useApiWithFallback() {
       }
       return false
     }
-  }, [getToken, tenantId])
+  }, [getToken, tenantId, filterPreferences.workflowGroupId])
 
   // Load data on mount and when tenant changes
   useEffect(() => {
