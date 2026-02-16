@@ -16,6 +16,7 @@ import 'reactflow/dist/style.css'
 import type { QualityAssessment } from '@/lib/api'
 import { AgentNode } from './nodes/AgentNode'
 import { StartEndNode } from './nodes/StartEndNode'
+import { DecisionNode } from './nodes/DecisionNode'
 import {
   buildNodesFromAgents,
   buildEdgesFromHandoffs,
@@ -34,6 +35,7 @@ interface WorkflowGraphViewProps {
 const nodeTypes: NodeTypes = {
   agent: AgentNode,
   startEnd: StartEndNode,
+  decision: DecisionNode,
 }
 
 export function WorkflowGraphView({
@@ -49,14 +51,41 @@ export function WorkflowGraphView({
     const nodes = buildNodesFromAgents(workflow.agent_scores || [], pattern)
     const edges = buildEdgesFromHandoffs(handoffGraph, workflow.agent_scores, pattern, handoffMetrics)
 
-    // Apply layout
-    const layouted = applyDagreLayout(nodes, edges, {
+    // Pattern-specific layout parameters
+    let layoutOptions: Parameters<typeof applyDagreLayout>[2] = {
       direction: 'TB',
       nodeWidth: 200,
       nodeHeight: 120,
       rankSeparation: 100,
       nodeSeparation: 80,
-    })
+    }
+
+    if (pattern === 'fan-out' || pattern === 'conditional') {
+      // Wider spacing for branching patterns
+      layoutOptions = {
+        ...layoutOptions,
+        nodeSeparation: 120,
+        rankSeparation: 120,
+      }
+    } else if (pattern === 'parallel') {
+      // Side-by-side layout for parallel execution
+      layoutOptions = {
+        ...layoutOptions,
+        direction: 'TB',
+        nodeSeparation: 150,
+        rankSeparation: 80,
+      }
+    } else if (pattern === 'hierarchical') {
+      // Tighter vertical spacing for hierarchical
+      layoutOptions = {
+        ...layoutOptions,
+        rankSeparation: 80,
+        nodeSeparation: 60,
+      }
+    }
+
+    // Apply layout
+    const layouted = applyDagreLayout(nodes, edges, layoutOptions)
 
     return {
       initialNodes: layouted.nodes,

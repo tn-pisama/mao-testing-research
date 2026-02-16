@@ -92,24 +92,76 @@ export function buildNodesFromAgents(
     position: { x: 0, y: 0 },
   })
 
-  // Add Agent nodes
-  agentScores.forEach((agent) => {
+  // For conditional patterns, add a decision node after the first agent
+  if (pattern === 'conditional' && agentScores.length >= 3) {
+    // Add first agent
+    if (agentScores[0]) {
+      nodes.push({
+        id: agentScores[0].agent_id,
+        type: 'agent',
+        data: {
+          label: agentScores[0].agent_name,
+          agentType: agentScores[0].agent_type,
+          score: agentScores[0].overall_score,
+          grade: agentScores[0].grade,
+          issuesCount: agentScores[0].issues_count,
+          criticalIssues: agentScores[0].critical_issues,
+          hasIssues: agentScores[0].issues_count > 0,
+          hasCritical: agentScores[0].critical_issues.length > 0,
+        },
+        position: { x: 0, y: 0 },
+      })
+    }
+
+    // Add decision node
     nodes.push({
-      id: agent.agent_id,
-      type: 'agent',
+      id: 'decision-1',
+      type: 'decision',
       data: {
-        label: agent.agent_name,
-        agentType: agent.agent_type,
-        score: agent.overall_score,
-        grade: agent.grade,
-        issuesCount: agent.issues_count,
-        criticalIssues: agent.critical_issues,
-        hasIssues: agent.issues_count > 0,
-        hasCritical: agent.critical_issues.length > 0,
+        label: 'Route',
+        condition: 'Conditional branching',
       },
       position: { x: 0, y: 0 },
     })
-  })
+
+    // Add remaining agents (branches)
+    agentScores.slice(1).forEach((agent) => {
+      nodes.push({
+        id: agent.agent_id,
+        type: 'agent',
+        data: {
+          label: agent.agent_name,
+          agentType: agent.agent_type,
+          score: agent.overall_score,
+          grade: agent.grade,
+          issuesCount: agent.issues_count,
+          criticalIssues: agent.critical_issues,
+          hasIssues: agent.issues_count > 0,
+          hasCritical: agent.critical_issues.length > 0,
+        },
+        position: { x: 0, y: 0 },
+      })
+    })
+  } else {
+    // Add all Agent nodes normally for other patterns
+    agentScores.forEach((agent) => {
+      nodes.push({
+        id: agent.agent_id,
+        type: 'agent',
+        data: {
+          label: agent.agent_name,
+          agentType: agent.agent_type,
+          score: agent.overall_score,
+          grade: agent.grade,
+          issuesCount: agent.issues_count,
+          criticalIssues: agent.critical_issues,
+          hasIssues: agent.issues_count > 0,
+          hasCritical: agent.critical_issues.length > 0,
+        },
+        position: { x: 0, y: 0 },
+      })
+    })
+  }
 
   // Add End node
   nodes.push({
@@ -262,6 +314,78 @@ export function buildEdgesFromHandoffs(
       })
     } else {
       // Fallback to sequential if not enough agents
+      agentIds.forEach((agentId, idx) => {
+        if (idx < agentIds.length - 1) {
+          edges.push({
+            id: `${agentId}-${agentIds[idx + 1]}`,
+            source: agentId,
+            target: agentIds[idx + 1],
+            type: 'smoothstep',
+          })
+        }
+      })
+      edges.push({
+        id: `${agentIds[agentIds.length - 1]}-end`,
+        source: agentIds[agentIds.length - 1],
+        target: 'end',
+        type: 'smoothstep',
+      })
+    }
+  } else if (pattern === 'conditional') {
+    // Conditional: A → Decision → [B, C] → D
+    if (agentIds.length >= 3) {
+      const firstAgent = agentIds[0]
+      const branchAgents = agentIds.slice(1, -1)
+      const lastAgent = agentIds[agentIds.length - 1]
+
+      // First agent to decision node
+      edges.push({
+        id: `${firstAgent}-decision-1`,
+        source: firstAgent,
+        target: 'decision-1',
+        type: 'smoothstep',
+      })
+
+      // Decision node to branch agents
+      branchAgents.forEach((branchAgent, idx) => {
+        edges.push({
+          id: `decision-1-${branchAgent}`,
+          source: 'decision-1',
+          target: branchAgent,
+          type: 'smoothstep',
+          sourceHandle: idx === 0 ? 'true' : 'false',
+          label: idx === 0 ? 'Yes' : 'No',
+          labelStyle: {
+            fill: idx === 0 ? '#22c55e' : '#ef4444',
+            fontWeight: 600,
+            fontSize: 11,
+          },
+          labelBgStyle: {
+            fill: '#0f172a',
+            fillOpacity: 0.9,
+          },
+        })
+      })
+
+      // Branch agents converge to last agent
+      branchAgents.forEach((branchAgent) => {
+        edges.push({
+          id: `${branchAgent}-${lastAgent}`,
+          source: branchAgent,
+          target: lastAgent,
+          type: 'smoothstep',
+        })
+      })
+
+      // Last agent to End
+      edges.push({
+        id: `${lastAgent}-end`,
+        source: lastAgent,
+        target: 'end',
+        type: 'smoothstep',
+      })
+    } else {
+      // Fallback to sequential
       agentIds.forEach((agentId, idx) => {
         if (idx < agentIds.length - 1) {
           edges.push({

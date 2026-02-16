@@ -1643,12 +1643,21 @@ export function generateDemoHandoffAnalysis(workflow: QualityAssessment): Handof
       handoff_graph[agents[0]] = []
     }
   } else if (pattern === 'conditional') {
-    // Branching pattern: A → B or C → D
+    // Branching pattern: A → Decision → [B, C] → D
     if (agents.length >= 3) {
-      handoff_graph[agents[0]] = [agents[1], agents[2]]
-      if (agents.length > 3) {
-        handoff_graph[agents[1]] = [agents[3]]
-        handoff_graph[agents[2]] = [agents[3]]
+      // First agent to decision node
+      handoff_graph[agents[0]] = ['decision-1']
+
+      // Decision node to branch agents
+      const branchAgents = agents.slice(1, -1)
+      handoff_graph['decision-1'] = branchAgents
+
+      // Branch agents converge to last agent
+      if (agents.length > 2) {
+        const lastAgent = agents[agents.length - 1]
+        branchAgents.forEach(agent => {
+          handoff_graph[agent] = [lastAgent]
+        })
       }
     } else {
       agents.forEach((agent, idx) => {
