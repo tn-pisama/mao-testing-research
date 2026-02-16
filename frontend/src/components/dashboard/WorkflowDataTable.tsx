@@ -51,7 +51,8 @@ const COLUMNS: Column[] = [
     defaultVisible: true,
     width: '100px',
     render: (value) => {
-      const percent = Math.round(value * 100)
+      // Value is already 0-100 from database
+      const percent = Math.round(value)
       const color =
         percent >= 90 ? 'text-success-500' :
         percent >= 80 ? 'text-primary-500' :
