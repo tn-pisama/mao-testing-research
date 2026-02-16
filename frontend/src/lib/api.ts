@@ -767,6 +767,56 @@ export interface QualityDimensionInfo {
   checks: string[]
 }
 
+// Workflow Groups
+export interface AutoDetectRule {
+  type: 'workflow_name_pattern' | 'source' | 'complexity_level' | 'grade' | 'agent_count' | 'has_critical_issues'
+  pattern?: string
+  value?: string | number | boolean
+  values?: string[]
+  operator?: '>=' | '<=' | '=' | '>' | '<'
+  case_sensitive?: boolean
+}
+
+export interface AutoDetectRules {
+  rules: AutoDetectRule[]
+  match_mode: 'all' | 'any'
+}
+
+export interface WorkflowGroup {
+  id: string
+  tenant_id: string
+  name: string
+  description?: string
+  color?: string
+  icon?: string
+  is_default: boolean
+  auto_detect_rules?: AutoDetectRules
+  workflow_count?: number
+  created_at: string
+  updated_at: string
+  // User customizations (if applicable)
+  custom_name?: string
+  is_hidden?: boolean
+  sort_order?: number
+}
+
+export interface CreateGroupRequest {
+  name: string
+  description?: string
+  color?: string
+  icon?: string
+  auto_detect_rules?: AutoDetectRules
+}
+
+export interface AssignWorkflowsRequest {
+  workflow_ids: string[]
+}
+
+export interface AutoDetectResponse {
+  assigned_count: number
+  workflow_ids: string[]
+}
+
 export interface QualityDimensionsResponse {
   agent_dimensions: QualityDimensionInfo[]
   orchestration_dimensions: QualityDimensionInfo[]
@@ -1363,12 +1413,14 @@ export function createApiClient(token?: string | null, tenantId?: string | null)
       pageSize?: number
       workflowId?: string
       minGrade?: string
+      groupId?: string
     } = {}) {
       const query = new URLSearchParams()
       if (params.page) query.set('page', String(params.page))
       if (params.pageSize) query.set('page_size', String(params.pageSize))
       if (params.workflowId) query.set('workflow_id', params.workflowId)
       if (params.minGrade) query.set('min_grade', params.minGrade)
+      if (params.groupId) query.set('group_id', params.groupId)
 
       return fetchApi<QualityAssessmentListResponse>(
         `/enterprise/quality/tenants/{tenant_id}/assessments?${query}`,
@@ -1435,6 +1487,65 @@ export function createApiClient(token?: string | null, tenantId?: string | null)
         method: 'POST',
         body: { detection_id: detectionId, is_correct: isCorrect, notes },
       })
+    },
+
+    // Workflow Groups endpoints
+    async listWorkflowGroups() {
+      return fetchApi<WorkflowGroup[]>(`/tenants/{tenant_id}/workflow-groups`, opts)
+    },
+
+    async createWorkflowGroup(data: CreateGroupRequest) {
+      return fetchApi<WorkflowGroup>(`/tenants/{tenant_id}/workflow-groups`, {
+        ...opts,
+        method: 'POST',
+        body: data,
+      })
+    },
+
+    async updateWorkflowGroup(groupId: string, data: Partial<CreateGroupRequest>) {
+      return fetchApi<WorkflowGroup>(`/tenants/{tenant_id}/workflow-groups/${groupId}`, {
+        ...opts,
+        method: 'PUT',
+        body: data,
+      })
+    },
+
+    async deleteWorkflowGroup(groupId: string) {
+      return fetchApi<{ success: boolean; message: string }>(
+        `/tenants/{tenant_id}/workflow-groups/${groupId}`,
+        {
+          ...opts,
+          method: 'DELETE',
+        }
+      )
+    },
+
+    async assignWorkflowsToGroup(groupId: string, workflowIds: string[]) {
+      return fetchApi<{ success: boolean; assigned_count: number; workflow_ids: string[] }>(
+        `/tenants/{tenant_id}/workflow-groups/${groupId}/assign`,
+        {
+          ...opts,
+          method: 'POST',
+          body: { workflow_ids: workflowIds },
+        }
+      )
+    },
+
+    async runGroupAutoDetection(groupId: string) {
+      return fetchApi<AutoDetectResponse>(
+        `/tenants/{tenant_id}/workflow-groups/${groupId}/auto-detect`,
+        {
+          ...opts,
+          method: 'POST',
+        }
+      )
+    },
+
+    async getGroupWorkflows(groupId: string) {
+      return fetchApi<QualityAssessment[]>(
+        `/tenants/{tenant_id}/workflow-groups/${groupId}/workflows`,
+        opts
+      )
     },
   }
 }
