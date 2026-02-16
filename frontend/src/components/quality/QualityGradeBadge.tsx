@@ -10,13 +10,13 @@ export interface QualityGradeBadgeProps extends HTMLAttributes<HTMLSpanElement> 
 }
 
 const gradeColors: Record<string, string> = {
-  'A': 'bg-green-500/20 text-green-400 border-green-500/50',
-  'B+': 'bg-blue-500/20 text-blue-400 border-blue-500/50',
-  'B': 'bg-blue-500/20 text-blue-400 border-blue-500/50',
-  'C+': 'bg-amber-500/20 text-amber-400 border-amber-500/50',
-  'C': 'bg-amber-500/20 text-amber-400 border-amber-500/50',
-  'D': 'bg-red-500/20 text-red-400 border-red-500/50',
-  'F': 'bg-red-500/20 text-red-400 border-red-500/50',
+  'A': 'bg-success-500/20 text-success-500 border-success-500/50',
+  'B+': 'bg-primary-500/20 text-primary-500 border-primary-500/50 shadow-glow-cyan',
+  'B': 'bg-primary-500/20 text-primary-500 border-primary-500/50 shadow-glow-cyan',
+  'C+': 'bg-accent-500/20 text-accent-500 border-accent-500/50',
+  'C': 'bg-accent-500/20 text-accent-500 border-accent-500/50',
+  'D': 'bg-danger-500/20 text-danger-500 border-danger-500/50',
+  'F': 'bg-danger-500/20 text-danger-500 border-danger-500/50',
 }
 
 const gradeLabels: Record<string, string> = {
@@ -31,7 +31,7 @@ const gradeLabels: Record<string, string> = {
 
 export const QualityGradeBadge = forwardRef<HTMLSpanElement, QualityGradeBadgeProps>(
   ({ className, grade, size = 'md', showLabel = false, ...props }, ref) => {
-    const baseStyles = 'inline-flex items-center font-semibold rounded-md border'
+    const baseStyles = 'inline-flex items-center font-semibold rounded-md border font-mono'
 
     const sizes = {
       sm: 'px-1.5 py-0.5 text-xs',
@@ -60,20 +60,20 @@ QualityGradeBadge.displayName = 'QualityGradeBadge'
 
 export function getGradeColor(grade: string): string {
   const colors: Record<string, string> = {
-    'A': 'text-green-400',
-    'B+': 'text-blue-400',
-    'B': 'text-blue-400',
-    'C+': 'text-amber-400',
-    'C': 'text-amber-400',
-    'D': 'text-red-400',
-    'F': 'text-red-400',
+    'A': 'text-success-500',
+    'B+': 'text-primary-500',
+    'B': 'text-primary-500',
+    'C+': 'text-accent-500',
+    'C': 'text-accent-500',
+    'D': 'text-danger-500',
+    'F': 'text-danger-500',
   }
-  return colors[grade] || 'text-slate-400'
+  return colors[grade] || 'text-white/60'
 }
 
 export function getScoreColor(score: number): string {
-  if (score >= 0.9) return 'text-green-400'
-  if (score >= 0.8) return 'text-blue-400'
-  if (score >= 0.6) return 'text-amber-400'
-  return 'text-red-400'
+  if (score >= 0.9) return 'text-success-500'
+  if (score >= 0.8) return 'text-primary-500'
+  if (score >= 0.6) return 'text-accent-500'
+  return 'text-danger-500'
 }

@@ -13,17 +13,17 @@ interface QualitySuggestionsCardProps {
 }
 
 const severityConfig = {
-  critical: { icon: AlertCircle, color: 'text-red-400', bg: 'bg-red-500/20', label: 'Critical' },
-  high: { icon: AlertTriangle, color: 'text-orange-400', bg: 'bg-orange-500/20', label: 'High' },
-  medium: { icon: AlertTriangle, color: 'text-amber-400', bg: 'bg-amber-500/20', label: 'Medium' },
-  low: { icon: Info, color: 'text-slate-400', bg: 'bg-slate-500/20', label: 'Low' },
-  info: { icon: Info, color: 'text-blue-400', bg: 'bg-blue-500/20', label: 'Info' },
+  critical: { icon: AlertCircle, color: 'text-danger-500', bg: 'bg-danger-500/20', label: 'Critical' },
+  high: { icon: AlertTriangle, color: 'text-accent-500', bg: 'bg-accent-500/20', label: 'High' },
+  medium: { icon: AlertTriangle, color: 'text-accent-500', bg: 'bg-accent-500/20', label: 'Medium' },
+  low: { icon: Info, color: 'text-white/60', bg: 'bg-white/10', label: 'Low' },
+  info: { icon: Info, color: 'text-primary-500', bg: 'bg-primary-500/20', label: 'Info' },
 }
 
 const effortColors = {
-  low: 'text-green-400',
-  medium: 'text-amber-400',
-  high: 'text-red-400',
+  low: 'text-success-500',
+  medium: 'text-accent-500',
+  high: 'text-danger-500',
 }
 
 export function QualitySuggestionsCard({
@@ -34,7 +34,7 @@ export function QualitySuggestionsCard({
   if (isLoading) {
     return (
       <Card>
-        <div className="h-64 animate-pulse bg-slate-700 rounded-lg" />
+        <div className="h-64 animate-pulse bg-primary-500/20 rounded-lg" />
       </Card>
     )
   }
@@ -55,12 +55,12 @@ export function QualitySuggestionsCard({
       <CardHeader>
         <div className="flex items-center justify-between">
           <CardTitle className="flex items-center gap-2">
-            <Lightbulb className="h-5 w-5 text-amber-400" />
+            <Lightbulb className="h-5 w-5 text-accent-500" />
             Improvement Suggestions
           </CardTitle>
           <Link
             href="/quality"
-            className="flex items-center gap-1 text-sm text-blue-400 hover:text-blue-300"
+            className="flex items-center gap-1 text-sm text-primary-500 hover:text-primary-400 font-mono"
           >
             View all
             <ChevronRight size={16} />
@@ -70,8 +70,8 @@ export function QualitySuggestionsCard({
       <CardContent>
         {suggestions.length === 0 ? (
           <div className="text-center py-6">
-            <div className="text-green-400 mb-2">All workflows are optimized!</div>
-            <div className="text-sm text-slate-400">
+            <div className="text-success-500 mb-2 font-mono">All workflows are optimized!</div>
+            <div className="text-sm text-white/60 font-mono">
               No improvement suggestions at this time
             </div>
           </div>
@@ -96,7 +96,7 @@ export function QualitySuggestionsCard({
                 return (
                   <div
                     key={suggestion.id}
-                    className="p-3 bg-slate-800/50 rounded-lg border border-slate-700 hover:border-slate-600 transition-colors"
+                    className="p-3 bg-primary-500/10 rounded-lg border border-primary-500/30 hover:border-primary-500/50 hover:shadow-glow-green transition-all"
                   >
                     <div className="flex items-start gap-3">
                       <div className={`p-1.5 rounded ${config.bg}`}>
@@ -108,14 +108,14 @@ export function QualitySuggestionsCard({
                             {suggestion.title}
                           </span>
                         </div>
-                        <div className="text-xs text-slate-400 line-clamp-2">
+                        <div className="text-xs text-white/60 font-mono line-clamp-2">
                           {suggestion.description}
                         </div>
                         <div className="flex items-center gap-3 mt-2">
-                          <span className="text-xs text-slate-500">
+                          <span className="text-xs text-white/40 font-mono">
                             {suggestion.category}
                           </span>
-                          <span className="text-xs text-slate-500">•</span>
+                          <span className="text-xs text-white/40">•</span>
                           <span className={`text-xs flex items-center gap-1 ${effortColors[suggestion.effort]}`}>
                             <Clock size={10} />
                             {suggestion.effort} effort
@@ -132,7 +132,7 @@ export function QualitySuggestionsCard({
               <div className="mt-3 text-center">
                 <Link
                   href="/quality"
-                  className="text-sm text-blue-400 hover:text-blue-300"
+                  className="text-sm text-primary-500 hover:text-primary-400 font-mono"
                 >
                   +{suggestions.length - maxItems} more suggestions
                 </Link>
