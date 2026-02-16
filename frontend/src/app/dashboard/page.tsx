@@ -12,7 +12,7 @@ import { TraceStatusCard } from '@/components/traces/TraceStatusCard'
 import { WorkflowAttentionList } from '@/components/dashboard/WorkflowAttentionList'
 import { QualitySuggestionsCard } from '@/components/dashboard/QualitySuggestionsCard'
 import { WorkflowOverviewStats } from '@/components/dashboard/WorkflowOverviewStats'
-import { WorkflowListView } from '@/components/dashboard/WorkflowListView'
+import { WorkflowDataTable } from '@/components/dashboard/WorkflowDataTable'
 import { WorkflowDetailPanel } from '@/components/dashboard/WorkflowDetailPanel'
 import { WorkflowGroupFilter } from '@/components/filters/WorkflowGroupFilter'
 import { ManageGroupsModal } from '@/components/modals/ManageGroupsModal'
@@ -126,15 +126,11 @@ export default function DashboardPage() {
             <div className="mb-6">
               <div className="flex items-center justify-between mb-4">
                 <h2 className="text-xl font-semibold text-white">Your Workflows</h2>
-                <span className="text-sm text-slate-400">
-                  {qualityAssessments.length} workflow{qualityAssessments.length !== 1 ? 's' : ''}
-                </span>
               </div>
-              <WorkflowListView
+              <WorkflowDataTable
                 workflows={qualityAssessments}
                 onSelectWorkflow={setSelectedWorkflowId}
                 selectedWorkflowId={selectedWorkflowId}
-                isLoading={false}
               />
             </div>
 
@@ -161,15 +157,11 @@ export default function DashboardPage() {
             <div className="mb-6">
               <div className="flex items-center justify-between mb-4">
                 <h2 className="text-xl font-semibold text-white">Your Workflows</h2>
-                <span className="text-sm text-slate-400">
-                  {qualityAssessments.length} workflow{qualityAssessments.length !== 1 ? 's' : ''}
-                </span>
               </div>
-              <WorkflowListView
+              <WorkflowDataTable
                 workflows={qualityAssessments}
                 onSelectWorkflow={setSelectedWorkflowId}
                 selectedWorkflowId={selectedWorkflowId}
-                isLoading={false}
               />
             </div>
 
