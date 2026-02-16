@@ -114,7 +114,7 @@ const COLUMNS: Column[] = [
     ),
   },
   {
-    key: 'assessed_at',
+    key: 'created_at',
     label: 'Last Assessed',
     sortable: true,
     filterable: true,
