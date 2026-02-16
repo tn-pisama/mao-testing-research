@@ -27,7 +27,7 @@ import type { LoopAnalytics, CostAnalytics, Detection, Trace } from '@/lib/api'
 
 export function useApiWithFallback() {
   const { getToken } = useAuth()
-  const { tenantId } = useTenant()
+  const { tenantId, isLoaded: tenantLoaded } = useTenant()
   const [isLoading, setIsLoading] = useState(true)
   const [isDemoMode, setIsDemoMode] = useState(true)
   const [error, setError] = useState<string | null>(null)
@@ -159,6 +159,12 @@ export function useApiWithFallback() {
     console.log('🎬 useEffect triggered, tenantId:', tenantId)
     isMountedRef.current = true
 
+    // Prevent loading until tenant ID is resolved
+    if (!tenantLoaded) {
+      console.log('⏳ Waiting for tenant ID to load...')
+      return
+    }
+
     const loadData = async () => {
       console.log('🔄 Loading data, tenantId:', tenantId)
       setIsLoading(true)
@@ -183,7 +189,7 @@ export function useApiWithFallback() {
     return () => {
       isMountedRef.current = false
     }
-  }, [tenantId, loadRealData, loadDemoData]) // ✅ Stable dependencies, no circular reference
+  }, [tenantId, tenantLoaded, loadRealData, loadDemoData]) // ✅ Stable dependencies, no circular reference
 
   const toggleDemoMode = useCallback(async () => {
     if (isDemoMode) {

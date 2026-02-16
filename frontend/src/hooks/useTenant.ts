@@ -4,6 +4,16 @@ import { useSession } from 'next-auth/react'
 import { useEffect, useState, useMemo } from 'react'
 
 /**
+ * Get initial tenant ID synchronously to prevent race conditions.
+ */
+function getInitialTenantId(): string {
+  if (process.env.NODE_ENV === 'development' && process.env.NEXT_PUBLIC_DEV_TENANT_ID) {
+    return process.env.NEXT_PUBLIC_DEV_TENANT_ID
+  }
+  return 'default'
+}
+
+/**
  * Hook to get the current tenant ID from the backend.
  *
  * Fetches tenant information based on the authenticated user.
@@ -11,7 +21,7 @@ import { useEffect, useState, useMemo } from 'react'
  */
 export function useTenant() {
   const { data: session, status } = useSession()
-  const [tenantId, setTenantId] = useState<string>('default')
+  const [tenantId, setTenantId] = useState<string>(getInitialTenantId())
   const [isLoading, setIsLoading] = useState(true)
 
   // Extract the idToken value to prevent re-fetches when session object reference changes
@@ -21,9 +31,8 @@ export function useTenant() {
 
   useEffect(() => {
     async function fetchTenant() {
-      // Development mode: use tenant ID from environment
+      // Skip if already have dev tenant ID (initialized synchronously)
       if (process.env.NODE_ENV === 'development' && process.env.NEXT_PUBLIC_DEV_TENANT_ID) {
-        setTenantId(process.env.NEXT_PUBLIC_DEV_TENANT_ID)
         setIsLoading(false)
         return
       }
@@ -70,11 +79,11 @@ export function useTenant() {
     fetchTenant()
   }, [idToken, status])
 
-  const isDevMode = process.env.NODE_ENV === 'development' && !!process.env.NEXT_PUBLIC_DEV_API_KEY
+  const isDevMode = process.env.NODE_ENV === 'development' && !!process.env.NEXT_PUBLIC_DEV_TENANT_ID
 
   return {
     tenantId,
-    isLoaded: (status !== 'loading' && !isLoading) || (isDevMode && !isLoading),
+    isLoaded: isDevMode || (status !== 'loading' && !isLoading),
     // Helper to check if using default tenant
     isDefaultTenant: tenantId === 'default',
   }
