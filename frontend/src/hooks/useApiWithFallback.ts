@@ -43,31 +43,69 @@ export function useApiWithFallback() {
   const isMountedRef = useRef(true)
 
   const loadDemoData = useCallback(() => {
-    setLoopAnalytics(generateDemoLoopAnalytics())
-    setCostAnalytics(generateDemoCostAnalytics())
-    setDetections(demoDataStore.getDetections().slice(0, 10))
-    setTraces(demoDataStore.getTraces().slice(0, 10))
-    setQualityAssessments(demoDataStore.getQualityAssessments().slice(0, 5))
+    console.warn('🎭 API unavailable, loading demo mode data')
+    console.log('🎭 isMountedRef.current:', isMountedRef.current)
+
+    const demoLoop = generateDemoLoopAnalytics()
+    const demoCost = generateDemoCostAnalytics()
+    const demoDets = demoDataStore.getDetections().slice(0, 10)
+    const demoTraces = demoDataStore.getTraces().slice(0, 10)
+    const demoQuality = demoDataStore.getQualityAssessments().slice(0, 5)
+
+    console.log('🎭 Demo data loaded:', {
+      loops: !!demoLoop,
+      cost: !!demoCost,
+      detections: demoDets.length,
+      traces: demoTraces.length,
+      quality: demoQuality.length
+    })
+
+    setLoopAnalytics(demoLoop)
+    setCostAnalytics(demoCost)
+    setDetections(demoDets)
+    setTraces(demoTraces)
+    setQualityAssessments(demoQuality)
     setIsDemoMode(true)
     setError(null)
   }, [])
 
   const loadRealData = useCallback(async () => {
     try {
+      console.log('🌐 Loading real data for tenantId:', tenantId)
       const token = await getToken()
+      console.log('🔑 Token obtained:', !!token)
+
       const api = createApiClient(token, tenantId)
 
       // Add .catch() to ALL promises to handle partial failures gracefully
       const [loops, cost, dets, trc, qualityRes] = await Promise.all([
-        api.getLoopAnalytics(30).catch(() => null),
-        api.getCostAnalytics(30).catch(() => null),
-        api.getDetections({ perPage: 10 }).catch(() => null),
-        api.getTraces({ perPage: 10 }).catch(() => null),
-        api.listQualityAssessments({ pageSize: 20 }).catch(() => null),
+        api.getLoopAnalytics(30).catch((err) => {
+          console.warn('Loop analytics failed:', err.message)
+          return null
+        }),
+        api.getCostAnalytics(30).catch((err) => {
+          console.warn('Cost analytics failed:', err.message)
+          return null
+        }),
+        api.getDetections({ perPage: 10 }).catch((err) => {
+          console.warn('Detections failed:', err.message)
+          return null
+        }),
+        api.getTraces({ perPage: 10 }).catch((err) => {
+          console.warn('Traces failed:', err.message)
+          return null
+        }),
+        api.listQualityAssessments({ pageSize: 20 }).catch((err) => {
+          console.warn('Quality assessments failed:', err.message)
+          return null
+        }),
       ])
 
       // Only update state if still mounted
-      if (!isMountedRef.current) return false
+      if (!isMountedRef.current) {
+        console.log('⚠️ Component unmounted, skipping state update')
+        return false
+      }
 
       // Check if we got any real data
       // If at least one API call succeeded with non-empty data, consider it a success
@@ -79,9 +117,18 @@ export function useApiWithFallback() {
         (qualityRes && qualityRes.assessments && qualityRes.assessments.length > 0)
       )
 
+      console.log('📊 API data check:', {
+        loops: !!loops,
+        cost: !!cost,
+        detections: dets?.length || 0,
+        traces: trc?.traces?.length || 0,
+        quality: qualityRes?.assessments?.length || 0,
+        hasAnyData
+      })
+
       if (!hasAnyData) {
         // All API calls failed or returned empty - trigger demo mode
-        console.warn('API returned no data, falling back to demo mode')
+        console.warn('⚠️ API returned no data, falling back to demo mode')
         if (isMountedRef.current) {
           setError('Unable to load data from API. Showing demo data.')
         }
@@ -89,6 +136,7 @@ export function useApiWithFallback() {
       }
 
       // We have at least some real data - use it
+      console.log('✅ Using real data from API')
       setLoopAnalytics(loops || undefined)
       setCostAnalytics(cost || undefined)
       setDetections(dets || [])
@@ -98,7 +146,7 @@ export function useApiWithFallback() {
       setError(null)
       return true
     } catch (err) {
-      console.warn('API unavailable, falling back to demo mode:', err)
+      console.warn('❌ API unavailable, falling back to demo mode:', err)
       if (isMountedRef.current) {
         setError('Unable to connect to API. Showing demo data.')
       }
@@ -107,33 +155,36 @@ export function useApiWithFallback() {
   }, [getToken, tenantId])
 
   const refresh = useCallback(async () => {
+    console.log('🔄 Refreshing data, tenantId:', tenantId, 'isDemoMode:', isDemoMode)
     setIsLoading(true)
     setError(null)
 
     const dataSuccess = await loadRealData()
+    console.log('✅ loadRealData result:', dataSuccess)
+
     if (!dataSuccess && isMountedRef.current) {
+      console.log('📦 Loading demo data...')
       loadDemoData()
     }
 
     if (isMountedRef.current) {
       setIsLoading(false)
     }
-  }, [loadRealData, loadDemoData])
+  }, [loadRealData, loadDemoData, tenantId, isDemoMode])
 
-  // Initial load effect - runs once on mount
+  // Load data on mount and when tenant changes
   useEffect(() => {
+    console.log('🎬 useEffect triggered, tenantId:', tenantId)
     isMountedRef.current = true
 
-    if (!hasLoadedRef.current) {
-      hasLoadedRef.current = true
-      refresh()
-    }
+    // Call refresh whenever tenantId changes
+    refresh()
 
     // Cleanup on unmount
     return () => {
       isMountedRef.current = false
     }
-  }, []) // Empty dependency - only run on mount
+  }, [refresh, tenantId]) // Re-run when refresh or tenantId changes
 
   const toggleDemoMode = useCallback(() => {
     if (isDemoMode) {
