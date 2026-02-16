@@ -93,10 +93,10 @@ export function generateDemoAgents(count: number = 6): AgentInfo[] {
       type: agentTypes[i % agentTypes.length],
       status,
       currentTask: status === 'running' ? randomChoice(taskTemplates) : undefined,
-      tokensUsed: randomInt(100, 50000),
-      latencyMs: randomInt(50, 2000),
-      stepCount: randomInt(1, 50),
-      errorCount: status === 'failed' ? randomInt(1, 5) : Math.random() > 0.8 ? randomInt(1, 2) : 0,
+      tokensUsed: randomInt(200, 3500),
+      latencyMs: randomInt(200, 1200),
+      stepCount: randomInt(1, 25),
+      errorCount: status === 'failed' ? randomInt(1, 3) : Math.random() > 0.8 ? randomInt(1, 2) : 0,
       lastActiveAt: randomDate(2),
     }
   })
@@ -184,18 +184,23 @@ export function generateDemoTraces(count: number = 10): Trace[] {
   const frameworks = ['langgraph', 'autogen', 'crewai', 'custom']
   const statuses = ['completed', 'running', 'failed']
 
-  return Array.from({ length: count }, () => ({
-    id: randomId(),
-    session_id: `session-${randomId()}`,
-    framework: randomChoice(frameworks),
-    status: randomChoice(statuses),
-    total_tokens: randomInt(1000, 100000),
-    total_cost_cents: randomInt(10, 500),
-    created_at: randomDate(48),
-    completed_at: Math.random() > 0.3 ? randomDate(24) : undefined,
-    state_count: randomInt(5, 100),
-    detection_count: randomInt(0, 5),
-  }))
+  return Array.from({ length: count }, () => {
+    const tokens = randomInt(800, 8500)
+    // Cost roughly $0.01-0.03 per 1000 tokens (GPT-4o-mini range)
+    const costCents = Math.floor(tokens * (randomInt(1, 3) / 100000))
+    return {
+      id: randomId(),
+      session_id: `session-${randomId()}`,
+      framework: randomChoice(frameworks),
+      status: randomChoice(statuses),
+      total_tokens: tokens,
+      total_cost_cents: Math.max(1, costCents), // Min $0.01
+      created_at: randomDate(48),
+      completed_at: Math.random() > 0.3 ? randomDate(24) : undefined,
+      state_count: randomInt(3, 45),
+      detection_count: Math.random() > 0.6 ? 0 : randomInt(1, 3), // 60% have no detections
+    }
+  })
 }
 
 export function generateDemoStates(traceId: string, count: number = 20): State[] {
@@ -210,8 +215,8 @@ export function generateDemoStates(traceId: string, count: number = 20): State[]
       result: randomChoice(['success', 'partial', 'pending']),
     },
     state_hash: randomId(),
-    token_count: randomInt(50, 2000),
-    latency_ms: randomInt(100, 3000),
+    token_count: randomInt(100, 1200),
+    latency_ms: randomInt(250, 1500),
     created_at: randomDate(2),
   }))
 }
@@ -243,24 +248,34 @@ export function generateDemoLoopAnalytics(): LoopAnalytics {
   const timeSeries = Array.from({ length: days }, (_, i) => {
     const date = new Date()
     date.setDate(date.getDate() - (days - i - 1))
+    // Most days have 0-1 loops, occasionally 2-3
+    const rand = Math.random()
+    let count = 0
+    if (rand < 0.7) count = 0
+    else if (rand < 0.9) count = 1
+    else if (rand < 0.97) count = 2
+    else count = 3
+
     return {
       date: date.toISOString().split('T')[0],
-      count: randomInt(0, 15),
+      count,
     }
   })
 
+  const totalLoops = timeSeries.reduce((sum, d) => sum + d.count, 0)
+
   return {
-    total_loops_detected: timeSeries.reduce((sum, d) => sum + d.count, 0),
+    total_loops_detected: totalLoops,
     loops_by_method: {
-      structural_match: randomInt(20, 50),
-      hash_collision: randomInt(10, 30),
-      embedding_cluster: randomInt(5, 20),
+      structural_match: Math.floor(totalLoops * 0.5),
+      hash_collision: Math.floor(totalLoops * 0.3),
+      embedding_cluster: Math.floor(totalLoops * 0.2),
     },
-    avg_loop_length: randomInt(3, 8),
+    avg_loop_length: randomInt(3, 7),
     top_agents_in_loops: [
-      { agent_id: 'researcher', count: randomInt(10, 30) },
-      { agent_id: 'analyzer', count: randomInt(5, 20) },
-      { agent_id: 'writer', count: randomInt(2, 15) },
+      { agent_id: 'researcher', count: Math.floor(totalLoops * 0.4) },
+      { agent_id: 'analyzer', count: Math.floor(totalLoops * 0.35) },
+      { agent_id: 'writer', count: Math.floor(totalLoops * 0.25) },
     ],
     time_series: timeSeries,
   }
@@ -271,40 +286,49 @@ export function generateDemoCostAnalytics(): CostAnalytics {
   const costByDay = Array.from({ length: days }, (_, i) => {
     const date = new Date()
     date.setDate(date.getDate() - (days - i - 1))
+    // Daily cost: $0.20 - $3.50 (20-350 cents)
     return {
       date: date.toISOString().split('T')[0],
-      cost_cents: randomInt(50, 500),
+      cost_cents: randomInt(20, 350),
     }
   })
 
+  const totalCost = costByDay.reduce((sum, d) => sum + d.cost_cents, 0)
+  // Assume ~$0.015 per 1000 tokens average
+  const totalTokens = Math.floor(totalCost * 1000 / 1.5)
+
   return {
-    total_cost_cents: costByDay.reduce((sum, d) => sum + d.cost_cents, 0),
-    total_tokens: randomInt(500000, 2000000),
+    total_cost_cents: totalCost,
+    total_tokens: totalTokens,
     cost_by_framework: {
-      langgraph: randomInt(1000, 5000),
-      autogen: randomInt(500, 3000),
-      crewai: randomInt(200, 1500),
+      langgraph: Math.floor(totalCost * 0.5),
+      autogen: Math.floor(totalCost * 0.3),
+      crewai: Math.floor(totalCost * 0.2),
     },
     cost_by_day: costByDay,
-    top_expensive_traces: Array.from({ length: 5 }, () => ({
-      trace_id: randomId(),
-      session_id: `session-${randomId()}`,
-      cost_cents: randomInt(100, 800),
-      tokens: randomInt(10000, 80000),
-    })),
+    top_expensive_traces: Array.from({ length: 5 }, () => {
+      const tokens = randomInt(3000, 12000)
+      const costCents = Math.floor(tokens * (randomInt(1, 3) / 100000))
+      return {
+        trace_id: randomId(),
+        session_id: `session-${randomId()}`,
+        cost_cents: Math.max(5, costCents),
+        tokens,
+      }
+    }),
   }
 }
 
 export function generateDemoAgentMetrics() {
   return {
     totalAgents: 8,
-    activeAgents: randomInt(2, 6),
-    totalTokens: randomInt(100000, 500000),
-    avgLatencyMs: randomInt(200, 800),
-    totalCostCents: randomInt(500, 2000),
-    errorRate: randomInt(1, 10),
-    loopsDetected: randomInt(0, 20),
-    avgStepsPerTrace: randomInt(10, 40),
+    activeAgents: randomInt(2, 5),
+    totalTokens: randomInt(25000, 120000),
+    avgLatencyMs: randomInt(350, 750),
+    totalCostCents: randomInt(150, 850),
+    errorRate: randomInt(1, 8),
+    loopsDetected: randomInt(0, 12),
+    avgStepsPerTrace: randomInt(8, 28),
   }
 }
 
@@ -538,7 +562,7 @@ export function generateDemoQualityAssessments(count: number = 20): QualityAsses
       total_issues: totalIssues,
       critical_issues_count: criticalIssues,
       source: randomChoice(['api', 'webhook', 'manual']),
-      assessment_time_ms: randomInt(500, 3000),
+      assessment_time_ms: randomInt(1200, 4500),
       summary: `Assessment completed with ${totalIssues} issues found. ${overallScore >= 80 ? 'Overall quality is good.' : 'Several improvements recommended.'}`,
       key_findings: improvements.slice(0, 3).map((imp) => imp.description),
       created_at: randomDate(168), // Last week
