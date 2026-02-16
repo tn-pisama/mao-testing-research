@@ -1,11 +1,9 @@
 'use client'
 
-import { useState, useEffect, useCallback } from 'react'
-import { useSafeAuth as useAuth } from '@/hooks/useSafeAuth'
-import { useTenant } from '@/hooks/useTenant'
+import { useState } from 'react'
 import { Layout } from '@/components/common/Layout'
 import { Button } from '@/components/ui/Button'
-import { createApiClient } from '@/lib/api'
+import { useThresholdTuning } from '@/hooks/useApiWithFallback'
 import {
   Sliders,
   Target,
@@ -15,83 +13,18 @@ import {
   CheckCircle,
   RefreshCw,
   Info,
+  WifiOff,
 } from 'lucide-react'
 
-interface FeedbackStats {
-  total_feedback: number
-  true_positives: number
-  false_positives: number
-  false_negatives: number
-  true_negatives: number
-  precision: number
-  recall: number
-  f1_score: number
-  by_framework: Record<string, { total: number; correct: number; incorrect: number }>
-  by_detection_type: Record<string, { total: number; correct: number; incorrect: number }>
-  by_method: Record<string, { total: number; correct: number; incorrect: number }>
-}
-
-interface ThresholdRecommendation {
-  framework: string
-  current_structural_threshold: number
-  current_semantic_threshold: number
-  recommended_structural_threshold: number
-  recommended_semantic_threshold: number
-  confidence: number
-  sample_size: number
-  reasoning: string
-}
-
 export default function ThresholdTuningPage() {
-  const { getToken } = useAuth()
-  const { tenantId } = useTenant()
-  const [stats, setStats] = useState<FeedbackStats | null>(null)
-  const [recommendations, setRecommendations] = useState<ThresholdRecommendation[]>([])
-  const [loading, setLoading] = useState(true)
-  const [error, setError] = useState<string | null>(null)
+  const { feedbackStats: stats, recommendations, isLoading: loading, isDemoMode } = useThresholdTuning()
   const [selectedFramework, setSelectedFramework] = useState<string | null>(null)
-
-  const loadData = useCallback(async () => {
-    setLoading(true)
-    setError(null)
-    try {
-      const token = await getToken()
-      const api = createApiClient(token, tenantId)
-      const [statsData, recsData] = await Promise.all([
-        api.getFeedbackStats(),
-        api.getThresholdRecommendations(),
-      ])
-      setStats(statsData)
-      setRecommendations(recsData)
-    } catch (err) {
-      console.error('Failed to load tuning data:', err)
-      setError('Failed to load threshold tuning data.')
-    }
-    setLoading(false)
-  }, [getToken, tenantId])
-
-  useEffect(() => {
-    loadData()
-  }, [loadData])
 
   if (loading) {
     return (
       <Layout>
         <div className="p-8 flex items-center justify-center min-h-[60vh]">
           <RefreshCw className="animate-spin text-slate-400" size={32} />
-        </div>
-      </Layout>
-    )
-  }
-
-  if (error) {
-    return (
-      <Layout>
-        <div className="p-8 flex flex-col items-center justify-center min-h-[60vh]">
-          <AlertCircle className="text-red-400 mb-4" size={48} />
-          <h2 className="text-xl font-semibold text-white mb-2">Failed to load tuning data</h2>
-          <p className="text-slate-400 mb-4">{error}</p>
-          <Button onClick={loadData}>Try Again</Button>
         </div>
       </Layout>
     )
@@ -106,6 +39,12 @@ export default function ThresholdTuningPage() {
               <Sliders className="w-6 h-6 text-purple-400" />
             </div>
             <h1 className="text-2xl font-bold text-white">Threshold Tuning</h1>
+            {isDemoMode && (
+              <div className="inline-flex items-center gap-2 px-3 py-1 rounded-lg bg-amber-500/10 border border-amber-500/30">
+                <WifiOff size={14} className="text-amber-400" />
+                <span className="text-xs font-medium text-amber-200">Demo Mode</span>
+              </div>
+            )}
           </div>
           <p className="text-slate-400">
             Optimize detection accuracy based on user feedback. Adjust thresholds to reduce false positives and improve detection rates.

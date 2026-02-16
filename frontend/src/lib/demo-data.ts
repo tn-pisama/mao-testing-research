@@ -18,6 +18,10 @@ import {
   EvalResult,
   QuickEvalResult,
   LLMJudgeResult,
+  InjectionCheckResult,
+  HallucinationCheckResult,
+  OverflowCheckResult,
+  CostCalculation,
 } from './api'
 
 const agentNames = [
@@ -464,14 +468,14 @@ export function generateDemoQualityAssessments(count: number = 20): QualityAsses
         agent_id: `agent-${j + 1}`,
         agent_name: agentNames[j % agentNames.length],
         agent_type: agentTypes[j % agentTypes.length],
-        overall_score: Math.max(0, Math.min(100, agentScore)),
+        overall_score: Math.max(0, Math.min(100, agentScore)) / 100, // Convert to 0-1 range
         grade: scoreToGrade(agentScore),
         dimensions: qualityDimensions.map((dim) => {
           const dimScore = Math.max(0, Math.min(100, agentScore + randomInt(-15, 15)))
           const issueCount = dimScore < 70 ? randomInt(1, 3) : 0
           return {
             dimension: dim,
-            score: dimScore,
+            score: dimScore / 100, // Convert to 0-1 range
             weight: 0.2, // Equal weight for all dimensions
             issues: issueCount > 0 ? Array.from({ length: issueCount }, () => `Issue in ${dim.toLowerCase()}`) : [],
             evidence: { sample_count: randomInt(10, 100), anomalies: randomInt(0, 5) },
@@ -511,21 +515,21 @@ export function generateDemoQualityAssessments(count: number = 20): QualityAsses
       workflow_id: `wf-${randomId()}`,
       workflow_name: randomChoice(workflowNames),
       trace_id: Math.random() > 0.3 ? `trace-${randomId()}` : undefined,
-      overall_score: overallScore,
+      overall_score: overallScore / 100, // Convert to 0-1 range
       overall_grade: scoreToGrade(overallScore),
-      agent_quality_score: Math.max(0, Math.min(100, overallScore + randomInt(-5, 5))),
-      orchestration_quality_score: Math.max(0, Math.min(100, overallScore + randomInt(-5, 5))),
+      agent_quality_score: Math.max(0, Math.min(100, overallScore + randomInt(-5, 5))) / 100, // Convert to 0-1 range
+      orchestration_quality_score: Math.max(0, Math.min(100, overallScore + randomInt(-5, 5))) / 100, // Convert to 0-1 range
       agent_scores: agentScores,
       orchestration_score: {
         workflow_id: `wf-${randomId()}`,
         workflow_name: randomChoice(workflowNames),
-        overall_score: Math.max(0, Math.min(100, overallScore + randomInt(-5, 5))),
+        overall_score: Math.max(0, Math.min(100, overallScore + randomInt(-5, 5))) / 100, // Convert to 0-1 range
         grade: scoreToGrade(overallScore),
         dimensions: ['Coordination', 'Flow Efficiency', 'Error Handling', 'Resource Utilization'].map((dim) => {
           const dimScore = Math.max(0, Math.min(100, overallScore + randomInt(-10, 10)))
           return {
             dimension: dim,
-            score: dimScore,
+            score: dimScore / 100, // Convert to 0-1 range
             weight: 0.25,
             issues: dimScore < 70 ? [`Issue in ${dim.toLowerCase()}`] : [],
             evidence: { transitions: randomInt(10, 50), failures: randomInt(0, 3) },
@@ -897,4 +901,681 @@ export function generateDemoFixSuggestions(detectionType: string): FixSuggestion
       confidence: '80%',
     },
   ]
+}
+
+// ============================================================================
+// SECURITY & SAFETY
+// ============================================================================
+
+export function generateDemoInjectionCheck(messageContent?: string): InjectionCheckResult {
+  const detected = Math.random() < 0.15 // 15% chance of injection
+  const techniques = [
+    'jailbreak',
+    'prompt_leaking',
+    'instruction_override',
+    'role_manipulation',
+    'delimiter_injection',
+  ]
+
+  return {
+    detected,
+    confidence: detected ? randomInt(75, 99) / 100 : randomInt(92, 99) / 100,
+    attack_type: detected ? randomChoice(techniques) : undefined,
+    severity: detected ? randomChoice(['medium', 'high', 'critical']) : 'low',
+    matched_patterns: detected
+      ? [randomChoice(['ignore previous', 'system:', 'override', '/admin', 'jailbreak'])]
+      : [],
+    details: {
+      payload: detected ? messageContent?.substring(0, 100) || 'Ignore previous instructions and...' : null,
+      mitigation: detected
+        ? 'Input sanitization and prompt hardening recommended'
+        : 'Input appears safe',
+    },
+  }
+}
+
+export function generateDemoHallucinationCheck(): HallucinationCheckResult {
+  const detected = Math.random() < 0.25 // 25% chance of hallucination
+  const groundingScore = detected ? randomInt(40, 70) / 100 : randomInt(80, 98) / 100
+
+  return {
+    detected,
+    confidence: detected ? randomInt(72, 95) / 100 : randomInt(88, 99) / 100,
+    grounding_score: groundingScore,
+    hallucination_type: detected ? randomChoice(['fabrication', 'misattribution', 'outdated_info']) : undefined,
+    ungrounded_claims: detected
+      ? [
+          { claim: 'The system was deployed in Q3 2024', source: 'not_found' },
+          { claim: 'Average response time is under 200ms', source: 'contradicts_docs' },
+        ]
+      : [],
+    details: {
+      facts_checked: randomInt(3, 8),
+      sources_verified: !detected,
+    },
+  }
+}
+
+export function generateDemoOverflowCheck(modelName: string = 'gpt-4'): OverflowCheckResult {
+  const contextWindow = modelName.includes('32k')
+    ? 32000
+    : modelName.includes('turbo') || modelName.includes('4o')
+    ? 128000
+    : modelName.includes('claude')
+    ? 200000
+    : 8192
+
+  const usagePercent = randomInt(30, 95)
+  const currentTokens = Math.floor((contextWindow * usagePercent) / 100)
+  const remainingTokens = contextWindow - currentTokens
+
+  const severity = usagePercent >= 95 ? 'critical' : usagePercent >= 85 ? 'high' : usagePercent >= 70 ? 'medium' : 'low'
+
+  return {
+    severity,
+    usage_percent: usagePercent,
+    current_tokens: currentTokens,
+    context_window: contextWindow,
+    remaining_tokens: remainingTokens,
+    warnings: usagePercent >= 85 ? ['Approaching context window limit - consider summarization'] : [],
+    model: modelName,
+  }
+}
+
+export function generateDemoCostCalculation(model: string = 'gpt-4'): CostCalculation {
+  const inputTokens = randomInt(1500, 8000)
+  const outputTokens = randomInt(500, 2500)
+  const totalTokens = inputTokens + outputTokens
+
+  const costPerInputToken = model.includes('gpt-4') ? 0.00003 : 0.000001
+  const costPerOutputToken = model.includes('gpt-4') ? 0.00006 : 0.000002
+
+  const inputCost = inputTokens * costPerInputToken
+  const outputCost = outputTokens * costPerOutputToken
+  const totalCost = inputCost + outputCost
+
+  const provider = model.includes('gpt')
+    ? 'OpenAI'
+    : model.includes('claude')
+    ? 'Anthropic'
+    : 'Unknown'
+
+  return {
+    total_cost_usd: Math.round(totalCost * 10000) / 10000,
+    input_cost_usd: Math.round(inputCost * 10000) / 10000,
+    output_cost_usd: Math.round(outputCost * 10000) / 10000,
+    total_tokens: totalTokens,
+    input_tokens: inputTokens,
+    output_tokens: outputTokens,
+    model,
+    provider,
+  }
+}
+
+// ============================================================================
+// TESTING & QUALITY
+// ============================================================================
+
+export interface AccuracyMetric {
+  detector_type: string
+  total_cases: number
+  true_positives: number
+  false_positives: number
+  false_negatives: number
+  true_negatives: number
+  precision: number
+  recall: number
+  f1_score: number
+  accuracy: number
+  trend: 'improving' | 'stable' | 'declining'
+}
+
+export function generateDemoAccuracyMetrics(): AccuracyMetric[] {
+  const detectorTypes = [
+    'infinite_loop',
+    'state_corruption',
+    'persona_drift',
+    'coordination_deadlock',
+    'hallucination',
+    'prompt_injection',
+  ]
+
+  return detectorTypes.map((type) => {
+    const totalCases = randomInt(50, 200)
+    const truePositives = randomInt(Math.floor(totalCases * 0.6), Math.floor(totalCases * 0.85))
+    const falsePositives = randomInt(Math.floor(totalCases * 0.05), Math.floor(totalCases * 0.15))
+    const falseNegatives = randomInt(Math.floor(totalCases * 0.03), Math.floor(totalCases * 0.12))
+    const trueNegatives = totalCases - truePositives - falsePositives - falseNegatives
+
+    const precision = truePositives / (truePositives + falsePositives)
+    const recall = truePositives / (truePositives + falseNegatives)
+    const f1Score = (2 * precision * recall) / (precision + recall)
+    const accuracy = (truePositives + trueNegatives) / totalCases
+
+    return {
+      detector_type: type,
+      total_cases: totalCases,
+      true_positives: truePositives,
+      false_positives: falsePositives,
+      false_negatives: falseNegatives,
+      true_negatives: trueNegatives,
+      precision: Math.round(precision * 1000) / 1000,
+      recall: Math.round(recall * 1000) / 1000,
+      f1_score: Math.round(f1Score * 1000) / 1000,
+      accuracy: Math.round(accuracy * 1000) / 1000,
+      trend: randomChoice<AccuracyMetric['trend']>(['improving', 'stable', 'declining']),
+    }
+  })
+}
+
+export interface FeedbackStats {
+  total_detections: number
+  validated: number
+  unvalidated: number
+  true_positives: number
+  false_positives: number
+  by_type: Record<
+    string,
+    {
+      total: number
+      tp: number
+      fp: number
+      precision: number
+    }
+  >
+}
+
+export function generateDemoFeedbackStats(): FeedbackStats {
+  const totalDetections = randomInt(150, 500)
+  const validated = randomInt(Math.floor(totalDetections * 0.6), Math.floor(totalDetections * 0.85))
+  const truePositives = randomInt(Math.floor(validated * 0.7), Math.floor(validated * 0.9))
+  const falsePositives = validated - truePositives
+
+  const types = ['infinite_loop', 'state_corruption', 'persona_drift', 'coordination_deadlock']
+
+  const byType: FeedbackStats['by_type'] = {}
+  types.forEach((type) => {
+    const total = randomInt(20, 80)
+    const tp = randomInt(Math.floor(total * 0.65), Math.floor(total * 0.9))
+    const fp = total - tp
+    byType[type] = {
+      total,
+      tp,
+      fp,
+      precision: Math.round((tp / total) * 1000) / 1000,
+    }
+  })
+
+  return {
+    total_detections: totalDetections,
+    validated,
+    unvalidated: totalDetections - validated,
+    true_positives: truePositives,
+    false_positives: falsePositives,
+    by_type: byType,
+  }
+}
+
+export interface ThresholdRecommendation {
+  detector_type: string
+  current_threshold: number
+  recommended_threshold: number
+  expected_improvement: string
+  rationale: string
+  confidence: number
+}
+
+export function generateDemoThresholdRecommendations(): ThresholdRecommendation[] {
+  const recommendations = [
+    {
+      detector_type: 'infinite_loop',
+      current_threshold: 0.75,
+      recommended_threshold: 0.68,
+      expected_improvement: '+12% recall, -3% precision',
+      rationale: 'Analysis shows 12 missed loops that would be caught with lower threshold',
+      confidence: 0.87,
+    },
+    {
+      detector_type: 'state_corruption',
+      current_threshold: 0.80,
+      recommended_threshold: 0.85,
+      expected_improvement: '+8% precision, -2% recall',
+      rationale: 'High false positive rate suggests threshold is too permissive',
+      confidence: 0.92,
+    },
+    {
+      detector_type: 'persona_drift',
+      current_threshold: 0.70,
+      recommended_threshold: 0.70,
+      rationale: 'Current threshold is optimal based on feedback data',
+      expected_improvement: 'No change recommended',
+      confidence: 0.95,
+    },
+  ]
+
+  return recommendations
+}
+
+export interface IntegrationStatus {
+  framework: string
+  version: string
+  status: 'active' | 'configured' | 'not_configured'
+  last_test: string
+  test_traces: number
+}
+
+export function generateDemoIntegrationStatus(): IntegrationStatus[] {
+  return [
+    {
+      framework: 'LangGraph',
+      version: '0.2.3',
+      status: 'active',
+      last_test: randomDate(2),
+      test_traces: randomInt(45, 120),
+    },
+    {
+      framework: 'AutoGen',
+      version: '0.2.18',
+      status: 'active',
+      last_test: randomDate(6),
+      test_traces: randomInt(30, 90),
+    },
+    {
+      framework: 'CrewAI',
+      version: '0.1.26',
+      status: 'configured',
+      last_test: randomDate(12),
+      test_traces: randomInt(15, 45),
+    },
+    {
+      framework: 'n8n',
+      version: '1.19.0',
+      status: 'active',
+      last_test: randomDate(1),
+      test_traces: randomInt(60, 150),
+    },
+  ]
+}
+
+export interface Baseline {
+  id: string
+  name: string
+  created_at: string
+  trace_count: number
+  detection_count: number
+  avg_tokens: number
+  avg_latency_ms: number
+}
+
+export function generateDemoBaselines(): Baseline[] {
+  return Array.from({ length: randomInt(3, 7) }, (_, i) => ({
+    id: `baseline-${randomId()}`,
+    name: `Baseline ${new Date(Date.now() - i * 7 * 24 * 60 * 60 * 1000).toLocaleDateString()}`,
+    created_at: randomDate(i * 7 * 24),
+    trace_count: randomInt(50, 200),
+    detection_count: randomInt(5, 25),
+    avg_tokens: randomInt(1500, 4000),
+    avg_latency_ms: randomInt(800, 2500),
+  }))
+}
+
+// ============================================================================
+// CHAOS & REPLAY
+// ============================================================================
+
+export interface ChaosExperimentType {
+  id: string
+  name: string
+  description: string
+  category: 'latency' | 'failure' | 'resource' | 'state'
+  parameters: Record<string, any>
+}
+
+export function generateDemoChaosExperimentTypes(): ChaosExperimentType[] {
+  return [
+    {
+      id: 'latency-injection',
+      name: 'Latency Injection',
+      description: 'Add artificial latency to agent responses',
+      category: 'latency',
+      parameters: {
+        delay_ms: { type: 'number', default: 2000, min: 100, max: 10000 },
+        target_agents: { type: 'multi-select', options: agentNames },
+      },
+    },
+    {
+      id: 'random-failure',
+      name: 'Random Failures',
+      description: 'Randomly fail agent operations',
+      category: 'failure',
+      parameters: {
+        failure_rate: { type: 'percentage', default: 0.2, min: 0, max: 1 },
+        error_type: {
+          type: 'select',
+          options: ['timeout', 'rate_limit', 'validation_error', 'network_error'],
+        },
+      },
+    },
+    {
+      id: 'token-exhaustion',
+      name: 'Token Exhaustion',
+      description: 'Simulate token/rate limit exhaustion',
+      category: 'resource',
+      parameters: {
+        max_tokens: { type: 'number', default: 4096, min: 1000, max: 32000 },
+        trigger_at_percentage: { type: 'percentage', default: 0.9, min: 0.5, max: 1 },
+      },
+    },
+    {
+      id: 'state-corruption',
+      name: 'State Corruption',
+      description: 'Introduce invalid state transitions',
+      category: 'state',
+      parameters: {
+        corruption_type: {
+          type: 'select',
+          options: ['missing_field', 'type_mismatch', 'invalid_value'],
+        },
+        frequency: { type: 'percentage', default: 0.15, min: 0.05, max: 0.5 },
+      },
+    },
+  ]
+}
+
+export interface ChaosSession {
+  id: string
+  name: string
+  experiment_type: string
+  status: 'running' | 'completed' | 'failed' | 'stopped'
+  started_at: string
+  completed_at: string | null
+  duration_ms: number | null
+  traces_affected: number
+  detections_triggered: number
+  parameters: Record<string, any>
+  results: {
+    failures_injected: number
+    failures_detected: number
+    recovery_time_ms: number
+    impact_score: number
+  } | null
+}
+
+export function generateDemoChaosSession(): ChaosSession {
+  const status = randomChoice<ChaosSession['status']>(['running', 'completed', 'failed', 'stopped'])
+  const startedAt = randomDate(12)
+  const durationMs = status === 'completed' ? randomInt(60000, 600000) : null
+  const completedAt = status === 'completed' ? new Date(new Date(startedAt).getTime() + (durationMs || 0)).toISOString() : null
+
+  return {
+    id: `chaos-${randomId()}`,
+    name: `Chaos Test ${randomInt(1, 100)}`,
+    experiment_type: randomChoice(['latency-injection', 'random-failure', 'token-exhaustion', 'state-corruption']),
+    status,
+    started_at: startedAt,
+    completed_at: completedAt,
+    duration_ms: durationMs,
+    traces_affected: randomInt(10, 50),
+    detections_triggered: randomInt(5, 25),
+    parameters: {
+      delay_ms: randomInt(1000, 5000),
+      failure_rate: randomInt(10, 40) / 100,
+    },
+    results:
+      status === 'completed'
+        ? {
+            failures_injected: randomInt(15, 40),
+            failures_detected: randomInt(12, 38),
+            recovery_time_ms: randomInt(500, 3000),
+            impact_score: randomInt(60, 95) / 100,
+          }
+        : null,
+  }
+}
+
+export function generateDemoChaosSessions(): ChaosSession[] {
+  return Array.from({ length: randomInt(3, 8) }, () => generateDemoChaosSession())
+}
+
+export interface ReplayBundle {
+  id: string
+  name: string
+  description: string
+  created_at: string
+  trace_count: number
+  total_tokens: number
+  avg_latency_ms: number
+  tags: string[]
+}
+
+export function generateDemoReplayBundles(): ReplayBundle[] {
+  const tags = ['production', 'staging', 'regression', 'smoke-test', 'load-test']
+
+  return Array.from({ length: randomInt(5, 12) }, (_, i) => ({
+    id: `bundle-${randomId()}`,
+    name: `Replay Bundle ${i + 1}`,
+    description: randomChoice([
+      'Production traces from 2024-01-15',
+      'Regression test suite v2.3',
+      'Load test - 1000 concurrent users',
+      'Smoke test after deployment',
+      'Edge case scenarios',
+    ]),
+    created_at: randomDate(randomInt(1, 60) * 24),
+    trace_count: randomInt(25, 150),
+    total_tokens: randomInt(50000, 300000),
+    avg_latency_ms: randomInt(600, 2500),
+    tags: Array.from(
+      { length: randomInt(1, 3) },
+      () => tags[Math.floor(Math.random() * tags.length)]
+    ),
+  }))
+}
+
+export interface ReplayResult {
+  id: string
+  bundle_id: string
+  started_at: string
+  completed_at: string
+  status: 'passed' | 'failed' | 'partial'
+  traces_replayed: number
+  traces_matched: number
+  traces_diverged: number
+  avg_token_diff: number
+  avg_latency_diff_ms: number
+  detections_diff: number
+}
+
+export function generateDemoReplayResult(bundleId: string): ReplayResult {
+  const tracesReplayed = randomInt(25, 150)
+  const tracesMatched = randomInt(Math.floor(tracesReplayed * 0.7), Math.floor(tracesReplayed * 0.95))
+  const tracesDiverged = tracesReplayed - tracesMatched
+
+  return {
+    id: `replay-${randomId()}`,
+    bundle_id: bundleId,
+    started_at: randomDate(6),
+    completed_at: randomDate(5),
+    status: tracesDiverged > tracesReplayed * 0.1 ? 'failed' : tracesDiverged > 0 ? 'partial' : 'passed',
+    traces_replayed: tracesReplayed,
+    traces_matched: tracesMatched,
+    traces_diverged: tracesDiverged,
+    avg_token_diff: randomInt(-200, 200),
+    avg_latency_diff_ms: randomInt(-100, 300),
+    detections_diff: randomInt(-3, 5),
+  }
+}
+
+export interface DriftAlert {
+  id: string
+  metric: string
+  baseline_value: number
+  current_value: number
+  drift_percentage: number
+  severity: 'low' | 'medium' | 'high'
+  detected_at: string
+}
+
+export function generateDemoDriftAlerts(): DriftAlert[] {
+  const metrics = [
+    { name: 'avg_tokens_per_trace', baseline: 2500 },
+    { name: 'avg_latency_ms', baseline: 1200 },
+    { name: 'detection_rate', baseline: 0.15 },
+    { name: 'error_rate', baseline: 0.03 },
+  ]
+
+  return Array.from({ length: randomInt(2, 5) }, () => {
+    const metric = randomChoice(metrics)
+    const driftPercentage = randomInt(15, 60)
+    const currentValue = metric.baseline * (1 + driftPercentage / 100 * (Math.random() > 0.5 ? 1 : -1))
+
+    return {
+      id: `drift-${randomId()}`,
+      metric: metric.name,
+      baseline_value: metric.baseline,
+      current_value: Math.round(currentValue * 100) / 100,
+      drift_percentage: driftPercentage,
+      severity: driftPercentage > 40 ? 'high' : driftPercentage > 25 ? 'medium' : 'low',
+      detected_at: randomDate(12),
+    }
+  })
+}
+
+// ============================================================================
+// WORKFLOW & DIAGNOSTICS
+// ============================================================================
+
+export interface N8nWorkflow {
+  id: string
+  name: string
+  active: boolean
+  webhook_url: string
+  registered_at: string
+  last_execution: string
+  execution_count: number
+  avg_quality_grade: string
+  tags: string[]
+}
+
+export function generateDemoN8nWorkflows(): N8nWorkflow[] {
+  const workflowNames = [
+    'Customer Support Automation',
+    'Lead Qualification Pipeline',
+    'Content Generation Workflow',
+    'Data Enrichment Process',
+    'Slack Notification Handler',
+    'Email Campaign Manager',
+  ]
+
+  const grades = ['A+', 'A', 'A-', 'B+', 'B', 'B-', 'C+']
+
+  return Array.from({ length: randomInt(4, 8) }, (_, i) => ({
+    id: `n8n-wf-${randomId()}`,
+    name: workflowNames[i % workflowNames.length],
+    active: Math.random() > 0.2, // 80% active
+    webhook_url: `https://n8n.yourcompany.com/webhook/${randomId()}`,
+    registered_at: randomDate(randomInt(10, 90) * 24),
+    last_execution: randomDate(randomInt(1, 48)),
+    execution_count: randomInt(50, 500),
+    avg_quality_grade: randomChoice(grades),
+    tags: Array.from({ length: randomInt(1, 3) }, () =>
+      randomChoice(['production', 'staging', 'automation', 'ai-powered', 'critical'])
+    ),
+  }))
+}
+
+export interface DiagnoseResult {
+  trace_id: string
+  format: 'langsmith' | 'otel' | 'json'
+  agent_count: number
+  total_steps: number
+  total_tokens: number
+  duration_ms: number
+  detections: Array<{
+    type: string
+    severity: string
+    confidence: number
+    description: string
+  }>
+  agent_interactions: Array<{
+    from_agent: string
+    to_agent: string
+    message_count: number
+    avg_latency_ms: number
+  }>
+  bottlenecks: Array<{
+    agent: string
+    step: string
+    latency_ms: number
+    percentage_of_total: number
+  }>
+  suggestions: string[]
+}
+
+export function generateDemoDiagnoseResult(traceId?: string): DiagnoseResult {
+  const agentCount = randomInt(3, 7)
+  const totalSteps = randomInt(15, 50)
+
+  const detectionsData = [
+    {
+      type: 'infinite_loop',
+      severity: 'high',
+      description: 'Detected repeated state transitions between Researcher and Analyzer',
+    },
+    {
+      type: 'coordination_delay',
+      severity: 'medium',
+      description: 'Handoff between Coordinator and Planner taking longer than expected',
+    },
+    {
+      type: 'token_inefficiency',
+      severity: 'low',
+      description: 'Redundant context being passed between agents',
+    },
+  ]
+
+  const detections = Array.from({ length: randomInt(1, 3) }, () => {
+    const detection = randomChoice(detectionsData)
+    return {
+      ...detection,
+      confidence: randomInt(75, 98) / 100,
+    }
+  })
+
+  const agentInteractions = Array.from({ length: randomInt(3, 6) }, () => ({
+    from_agent: randomChoice(agentNames),
+    to_agent: randomChoice(agentNames),
+    message_count: randomInt(2, 15),
+    avg_latency_ms: randomInt(200, 1500),
+  }))
+
+  const bottlenecks = Array.from({ length: randomInt(2, 4) }, () => {
+    const latencyMs = randomInt(800, 3000)
+    return {
+      agent: randomChoice(agentNames),
+      step: randomChoice(['API call', 'LLM inference', 'State validation', 'Context retrieval']),
+      latency_ms: latencyMs,
+      percentage_of_total: randomInt(15, 45),
+    }
+  })
+
+  const suggestions = [
+    'Consider adding timeout to Researcher \u2192 Analyzer handoff',
+    'Reduce context size passed to Planner (currently 3200 tokens)',
+    'Add caching layer for repeated API calls',
+    'Optimize state validation logic in Validator agent',
+  ]
+
+  return {
+    trace_id: traceId || `trace-${randomId()}`,
+    format: randomChoice<DiagnoseResult['format']>(['langsmith', 'otel', 'json']),
+    agent_count: agentCount,
+    total_steps: totalSteps,
+    total_tokens: randomInt(5000, 25000),
+    duration_ms: randomInt(3000, 15000),
+    detections,
+    agent_interactions: agentInteractions,
+    bottlenecks,
+    suggestions: suggestions.slice(0, randomInt(2, 4)),
+  }
 }

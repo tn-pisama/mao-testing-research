@@ -15,6 +15,9 @@ import { FixesStatusCard } from '@/components/dashboard/FixesStatusCard'
 import { WorkflowAttentionList } from '@/components/dashboard/WorkflowAttentionList'
 import { QualityScoreCard } from '@/components/dashboard/QualityScoreCard'
 import { QualitySuggestionsCard } from '@/components/dashboard/QualitySuggestionsCard'
+import { AgentStatusGrid } from '@/components/dashboard/AgentStatusGrid'
+import { ComplexityMetricsCard } from '@/components/dashboard/ComplexityMetricsCard'
+import { QualityDimensionsChart } from '@/components/dashboard/QualityDimensionsChart'
 import { Button } from '@/components/ui/Button'
 import { ImportModal } from '@/components/import'
 import { useApiWithFallback } from '@/hooks/useApiWithFallback'
@@ -37,6 +40,9 @@ export default function DashboardPage() {
 
   // n8n users see simplified view unless they enabled developer mode
   const showSimplifiedDashboard = isN8nUser && !showAdvancedFeatures
+
+  // Extract all agent scores from quality assessments
+  const allAgentScores = qualityAssessments.flatMap(assessment => assessment.agent_scores || [])
 
   if (isLoading) {
     return (
@@ -115,6 +121,28 @@ export default function DashboardPage() {
               <QualityScoreCard assessments={qualityAssessments} isLoading={false} />
             </div>
 
+            {/* Agent Status Section */}
+            {allAgentScores.length > 0 && (
+              <div className="mb-6">
+                <div className="flex items-center gap-3 mb-4">
+                  <h2 className="text-lg font-semibold text-white">Agent Status & Health</h2>
+                  <span className="text-sm text-slate-400">{allAgentScores.length} agents</span>
+                </div>
+                <AgentStatusGrid agents={allAgentScores} isLoading={false} />
+              </div>
+            )}
+
+            {/* Workflow Quality Details */}
+            <div className="mb-6">
+              <div className="flex items-center gap-3 mb-4">
+                <h2 className="text-lg font-semibold text-white">Workflow Quality Details</h2>
+              </div>
+              <div className="grid lg:grid-cols-2 gap-6">
+                <QualityDimensionsChart assessments={qualityAssessments} isLoading={false} />
+                <ComplexityMetricsCard assessments={qualityAssessments} isLoading={false} />
+              </div>
+            </div>
+
             <div className="grid lg:grid-cols-2 gap-6 mb-6">
               <FixesStatusCard isLoading={false} />
               <QualitySuggestionsCard
@@ -132,6 +160,28 @@ export default function DashboardPage() {
             <div className="grid lg:grid-cols-2 gap-6 mb-6">
               <LoopAnalyticsCard data={loopAnalytics} isLoading={false} />
               <CostAnalyticsCard data={costAnalytics} isLoading={false} />
+            </div>
+
+            {/* Agent Status Section */}
+            {allAgentScores.length > 0 && (
+              <div className="mb-6">
+                <div className="flex items-center gap-3 mb-4">
+                  <h2 className="text-lg font-semibold text-white">Agent Status & Health</h2>
+                  <span className="text-sm text-slate-400">{allAgentScores.length} agents</span>
+                </div>
+                <AgentStatusGrid agents={allAgentScores} isLoading={false} />
+              </div>
+            )}
+
+            {/* Workflow Quality Details */}
+            <div className="mb-6">
+              <div className="flex items-center gap-3 mb-4">
+                <h2 className="text-lg font-semibold text-white">Workflow Quality Details</h2>
+              </div>
+              <div className="grid lg:grid-cols-2 gap-6">
+                <QualityDimensionsChart assessments={qualityAssessments} isLoading={false} />
+                <ComplexityMetricsCard assessments={qualityAssessments} isLoading={false} />
+              </div>
             </div>
 
             <div className="grid lg:grid-cols-2 gap-6 mb-6">

@@ -1,7 +1,7 @@
 'use client'
 
 import { useSession } from 'next-auth/react'
-import { useEffect, useState } from 'react'
+import { useEffect, useState, useMemo } from 'react'
 
 /**
  * Hook to get the current tenant ID from the backend.
@@ -13,6 +13,11 @@ export function useTenant() {
   const { data: session, status } = useSession()
   const [tenantId, setTenantId] = useState<string>('default')
   const [isLoading, setIsLoading] = useState(true)
+
+  // Extract the idToken value to prevent re-fetches when session object reference changes
+  const idToken = useMemo(() => {
+    return (session as any)?.idToken || null
+  }, [(session as any)?.idToken])
 
   useEffect(() => {
     async function fetchTenant() {
@@ -28,7 +33,6 @@ export function useTenant() {
 
       try {
         // Get ID token for backend authentication
-        const idToken = (session as any)?.idToken
         if (!idToken) {
           setTenantId('default')
           setIsLoading(false)
@@ -57,7 +61,7 @@ export function useTenant() {
     }
 
     fetchTenant()
-  }, [session, status])
+  }, [idToken, status])
 
   return {
     tenantId,

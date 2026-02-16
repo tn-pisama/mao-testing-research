@@ -15,10 +15,30 @@ import {
   generateDemoN8nConnections,
   generateDemoWorkflowVersions,
   generateDemoStates,
+  generateDemoN8nWorkflows,
+  generateDemoChaosSessions,
+  generateDemoChaosExperimentTypes,
+  generateDemoReplayBundles,
+  generateDemoAccuracyMetrics,
+  generateDemoFeedbackStats,
+  generateDemoThresholdRecommendations,
+  generateDemoIntegrationStatus,
+  generateDemoBaselines,
+  generateDemoDriftAlerts,
   QualityAssessment,
   HealingRecord,
   N8nConnection,
   WorkflowVersion,
+  N8nWorkflow,
+  ChaosSession,
+  ChaosExperimentType,
+  ReplayBundle,
+  AccuracyMetric,
+  FeedbackStats,
+  ThresholdRecommendation,
+  IntegrationStatus,
+  Baseline,
+  DriftAlert,
 } from './demo-data'
 import { Trace, Detection, State } from './api'
 
@@ -30,6 +50,19 @@ class DemoDataStore {
   private healingRecords: HealingRecord[] = []
   private n8nConnections: N8nConnection[] = []
   private workflowVersions: Map<string, WorkflowVersion[]> = new Map()
+
+  // New demo data types
+  private n8nWorkflows: N8nWorkflow[] = []
+  private chaosSessions: ChaosSession[] = []
+  private chaosExperimentTypes: ChaosExperimentType[] = []
+  private replayBundles: ReplayBundle[] = []
+  private accuracyMetrics: AccuracyMetric[] = []
+  private feedbackStats: FeedbackStats | null = null
+  private thresholdRecommendations: ThresholdRecommendation[] = []
+  private integrationStatus: IntegrationStatus[] = []
+  private baselines: Baseline[] = []
+  private driftAlerts: DriftAlert[] = []
+
   private initialized = false
 
   /**
@@ -92,6 +125,18 @@ class DemoDataStore {
       const versions = generateDemoWorkflowVersions(qa.workflow_id, 10)
       this.workflowVersions.set(qa.workflow_id, versions)
     })
+
+    // Generate new demo data types
+    this.n8nWorkflows = generateDemoN8nWorkflows()
+    this.chaosSessions = generateDemoChaosSessions()
+    this.chaosExperimentTypes = generateDemoChaosExperimentTypes()
+    this.replayBundles = generateDemoReplayBundles()
+    this.accuracyMetrics = generateDemoAccuracyMetrics()
+    this.feedbackStats = generateDemoFeedbackStats()
+    this.thresholdRecommendations = generateDemoThresholdRecommendations()
+    this.integrationStatus = generateDemoIntegrationStatus()
+    this.baselines = generateDemoBaselines()
+    this.driftAlerts = generateDemoDriftAlerts()
 
     this.initialized = true
   }
@@ -193,6 +238,86 @@ class DemoDataStore {
   }
 
   /**
+   * Get n8n workflows
+   */
+  getN8nWorkflows(): N8nWorkflow[] {
+    this.initialize()
+    return this.n8nWorkflows
+  }
+
+  /**
+   * Get chaos sessions
+   */
+  getChaosSessions(): ChaosSession[] {
+    this.initialize()
+    return this.chaosSessions
+  }
+
+  /**
+   * Get chaos experiment types
+   */
+  getChaosExperimentTypes(): ChaosExperimentType[] {
+    this.initialize()
+    return this.chaosExperimentTypes
+  }
+
+  /**
+   * Get replay bundles
+   */
+  getReplayBundles(): ReplayBundle[] {
+    this.initialize()
+    return this.replayBundles
+  }
+
+  /**
+   * Get accuracy metrics
+   */
+  getAccuracyMetrics(): AccuracyMetric[] {
+    this.initialize()
+    return this.accuracyMetrics
+  }
+
+  /**
+   * Get feedback statistics
+   */
+  getFeedbackStats(): FeedbackStats {
+    this.initialize()
+    return this.feedbackStats || generateDemoFeedbackStats()
+  }
+
+  /**
+   * Get threshold recommendations
+   */
+  getThresholdRecommendations(): ThresholdRecommendation[] {
+    this.initialize()
+    return this.thresholdRecommendations
+  }
+
+  /**
+   * Get integration status
+   */
+  getIntegrationStatus(): IntegrationStatus[] {
+    this.initialize()
+    return this.integrationStatus
+  }
+
+  /**
+   * Get baselines
+   */
+  getBaselines(): Baseline[] {
+    this.initialize()
+    return this.baselines
+  }
+
+  /**
+   * Get drift alerts
+   */
+  getDriftAlerts(): DriftAlert[] {
+    this.initialize()
+    return this.driftAlerts
+  }
+
+  /**
    * Reset the store (useful for testing or refreshing data)
    */
   reset() {
@@ -203,6 +328,18 @@ class DemoDataStore {
     this.healingRecords = []
     this.n8nConnections = []
     this.workflowVersions.clear()
+
+    this.n8nWorkflows = []
+    this.chaosSessions = []
+    this.chaosExperimentTypes = []
+    this.replayBundles = []
+    this.accuracyMetrics = []
+    this.feedbackStats = null
+    this.thresholdRecommendations = []
+    this.integrationStatus = []
+    this.baselines = []
+    this.driftAlerts = []
+
     this.initialized = false
   }
 }

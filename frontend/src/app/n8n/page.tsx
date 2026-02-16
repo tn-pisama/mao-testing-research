@@ -6,12 +6,13 @@ import { useState, useEffect, useCallback } from 'react'
 import { useSafeAuth as useAuth } from '@/hooks/useSafeAuth'
 import { useTenant } from '@/hooks/useTenant'
 import {
-  Workflow, Plus, Link, Copy, CheckCircle, ExternalLink, Loader2, RefreshCw
+  Workflow, Plus, Link, Copy, CheckCircle, ExternalLink, Loader2, RefreshCw, WifiOff
 } from 'lucide-react'
 import { Layout } from '@/components/common/Layout'
 import { Button } from '@/components/ui/Button'
 import { QualityGradeBadge } from '@/components/quality/QualityGradeBadge'
 import { createApiClient, N8nWorkflow, N8nConnection, QualityAssessment } from '@/lib/api'
+import { useN8nWorkflows, useQualityAssessments, useN8nConnections } from '@/hooks/useApiWithFallback'
 
 interface DisplayWorkflow {
   id: string
@@ -43,8 +44,12 @@ function mapWorkflow(w: N8nWorkflow, assessments: QualityAssessment[]): DisplayW
 export default function N8nPage() {
   const { getToken } = useAuth()
   const { tenantId } = useTenant()
-  const [workflows, setWorkflows] = useState<DisplayWorkflow[]>([])
-  const [isLoading, setIsLoading] = useState(true)
+
+  // Use hooks with demo fallback
+  const { workflows: workflowsData, isLoading: workflowsLoading, isDemoMode: workflowsDemoMode } = useN8nWorkflows()
+  const { assessments, isLoading: assessmentsLoading } = useQualityAssessments({ pageSize: 100 })
+  const { connections, isLoading: connectionsLoading } = useN8nConnections()
+
   const [isRegistering, setIsRegistering] = useState(false)
   const [showRegisterForm, setShowRegisterForm] = useState(false)
   const [newWorkflowId, setNewWorkflowId] = useState('')
@@ -54,37 +59,20 @@ export default function N8nPage() {
   const [isSyncing, setIsSyncing] = useState(false)
   const [syncResult, setSyncResult] = useState<{ synced: number; errors: string[] } | null>(null)
   const [n8nInstanceUrl, setN8nInstanceUrl] = useState<string>('https://pisama.app.n8n.cloud')
+  const [shouldRefresh, setShouldRefresh] = useState(0)
 
-  const loadWorkflows = useCallback(async () => {
-    setIsLoading(true)
-    try {
-      const token = await getToken()
-      const api = createApiClient(token, tenantId)
+  const isLoading = workflowsLoading || assessmentsLoading || connectionsLoading
 
-      // Load workflows, quality assessments, and n8n connections
-      const [workflowsData, qualityRes, connectionsRes] = await Promise.all([
-        api.listN8nWorkflows(),
-        api.listQualityAssessments({ pageSize: 100 }).catch(() => ({ assessments: [] })),
-        api.listN8nConnections().catch(() => ({ items: [], total: 0 })),
-      ])
+  // Map workflows with quality data
+  const workflows = workflowsData.map(w => mapWorkflow(w as any, assessments))
 
-      // Use the first active connection's instance URL, or fallback to n8n Cloud
-      const activeConnection = connectionsRes.items?.find(conn => conn.is_active)
-      if (activeConnection?.instance_url) {
-        setN8nInstanceUrl(activeConnection.instance_url)
-      }
-
-      setWorkflows(workflowsData.map(w => mapWorkflow(w, qualityRes.assessments)))
-    } catch (err) {
-      console.warn('Failed to load n8n workflows:', err)
-      setWorkflows([])
-    }
-    setIsLoading(false)
-  }, [getToken, tenantId])
-
+  // Set n8n instance URL from active connection
   useEffect(() => {
-    loadWorkflows()
-  }, [loadWorkflows])
+    const activeConnection = connections.find(conn => conn.is_active)
+    if (activeConnection?.instance_url) {
+      setN8nInstanceUrl(activeConnection.instance_url)
+    }
+  }, [connections])
 
   const registerWorkflow = async () => {
     if (!newWorkflowId.trim()) {
@@ -100,8 +88,8 @@ export default function N8nPage() {
       const api = createApiClient(token, tenantId)
       await api.registerN8nWorkflow(newWorkflowId, newWorkflowName || undefined)
 
-      // Refresh list
-      await loadWorkflows()
+      // Trigger refresh by incrementing counter (hooks will re-fetch)
+      setShouldRefresh(prev => prev + 1)
       setShowRegisterForm(false)
       setNewWorkflowId('')
       setNewWorkflowName('')
@@ -133,8 +121,8 @@ export default function N8nPage() {
         errors: result.errors,
       })
 
-      // Refresh workflows list after sync
-      await loadWorkflows()
+      // Trigger refresh
+      setShouldRefresh(prev => prev + 1)
     } catch (err) {
       console.error('Failed to sync from n8n:', err)
       setError('Failed to sync executions from n8n. Check backend logs.')
@@ -152,6 +140,12 @@ export default function N8nPage() {
                 <Workflow className="w-6 h-6 text-orange-400" />
               </div>
               <h1 className="text-2xl font-bold text-white">n8n Workflows</h1>
+              {workflowsDemoMode && (
+                <div className="inline-flex items-center gap-2 px-3 py-1 rounded-lg bg-amber-500/10 border border-amber-500/30">
+                  <WifiOff size={14} className="text-amber-400" />
+                  <span className="text-xs font-medium text-amber-200">Demo Mode</span>
+                </div>
+              )}
             </div>
             <p className="text-slate-400">
               Connect n8n workflows for automated trace ingestion

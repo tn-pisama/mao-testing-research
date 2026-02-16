@@ -7,11 +7,17 @@ import { useSafeAuth as useAuth } from '@/hooks/useSafeAuth'
 import { useTenant } from '@/hooks/useTenant'
 import {
   Shield, AlertTriangle, CheckCircle, XCircle,
-  Search, Brain, Database, DollarSign, Loader2
+  Search, Brain, Database, DollarSign, Loader2, WifiOff
 } from 'lucide-react'
 import { Layout } from '@/components/common/Layout'
 import { Button } from '@/components/ui/Button'
 import { createApiClient, InjectionCheckResult, HallucinationCheckResult, OverflowCheckResult, CostCalculation } from '@/lib/api'
+import {
+  generateDemoInjectionCheck,
+  generateDemoHallucinationCheck,
+  generateDemoOverflowCheck,
+  generateDemoCostCalculation,
+} from '@/lib/demo-data'
 
 type CheckType = 'injection' | 'hallucination' | 'overflow' | 'cost'
 
@@ -34,6 +40,7 @@ export default function SecurityPage() {
   const { tenantId } = useTenant()
   const [selectedCheck, setSelectedCheck] = useState<CheckType>('injection')
   const [isChecking, setIsChecking] = useState(false)
+  const [isDemoMode, setIsDemoMode] = useState(false)
 
   // Injection check state
   const [injectionText, setInjectionText] = useState('')
@@ -61,6 +68,7 @@ export default function SecurityPage() {
   const runCheck = useCallback(async () => {
     setIsChecking(true)
     setError(null)
+    setIsDemoMode(false)
 
     try {
       const token = await getToken()
@@ -99,8 +107,38 @@ export default function SecurityPage() {
           break
       }
     } catch (err) {
-      console.error('Check failed:', err)
-      setError('Check failed. Please try again.')
+      console.error('Check failed, falling back to demo mode:', err)
+
+      // Fall back to demo data
+      switch (selectedCheck) {
+        case 'injection':
+          if (!injectionText.trim()) {
+            setError('Please enter text to check')
+            break
+          }
+          setInjectionResult(generateDemoInjectionCheck(injectionText))
+          setIsDemoMode(true)
+          break
+
+        case 'hallucination':
+          if (!hallucinationOutput.trim()) {
+            setError('Please enter output to check')
+            break
+          }
+          setHallucinationResult(generateDemoHallucinationCheck())
+          setIsDemoMode(true)
+          break
+
+        case 'overflow':
+          setOverflowResult(generateDemoOverflowCheck(overflowModel))
+          setIsDemoMode(true)
+          break
+
+        case 'cost':
+          setCostResult(generateDemoCostCalculation(costModel))
+          setIsDemoMode(true)
+          break
+      }
     }
     setIsChecking(false)
   }, [selectedCheck, injectionText, injectionContext, hallucinationOutput, hallucinationSources, overflowTokens, overflowModel, costModel, costInputTokens, costOutputTokens, getToken, tenantId])
@@ -132,6 +170,12 @@ export default function SecurityPage() {
               <Shield className="w-6 h-6 text-red-400" />
             </div>
             <h1 className="text-2xl font-bold text-white">Security Checks</h1>
+            {isDemoMode && (
+              <div className="inline-flex items-center gap-2 px-3 py-1 rounded-lg bg-amber-500/10 border border-amber-500/30">
+                <WifiOff size={14} className="text-amber-400" />
+                <span className="text-xs font-medium text-amber-200">Demo Mode</span>
+              </div>
+            )}
           </div>
           <p className="text-slate-400">
             Detect prompt injection, hallucinations, and monitor resource usage

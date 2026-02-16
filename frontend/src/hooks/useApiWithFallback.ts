@@ -154,45 +154,60 @@ export function useApiWithFallback() {
     }
   }, [getToken, tenantId])
 
-  const refresh = useCallback(async () => {
-    console.log('🔄 Refreshing data, tenantId:', tenantId, 'isDemoMode:', isDemoMode)
-    setIsLoading(true)
-    setError(null)
-
-    const dataSuccess = await loadRealData()
-    console.log('✅ loadRealData result:', dataSuccess)
-
-    if (!dataSuccess && isMountedRef.current) {
-      console.log('📦 Loading demo data...')
-      loadDemoData()
-    }
-
-    if (isMountedRef.current) {
-      setIsLoading(false)
-    }
-  }, [loadRealData, loadDemoData, tenantId, isDemoMode])
-
   // Load data on mount and when tenant changes
   useEffect(() => {
     console.log('🎬 useEffect triggered, tenantId:', tenantId)
     isMountedRef.current = true
 
-    // Call refresh whenever tenantId changes
-    refresh()
+    const loadData = async () => {
+      console.log('🔄 Loading data, tenantId:', tenantId)
+      setIsLoading(true)
+      setError(null)
+
+      const dataSuccess = await loadRealData()
+      console.log('✅ loadRealData result:', dataSuccess)
+
+      if (!dataSuccess && isMountedRef.current) {
+        console.log('📦 Loading demo data...')
+        loadDemoData()
+      }
+
+      if (isMountedRef.current) {
+        setIsLoading(false)
+      }
+    }
+
+    loadData()
 
     // Cleanup on unmount
     return () => {
       isMountedRef.current = false
     }
-  }, [refresh, tenantId]) // Re-run when refresh or tenantId changes
+  }, [tenantId, loadRealData, loadDemoData]) // ✅ Stable dependencies, no circular reference
 
-  const toggleDemoMode = useCallback(() => {
+  const toggleDemoMode = useCallback(async () => {
     if (isDemoMode) {
-      refresh()
+      // If in demo mode, try to load real data
+      console.log('🔄 toggleDemoMode: switching from demo to real')
+      setIsLoading(true)
+      setError(null)
+
+      const dataSuccess = await loadRealData()
+
+      if (!dataSuccess && isMountedRef.current) {
+        console.log('📦 toggleDemoMode: API still unavailable, staying in demo mode')
+        loadDemoData() // Fall back to demo if API still fails
+      }
+
+      if (isMountedRef.current) {
+        setIsLoading(false)
+      }
     } else {
+      // If in real mode, switch to demo
+      console.log('🔄 toggleDemoMode: switching from real to demo')
       loadDemoData()
     }
-  }, [isDemoMode, refresh, loadDemoData])
+  }, [isDemoMode, loadRealData, loadDemoData])
 
   return {
     isLoading,
@@ -203,7 +218,6 @@ export function useApiWithFallback() {
     detections,
     traces,
     qualityAssessments,
-    refresh,
     toggleDemoMode,
   }
 }
@@ -215,24 +229,29 @@ export function useDetections(params?: { page?: number; perPage?: number; type?:
   const [isLoading, setIsLoading] = useState(true)
   const [isDemoMode, setIsDemoMode] = useState(false)
 
+  // Extract individual param values to avoid object reference instability
+  const page = params?.page
+  const perPage = params?.perPage
+  const type = params?.type
+
   useEffect(() => {
     async function load() {
       setIsLoading(true)
       try {
         const token = await getToken()
         const api = createApiClient(token, tenantId)
-        const data = await api.getDetections(params || {})
+        const data = await api.getDetections({ page, perPage, type })
         setDetections(data)
         setIsDemoMode(false)
       } catch {
         const allDetections = demoDataStore.getDetections()
-        setDetections(allDetections.slice(0, params?.perPage || 20))
+        setDetections(allDetections.slice(0, perPage || 20))
         setIsDemoMode(true)
       }
       setIsLoading(false)
     }
     load()
-  }, [getToken, tenantId, params])
+  }, [getToken, tenantId, page, perPage, type])
 
   return { detections, isLoading, isDemoMode }
 }
@@ -245,19 +264,24 @@ export function useTraces(params?: { page?: number; perPage?: number; status?: s
   const [isLoading, setIsLoading] = useState(true)
   const [isDemoMode, setIsDemoMode] = useState(false)
 
+  // Extract individual param values to avoid object reference instability
+  const page = params?.page
+  const perPage = params?.perPage
+  const status = params?.status
+
   useEffect(() => {
     async function load() {
       setIsLoading(true)
       try {
         const token = await getToken()
         const api = createApiClient(token, tenantId)
-        const data = await api.getTraces(params || {})
+        const data = await api.getTraces({ page, perPage, status })
         setTraces(data.traces)
         setTotal(data.total)
         setIsDemoMode(false)
       } catch {
         const allTraces = demoDataStore.getTraces()
-        const demoTraces = allTraces.slice(0, params?.perPage || 20)
+        const demoTraces = allTraces.slice(0, perPage || 20)
         setTraces(demoTraces)
         setTotal(allTraces.length)
         setIsDemoMode(true)
@@ -265,7 +289,7 @@ export function useTraces(params?: { page?: number; perPage?: number; status?: s
       setIsLoading(false)
     }
     load()
-  }, [getToken, tenantId, params])
+  }, [getToken, tenantId, page, perPage, status])
 
   return { traces, total, isLoading, isDemoMode }
 }
@@ -281,27 +305,32 @@ export function useQualityAssessments(params?: { page?: number; pageSize?: numbe
   const [isLoading, setIsLoading] = useState(true)
   const [isDemoMode, setIsDemoMode] = useState(false)
 
+  // Extract individual param values to avoid object reference instability
+  const page = params?.page
+  const pageSize = params?.pageSize
+  const minGrade = params?.minGrade
+
   useEffect(() => {
     async function load() {
       setIsLoading(true)
       try {
         const token = await getToken()
         const api = createApiClient(token, tenantId)
-        const data = await api.listQualityAssessments(params || {})
+        const data = await api.listQualityAssessments({ page, pageSize, minGrade })
         setAssessments(data.assessments)
         setTotal(data.total || data.assessments.length)
         setIsDemoMode(false)
       } catch {
         const allAssessments = demoDataStore.getQualityAssessments()
-        const pageSize = params?.pageSize || 20
-        setAssessments(allAssessments.slice(0, pageSize))
+        const size = pageSize || 20
+        setAssessments(allAssessments.slice(0, size))
         setTotal(allAssessments.length)
         setIsDemoMode(true)
       }
       setIsLoading(false)
     }
     load()
-  }, [getToken, tenantId, params])
+  }, [getToken, tenantId, page, pageSize, minGrade])
 
   return { assessments, total, isLoading, isDemoMode }
 }
@@ -317,13 +346,18 @@ export function useHealingRecords(params?: { page?: number; pageSize?: number; s
   const [isLoading, setIsLoading] = useState(true)
   const [isDemoMode, setIsDemoMode] = useState(false)
 
+  // Extract individual param values to avoid object reference instability
+  const page = params?.page
+  const pageSize = params?.pageSize
+  const status = params?.status
+
   useEffect(() => {
     async function load() {
       setIsLoading(true)
       try {
         const token = await getToken()
         const api = createApiClient(token, tenantId)
-        const data = await api.listHealingRecords(params || {})
+        const data = await api.listHealingRecords({ page, pageSize, status })
         setRecords(data.items)
         setTotal(data.total || data.items.length)
         setIsDemoMode(false)
@@ -332,19 +366,19 @@ export function useHealingRecords(params?: { page?: number; pageSize?: number; s
         let filteredRecords = allRecords
 
         // Apply status filter if provided
-        if (params?.status) {
-          filteredRecords = allRecords.filter((r) => r.status === params.status)
+        if (status) {
+          filteredRecords = allRecords.filter((r) => r.status === status)
         }
 
-        const pageSize = params?.pageSize || 20
-        setRecords(filteredRecords.slice(0, pageSize))
+        const size = pageSize || 20
+        setRecords(filteredRecords.slice(0, size))
         setTotal(filteredRecords.length)
         setIsDemoMode(true)
       }
       setIsLoading(false)
     }
     load()
-  }, [getToken, tenantId, params])
+  }, [getToken, tenantId, page, pageSize, status])
 
   return { records, total, isLoading, isDemoMode }
 }
@@ -517,4 +551,234 @@ export function useDetectionDetail(detectionId: string) {
   }, [getToken, tenantId, detectionId])
 
   return { detection, healingRecord, isLoading, isDemoMode }
+}
+
+// ============================================================================
+// TIER 1: PRIORITY HOOKS FOR CORE FEATURES
+// ============================================================================
+
+/**
+ * Hook for n8n workflows with demo fallback
+ */
+export function useN8nWorkflows() {
+  const { getToken } = useAuth()
+  const { tenantId } = useTenant()
+  const [workflows, setWorkflows] = useState<any[]>([])
+  const [isLoading, setIsLoading] = useState(true)
+  const [isDemoMode, setIsDemoMode] = useState(false)
+
+  useEffect(() => {
+    async function load() {
+      setIsLoading(true)
+      try {
+        const token = await getToken()
+        const api = createApiClient(token, tenantId)
+        const data = await api.listN8nWorkflows()
+        setWorkflows(data)
+        setIsDemoMode(false)
+      } catch {
+        setWorkflows(demoDataStore.getN8nWorkflows())
+        setIsDemoMode(true)
+      }
+      setIsLoading(false)
+    }
+    load()
+  }, [getToken, tenantId])
+
+  return { workflows, isLoading, isDemoMode }
+}
+
+/**
+ * Hook for security checks with demo fallback
+ */
+export function useSecurityChecks(messageInput?: string) {
+  const { getToken } = useAuth()
+  const { tenantId } = useTenant()
+  const [injectionCheck, setInjectionCheck] = useState<any | null>(null)
+  const [hallucinationCheck, setHallucinationCheck] = useState<any | null>(null)
+  const [overflowCheck, setOverflowCheck] = useState<any | null>(null)
+  const [costCalc, setCostCalc] = useState<any | null>(null)
+  const [isLoading, setIsLoading] = useState(false)
+  const [isDemoMode, setIsDemoMode] = useState(false)
+
+  const runChecks = useCallback(
+    async (message: string, model: string = 'gpt-4') => {
+      setIsLoading(true)
+      try {
+        const token = await getToken()
+        const api = createApiClient(token, tenantId)
+
+        const [injection, hallucination, overflow, cost] = await Promise.all([
+          api.checkInjection(message),
+          api.checkHallucination(message),
+          api.checkOverflow(message, model),
+          api.calculateCost(message, model),
+        ])
+
+        setInjectionCheck(injection)
+        setHallucinationCheck(hallucination)
+        setOverflowCheck(overflow)
+        setCostCalc(cost)
+        setIsDemoMode(false)
+      } catch {
+        // Load demo data
+        const { generateDemoInjectionCheck, generateDemoHallucinationCheck, generateDemoOverflowCheck, generateDemoCostCalculation } = require('@/lib/demo-data')
+        setInjectionCheck(generateDemoInjectionCheck(message))
+        setHallucinationCheck(generateDemoHallucinationCheck())
+        setOverflowCheck(generateDemoOverflowCheck(model))
+        setCostCalc(generateDemoCostCalculation(model))
+        setIsDemoMode(true)
+      }
+      setIsLoading(false)
+    },
+    [getToken, tenantId]
+  )
+
+  return { injectionCheck, hallucinationCheck, overflowCheck, costCalc, isLoading, isDemoMode, runChecks }
+}
+
+/**
+ * Hook for threshold tuning data with demo fallback
+ */
+export function useThresholdTuning() {
+  const { getToken } = useAuth()
+  const { tenantId } = useTenant()
+  const [feedbackStats, setFeedbackStats] = useState<any | null>(null)
+  const [recommendations, setRecommendations] = useState<any[]>([])
+  const [isLoading, setIsLoading] = useState(true)
+  const [isDemoMode, setIsDemoMode] = useState(false)
+
+  useEffect(() => {
+    async function load() {
+      setIsLoading(true)
+      try {
+        const token = await getToken()
+        const api = createApiClient(token, tenantId)
+        const [stats, recs] = await Promise.all([
+          api.getFeedbackStats(),
+          api.getThresholdRecommendations(),
+        ])
+        setFeedbackStats(stats)
+        setRecommendations(recs)
+        setIsDemoMode(false)
+      } catch {
+        setFeedbackStats(demoDataStore.getFeedbackStats())
+        setRecommendations(demoDataStore.getThresholdRecommendations())
+        setIsDemoMode(true)
+      }
+      setIsLoading(false)
+    }
+    load()
+  }, [getToken, tenantId])
+
+  return { feedbackStats, recommendations, isLoading, isDemoMode }
+}
+
+// ============================================================================
+// TIER 2: ADVANCED FEATURE HOOKS
+// ============================================================================
+
+/**
+ * Hook for chaos engineering experiments with demo fallback
+ */
+export function useChaosExperiments() {
+  const { getToken } = useAuth()
+  const { tenantId } = useTenant()
+  const [sessions, setSessions] = useState<any[]>([])
+  const [experimentTypes, setExperimentTypes] = useState<any[]>([])
+  const [isLoading, setIsLoading] = useState(true)
+  const [isDemoMode, setIsDemoMode] = useState(false)
+
+  useEffect(() => {
+    async function load() {
+      setIsLoading(true)
+      try {
+        const token = await getToken()
+        const api = createApiClient(token, tenantId)
+        const [sessionData, types] = await Promise.all([
+          api.listChaosSessions(),
+          api.getChaosExperimentTypes(),
+        ])
+        setSessions(sessionData)
+        setExperimentTypes(types)
+        setIsDemoMode(false)
+      } catch {
+        setSessions(demoDataStore.getChaosSessions())
+        setExperimentTypes(demoDataStore.getChaosExperimentTypes())
+        setIsDemoMode(true)
+      }
+      setIsLoading(false)
+    }
+    load()
+  }, [getToken, tenantId])
+
+  return { sessions, experimentTypes, isLoading, isDemoMode }
+}
+
+/**
+ * Hook for replay bundles with demo fallback
+ */
+export function useReplayBundles() {
+  const { getToken } = useAuth()
+  const { tenantId } = useTenant()
+  const [bundles, setBundles] = useState<any[]>([])
+  const [isLoading, setIsLoading] = useState(true)
+  const [isDemoMode, setIsDemoMode] = useState(false)
+
+  useEffect(() => {
+    async function load() {
+      setIsLoading(true)
+      try {
+        const token = await getToken()
+        const api = createApiClient(token, tenantId)
+        const data = await api.getReplayBundles()
+        setBundles(data)
+        setIsDemoMode(false)
+      } catch {
+        setBundles(demoDataStore.getReplayBundles())
+        setIsDemoMode(true)
+      }
+      setIsLoading(false)
+    }
+    load()
+  }, [getToken, tenantId])
+
+  return { bundles, isLoading, isDemoMode }
+}
+
+/**
+ * Hook for testing dashboard data with demo fallback
+ */
+export function useTestingDashboard() {
+  const { getToken } = useAuth()
+  const { tenantId } = useTenant()
+  const [accuracyMetrics, setAccuracyMetrics] = useState<any[]>([])
+  const [integrationStatus, setIntegrationStatus] = useState<any[]>([])
+  const [isLoading, setIsLoading] = useState(true)
+  const [isDemoMode, setIsDemoMode] = useState(false)
+
+  useEffect(() => {
+    async function load() {
+      setIsLoading(true)
+      try {
+        const token = await getToken()
+        const api = createApiClient(token, tenantId)
+        const [metrics, status] = await Promise.all([
+          api.getAccuracyMetrics(),
+          api.getIntegrationStatus(),
+        ])
+        setAccuracyMetrics(metrics)
+        setIntegrationStatus(status)
+        setIsDemoMode(false)
+      } catch {
+        setAccuracyMetrics(demoDataStore.getAccuracyMetrics())
+        setIntegrationStatus(demoDataStore.getIntegrationStatus())
+        setIsDemoMode(true)
+      }
+      setIsLoading(false)
+    }
+    load()
+  }, [getToken, tenantId])
+
+  return { accuracyMetrics, integrationStatus, isLoading, isDemoMode }
 }
