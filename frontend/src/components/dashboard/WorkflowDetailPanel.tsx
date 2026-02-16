@@ -1,13 +1,14 @@
 'use client'
 
-import { useState, useMemo } from 'react'
+import { useState } from 'react'
 import type { QualityAssessment } from '@/lib/api'
 import { QualityGradeBadge } from '@/components/quality/QualityGradeBadge'
 import { AgentStatusGrid } from '@/components/dashboard/AgentStatusGrid'
 import { WorkflowGraphView } from '@/components/workflow/WorkflowGraphView'
 import { WorkflowNodeDetails } from '@/components/workflow/WorkflowNodeDetails'
-import { generateDemoHandoffAnalysis, generateHandoffMetrics } from '@/lib/demo-data'
-import { X, ChevronDown, ChevronUp, AlertCircle, Info, TrendingUp, GitBranch } from 'lucide-react'
+import { WorkflowEdgeDetails } from '@/components/workflow/WorkflowEdgeDetails'
+import { useHandoffAnalysis } from '@/hooks/useHandoffAnalysis'
+import { X, ChevronDown, ChevronUp, AlertCircle, Info, TrendingUp, GitBranch, Activity } from 'lucide-react'
 import clsx from 'clsx'
 
 interface WorkflowDetailPanelProps {
@@ -18,29 +19,26 @@ interface WorkflowDetailPanelProps {
 export function WorkflowDetailPanel({ workflow, onClose }: WorkflowDetailPanelProps) {
   const [showAgentDetails, setShowAgentDetails] = useState(false)
   const [selectedNodeId, setSelectedNodeId] = useState<string | null>(null)
+  const [selectedEdgeId, setSelectedEdgeId] = useState<string | null>(null)
 
   const orchestrationScore = workflow.orchestration_score
   const orchestrationImprovements = workflow.improvements?.filter(
     (imp) => imp.target_type === 'orchestration'
   ) || []
 
-  // Generate handoff analysis for workflow diagram
-  const handoffAnalysis = useMemo(() =>
-    generateDemoHandoffAnalysis(workflow), [workflow]
-  )
-
-  // Generate per-handoff metrics for edge styling
-  const handoffMetrics = useMemo(() =>
-    generateHandoffMetrics(
-      handoffAnalysis.handoff_graph,
-      workflow.agent_scores || []
-    ), [handoffAnalysis.handoff_graph, workflow.agent_scores]
-  )
+  // Load handoff analysis with API fallback to demo data
+  const { handoffAnalysis, handoffMetrics, isLoading: handoffLoading, isDemoMode } = useHandoffAnalysis(workflow)
 
   const handleNodeClick = (nodeId: string) => {
     // Don't open details for start/end nodes
     if (nodeId === 'start' || nodeId === 'end') return
     setSelectedNodeId(nodeId)
+    setSelectedEdgeId(null) // Close edge details if open
+  }
+
+  const handleEdgeClick = (edgeId: string) => {
+    setSelectedEdgeId(edgeId)
+    setSelectedNodeId(null) // Close node details if open
   }
 
   return (
@@ -163,25 +161,48 @@ export function WorkflowDetailPanel({ workflow, onClose }: WorkflowDetailPanelPr
           <div className="flex items-center gap-2 mb-4">
             <h3 className="text-lg font-semibold text-white">Workflow Diagram</h3>
             <GitBranch size={20} className="text-blue-400" />
-            {selectedNodeId && (
+            {isDemoMode && (
+              <span className="text-xs px-2 py-0.5 bg-amber-500/20 text-amber-400 rounded">
+                Demo Data
+              </span>
+            )}
+            {(selectedNodeId || selectedEdgeId) && (
               <div className="ml-auto text-xs text-slate-400">
-                Click node for details • Click outside to close
+                Click {selectedNodeId ? 'node' : 'edge'} for details • Click outside to close
               </div>
             )}
           </div>
           <div className="relative">
-            <WorkflowGraphView
-              workflow={workflow}
-              handoffGraph={handoffAnalysis.handoff_graph}
-              handoffMetrics={handoffMetrics}
-              height={600}
-              onNodeClick={handleNodeClick}
-            />
+            {handoffLoading ? (
+              <div className="h-[600px] flex items-center justify-center bg-slate-800 rounded-lg border border-slate-700">
+                <div className="text-center">
+                  <Activity className="w-8 h-8 text-blue-500 animate-spin mx-auto mb-2" />
+                  <p className="text-slate-400 text-sm">Loading workflow diagram...</p>
+                </div>
+              </div>
+            ) : handoffAnalysis ? (
+              <WorkflowGraphView
+                workflow={workflow}
+                handoffGraph={handoffAnalysis.handoff_graph}
+                handoffMetrics={handoffMetrics}
+                height={600}
+                onNodeClick={handleNodeClick}
+                onEdgeClick={handleEdgeClick}
+              />
+            ) : null}
             {selectedNodeId && (
               <WorkflowNodeDetails
                 agentId={selectedNodeId}
                 workflow={workflow}
                 onClose={() => setSelectedNodeId(null)}
+              />
+            )}
+            {selectedEdgeId && (
+              <WorkflowEdgeDetails
+                edgeId={selectedEdgeId}
+                handoffMetrics={handoffMetrics}
+                workflow={workflow}
+                onClose={() => setSelectedEdgeId(null)}
               />
             )}
           </div>

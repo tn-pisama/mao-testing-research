@@ -1,13 +1,15 @@
 'use client'
 
 import { useParams, useRouter } from 'next/navigation'
-import { useState, useMemo } from 'react'
+import { useState, useMemo, useRef } from 'react'
 import Link from 'next/link'
 import { useApiWithFallback } from '@/hooks/useApiWithFallback'
 import { WorkflowGraphView } from '@/components/workflow/WorkflowGraphView'
 import { WorkflowNodeDetails } from '@/components/workflow/WorkflowNodeDetails'
+import { WorkflowEdgeDetails } from '@/components/workflow/WorkflowEdgeDetails'
 import { QualityGradeBadge } from '@/components/quality/QualityGradeBadge'
-import { generateDemoHandoffAnalysis, generateHandoffMetrics } from '@/lib/demo-data'
+import { exportReactFlowAsImage } from '@/lib/export-utils'
+import { useHandoffAnalysis } from '@/hooks/useHandoffAnalysis'
 import {
   ArrowLeft,
   Download,
@@ -26,7 +28,10 @@ export default function WorkflowPage() {
   const workflowId = params.id as string
 
   const [selectedNodeId, setSelectedNodeId] = useState<string | null>(null)
+  const [selectedEdgeId, setSelectedEdgeId] = useState<string | null>(null)
   const [isFullscreen, setIsFullscreen] = useState(false)
+  const [isExporting, setIsExporting] = useState(false)
+  const reactFlowRef = useRef<HTMLDivElement>(null)
 
   // Fetch workflow data
   const { data: workflows = [], isLoading } = useApiWithFallback(
@@ -36,22 +41,18 @@ export default function WorkflowPage() {
 
   const workflow = workflows[0]
 
-  // Generate handoff analysis and metrics
-  const handoffAnalysis = useMemo(() =>
-    workflow ? generateDemoHandoffAnalysis(workflow) : null,
-    [workflow]
-  )
-
-  const handoffMetrics = useMemo(() =>
-    workflow && handoffAnalysis
-      ? generateHandoffMetrics(handoffAnalysis.handoff_graph, workflow.agent_scores || [])
-      : {},
-    [workflow, handoffAnalysis]
-  )
+  // Load handoff analysis with API fallback to demo data
+  const { handoffAnalysis, handoffMetrics, isLoading: handoffLoading, isDemoMode } = useHandoffAnalysis(workflow)
 
   const handleNodeClick = (nodeId: string) => {
     if (nodeId === 'start' || nodeId === 'end') return
     setSelectedNodeId(nodeId)
+    setSelectedEdgeId(null) // Close edge details if open
+  }
+
+  const handleEdgeClick = (edgeId: string) => {
+    setSelectedEdgeId(edgeId)
+    setSelectedNodeId(null) // Close node details if open
   }
 
   const handleShare = () => {
@@ -61,9 +62,26 @@ export default function WorkflowPage() {
     alert('Workflow URL copied to clipboard!')
   }
 
-  const handleExport = () => {
-    // Future: Export diagram as PNG/SVG
-    alert('Export functionality coming soon!')
+  const handleExport = async () => {
+    if (!reactFlowRef.current || !workflow) {
+      alert('Unable to export: diagram not ready')
+      return
+    }
+
+    setIsExporting(true)
+    try {
+      const filename = `${workflow.workflow_name.replace(/\s+/g, '-')}-${workflow.workflow_id.substring(0, 8)}`
+      await exportReactFlowAsImage(reactFlowRef.current, {
+        filename,
+        format: 'png',
+        scale: 3, // High resolution
+      })
+    } catch (err) {
+      console.error('Export failed:', err)
+      alert('Export failed. Please try again.')
+    } finally {
+      setIsExporting(false)
+    }
   }
 
   if (isLoading) {
@@ -151,10 +169,11 @@ export default function WorkflowPage() {
               </button>
               <button
                 onClick={handleExport}
-                className="flex items-center gap-2 px-3 py-2 bg-slate-800 hover:bg-slate-700 text-white rounded-lg transition-colors"
+                disabled={isExporting}
+                className="flex items-center gap-2 px-3 py-2 bg-slate-800 hover:bg-slate-700 text-white rounded-lg transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
               >
-                <Download size={16} />
-                Export
+                <Download size={16} className={isExporting ? 'animate-pulse' : ''} />
+                {isExporting ? 'Exporting...' : 'Export'}
               </button>
               <button
                 onClick={() => setIsFullscreen(!isFullscreen)}
@@ -178,6 +197,11 @@ export default function WorkflowPage() {
               <div className="flex items-center gap-2 mb-4">
                 <TrendingUp size={18} className="text-purple-400" />
                 <h2 className="text-lg font-semibold text-white">Overall Quality</h2>
+                {isDemoMode && (
+                  <span className="text-xs px-2 py-0.5 bg-amber-500/20 text-amber-400 rounded">
+                    Demo Data
+                  </span>
+                )}
               </div>
               <div className="bg-slate-800 rounded-lg p-4 border border-slate-700">
                 <div className="flex items-center gap-4 mb-3">
@@ -297,13 +321,24 @@ export default function WorkflowPage() {
 
         {/* Center - Workflow Diagram */}
         <main className="flex-1 relative bg-slate-900">
-          <WorkflowGraphView
-            workflow={workflow}
-            handoffGraph={handoffAnalysis?.handoff_graph}
-            handoffMetrics={handoffMetrics}
-            height={window.innerHeight - 140}
-            onNodeClick={handleNodeClick}
-          />
+          {handoffLoading ? (
+            <div className="h-full flex items-center justify-center">
+              <div className="text-center">
+                <Activity className="w-12 h-12 text-blue-500 animate-spin mx-auto mb-4" />
+                <p className="text-slate-400">Loading workflow diagram...</p>
+              </div>
+            </div>
+          ) : handoffAnalysis ? (
+            <WorkflowGraphView
+              workflow={workflow}
+              handoffGraph={handoffAnalysis.handoff_graph}
+              handoffMetrics={handoffMetrics}
+              height={window.innerHeight - 140}
+              onNodeClick={handleNodeClick}
+              onEdgeClick={handleEdgeClick}
+              exportRef={reactFlowRef}
+            />
+          ) : null}
 
           {/* Node Details Overlay */}
           {selectedNodeId && (
@@ -311,6 +346,16 @@ export default function WorkflowPage() {
               agentId={selectedNodeId}
               workflow={workflow}
               onClose={() => setSelectedNodeId(null)}
+            />
+          )}
+
+          {/* Edge Details Overlay */}
+          {selectedEdgeId && (
+            <WorkflowEdgeDetails
+              edgeId={selectedEdgeId}
+              handoffMetrics={handoffMetrics}
+              workflow={workflow}
+              onClose={() => setSelectedEdgeId(null)}
             />
           )}
         </main>

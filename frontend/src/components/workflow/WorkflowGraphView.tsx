@@ -30,6 +30,8 @@ interface WorkflowGraphViewProps {
   handoffMetrics?: Record<string, HandoffMetrics>
   height?: number
   onNodeClick?: (nodeId: string) => void
+  onEdgeClick?: (edgeId: string) => void
+  exportRef?: React.RefObject<HTMLDivElement>
 }
 
 const nodeTypes: NodeTypes = {
@@ -44,6 +46,8 @@ export function WorkflowGraphView({
   handoffMetrics,
   height = 600,
   onNodeClick,
+  onEdgeClick,
+  exportRef,
 }: WorkflowGraphViewProps) {
   // Build nodes and edges from workflow data
   const { initialNodes, initialEdges } = useMemo(() => {
@@ -105,6 +109,15 @@ export function WorkflowGraphView({
     [onNodeClick]
   )
 
+  const handleEdgeClick = useCallback(
+    (_event: React.MouseEvent, edge: Edge) => {
+      if (onEdgeClick) {
+        onEdgeClick(edge.id)
+      }
+    },
+    [onEdgeClick]
+  )
+
   if (!workflow.agent_scores || workflow.agent_scores.length === 0) {
     return (
       <div
@@ -124,6 +137,7 @@ export function WorkflowGraphView({
 
   return (
     <div
+      ref={exportRef}
       className="bg-slate-900 rounded-lg border border-slate-700 overflow-hidden"
       style={{ height }}
     >
@@ -133,6 +147,7 @@ export function WorkflowGraphView({
         onNodesChange={onNodesChange}
         onEdgesChange={onEdgesChange}
         onNodeClick={handleNodeClick}
+        onEdgeClick={handleEdgeClick}
         nodeTypes={nodeTypes}
         fitView
         minZoom={0.1}
