@@ -356,6 +356,85 @@ class N8nConnection(Base):
     )
 
 
+class WorkflowGroup(Base):
+    """
+    Tenant-wide workflow groups for organizing and filtering workflows.
+
+    Supports both manual assignment and auto-detection based on rules.
+    Users can customize group names and visibility through UserGroupPreference.
+    """
+    __tablename__ = "workflow_groups"
+
+    id = Column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
+    tenant_id = Column(UUID(as_uuid=True), ForeignKey("tenants.id", ondelete="CASCADE"), nullable=False)
+    name = Column(String(255), nullable=False)
+    description = Column(Text, nullable=True)
+    color = Column(String(7), nullable=True)  # Hex color (e.g., "#3b82f6")
+    icon = Column(String(50), nullable=True)  # Icon name (e.g., "briefcase", "users")
+    is_default = Column(Boolean, default=False, server_default="false")
+    auto_detect_rules = Column(JSONB, nullable=True)  # Auto-detection configuration
+    created_by = Column(UUID(as_uuid=True), ForeignKey("users.id"), nullable=True)
+    created_at = Column(DateTime(timezone=True), server_default=func.now())
+    updated_at = Column(DateTime(timezone=True), server_default=func.now(), onupdate=func.now())
+
+    # Relationships
+    assignments = relationship("WorkflowGroupAssignment", back_populates="group", cascade="all, delete-orphan")
+    user_preferences = relationship("UserGroupPreference", back_populates="group", cascade="all, delete-orphan")
+
+    __table_args__ = (
+        Index("idx_workflow_groups_tenant", "tenant_id"),
+        UniqueConstraint("tenant_id", "name", name="uq_workflow_group_name"),
+    )
+
+
+class UserGroupPreference(Base):
+    """
+    User customizations for workflow groups.
+
+    Allows users to rename groups, hide them, or reorder them
+    without affecting the shared tenant-wide group configuration.
+    """
+    __tablename__ = "user_group_preferences"
+
+    user_id = Column(UUID(as_uuid=True), ForeignKey("users.id", ondelete="CASCADE"), primary_key=True)
+    group_id = Column(UUID(as_uuid=True), ForeignKey("workflow_groups.id", ondelete="CASCADE"), primary_key=True)
+    custom_name = Column(String(255), nullable=True)  # User's custom name for this group
+    is_hidden = Column(Boolean, default=False, server_default="false")  # Hide from filter dropdown
+    sort_order = Column(Integer, nullable=True)  # Custom sort order
+
+    # Relationships
+    group = relationship("WorkflowGroup", back_populates="user_preferences")
+
+    __table_args__ = (
+        Index("idx_user_group_prefs_user", "user_id"),
+        Index("idx_user_group_prefs_group", "group_id"),
+    )
+
+
+class WorkflowGroupAssignment(Base):
+    """
+    Workflow-to-group assignment mapping.
+
+    Tracks both manual and auto-detected assignments.
+    A workflow can belong to multiple groups.
+    """
+    __tablename__ = "workflow_group_assignments"
+
+    workflow_id = Column(String(255), primary_key=True)
+    group_id = Column(UUID(as_uuid=True), ForeignKey("workflow_groups.id", ondelete="CASCADE"), primary_key=True)
+    assignment_type = Column(String(10), nullable=False)  # 'auto' or 'manual'
+    assigned_by = Column(UUID(as_uuid=True), ForeignKey("users.id"), nullable=True)  # NULL for auto-assignments
+    assigned_at = Column(DateTime(timezone=True), server_default=func.now())
+
+    # Relationships
+    group = relationship("WorkflowGroup", back_populates="assignments")
+
+    __table_args__ = (
+        Index("idx_workflow_assignments_workflow", "workflow_id"),
+        Index("idx_workflow_assignments_group", "group_id"),
+    )
+
+
 class ConversationTurn(Base):
     """Represents a single turn in a multi-turn conversation trace."""
     __tablename__ = "conversation_turns"
