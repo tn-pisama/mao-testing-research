@@ -59,21 +59,41 @@ export function useApiWithFallback() {
 
       // Add .catch() to ALL promises to handle partial failures gracefully
       const [loops, cost, dets, trc, qualityRes] = await Promise.all([
-        api.getLoopAnalytics(30).catch(() => undefined),
-        api.getCostAnalytics(30).catch(() => undefined),
-        api.getDetections({ perPage: 10 }).catch(() => []),
-        api.getTraces({ perPage: 10 }).catch(() => ({ traces: [], total: 0 })),
-        api.listQualityAssessments({ pageSize: 20 }).catch(() => ({ assessments: [] })),
+        api.getLoopAnalytics(30).catch(() => null),
+        api.getCostAnalytics(30).catch(() => null),
+        api.getDetections({ perPage: 10 }).catch(() => null),
+        api.getTraces({ perPage: 10 }).catch(() => null),
+        api.listQualityAssessments({ pageSize: 20 }).catch(() => null),
       ])
 
       // Only update state if still mounted
       if (!isMountedRef.current) return false
 
-      setLoopAnalytics(loops)
-      setCostAnalytics(cost)
-      setDetections(dets)
-      setTraces(trc.traces)
-      setQualityAssessments(qualityRes.assessments)
+      // Check if we got any real data
+      // If at least one API call succeeded with non-empty data, consider it a success
+      const hasAnyData = !!(
+        loops ||
+        cost ||
+        (dets && dets.length > 0) ||
+        (trc && trc.traces && trc.traces.length > 0) ||
+        (qualityRes && qualityRes.assessments && qualityRes.assessments.length > 0)
+      )
+
+      if (!hasAnyData) {
+        // All API calls failed or returned empty - trigger demo mode
+        console.warn('API returned no data, falling back to demo mode')
+        if (isMountedRef.current) {
+          setError('Unable to load data from API. Showing demo data.')
+        }
+        return false
+      }
+
+      // We have at least some real data - use it
+      setLoopAnalytics(loops || undefined)
+      setCostAnalytics(cost || undefined)
+      setDetections(dets || [])
+      setTraces(trc?.traces || [])
+      setQualityAssessments(qualityRes?.assessments || [])
       setIsDemoMode(false)
       setError(null)
       return true
