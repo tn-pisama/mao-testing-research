@@ -142,7 +142,7 @@ export function Sidebar({ isCollapsed = false, onToggle }: SidebarProps) {
           <Shield className="h-8 w-8 text-primary-500 shadow-glow-green" />
           {!isCollapsed && (
             <span className="text-xl font-bold text-primary-500 font-mono glow-text">
-              {isSimplifiedView ? 'Workflow Guard' : 'PISAMA'}
+              {isSimplifiedView ? 'Workflow Guard' : 'Pisama'}
             </span>
           )}
         </Link>
@@ -173,11 +173,11 @@ export function Sidebar({ isCollapsed = false, onToggle }: SidebarProps) {
             {isSimplifiedView ? (
               <>
                 <div>Workflow Guard</div>
-                <div className="text-primary-500/60">Powered by PISAMA</div>
+                <div className="text-primary-500/60">Powered by Pisama</div>
               </>
             ) : (
               <>
-                <div>PISAMA Platform</div>
+                <div>Pisama Platform</div>
                 <div>v1.0.0</div>
               </>
             )}
