@@ -25,7 +25,7 @@ from app.core.auth import get_current_tenant
 from app.storage.database import get_db, set_tenant_context
 from app.storage.models import WorkflowQualityAssessment, Trace, Detection
 
-router = APIRouter(prefix="/quality", tags=["quality"])
+router = APIRouter(prefix="/enterprise/quality", tags=["quality"])
 
 
 class WorkflowQualityRequest(BaseModel):
