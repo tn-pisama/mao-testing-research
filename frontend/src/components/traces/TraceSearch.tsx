@@ -17,14 +17,14 @@ export function TraceSearch({ onSearch, statusFilter, onStatusChange }: TraceSea
           placeholder="Search traces..."
           aria-label="Search traces"
           onChange={(e) => onSearch?.(e.target.value)}
-          className="flex-1 px-4 py-2 bg-slate-700 border border-slate-600 rounded-lg text-slate-200 placeholder-slate-500 focus:outline-none focus:ring-2 focus:ring-blue-500"
+          className="flex-1 px-4 py-2 bg-black border border-primary-500/30 rounded-lg text-white placeholder-white/40 font-mono focus:outline-none focus:ring-2 focus:ring-primary-500 focus:shadow-glow-cyan"
         />
         {onStatusChange && (
           <select
             value={statusFilter || ''}
             aria-label="Filter by status"
             onChange={(e) => onStatusChange(e.target.value || undefined)}
-            className="px-4 py-2 bg-slate-700 border border-slate-600 rounded-lg text-slate-200 focus:outline-none focus:ring-2 focus:ring-blue-500"
+            className="px-4 py-2 bg-black border border-primary-500/30 rounded-lg text-white font-mono focus:outline-none focus:ring-2 focus:ring-primary-500 focus:shadow-glow-cyan"
           >
             <option value="">All Statuses</option>
             <option value="running">Running</option>
