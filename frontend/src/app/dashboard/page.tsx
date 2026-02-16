@@ -9,15 +9,11 @@ import { LoopAnalyticsCard } from '@/components/dashboard/LoopAnalyticsCard'
 import { CostAnalyticsCard } from '@/components/dashboard/CostAnalyticsCard'
 import { RecentDetectionsCard } from '@/components/dashboard/RecentDetectionsCard'
 import { TraceStatusCard } from '@/components/traces/TraceStatusCard'
-import { WorkflowHealthCard } from '@/components/dashboard/WorkflowHealthCard'
-import { ProblemsOverviewCard } from '@/components/dashboard/ProblemsOverviewCard'
-import { FixesStatusCard } from '@/components/dashboard/FixesStatusCard'
 import { WorkflowAttentionList } from '@/components/dashboard/WorkflowAttentionList'
-import { QualityScoreCard } from '@/components/dashboard/QualityScoreCard'
 import { QualitySuggestionsCard } from '@/components/dashboard/QualitySuggestionsCard'
-import { AgentStatusGrid } from '@/components/dashboard/AgentStatusGrid'
-import { ComplexityMetricsCard } from '@/components/dashboard/ComplexityMetricsCard'
-import { QualityDimensionsChart } from '@/components/dashboard/QualityDimensionsChart'
+import { WorkflowOverviewStats } from '@/components/dashboard/WorkflowOverviewStats'
+import { WorkflowListView } from '@/components/dashboard/WorkflowListView'
+import { WorkflowDetailPanel } from '@/components/dashboard/WorkflowDetailPanel'
 import { Button } from '@/components/ui/Button'
 import { ImportModal } from '@/components/import'
 import { useApiWithFallback } from '@/hooks/useApiWithFallback'
@@ -36,13 +32,16 @@ export default function DashboardPage() {
     refresh,
   } = useApiWithFallback()
   const [showImportModal, setShowImportModal] = useState(false)
+  const [selectedWorkflowId, setSelectedWorkflowId] = useState<string | null>(null)
   const { isN8nUser, showAdvancedFeatures } = useUserPreferences()
 
   // n8n users see simplified view unless they enabled developer mode
   const showSimplifiedDashboard = isN8nUser && !showAdvancedFeatures
 
-  // Extract all agent scores from quality assessments
-  const allAgentScores = qualityAssessments.flatMap(assessment => assessment.agent_scores || [])
+  // Get selected workflow
+  const selectedWorkflow = selectedWorkflowId
+    ? qualityAssessments.find(a => a.workflow_id === selectedWorkflowId)
+    : null
 
   if (isLoading) {
     return (
@@ -114,98 +113,103 @@ export default function DashboardPage() {
 
         {showSimplifiedDashboard ? (
           <>
-            {/* Simplified n8n user dashboard */}
-            <div className="grid lg:grid-cols-3 gap-6 mb-6">
-              <WorkflowHealthCard traces={traces} isLoading={false} />
-              <ProblemsOverviewCard detections={detections} isLoading={false} />
-              <QualityScoreCard assessments={qualityAssessments} isLoading={false} />
-            </div>
+            {/* Simplified n8n user dashboard - WORKFLOW-CENTRIC */}
 
-            {/* Agent Status Section */}
-            {allAgentScores.length > 0 && (
-              <div className="mb-6">
-                <div className="flex items-center gap-3 mb-4">
-                  <h2 className="text-lg font-semibold text-white">Agent Status & Health</h2>
-                  <span className="text-sm text-slate-400">{allAgentScores.length} agents</span>
-                </div>
-                <AgentStatusGrid agents={allAgentScores} isLoading={false} />
-              </div>
-            )}
+            {/* 1. Workflow Overview Stats */}
+            <WorkflowOverviewStats workflows={qualityAssessments} isLoading={false} />
 
-            {/* Workflow Quality Details */}
+            {/* 2. Workflow List - PRIMARY FOCUS */}
             <div className="mb-6">
-              <div className="flex items-center gap-3 mb-4">
-                <h2 className="text-lg font-semibold text-white">Workflow Quality Details</h2>
+              <div className="flex items-center justify-between mb-4">
+                <h2 className="text-xl font-semibold text-white">Your Workflows</h2>
+                <span className="text-sm text-slate-400">
+                  {qualityAssessments.length} workflow{qualityAssessments.length !== 1 ? 's' : ''}
+                </span>
               </div>
-              <div className="grid lg:grid-cols-2 gap-6">
-                <QualityDimensionsChart assessments={qualityAssessments} isLoading={false} />
-                <ComplexityMetricsCard assessments={qualityAssessments} isLoading={false} />
-              </div>
-            </div>
-
-            <div className="grid lg:grid-cols-2 gap-6 mb-6">
-              <FixesStatusCard isLoading={false} />
-              <QualitySuggestionsCard
-                suggestions={qualityAssessments.flatMap(a => a.improvements)}
+              <WorkflowListView
+                workflows={qualityAssessments}
+                onSelectWorkflow={setSelectedWorkflowId}
+                selectedWorkflowId={selectedWorkflowId}
                 isLoading={false}
-                maxItems={5}
               />
             </div>
 
+            {/* 3. Workflows Needing Attention */}
             <WorkflowAttentionList detections={detections} isLoading={false} />
+
+            {/* 4. Improvement Suggestions */}
+            <div className="mt-6">
+              <QualitySuggestionsCard
+                suggestions={qualityAssessments.flatMap(a => a.improvements)}
+                isLoading={false}
+                maxItems={8}
+              />
+            </div>
           </>
         ) : (
           <>
-            {/* Full developer dashboard */}
-            <div className="grid lg:grid-cols-2 gap-6 mb-6">
-              <LoopAnalyticsCard data={loopAnalytics} isLoading={false} />
-              <CostAnalyticsCard data={costAnalytics} isLoading={false} />
-            </div>
+            {/* Full developer dashboard - WORKFLOW-CENTRIC */}
 
-            {/* Agent Status Section */}
-            {allAgentScores.length > 0 && (
-              <div className="mb-6">
-                <div className="flex items-center gap-3 mb-4">
-                  <h2 className="text-lg font-semibold text-white">Agent Status & Health</h2>
-                  <span className="text-sm text-slate-400">{allAgentScores.length} agents</span>
-                </div>
-                <AgentStatusGrid agents={allAgentScores} isLoading={false} />
-              </div>
-            )}
+            {/* 1. Workflow Overview Stats */}
+            <WorkflowOverviewStats workflows={qualityAssessments} isLoading={false} />
 
-            {/* Workflow Quality Details */}
+            {/* 2. Workflow List - PRIMARY FOCUS */}
             <div className="mb-6">
-              <div className="flex items-center gap-3 mb-4">
-                <h2 className="text-lg font-semibold text-white">Workflow Quality Details</h2>
+              <div className="flex items-center justify-between mb-4">
+                <h2 className="text-xl font-semibold text-white">Your Workflows</h2>
+                <span className="text-sm text-slate-400">
+                  {qualityAssessments.length} workflow{qualityAssessments.length !== 1 ? 's' : ''}
+                </span>
               </div>
-              <div className="grid lg:grid-cols-2 gap-6">
-                <QualityDimensionsChart assessments={qualityAssessments} isLoading={false} />
-                <ComplexityMetricsCard assessments={qualityAssessments} isLoading={false} />
-              </div>
-            </div>
-
-            <div className="grid lg:grid-cols-2 gap-6 mb-6">
-              <QualityScoreCard assessments={qualityAssessments} isLoading={false} />
-              <QualitySuggestionsCard
-                suggestions={qualityAssessments.flatMap(a => a.improvements)}
+              <WorkflowListView
+                workflows={qualityAssessments}
+                onSelectWorkflow={setSelectedWorkflowId}
+                selectedWorkflowId={selectedWorkflowId}
                 isLoading={false}
-                maxItems={5}
               />
             </div>
 
-            <div className="grid lg:grid-cols-2 gap-6">
-              <RecentDetectionsCard
-                detections={detections}
+            {/* 3. Workflows Needing Attention */}
+            <WorkflowAttentionList detections={detections} isLoading={false} />
+
+            {/* 4. Improvement Suggestions */}
+            <div className="grid lg:grid-cols-2 gap-6 mb-6 mt-6">
+              <QualitySuggestionsCard
+                suggestions={qualityAssessments.flatMap(a => a.improvements)}
                 isLoading={false}
+                maxItems={6}
               />
               <TraceStatusCard
                 traces={traces}
                 isLoading={false}
               />
             </div>
+
+            {/* 5. Developer Analytics (Below Fold) */}
+            <div className="mt-8 pt-8 border-t border-slate-700">
+              <h2 className="text-lg font-semibold text-white mb-4">Developer Analytics</h2>
+              <div className="grid lg:grid-cols-2 gap-6 mb-6">
+                <LoopAnalyticsCard data={loopAnalytics} isLoading={false} />
+                <CostAnalyticsCard data={costAnalytics} isLoading={false} />
+              </div>
+              <div className="grid lg:grid-cols-2 gap-6">
+                <RecentDetectionsCard
+                  detections={detections}
+                  isLoading={false}
+                />
+              </div>
+            </div>
           </>
         )}
       </div>
+
+      {/* Workflow Detail Panel (Slide-in) */}
+      {selectedWorkflow && (
+        <WorkflowDetailPanel
+          workflow={selectedWorkflow}
+          onClose={() => setSelectedWorkflowId(null)}
+        />
+      )}
 
       <ImportModal
         isOpen={showImportModal}

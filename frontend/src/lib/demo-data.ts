@@ -549,7 +549,7 @@ export function generateDemoQualityAssessments(count: number = 20): QualityAsses
         },
         issues_count: Math.max(0, randomInt(0, 6) - Math.floor(overallScore / 25)),
         critical_issues: overallScore < 65 ? ['Critical orchestration pattern detected'] : [],
-        detected_pattern: randomChoice(['sequential', 'parallel', 'hierarchical', 'mesh', 'pipeline']),
+        detected_pattern: randomChoice(['sequential', 'fan-out', 'parallel', 'conditional', 'pipeline', 'hierarchical']),
       },
       improvements,
       complexity_metrics: {
