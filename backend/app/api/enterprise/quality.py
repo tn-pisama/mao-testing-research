@@ -23,7 +23,7 @@ from app.detection.quality_correlation import (
 )
 from app.core.auth import get_current_tenant
 from app.storage.database import get_db, set_tenant_context
-from app.storage.models import WorkflowQualityAssessment, Trace, Detection
+from app.storage.models import WorkflowQualityAssessment, Trace, Detection, WorkflowGroup, WorkflowGroupAssignment
 
 router = APIRouter(prefix="/enterprise/quality", tags=["quality"])
 
@@ -376,6 +376,7 @@ async def list_assessments(
     page_size: int = Query(20, ge=1, le=100),
     workflow_id: Optional[str] = Query(None),
     min_grade: Optional[str] = Query(None),
+    group_id: Optional[str] = Query(None),
     db: AsyncSession = Depends(get_db),
     tenant=Depends(get_current_tenant),
 ):
@@ -397,6 +398,22 @@ async def list_assessments(
             min_index = grade_order.index(min_grade)
             valid_grades = grade_order[:min_index + 1]
             query = query.where(WorkflowQualityAssessment.overall_grade.in_(valid_grades))
+
+    if group_id:
+        if group_id == "ungrouped":
+            # Workflows NOT in any group
+            subquery = select(WorkflowGroupAssignment.workflow_id).where(
+                WorkflowGroupAssignment.group_id.in_(
+                    select(WorkflowGroup.id).where(WorkflowGroup.tenant_id == tenant_id)
+                )
+            )
+            query = query.where(WorkflowQualityAssessment.workflow_id.not_in(subquery))
+        else:
+            # Workflows in specific group
+            subquery = select(WorkflowGroupAssignment.workflow_id).where(
+                WorkflowGroupAssignment.group_id == UUID(group_id)
+            )
+            query = query.where(WorkflowQualityAssessment.workflow_id.in_(subquery))
 
     # Count total
     count_query = select(func.count()).select_from(query.subquery())
