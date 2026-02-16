@@ -16,14 +16,14 @@ export default function DetectionsPage() {
       <div className="mb-8">
         <h1 className="text-3xl font-bold text-white mb-4">Detections</h1>
         <p className="text-lg text-slate-300">
-          Understanding the failure patterns MAO Testing detects and how to interpret them.
+          Understanding the failure patterns Pisama detects and how to interpret them.
         </p>
       </div>
 
       <section className="mb-10">
         <h2 className="text-xl font-bold text-white mb-4">Detection Types</h2>
         <p className="text-slate-300 mb-6">
-          MAO Testing identifies four primary categories of multi-agent failures:
+          Pisama identifies four primary categories of multi-agent failures:
         </p>
 
         <div className="space-y-6">

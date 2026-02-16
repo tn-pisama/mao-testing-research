@@ -12,7 +12,7 @@ export default function ApiReferencePage() {
       <div className="mb-8">
         <h1 className="text-3xl font-bold text-white mb-4">API Reference</h1>
         <p className="text-lg text-slate-300">
-          Complete reference for the MAO Testing REST API and SDK methods.
+          Complete reference for the Pisama REST API and SDK methods.
         </p>
       </div>
 

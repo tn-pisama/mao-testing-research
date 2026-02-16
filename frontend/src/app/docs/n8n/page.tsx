@@ -58,14 +58,14 @@ export default function N8nPage() {
         <div className="space-y-6">
           <MethodCard
             title="Method 1: Webhook (Recommended)"
-            description="Add a webhook node to your n8n workflow to send execution data to MAO Testing in real-time."
+            description="Add a webhook node to your n8n workflow to send execution data to Pisama in real-time."
             pros={["Real-time detection", "No n8n API access needed", "Works with n8n Cloud"]}
             cons={["Requires modifying workflows"]}
           >
             <h4 className="text-sm font-semibold text-slate-400 mb-2 mt-4">Setup Steps</h4>
             <ol className="space-y-3">
               <SetupStep number={1}>
-                <strong>Register your workflow</strong> in MAO Testing dashboard or via API:
+                <strong>Register your workflow</strong> in Pisama dashboard or via API:
                 <CodeBlock title="Register Workflow" language="bash">
 {`curl -X POST https://api.mao-testing.com/api/v1/n8n/workflows \\
   -H "Authorization: Bearer YOUR_TOKEN" \\
@@ -114,7 +114,7 @@ export default function N8nPage() {
 
           <MethodCard
             title="Method 2: API Polling (SDK)"
-            description="Use the Python SDK to poll your n8n instance for executions and sync them to MAO Testing."
+            description="Use the Python SDK to poll your n8n instance for executions and sync them to Pisama."
             pros={["No workflow changes needed", "Import historical data", "Batch processing"]}
             cons={["Requires n8n API access", "Not real-time"]}
           >
@@ -225,7 +225,7 @@ print(f"Synced {len(results)} executions")`}
       <section className="mb-10">
         <h2 className="text-xl font-bold text-white mb-4">Data Mapping</h2>
         <p className="text-slate-300 mb-4">
-          n8n execution data is mapped to MAO Testing traces as follows:
+          n8n execution data is mapped to Pisama traces as follows:
         </p>
 
         <div className="rounded-lg bg-slate-900 border border-slate-700 overflow-hidden">
@@ -265,7 +265,7 @@ print(f"Synced {len(results)} executions")`}
       <section className="mb-10">
         <h2 className="text-xl font-bold text-white mb-4">Example Workflow</h2>
         <p className="text-slate-300 mb-4">
-          Here&apos;s a complete example of an n8n workflow with MAO Testing integration:
+          Here&apos;s a complete example of an n8n workflow with Pisama integration:
         </p>
 
         <div className="rounded-xl bg-slate-800/50 border border-slate-700 p-6">

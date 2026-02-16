@@ -7,7 +7,7 @@ export default function SDKPage() {
       <div className="mb-8">
         <h1 className="text-3xl font-bold text-white mb-4">Python SDK Reference</h1>
         <p className="text-lg text-slate-300">
-          Complete reference for the MAO Testing Python SDK. Instrument your multi-agent 
+          Complete reference for the Pisama Python SDK. Instrument your multi-agent 
           systems with minimal code changes.
         </p>
       </div>

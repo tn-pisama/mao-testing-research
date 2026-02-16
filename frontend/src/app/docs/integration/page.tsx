@@ -15,14 +15,14 @@ export default function IntegrationPage() {
       <div className="mb-8">
         <h1 className="text-3xl font-bold text-white mb-4">Integration Guide</h1>
         <p className="text-lg text-slate-300">
-          Advanced configuration options for integrating MAO Testing with your multi-agent system.
+          Advanced configuration options for integrating Pisama with your multi-agent system.
         </p>
       </div>
 
       <section className="mb-10">
         <h2 className="text-xl font-bold text-white mb-4">SDK Configuration</h2>
         <p className="text-slate-300 mb-4">
-          The MAO Testing SDK accepts several configuration options:
+          The Pisama SDK accepts several configuration options:
         </p>
 
         <CodeBlock title="Python Configuration" language="python">

@@ -164,7 +164,7 @@ function StepWelcome() {
     <div className="space-y-6">
       <div className="text-center">
         <Shield size={64} className="mx-auto mb-4 text-blue-500" />
-        <h2 className="text-2xl font-bold text-white mb-2">Welcome to MAO Testing</h2>
+        <h2 className="text-2xl font-bold text-white mb-2">Welcome to Pisama</h2>
         <p className="text-slate-400 max-w-md mx-auto">
           We help you find and fix problems in your AI workflows automatically.
           No coding required!
@@ -459,7 +459,7 @@ export default function OnboardingPage() {
         <div className="max-w-4xl mx-auto flex items-center justify-between">
           <div className="flex items-center gap-2">
             <Shield className="h-8 w-8 text-blue-500" />
-            <span className="text-xl font-bold text-white">MAO Testing</span>
+            <span className="text-xl font-bold text-white">Pisama</span>
           </div>
           <Button variant="ghost" size="sm" onClick={handleSkip}>
             Skip Setup

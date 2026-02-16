@@ -15,7 +15,7 @@ export default function WebhooksPage() {
       <section className="mb-10">
         <h2 className="text-xl font-bold text-white mb-4">Overview</h2>
         <p className="text-slate-300 mb-4">
-          MAO Testing sends HTTP POST requests to your configured endpoints when events occur:
+          Pisama sends HTTP POST requests to your configured endpoints when events occur:
         </p>
 
         <div className="grid md:grid-cols-2 gap-4">
@@ -114,7 +114,7 @@ export default function WebhooksPage() {
       <section className="mb-10">
         <h2 className="text-xl font-bold text-white mb-4">Signature Verification</h2>
         <p className="text-slate-300 mb-4">
-          Always verify the webhook signature to ensure requests are from MAO Testing:
+          Always verify the webhook signature to ensure requests are from Pisama:
         </p>
 
         <CodeBlock title="Python Verification" language="python">

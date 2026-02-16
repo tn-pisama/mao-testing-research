@@ -8,7 +8,7 @@ export default function CLIPage() {
         <h1 className="text-3xl font-bold text-white mb-4">CLI Reference</h1>
         <p className="text-lg text-slate-300">
           Command-line interface for importing traces, querying detections, and managing 
-          your MAO Testing workspace.
+          your Pisama workspace.
         </p>
       </div>
 
@@ -261,7 +261,7 @@ mao config reset`}
       <section className="mb-10">
         <h2 className="text-xl font-bold text-white mb-4">MCP Server Mode</h2>
         <p className="text-slate-300 mb-4">
-          Run MAO Testing as an MCP (Model Context Protocol) server for AI assistant integration:
+          Run Pisama as an MCP (Model Context Protocol) server for AI assistant integration:
         </p>
 
         <CodeBlock title="MCP Server" language="bash">

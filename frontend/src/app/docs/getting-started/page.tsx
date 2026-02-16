@@ -7,7 +7,7 @@ export default function GettingStartedPage() {
       <div className="mb-8">
         <h1 className="text-3xl font-bold text-white mb-4">Getting Started</h1>
         <p className="text-lg text-slate-300">
-          Get MAO Testing running with your multi-agent system in under 5 minutes.
+          Get Pisama running with your multi-agent system in under 5 minutes.
         </p>
       </div>
 
@@ -16,7 +16,7 @@ export default function GettingStartedPage() {
         <ul className="space-y-2">
           <Prerequisite>A running multi-agent system (LangGraph, AutoGen, CrewAI, or custom)</Prerequisite>
           <Prerequisite>Python 3.9+ or Node.js 18+</Prerequisite>
-          <Prerequisite>MAO Testing API key (get one from Settings)</Prerequisite>
+          <Prerequisite>Pisama API key (get one from Settings)</Prerequisite>
         </ul>
       </section>
 
@@ -63,7 +63,7 @@ export default function GettingStartedPage() {
       <section className="mb-10">
         <h2 className="text-xl font-bold text-white mb-4">Step 3: Instrument Your Agents</h2>
         <p className="text-slate-300 mb-4">
-          Add the MAO Testing wrapper to your agent initialization:
+          Add the Pisama wrapper to your agent initialization:
         </p>
 
         <CodeBlock title="LangGraph Example" language="python">
@@ -116,7 +116,7 @@ with tracer.trace("crew-execution"):
       <section className="mb-10">
         <h2 className="text-xl font-bold text-white mb-4">Step 4: Run Your Agents</h2>
         <p className="text-slate-300 mb-4">
-          Execute your agent workflow as normal. MAO Testing will automatically:
+          Execute your agent workflow as normal. Pisama will automatically:
         </p>
         <ul className="space-y-2 mb-4">
           <Prerequisite>Capture all agent interactions and state changes</Prerequisite>
@@ -128,7 +128,7 @@ with tracer.trace("crew-execution"):
       <section className="mb-10">
         <h2 className="text-xl font-bold text-white mb-4">Step 5: View Results</h2>
         <p className="text-slate-300 mb-4">
-          Open the MAO Testing dashboard to see your traces and any detected issues:
+          Open the Pisama dashboard to see your traces and any detected issues:
         </p>
         <div className="flex gap-4">
           <Link
