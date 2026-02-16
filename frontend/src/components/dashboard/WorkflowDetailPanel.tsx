@@ -5,6 +5,7 @@ import type { QualityAssessment } from '@/lib/api'
 import { QualityGradeBadge } from '@/components/quality/QualityGradeBadge'
 import { AgentStatusGrid } from '@/components/dashboard/AgentStatusGrid'
 import { WorkflowGraphView } from '@/components/workflow/WorkflowGraphView'
+import { WorkflowNodeDetails } from '@/components/workflow/WorkflowNodeDetails'
 import { generateDemoHandoffAnalysis } from '@/lib/demo-data'
 import { X, ChevronDown, ChevronUp, AlertCircle, Info, TrendingUp, GitBranch } from 'lucide-react'
 import clsx from 'clsx'
@@ -16,6 +17,7 @@ interface WorkflowDetailPanelProps {
 
 export function WorkflowDetailPanel({ workflow, onClose }: WorkflowDetailPanelProps) {
   const [showAgentDetails, setShowAgentDetails] = useState(false)
+  const [selectedNodeId, setSelectedNodeId] = useState<string | null>(null)
 
   const orchestrationScore = workflow.orchestration_score
   const orchestrationImprovements = workflow.improvements?.filter(
@@ -26,6 +28,12 @@ export function WorkflowDetailPanel({ workflow, onClose }: WorkflowDetailPanelPr
   const handoffAnalysis = useMemo(() =>
     generateDemoHandoffAnalysis(workflow), [workflow]
   )
+
+  const handleNodeClick = (nodeId: string) => {
+    // Don't open details for start/end nodes
+    if (nodeId === 'start' || nodeId === 'end') return
+    setSelectedNodeId(nodeId)
+  }
 
   return (
     <div className="fixed inset-y-0 right-0 w-full md:w-2/3 lg:w-1/2 bg-slate-900 border-l border-slate-700 shadow-2xl overflow-y-auto z-50">
@@ -147,12 +155,27 @@ export function WorkflowDetailPanel({ workflow, onClose }: WorkflowDetailPanelPr
           <div className="flex items-center gap-2 mb-4">
             <h3 className="text-lg font-semibold text-white">Workflow Diagram</h3>
             <GitBranch size={20} className="text-blue-400" />
+            {selectedNodeId && (
+              <div className="ml-auto text-xs text-slate-400">
+                Click node for details • Click outside to close
+              </div>
+            )}
           </div>
-          <WorkflowGraphView
-            workflow={workflow}
-            handoffGraph={handoffAnalysis.handoff_graph}
-            height={600}
-          />
+          <div className="relative">
+            <WorkflowGraphView
+              workflow={workflow}
+              handoffGraph={handoffAnalysis.handoff_graph}
+              height={600}
+              onNodeClick={handleNodeClick}
+            />
+            {selectedNodeId && (
+              <WorkflowNodeDetails
+                agentId={selectedNodeId}
+                workflow={workflow}
+                onClose={() => setSelectedNodeId(null)}
+              />
+            )}
+          </div>
         </section>
 
         {/* Complexity Metrics */}
