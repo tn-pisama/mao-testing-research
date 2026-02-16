@@ -15,24 +15,24 @@ interface StatsCardProps {
 
 const colorStyles = {
   blue: {
-    iconBg: 'bg-blue-500/20',
-    iconColor: 'text-blue-400',
+    iconBg: 'bg-primary-500/20 border border-primary-500/30 shadow-glow-cyan',
+    iconColor: 'text-primary-500',
   },
   green: {
-    iconBg: 'bg-green-500/20',
-    iconColor: 'text-green-400',
+    iconBg: 'bg-success-500/20 border border-success-500/30',
+    iconColor: 'text-success-500',
   },
   yellow: {
-    iconBg: 'bg-yellow-500/20',
-    iconColor: 'text-yellow-400',
+    iconBg: 'bg-accent-500/20 border border-accent-500/30',
+    iconColor: 'text-accent-500',
   },
   red: {
-    iconBg: 'bg-red-500/20',
-    iconColor: 'text-red-400',
+    iconBg: 'bg-danger-500/20 border border-danger-500/30',
+    iconColor: 'text-danger-500',
   },
   purple: {
-    iconBg: 'bg-purple-500/20',
-    iconColor: 'text-purple-400',
+    iconBg: 'bg-accent-500/20 border border-accent-500/30',
+    iconColor: 'text-accent-500',
   },
 }
 
@@ -48,24 +48,24 @@ export function StatsCard({
 
   const TrendIcon = change === undefined ? Minus : change >= 0 ? TrendingUp : TrendingDown
   const trendColor = change === undefined
-    ? 'text-slate-400'
+    ? 'text-white/60'
     : change >= 0
-      ? 'text-green-400'
-      : 'text-red-400'
+      ? 'text-success-500'
+      : 'text-danger-500'
 
   return (
     <Card>
       <div className="flex items-start justify-between">
         <div>
-          <p className="text-sm text-slate-400">{title}</p>
-          <p className="mt-1 text-3xl font-bold text-white">{value}</p>
+          <p className="text-sm text-white/60 font-mono">{title}</p>
+          <p className="mt-1 text-3xl font-bold text-primary-500 font-mono">{value}</p>
           {change !== undefined && (
             <div className="flex items-center mt-2 gap-1">
               <TrendIcon size={14} className={trendColor} />
-              <span className={clsx('text-sm font-medium', trendColor)}>
+              <span className={clsx('text-sm font-medium font-mono', trendColor)}>
                 {change >= 0 ? '+' : ''}{change}%
               </span>
-              <span className="text-xs text-slate-500">{changeLabel}</span>
+              <span className="text-xs text-white/40 font-mono">{changeLabel}</span>
             </div>
           )}
         </div>

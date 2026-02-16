@@ -31,7 +31,7 @@ export function QualityScoreCard({ assessments = [], isLoading }: QualityScoreCa
   if (isLoading) {
     return (
       <Card>
-        <div className="h-40 animate-pulse bg-slate-700 rounded-lg" />
+        <div className="h-40 animate-pulse bg-primary-500/20 rounded-lg" />
       </Card>
     )
   }
@@ -57,7 +57,7 @@ export function QualityScoreCard({ assessments = [], isLoading }: QualityScoreCa
           </CardTitle>
           <Link
             href="/quality"
-            className="flex items-center gap-1 text-sm text-blue-400 hover:text-blue-300"
+            className="flex items-center gap-1 text-sm text-primary-500 hover:text-primary-400 font-mono"
           >
             View details
             <ChevronRight size={16} />
@@ -67,10 +67,10 @@ export function QualityScoreCard({ assessments = [], isLoading }: QualityScoreCa
       <CardContent>
         {totalAssessments === 0 ? (
           <div className="text-center py-4">
-            <div className="text-slate-400 text-sm mb-2">No quality assessments yet</div>
+            <div className="text-primary-400 text-sm mb-2 font-mono">No quality assessments yet</div>
             <Link
               href="/n8n"
-              className="text-sm text-blue-400 hover:text-blue-300"
+              className="text-sm text-primary-500 hover:text-primary-400 font-mono"
             >
               Register a workflow to get started
             </Link>
@@ -83,28 +83,28 @@ export function QualityScoreCard({ assessments = [], isLoading }: QualityScoreCa
                 <div className={`text-3xl font-bold ${getScoreColor(avgScore)}`}>
                   {Math.round(avgScore * 100)}%
                 </div>
-                <div className="text-sm text-slate-400">
+                <div className="text-sm text-white/60 font-mono">
                   Average across {totalAssessments} workflow{totalAssessments !== 1 ? 's' : ''}
                 </div>
               </div>
             </div>
 
             <div className="grid grid-cols-2 gap-3 mb-3">
-              <div className="bg-slate-800 rounded-lg p-3">
+              <div className="bg-success-500/20 border border-success-500/30 rounded-lg p-3">
                 <div className="flex items-center gap-2 mb-1">
-                  <TrendingUp size={14} className="text-green-400" />
-                  <span className="text-xs text-slate-400">Excellent</span>
+                  <TrendingUp size={14} className="text-success-500" />
+                  <span className="text-xs text-white/60 font-mono">Excellent</span>
                 </div>
-                <div className="text-lg font-semibold text-green-400">
+                <div className="text-lg font-semibold text-success-500 font-mono">
                   {excellentCount}
                 </div>
               </div>
-              <div className="bg-slate-800 rounded-lg p-3">
+              <div className="bg-accent-500/20 border border-accent-500/30 rounded-lg p-3">
                 <div className="flex items-center gap-2 mb-1">
-                  <TrendingDown size={14} className="text-amber-400" />
-                  <span className="text-xs text-slate-400">Needs Work</span>
+                  <TrendingDown size={14} className="text-accent-500" />
+                  <span className="text-xs text-white/60 font-mono">Needs Work</span>
                 </div>
-                <div className="text-lg font-semibold text-amber-400">
+                <div className="text-lg font-semibold text-accent-500 font-mono">
                   {needsWorkCount}
                 </div>
               </div>
@@ -121,13 +121,13 @@ export function QualityScoreCard({ assessments = [], isLoading }: QualityScoreCa
             )}
 
             {criticalIssues === 0 && totalIssues > 0 && (
-              <div className="text-sm text-slate-400">
+              <div className="text-sm text-white/60 font-mono">
                 {totalIssues} improvement suggestion{totalIssues !== 1 ? 's' : ''} available
               </div>
             )}
 
             {totalIssues === 0 && (
-              <div className="text-sm text-green-400">
+              <div className="text-sm text-success-500 font-mono">
                 All workflows are well configured!
               </div>
             )}
