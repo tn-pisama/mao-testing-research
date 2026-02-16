@@ -95,7 +95,7 @@ export function QualitySuggestionsCard({
 
                 return (
                   <div
-                    key={suggestion.id}
+                    key={`${suggestion.target_id}-${suggestion.id}`}
                     className="p-3 bg-primary-500/10 rounded-lg border border-primary-500/30 hover:border-primary-500/50 hover:shadow-glow-green transition-all"
                   >
                     <div className="flex items-start gap-3">
