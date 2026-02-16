@@ -44,7 +44,7 @@ export function RecentDetectionsCard({ detections, isLoading }: RecentDetections
   if (isLoading) {
     return (
       <Card>
-        <div className="h-64 animate-pulse bg-slate-700 rounded-lg" />
+        <div className="h-64 animate-pulse bg-primary-500/20 rounded-lg" />
       </Card>
     )
   }
@@ -56,7 +56,7 @@ export function RecentDetectionsCard({ detections, isLoading }: RecentDetections
           <CardTitle>Recent Detections</CardTitle>
           <Link
             href="/detections"
-            className="flex items-center gap-1 text-sm text-blue-400 hover:text-blue-300"
+            className="flex items-center gap-1 text-sm text-primary-500 hover:text-primary-400 font-mono"
           >
             View all
             <ChevronRight size={16} />
@@ -66,7 +66,7 @@ export function RecentDetectionsCard({ detections, isLoading }: RecentDetections
       <CardContent>
         <div className="space-y-3">
           {detections.length === 0 ? (
-            <div className="text-center py-8 text-slate-400">
+            <div className="text-center py-8 text-white/60 font-mono">
               <AlertTriangle size={24} className="mx-auto mb-2 opacity-50" />
               <p className="text-sm">No recent detections</p>
             </div>
@@ -77,23 +77,23 @@ export function RecentDetectionsCard({ detections, isLoading }: RecentDetections
                 <Link
                   key={detection.id}
                   href={`/detections/${detection.id}`}
-                  className="flex items-center justify-between p-3 bg-slate-800/50 rounded-lg hover:bg-slate-800 transition-colors"
+                  className="flex items-center justify-between p-3 bg-primary-500/10 rounded-lg border border-primary-500/30 hover:bg-primary-500/20 hover:shadow-glow-green transition-all"
                 >
                   <div className="flex items-center gap-3">
                     <AlertTriangle
                       size={16}
                       className={
-                        severity === 'critical' ? 'text-red-400' :
-                        severity === 'high' ? 'text-yellow-400' :
-                        severity === 'medium' ? 'text-blue-400' :
-                        'text-slate-400'
+                        severity === 'critical' ? 'text-danger-500' :
+                        severity === 'high' ? 'text-accent-500' :
+                        severity === 'medium' ? 'text-primary-500' :
+                        'text-white/60'
                       }
                     />
                     <div>
                       <p className="text-sm font-medium text-white">
                         {detection.detection_type.replace(/_/g, ' ')}
                       </p>
-                      <p className="text-xs text-slate-500">
+                      <p className="text-xs text-white/40 font-mono">
                         Trace: {detection.trace_id.slice(0, 8)}...
                       </p>
                     </div>
@@ -102,7 +102,7 @@ export function RecentDetectionsCard({ detections, isLoading }: RecentDetections
                     <Badge variant={severityStyles[severity]} size="sm">
                       {severity}
                     </Badge>
-                    <div className="flex items-center gap-1 text-xs text-slate-500">
+                    <div className="flex items-center gap-1 text-xs text-white/40 font-mono">
                       <Clock size={12} />
                       {formatTime(detection.created_at)}
                     </div>
