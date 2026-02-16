@@ -39,15 +39,15 @@ function StateItem({ state, isFirst }: { state: State; isFirst: boolean }) {
     <div className="relative">
       {/* Timeline connector */}
       {!isFirst && (
-        <div className="absolute left-4 -top-4 w-0.5 h-4 bg-slate-600" />
+        <div className="absolute left-4 -top-4 w-0.5 h-4 bg-primary-500/30" />
       )}
 
       <div
         onClick={() => setIsExpanded(!isExpanded)}
-        className="flex items-start gap-3 p-3 bg-slate-800 rounded-lg cursor-pointer hover:bg-slate-700/80 transition-colors"
+        className="flex items-start gap-3 p-3 bg-primary-500/10 border border-primary-500/30 rounded-lg cursor-pointer hover:bg-primary-500/20 hover:shadow-glow-green transition-all"
       >
         {/* Timeline dot */}
-        <div className="flex-shrink-0 w-8 h-8 bg-slate-700 rounded-full flex items-center justify-center text-sm font-medium text-slate-300">
+        <div className="flex-shrink-0 w-8 h-8 bg-primary-500/20 border border-primary-500/50 rounded-full flex items-center justify-center text-sm font-medium text-primary-500 font-mono">
           {state.sequence_num}
         </div>
 
@@ -55,11 +55,11 @@ function StateItem({ state, isFirst }: { state: State; isFirst: boolean }) {
           <div className="flex items-center justify-between mb-1">
             <div className="flex items-center gap-2">
               <span className="text-white font-medium">{state.agent_id}</span>
-              <span className="text-xs text-slate-500">
+              <span className="text-xs text-white/40 font-mono">
                 {new Date(state.created_at).toLocaleTimeString()}
               </span>
             </div>
-            <div className="flex items-center gap-3 text-sm text-slate-400">
+            <div className="flex items-center gap-3 text-sm text-white/60 font-mono">
               <span className="flex items-center gap-1">
                 <Clock size={12} />
                 {state.latency_ms}ms
@@ -73,7 +73,7 @@ function StateItem({ state, isFirst }: { state: State; isFirst: boolean }) {
           </div>
 
           {state.metadata?.user_input && (
-            <p className="text-sm text-slate-400 truncate">
+            <p className="text-sm text-white/60 font-mono truncate">
               {state.metadata.user_input}
             </p>
           )}
@@ -82,36 +82,36 @@ function StateItem({ state, isFirst }: { state: State; isFirst: boolean }) {
 
       {/* Expanded state details */}
       {isExpanded && (
-        <div className="mt-2 ml-11 p-3 bg-slate-900 rounded-lg border border-slate-700">
+        <div className="mt-2 ml-11 p-3 bg-black rounded-lg border border-primary-500/30">
           {state.metadata?.user_input && (
             <div className="mb-3">
-              <p className="text-xs font-medium text-slate-500 mb-1">Input</p>
-              <p className="text-sm text-slate-300">{state.metadata.user_input}</p>
+              <p className="text-xs font-medium text-white/40 font-mono mb-1">Input</p>
+              <p className="text-sm text-white font-mono">{state.metadata.user_input}</p>
             </div>
           )}
 
           {state.metadata?.reasoning && (
             <div className="mb-3">
-              <p className="text-xs font-medium text-slate-500 mb-1">Reasoning</p>
-              <p className="text-sm text-slate-300">{state.metadata.reasoning}</p>
+              <p className="text-xs font-medium text-white/40 font-mono mb-1">Reasoning</p>
+              <p className="text-sm text-white font-mono">{state.metadata.reasoning}</p>
             </div>
           )}
 
           {state.metadata?.ai_output && (
             <div className="mb-3">
-              <p className="text-xs font-medium text-slate-500 mb-1">Output</p>
-              <p className="text-sm text-slate-300 whitespace-pre-wrap">{state.metadata.ai_output}</p>
+              <p className="text-xs font-medium text-white/40 font-mono mb-1">Output</p>
+              <p className="text-sm text-white font-mono whitespace-pre-wrap">{state.metadata.ai_output}</p>
             </div>
           )}
 
-          <div className="pt-2 border-t border-slate-700">
-            <p className="text-xs font-medium text-slate-500 mb-1">State Delta</p>
-            <pre className="text-xs text-slate-400 overflow-x-auto p-2 bg-slate-950 rounded">
+          <div className="pt-2 border-t border-primary-500/30">
+            <p className="text-xs font-medium text-white/40 font-mono mb-1">State Delta</p>
+            <pre className="text-xs text-primary-400 overflow-x-auto p-2 bg-black rounded border border-primary-500/30 font-mono">
               {JSON.stringify(state.state_delta, null, 2)}
             </pre>
           </div>
 
-          <div className="mt-2 text-xs text-slate-500">
+          <div className="mt-2 text-xs text-white/40 font-mono">
             Hash: {state.state_hash}
           </div>
         </div>
@@ -124,7 +124,7 @@ export function TraceViewer({ trace, states, isLoading }: TraceViewerProps) {
   if (isLoading) {
     return (
       <Card>
-        <div className="text-center py-8 text-slate-400">
+        <div className="text-center py-8 text-white/60 font-mono">
           <Loader2 size={24} className="mx-auto mb-2 animate-spin" />
           <p className="text-sm">Loading trace details...</p>
         </div>
@@ -135,9 +135,9 @@ export function TraceViewer({ trace, states, isLoading }: TraceViewerProps) {
   if (!trace) {
     return (
       <Card>
-        <div className="text-center py-8 text-slate-400">
+        <div className="text-center py-8 text-white/60 font-mono">
           <p className="text-sm">No trace selected</p>
-          <p className="text-xs mt-1 text-slate-500">Select a trace to view its details</p>
+          <p className="text-xs mt-1 text-white/40">Select a trace to view its details</p>
         </div>
       </Card>
     )
@@ -156,44 +156,44 @@ export function TraceViewer({ trace, states, isLoading }: TraceViewerProps) {
         <CardContent>
           <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
             <div>
-              <p className="text-xs text-slate-500 mb-1">Session ID</p>
+              <p className="text-xs text-white/40 font-mono mb-1">Session ID</p>
               <p className="text-sm text-white font-mono truncate">{trace.session_id}</p>
             </div>
             <div>
-              <p className="text-xs text-slate-500 mb-1">Framework</p>
-              <p className="text-sm text-white">{trace.framework}</p>
+              <p className="text-xs text-white/40 font-mono mb-1">Framework</p>
+              <p className="text-sm text-white font-mono">{trace.framework}</p>
             </div>
             <div>
-              <p className="text-xs text-slate-500 mb-1">Total Tokens</p>
-              <p className="text-sm text-white flex items-center gap-1">
-                <Cpu size={14} className="text-slate-400" />
+              <p className="text-xs text-white/40 font-mono mb-1">Total Tokens</p>
+              <p className="text-sm text-white font-mono flex items-center gap-1">
+                <Cpu size={14} className="text-white/60" />
                 {trace.total_tokens.toLocaleString()}
               </p>
             </div>
             <div>
-              <p className="text-xs text-slate-500 mb-1">Cost</p>
-              <p className="text-sm text-white flex items-center gap-1">
-                <DollarSign size={14} className="text-slate-400" />
+              <p className="text-xs text-white/40 font-mono mb-1">Cost</p>
+              <p className="text-sm text-white font-mono flex items-center gap-1">
+                <DollarSign size={14} className="text-white/60" />
                 {formatCost(trace.total_cost_cents)}
               </p>
             </div>
             <div>
-              <p className="text-xs text-slate-500 mb-1">Started</p>
-              <p className="text-sm text-white">{new Date(trace.created_at).toLocaleString()}</p>
+              <p className="text-xs text-white/40 font-mono mb-1">Started</p>
+              <p className="text-sm text-white font-mono">{new Date(trace.created_at).toLocaleString()}</p>
             </div>
             <div>
-              <p className="text-xs text-slate-500 mb-1">Completed</p>
-              <p className="text-sm text-white">
+              <p className="text-xs text-white/40 font-mono mb-1">Completed</p>
+              <p className="text-sm text-white font-mono">
                 {trace.completed_at ? new Date(trace.completed_at).toLocaleString() : '-'}
               </p>
             </div>
             <div>
-              <p className="text-xs text-slate-500 mb-1">States</p>
-              <p className="text-sm text-white">{trace.state_count}</p>
+              <p className="text-xs text-white/40 font-mono mb-1">States</p>
+              <p className="text-sm text-white font-mono">{trace.state_count}</p>
             </div>
             <div>
-              <p className="text-xs text-slate-500 mb-1">Issues Detected</p>
-              <p className={`text-sm ${trace.detection_count > 0 ? 'text-amber-400' : 'text-white'}`}>
+              <p className="text-xs text-white/40 font-mono mb-1">Issues Detected</p>
+              <p className={`text-sm font-mono ${trace.detection_count > 0 ? 'text-accent-500' : 'text-white'}`}>
                 {trace.detection_count > 0 ? (
                   <span className="flex items-center gap-1">
                     <AlertTriangle size={14} />
@@ -215,7 +215,7 @@ export function TraceViewer({ trace, states, isLoading }: TraceViewerProps) {
         </CardHeader>
         <CardContent>
           {!states || states.length === 0 ? (
-            <div className="text-center py-6 text-slate-400">
+            <div className="text-center py-6 text-white/60 font-mono">
               <p className="text-sm">No states recorded for this trace</p>
             </div>
           ) : (
