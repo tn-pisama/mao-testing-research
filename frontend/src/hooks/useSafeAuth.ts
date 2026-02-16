@@ -1,7 +1,11 @@
 'use client'
 
 import { useSession, signOut as nextAuthSignOut } from 'next-auth/react'
-import { useCallback, useMemo, useRef } from 'react'
+import { useCallback, useMemo } from 'react'
+
+// Global cache for dev token (shared across all component instances)
+let globalDevToken: string | null = null
+let tokenExpiresAt: number | null = null
 
 /**
  * Wrapper around NextAuth's useSession hook for compatibility.
@@ -10,7 +14,6 @@ import { useCallback, useMemo, useRef } from 'react'
  */
 export function useSafeAuth() {
   const { data: session, status } = useSession()
-  const devTokenRef = useRef<string | null>(null)
 
   // Type assertion for extended session
   const extendedSession = session as any
@@ -25,9 +28,10 @@ export function useSafeAuth() {
   const getToken = useCallback(async () => {
     // Development mode: use API key if available
     if (process.env.NODE_ENV === 'development' && process.env.NEXT_PUBLIC_DEV_API_KEY) {
-      // Return cached token if available
-      if (devTokenRef.current) {
-        return devTokenRef.current
+      // Return cached token if available and not expired
+      const now = Date.now()
+      if (globalDevToken && tokenExpiresAt && tokenExpiresAt > now) {
+        return globalDevToken
       }
 
       // Exchange API key for JWT
@@ -40,14 +44,25 @@ export function useSafeAuth() {
 
         if (!response.ok) {
           console.error('Failed to exchange API key for token:', response.status)
+          // If we have a cached token even if expired, use it
+          if (globalDevToken) {
+            console.warn('Using expired token due to rate limit')
+            return globalDevToken
+          }
           return idToken // Fall back to NextAuth token
         }
 
         const data = await response.json()
-        devTokenRef.current = data.access_token
+        globalDevToken = data.access_token
+        // Cache token for 23 hours (tokens expire in 24h)
+        tokenExpiresAt = now + (23 * 60 * 60 * 1000)
         return data.access_token
       } catch (error) {
         console.error('Error exchanging API key:', error)
+        // If we have a cached token, use it
+        if (globalDevToken) {
+          return globalDevToken
+        }
         return idToken // Fall back to NextAuth token
       }
     }

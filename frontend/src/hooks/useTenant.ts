@@ -21,30 +21,10 @@ export function useTenant() {
 
   useEffect(() => {
     async function fetchTenant() {
-      // Development mode: extract tenant_id from JWT token
-      if (process.env.NODE_ENV === 'development' && process.env.NEXT_PUBLIC_DEV_API_KEY) {
-        try {
-          // Exchange API key for JWT token
-          const response = await fetch('http://localhost:8000/api/v1/auth/token', {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ api_key: process.env.NEXT_PUBLIC_DEV_API_KEY })
-          })
-
-          if (response.ok) {
-            const data = await response.json()
-            // Decode JWT to get tenant_id (basic decode, no verification needed for dev)
-            const payload = JSON.parse(atob(data.access_token.split('.')[1]))
-            setTenantId(payload.tenant_id || 'default')
-          } else {
-            setTenantId('default')
-          }
-        } catch (error) {
-          console.error('Failed to fetch dev tenant:', error)
-          setTenantId('default')
-        } finally {
-          setIsLoading(false)
-        }
+      // Development mode: use tenant ID from environment
+      if (process.env.NODE_ENV === 'development' && process.env.NEXT_PUBLIC_DEV_TENANT_ID) {
+        setTenantId(process.env.NEXT_PUBLIC_DEV_TENANT_ID)
+        setIsLoading(false)
         return
       }
 
