@@ -1,5 +1,6 @@
 'use client'
 
+import { Fragment } from 'react'
 import { Check, X } from 'lucide-react'
 
 export function ComparisonTable() {
@@ -88,8 +89,8 @@ export function ComparisonTable() {
             </thead>
             <tbody>
               {features.map((category, catIndex) => (
-                <>
-                  <tr key={`cat-${catIndex}`}>
+                <Fragment key={`cat-${catIndex}`}>
+                  <tr>
                     <td colSpan={5} className="py-4 px-4">
                       <div className="text-white font-semibold text-sm uppercase tracking-wider">
                         {category.category}
@@ -108,7 +109,7 @@ export function ComparisonTable() {
                       <td className="py-3 px-4">{renderCell(row.agentops)}</td>
                     </tr>
                   ))}
-                </>
+                </Fragment>
               ))}
             </tbody>
           </table>
