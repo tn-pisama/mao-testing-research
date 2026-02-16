@@ -1,5 +1,6 @@
 import { useState, useEffect } from 'react'
-import { useAuth } from '@clerk/nextjs'
+import { useSafeAuth as useAuth } from '@/hooks/useSafeAuth'
+import { useTenant } from '@/hooks/useTenant'
 import type { QualityAssessment } from '@/lib/api'
 import type { HandoffMetrics } from '@/lib/workflow-layout'
 import { createApiClient } from '@/lib/api'
@@ -20,6 +21,7 @@ interface UseHandoffAnalysisResult {
 
 export function useHandoffAnalysis(workflow?: QualityAssessment): UseHandoffAnalysisResult {
   const { getToken } = useAuth()
+  const { tenantId } = useTenant()
 
   const [handoffAnalysis, setHandoffAnalysis] = useState<HandoffAnalysis | null>(null)
   const [handoffMetrics, setHandoffMetrics] = useState<Record<string, HandoffMetrics>>({})
@@ -42,8 +44,7 @@ export function useHandoffAnalysis(workflow?: QualityAssessment): UseHandoffAnal
       try {
         // Try real API first
         const token = await getToken()
-        const tenantId = 'default' // TODO: Get from tenant context if available
-        const apiClient = createApiClient(token, tenantId)
+        const apiClient = createApiClient(token, tenantId || 'default')
 
         // Attempt to analyze handoffs via API
         // Note: This endpoint may need trace data, so we might need to handle 400/404 gracefully
