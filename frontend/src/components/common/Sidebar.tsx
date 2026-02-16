@@ -78,7 +78,8 @@ export function Sidebar({ isCollapsed = false, onToggle }: SidebarProps) {
   const { isN8nUser, showAdvancedFeatures, preferences } = useUserPreferences()
 
   const NavLink = ({ item }: { item: NavItem }) => {
-    const isActive = pathname === item.href || pathname?.startsWith(item.href + '/')
+    const isActive = pathname === item.href ||
+      (item.href !== '/settings' && pathname?.startsWith(item.href + '/'))
     const Icon = item.icon
 
     return (
