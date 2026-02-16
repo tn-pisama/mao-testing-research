@@ -1685,3 +1685,53 @@ export function generateDemoHandoffAnalysis(workflow: QualityAssessment): Handof
     issues: failedHandoffs > 0 ? ['Some handoffs failed due to timeout'] : [],
   }
 }
+
+// Generate per-handoff metrics for edge styling
+export function generateHandoffMetrics(
+  handoffGraph: Record<string, string[]>,
+  agentScores: AgentQualityScore[]
+): Record<string, import('./workflow-layout').HandoffMetrics> {
+  const metrics: Record<string, import('./workflow-layout').HandoffMetrics> = {}
+
+  // Create a map of agent IDs to their scores for quick lookup
+  const agentScoreMap = new Map(agentScores.map(a => [a.agent_id, a.overall_score]))
+
+  Object.entries(handoffGraph).forEach(([fromAgent, toAgents]) => {
+    toAgents.forEach((toAgent) => {
+      const edgeId = `${fromAgent}-${toAgent}`
+
+      // Base success rate on the health of both agents
+      const fromScore = agentScoreMap.get(fromAgent) || 0.8
+      const toScore = agentScoreMap.get(toAgent) || 0.8
+      const avgScore = (fromScore + toScore) / 2
+
+      // Success rate correlates with agent health
+      const baseSuccessRate = Math.min(0.99, Math.max(0.5, avgScore + randomInt(-5, 5) / 100))
+
+      // Add some variance to latency based on agent health
+      const baseLatency = avgScore > 0.9 ? randomInt(30, 80) :
+                         avgScore > 0.7 ? randomInt(50, 150) :
+                         randomInt(100, 300)
+
+      // Total handoffs varies
+      const totalHandoffs = randomInt(10, 100)
+      const failedHandoffs = Math.floor(totalHandoffs * (1 - baseSuccessRate))
+
+      // Determine status
+      let status: 'healthy' | 'degraded' | 'failing'
+      if (baseSuccessRate >= 0.95) status = 'healthy'
+      else if (baseSuccessRate >= 0.85) status = 'degraded'
+      else status = 'failing'
+
+      metrics[edgeId] = {
+        successRate: baseSuccessRate,
+        avgLatencyMs: baseLatency,
+        totalHandoffs,
+        failedHandoffs,
+        status,
+      }
+    })
+  })
+
+  return metrics
+}

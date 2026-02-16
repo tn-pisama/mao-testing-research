@@ -20,11 +20,13 @@ import {
   buildNodesFromAgents,
   buildEdgesFromHandoffs,
   applyDagreLayout,
+  type HandoffMetrics,
 } from '@/lib/workflow-layout'
 
 interface WorkflowGraphViewProps {
   workflow: QualityAssessment
   handoffGraph?: Record<string, string[]>
+  handoffMetrics?: Record<string, HandoffMetrics>
   height?: number
   onNodeClick?: (nodeId: string) => void
 }
@@ -37,6 +39,7 @@ const nodeTypes: NodeTypes = {
 export function WorkflowGraphView({
   workflow,
   handoffGraph,
+  handoffMetrics,
   height = 600,
   onNodeClick,
 }: WorkflowGraphViewProps) {
@@ -44,7 +47,7 @@ export function WorkflowGraphView({
   const { initialNodes, initialEdges } = useMemo(() => {
     const pattern = workflow.orchestration_score?.detected_pattern
     const nodes = buildNodesFromAgents(workflow.agent_scores || [], pattern)
-    const edges = buildEdgesFromHandoffs(handoffGraph, workflow.agent_scores, pattern)
+    const edges = buildEdgesFromHandoffs(handoffGraph, workflow.agent_scores, pattern, handoffMetrics)
 
     // Apply layout
     const layouted = applyDagreLayout(nodes, edges, {
@@ -59,7 +62,7 @@ export function WorkflowGraphView({
       initialNodes: layouted.nodes,
       initialEdges: layouted.edges,
     }
-  }, [workflow, handoffGraph])
+  }, [workflow, handoffGraph, handoffMetrics])
 
   const [nodes, setNodes, onNodesChange] = useNodesState(initialNodes)
   const [edges, setEdges, onEdgesChange] = useEdgesState(initialEdges)

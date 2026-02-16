@@ -6,7 +6,7 @@ import { QualityGradeBadge } from '@/components/quality/QualityGradeBadge'
 import { AgentStatusGrid } from '@/components/dashboard/AgentStatusGrid'
 import { WorkflowGraphView } from '@/components/workflow/WorkflowGraphView'
 import { WorkflowNodeDetails } from '@/components/workflow/WorkflowNodeDetails'
-import { generateDemoHandoffAnalysis } from '@/lib/demo-data'
+import { generateDemoHandoffAnalysis, generateHandoffMetrics } from '@/lib/demo-data'
 import { X, ChevronDown, ChevronUp, AlertCircle, Info, TrendingUp, GitBranch } from 'lucide-react'
 import clsx from 'clsx'
 
@@ -27,6 +27,14 @@ export function WorkflowDetailPanel({ workflow, onClose }: WorkflowDetailPanelPr
   // Generate handoff analysis for workflow diagram
   const handoffAnalysis = useMemo(() =>
     generateDemoHandoffAnalysis(workflow), [workflow]
+  )
+
+  // Generate per-handoff metrics for edge styling
+  const handoffMetrics = useMemo(() =>
+    generateHandoffMetrics(
+      handoffAnalysis.handoff_graph,
+      workflow.agent_scores || []
+    ), [handoffAnalysis.handoff_graph, workflow.agent_scores]
   )
 
   const handleNodeClick = (nodeId: string) => {
@@ -165,6 +173,7 @@ export function WorkflowDetailPanel({ workflow, onClose }: WorkflowDetailPanelPr
             <WorkflowGraphView
               workflow={workflow}
               handoffGraph={handoffAnalysis.handoff_graph}
+              handoffMetrics={handoffMetrics}
               height={600}
               onNodeClick={handleNodeClick}
             />
