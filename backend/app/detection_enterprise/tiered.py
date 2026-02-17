@@ -455,7 +455,7 @@ def create_tiered_hallucination_detector(config: Optional[TierConfig] = None) ->
 
     return TieredDetector(
         detection_type="hallucination",
-        rule_based_fn=hallucination_detector.detect,
+        rule_based_fn=hallucination_detector.detect_hallucination,
         result_extractor=extractor,
         config=config,
     )
