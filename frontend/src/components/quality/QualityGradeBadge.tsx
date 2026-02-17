@@ -9,24 +9,17 @@ export interface QualityGradeBadgeProps extends HTMLAttributes<HTMLSpanElement> 
   showLabel?: boolean
 }
 
-const gradeColors: Record<string, string> = {
-  'A': 'bg-success-500/20 text-success-500 border-success-500/50',
-  'B+': 'bg-primary-500/20 text-primary-500 border-primary-500/50 shadow-glow-cyan',
-  'B': 'bg-primary-500/20 text-primary-500 border-primary-500/50 shadow-glow-cyan',
-  'C+': 'bg-accent-500/20 text-accent-500 border-accent-500/50',
-  'C': 'bg-accent-500/20 text-accent-500 border-accent-500/50',
-  'D': 'bg-danger-500/20 text-danger-500 border-danger-500/50',
-  'F': 'bg-danger-500/20 text-danger-500 border-danger-500/50',
-}
-
-const gradeLabels: Record<string, string> = {
-  'A': 'Excellent',
-  'B+': 'Very Good',
-  'B': 'Good',
-  'C+': 'Above Average',
-  'C': 'Average',
-  'D': 'Below Average',
-  'F': 'Poor',
+function gradeToTier(grade: string): { label: string; className: string } {
+  if (['A+', 'A', 'A-'].includes(grade)) {
+    return { label: 'Healthy', className: 'bg-success-500/20 text-success-500 border-success-500/50' }
+  }
+  if (['B+', 'B', 'B-'].includes(grade)) {
+    return { label: 'Degraded', className: 'bg-accent-500/20 text-accent-500 border-accent-500/50' }
+  }
+  if (['C+', 'C', 'C-'].includes(grade)) {
+    return { label: 'At Risk', className: 'bg-orange-500/20 text-orange-400 border-orange-500/50' }
+  }
+  return { label: 'Critical', className: 'bg-danger-500/20 text-danger-500 border-danger-500/50' }
 }
 
 export const QualityGradeBadge = forwardRef<HTMLSpanElement, QualityGradeBadgeProps>(
@@ -39,8 +32,7 @@ export const QualityGradeBadge = forwardRef<HTMLSpanElement, QualityGradeBadgePr
       lg: 'px-3 py-1.5 text-base',
     }
 
-    const colorClass = gradeColors[grade] || gradeColors['F']
-    const label = gradeLabels[grade] || 'Unknown'
+    const { label, className: colorClass } = gradeToTier(grade)
 
     return (
       <span
@@ -49,8 +41,7 @@ export const QualityGradeBadge = forwardRef<HTMLSpanElement, QualityGradeBadgePr
         title={label}
         {...props}
       >
-        {grade}
-        {showLabel && <span className="ml-1.5 font-normal opacity-80">{label}</span>}
+        {label}
       </span>
     )
   }
@@ -59,16 +50,10 @@ export const QualityGradeBadge = forwardRef<HTMLSpanElement, QualityGradeBadgePr
 QualityGradeBadge.displayName = 'QualityGradeBadge'
 
 export function getGradeColor(grade: string): string {
-  const colors: Record<string, string> = {
-    'A': 'text-success-500',
-    'B+': 'text-primary-500',
-    'B': 'text-primary-500',
-    'C+': 'text-accent-500',
-    'C': 'text-accent-500',
-    'D': 'text-danger-500',
-    'F': 'text-danger-500',
-  }
-  return colors[grade] || 'text-white/60'
+  if (['A+', 'A', 'A-'].includes(grade)) return 'text-success-500'
+  if (['B+', 'B', 'B-'].includes(grade)) return 'text-accent-500'
+  if (['C+', 'C', 'C-'].includes(grade)) return 'text-orange-400'
+  return 'text-danger-500'
 }
 
 export function getScoreColor(score: number): string {

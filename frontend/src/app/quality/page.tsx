@@ -58,7 +58,12 @@ export default function QualityPage() {
 
   const totalPages = Math.ceil(total / perPage)
 
-  const gradeOptions = ['A', 'B+', 'B', 'C+', 'C', 'D', 'F']
+  const tierOptions = [
+    { label: 'Healthy',  minGrade: 'A',  activeClass: 'bg-success-500/20 text-success-500 border-success-500/50' },
+    { label: 'Degraded', minGrade: 'B',  activeClass: 'bg-accent-500/20 text-accent-500 border-accent-500/50' },
+    { label: 'At Risk',  minGrade: 'C',  activeClass: 'bg-orange-500/20 text-orange-400 border-orange-500/50' },
+    { label: 'Critical', minGrade: 'F',  activeClass: 'bg-danger-500/20 text-danger-500 border-danger-500/50' },
+  ]
 
   return (
     <Layout>
@@ -81,7 +86,7 @@ export default function QualityPage() {
         <div className="flex items-center gap-3 mb-6 flex-wrap">
           <div className="flex items-center gap-2">
             <Filter size={16} className="text-slate-400" />
-            <span className="text-sm text-slate-400">Grade:</span>
+            <span className="text-sm text-slate-400">Health:</span>
           </div>
           <div className="flex gap-2">
             <button
@@ -94,17 +99,17 @@ export default function QualityPage() {
             >
               All
             </button>
-            {gradeOptions.map((grade) => (
+            {tierOptions.map((tier) => (
               <button
-                key={grade}
-                onClick={() => setGradeFilter(grade === gradeFilter ? null : grade)}
-                className={`px-3 py-1.5 rounded-lg text-sm transition-colors ${
-                  gradeFilter === grade
-                    ? 'bg-blue-500/20 text-blue-400 border border-blue-500/50'
-                    : 'bg-slate-800 text-slate-400 border border-slate-700 hover:border-slate-600'
+                key={tier.label}
+                onClick={() => setGradeFilter(tier.minGrade === gradeFilter ? null : tier.minGrade)}
+                className={`px-3 py-1.5 rounded-lg text-sm transition-colors border ${
+                  gradeFilter === tier.minGrade
+                    ? tier.activeClass
+                    : 'bg-slate-800 text-slate-400 border-slate-700 hover:border-slate-600'
                 }`}
               >
-                {grade}
+                {tier.label}
               </button>
             ))}
           </div>
