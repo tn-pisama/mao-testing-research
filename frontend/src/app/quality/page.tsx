@@ -11,8 +11,6 @@ import { Card, CardHeader, CardTitle, CardContent } from '@/components/ui/Card'
 import { Button } from '@/components/ui/Button'
 import { Badge } from '@/components/ui/Badge'
 import { QualityGradeBadge, getScoreColor } from '@/components/quality/QualityGradeBadge'
-import { WorkflowGroupFilter } from '@/components/filters/WorkflowGroupFilter'
-import { ManageGroupsModal } from '@/components/modals/ManageGroupsModal'
 import { createApiClient, QualityAssessment } from '@/lib/api'
 import { useUIStore } from '@/stores/uiStore'
 import Link from 'next/link'
@@ -27,7 +25,6 @@ export default function QualityPage() {
   const [page, setPage] = useState(1)
   const [total, setTotal] = useState(0)
   const [gradeFilter, setGradeFilter] = useState<string | null>(null)
-  const [isManageModalOpen, setIsManageModalOpen] = useState(false)
   const perPage = 10
 
   const loadAssessments = useCallback(async () => {
@@ -82,9 +79,6 @@ export default function QualityPage() {
 
         {/* Filters */}
         <div className="flex items-center gap-3 mb-6 flex-wrap">
-          {/* Workflow Group Filter */}
-          <WorkflowGroupFilter onManageGroups={() => setIsManageModalOpen(true)} />
-
           <div className="flex items-center gap-2">
             <Filter size={16} className="text-slate-400" />
             <span className="text-sm text-slate-400">Grade:</span>
@@ -221,11 +215,6 @@ export default function QualityPage() {
         )}
       </div>
 
-      {/* Manage Groups Modal */}
-      <ManageGroupsModal
-        isOpen={isManageModalOpen}
-        onClose={() => setIsManageModalOpen(false)}
-      />
     </Layout>
   )
 }

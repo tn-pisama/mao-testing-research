@@ -1,7 +1,10 @@
 'use client'
 
+import { useState } from 'react'
 import { Bell, Search, Menu, User, WifiOff, Wifi } from 'lucide-react'
 import { useApiWithFallback } from '@/hooks/useApiWithFallback'
+import { WorkflowGroupFilter } from '@/components/filters/WorkflowGroupFilter'
+import { ManageGroupsModal } from '@/components/modals/ManageGroupsModal'
 
 interface HeaderProps {
   onMenuClick?: () => void
@@ -11,6 +14,7 @@ interface HeaderProps {
 
 export function Header({ onMenuClick, title, notificationCount = 0 }: HeaderProps) {
   const { isDemoMode } = useApiWithFallback()
+  const [isManageModalOpen, setIsManageModalOpen] = useState(false)
 
   return (
     <header className="flex items-center justify-between h-16 px-6 bg-[#0a0a0a] border-b border-primary-500/30 shadow-[0_0_10px_rgba(0,255,136,0.1)]">
@@ -27,6 +31,9 @@ export function Header({ onMenuClick, title, notificationCount = 0 }: HeaderProp
       </div>
 
       <div className="flex items-center gap-3">
+        {/* Workflow Group Filter */}
+        <WorkflowGroupFilter onManageGroups={() => setIsManageModalOpen(true)} />
+
         {/* Demo Mode Indicator */}
         {isDemoMode && (
           <span className="flex items-center gap-1.5 px-2 py-1 text-xs font-medium rounded-full bg-amber-500/20 text-amber-400 border border-amber-500/30">
@@ -70,6 +77,11 @@ export function Header({ onMenuClick, title, notificationCount = 0 }: HeaderProp
           <User size={20} />
         </button>
       </div>
+
+      <ManageGroupsModal
+        isOpen={isManageModalOpen}
+        onClose={() => setIsManageModalOpen(false)}
+      />
     </header>
   )
 }

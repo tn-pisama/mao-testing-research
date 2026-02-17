@@ -14,8 +14,6 @@ import { QualitySuggestionsCard } from '@/components/dashboard/QualitySuggestion
 import { WorkflowOverviewStats } from '@/components/dashboard/WorkflowOverviewStats'
 import { WorkflowDataTable } from '@/components/dashboard/WorkflowDataTable'
 import { WorkflowDetailPanel } from '@/components/dashboard/WorkflowDetailPanel'
-import { WorkflowGroupFilter } from '@/components/filters/WorkflowGroupFilter'
-import { ManageGroupsModal } from '@/components/modals/ManageGroupsModal'
 import { Button } from '@/components/ui/Button'
 import { ImportModal } from '@/components/import'
 import { useApiWithFallback } from '@/hooks/useApiWithFallback'
@@ -34,7 +32,6 @@ export default function DashboardPage() {
     refresh,
   } = useApiWithFallback()
   const [showImportModal, setShowImportModal] = useState(false)
-  const [isManageModalOpen, setIsManageModalOpen] = useState(false)
   const [selectedWorkflowId, setSelectedWorkflowId] = useState<string | null>(null)
   const { isN8nUser, showAdvancedFeatures } = useUserPreferences()
 
@@ -86,7 +83,6 @@ export default function DashboardPage() {
             )}
           </div>
           <div className="flex items-center gap-3">
-            <WorkflowGroupFilter onManageGroups={() => setIsManageModalOpen(true)} />
             <Button
               onClick={refresh}
               variant="secondary"
@@ -213,11 +209,6 @@ export default function DashboardPage() {
         onImportComplete={() => {}}
       />
 
-      {/* Manage Groups Modal */}
-      <ManageGroupsModal
-        isOpen={isManageModalOpen}
-        onClose={() => setIsManageModalOpen(false)}
-      />
     </Layout>
   )
 }
