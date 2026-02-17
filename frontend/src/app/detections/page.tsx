@@ -199,7 +199,7 @@ export default function DetectionsPage() {
           <StatCard
             icon={Shield}
             label={showSimplifiedView ? 'Detection Accuracy' : 'Avg Confidence'}
-            value={`${Math.round(detections.reduce((s, d) => s + d.confidence * 100, 0) / detections.length)}%`}
+            value={`${Math.round(detections.reduce((s, d) => s + d.confidence, 0) / detections.length)}%`}
             color="text-emerald-400"
             bgColor="bg-emerald-500/20"
           />
@@ -376,7 +376,7 @@ export default function DetectionsPage() {
                               </>
                             ) : (
                               <>
-                                <span>{Math.round(detection.confidence * 100)}% confidence</span>
+                                <span>{Math.round(detection.confidence)}% confidence</span>
                                 <span>via {detection.method.replace('_', ' ')}</span>
                                 <span>{detection.details?.affected_agents} agents affected</span>
                               </>

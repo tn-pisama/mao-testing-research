@@ -43,7 +43,7 @@ export default function ReviewPage() {
         traceId: d.trace_id,
         agentType: d.method,
         pattern: d.explanation || d.detection_type,
-        confidence: d.confidence * 100
+        confidence: d.confidence
       })))
     } catch (err) {
       console.error('Failed to load detections:', err)

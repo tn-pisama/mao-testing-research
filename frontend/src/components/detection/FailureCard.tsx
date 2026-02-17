@@ -126,7 +126,7 @@ export function FailureCard({
                 </Badge>
                 <TermTooltip term="confidence">
                   <span className="text-xs text-slate-500">
-                    {Math.round(detection.confidence * 100)}% certain
+                    {Math.round(detection.confidence)}% certain
                   </span>
                 </TermTooltip>
                 <div className="flex items-center gap-1 text-xs text-slate-500">

@@ -195,14 +195,14 @@ export default function DetectionDetailPage() {
                       <div
                         className={clsx(
                           'h-full rounded-full',
-                          detection.confidence >= 0.8 ? 'bg-red-500' :
-                          detection.confidence >= 0.6 ? 'bg-amber-500' : 'bg-blue-500'
+                          detection.confidence >= 80 ? 'bg-red-500' :
+                          detection.confidence >= 60 ? 'bg-amber-500' : 'bg-blue-500'
                         )}
-                        style={{ width: `${detection.confidence * 100}%` }}
+                        style={{ width: `${detection.confidence}%` }}
                       />
                     </div>
                     <span className="text-sm text-white font-medium">
-                      {Math.round(detection.confidence * 100)}%
+                      {Math.round(detection.confidence)}%
                     </span>
                   </div>
                 </div>
