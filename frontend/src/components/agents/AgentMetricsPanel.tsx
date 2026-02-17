@@ -1,21 +1,38 @@
 'use client'
 
 import { Card } from '../ui/Card'
-import { BarChart3 } from 'lucide-react'
+import type { AgentInfo } from './index'
 
 interface AgentMetricsPanelProps {
   metrics?: unknown
-  agents?: unknown[]
+  agents?: AgentInfo[]
 }
 
-export function AgentMetricsPanel({ metrics, agents }: AgentMetricsPanelProps) {
+export function AgentMetricsPanel({ agents = [] }: AgentMetricsPanelProps) {
+  const totalAgents = agents.length
+  const activeAgents = agents.filter(a => a.status === 'running').length
+  const totalTokens = agents.reduce((sum, a) => sum + (a.tokensUsed ?? 0), 0)
+  const avgLatency = agents.length
+    ? Math.round(agents.reduce((sum, a) => sum + (a.latencyMs ?? 0), 0) / agents.length)
+    : 0
+
+  const stats = [
+    { label: 'Total Agents', value: totalAgents },
+    { label: 'Active Now', value: activeAgents },
+    { label: 'Tokens Used', value: totalTokens >= 1000 ? `${(totalTokens / 1000).toFixed(1)}k` : totalTokens },
+    { label: 'Avg Latency', value: `${avgLatency}ms` },
+  ]
+
   return (
-    <Card>
-      <div className="text-center py-12 text-slate-400">
-        <BarChart3 size={32} className="mx-auto mb-3 opacity-50" />
-        <p className="text-sm">No metrics available</p>
-        <p className="text-xs mt-1">Performance metrics will be displayed here</p>
-      </div>
-    </Card>
+    <div className="grid grid-cols-2 sm:grid-cols-4 gap-4">
+      {stats.map(({ label, value }) => (
+        <Card key={label}>
+          <div className="p-4 text-center">
+            <div className="text-2xl font-bold text-white">{value}</div>
+            <div className="text-xs text-slate-400 mt-1">{label}</div>
+          </div>
+        </Card>
+      ))}
+    </div>
   )
 }

@@ -105,7 +105,7 @@ export default function AgentsPage() {
           />
         </div>
 
-        <AgentMetricsPanel metrics={demo.agentMetrics} />
+        <AgentMetricsPanel metrics={demo.agentMetrics} agents={agents} />
 
         <div className="mt-6">
           <Tabs value={viewMode} onValueChange={(v) => setViewMode(v as typeof viewMode)}>
