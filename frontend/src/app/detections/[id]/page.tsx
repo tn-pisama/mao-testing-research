@@ -64,6 +64,9 @@ export default function DetectionDetailPage() {
   const [isLoading, setIsLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
   const [validating, setValidating] = useState(false)
+  const [triggeringHealing, setTriggeringHealing] = useState(false)
+  const [healingTriggered, setHealingTriggered] = useState(false)
+  const [healingError, setHealingError] = useState<string | null>(null)
 
   const detectionId = params.id as string
 
@@ -85,6 +88,22 @@ export default function DetectionDetailPage() {
   useEffect(() => {
     loadDetection()
   }, [loadDetection])
+
+  const handleTriggerHealing = async () => {
+    if (!detection) return
+    setTriggeringHealing(true)
+    setHealingError(null)
+    try {
+      const token = await getToken()
+      const api = createApiClient(token, tenantId)
+      await api.triggerHealing(detection.id, { approval_required: true })
+      setHealingTriggered(true)
+    } catch (err) {
+      console.error('Failed to trigger healing:', err)
+      setHealingError('Failed to trigger healing. Try again.')
+    }
+    setTriggeringHealing(false)
+  }
 
   const handleValidate = async (isFalsePositive: boolean) => {
     if (!detection) return
@@ -283,6 +302,27 @@ export default function DetectionDetailPage() {
             </CardContent>
           </Card>
 
+          {/* Healing triggered banner */}
+          {healingTriggered && (
+            <div className="p-4 bg-purple-500/10 border border-purple-500/20 rounded-xl flex items-center gap-3">
+              <CheckCircle size={18} className="text-purple-400 flex-shrink-0" />
+              <p className="text-sm text-purple-300 flex-1">
+                Healing triggered — fix suggestions generated.
+              </p>
+              <Link href="/healing">
+                <Button variant="ghost" size="sm" rightIcon={<ExternalLink size={14} />}>
+                  View in Self-Healing
+                </Button>
+              </Link>
+            </div>
+          )}
+          {healingError && (
+            <div className="p-4 bg-red-500/10 border border-red-500/20 rounded-xl flex items-center gap-3">
+              <AlertTriangle size={18} className="text-red-400 flex-shrink-0" />
+              <p className="text-sm text-red-300">{healingError}</p>
+            </div>
+          )}
+
           {/* Actions */}
           <Card>
             <CardContent className="p-4">
@@ -298,6 +338,14 @@ export default function DetectionDetailPage() {
                       View Fixes
                     </Button>
                   </Link>
+                  <Button
+                    variant="primary"
+                    leftIcon={triggeringHealing ? <Loader2 size={16} className="animate-spin" /> : <Zap size={16} />}
+                    onClick={handleTriggerHealing}
+                    disabled={triggeringHealing || healingTriggered || detection.false_positive === true}
+                  >
+                    {healingTriggered ? 'Healing Triggered' : 'Trigger Healing'}
+                  </Button>
                 </div>
 
                 {!detection.validated && (
