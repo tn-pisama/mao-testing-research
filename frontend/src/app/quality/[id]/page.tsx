@@ -7,13 +7,16 @@ import { useSafeAuth as useAuth } from '@/hooks/useSafeAuth'
 import { useTenant } from '@/hooks/useTenant'
 import {
   Star, ArrowLeft, Loader2, AlertCircle, AlertTriangle, Info, Clock,
-  CheckCircle, Bot, GitBranch
+  CheckCircle, Bot, GitBranch, MessageSquare, Lightbulb, ChevronDown
 } from 'lucide-react'
 import { Layout } from '@/components/common/Layout'
 import { Card, CardHeader, CardTitle, CardContent } from '@/components/ui/Card'
 import { Badge } from '@/components/ui/Badge'
 import { QualityGradeBadge, getScoreColor, getGradeColor } from '@/components/quality/QualityGradeBadge'
 import { createApiClient, QualityAssessment, QualityDimensionScore, AgentQualityScore, QualityImprovement } from '@/lib/api'
+import {
+  RadarChart, PolarGrid, PolarAngleAxis, PolarRadiusAxis, Radar, Legend, ResponsiveContainer
+} from 'recharts'
 import Link from 'next/link'
 import { useParams } from 'next/navigation'
 
@@ -34,14 +37,23 @@ const effortColors = {
 }
 
 function DimensionBar({ dimension }: { dimension: QualityDimensionScore }) {
+  const [expanded, setExpanded] = useState(false)
   const scorePercent = Math.round(dimension.score * 100)
   const barColor = scorePercent >= 80 ? 'bg-green-500' : scorePercent >= 60 ? 'bg-amber-500' : 'bg-red-500'
+  const hasDetails = dimension.suggestions.length > 0 ||
+                     Object.keys(dimension.evidence || {}).length > 0
 
   return (
     <div className="mb-3">
-      <div className="flex items-center justify-between mb-1">
-        <span className="text-sm text-slate-300 capitalize">
+      <div
+        className={`flex items-center justify-between mb-1 ${hasDetails ? 'cursor-pointer' : ''}`}
+        onClick={() => hasDetails && setExpanded(!expanded)}
+      >
+        <span className="text-sm text-slate-300 capitalize flex items-center gap-1">
           {dimension.dimension.replace(/_/g, ' ')}
+          {hasDetails && (
+            <ChevronDown size={12} className={`text-slate-500 transition-transform ${expanded ? 'rotate-180' : ''}`} />
+          )}
         </span>
         <span className={`text-sm font-medium ${getScoreColor(dimension.score)}`}>
           {scorePercent}%
@@ -58,6 +70,37 @@ function DimensionBar({ dimension }: { dimension: QualityDimensionScore }) {
           {dimension.issues.slice(0, 2).map((issue, i) => (
             <p key={i} className="text-xs text-slate-500 truncate">{issue}</p>
           ))}
+        </div>
+      )}
+
+      {expanded && (
+        <div className="mt-2 ml-2 pl-3 border-l-2 border-slate-700 space-y-2">
+          {dimension.suggestions.length > 0 && (
+            <div>
+              <span className="text-xs text-slate-500 uppercase">Suggestions</span>
+              <ul className="text-xs text-slate-400 space-y-1 mt-1">
+                {dimension.suggestions.map((s, i) => (
+                  <li key={i} className="flex items-start gap-1">
+                    <Lightbulb size={10} className="text-amber-400 mt-0.5 flex-shrink-0" />
+                    {s}
+                  </li>
+                ))}
+              </ul>
+            </div>
+          )}
+          {Object.keys(dimension.evidence || {}).length > 0 && (
+            <div>
+              <span className="text-xs text-slate-500 uppercase">Evidence</span>
+              <div className="text-xs text-slate-400 mt-1 space-y-1">
+                {Object.entries(dimension.evidence).map(([key, val]) => (
+                  <div key={key}>
+                    <span className="text-slate-500">{key.replace(/_/g, ' ')}:</span>{' '}
+                    {String(val)}
+                  </div>
+                ))}
+              </div>
+            </div>
+          )}
         </div>
       )}
     </div>
@@ -112,6 +155,15 @@ function AgentScoreCard({ agent }: { agent: AgentQualityScore }) {
                     <li key={i}>{issue}</li>
                   ))}
                 </ul>
+              </div>
+            )}
+
+            {agent.reasoning && (
+              <div className="mt-4 p-3 bg-slate-800 rounded-lg">
+                <h5 className="text-xs font-medium text-slate-500 uppercase mb-2">Reasoning</h5>
+                <p className="text-sm text-slate-300 leading-relaxed whitespace-pre-wrap">
+                  {agent.reasoning}
+                </p>
               </div>
             )}
           </div>
@@ -389,6 +441,22 @@ export default function QualityDetailPage() {
                 </CardContent>
               </Card>
             )}
+
+            {assessment.reasoning && (
+              <Card className="lg:col-span-2">
+                <CardHeader>
+                  <CardTitle className="flex items-center gap-2">
+                    <MessageSquare size={18} className="text-blue-400" />
+                    Assessment Reasoning
+                  </CardTitle>
+                </CardHeader>
+                <CardContent>
+                  <p className="text-sm text-slate-300 leading-relaxed whitespace-pre-wrap">
+                    {assessment.reasoning}
+                  </p>
+                </CardContent>
+              </Card>
+            )}
           </div>
         )}
 
@@ -402,9 +470,59 @@ export default function QualityDetailPage() {
                 </div>
               </Card>
             ) : (
-              assessment.agent_scores.map((agent, i) => (
-                <AgentScoreCard key={i} agent={agent} />
-              ))
+              <>
+                {assessment.agent_scores.length >= 2 && (() => {
+                  const AGENT_COLORS = ['#3b82f6', '#8b5cf6', '#ec4899', '#f59e0b', '#22c55e']
+                  const radarData = assessment.agent_scores[0]?.dimensions.map((dim, i) => {
+                    const point: Record<string, any> = { dimension: dim.dimension.replace(/_/g, ' ') }
+                    assessment.agent_scores.forEach(agent => {
+                      point[agent.agent_name] = Math.round((agent.dimensions[i]?.score || 0) * 100)
+                    })
+                    return point
+                  }) || []
+
+                  return (
+                    <Card className="mb-6">
+                      <CardHeader>
+                        <CardTitle>Agent Dimension Comparison</CardTitle>
+                      </CardHeader>
+                      <CardContent>
+                        <ResponsiveContainer width="100%" height={350}>
+                          <RadarChart data={radarData}>
+                            <PolarGrid stroke="#334155" />
+                            <PolarAngleAxis
+                              dataKey="dimension"
+                              tick={{ fill: '#94a3b8', fontSize: 12 }}
+                            />
+                            <PolarRadiusAxis
+                              angle={90}
+                              domain={[0, 100]}
+                              tick={{ fill: '#64748b', fontSize: 10 }}
+                            />
+                            {assessment.agent_scores.map((agent, i) => (
+                              <Radar
+                                key={agent.agent_id}
+                                name={agent.agent_name}
+                                dataKey={agent.agent_name}
+                                stroke={AGENT_COLORS[i % AGENT_COLORS.length]}
+                                fill={AGENT_COLORS[i % AGENT_COLORS.length]}
+                                fillOpacity={0.15}
+                              />
+                            ))}
+                            <Legend
+                              wrapperStyle={{ color: '#94a3b8', fontSize: 12 }}
+                            />
+                          </RadarChart>
+                        </ResponsiveContainer>
+                      </CardContent>
+                    </Card>
+                  )
+                })()}
+
+                {assessment.agent_scores.map((agent, i) => (
+                  <AgentScoreCard key={i} agent={agent} />
+                ))}
+              </>
             )}
           </div>
         )}
@@ -434,6 +552,40 @@ export default function QualityDetailPage() {
               {assessment.orchestration_score.dimensions.map((dim, i) => (
                 <DimensionBar key={i} dimension={dim} />
               ))}
+
+              {assessment.orchestration_score.detected_pattern && (
+                <div className="mt-6 p-3 bg-slate-800 rounded-lg">
+                  <span className="text-xs text-slate-500 uppercase">Detected Pattern</span>
+                  <p className="text-sm text-slate-300 mt-1 capitalize">
+                    {assessment.orchestration_score.detected_pattern.replace(/_/g, ' ')}
+                  </p>
+                </div>
+              )}
+
+              {assessment.orchestration_score.complexity_metrics && (
+                <div className="mt-6">
+                  <h4 className="text-sm font-medium text-slate-300 mb-3">Complexity Metrics</h4>
+                  <div className="grid grid-cols-3 gap-3">
+                    {Object.entries(assessment.orchestration_score.complexity_metrics).map(([key, val]) => (
+                      <div key={key} className="p-3 bg-slate-800 rounded-lg">
+                        <div className="text-lg font-bold text-white">
+                          {typeof val === 'number' ? (val % 1 ? val.toFixed(1) : val) : String(val)}
+                        </div>
+                        <div className="text-xs text-slate-500 capitalize">{key.replace(/_/g, ' ')}</div>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              )}
+
+              {assessment.orchestration_score.reasoning && (
+                <div className="mt-6 p-3 bg-slate-800 rounded-lg">
+                  <span className="text-xs text-slate-500 uppercase">Reasoning</span>
+                  <p className="text-sm text-slate-300 mt-2 leading-relaxed whitespace-pre-wrap">
+                    {assessment.orchestration_score.reasoning}
+                  </p>
+                </div>
+              )}
             </CardContent>
           </Card>
         )}

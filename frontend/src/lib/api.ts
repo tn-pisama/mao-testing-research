@@ -725,6 +725,7 @@ export interface QualityDimensionScore {
   issues: string[]
   evidence: Record<string, any>
   suggestions: string[]
+  reasoning?: string
 }
 
 export interface AgentQualityScore {
@@ -737,6 +738,7 @@ export interface AgentQualityScore {
   issues_count: number
   critical_issues: string[]
   metadata?: Record<string, any>
+  reasoning?: string
 }
 
 export interface ComplexityMetrics {
@@ -761,6 +763,7 @@ export interface OrchestrationQualityScore {
   issues_count: number
   critical_issues: string[]
   detected_pattern: string
+  reasoning?: string
 }
 
 export interface QualityImprovement {
@@ -796,6 +799,7 @@ export interface QualityAssessment {
   source: string
   assessment_time_ms?: number
   summary?: string
+  reasoning?: string
   key_findings?: string[]
   created_at: string
   assessed_at: string
@@ -1541,14 +1545,14 @@ export function createApiClient(token?: string | null, tenantId?: string | null)
 
     async getQualityAssessment(assessmentId: string) {
       return fetchApi<QualityAssessment>(
-        `/enterprise/quality/tenants/{tenant_id}/assessments/${assessmentId}`,
+        `/enterprise/quality/tenants/{tenant_id}/assessments/${assessmentId}?include_reasoning=true`,
         opts
       )
     },
 
     async getQualityByTrace(traceId: string) {
       return fetchApi<QualityAssessment>(
-        `/enterprise/quality/tenants/{tenant_id}/assessments/by-trace/${traceId}`,
+        `/enterprise/quality/tenants/{tenant_id}/assessments/by-trace/${traceId}?include_reasoning=true`,
         opts
       )
     },
