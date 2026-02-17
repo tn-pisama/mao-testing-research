@@ -25,6 +25,7 @@ from sqlalchemy.ext.asyncio import create_async_engine, AsyncSession
 from sqlalchemy.orm import sessionmaker
 from sqlalchemy import text
 
+import json
 import sys
 import os
 sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
@@ -263,8 +264,8 @@ async def seed_database():
             
             await session.execute(
                 text("""
-                    INSERT INTO tenants (id, name, api_key_hash, settings, created_at)
-                    VALUES (:id, :name, :api_key_hash, :settings, NOW())
+                    INSERT INTO tenants (id, name, api_key_hash, settings, plan, span_limit, created_at)
+                    VALUES (:id, :name, :api_key_hash, :settings, 'free', 10000, NOW())
                 """),
                 {
                     "id": str(tenant_id),
@@ -348,7 +349,7 @@ async def seed_database():
                         "tenant_id": str(state["tenant_id"]),
                         "sequence_num": state["sequence_num"],
                         "agent_id": state["agent_id"],
-                        "state_delta": str(state["state_delta"]).replace("'", '"'),
+                        "state_delta": json.dumps(state["state_delta"]),
                         "state_hash": state["state_hash"],
                         "token_count": state["token_count"],
                         "latency_ms": state["latency_ms"],
@@ -375,7 +376,7 @@ async def seed_database():
                         "detection_type": detection["detection_type"],
                         "confidence": detection["confidence"],
                         "method": detection["method"],
-                        "details": str(detection["details"]).replace("'", '"'),
+                        "details": json.dumps(detection["details"]),
                         "validated": detection["validated"],
                         "false_positive": detection["false_positive"],
                         "created_at": detection["created_at"],
