@@ -399,11 +399,11 @@ async def compare_replay(
         original = step.get("original", f"Step {i + 1} original")
         replayed = step.get("replayed", f"Step {i + 1} replayed")
 
-        diff_result = differ.compare_outputs(original, replayed)
+        diff_result = differ.compare_text(original, replayed)
 
-        similarity = diff_result.similarity if hasattr(diff_result, 'similarity') else (1.0 if original == replayed else 0.8)
-        diff_type = diff_result.diff_type.value if hasattr(diff_result, 'diff_type') else "content"
-        is_match = diff_result.is_match if hasattr(diff_result, 'is_match') else (original == replayed)
+        similarity = diff_result.similarity_score
+        diff_type = diff_result.diff_type.value
+        is_match = diff_result.diff_type.value == "identical"
 
         diffs.append(DiffResultResponse(
             step=i + 1,
@@ -412,7 +412,7 @@ async def compare_replay(
             replayed=replayed,
             match=is_match,
             similarity=similarity,
-            details=diff_result.details if hasattr(diff_result, 'details') else {},
+            details={"summary": diff_result.summary},
         ))
         total_similarity += similarity
 
