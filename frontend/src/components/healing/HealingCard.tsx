@@ -146,6 +146,11 @@ export function HealingCard({
               <Badge variant={status.variant} size="sm">
                 {status.label}
               </Badge>
+              {healing.approval_required && healing.status === 'pending' && (
+                <Badge variant="info" size="sm">
+                  Awaiting Approval
+                </Badge>
+              )}
               {deploymentStage && (
                 <span className={`text-xs px-2 py-1 rounded ${deploymentStage.color}`}>
                   {deploymentStage.label}
@@ -188,6 +193,23 @@ export function HealingCard({
                 <p className="text-white">{formatTime(healing.completed_at)}</p>
               </div>
             </div>
+
+            {/* Approval Audit Trail */}
+            {healing.approval_required && (
+              <div className="bg-purple-500/10 border border-purple-500/20 rounded-lg p-3">
+                <p className="text-xs text-purple-400 mb-2 font-medium">Approval Info</p>
+                <div className="grid grid-cols-2 gap-3 text-sm">
+                  <div>
+                    <p className="text-slate-500 text-xs">Approved by</p>
+                    <p className="text-white">{healing.approved_by || 'Pending'}</p>
+                  </div>
+                  <div>
+                    <p className="text-slate-500 text-xs">Approved at</p>
+                    <p className="text-white">{healing.approved_at ? formatTime(healing.approved_at) : 'Pending'}</p>
+                  </div>
+                </div>
+              </div>
+            )}
 
             {/* Testing Status - for staged deployments */}
             {healing.deployment_stage && (

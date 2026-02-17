@@ -8,6 +8,7 @@ import { useSafeAuth as useAuth } from '@/hooks/useSafeAuth'
 import { useTenant } from '@/hooks/useTenant'
 import { Tabs, TabsList, TabsTrigger, TabsContent } from '@/components/ui/Tabs'
 import { HealingDashboard } from '@/components/healing/HealingDashboard'
+import { ApprovalQueue } from '@/components/healing/ApprovalQueue'
 import { VersionHistory } from '@/components/healing/VersionHistory'
 import { RollbackConfirmModal } from '@/components/healing/RollbackConfirmModal'
 import {
@@ -28,7 +29,8 @@ import {
   Loader2,
   RefreshCw,
   ExternalLink,
-  Wrench
+  Wrench,
+  ShieldCheck
 } from 'lucide-react'
 import { Button } from '@/components/ui/Button'
 import { Card, CardHeader, CardTitle, CardContent } from '@/components/ui/Card'
@@ -173,6 +175,35 @@ export default function HealingPage() {
     }
   }
 
+  // Approval actions
+  const handleApproveHealing = async (healingId: string, notes: string) => {
+    if (!tenantId) return
+    try {
+      const token = await getToken()
+      const api = createApiClient(token, tenantId)
+      await api.approveHealing(healingId, { approved: true, notes: notes || undefined })
+      await fetchData()
+    } catch (err) {
+      console.error('Failed to approve healing:', err)
+    }
+  }
+
+  const handleRejectHealing = async (healingId: string, notes: string) => {
+    if (!tenantId) return
+    try {
+      const token = await getToken()
+      const api = createApiClient(token, tenantId)
+      await api.approveHealing(healingId, { approved: false, notes: notes || undefined })
+      await fetchData()
+    } catch (err) {
+      console.error('Failed to reject healing:', err)
+    }
+  }
+
+  const pendingApprovalCount = healings.filter(
+    h => h.approval_required && h.status === 'pending'
+  ).length
+
   const handleRestoreVersion = async (versionId: string) => {
     if (!tenantId) return
     try {
@@ -295,6 +326,10 @@ export default function HealingPage() {
                 </>
               )}
             </TabsTrigger>
+            <TabsTrigger value="approvals">
+              <ShieldCheck size={14} className="mr-2" />
+              Approvals{pendingApprovalCount > 0 ? ` (${pendingApprovalCount})` : ''}
+            </TabsTrigger>
             <TabsTrigger value="connections">
               <Settings size={14} className="mr-2" />
               {showSimplifiedView ? 'Connections' : 'n8n Connections'}
@@ -314,6 +349,16 @@ export default function HealingPage() {
               onReject={handleReject}
               onRollback={handleRollback}
               onRefresh={fetchData}
+            />
+          </TabsContent>
+
+          {/* Approvals Tab */}
+          <TabsContent value="approvals">
+            <ApprovalQueue
+              healings={healings}
+              isLoading={isLoading}
+              onApprove={handleApproveHealing}
+              onReject={handleRejectHealing}
             />
           </TabsContent>
 

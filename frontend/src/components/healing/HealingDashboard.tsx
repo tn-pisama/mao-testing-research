@@ -8,6 +8,7 @@ import {
   XCircle,
   AlertTriangle,
   RefreshCw,
+  ShieldCheck,
   type LucideIcon
 } from 'lucide-react'
 import { Card, CardContent } from '../ui/Card'
@@ -39,6 +40,7 @@ function StatsCard({ title, value, icon: Icon, color }: StatsCardProps) {
     green: 'bg-green-500/20 text-green-400',
     amber: 'bg-amber-500/20 text-amber-400',
     red: 'bg-red-500/20 text-red-400',
+    purple: 'bg-purple-500/20 text-purple-400',
     slate: 'bg-slate-500/20 text-slate-400',
   }
 
@@ -75,6 +77,7 @@ export function HealingDashboard({
     staged: healings.filter(h => h.deployment_stage === 'staged' || h.status === 'staged').length,
     applied: healings.filter(h => h.status === 'applied' || h.deployment_stage === 'promoted').length,
     failed: healings.filter(h => h.status === 'failed' || h.status === 'rejected').length,
+    awaitingApproval: healings.filter(h => h.approval_required && h.status === 'pending').length,
   }
 
   // Filter healings by tab
@@ -97,8 +100,8 @@ export function HealingDashboard({
     return (
       <div className="space-y-6">
         {/* Stats loading */}
-        <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
-          {[1, 2, 3, 4].map((i) => (
+        <div className="grid grid-cols-2 lg:grid-cols-5 gap-4">
+          {[1, 2, 3, 4, 5].map((i) => (
             <Card key={i}>
               <CardContent className="p-4">
                 <div className="animate-pulse">
@@ -130,12 +133,18 @@ export function HealingDashboard({
   return (
     <div className="space-y-6">
       {/* Stats */}
-      <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
+      <div className="grid grid-cols-2 lg:grid-cols-5 gap-4">
         <StatsCard
           title="Total Healings"
           value={stats.total}
           icon={Activity}
           color="blue"
+        />
+        <StatsCard
+          title="Awaiting Approval"
+          value={stats.awaitingApproval}
+          icon={ShieldCheck}
+          color="purple"
         />
         <StatsCard
           title="Staged"
