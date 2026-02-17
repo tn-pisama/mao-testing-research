@@ -10,15 +10,15 @@ export interface QualityGradeBadgeProps extends HTMLAttributes<HTMLSpanElement> 
 }
 
 function gradeToTier(grade: string): { label: string; className: string } {
-  if (['A+', 'A', 'A-'].includes(grade)) {
-    return { label: 'Healthy', className: 'bg-success-500/20 text-success-500 border-success-500/50' }
-  }
-  if (['B+', 'B', 'B-'].includes(grade)) {
-    return { label: 'Degraded', className: 'bg-accent-500/20 text-accent-500 border-accent-500/50' }
-  }
-  if (['C+', 'C', 'C-'].includes(grade)) {
-    return { label: 'At Risk', className: 'bg-orange-500/20 text-orange-400 border-orange-500/50' }
-  }
+  // Tier names (current backend format)
+  if (grade === 'Healthy') return { label: 'Healthy', className: 'bg-success-500/20 text-success-500 border-success-500/50' }
+  if (grade === 'Degraded') return { label: 'Degraded', className: 'bg-accent-500/20 text-accent-500 border-accent-500/50' }
+  if (grade === 'At Risk') return { label: 'At Risk', className: 'bg-orange-500/20 text-orange-400 border-orange-500/50' }
+  if (grade === 'Critical') return { label: 'Critical', className: 'bg-danger-500/20 text-danger-500 border-danger-500/50' }
+  // Legacy letter grades (backward compat for old DB data)
+  if (['A+', 'A', 'A-'].includes(grade)) return { label: 'Healthy', className: 'bg-success-500/20 text-success-500 border-success-500/50' }
+  if (['B+', 'B', 'B-'].includes(grade)) return { label: 'Degraded', className: 'bg-accent-500/20 text-accent-500 border-accent-500/50' }
+  if (['C+', 'C', 'C-', 'D'].includes(grade)) return { label: 'At Risk', className: 'bg-orange-500/20 text-orange-400 border-orange-500/50' }
   return { label: 'Critical', className: 'bg-danger-500/20 text-danger-500 border-danger-500/50' }
 }
 
@@ -50,9 +50,9 @@ export const QualityGradeBadge = forwardRef<HTMLSpanElement, QualityGradeBadgePr
 QualityGradeBadge.displayName = 'QualityGradeBadge'
 
 export function getGradeColor(grade: string): string {
-  if (['A+', 'A', 'A-'].includes(grade)) return 'text-success-500'
-  if (['B+', 'B', 'B-'].includes(grade)) return 'text-accent-500'
-  if (['C+', 'C', 'C-'].includes(grade)) return 'text-orange-400'
+  if (grade === 'Healthy' || ['A+', 'A', 'A-'].includes(grade)) return 'text-success-500'
+  if (grade === 'Degraded' || ['B+', 'B', 'B-'].includes(grade)) return 'text-accent-500'
+  if (grade === 'At Risk' || ['C+', 'C', 'C-', 'D'].includes(grade)) return 'text-orange-400'
   return 'text-danger-500'
 }
 
