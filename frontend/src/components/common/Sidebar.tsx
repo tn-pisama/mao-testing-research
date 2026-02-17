@@ -20,6 +20,7 @@ import {
   Wrench,
   Star,
   User,
+  RotateCcw,
 } from 'lucide-react'
 import { useUserPreferences } from '@/lib/user-preferences'
 
@@ -32,27 +33,34 @@ interface NavItem {
 }
 
 // n8n user sees simplified navigation with friendly terminology
-const n8nNavItems: NavItem[] = [
+const n8nObserveItems: NavItem[] = [
   { label: 'Dashboard', href: '/dashboard', icon: LayoutDashboard },
   { label: 'My Workflows', href: '/n8n', icon: GitBranch },
+]
+
+const n8nImproveItems: NavItem[] = [
   { label: 'Quality', href: '/quality', icon: Star },
   { label: 'Problems Found', href: '/detections', icon: AlertCircle },
   { label: 'Fixes', href: '/healing', icon: Wrench },
 ]
 
 // Developer sees full navigation
-const developerMainItems: NavItem[] = [
+const developerObserveItems: NavItem[] = [
   { label: 'Dashboard', href: '/dashboard', icon: LayoutDashboard },
   { label: 'Traces', href: '/traces', icon: Activity },
   { label: 'Detections', href: '/detections', icon: AlertTriangle },
+]
+
+const developerImproveItems: NavItem[] = [
   { label: 'Quality', href: '/quality', icon: Star },
   { label: 'Healing', href: '/healing', icon: Sparkles },
+  { label: 'Replay', href: '/replay', icon: RotateCcw },
   { label: 'Benchmarks', href: '/benchmarks', icon: BarChart3, advancedOnly: true },
 ]
 
-const developerAgentItems: NavItem[] = [
+const developerConfigureItems: NavItem[] = [
   { label: 'Agents', href: '/agents', icon: Users },
-  { label: 'n8n Workflows', href: '/n8n', icon: GitBranch },
+  { label: 'Workflows', href: '/n8n', icon: GitBranch },
   { label: 'Tools', href: '/tools', icon: Zap },
 ]
 
@@ -154,14 +162,16 @@ export function Sidebar({ isCollapsed = false, onToggle }: SidebarProps) {
         {isSimplifiedView ? (
           <>
             {/* Simplified n8n user navigation */}
-            <NavSection items={n8nNavItems} />
+            <NavSection title="Observe" items={n8nObserveItems} />
+            <NavSection title="Improve" items={n8nImproveItems} />
             <NavSection title="Settings" items={n8nSettingsItems} />
           </>
         ) : (
           <>
             {/* Full developer navigation */}
-            <NavSection items={developerMainItems} />
-            <NavSection title="Agents & Workflows" items={developerAgentItems} />
+            <NavSection title="Observe" items={developerObserveItems} />
+            <NavSection title="Improve" items={developerImproveItems} />
+            <NavSection title="Configure" items={developerConfigureItems} />
             <NavSection title="Settings" items={developerSettingsItems} />
           </>
         )}
