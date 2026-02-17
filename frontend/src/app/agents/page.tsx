@@ -2,7 +2,7 @@
 
 export const dynamic = 'force-dynamic'
 
-import { useState } from 'react'
+import { useState, useEffect, useCallback } from 'react'
 import { useRouter } from 'next/navigation'
 import { Layout } from '@/components/common/Layout'
 import {
@@ -14,8 +14,12 @@ import {
   AgentHealthDashboard,
   AgentMonitoringPanel,
 } from '@/components/agents'
+import type { AgentInfo } from '@/components/agents'
 import { DemoControlsPanel } from '@/components/demo/DemoControlsPanel'
 import { useDemoMode } from '@/hooks/useDemoMode'
+import { useSafeAuth as useAuth } from '@/hooks/useSafeAuth'
+import { useTenant } from '@/hooks/useTenant'
+import { createApiClient } from '@/lib/api'
 import { Tabs, TabsList, TabsTrigger, TabsContent } from '@/components/ui/Tabs'
 import {
   Grid3X3,
@@ -29,11 +33,33 @@ import {
 
 export default function AgentsPage() {
   const router = useRouter()
+  const { getToken } = useAuth()
+  const { tenantId } = useTenant()
   const [activeAgentId, setActiveAgentId] = useState<string | undefined>()
   const [viewMode, setViewMode] = useState<
     'orchestration' | 'grid' | 'health' | 'monitoring' | 'comparison' | 'metrics'
-  >('orchestration')
+  >('grid')
+  const [realAgents, setRealAgents] = useState<AgentInfo[] | null>(null)
   const demo = useDemoMode({ autoSimulate: true })
+
+  const loadAgents = useCallback(async () => {
+    try {
+      const token = await getToken()
+      const api = createApiClient(token, tenantId)
+      const data = await api.listAgents()
+      if (data.agents.length > 0) {
+        setRealAgents(data.agents)
+      }
+    } catch {
+      // fallback to demo agents
+    }
+  }, [getToken, tenantId])
+
+  useEffect(() => {
+    loadAgents()
+  }, [loadAgents])
+
+  const agents = realAgents ?? agents
 
   const handleAgentClick = (agentId: string) => {
     setActiveAgentId(agentId)
@@ -116,7 +142,7 @@ export default function AgentsPage() {
               <div className="grid lg:grid-cols-3 gap-6">
                 <div className="lg:col-span-2">
                   <AgentOrchestrationView
-                    agents={demo.agents}
+                    agents={agents}
                     messages={demo.messages}
                     activeAgentId={activeAgentId}
                     onAgentClick={handleAgentClick}
@@ -134,7 +160,7 @@ export default function AgentsPage() {
 
             <TabsContent value="grid" className="mt-4">
               <div className="grid sm:grid-cols-2 lg:grid-cols-3 gap-4">
-                {demo.agents.map((agent) => (
+                {agents.map((agent) => (
                   <AgentCard
                     key={agent.id}
                     agent={agent}
@@ -152,7 +178,7 @@ export default function AgentsPage() {
             </TabsContent>
 
             <TabsContent value="health" className="mt-4">
-              <AgentHealthDashboard agents={demo.agents} />
+              <AgentHealthDashboard agents={agents} />
             </TabsContent>
 
             <TabsContent value="monitoring" className="mt-4">
@@ -160,7 +186,7 @@ export default function AgentsPage() {
             </TabsContent>
 
             <TabsContent value="comparison" className="mt-4">
-              <AgentComparisonView agents={demo.agents} />
+              <AgentComparisonView agents={agents} />
             </TabsContent>
 
             <TabsContent value="metrics" className="mt-4">
@@ -170,7 +196,7 @@ export default function AgentsPage() {
                   <p className="text-sm text-slate-400 mb-4">
                     Click on an agent to view detailed performance metrics
                   </p>
-                  {demo.agents.map((agent) => (
+                  {agents.map((agent) => (
                     <AgentCard
                       key={agent.id}
                       agent={agent}

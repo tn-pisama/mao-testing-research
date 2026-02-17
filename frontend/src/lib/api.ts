@@ -909,6 +909,17 @@ export function createApiClient(token?: string | null, tenantId?: string | null)
     },
 
     // ============================================================================
+    // Agents API Methods
+    // ============================================================================
+
+    async listAgents() {
+      return fetchApi<{ agents: import('@/components/agents').AgentInfo[], total: number }>(
+        `/tenants/{tenant_id}/agents`,
+        opts
+      )
+    },
+
+    // ============================================================================
     // Healing API Methods
     // ============================================================================
 

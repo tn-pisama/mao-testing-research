@@ -13,6 +13,7 @@ from app.api.v1 import (
     detections,
     auth,
     analytics,
+    agents,
     health,
     import_jobs,
     webhooks,
@@ -125,6 +126,7 @@ async def add_security_headers(request: Request, call_next):
 # ICP (Startup) routers - always included
 app.include_router(auth.router, prefix="/api/v1")
 app.include_router(traces.router, prefix="/api/v1/tenants/{tenant_id}")
+app.include_router(agents.router, prefix="/api/v1/tenants/{tenant_id}")
 app.include_router(detections.router, prefix="/api/v1/tenants/{tenant_id}")
 app.include_router(analytics.router, prefix="/api/v1/tenants/{tenant_id}")
 app.include_router(import_jobs.router, prefix="/api/v1")
