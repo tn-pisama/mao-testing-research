@@ -51,6 +51,7 @@ class OrchestrationQualityScorer:
         self,
         workflow: Dict[str, Any],
         execution_history: Optional[List[Dict[str, Any]]] = None,
+        include_reasoning: bool = False,
     ) -> OrchestrationQualityScore:
         """Score workflow orchestration quality across all dimensions."""
         workflow_id = workflow.get("id", "unknown")
@@ -104,6 +105,14 @@ class OrchestrationQualityScorer:
             if dim.score < 0.4:
                 critical_issues.extend(dim.issues[:1])
 
+        # Generate reasoning if requested
+        reasoning = None
+        if include_reasoning:
+            reasoning = self._generate_orchestration_reasoning(
+                workflow_name, overall_score, detected_pattern,
+                complexity_metrics, dimensions, critical_issues
+            )
+
         return OrchestrationQualityScore(
             workflow_id=workflow_id,
             workflow_name=workflow_name,
@@ -113,7 +122,41 @@ class OrchestrationQualityScorer:
             issues_count=len(all_issues),
             critical_issues=critical_issues,
             detected_pattern=detected_pattern,
+            reasoning=reasoning,
         )
+
+    def _generate_orchestration_reasoning(
+        self,
+        workflow_name: str,
+        overall_score: float,
+        detected_pattern: str,
+        complexity_metrics: ComplexityMetrics,
+        dimensions: List[DimensionScore],
+        critical_issues: List[str],
+    ) -> str:
+        """Generate natural-language reasoning for orchestration quality score."""
+        from .models import _score_to_grade
+
+        grade = _score_to_grade(overall_score)
+        parts = [
+            f"Workflow '{workflow_name}' orchestration scored {overall_score:.0%} ({grade}).",
+            f"Pattern: {detected_pattern}, {complexity_metrics.node_count} nodes, "
+            f"{complexity_metrics.agent_count} agents, depth {complexity_metrics.max_depth}.",
+        ]
+
+        # Summarize top dimensions (lowest scores first)
+        sorted_dims = sorted(dimensions, key=lambda d: d.score)
+        for dim in sorted_dims[:3]:
+            dim_name = dim.dimension.replace("_", " ").title()
+            dim_summary = f"{dim_name}: {dim.score:.0%}"
+            if dim.issues:
+                dim_summary += f" — {dim.issues[0]}"
+            parts.append(dim_summary)
+
+        if critical_issues:
+            parts.append(f"Critical: {'; '.join(critical_issues[:3])}")
+
+        return " ".join(parts)
 
     def _calculate_complexity_metrics(self, workflow: Dict[str, Any]) -> ComplexityMetrics:
         """Calculate various complexity metrics for the workflow."""

@@ -67,9 +67,10 @@ class DimensionScore:
     issues: List[str] = field(default_factory=list)
     evidence: Dict[str, Any] = field(default_factory=dict)
     suggestions: List[str] = field(default_factory=list)
+    reasoning: Optional[str] = None
 
     def to_dict(self) -> Dict[str, Any]:
-        return {
+        result = {
             "dimension": self.dimension,
             "score": round(self.score, 3),
             "weight": self.weight,
@@ -77,6 +78,9 @@ class DimensionScore:
             "evidence": self.evidence,
             "suggestions": self.suggestions,
         }
+        if self.reasoning is not None:
+            result["reasoning"] = self.reasoning
+        return result
 
 
 @dataclass
@@ -90,13 +94,14 @@ class AgentQualityScore:
     issues_count: int = 0
     critical_issues: List[str] = field(default_factory=list)
     metadata: Dict[str, Any] = field(default_factory=dict)
+    reasoning: Optional[str] = None
 
     @property
     def grade(self) -> str:
         return _score_to_grade(self.overall_score)
 
     def to_dict(self) -> Dict[str, Any]:
-        return {
+        result = {
             "agent_id": self.agent_id,
             "agent_name": self.agent_name,
             "agent_type": self.agent_type,
@@ -107,6 +112,9 @@ class AgentQualityScore:
             "critical_issues": self.critical_issues,
             "metadata": self.metadata,
         }
+        if self.reasoning is not None:
+            result["reasoning"] = self.reasoning
+        return result
 
 
 @dataclass
@@ -147,13 +155,14 @@ class OrchestrationQualityScore:
     issues_count: int = 0
     critical_issues: List[str] = field(default_factory=list)
     detected_pattern: str = "unknown"
+    reasoning: Optional[str] = None
 
     @property
     def grade(self) -> str:
         return _score_to_grade(self.overall_score)
 
     def to_dict(self) -> Dict[str, Any]:
-        return {
+        result = {
             "workflow_id": self.workflow_id,
             "workflow_name": self.workflow_name,
             "overall_score": round(self.overall_score, 3),
@@ -164,6 +173,9 @@ class OrchestrationQualityScore:
             "critical_issues": self.critical_issues,
             "detected_pattern": self.detected_pattern,
         }
+        if self.reasoning is not None:
+            result["reasoning"] = self.reasoning
+        return result
 
 
 @dataclass
@@ -233,6 +245,7 @@ class QualityReport:
     orchestration_score: OrchestrationQualityScore
     improvements: List[QualityImprovement]
     summary: str = ""
+    reasoning: Optional[str] = None
     generated_at: datetime = field(default_factory=lambda: datetime.now(UTC))
 
     @property
@@ -250,7 +263,7 @@ class QualityReport:
         return agent_critical + len(self.orchestration_score.critical_issues)
 
     def to_dict(self) -> Dict[str, Any]:
-        return {
+        result = {
             "workflow_id": self.workflow_id,
             "workflow_name": self.workflow_name,
             "overall_score": round(self.overall_score, 3),
@@ -263,3 +276,6 @@ class QualityReport:
             "critical_issues_count": self.critical_issues_count,
             "generated_at": self.generated_at.isoformat(),
         }
+        if self.reasoning is not None:
+            result["reasoning"] = self.reasoning
+        return result

@@ -824,6 +824,7 @@ class WorkflowQualityAssessment(Base):
 
     # Summary
     summary = Column(Text, nullable=True)
+    reasoning = Column(Text, nullable=True)
 
     # Timestamps
     created_at = Column(DateTime(timezone=True), server_default=func.now())
@@ -834,6 +835,53 @@ class WorkflowQualityAssessment(Base):
         Index("idx_quality_trace", "trace_id"),
         Index("idx_quality_tenant_created", "tenant_id", "created_at"),
         Index("idx_quality_grade", "overall_grade"),
+    )
+
+
+class AgentQualityAssessment(Base):
+    """
+    Stores quality assessments for individual agents within a workflow.
+
+    Each agent assessment is linked to a parent workflow assessment and tracks
+    per-agent quality scores, dimension breakdowns, and optional reasoning.
+    """
+    __tablename__ = "agent_quality_assessments"
+
+    id = Column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
+    tenant_id = Column(UUID(as_uuid=True), ForeignKey("tenants.id"), nullable=False)
+    workflow_assessment_id = Column(UUID(as_uuid=True), ForeignKey("workflow_quality_assessments.id"), nullable=False)
+    trace_id = Column(UUID(as_uuid=True), ForeignKey("traces.id"), nullable=True)
+
+    # Agent identification
+    agent_id = Column(String(255), nullable=False, index=True)
+    agent_name = Column(String(255), nullable=True)
+    agent_type = Column(String(100), nullable=False)
+
+    # Scores
+    overall_score = Column(Integer, nullable=False)  # 0-100
+    grade = Column(String(10), nullable=False)  # Healthy, Degraded, At Risk, Critical
+
+    # Detailed scores (JSONB)
+    dimensions = Column(JSONB, nullable=False)  # List of dimension scores
+
+    # Issues
+    issues_count = Column(Integer, default=0)
+    critical_issues = Column(JSONB, default=list)
+
+    # Reasoning
+    reasoning = Column(Text, nullable=True)
+
+    # Metadata
+    metadata = Column(JSONB, server_default="{}")
+
+    # Timestamps
+    created_at = Column(DateTime(timezone=True), server_default=func.now())
+
+    __table_args__ = (
+        Index("idx_agent_quality_tenant", "tenant_id"),
+        Index("idx_agent_quality_workflow_assessment", "workflow_assessment_id"),
+        Index("idx_agent_quality_agent_id", "agent_id"),
+        Index("idx_agent_quality_tenant_created", "tenant_id", "created_at"),
     )
 
 

@@ -82,6 +82,7 @@ async def assess_workflow_quality_task(
     """Background task to assess workflow quality and store results."""
     try:
         from app.enterprise.quality import QualityAssessor
+        from app.storage.models import AgentQualityAssessment
 
         start_time = time.time()
         assessor = QualityAssessor(use_llm_judge=False)
@@ -108,14 +109,35 @@ async def assess_workflow_quality_task(
                 source="webhook",
                 assessment_time_ms=assessment_time_ms,
                 summary=report.summary,
+                reasoning=report.reasoning,
             )
             db.add(assessment)
+            await db.flush()
+
+            # Create agent assessment records
+            for agent_score in report.agent_scores:
+                agent_assessment = AgentQualityAssessment(
+                    tenant_id=UUID(tenant_id),
+                    workflow_assessment_id=assessment.id,
+                    trace_id=UUID(trace_id),
+                    agent_id=agent_score.agent_id,
+                    agent_name=agent_score.agent_name,
+                    agent_type=agent_score.agent_type,
+                    overall_score=int(agent_score.overall_score * 100),
+                    grade=agent_score.grade,
+                    dimensions=[d.to_dict() for d in agent_score.dimensions],
+                    issues_count=agent_score.issues_count,
+                    critical_issues=agent_score.critical_issues,
+                    reasoning=agent_score.reasoning,
+                )
+                db.add(agent_assessment)
+
             await db.commit()
 
             logger.info(
                 f"Quality assessment completed for workflow {workflow_id}: "
                 f"score={report.overall_score:.1%}, grade={report.overall_grade}, "
-                f"issues={report.total_issues}"
+                f"issues={report.total_issues}, agents={len(report.agent_scores)}"
             )
     except Exception as e:
         logger.error(f"Quality assessment failed for workflow {workflow_id}: {e}")

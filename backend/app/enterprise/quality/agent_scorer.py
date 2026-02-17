@@ -78,6 +78,7 @@ class AgentQualityScorer:
         node: Dict[str, Any],
         workflow_context: Optional[Dict[str, Any]] = None,
         execution_history: Optional[List[Dict[str, Any]]] = None,
+        include_reasoning: bool = False,
     ) -> AgentQualityScore:
         """Score a single agent node across all quality dimensions."""
         agent_id = node.get("id", "unknown")
@@ -109,6 +110,13 @@ class AgentQualityScorer:
             ]:
                 critical_issues.extend(dim.issues[:1])  # First issue as critical
 
+        # Generate reasoning if requested
+        reasoning = None
+        if include_reasoning:
+            reasoning = self._generate_agent_reasoning(
+                agent_name, overall_score, dimensions, critical_issues
+            )
+
         return AgentQualityScore(
             agent_id=agent_id,
             agent_name=agent_name,
@@ -117,11 +125,38 @@ class AgentQualityScorer:
             dimensions=dimensions,
             issues_count=len(all_issues),
             critical_issues=critical_issues,
+            reasoning=reasoning,
             metadata={
                 "is_ai_node": agent_type in AI_NODE_TYPES,
                 "scored_at": "fast",  # or "llm" if escalated
             },
         )
+
+    def _generate_agent_reasoning(
+        self,
+        agent_name: str,
+        overall_score: float,
+        dimensions: List[DimensionScore],
+        critical_issues: List[str],
+    ) -> str:
+        """Generate natural-language reasoning for agent quality score."""
+        from .models import _score_to_grade
+
+        grade = _score_to_grade(overall_score)
+        parts = [f"Agent '{agent_name}' scored {overall_score:.0%} ({grade})."]
+
+        for dim in dimensions:
+            dim_summary = f"{dim.dimension.replace('_', ' ').title()}: {dim.score:.0%}"
+            if dim.issues:
+                dim_summary += f" — {dim.issues[0]}"
+            elif dim.score >= 0.8:
+                dim_summary += " — good"
+            parts.append(dim_summary)
+
+        if critical_issues:
+            parts.append(f"Critical: {'; '.join(critical_issues[:3])}")
+
+        return " ".join(parts)
 
     def _score_role_clarity(self, node: Dict[str, Any]) -> DimensionScore:
         """

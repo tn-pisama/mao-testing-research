@@ -23,7 +23,7 @@ from app.detection.quality_correlation import (
 )
 from app.core.auth import get_current_tenant
 from app.storage.database import get_db, set_tenant_context
-from app.storage.models import WorkflowQualityAssessment, Trace, Detection, WorkflowGroup, WorkflowGroupAssignment
+from app.storage.models import WorkflowQualityAssessment, AgentQualityAssessment, Trace, Detection, WorkflowGroup, WorkflowGroupAssignment
 
 router = APIRouter(prefix="/enterprise/quality", tags=["quality"])
 
@@ -45,6 +45,10 @@ class WorkflowQualityRequest(BaseModel):
         default=False,
         description="Use LLM for ambiguous cases (Tier 3 escalation)"
     )
+    include_reasoning: bool = Field(
+        default=False,
+        description="Include detailed reasoning for each score"
+    )
 
 
 class WorkflowQualityResponse(BaseModel):
@@ -59,6 +63,7 @@ class WorkflowQualityResponse(BaseModel):
     summary: str
     total_issues: int
     critical_issues_count: int
+    reasoning: Optional[str] = None
 
 
 class AgentQualityRequest(BaseModel):
@@ -72,6 +77,10 @@ class AgentQualityRequest(BaseModel):
         default=None,
         description="Optional execution samples for output consistency"
     )
+    include_reasoning: bool = Field(
+        default=False,
+        description="Include detailed reasoning for each score"
+    )
 
 
 class AgentQualityResponse(BaseModel):
@@ -84,6 +93,7 @@ class AgentQualityResponse(BaseModel):
     dimensions: List[dict]
     issues_count: int
     critical_issues: List[str]
+    reasoning: Optional[str] = None
 
 
 class SuggestionsRequest(BaseModel):
@@ -113,7 +123,10 @@ async def assess_workflow_quality(
     - Prioritized improvement suggestions
     """
     try:
-        assessor = QualityAssessor(use_llm_judge=request.use_llm_analysis)
+        assessor = QualityAssessor(
+            use_llm_judge=request.use_llm_analysis,
+            include_reasoning=request.include_reasoning,
+        )
 
         report = assessor.assess_workflow(
             workflow=request.workflow_json,
@@ -132,6 +145,7 @@ async def assess_workflow_quality(
             summary=report.summary,
             total_issues=report.total_issues,
             critical_issues_count=report.critical_issues_count,
+            reasoning=report.reasoning,
         )
     except Exception as e:
         raise HTTPException(status_code=500, detail=f"Quality assessment failed: {str(e)}")
@@ -153,7 +167,7 @@ async def assess_agent_quality(
     - Config Appropriateness: Temperature/token settings
     """
     try:
-        assessor = QualityAssessor()
+        assessor = QualityAssessor(include_reasoning=request.include_reasoning)
 
         score = assessor.assess_agent(
             node=request.node_json,
@@ -170,6 +184,7 @@ async def assess_agent_quality(
             dimensions=[d.to_dict() for d in score.dimensions],
             issues_count=score.issues_count,
             critical_issues=score.critical_issues,
+            reasoning=score.reasoning,
         )
     except Exception as e:
         raise HTTPException(status_code=500, detail=f"Agent assessment failed: {str(e)}")
@@ -309,6 +324,7 @@ class StoredAssessmentResponse(BaseModel):
     source: str
     assessment_time_ms: Optional[int]
     summary: Optional[str]
+    reasoning: Optional[str] = None
     created_at: datetime
 
 
@@ -326,6 +342,7 @@ class AssessAndSaveRequest(BaseModel):
     trace_id: Optional[str] = Field(default=None, description="Optional trace ID to link assessment")
     max_suggestions: int = Field(default=10, ge=1, le=50)
     use_llm_analysis: bool = Field(default=False)
+    include_reasoning: bool = Field(default=False, description="Include detailed reasoning for each score")
 
 
 # Correlation schemas
@@ -442,6 +459,7 @@ async def list_assessments(
                 source=a.source,
                 assessment_time_ms=a.assessment_time_ms,
                 summary=a.summary,
+                reasoning=a.reasoning,
                 created_at=a.created_at,
             )
             for a in assessments
@@ -489,6 +507,7 @@ async def get_assessment(
         source=assessment.source,
         assessment_time_ms=assessment.assessment_time_ms,
         summary=assessment.summary,
+        reasoning=assessment.reasoning,
         created_at=assessment.created_at,
     )
 
@@ -530,6 +549,7 @@ async def get_assessment_by_trace(
         source=assessment.source,
         assessment_time_ms=assessment.assessment_time_ms,
         summary=assessment.summary,
+        reasoning=assessment.reasoning,
         created_at=assessment.created_at,
     )
 
@@ -550,7 +570,10 @@ async def assess_and_save(
 
     try:
         start_time = time.time()
-        assessor = QualityAssessor(use_llm_judge=request.use_llm_analysis)
+        assessor = QualityAssessor(
+            use_llm_judge=request.use_llm_analysis,
+            include_reasoning=request.include_reasoning,
+        )
 
         report = assessor.assess_workflow(
             workflow=request.workflow_json,
@@ -558,7 +581,7 @@ async def assess_and_save(
         )
         assessment_time_ms = int((time.time() - start_time) * 1000)
 
-        # Create assessment record
+        # Create workflow assessment record
         assessment = WorkflowQualityAssessment(
             tenant_id=tenant_id,
             trace_id=UUID(request.trace_id) if request.trace_id else None,
@@ -575,8 +598,29 @@ async def assess_and_save(
             source="api",
             assessment_time_ms=assessment_time_ms,
             summary=report.summary,
+            reasoning=report.reasoning,
         )
         db.add(assessment)
+        await db.flush()
+
+        # Create agent assessment records
+        for agent_score in report.agent_scores:
+            agent_assessment = AgentQualityAssessment(
+                tenant_id=tenant_id,
+                workflow_assessment_id=assessment.id,
+                trace_id=UUID(request.trace_id) if request.trace_id else None,
+                agent_id=agent_score.agent_id,
+                agent_name=agent_score.agent_name,
+                agent_type=agent_score.agent_type,
+                overall_score=int(agent_score.overall_score * 100),
+                grade=agent_score.grade,
+                dimensions=[d.to_dict() for d in agent_score.dimensions],
+                issues_count=agent_score.issues_count,
+                critical_issues=agent_score.critical_issues,
+                reasoning=agent_score.reasoning,
+            )
+            db.add(agent_assessment)
+
         await db.commit()
         await db.refresh(assessment)
 
@@ -596,10 +640,130 @@ async def assess_and_save(
             source=assessment.source,
             assessment_time_ms=assessment.assessment_time_ms,
             summary=assessment.summary,
+            reasoning=assessment.reasoning,
             created_at=assessment.created_at,
         )
     except Exception as e:
         raise HTTPException(status_code=500, detail=f"Assessment failed: {str(e)}")
+
+
+# --- Agent Assessment Endpoints ---
+
+
+class StoredAgentAssessmentResponse(BaseModel):
+    """Response for a stored agent quality assessment."""
+    id: str
+    workflow_assessment_id: str
+    agent_id: str
+    agent_name: Optional[str]
+    agent_type: str
+    overall_score: int
+    grade: str
+    dimensions: List[dict]
+    issues_count: int
+    critical_issues: List[str]
+    reasoning: Optional[str] = None
+    created_at: datetime
+
+
+class AgentAssessmentListResponse(BaseModel):
+    """Response for listing agent assessments."""
+    assessments: List[StoredAgentAssessmentResponse]
+    total: int
+    page: int
+    page_size: int
+
+
+@router.get("/tenants/{tenant_id}/assessments/{assessment_id}/agents", response_model=List[StoredAgentAssessmentResponse])
+async def list_agent_assessments_for_workflow(
+    tenant_id: UUID = Path(...),
+    assessment_id: UUID = Path(...),
+    db: AsyncSession = Depends(get_db),
+    tenant=Depends(get_current_tenant),
+):
+    """List agent assessments for a specific workflow assessment."""
+    await set_tenant_context(db, str(tenant_id))
+
+    result = await db.execute(
+        select(AgentQualityAssessment).where(
+            AgentQualityAssessment.workflow_assessment_id == assessment_id,
+            AgentQualityAssessment.tenant_id == tenant_id,
+        ).order_by(AgentQualityAssessment.overall_score.asc())
+    )
+    agents = result.scalars().all()
+
+    return [
+        StoredAgentAssessmentResponse(
+            id=str(a.id),
+            workflow_assessment_id=str(a.workflow_assessment_id),
+            agent_id=a.agent_id,
+            agent_name=a.agent_name,
+            agent_type=a.agent_type,
+            overall_score=a.overall_score,
+            grade=a.grade,
+            dimensions=a.dimensions or [],
+            issues_count=a.issues_count or 0,
+            critical_issues=a.critical_issues or [],
+            reasoning=a.reasoning,
+            created_at=a.created_at,
+        )
+        for a in agents
+    ]
+
+
+@router.get("/tenants/{tenant_id}/agent-assessments", response_model=AgentAssessmentListResponse)
+async def list_agent_assessments(
+    tenant_id: UUID = Path(...),
+    agent_id: Optional[str] = Query(None, description="Filter by agent ID"),
+    page: int = Query(1, ge=1),
+    page_size: int = Query(20, ge=1, le=100),
+    db: AsyncSession = Depends(get_db),
+    tenant=Depends(get_current_tenant),
+):
+    """List agent assessments across all workflow assessments, filterable by agent_id."""
+    await set_tenant_context(db, str(tenant_id))
+
+    query = select(AgentQualityAssessment).where(
+        AgentQualityAssessment.tenant_id == tenant_id
+    )
+
+    if agent_id:
+        query = query.where(AgentQualityAssessment.agent_id == agent_id)
+
+    # Count total
+    count_query = select(func.count()).select_from(query.subquery())
+    total_result = await db.execute(count_query)
+    total = total_result.scalar() or 0
+
+    # Paginate
+    offset = (page - 1) * page_size
+    query = query.order_by(AgentQualityAssessment.created_at.desc()).offset(offset).limit(page_size)
+
+    result = await db.execute(query)
+    agents = result.scalars().all()
+
+    return AgentAssessmentListResponse(
+        assessments=[
+            StoredAgentAssessmentResponse(
+                id=str(a.id),
+                workflow_assessment_id=str(a.workflow_assessment_id),
+                agent_id=a.agent_id,
+                agent_name=a.agent_name,
+                agent_type=a.agent_type,
+                overall_score=a.overall_score,
+                grade=a.grade,
+                dimensions=a.dimensions or [],
+                issues_count=a.issues_count or 0,
+                critical_issues=a.critical_issues or [],
+                reasoning=a.reasoning,
+                created_at=a.created_at,
+            )
+            for a in agents
+        ],
+        total=total,
+        page=page,
+        page_size=page_size,
+    )
 
 
 @router.post("/tenants/{tenant_id}/quality/correlate", response_model=CorrelationResponse)

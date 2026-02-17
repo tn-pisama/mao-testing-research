@@ -116,13 +116,15 @@ class QualityAssessor:
     into a comprehensive quality report.
     """
 
-    def __init__(self, use_llm_judge: bool = False):
+    def __init__(self, use_llm_judge: bool = False, include_reasoning: bool = False):
         """
         Initialize the quality assessor.
 
         Args:
             use_llm_judge: Whether to use LLM for ambiguous cases (Tier 3 escalation)
+            include_reasoning: Whether to generate detailed reasoning for each score
         """
+        self.include_reasoning = include_reasoning
         self.agent_scorer = AgentQualityScorer(use_llm_judge=use_llm_judge)
         self.orchestration_scorer = OrchestrationQualityScorer()
         self.improvement_suggester = ImprovementSuggester()
@@ -165,6 +167,7 @@ class QualityAssessor:
                     node=node,
                     workflow_context=workflow,
                     execution_history=node_history,
+                    include_reasoning=self.include_reasoning,
                 )
                 agent_scores.append(score)
 
@@ -172,6 +175,7 @@ class QualityAssessor:
         orchestration_score = self.orchestration_scorer.score_orchestration(
             workflow=workflow,
             execution_history=execution_history,
+            include_reasoning=self.include_reasoning,
         )
 
         # Calculate overall score (weighted average of agent and orchestration)
@@ -183,6 +187,13 @@ class QualityAssessor:
             # No agents - orchestration only
             overall_score = orchestration_score.overall_score
 
+        # Generate workflow-level reasoning if requested
+        reasoning = None
+        if self.include_reasoning:
+            reasoning = self._generate_workflow_reasoning(
+                workflow_name, overall_score, agent_scores, orchestration_score
+            )
+
         # Create initial report for improvement generation
         report = QualityReport(
             workflow_id=workflow_id,
@@ -192,6 +203,7 @@ class QualityAssessor:
             orchestration_score=orchestration_score,
             improvements=[],
             summary="",
+            reasoning=reasoning,
             generated_at=datetime.now(UTC),
         )
 
@@ -228,7 +240,46 @@ class QualityAssessor:
             node=node,
             workflow_context=workflow_context,
             execution_history=execution_history,
+            include_reasoning=self.include_reasoning,
         )
+
+    def _generate_workflow_reasoning(
+        self,
+        workflow_name: str,
+        overall_score: float,
+        agent_scores: List[AgentQualityScore],
+        orchestration_score: "OrchestrationQualityScore",
+    ) -> str:
+        """Generate workflow-level reasoning summarizing agent and orchestration findings."""
+        from .models import _score_to_grade
+
+        grade = _score_to_grade(overall_score)
+        parts = [f"Workflow '{workflow_name}' overall quality: {overall_score:.0%} ({grade})."]
+
+        if agent_scores:
+            avg_agent = sum(a.overall_score for a in agent_scores) / len(agent_scores)
+            parts.append(
+                f"Agent quality ({len(agent_scores)} agents, avg {avg_agent:.0%}): "
+                f"weighted 60% of overall score."
+            )
+            low = [a for a in agent_scores if a.overall_score < 0.6]
+            if low:
+                names = ", ".join(a.agent_name for a in low[:3])
+                parts.append(f"Agents needing attention: {names}.")
+
+        parts.append(
+            f"Orchestration quality: {orchestration_score.overall_score:.0%} "
+            f"({orchestration_score.grade}), weighted 40% of overall score."
+        )
+
+        all_critical = []
+        for a in agent_scores:
+            all_critical.extend(a.critical_issues)
+        all_critical.extend(orchestration_score.critical_issues)
+        if all_critical:
+            parts.append(f"Critical issues ({len(all_critical)}): {'; '.join(all_critical[:3])}.")
+
+        return " ".join(parts)
 
     def _generate_summary(self, report: QualityReport) -> str:
         """Generate a human-readable summary of the quality report."""
