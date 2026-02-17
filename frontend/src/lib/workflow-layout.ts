@@ -135,9 +135,9 @@ export function buildNodesFromAgents(
           score: agent.overall_score,
           grade: agent.grade,
           issuesCount: agent.issues_count,
-          criticalIssues: agent.critical_issues,
+          criticalIssues: agent.critical_issues || [],
           hasIssues: agent.issues_count > 0,
-          hasCritical: agent.critical_issues.length > 0,
+          hasCritical: (agent.critical_issues || []).length > 0,
         },
         position: { x: 0, y: 0 },
       })
@@ -154,9 +154,9 @@ export function buildNodesFromAgents(
           score: agent.overall_score,
           grade: agent.grade,
           issuesCount: agent.issues_count,
-          criticalIssues: agent.critical_issues,
+          criticalIssues: agent.critical_issues || [],
           hasIssues: agent.issues_count > 0,
-          hasCritical: agent.critical_issues.length > 0,
+          hasCritical: (agent.critical_issues || []).length > 0,
         },
         position: { x: 0, y: 0 },
       })
