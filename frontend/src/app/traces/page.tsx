@@ -12,7 +12,8 @@ import { useTraces } from '@/hooks/useApiWithFallback'
 export default function TracesPage() {
   const [page, setPage] = useState(1)
   const [statusFilter, setStatusFilter] = useState<string | undefined>()
-  
+  const [frameworkFilter, setFrameworkFilter] = useState<string | undefined>()
+
   const { traces: allTraces, total, isLoading, isDemoMode } = useTraces({
     page,
     perPage: 50,
@@ -20,9 +21,15 @@ export default function TracesPage() {
   })
 
   const filteredTraces = useMemo(() => {
-    if (!statusFilter) return allTraces
-    return allTraces.filter(t => t.status === statusFilter)
-  }, [allTraces, statusFilter])
+    let result = allTraces
+    if (statusFilter) {
+      result = result.filter(t => t.status === statusFilter)
+    }
+    if (frameworkFilter) {
+      result = result.filter(t => t.framework === frameworkFilter)
+    }
+    return result
+  }, [allTraces, statusFilter, frameworkFilter])
 
   const paginatedTraces = useMemo(() => {
     const start = (page - 1) * 20
@@ -63,12 +70,14 @@ export default function TracesPage() {
               </span>
             )}
           </div>
-          <TraceSearch 
-            statusFilter={statusFilter} 
-            onStatusChange={setStatusFilter} 
+          <TraceSearch
+            statusFilter={statusFilter}
+            onStatusChange={setStatusFilter}
+            frameworkFilter={frameworkFilter}
+            onFrameworkChange={setFrameworkFilter}
           />
         </div>
-        
+
         <TraceList
           traces={paginatedTraces}
           isLoading={false}

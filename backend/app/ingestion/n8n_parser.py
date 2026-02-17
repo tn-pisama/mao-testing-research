@@ -2,8 +2,8 @@ from dataclasses import dataclass, field
 from typing import Dict, Any, List, Optional
 from datetime import datetime
 
-from app.core.n8n_security import redact_sensitive_data, compute_state_hash
-from app.ingestion.content_filter import strip_content_fields
+from app.core.webhook_security import redact_sensitive_data, compute_state_hash
+from app.ingestion.base_provider import BaseProviderParser
 
 
 @dataclass
@@ -43,7 +43,7 @@ class ParsedN8nState:
     token_count: int = 0
 
 
-class N8nParser:
+class N8nParser(BaseProviderParser):
     AI_NODE_TYPES = [
         "n8n-nodes-base.openAi",
         "n8n-nodes-base.anthropic",
@@ -54,18 +54,24 @@ class N8nParser:
         "@n8n/n8n-nodes-langchain.lmChatGoogleGemini",
         "n8n-nodes-base.httpRequest",
     ]
-    
+
+    def parse_raw(self, raw_data: Dict[str, Any]) -> N8nExecution:
+        return self.parse_execution(raw_data)
+
+    def extract_states(self, execution: N8nExecution, tenant_id: str, ingestion_mode: str = "full") -> List[ParsedN8nState]:
+        return self.parse_to_states(execution, tenant_id, ingestion_mode=ingestion_mode)
+
     def parse_execution(self, raw_data: Dict[str, Any]) -> N8nExecution:
         started_at = self._parse_datetime(raw_data.get("startedAt"))
         finished_at = self._parse_datetime(raw_data.get("finishedAt"))
-        
+
         nodes = []
         run_data = raw_data.get("data", {}).get("resultData", {}).get("runData", {})
-        
+
         for node_name, node_runs in run_data.items():
             if not node_runs:
                 continue
-            
+
             for run in node_runs:
                 node = N8nNode(
                     name=node_name,
@@ -76,7 +82,7 @@ class N8nParser:
                     error=run.get("error", {}).get("message") if run.get("error") else None,
                 )
                 nodes.append(node)
-        
+
         return N8nExecution(
             id=raw_data.get("executionId", raw_data.get("id", "")),
             workflow_id=raw_data.get("workflowId", ""),
@@ -87,7 +93,7 @@ class N8nParser:
             status=raw_data.get("status", "unknown"),
             nodes=nodes,
         )
-    
+
     def parse_to_states(self, execution: N8nExecution, tenant_id: str, ingestion_mode: str = "full") -> List[ParsedN8nState]:
         states = []
 
@@ -98,21 +104,20 @@ class N8nParser:
             # Extract thinking/reasoning from custom Claude node output
             reasoning = self._extract_reasoning(node.output)
 
-            state_delta = redact_sensitive_data({
-                "node_name": node.name,
-                "node_type": node.type,
-                "parameters": node.parameters,
-                "output": node.output,
-                "error": node.error,
-                "model_config": model_config,
-                "reasoning": reasoning,
-            }, skip_keys=["messages", "systemMessage", "prompt", "thinking", "reasoning"])
-
-            if ingestion_mode == "trace_only":
-                state_delta = strip_content_fields(
-                    state_delta,
-                    content_keys=["parameters", "output", "reasoning"],
-                )
+            state_delta = self._redact_and_filter(
+                {
+                    "node_name": node.name,
+                    "node_type": node.type,
+                    "parameters": node.parameters,
+                    "output": node.output,
+                    "error": node.error,
+                    "model_config": model_config,
+                    "reasoning": reasoning,
+                },
+                skip_keys=["messages", "systemMessage", "prompt", "thinking", "reasoning"],
+                content_keys=["parameters", "output", "reasoning"],
+                ingestion_mode=ingestion_mode,
+            )
 
             is_ai = self._is_ai_node(node)
             ai_model = None
@@ -121,13 +126,13 @@ class N8nParser:
             if is_ai:
                 ai_model = node.parameters.get("model", node.parameters.get("modelId"))
                 token_count = self._extract_token_count(node)
-            
+
             states.append(ParsedN8nState(
                 trace_id=execution.id,
                 sequence_num=seq,
                 agent_id=node.name,
                 state_delta=state_delta,
-                state_hash=compute_state_hash(state_delta),
+                state_hash=self._compute_hash(state_delta),
                 node_type=node.type,
                 latency_ms=node.execution_time_ms,
                 timestamp=execution.started_at,
@@ -135,22 +140,22 @@ class N8nParser:
                 ai_model=ai_model,
                 token_count=token_count,
             ))
-        
+
         return states
-    
+
     def _is_ai_node(self, node: N8nNode) -> bool:
         if any(ai_type in node.type for ai_type in self.AI_NODE_TYPES):
             return True
-        
+
         if "openai" in node.name.lower() or "anthropic" in node.name.lower():
             return True
         if "llm" in node.name.lower() or "gpt" in node.name.lower():
             return True
         if "langchain" in node.type.lower():
             return True
-        
+
         return False
-    
+
     def _extract_token_count(self, node: N8nNode) -> int:
         if isinstance(node.output, list) and node.output:
             first_output = node.output[0] if node.output else {}
@@ -200,16 +205,6 @@ class N8nParser:
                         return thinking
 
         return None
-
-    def _parse_datetime(self, dt_str: Optional[str]) -> datetime:
-        if not dt_str:
-            return datetime.utcnow()
-        try:
-            if dt_str.endswith("Z"):
-                dt_str = dt_str[:-1] + "+00:00"
-            return datetime.fromisoformat(dt_str)
-        except (ValueError, TypeError):
-            return datetime.utcnow()
 
 
 n8n_parser = N8nParser()

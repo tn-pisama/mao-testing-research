@@ -6,9 +6,17 @@ interface TraceSearchProps {
   onSearch?: (query: string) => void
   statusFilter?: string
   onStatusChange?: (status: string | undefined) => void
+  frameworkFilter?: string
+  onFrameworkChange?: (framework: string | undefined) => void
 }
 
-export function TraceSearch({ onSearch, statusFilter, onStatusChange }: TraceSearchProps) {
+export function TraceSearch({
+  onSearch,
+  statusFilter,
+  onStatusChange,
+  frameworkFilter,
+  onFrameworkChange,
+}: TraceSearchProps) {
   return (
     <Card padding="compact">
       <div className="flex items-center gap-4">
@@ -19,6 +27,19 @@ export function TraceSearch({ onSearch, statusFilter, onStatusChange }: TraceSea
           onChange={(e) => onSearch?.(e.target.value)}
           className="flex-1 px-4 py-2 bg-black border border-primary-500/30 rounded-lg text-white placeholder-white/40 font-mono focus:outline-none focus:ring-2 focus:ring-primary-500 focus:shadow-glow-cyan"
         />
+        {onFrameworkChange && (
+          <select
+            value={frameworkFilter || ''}
+            aria-label="Filter by framework"
+            onChange={(e) => onFrameworkChange(e.target.value || undefined)}
+            className="px-4 py-2 bg-black border border-primary-500/30 rounded-lg text-white font-mono focus:outline-none focus:ring-2 focus:ring-primary-500 focus:shadow-glow-cyan"
+          >
+            <option value="">All Providers</option>
+            <option value="n8n">n8n</option>
+            <option value="openclaw">OpenClaw</option>
+            <option value="dify">Dify</option>
+          </select>
+        )}
         {onStatusChange && (
           <select
             value={statusFilter || ''}

@@ -371,6 +371,54 @@ export interface N8nWorkflow {
   workflow_id: string
   workflow_name?: string
   webhook_url: string
+  ingestion_mode?: string
+  registered_at: string
+}
+
+// OpenClaw types
+export interface OpenClawInstance {
+  id: string
+  name: string
+  gateway_url: string
+  otel_enabled: boolean
+  is_active: boolean
+  channels_configured: string[]
+  ingestion_mode: string
+  created_at: string
+}
+
+export interface OpenClawAgent {
+  id: string
+  agent_key: string
+  agent_name?: string
+  model?: string
+  monitoring_enabled: boolean
+  ingestion_mode?: string
+  total_sessions: number
+  total_messages: number
+  registered_at: string
+}
+
+// Dify types
+export interface DifyInstance {
+  id: string
+  name: string
+  base_url: string
+  is_active: boolean
+  app_types_configured: string[]
+  ingestion_mode: string
+  created_at: string
+}
+
+export interface DifyApp {
+  id: string
+  app_id: string
+  app_name?: string
+  app_type: string
+  monitoring_enabled: boolean
+  ingestion_mode?: string
+  total_runs: number
+  total_tokens: number
   registered_at: string
 }
 
@@ -1317,6 +1365,58 @@ export function createApiClient(token?: string | null, tenantId?: string | null)
           body: { connection_id: connectionId },
         }
       )
+    },
+
+    // OpenClaw endpoints
+    async registerOpenClawInstance(data: { name: string; gateway_url: string; api_key: string; otel_endpoint?: string; otel_enabled?: boolean; ingestion_mode?: string }) {
+      return fetchApi<OpenClawInstance>(`/openclaw/instances`, {
+        ...opts,
+        method: 'POST',
+        body: data,
+      })
+    },
+
+    async listOpenClawInstances() {
+      return fetchApi<OpenClawInstance[]>(`/openclaw/instances`, opts)
+    },
+
+    async registerOpenClawAgent(data: { instance_id: string; agent_key: string; agent_name?: string; model?: string; ingestion_mode?: string }) {
+      return fetchApi<OpenClawAgent>(`/openclaw/agents`, {
+        ...opts,
+        method: 'POST',
+        body: data,
+      })
+    },
+
+    async listOpenClawAgents(instanceId?: string) {
+      const params = instanceId ? `?instance_id=${instanceId}` : ''
+      return fetchApi<OpenClawAgent[]>(`/openclaw/agents${params}`, opts)
+    },
+
+    // Dify endpoints
+    async registerDifyInstance(data: { name: string; base_url: string; api_key: string; ingestion_mode?: string }) {
+      return fetchApi<DifyInstance>(`/dify/instances`, {
+        ...opts,
+        method: 'POST',
+        body: data,
+      })
+    },
+
+    async listDifyInstances() {
+      return fetchApi<DifyInstance[]>(`/dify/instances`, opts)
+    },
+
+    async registerDifyApp(data: { instance_id: string; app_id: string; app_name?: string; app_type?: string; ingestion_mode?: string }) {
+      return fetchApi<DifyApp>(`/dify/apps`, {
+        ...opts,
+        method: 'POST',
+        body: data,
+      })
+    },
+
+    async listDifyApps(instanceId?: string) {
+      const params = instanceId ? `?instance_id=${instanceId}` : ''
+      return fetchApi<DifyApp[]>(`/dify/apps${params}`, opts)
     },
 
     // Security endpoints

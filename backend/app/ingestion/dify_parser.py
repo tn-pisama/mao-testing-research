@@ -4,8 +4,7 @@ from dataclasses import dataclass, field
 from typing import Dict, Any, List, Optional
 from datetime import datetime
 
-from app.core.n8n_security import redact_sensitive_data, compute_state_hash
-from app.ingestion.content_filter import strip_content_fields
+from app.ingestion.base_provider import BaseProviderParser
 
 
 @dataclass
@@ -81,8 +80,14 @@ NODE_TYPE_MAP = {
 ITERATION_NODE_TYPES = {"iteration", "loop"}
 
 
-class DifyParser:
+class DifyParser(BaseProviderParser):
     """Parses Dify workflow run data into PISAMA trace format."""
+
+    def parse_raw(self, raw_data: Dict[str, Any]) -> DifyWorkflowRun:
+        return self.parse_workflow_run(raw_data)
+
+    def extract_states(self, execution: DifyWorkflowRun, tenant_id: str, ingestion_mode: str = "full") -> List[ParsedDifyState]:
+        return self.parse_to_states(execution, tenant_id, ingestion_mode=ingestion_mode)
 
     def parse_workflow_run(self, raw_data: Dict[str, Any]) -> DifyWorkflowRun:
         """Parse raw webhook payload into structured workflow run."""
@@ -143,7 +148,7 @@ class DifyParser:
                 or node.iteration_index is not None
             )
 
-            state_delta = redact_sensitive_data(
+            state_delta = self._redact_and_filter(
                 {
                     "node_type": node.node_type,
                     "title": node.title,
@@ -155,13 +160,9 @@ class DifyParser:
                     "parent_node_id": node.parent_node_id,
                 },
                 skip_keys=["messages", "prompt", "thinking", "reasoning"],
+                content_keys=["inputs", "outputs"],
+                ingestion_mode=ingestion_mode,
             )
-
-            if ingestion_mode == "trace_only":
-                state_delta = strip_content_fields(
-                    state_delta,
-                    content_keys=["inputs", "outputs"],
-                )
 
             # Compute latency from node timestamps
             latency_ms = 0
@@ -175,7 +176,7 @@ class DifyParser:
                     sequence_num=seq,
                     agent_id=node.title or node.node_type,
                     state_delta=state_delta,
-                    state_hash=compute_state_hash(state_delta),
+                    state_hash=self._compute_hash(state_delta),
                     node_type=node.node_type,
                     latency_ms=max(0, latency_ms),
                     timestamp=node.started_at or run.started_at,
@@ -185,16 +186,6 @@ class DifyParser:
             )
 
         return states
-
-    def _parse_datetime(self, dt_str: Optional[str]) -> datetime:
-        if not dt_str:
-            return datetime.utcnow()
-        try:
-            if dt_str.endswith("Z"):
-                dt_str = dt_str[:-1] + "+00:00"
-            return datetime.fromisoformat(dt_str)
-        except (ValueError, TypeError):
-            return datetime.utcnow()
 
 
 dify_parser = DifyParser()

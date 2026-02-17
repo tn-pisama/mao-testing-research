@@ -13,7 +13,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.main import app
 from app.storage.models import Tenant, Trace, State, N8nWorkflow
-from app.core.n8n_security import (
+from app.core.webhook_security import (
     verify_webhook_signature,
     validate_n8n_url,
     redact_sensitive_data,

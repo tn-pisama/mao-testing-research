@@ -59,6 +59,7 @@ const developerImproveItems: NavItem[] = [
 ]
 
 const developerConfigureItems: NavItem[] = [
+  { label: 'Integrations', href: '/integrations', icon: Box },
   { label: 'Agents', href: '/agents', icon: Users },
   { label: 'Workflows', href: '/n8n', icon: GitBranch },
   { label: 'Tools', href: '/tools', icon: Zap },

@@ -15,6 +15,22 @@ interface TraceListProps {
   onPageChange?: (page: number) => void
 }
 
+const frameworkStyles: Record<string, string> = {
+  n8n: 'text-orange-400 bg-orange-500/10 border-orange-500/30',
+  openclaw: 'text-cyan-400 bg-cyan-500/10 border-cyan-500/30',
+  dify: 'text-violet-400 bg-violet-500/10 border-violet-500/30',
+}
+
+function getFrameworkBadge(framework: string) {
+  const style = frameworkStyles[framework] || 'text-slate-400 bg-slate-500/10 border-slate-500/30'
+  const label = framework === 'openclaw' ? 'OpenClaw' : framework === 'dify' ? 'Dify' : framework
+  return (
+    <span className={`text-xs px-2 py-0.5 rounded border ${style}`}>
+      {label}
+    </span>
+  )
+}
+
 function getStatusBadge(status: string) {
   switch (status.toLowerCase()) {
     case 'completed':
@@ -91,9 +107,7 @@ export function TraceList({
                         {trace.session_id}
                       </span>
                       {getStatusBadge(trace.status)}
-                      <span className="text-xs text-slate-500 bg-slate-700 px-2 py-0.5 rounded">
-                        {trace.framework}
-                      </span>
+                      {getFrameworkBadge(trace.framework)}
                     </div>
                     <div className="flex items-center gap-4 text-sm text-slate-400">
                       <span className="flex items-center gap-1">

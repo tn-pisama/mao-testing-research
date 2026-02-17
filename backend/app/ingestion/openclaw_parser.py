@@ -4,8 +4,7 @@ from dataclasses import dataclass, field
 from typing import Dict, Any, List, Optional
 from datetime import datetime
 
-from app.core.n8n_security import redact_sensitive_data, compute_state_hash
-from app.ingestion.content_filter import strip_content_fields
+from app.ingestion.base_provider import BaseProviderParser
 
 
 @dataclass
@@ -61,7 +60,7 @@ class ParsedOpenClawState:
     token_count: int = 0
 
 
-class OpenClawParser:
+class OpenClawParser(BaseProviderParser):
     """Parses OpenClaw session data into PISAMA trace format."""
 
     AGENT_EVENT_TYPES = [
@@ -75,6 +74,12 @@ class OpenClawParser:
         "tool.call",
         "tool.result",
     ]
+
+    def parse_raw(self, raw_data: Dict[str, Any]) -> OpenClawSession:
+        return self.parse_session(raw_data)
+
+    def extract_states(self, execution: OpenClawSession, tenant_id: str, ingestion_mode: str = "full") -> List[ParsedOpenClawState]:
+        return self.parse_to_states(execution, tenant_id, ingestion_mode=ingestion_mode)
 
     def parse_session(self, raw_data: Dict[str, Any]) -> OpenClawSession:
         """Parse raw webhook payload into structured session."""
@@ -122,7 +127,7 @@ class OpenClawParser:
         for seq, event in enumerate(session.events):
             is_agent_event = event.event_type in self.AGENT_EVENT_TYPES
 
-            state_delta = redact_sensitive_data(
+            state_delta = self._redact_and_filter(
                 {
                     "event_type": event.event_type,
                     "agent_name": event.agent_name or session.agent_name,
@@ -134,13 +139,9 @@ class OpenClawParser:
                     "error": event.error,
                 },
                 skip_keys=["messages", "prompt", "thinking", "reasoning"],
+                content_keys=["data", "tool_input", "tool_result"],
+                ingestion_mode=ingestion_mode,
             )
-
-            if ingestion_mode == "trace_only":
-                state_delta = strip_content_fields(
-                    state_delta,
-                    content_keys=["data", "tool_input", "tool_result"],
-                )
 
             # Compute latency from event timestamps
             latency_ms = 0
@@ -154,7 +155,7 @@ class OpenClawParser:
                     sequence_num=seq,
                     agent_id=event.agent_name or session.agent_name,
                     state_delta=state_delta,
-                    state_hash=compute_state_hash(state_delta),
+                    state_hash=self._compute_hash(state_delta),
                     event_type=event.event_type,
                     latency_ms=max(0, latency_ms),
                     timestamp=event.timestamp or session.started_at,
@@ -165,16 +166,6 @@ class OpenClawParser:
             )
 
         return states
-
-    def _parse_datetime(self, dt_str: Optional[str]) -> datetime:
-        if not dt_str:
-            return datetime.utcnow()
-        try:
-            if dt_str.endswith("Z"):
-                dt_str = dt_str[:-1] + "+00:00"
-            return datetime.fromisoformat(dt_str)
-        except (ValueError, TypeError):
-            return datetime.utcnow()
 
 
 openclaw_parser = OpenClawParser()

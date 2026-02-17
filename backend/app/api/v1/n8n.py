@@ -1,7 +1,6 @@
 from fastapi import APIRouter, Depends, HTTPException, Request, Header, BackgroundTasks
-from starlette.responses import StreamingResponse
 from sqlalchemy.ext.asyncio import AsyncSession
-from sqlalchemy import select, insert
+from sqlalchemy import select
 from sqlalchemy.dialects.postgresql import insert as pg_insert
 from typing import Optional, List, Any
 from uuid import UUID
@@ -11,12 +10,17 @@ import logging
 from pydantic import BaseModel, Field
 
 from app.storage.database import get_db, set_tenant_context, async_session_maker
-from app.storage.models import Trace, State, N8nWorkflow, WebhookNonce, Tenant, WorkflowQualityAssessment
+from app.storage.models import Trace, State, N8nWorkflow, Tenant, WorkflowQualityAssessment
 from app.core.auth import get_current_tenant
-from app.core.n8n_security import verify_webhook_signature, redact_sensitive_data
 from app.ingestion.n8n_parser import n8n_parser
 from app.config import get_settings
-from app.core.redis_pubsub import publish_event, subscribe_events
+from app.core.redis_pubsub import publish_event
+from app.api.v1.provider_base import (
+    verify_api_key_and_get_tenant,
+    verify_webhook_if_configured,
+    create_trace_and_states,
+    create_sse_response,
+)
 
 logger = logging.getLogger(__name__)
 
@@ -57,19 +61,6 @@ class N8nWorkflowResponse(BaseModel):
     webhook_url: str
     ingestion_mode: Optional[str] = None
     registered_at: datetime
-
-
-async def verify_nonce(nonce: str, timestamp: int, db: AsyncSession) -> bool:
-    result = await db.execute(
-        select(WebhookNonce).where(WebhookNonce.nonce == nonce)
-    )
-    if result.scalar_one_or_none():
-        raise HTTPException(status_code=401, detail="Replay attack detected")
-
-    await db.execute(
-        insert(WebhookNonce).values(nonce=nonce, timestamp=timestamp)
-    )
-    return True
 
 
 async def assess_workflow_quality_task(
@@ -154,35 +145,9 @@ async def receive_n8n_webhook(
     x_mao_nonce: Optional[str] = Header(None, alias="X-MAO-Nonce"),
     db: AsyncSession = Depends(get_db),
 ):
-    from app.core.auth import verify_api_key
-    
-    if not x_mao_api_key.startswith("mao_"):
-        raise HTTPException(status_code=401, detail="Invalid API key format")
-    
-    key_prefix = x_mao_api_key[:12]
-    
-    from app.storage.models import ApiKey
-    result = await db.execute(
-        select(ApiKey).where(
-            ApiKey.key_prefix == key_prefix,
-            ApiKey.revoked_at.is_(None)
-        )
-    )
-    api_key_record = result.scalar_one_or_none()
-    
-    tenant = None
-    if api_key_record and verify_api_key(x_mao_api_key, api_key_record.key_hash):
-        result = await db.execute(
-            select(Tenant).where(Tenant.id == api_key_record.tenant_id)
-        )
-        tenant = result.scalar_one_or_none()
-    
-    if not tenant:
-        raise HTTPException(status_code=401, detail="Invalid API key")
-    
+    tenant = await verify_api_key_and_get_tenant(x_mao_api_key, db)
     tenant_id = str(tenant.id)
-    await set_tenant_context(db, tenant_id)
-    
+
     workflow_result = await db.execute(
         select(N8nWorkflow).where(
             N8nWorkflow.tenant_id == tenant.id,
@@ -191,17 +156,15 @@ async def receive_n8n_webhook(
     )
     workflow = workflow_result.scalar_one_or_none()
     
-    if workflow and workflow.webhook_secret:
-        if not x_mao_signature or not x_mao_timestamp:
-            raise HTTPException(
-                status_code=401,
-                detail="Webhook signature required for registered workflows"
-            )
-        body = await request.body()
-        verify_webhook_signature(body, x_mao_signature, workflow.webhook_secret, x_mao_timestamp)
-        
-        if x_mao_nonce:
-            await verify_nonce(x_mao_nonce, int(x_mao_timestamp), db)
+    body = await request.body()
+    await verify_webhook_if_configured(
+        body,
+        workflow.webhook_secret if workflow else None,
+        x_mao_signature,
+        x_mao_timestamp,
+        x_mao_nonce,
+        db,
+    )
     
     # Resolve ingestion mode (workflow override > "full")
     ingestion_mode = "full"
@@ -211,30 +174,17 @@ async def receive_n8n_webhook(
     execution = n8n_parser.parse_execution(payload.model_dump())
     states = n8n_parser.parse_to_states(execution, tenant_id, ingestion_mode=ingestion_mode)
     
-    trace = Trace(
-        tenant_id=tenant.id,
+    trace = await create_trace_and_states(
+        tenant=tenant,
         session_id=execution.id,
         framework="n8n",
         status="completed" if execution.status == "success" else "error",
         created_at=execution.started_at,
         completed_at=execution.finished_at,
+        states=states,
+        db=db,
     )
-    db.add(trace)
-    await db.flush()
-    
-    for state in states:
-        db_state = State(
-            trace_id=trace.id,
-            tenant_id=tenant.id,
-            sequence_num=state.sequence_num,
-            agent_id=state.agent_id,
-            state_delta=state.state_delta,
-            state_hash=state.state_hash,
-            token_count=state.token_count,
-            latency_ms=state.latency_ms,
-        )
-        db.add(db_state)
-    
+
     await db.commit()
 
     # Publish real-time execution event to Redis
@@ -609,28 +559,4 @@ async def stream_executions(
         };
     """
     logger.info(f"SSE stream started for tenant: {tenant_id}")
-
-    async def event_generator():
-        """Generate SSE events from Redis pub/sub."""
-        try:
-            async for event in subscribe_events(f"execution:{tenant_id}"):
-                yield event
-        except Exception as e:
-            logger.error(f"Error in SSE stream: {e}")
-            # Send error event to client
-            import json
-            error_data = json.dumps({
-                "type": "error",
-                "message": "Stream interrupted"
-            })
-            yield f"data: {error_data}\n\n"
-
-    return StreamingResponse(
-        event_generator(),
-        media_type="text/event-stream",
-        headers={
-            "Cache-Control": "no-cache",
-            "Connection": "keep-alive",
-            "X-Accel-Buffering": "no",  # Disable nginx buffering
-        }
-    )
+    return create_sse_response(tenant_id, "n8n")
