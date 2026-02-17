@@ -247,6 +247,10 @@ async def seed_database():
             print(f"\nSeeding into existing tenant: {tenant_id}")
             print("Clearing existing data for this tenant...")
             await session.execute(
+                text("DELETE FROM healing_records WHERE tenant_id = :tid"),
+                {"tid": str(tenant_id)}
+            )
+            await session.execute(
                 text("DELETE FROM detections WHERE tenant_id = :tid"),
                 {"tid": str(tenant_id)}
             )
@@ -259,7 +263,7 @@ async def seed_database():
                 {"tid": str(tenant_id)}
             )
             await session.commit()
-            print("Cleared existing traces, states, and detections.")
+            print("Cleared existing traces, states, detections, and healing records.")
         else:
             result = await session.execute(
                 text("SELECT id FROM tenants WHERE name = :name"),
@@ -271,6 +275,10 @@ async def seed_database():
                 print(f"\nDemo tenant already exists (id: {existing})")
                 print("Clearing existing demo data...")
 
+                await session.execute(
+                    text("DELETE FROM healing_records WHERE tenant_id = :tid"),
+                    {"tid": str(existing)}
+                )
                 await session.execute(
                     text("DELETE FROM detections WHERE tenant_id = :tid"),
                     {"tid": str(existing)}
@@ -286,7 +294,7 @@ async def seed_database():
                 await session.commit()
 
                 tenant_id = existing
-                print("Cleared existing traces, states, and detections.")
+                print("Cleared existing traces, states, detections, and healing records.")
             else:
                 tenant_data = create_demo_tenant()
                 tenant_id = tenant_data["id"]
@@ -414,12 +422,68 @@ async def seed_database():
                 all_detections.append(detection)
         
         await session.commit()
-        
+
+        print("\nCreating healing records...")
+
+        FIX_TYPE_MAP = {
+            "infinite_loop": "loop_prevention",
+            "state_corruption": "state_repair",
+            "persona_drift": "constraint_injection",
+            "coordination_deadlock": "timeout_injection",
+        }
+        HEALING_STATUSES = ["applied", "applied", "pending", "failed", "rolled_back"]
+
+        all_healing = []
+        for detection in all_detections:
+            fix_type = FIX_TYPE_MAP.get(detection["detection_type"], "generic_fix")
+            status = random_choice(HEALING_STATUSES)
+            started = detection["created_at"] + timedelta(seconds=random_int(10, 120))
+            completed = (
+                started + timedelta(seconds=random_int(5, 30))
+                if status != "pending" else None
+            )
+            record_id = uuid.uuid4()
+            await session.execute(
+                text("""
+                    INSERT INTO healing_records (
+                        id, tenant_id, detection_id, status, fix_type, fix_id,
+                        fix_suggestions, applied_fixes, rollback_available,
+                        started_at, completed_at, created_at
+                    ) VALUES (
+                        :id, :tenant_id, :detection_id, :status, :fix_type, :fix_id,
+                        :fix_suggestions, :applied_fixes, :rollback_available,
+                        :started_at, :completed_at, :created_at
+                    )
+                """),
+                {
+                    "id": str(record_id),
+                    "tenant_id": str(tenant_id),
+                    "detection_id": str(detection["id"]),
+                    "status": status,
+                    "fix_type": fix_type,
+                    "fix_id": f"{fix_type}-{secrets.token_hex(6)}",
+                    "fix_suggestions": json.dumps([{
+                        "type": fix_type,
+                        "description": f"Automated fix for {detection['detection_type']}",
+                        "confidence": detection["confidence"],
+                    }]),
+                    "applied_fixes": json.dumps({"applied": status == "applied"}),
+                    "rollback_available": status == "applied",
+                    "started_at": started,
+                    "completed_at": completed,
+                    "created_at": started,
+                }
+            )
+            all_healing.append(record_id)
+
+        await session.commit()
+
         print(f"\nDemo data created successfully!")
         print(f"  - Tenant ID: {tenant_id}")
         print(f"  - Traces: {len(traces)}")
         print(f"  - States: {len(all_states)}")
         print(f"  - Detections: {len(all_detections)}")
+        print(f"  - Healing records: {len(all_healing)}")
         print(f"\nDemo API Key: {DEMO_API_KEY}")
         print(f"\nUse this in your frontend/CLI configuration.")
         print("=" * 60)
