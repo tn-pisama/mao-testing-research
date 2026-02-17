@@ -644,7 +644,7 @@ class WorkflowQualityAssessment(Base):
 
     # Overall scores
     overall_score = Column(Integer, nullable=False)  # 0-100
-    overall_grade = Column(String(2), nullable=False)  # A+, A, B+, B, C+, C, D, F
+    overall_grade = Column(String(10), nullable=False)  # Healthy, Degraded, At Risk, Critical
 
     # Detailed scores (JSONB)
     agent_scores = Column(JSONB, nullable=False)  # List of agent quality scores

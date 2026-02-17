@@ -47,21 +47,15 @@ class Effort(str, Enum):
 
 
 def _score_to_grade(score: float) -> str:
-    """Convert 0.0-1.0 score to letter grade."""
-    if score >= 0.9:
-        return "A"
-    elif score >= 0.8:
-        return "B+"
-    elif score >= 0.7:
-        return "B"
-    elif score >= 0.6:
-        return "C+"
-    elif score >= 0.5:
-        return "C"
-    elif score >= 0.4:
-        return "D"
+    """Convert 0.0-1.0 score to health tier."""
+    if score >= 0.90:
+        return "Healthy"
+    elif score >= 0.70:
+        return "Degraded"
+    elif score >= 0.50:
+        return "At Risk"
     else:
-        return "F"
+        return "Critical"
 
 
 @dataclass

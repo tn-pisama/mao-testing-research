@@ -283,13 +283,10 @@ async def list_quality_dimensions():
             },
         },
         "grades": {
-            "A": "90-100% - Excellent",
-            "B+": "80-89% - Very Good",
-            "B": "70-79% - Good",
-            "C+": "60-69% - Satisfactory",
-            "C": "50-59% - Needs Improvement",
-            "D": "40-49% - Poor",
-            "F": "0-39% - Failing",
+            "Healthy":  "90-100% - System operating normally",
+            "Degraded": "70-89%  - Performance below optimal",
+            "At Risk":  "50-69%  - Issues require attention",
+            "Critical": "0-49%   - Severe issues detected",
         },
     }
 
@@ -392,8 +389,8 @@ async def list_assessments(
         query = query.where(WorkflowQualityAssessment.workflow_id == workflow_id)
 
     if min_grade:
-        # Grade ordering: A+, A, B+, B, C+, C, D, F
-        grade_order = ["A+", "A", "B+", "B", "C+", "C", "D", "F"]
+        # Tier ordering: best → worst
+        grade_order = ["Healthy", "Degraded", "At Risk", "Critical"]
         if min_grade in grade_order:
             min_index = grade_order.index(min_grade)
             valid_grades = grade_order[:min_index + 1]
