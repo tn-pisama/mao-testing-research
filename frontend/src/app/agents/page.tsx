@@ -59,7 +59,7 @@ export default function AgentsPage() {
     loadAgents()
   }, [loadAgents])
 
-  const agents = realAgents ?? agents
+  const agents = realAgents ?? demo.agents
 
   const handleAgentClick = (agentId: string) => {
     setActiveAgentId(agentId)
