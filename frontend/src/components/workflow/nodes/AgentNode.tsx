@@ -19,7 +19,8 @@ interface AgentNodeData {
 }
 
 export const AgentNode = memo(({ data, selected }: NodeProps<AgentNodeData>) => {
-  const borderColor = getHealthColor(data.score)
+  const score = data.score ?? 0
+  const borderColor = getHealthColor(score)
   const borderWidth = data.hasCritical ? 3 : selected ? 2 : 1.5
 
   return (
@@ -32,7 +33,7 @@ export const AgentNode = memo(({ data, selected }: NodeProps<AgentNodeData>) => 
         borderWidth: `${borderWidth}px`,
         borderStyle: 'solid',
         borderColor,
-        opacity: 0.85 + data.score * 0.15, // Higher score = more opaque
+        opacity: 0.85 + score * 0.15, // Higher score = more opaque
       }}
     >
       <Handle
@@ -58,7 +59,7 @@ export const AgentNode = memo(({ data, selected }: NodeProps<AgentNodeData>) => 
           className="text-lg font-bold"
           style={{ color: borderColor }}
         >
-          {(data.score * 100).toFixed(0)}%
+          {(score * 100).toFixed(0)}%
         </span>
         <span className="text-xs text-slate-400">health</span>
       </div>
