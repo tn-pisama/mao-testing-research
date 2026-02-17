@@ -19,6 +19,7 @@ from app.api.v1 import (
     webhooks,
     n8n,
     openclaw,
+    dify,
     security,
     metrics,
     claude_code,
@@ -135,6 +136,7 @@ app.include_router(health.router, prefix="/api/v1")
 app.include_router(webhooks.router, prefix="/api/v1")
 app.include_router(n8n.router, prefix="/api/v1")
 app.include_router(openclaw.router, prefix="/api/v1")  # OpenClaw agent monitoring
+app.include_router(dify.router, prefix="/api/v1")  # Dify workflow monitoring
 app.include_router(security.router, prefix="/api/v1")
 app.include_router(metrics.router, prefix="/api/v1")
 app.include_router(benchmarks.router, prefix="/api/v1")  # Benchmark results

@@ -3,6 +3,7 @@ from typing import Dict, Any, List, Optional
 from datetime import datetime
 
 from app.core.n8n_security import redact_sensitive_data, compute_state_hash
+from app.ingestion.content_filter import strip_content_fields
 
 
 @dataclass
@@ -87,7 +88,7 @@ class N8nParser:
             nodes=nodes,
         )
     
-    def parse_to_states(self, execution: N8nExecution, tenant_id: str) -> List[ParsedN8nState]:
+    def parse_to_states(self, execution: N8nExecution, tenant_id: str, ingestion_mode: str = "full") -> List[ParsedN8nState]:
         states = []
 
         for seq, node in enumerate(execution.nodes):
@@ -106,6 +107,12 @@ class N8nParser:
                 "model_config": model_config,
                 "reasoning": reasoning,
             }, skip_keys=["messages", "systemMessage", "prompt", "thinking", "reasoning"])
+
+            if ingestion_mode == "trace_only":
+                state_delta = strip_content_fields(
+                    state_delta,
+                    content_keys=["parameters", "output", "reasoning"],
+                )
 
             is_ai = self._is_ai_node(node)
             ai_model = None

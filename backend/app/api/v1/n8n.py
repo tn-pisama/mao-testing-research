@@ -47,6 +47,7 @@ class N8nWebhookResponse(BaseModel):
 class N8nWorkflowRegisterRequest(BaseModel):
     workflow_id: str = Field(..., min_length=1)
     workflow_name: Optional[str] = None
+    ingestion_mode: Optional[str] = Field(None, pattern="^(full|trace_only)$")
 
 
 class N8nWorkflowResponse(BaseModel):
@@ -54,6 +55,7 @@ class N8nWorkflowResponse(BaseModel):
     workflow_id: str
     workflow_name: Optional[str]
     webhook_url: str
+    ingestion_mode: Optional[str] = None
     registered_at: datetime
 
 
@@ -179,8 +181,13 @@ async def receive_n8n_webhook(
         if x_mao_nonce:
             await verify_nonce(x_mao_nonce, int(x_mao_timestamp), db)
     
+    # Resolve ingestion mode (workflow override > "full")
+    ingestion_mode = "full"
+    if workflow and workflow.ingestion_mode:
+        ingestion_mode = workflow.ingestion_mode
+
     execution = n8n_parser.parse_execution(payload.model_dump())
-    states = n8n_parser.parse_to_states(execution, tenant_id)
+    states = n8n_parser.parse_to_states(execution, tenant_id, ingestion_mode=ingestion_mode)
     
     trace = Trace(
         tenant_id=tenant.id,
@@ -263,9 +270,13 @@ async def register_workflow(
         workflow_id=request_data.workflow_id,
         workflow_name=request_data.workflow_name,
         webhook_secret=webhook_secret,
+        ingestion_mode=request_data.ingestion_mode,
     ).on_conflict_do_update(
         constraint="uq_n8n_workflow_tenant",
-        set_={"workflow_name": request_data.workflow_name},
+        set_={
+            "workflow_name": request_data.workflow_name,
+            "ingestion_mode": request_data.ingestion_mode,
+        },
     ).returning(N8nWorkflow)
     
     result = await db.execute(stmt)
@@ -280,6 +291,7 @@ async def register_workflow(
         workflow_id=workflow.workflow_id,
         workflow_name=workflow.workflow_name,
         webhook_url=webhook_url,
+        ingestion_mode=workflow.ingestion_mode,
         registered_at=workflow.registered_at,
     )
 
@@ -306,6 +318,7 @@ async def list_workflows(
             workflow_id=w.workflow_id,
             workflow_name=w.workflow_name,
             webhook_url=webhook_url,
+            ingestion_mode=w.ingestion_mode,
             registered_at=w.registered_at,
         )
         for w in workflows

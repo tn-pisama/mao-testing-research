@@ -35,6 +35,11 @@ class CostDetector(BaseDetector):
             "max_tool_calls": 1000,
             "max_duration_minutes": None,  # No duration limit for persistent agents
         },
+        Platform.DIFY: {
+            "max_llm_calls": 100,
+            "max_tool_calls": 200,
+            "max_duration_minutes": 60,
+        },
     }
 
     def _get_limit(self, trace: Trace, key: str):

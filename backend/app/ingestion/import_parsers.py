@@ -115,6 +115,7 @@ class ImportParser(ABC):
                 "anthropic": ["anthropic", "claude", "human_turn_idx"],
                 "n8n": ["n8n", "workflowid", "executionid", "nodetype"],
                 "openclaw": ["openclaw", "openclaw.request", "openclaw.agent", "sessions_spawn", "sessions_send"],
+                "dify": ["dify", "dify.ai", "workflow_run", "node_started", "node_finished", "workflow_started"],
             }
 
             for framework, markers in framework_markers.items():
@@ -139,6 +140,7 @@ class ImportParser(ABC):
             "anthropic": ["anthropic", "claude"],
             "n8n": ["n8n"],
             "openclaw": ["openclaw", "open_claw", "open-claw", "clawdbot", "moltbot"],
+            "dify": ["dify", "dify.ai", "dify-ai"],
             "chatdev": ["chatdev", "chat_dev"],
             "metagpt": ["metagpt", "meta_gpt", "meta-gpt"],
         }

@@ -12,6 +12,7 @@ class Platform(str, Enum):
     CREWAI = "crewai"
     N8N = "n8n"
     OPENCLAW = "openclaw"
+    DIFY = "dify"
     MOLTBOT = "moltbot"
     GENERIC = "generic"
 

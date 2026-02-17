@@ -316,6 +316,7 @@ class N8nWorkflow(Base):
     workflow_id = Column(String(255), nullable=False)
     workflow_name = Column(String(255), nullable=True)
     webhook_secret = Column(String(255), nullable=True)
+    ingestion_mode = Column(String(20), nullable=True)  # NULL = use instance default
     registered_at = Column(DateTime(timezone=True), server_default=func.now())
 
     __table_args__ = (
@@ -345,6 +346,9 @@ class N8nConnection(Base):
     is_active = Column(Boolean, default=True)
     last_verified_at = Column(DateTime(timezone=True), nullable=True)
     last_error = Column(Text, nullable=True)
+
+    # Ingestion mode
+    ingestion_mode = Column(String(20), default="full", server_default="full", nullable=False)
 
     # Timestamps
     created_at = Column(DateTime(timezone=True), server_default=func.now())
@@ -387,6 +391,9 @@ class OpenClawInstance(Base):
     last_verified_at = Column(DateTime(timezone=True), nullable=True)
     last_error = Column(Text, nullable=True)
 
+    # Ingestion mode
+    ingestion_mode = Column(String(20), default="full", server_default="full", nullable=False)
+
     # Timestamps
     created_at = Column(DateTime(timezone=True), server_default=func.now())
     updated_at = Column(DateTime(timezone=True), server_default=func.now(), onupdate=func.now())
@@ -417,6 +424,7 @@ class OpenClawAgent(Base):
     webhook_secret = Column(String(255), nullable=True)
     monitoring_enabled = Column(Boolean, default=True)
     detection_overrides = Column(JSONB, default=dict)  # Per-agent threshold overrides
+    ingestion_mode = Column(String(20), nullable=True)  # NULL = use instance default
 
     # Statistics
     total_sessions = Column(Integer, default=0)
@@ -431,6 +439,82 @@ class OpenClawAgent(Base):
         UniqueConstraint("tenant_id", "instance_id", "agent_key", name="uq_openclaw_agent"),
         Index("idx_openclaw_agents_tenant", "tenant_id"),
         Index("idx_openclaw_agents_instance", "instance_id"),
+    )
+
+
+class DifyInstance(Base):
+    """
+    Stores Dify instance connection credentials per tenant.
+
+    Each tenant can have multiple Dify instances (e.g., dev, prod).
+    API keys are stored encrypted for security.
+    """
+    __tablename__ = "dify_instances"
+
+    id = Column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
+    tenant_id = Column(UUID(as_uuid=True), ForeignKey("tenants.id"), nullable=False)
+
+    # Connection details
+    name = Column(String(255), nullable=False)  # e.g., "Production Dify"
+    base_url = Column(String(512), nullable=False)  # e.g., "https://dify.example.com"
+    api_key_encrypted = Column(Text, nullable=False)  # Encrypted API key
+
+    # Instance metadata
+    dify_version = Column(String(32), nullable=True)
+    app_types_configured = Column(JSONB, default=list)  # ["chatbot", "agent", "workflow", "chatflow"]
+
+    # Status
+    is_active = Column(Boolean, default=True)
+    last_verified_at = Column(DateTime(timezone=True), nullable=True)
+    last_error = Column(Text, nullable=True)
+
+    # Ingestion mode
+    ingestion_mode = Column(String(20), default="full", server_default="full", nullable=False)
+
+    # Timestamps
+    created_at = Column(DateTime(timezone=True), server_default=func.now())
+    updated_at = Column(DateTime(timezone=True), server_default=func.now(), onupdate=func.now())
+
+    apps = relationship("DifyApp", back_populates="instance", cascade="all, delete-orphan")
+
+    __table_args__ = (
+        Index("idx_dify_instances_tenant", "tenant_id"),
+        UniqueConstraint("tenant_id", "name", name="uq_dify_instance_name"),
+    )
+
+
+class DifyApp(Base):
+    """Registered Dify apps for monitoring."""
+    __tablename__ = "dify_apps"
+
+    id = Column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
+    tenant_id = Column(UUID(as_uuid=True), ForeignKey("tenants.id"), nullable=False)
+    instance_id = Column(UUID(as_uuid=True), ForeignKey("dify_instances.id"), nullable=False)
+
+    # App identity
+    app_id = Column(String(255), nullable=False)  # Dify's app UUID
+    app_name = Column(String(255), nullable=True)  # Display name
+    app_type = Column(String(64), nullable=False)  # chatbot, agent, workflow, chatflow
+
+    # Monitoring config
+    webhook_secret = Column(String(255), nullable=True)
+    monitoring_enabled = Column(Boolean, default=True)
+    detection_overrides = Column(JSONB, default=dict)  # Per-app threshold overrides
+    ingestion_mode = Column(String(20), nullable=True)  # NULL = use instance default
+
+    # Statistics
+    total_runs = Column(Integer, default=0)
+    total_tokens = Column(Integer, default=0)
+    last_active_at = Column(DateTime(timezone=True), nullable=True)
+
+    registered_at = Column(DateTime(timezone=True), server_default=func.now())
+
+    instance = relationship("DifyInstance", back_populates="apps")
+
+    __table_args__ = (
+        UniqueConstraint("tenant_id", "instance_id", "app_id", name="uq_dify_app"),
+        Index("idx_dify_apps_tenant", "tenant_id"),
+        Index("idx_dify_apps_instance", "instance_id"),
     )
 
 

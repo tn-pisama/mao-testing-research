@@ -1,4 +1,4 @@
-"""OpenClaw integration API endpoints."""
+"""Dify integration API endpoints."""
 
 from fastapi import APIRouter, Depends, HTTPException, Request, Header, BackgroundTasks
 from starlette.responses import StreamingResponse
@@ -12,97 +12,81 @@ import logging
 from pydantic import BaseModel, Field
 
 from app.storage.database import get_db, set_tenant_context
-from app.storage.models import Trace, State, OpenClawInstance, OpenClawAgent, WebhookNonce, Tenant
+from app.storage.models import Trace, State, DifyInstance, DifyApp, WebhookNonce, Tenant
 from app.core.auth import get_current_tenant
 from app.core.n8n_security import verify_webhook_signature
-from app.ingestion.openclaw_parser import openclaw_parser
+from app.ingestion.dify_parser import dify_parser
 from app.core.redis_pubsub import publish_event, subscribe_events
 
 logger = logging.getLogger(__name__)
 
-router = APIRouter(prefix="/openclaw", tags=["openclaw"])
+router = APIRouter(prefix="/dify", tags=["dify"])
 
 
 # --- Request/Response Models ---
 
 
-class OpenClawWebhookPayload(BaseModel):
-    """Webhook payload from OpenClaw instance."""
+class DifyWebhookPayload(BaseModel):
+    """Webhook payload from Dify workflow execution."""
 
-    session_id: str = Field(..., min_length=1)
-    instance_id: str = Field(..., min_length=1)
-    agent_name: str = ""
-    channel: str = ""  # whatsapp, telegram, slack, discord, etc.
-    channel_id: Optional[str] = None
-    inbox_type: str = "dm"  # dm, group
+    workflow_run_id: str = Field(..., min_length=1)
+    app_id: str = Field(..., min_length=1)
+    app_name: str = ""
+    app_type: str = "workflow"  # chatbot, agent, workflow, chatflow
     started_at: str
     finished_at: Optional[str] = None
-    status: str = "completed"
-    message_count: int = 0
-
-    # Multi-agent context
-    agents_mapping: Optional[dict] = None
-    spawned_sessions: Optional[List[str]] = None
-
-    # Session events (append-only log)
-    events: List[dict] = Field(default_factory=list)
-
-    # Security context
-    elevated_mode: bool = False
-    sandbox_enabled: bool = True
-
-    # Optional OTEL trace correlation
-    otel_trace_id: Optional[str] = None
+    status: str = "succeeded"
+    total_tokens: int = 0
+    total_steps: int = 0
+    nodes: List[dict] = Field(default_factory=list)
+    error: Optional[str] = None
 
 
-class OpenClawWebhookResponse(BaseModel):
+class DifyWebhookResponse(BaseModel):
     success: bool
     trace_id: str
     states_created: int
-    message: str = "Session received"
+    message: str = "Workflow run received"
 
 
-class OpenClawInstanceRegisterRequest(BaseModel):
+class DifyInstanceRegisterRequest(BaseModel):
     name: str = Field(..., min_length=1, max_length=255)
-    gateway_url: str = Field(..., min_length=1)
+    base_url: str = Field(..., min_length=1)
     api_key: str = Field(..., min_length=1)
-    otel_endpoint: Optional[str] = None
-    otel_enabled: bool = False
     ingestion_mode: str = Field(default="full", pattern="^(full|trace_only)$")
 
 
-class OpenClawInstanceResponse(BaseModel):
+class DifyInstanceResponse(BaseModel):
     id: str
     name: str
-    gateway_url: str
-    otel_enabled: bool
+    base_url: str
     is_active: bool
-    channels_configured: list
+    app_types_configured: list
     ingestion_mode: str = "full"
     created_at: datetime
 
 
-class OpenClawAgentRegisterRequest(BaseModel):
+class DifyAppRegisterRequest(BaseModel):
     instance_id: str = Field(..., min_length=1)
-    agent_key: str = Field(..., min_length=1)
-    agent_name: Optional[str] = None
-    model: Optional[str] = None
+    app_id: str = Field(..., min_length=1)
+    app_name: Optional[str] = None
+    app_type: str = "workflow"
     ingestion_mode: Optional[str] = Field(None, pattern="^(full|trace_only)$")
 
 
-class OpenClawAgentResponse(BaseModel):
+class DifyAppResponse(BaseModel):
     id: str
-    agent_key: str
-    agent_name: Optional[str]
-    model: Optional[str]
+    app_id: str
+    app_name: Optional[str]
+    app_type: str
     monitoring_enabled: bool
     ingestion_mode: Optional[str] = None
-    total_sessions: int
-    total_messages: int
+    total_runs: int
+    total_tokens: int
     registered_at: datetime
 
 
-# --- Nonce verification (reused from n8n pattern) ---
+# --- Nonce verification ---
 
 
 async def verify_nonce(nonce: str, timestamp: int, db: AsyncSession) -> bool:
@@ -119,10 +103,10 @@ async def verify_nonce(nonce: str, timestamp: int, db: AsyncSession) -> bool:
 # --- Endpoints ---
 
 
-@router.post("/webhook", response_model=OpenClawWebhookResponse)
-async def receive_openclaw_webhook(
+@router.post("/webhook", response_model=DifyWebhookResponse)
+async def receive_dify_webhook(
     request: Request,
-    payload: OpenClawWebhookPayload,
+    payload: DifyWebhookPayload,
     background_tasks: BackgroundTasks,
     x_mao_api_key: str = Header(..., alias="X-MAO-API-Key"),
     x_mao_signature: Optional[str] = Header(None, alias="X-MAO-Signature"),
@@ -130,7 +114,7 @@ async def receive_openclaw_webhook(
     x_mao_nonce: Optional[str] = Header(None, alias="X-MAO-Nonce"),
     db: AsyncSession = Depends(get_db),
 ):
-    """Receive session data from an OpenClaw instance."""
+    """Receive workflow run data from a Dify instance."""
     from app.core.auth import verify_api_key
     from app.storage.models import ApiKey
 
@@ -159,56 +143,56 @@ async def receive_openclaw_webhook(
     tenant_id = str(tenant.id)
     await set_tenant_context(db, tenant_id)
 
-    # Verify webhook signature if agent has a secret configured
-    agent_result = await db.execute(
-        select(OpenClawAgent).where(
-            OpenClawAgent.tenant_id == tenant.id,
-            OpenClawAgent.agent_key == payload.agent_name,
+    # Verify webhook signature if app has a secret configured
+    app_result = await db.execute(
+        select(DifyApp).where(
+            DifyApp.tenant_id == tenant.id,
+            DifyApp.app_id == payload.app_id,
         )
     )
-    agent = agent_result.scalar_one_or_none()
+    app = app_result.scalar_one_or_none()
 
-    if agent and agent.webhook_secret:
+    if app and app.webhook_secret:
         if not x_mao_signature or not x_mao_timestamp:
             raise HTTPException(
                 status_code=401,
-                detail="Webhook signature required for registered agents",
+                detail="Webhook signature required for registered apps",
             )
         body = await request.body()
         verify_webhook_signature(
-            body, x_mao_signature, agent.webhook_secret, x_mao_timestamp
+            body, x_mao_signature, app.webhook_secret, x_mao_timestamp
         )
 
         if x_mao_nonce:
             await verify_nonce(x_mao_nonce, int(x_mao_timestamp), db)
 
-    # Resolve ingestion mode (agent override > instance default > "full")
+    # Resolve ingestion mode (app override > instance default > "full")
     ingestion_mode = "full"
-    if agent:
-        if agent.ingestion_mode:
-            ingestion_mode = agent.ingestion_mode
+    if app:
+        if app.ingestion_mode:
+            ingestion_mode = app.ingestion_mode
         else:
             instance_result = await db.execute(
-                select(OpenClawInstance).where(
-                    OpenClawInstance.id == agent.instance_id
+                select(DifyInstance).where(
+                    DifyInstance.id == app.instance_id
                 )
             )
             instance = instance_result.scalar_one_or_none()
             if instance and instance.ingestion_mode:
                 ingestion_mode = instance.ingestion_mode
 
-    # Parse session data
-    session = openclaw_parser.parse_session(payload.model_dump())
-    states = openclaw_parser.parse_to_states(session, tenant_id, ingestion_mode=ingestion_mode)
+    # Parse workflow run data
+    run = dify_parser.parse_workflow_run(payload.model_dump())
+    states = dify_parser.parse_to_states(run, tenant_id, ingestion_mode=ingestion_mode)
 
     # Create trace
     trace = Trace(
         tenant_id=tenant.id,
-        session_id=session.session_id,
-        framework="openclaw",
-        status="completed" if session.status == "completed" else "error",
-        created_at=session.started_at,
-        completed_at=session.finished_at,
+        session_id=run.workflow_run_id,
+        framework="dify",
+        status="completed" if run.status == "succeeded" else "error",
+        created_at=run.started_at,
+        completed_at=run.finished_at,
     )
     db.add(trace)
     await db.flush()
@@ -227,11 +211,11 @@ async def receive_openclaw_webhook(
         )
         db.add(db_state)
 
-    # Update agent statistics if registered
-    if agent:
-        agent.total_sessions = (agent.total_sessions or 0) + 1
-        agent.total_messages = (agent.total_messages or 0) + payload.message_count
-        agent.last_active_at = datetime.utcnow()
+    # Update app statistics if registered
+    if app:
+        app.total_runs = (app.total_runs or 0) + 1
+        app.total_tokens = (app.total_tokens or 0) + payload.total_tokens
+        app.last_active_at = datetime.utcnow()
 
     await db.commit()
 
@@ -239,89 +223,87 @@ async def receive_openclaw_webhook(
     await publish_event(
         f"execution:{tenant_id}",
         {
-            "type": "openclaw.session.created",
+            "type": "dify.workflow.completed",
             "trace_id": str(trace.id),
-            "session_id": session.session_id,
-            "agent_name": session.agent_name,
-            "channel": session.channel,
-            "status": session.status,
-            "started_at": session.started_at.isoformat()
-            if session.started_at
+            "workflow_run_id": run.workflow_run_id,
+            "app_name": run.app_name,
+            "app_type": run.app_type,
+            "status": run.status,
+            "total_tokens": run.total_tokens,
+            "total_steps": run.total_steps,
+            "started_at": run.started_at.isoformat()
+            if run.started_at
             else None,
-            "finished_at": session.finished_at.isoformat()
-            if session.finished_at
+            "finished_at": run.finished_at.isoformat()
+            if run.finished_at
             else None,
         },
     )
 
-    return OpenClawWebhookResponse(
+    return DifyWebhookResponse(
         success=True,
         trace_id=str(trace.id),
         states_created=len(states),
-        message=f"Session {session.session_id} imported successfully",
+        message=f"Workflow run {run.workflow_run_id} imported successfully",
     )
 
 
-@router.post("/instances", response_model=OpenClawInstanceResponse)
+@router.post("/instances", response_model=DifyInstanceResponse)
 async def register_instance(
-    request_data: OpenClawInstanceRegisterRequest,
+    request_data: DifyInstanceRegisterRequest,
     request: Request,
     tenant_id: str = Depends(get_current_tenant),
     db: AsyncSession = Depends(get_db),
 ):
-    """Register an OpenClaw instance for monitoring."""
+    """Register a Dify instance for monitoring."""
     from app.core.n8n_security import encrypt_api_key
 
     await set_tenant_context(db, tenant_id)
 
-    instance = OpenClawInstance(
+    instance = DifyInstance(
         tenant_id=UUID(tenant_id),
         name=request_data.name,
-        gateway_url=request_data.gateway_url,
+        base_url=request_data.base_url,
         api_key_encrypted=encrypt_api_key(request_data.api_key),
-        otel_endpoint=request_data.otel_endpoint,
-        otel_enabled=request_data.otel_enabled,
         ingestion_mode=request_data.ingestion_mode,
     )
     db.add(instance)
     await db.commit()
     await db.refresh(instance)
 
-    return OpenClawInstanceResponse(
+    return DifyInstanceResponse(
         id=str(instance.id),
         name=instance.name,
-        gateway_url=instance.gateway_url,
-        otel_enabled=instance.otel_enabled,
+        base_url=instance.base_url,
         is_active=instance.is_active,
-        channels_configured=instance.channels_configured or [],
+        app_types_configured=instance.app_types_configured or [],
         ingestion_mode=instance.ingestion_mode,
         created_at=instance.created_at,
     )
 
 
-@router.get("/instances", response_model=List[OpenClawInstanceResponse])
+@router.get("/instances", response_model=List[DifyInstanceResponse])
 async def list_instances(
     tenant_id: str = Depends(get_current_tenant),
     db: AsyncSession = Depends(get_db),
 ):
-    """List registered OpenClaw instances."""
+    """List registered Dify instances."""
     await set_tenant_context(db, tenant_id)
 
     result = await db.execute(
-        select(OpenClawInstance).where(
-            OpenClawInstance.tenant_id == UUID(tenant_id)
+        select(DifyInstance).where(
+            DifyInstance.tenant_id == UUID(tenant_id)
         )
     )
     instances = result.scalars().all()
 
     return [
-        OpenClawInstanceResponse(
+        DifyInstanceResponse(
             id=str(i.id),
             name=i.name,
-            gateway_url=i.gateway_url,
-            otel_enabled=i.otel_enabled,
+            base_url=i.base_url,
             is_active=i.is_active,
-            channels_configured=i.channels_configured or [],
+            app_types_configured=i.app_types_configured or [],
             ingestion_mode=i.ingestion_mode,
             created_at=i.created_at,
         )
@@ -329,22 +311,22 @@ async def list_instances(
     ]
 
 
-@router.post("/agents", response_model=OpenClawAgentResponse)
-async def register_agent(
-    request_data: OpenClawAgentRegisterRequest,
+@router.post("/apps", response_model=DifyAppResponse)
+async def register_app(
+    request_data: DifyAppRegisterRequest,
     tenant_id: str = Depends(get_current_tenant),
     db: AsyncSession = Depends(get_db),
 ):
-    """Register an OpenClaw agent for monitoring."""
+    """Register a Dify app for monitoring."""
     import secrets
 
     await set_tenant_context(db, tenant_id)
 
     # Verify instance exists
     instance_result = await db.execute(
-        select(OpenClawInstance).where(
-            OpenClawInstance.tenant_id == UUID(tenant_id),
-            OpenClawInstance.id == UUID(request_data.instance_id),
+        select(DifyInstance).where(
+            DifyInstance.tenant_id == UUID(tenant_id),
+            DifyInstance.id == UUID(request_data.instance_id),
         )
     )
     instance = instance_result.scalar_one_or_none()
@@ -354,91 +336,91 @@ async def register_agent(
     webhook_secret = secrets.token_urlsafe(32)
 
     stmt = (
-        pg_insert(OpenClawAgent)
+        pg_insert(DifyApp)
         .values(
             tenant_id=UUID(tenant_id),
             instance_id=UUID(request_data.instance_id),
-            agent_key=request_data.agent_key,
-            agent_name=request_data.agent_name,
-            model=request_data.model,
+            app_id=request_data.app_id,
+            app_name=request_data.app_name,
+            app_type=request_data.app_type,
             webhook_secret=webhook_secret,
             ingestion_mode=request_data.ingestion_mode,
         )
         .on_conflict_do_update(
-            constraint="uq_openclaw_agent",
+            constraint="uq_dify_app",
             set_={
-                "agent_name": request_data.agent_name,
-                "model": request_data.model,
+                "app_name": request_data.app_name,
+                "app_type": request_data.app_type,
                 "ingestion_mode": request_data.ingestion_mode,
             },
         )
-        .returning(OpenClawAgent)
+        .returning(DifyApp)
     )
 
     result = await db.execute(stmt)
-    agent = result.scalar_one()
+    app = result.scalar_one()
     await db.commit()
 
-    return OpenClawAgentResponse(
-        id=str(agent.id),
-        agent_key=agent.agent_key,
-        agent_name=agent.agent_name,
-        model=agent.model,
-        monitoring_enabled=agent.monitoring_enabled,
-        ingestion_mode=agent.ingestion_mode,
-        total_sessions=agent.total_sessions or 0,
-        total_messages=agent.total_messages or 0,
-        registered_at=agent.registered_at,
+    return DifyAppResponse(
+        id=str(app.id),
+        app_id=app.app_id,
+        app_name=app.app_name,
+        app_type=app.app_type,
+        monitoring_enabled=app.monitoring_enabled,
+        ingestion_mode=app.ingestion_mode,
+        total_runs=app.total_runs or 0,
+        total_tokens=app.total_tokens or 0,
+        registered_at=app.registered_at,
     )
 
 
-@router.get("/agents", response_model=List[OpenClawAgentResponse])
-async def list_agents(
+@router.get("/apps", response_model=List[DifyAppResponse])
+async def list_apps(
     instance_id: Optional[str] = None,
     tenant_id: str = Depends(get_current_tenant),
     db: AsyncSession = Depends(get_db),
 ):
-    """List registered OpenClaw agents."""
+    """List registered Dify apps."""
     await set_tenant_context(db, tenant_id)
 
-    query = select(OpenClawAgent).where(
-        OpenClawAgent.tenant_id == UUID(tenant_id)
+    query = select(DifyApp).where(
+        DifyApp.tenant_id == UUID(tenant_id)
     )
     if instance_id:
-        query = query.where(OpenClawAgent.instance_id == UUID(instance_id))
+        query = query.where(DifyApp.instance_id == UUID(instance_id))
 
     result = await db.execute(query)
-    agents = result.scalars().all()
+    apps = result.scalars().all()
 
     return [
-        OpenClawAgentResponse(
+        DifyAppResponse(
             id=str(a.id),
-            agent_key=a.agent_key,
-            agent_name=a.agent_name,
-            model=a.model,
+            app_id=a.app_id,
+            app_name=a.app_name,
+            app_type=a.app_type,
             monitoring_enabled=a.monitoring_enabled,
             ingestion_mode=a.ingestion_mode,
-            total_sessions=a.total_sessions or 0,
-            total_messages=a.total_messages or 0,
+            total_runs=a.total_runs or 0,
+            total_tokens=a.total_tokens or 0,
             registered_at=a.registered_at,
         )
-        for a in agents
+        for a in apps
     ]
 
 
 @router.get("/stream")
-async def stream_sessions(
+async def stream_workflow_events(
     tenant_id: str = Depends(get_current_tenant),
 ):
-    """SSE endpoint for real-time OpenClaw session events."""
-    logger.info(f"OpenClaw SSE stream started for tenant: {tenant_id}")
+    """SSE endpoint for real-time Dify workflow events."""
+    logger.info(f"Dify SSE stream started for tenant: {tenant_id}")
 
     async def event_generator():
         try:
             async for event in subscribe_events(f"execution:{tenant_id}"):
                 yield event
         except Exception as e:
-            logger.error(f"Error in OpenClaw SSE stream: {e}")
+            logger.error(f"Error in Dify SSE stream: {e}")
             import json
 
             error_data = json.dumps(

@@ -19,7 +19,7 @@ class CoordinationDetector(BaseDetector):
     name = "coordination"
     description = "Detects multi-agent coordination failures"
     version = "1.0.0"
-    platforms = [Platform.LANGGRAPH, Platform.AUTOGEN, Platform.CREWAI, Platform.OPENCLAW]
+    platforms = [Platform.LANGGRAPH, Platform.AUTOGEN, Platform.CREWAI, Platform.OPENCLAW, Platform.DIFY]
     severity_range = (30, 80)
     realtime_capable = False  # Needs full trace context
 

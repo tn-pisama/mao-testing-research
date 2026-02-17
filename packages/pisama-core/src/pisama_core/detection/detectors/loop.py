@@ -39,6 +39,11 @@ class LoopDetector(BaseDetector):
             "min_consecutive_for_critical": 15,
             "max_cycle_length": 8,
         },
+        Platform.DIFY: {
+            "min_consecutive_for_warning": 6,
+            "min_consecutive_for_critical": 10,
+            "max_cycle_length": 6,
+        },
     }
 
     def _get_threshold(self, trace: Trace, key: str) -> int:

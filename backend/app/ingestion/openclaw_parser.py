@@ -5,6 +5,7 @@ from typing import Dict, Any, List, Optional
 from datetime import datetime
 
 from app.core.n8n_security import redact_sensitive_data, compute_state_hash
+from app.ingestion.content_filter import strip_content_fields
 
 
 @dataclass
@@ -113,7 +114,7 @@ class OpenClawParser:
         )
 
     def parse_to_states(
-        self, session: OpenClawSession, tenant_id: str
+        self, session: OpenClawSession, tenant_id: str, ingestion_mode: str = "full"
     ) -> List[ParsedOpenClawState]:
         """Convert session events to PISAMA state records."""
         states = []
@@ -134,6 +135,12 @@ class OpenClawParser:
                 },
                 skip_keys=["messages", "prompt", "thinking", "reasoning"],
             )
+
+            if ingestion_mode == "trace_only":
+                state_delta = strip_content_fields(
+                    state_delta,
+                    content_keys=["data", "tool_input", "tool_result"],
+                )
 
             # Compute latency from event timestamps
             latency_ms = 0
