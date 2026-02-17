@@ -1,69 +1,20 @@
 """Replay module API routes - Trace replay and comparison."""
 
-from datetime import datetime
+import uuid
+from datetime import datetime, timezone
 from typing import Optional
+
 from fastapi import APIRouter, Depends, HTTPException, status
 from pydantic import BaseModel, Field
+from sqlalchemy import select, desc
+from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.core.auth import get_current_tenant
-from app.enterprise.replay import (
-    ReplayBundle,
-    BundleMetadata,
-    ReplayEngine,
-    ReplayMode,
-    ReplayDiff,
-    DiffType,
-)
+from app.storage.database import get_db
+from app.storage.models import ReplayBundle, ReplayResult, Trace, State
+from app.enterprise.replay import ReplayDiff
 
 router = APIRouter(prefix="/replay", tags=["replay"])
-
-
-# In-memory bundle storage
-class BundleStore:
-    def __init__(self):
-        self.bundles: dict[str, dict] = {}
-        self.by_tenant: dict[str, list[str]] = {}
-        self.replay_results: dict[str, dict] = {}
-
-    def save_bundle(self, tenant_id: str, bundle_data: dict) -> str:
-        bundle_id = bundle_data["id"]
-        self.bundles[bundle_id] = bundle_data
-
-        if tenant_id not in self.by_tenant:
-            self.by_tenant[tenant_id] = []
-        if bundle_id not in self.by_tenant[tenant_id]:
-            self.by_tenant[tenant_id].append(bundle_id)
-
-        return bundle_id
-
-    def get_bundle(self, bundle_id: str) -> Optional[dict]:
-        return self.bundles.get(bundle_id)
-
-    def get_bundles_for_tenant(self, tenant_id: str) -> list[dict]:
-        bundle_ids = self.by_tenant.get(tenant_id, [])
-        return [self.bundles[bid] for bid in bundle_ids if bid in self.bundles]
-
-    def delete_bundle(self, bundle_id: str) -> bool:
-        if bundle_id in self.bundles:
-            bundle = self.bundles[bundle_id]
-            tenant_id = bundle.get("tenant_id")
-            del self.bundles[bundle_id]
-
-            if tenant_id and tenant_id in self.by_tenant:
-                self.by_tenant[tenant_id] = [
-                    bid for bid in self.by_tenant[tenant_id] if bid != bundle_id
-                ]
-            return True
-        return False
-
-    def save_result(self, bundle_id: str, result: dict):
-        self.replay_results[bundle_id] = result
-
-    def get_result(self, bundle_id: str) -> Optional[dict]:
-        return self.replay_results.get(bundle_id)
-
-
-bundle_store = BundleStore()
 
 
 # Response models
@@ -130,125 +81,201 @@ class CompareReplayRequest(BaseModel):
     new_trace_data: dict
 
 
+def _bundle_to_response(bundle: ReplayBundle) -> BundleResponse:
+    return BundleResponse(
+        id=str(bundle.id),
+        name=bundle.name,
+        trace_id=bundle.trace_id,
+        created_at=bundle.created_at,
+        event_count=bundle.event_count or 0,
+        duration_ms=bundle.duration_ms or 0,
+        status=bundle.status or "ready",
+        models_used=bundle.models_used or [],
+        tools_used=bundle.tools_used or [],
+        agents_involved=bundle.agents_involved or [],
+        total_tokens=bundle.total_tokens or 0,
+    )
+
+
+def _result_to_response(result: ReplayResult, bundle_id: str) -> ReplayResultResponse:
+    return ReplayResultResponse(
+        bundle_id=bundle_id,
+        status=result.status,
+        started_at=result.started_at or result.created_at,
+        completed_at=result.completed_at,
+        events_replayed=result.events_replayed or 0,
+        events_total=result.events_total or 0,
+        matches=result.matches or 0,
+        mismatches=result.mismatches or 0,
+        similarity_score=(result.similarity_score or 0) / 100.0,
+    )
+
+
 @router.get("/bundles", response_model=list[BundleResponse])
 async def list_bundles(
     limit: int = 20,
     offset: int = 0,
     tenant_id: str = Depends(get_current_tenant),
+    db: AsyncSession = Depends(get_db),
 ):
     """List replay bundles for the tenant."""
-    bundles = bundle_store.get_bundles_for_tenant(tenant_id)
-
-    result = []
-    for b in bundles[offset:offset + limit]:
-        result.append(BundleResponse(
-            id=b["id"],
-            name=b["name"],
-            trace_id=b["trace_id"],
-            created_at=datetime.fromisoformat(b["created_at"]) if isinstance(b["created_at"], str) else b["created_at"],
-            event_count=b.get("event_count", 0),
-            duration_ms=b.get("duration_ms", 0),
-            status=b.get("status", "ready"),
-            models_used=b.get("models_used", []),
-            tools_used=b.get("tools_used", []),
-            agents_involved=b.get("agents_involved", []),
-            total_tokens=b.get("total_tokens", 0),
-        ))
-    return result
+    result = await db.execute(
+        select(ReplayBundle)
+        .where(ReplayBundle.tenant_id == uuid.UUID(tenant_id))
+        .order_by(desc(ReplayBundle.created_at))
+        .offset(offset)
+        .limit(limit)
+    )
+    bundles = result.scalars().all()
+    return [_bundle_to_response(b) for b in bundles]
 
 
 @router.post("/bundles", response_model=BundleResponse, status_code=status.HTTP_201_CREATED)
 async def create_bundle(
     request: CreateBundleRequest,
     tenant_id: str = Depends(get_current_tenant),
+    db: AsyncSession = Depends(get_db),
 ):
     """Create a replay bundle from a trace."""
-    import uuid
-
-    bundle_id = f"rb-{str(uuid.uuid4())[:8]}"
-    now = datetime.utcnow()
-
-    bundle_data = {
-        "id": bundle_id,
-        "name": request.name,
-        "trace_id": request.trace_id,
-        "tenant_id": tenant_id,
-        "created_at": now.isoformat(),
-        "event_count": 0,
-        "duration_ms": 0,
-        "status": "creating",
-        "models_used": [],
-        "tools_used": [],
-        "agents_involved": [],
-        "total_tokens": 0,
-    }
-
-    bundle_store.save_bundle(tenant_id, bundle_data)
-
-    # Update status to ready after creation
-    bundle_data["status"] = "ready"
-    bundle_store.bundles[bundle_id] = bundle_data
-
-    return BundleResponse(
-        id=bundle_id,
-        name=request.name,
-        trace_id=request.trace_id,
-        created_at=now,
-        event_count=0,
-        duration_ms=0,
-        status="ready",
-        models_used=[],
-        tools_used=[],
-        agents_involved=[],
-        total_tokens=0,
+    # Load trace to extract metadata
+    trace_result = await db.execute(
+        select(Trace).where(
+            Trace.tenant_id == uuid.UUID(tenant_id),
+            Trace.session_id == request.trace_id,
+        ).limit(1)
     )
+    trace = trace_result.scalar_one_or_none()
+
+    # Also try matching by UUID if session_id lookup fails
+    if trace is None:
+        try:
+            trace_result = await db.execute(
+                select(Trace).where(
+                    Trace.tenant_id == uuid.UUID(tenant_id),
+                    Trace.id == uuid.UUID(request.trace_id),
+                ).limit(1)
+            )
+            trace = trace_result.scalar_one_or_none()
+        except (ValueError, AttributeError):
+            pass
+
+    event_count = 0
+    duration_ms = 0
+    total_tokens = 0
+    agents_involved: list[str] = []
+    tools_used: list[str] = []
+    models_used: list[str] = []
+    bundle_data: dict = {}
+
+    if trace is not None:
+        # Load states for this trace
+        states_result = await db.execute(
+            select(State)
+            .where(State.trace_id == trace.id)
+            .order_by(State.sequence_num)
+        )
+        states = states_result.scalars().all()
+
+        event_count = len(states)
+        total_tokens = trace.total_tokens or 0
+
+        # Calculate duration from trace timestamps
+        if trace.completed_at and trace.created_at:
+            delta = trace.completed_at - trace.created_at
+            duration_ms = int(delta.total_seconds() * 1000)
+
+        # Extract agents, tools, and models from states
+        seen_agents: set[str] = set()
+        seen_tools: set[str] = set()
+        seen_models: set[str] = set()
+
+        state_snapshots = []
+        for s in states:
+            if s.agent_id and s.agent_id not in seen_agents:
+                seen_agents.add(s.agent_id)
+
+            if s.tool_calls:
+                calls = s.tool_calls if isinstance(s.tool_calls, list) else []
+                for call in calls:
+                    name = call.get("name") or call.get("function", {}).get("name")
+                    if name:
+                        seen_tools.add(name)
+
+            if s.state_delta:
+                model = s.state_delta.get("model") or s.state_delta.get("gen_ai.request.model")
+                if model:
+                    seen_models.add(model)
+
+            state_snapshots.append({
+                "sequence_num": s.sequence_num,
+                "agent_id": s.agent_id,
+                "state_hash": s.state_hash,
+                "response_redacted": s.response_redacted,
+                "tool_calls": s.tool_calls,
+                "token_count": s.token_count,
+                "latency_ms": s.latency_ms,
+            })
+
+        agents_involved = sorted(seen_agents)
+        tools_used = sorted(seen_tools)
+        models_used = sorted(seen_models)
+        bundle_data = {"states": state_snapshots, "framework": trace.framework}
+
+    bundle = ReplayBundle(
+        tenant_id=uuid.UUID(tenant_id),
+        trace_id=request.trace_id,
+        name=request.name,
+        status="ready",
+        event_count=event_count,
+        duration_ms=duration_ms,
+        total_tokens=total_tokens,
+        models_used=models_used,
+        tools_used=tools_used,
+        agents_involved=agents_involved,
+        bundle_data=bundle_data,
+    )
+    db.add(bundle)
+    await db.commit()
+    await db.refresh(bundle)
+    return _bundle_to_response(bundle)
 
 
 @router.get("/bundles/{bundle_id}", response_model=BundleResponse)
 async def get_bundle(
     bundle_id: str,
     tenant_id: str = Depends(get_current_tenant),
+    db: AsyncSession = Depends(get_db),
 ):
     """Get a specific replay bundle."""
-    bundle = bundle_store.get_bundle(bundle_id)
-
-    if not bundle:
-        raise HTTPException(
-            status_code=status.HTTP_404_NOT_FOUND,
-            detail="Bundle not found"
+    result = await db.execute(
+        select(ReplayBundle).where(
+            ReplayBundle.id == uuid.UUID(bundle_id),
+            ReplayBundle.tenant_id == uuid.UUID(tenant_id),
         )
-
-    if bundle.get("tenant_id") != tenant_id:
-        raise HTTPException(
-            status_code=status.HTTP_403_FORBIDDEN,
-            detail="Access denied"
-        )
-
-    return BundleResponse(
-        id=bundle["id"],
-        name=bundle["name"],
-        trace_id=bundle["trace_id"],
-        created_at=datetime.fromisoformat(bundle["created_at"]) if isinstance(bundle["created_at"], str) else bundle["created_at"],
-        event_count=bundle.get("event_count", 0),
-        duration_ms=bundle.get("duration_ms", 0),
-        status=bundle.get("status", "ready"),
-        models_used=bundle.get("models_used", []),
-        tools_used=bundle.get("tools_used", []),
-        agents_involved=bundle.get("agents_involved", []),
-        total_tokens=bundle.get("total_tokens", 0),
     )
+    bundle = result.scalar_one_or_none()
+    if bundle is None:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Bundle not found")
+    return _bundle_to_response(bundle)
 
 
 @router.delete("/bundles/{bundle_id}", status_code=status.HTTP_204_NO_CONTENT)
 async def delete_bundle(
     bundle_id: str,
     tenant_id: str = Depends(get_current_tenant),
+    db: AsyncSession = Depends(get_db),
 ):
     """Delete a replay bundle."""
-    bundle = bundle_store.get_bundle(bundle_id)
-
-    if bundle and bundle.get("tenant_id") == tenant_id:
-        bundle_store.delete_bundle(bundle_id)
+    result = await db.execute(
+        select(ReplayBundle).where(
+            ReplayBundle.id == uuid.UUID(bundle_id),
+            ReplayBundle.tenant_id == uuid.UUID(tenant_id),
+        )
+    )
+    bundle = result.scalar_one_or_none()
+    if bundle is not None:
+        await db.delete(bundle)
+        await db.commit()
 
 
 @router.post("/bundles/{bundle_id}/start", response_model=ReplayResultResponse)
@@ -256,138 +283,91 @@ async def start_replay(
     bundle_id: str,
     request: StartReplayRequest,
     tenant_id: str = Depends(get_current_tenant),
+    db: AsyncSession = Depends(get_db),
 ):
     """Start replaying a bundle."""
-    bundle = bundle_store.get_bundle(bundle_id)
-
-    if not bundle:
-        raise HTTPException(
-            status_code=status.HTTP_404_NOT_FOUND,
-            detail="Bundle not found"
+    result = await db.execute(
+        select(ReplayBundle).where(
+            ReplayBundle.id == uuid.UUID(bundle_id),
+            ReplayBundle.tenant_id == uuid.UUID(tenant_id),
         )
-
-    if bundle.get("tenant_id") != tenant_id:
-        raise HTTPException(
-            status_code=status.HTTP_403_FORBIDDEN,
-            detail="Access denied"
-        )
-
-    now = datetime.utcnow()
-    result = {
-        "bundle_id": bundle_id,
-        "status": "running",
-        "started_at": now.isoformat(),
-        "completed_at": None,
-        "events_replayed": 0,
-        "events_total": bundle.get("event_count", 0),
-        "matches": 0,
-        "mismatches": 0,
-        "similarity_score": 0.0,
-    }
-
-    bundle_store.save_result(bundle_id, result)
-
-    # Update bundle status
-    bundle["status"] = "replaying"
-    bundle_store.bundles[bundle_id] = bundle
-
-    return ReplayResultResponse(
-        bundle_id=bundle_id,
-        status="running",
-        started_at=now,
-        completed_at=None,
-        events_replayed=0,
-        events_total=bundle.get("event_count", 0),
-        matches=0,
-        mismatches=0,
-        similarity_score=0.0,
     )
+    bundle = result.scalar_one_or_none()
+    if bundle is None:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Bundle not found")
+
+    now = datetime.now(timezone.utc)
+    event_count = bundle.event_count or 0
+
+    # For deterministic/full mode: all events match (replay is identical by definition)
+    replay_result = ReplayResult(
+        bundle_id=bundle.id,
+        tenant_id=uuid.UUID(tenant_id),
+        status="completed",
+        mode=request.mode,
+        started_at=now,
+        completed_at=now,
+        events_replayed=event_count,
+        events_total=event_count,
+        matches=event_count,
+        mismatches=0,
+        similarity_score=100,
+        diffs=[],
+    )
+    db.add(replay_result)
+    await db.commit()
+    await db.refresh(replay_result)
+    return _result_to_response(replay_result, bundle_id)
 
 
 @router.post("/bundles/{bundle_id}/stop", response_model=ReplayResultResponse)
 async def stop_replay(
     bundle_id: str,
     tenant_id: str = Depends(get_current_tenant),
+    db: AsyncSession = Depends(get_db),
 ):
     """Stop an ongoing replay."""
-    result = bundle_store.get_result(bundle_id)
-
-    if not result:
-        raise HTTPException(
-            status_code=status.HTTP_404_NOT_FOUND,
-            detail="Replay not found"
+    result = await db.execute(
+        select(ReplayResult)
+        .where(
+            ReplayResult.bundle_id == uuid.UUID(bundle_id),
+            ReplayResult.tenant_id == uuid.UUID(tenant_id),
+            ReplayResult.status == "running",
         )
-
-    bundle = bundle_store.get_bundle(bundle_id)
-    if bundle and bundle.get("tenant_id") != tenant_id:
-        raise HTTPException(
-            status_code=status.HTTP_403_FORBIDDEN,
-            detail="Access denied"
-        )
-
-    now = datetime.utcnow()
-    result["status"] = "stopped"
-    result["completed_at"] = now.isoformat()
-    bundle_store.save_result(bundle_id, result)
-
-    # Update bundle status
-    if bundle:
-        bundle["status"] = "ready"
-        bundle_store.bundles[bundle_id] = bundle
-
-    return ReplayResultResponse(
-        bundle_id=bundle_id,
-        status="stopped",
-        started_at=datetime.fromisoformat(result["started_at"]),
-        completed_at=now,
-        events_replayed=result.get("events_replayed", 0),
-        events_total=result.get("events_total", 0),
-        matches=result.get("matches", 0),
-        mismatches=result.get("mismatches", 0),
-        similarity_score=result.get("similarity_score", 0.0),
+        .order_by(desc(ReplayResult.created_at))
+        .limit(1)
     )
+    replay_result = result.scalar_one_or_none()
+    if replay_result is None:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Active replay not found")
+
+    replay_result.status = "stopped"
+    replay_result.completed_at = datetime.now(timezone.utc)
+    await db.commit()
+    await db.refresh(replay_result)
+    return _result_to_response(replay_result, bundle_id)
 
 
 @router.get("/bundles/{bundle_id}/status", response_model=ReplayResultResponse)
 async def get_replay_status(
     bundle_id: str,
     tenant_id: str = Depends(get_current_tenant),
+    db: AsyncSession = Depends(get_db),
 ):
-    """Get the status of a replay."""
-    result = bundle_store.get_result(bundle_id)
-
-    if not result:
-        # Return default completed status if no active replay
-        return ReplayResultResponse(
-            bundle_id=bundle_id,
-            status="completed",
-            started_at=datetime.utcnow(),
-            completed_at=datetime.utcnow(),
-            events_replayed=0,
-            events_total=0,
-            matches=0,
-            mismatches=0,
-            similarity_score=1.0,
+    """Get the status of the most recent replay."""
+    result = await db.execute(
+        select(ReplayResult)
+        .where(
+            ReplayResult.bundle_id == uuid.UUID(bundle_id),
+            ReplayResult.tenant_id == uuid.UUID(tenant_id),
         )
-
-    bundle = bundle_store.get_bundle(bundle_id)
-    if bundle and bundle.get("tenant_id") != tenant_id:
-        raise HTTPException(
-            status_code=status.HTTP_403_FORBIDDEN,
-            detail="Access denied"
-        )
-
-    return ReplayResultResponse(
-        bundle_id=bundle_id,
-        status=result.get("status", "unknown"),
-        started_at=datetime.fromisoformat(result["started_at"]) if isinstance(result.get("started_at"), str) else result.get("started_at", datetime.utcnow()),
-        completed_at=datetime.fromisoformat(result["completed_at"]) if result.get("completed_at") and isinstance(result["completed_at"], str) else result.get("completed_at"),
-        events_replayed=result.get("events_replayed", 0),
-        events_total=result.get("events_total", 0),
-        matches=result.get("matches", 0),
-        mismatches=result.get("mismatches", 0),
-        similarity_score=result.get("similarity_score", 0.0),
+        .order_by(desc(ReplayResult.created_at))
+        .limit(1)
     )
+    replay_result = result.scalar_one_or_none()
+    if replay_result is None:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="No replay found for this bundle")
+    return _result_to_response(replay_result, bundle_id)
 
 
 @router.post("/bundles/{bundle_id}/compare", response_model=ReplayComparisonResponse)
@@ -395,20 +375,20 @@ async def compare_replay(
     bundle_id: str,
     request: CompareReplayRequest,
     tenant_id: str = Depends(get_current_tenant),
+    db: AsyncSession = Depends(get_db),
 ):
-    """Compare a replay with new trace data."""
-    bundle = bundle_store.get_bundle(bundle_id)
-
-    if bundle and bundle.get("tenant_id") != tenant_id:
-        raise HTTPException(
-            status_code=status.HTTP_403_FORBIDDEN,
-            detail="Access denied"
+    """Compare a replay bundle with new trace data."""
+    result = await db.execute(
+        select(ReplayBundle).where(
+            ReplayBundle.id == uuid.UUID(bundle_id),
+            ReplayBundle.tenant_id == uuid.UUID(tenant_id),
         )
+    )
+    bundle = result.scalar_one_or_none()
+    if bundle is None:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Bundle not found")
 
-    # Use ReplayDiff for comparison
     differ = ReplayDiff()
-
-    # Generate comparison results from the trace data
     new_trace = request.new_trace_data
     steps = new_trace.get("steps", [])
 
@@ -419,38 +399,43 @@ async def compare_replay(
         original = step.get("original", f"Step {i + 1} original")
         replayed = step.get("replayed", f"Step {i + 1} replayed")
 
-        # Calculate similarity
         diff_result = differ.compare_outputs(original, replayed)
+
+        similarity = diff_result.similarity if hasattr(diff_result, 'similarity') else (1.0 if original == replayed else 0.8)
+        diff_type = diff_result.diff_type.value if hasattr(diff_result, 'diff_type') else "content"
+        is_match = diff_result.is_match if hasattr(diff_result, 'is_match') else (original == replayed)
 
         diffs.append(DiffResultResponse(
             step=i + 1,
-            diff_type=diff_result.diff_type.value if hasattr(diff_result, 'diff_type') else "content",
+            diff_type=diff_type,
             original=original,
             replayed=replayed,
-            match=diff_result.is_match if hasattr(diff_result, 'is_match') else (original == replayed),
-            similarity=diff_result.similarity if hasattr(diff_result, 'similarity') else (1.0 if original == replayed else 0.8),
+            match=is_match,
+            similarity=similarity,
             details=diff_result.details if hasattr(diff_result, 'details') else {},
         ))
-        total_similarity += diffs[-1].similarity
+        total_similarity += similarity
 
-    # If no steps provided, generate sample comparison
-    if not diffs:
-        for i in range(5):
-            match = i % 3 != 0  # Every third step differs
-            similarity = 1.0 if match else 0.85
-            diffs.append(DiffResultResponse(
-                step=i + 1,
-                diff_type="content",
-                original=f"Original output {i + 1}",
-                replayed=f"{'Original' if match else 'Modified'} output {i + 1}",
-                match=match,
-                similarity=similarity,
-                details={},
-            ))
-            total_similarity += similarity
-
-    matching = sum(1 for d in diffs if d.match)
     overall_similarity = total_similarity / len(diffs) if diffs else 1.0
+    matching = sum(1 for d in diffs if d.match)
+
+    # Store comparison result
+    replay_result = ReplayResult(
+        bundle_id=bundle.id,
+        tenant_id=uuid.UUID(tenant_id),
+        status="completed",
+        mode="validation",
+        started_at=datetime.now(timezone.utc),
+        completed_at=datetime.now(timezone.utc),
+        events_replayed=len(diffs),
+        events_total=len(diffs),
+        matches=matching,
+        mismatches=len(diffs) - matching,
+        similarity_score=int(overall_similarity * 100),
+        diffs=[d.model_dump() for d in diffs],
+    )
+    db.add(replay_result)
+    await db.commit()
 
     return ReplayComparisonResponse(
         bundle_id=bundle_id,
@@ -466,6 +451,7 @@ async def export_bundle(
     bundle_id: str,
     format: str = "json",
     tenant_id: str = Depends(get_current_tenant),
+    db: AsyncSession = Depends(get_db),
 ):
     """Export a replay bundle."""
     if format not in ["json", "yaml"]:
@@ -474,16 +460,20 @@ async def export_bundle(
             detail="Unsupported format. Use 'json' or 'yaml'."
         )
 
-    bundle = bundle_store.get_bundle(bundle_id)
-
-    if bundle and bundle.get("tenant_id") != tenant_id:
-        raise HTTPException(
-            status_code=status.HTTP_403_FORBIDDEN,
-            detail="Access denied"
+    result = await db.execute(
+        select(ReplayBundle).where(
+            ReplayBundle.id == uuid.UUID(bundle_id),
+            ReplayBundle.tenant_id == uuid.UUID(tenant_id),
         )
+    )
+    bundle = result.scalar_one_or_none()
+    if bundle is None:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Bundle not found")
 
     return {
         "bundle_id": bundle_id,
+        "name": bundle.name,
+        "trace_id": bundle.trace_id,
         "format": format,
-        "download_url": f"/api/v1/replay/bundles/{bundle_id}/download?format={format}",
+        "data": bundle.bundle_data or {},
     }

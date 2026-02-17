@@ -813,3 +813,54 @@ class MASTTraceEmbedding(Base):
 **Ground Truth Failures:** {', '.join(failures)}
 **Summary:** {self.conversation_summary[:300] if self.conversation_summary else 'N/A'}
 """.strip()
+
+
+class ReplayBundle(Base):
+    __tablename__ = "replay_bundles"
+
+    id = Column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
+    tenant_id = Column(UUID(as_uuid=True), ForeignKey("tenants.id"), nullable=False)
+    trace_id = Column(String(255), nullable=False)
+    name = Column(String(255), nullable=False)
+    status = Column(String(32), default="ready")  # ready, replaying
+    event_count = Column(Integer, default=0)
+    duration_ms = Column(Integer, default=0)
+    total_tokens = Column(Integer, default=0)
+    models_used = Column(JSONB, default=list)
+    tools_used = Column(JSONB, default=list)
+    agents_involved = Column(JSONB, default=list)
+    bundle_data = Column(JSONB, nullable=True)  # serialized state snapshots
+    created_at = Column(DateTime(timezone=True), server_default=func.now())
+
+    results = relationship("ReplayResult", back_populates="bundle", cascade="all, delete-orphan")
+
+    __table_args__ = (
+        Index("idx_replay_bundles_tenant", "tenant_id"),
+        Index("idx_replay_bundles_trace", "trace_id"),
+    )
+
+
+class ReplayResult(Base):
+    __tablename__ = "replay_results"
+
+    id = Column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
+    bundle_id = Column(UUID(as_uuid=True), ForeignKey("replay_bundles.id"), nullable=False)
+    tenant_id = Column(UUID(as_uuid=True), ForeignKey("tenants.id"), nullable=False)
+    status = Column(String(32), default="pending")  # pending, running, completed, failed, stopped
+    mode = Column(String(32), default="deterministic")
+    started_at = Column(DateTime(timezone=True), nullable=True)
+    completed_at = Column(DateTime(timezone=True), nullable=True)
+    events_replayed = Column(Integer, default=0)
+    events_total = Column(Integer, default=0)
+    matches = Column(Integer, default=0)
+    mismatches = Column(Integer, default=0)
+    similarity_score = Column(Integer, default=0)  # stored as 0-100 integer
+    diffs = Column(JSONB, default=list)
+    created_at = Column(DateTime(timezone=True), server_default=func.now())
+
+    bundle = relationship("ReplayBundle", back_populates="results")
+
+    __table_args__ = (
+        Index("idx_replay_results_bundle", "bundle_id"),
+        Index("idx_replay_results_tenant", "tenant_id"),
+    )
