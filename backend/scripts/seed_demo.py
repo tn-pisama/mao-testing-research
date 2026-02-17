@@ -227,70 +227,99 @@ async def seed_database():
     print("=" * 60)
     print("MAO Testing Platform - Database Seeder")
     print("=" * 60)
-    
+
     engine = create_async_engine(DATABASE_URL, echo=False)
     async_session = sessionmaker(engine, class_=AsyncSession, expire_on_commit=False)
-    
+
     async with async_session() as session:
-        result = await session.execute(
-            text("SELECT id FROM tenants WHERE name = :name"),
-            {"name": DEMO_TENANT_NAME}
-        )
-        existing = result.scalar()
-        
-        if existing:
-            print(f"\nDemo tenant already exists (id: {existing})")
-            print("Clearing existing demo data...")
-            
+        # If SEED_TENANT_ID is set, seed into that existing tenant directly
+        seed_tenant_id = os.getenv("SEED_TENANT_ID")
+        if seed_tenant_id:
+            result = await session.execute(
+                text("SELECT id FROM tenants WHERE id = :id"),
+                {"id": seed_tenant_id}
+            )
+            existing = result.scalar()
+            if not existing:
+                print(f"\nERROR: Tenant {seed_tenant_id} not found in database")
+                return
+            tenant_id = uuid.UUID(seed_tenant_id)
+            print(f"\nSeeding into existing tenant: {tenant_id}")
+            print("Clearing existing data for this tenant...")
             await session.execute(
                 text("DELETE FROM detections WHERE tenant_id = :tid"),
-                {"tid": str(existing)}
+                {"tid": str(tenant_id)}
             )
             await session.execute(
                 text("DELETE FROM states WHERE tenant_id = :tid"),
-                {"tid": str(existing)}
+                {"tid": str(tenant_id)}
             )
             await session.execute(
                 text("DELETE FROM traces WHERE tenant_id = :tid"),
-                {"tid": str(existing)}
+                {"tid": str(tenant_id)}
             )
             await session.commit()
-            
-            tenant_id = existing
             print("Cleared existing traces, states, and detections.")
         else:
-            tenant_data = create_demo_tenant()
-            tenant_id = tenant_data["id"]
-            
-            await session.execute(
-                text("""
-                    INSERT INTO tenants (id, name, api_key_hash, settings, plan, span_limit, created_at)
-                    VALUES (:id, :name, :api_key_hash, :settings, 'free', 10000, NOW())
-                """),
-                {
-                    "id": str(tenant_id),
-                    "name": tenant_data["name"],
-                    "api_key_hash": tenant_data["api_key_hash"],
-                    "settings": "{}",
-                }
+            result = await session.execute(
+                text("SELECT id FROM tenants WHERE name = :name"),
+                {"name": DEMO_TENANT_NAME}
             )
-            
-            api_key_data = create_demo_api_key(tenant_id)
-            await session.execute(
-                text("""
-                    INSERT INTO api_keys (id, tenant_id, name, key_hash, key_prefix, created_at)
-                    VALUES (:id, :tenant_id, :name, :key_hash, :key_prefix, NOW())
-                """),
-                {
-                    "id": str(api_key_data["id"]),
-                    "tenant_id": str(tenant_id),
-                    "name": api_key_data["name"],
-                    "key_hash": api_key_data["key_hash"],
-                    "key_prefix": api_key_data["key_prefix"],
-                }
-            )
-            await session.commit()
-            print(f"\nCreated demo tenant: {tenant_id}")
+            existing = result.scalar()
+
+            if existing:
+                print(f"\nDemo tenant already exists (id: {existing})")
+                print("Clearing existing demo data...")
+
+                await session.execute(
+                    text("DELETE FROM detections WHERE tenant_id = :tid"),
+                    {"tid": str(existing)}
+                )
+                await session.execute(
+                    text("DELETE FROM states WHERE tenant_id = :tid"),
+                    {"tid": str(existing)}
+                )
+                await session.execute(
+                    text("DELETE FROM traces WHERE tenant_id = :tid"),
+                    {"tid": str(existing)}
+                )
+                await session.commit()
+
+                tenant_id = existing
+                print("Cleared existing traces, states, and detections.")
+            else:
+                tenant_data = create_demo_tenant()
+                tenant_id = tenant_data["id"]
+
+                await session.execute(
+                    text("""
+                        INSERT INTO tenants (id, name, api_key_hash, settings, plan, span_limit, created_at)
+                        VALUES (:id, :name, :api_key_hash, :settings, 'free', 10000, NOW())
+                    """),
+                    {
+                        "id": str(tenant_id),
+                        "name": tenant_data["name"],
+                        "api_key_hash": tenant_data["api_key_hash"],
+                        "settings": "{}",
+                    }
+                )
+
+                api_key_data = create_demo_api_key(tenant_id)
+                await session.execute(
+                    text("""
+                        INSERT INTO api_keys (id, tenant_id, name, key_hash, key_prefix, created_at)
+                        VALUES (:id, :tenant_id, :name, :key_hash, :key_prefix, NOW())
+                    """),
+                    {
+                        "id": str(api_key_data["id"]),
+                        "tenant_id": str(tenant_id),
+                        "name": api_key_data["name"],
+                        "key_hash": api_key_data["key_hash"],
+                        "key_prefix": api_key_data["key_prefix"],
+                    }
+                )
+                await session.commit()
+                print(f"\nCreated demo tenant: {tenant_id}")
         
         print("\nCreating demo traces...")
         
