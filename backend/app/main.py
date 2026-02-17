@@ -18,6 +18,7 @@ from app.api.v1 import (
     import_jobs,
     webhooks,
     n8n,
+    openclaw,
     security,
     metrics,
     claude_code,
@@ -133,6 +134,7 @@ app.include_router(import_jobs.router, prefix="/api/v1")
 app.include_router(health.router, prefix="/api/v1")
 app.include_router(webhooks.router, prefix="/api/v1")
 app.include_router(n8n.router, prefix="/api/v1")
+app.include_router(openclaw.router, prefix="/api/v1")  # OpenClaw agent monitoring
 app.include_router(security.router, prefix="/api/v1")
 app.include_router(metrics.router, prefix="/api/v1")
 app.include_router(benchmarks.router, prefix="/api/v1")  # Benchmark results

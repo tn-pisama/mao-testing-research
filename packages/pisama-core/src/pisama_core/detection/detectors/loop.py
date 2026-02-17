@@ -26,17 +26,37 @@ class LoopDetector(BaseDetector):
     severity_range = (20, 100)
     realtime_capable = True
 
-    # Configuration
+    # Configuration (defaults for interactive sessions)
     min_consecutive_for_warning = 3
     min_consecutive_for_critical = 5
     min_cycle_repetitions = 3
     max_cycle_length = 5
 
+    # OpenClaw-specific thresholds (24/7 autonomous agents)
+    PLATFORM_OVERRIDES = {
+        Platform.OPENCLAW: {
+            "min_consecutive_for_warning": 8,
+            "min_consecutive_for_critical": 15,
+            "max_cycle_length": 8,
+        },
+    }
+
+    def _get_threshold(self, trace: Trace, key: str) -> int:
+        """Get platform-aware threshold value."""
+        if hasattr(trace, "platform") and trace.platform in self.PLATFORM_OVERRIDES:
+            overrides = self.PLATFORM_OVERRIDES[trace.platform]
+            if key in overrides:
+                return overrides[key]
+        return getattr(self, key)
+
     async def detect(self, trace: Trace) -> DetectionResult:
         """Detect loop patterns in a trace."""
         tool_spans = trace.get_spans_by_kind(SpanKind.TOOL)
 
-        if len(tool_spans) < self.min_consecutive_for_warning:
+        warn_threshold = self._get_threshold(trace, "min_consecutive_for_warning")
+        crit_threshold = self._get_threshold(trace, "min_consecutive_for_critical")
+
+        if len(tool_spans) < warn_threshold:
             return DetectionResult.no_issue(self.name)
 
         # Sort by time
@@ -49,8 +69,8 @@ class LoopDetector(BaseDetector):
 
         # Check consecutive repetitions
         consecutive = self._check_consecutive(tool_sequence)
-        if consecutive["count"] >= self.min_consecutive_for_warning:
-            if consecutive["count"] >= self.min_consecutive_for_critical:
+        if consecutive["count"] >= warn_threshold:
+            if consecutive["count"] >= crit_threshold:
                 severity += 50
             else:
                 severity += 25

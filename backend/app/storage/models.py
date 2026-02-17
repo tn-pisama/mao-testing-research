@@ -356,6 +356,84 @@ class N8nConnection(Base):
     )
 
 
+class OpenClawInstance(Base):
+    """
+    Stores OpenClaw instance connection credentials per tenant.
+
+    Each tenant can have multiple OpenClaw instances (e.g., dev, prod).
+    API keys are stored encrypted for security.
+    """
+    __tablename__ = "openclaw_instances"
+
+    id = Column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
+    tenant_id = Column(UUID(as_uuid=True), ForeignKey("tenants.id"), nullable=False)
+
+    # Connection details
+    name = Column(String(255), nullable=False)  # e.g., "Production OpenClaw"
+    gateway_url = Column(String(512), nullable=False)  # e.g., "ws://openclaw.example.com:18789"
+    api_key_encrypted = Column(Text, nullable=False)  # Encrypted API key
+
+    # Instance metadata
+    openclaw_version = Column(String(32), nullable=True)
+    channels_configured = Column(JSONB, default=list)  # ["whatsapp", "telegram", "slack"]
+    agents_mapping = Column(JSONB, default=dict)  # Cached agents.mapping config
+
+    # OTEL configuration
+    otel_endpoint = Column(String(512), nullable=True)
+    otel_enabled = Column(Boolean, default=False)
+
+    # Status
+    is_active = Column(Boolean, default=True)
+    last_verified_at = Column(DateTime(timezone=True), nullable=True)
+    last_error = Column(Text, nullable=True)
+
+    # Timestamps
+    created_at = Column(DateTime(timezone=True), server_default=func.now())
+    updated_at = Column(DateTime(timezone=True), server_default=func.now(), onupdate=func.now())
+
+    agents = relationship("OpenClawAgent", back_populates="instance", cascade="all, delete-orphan")
+
+    __table_args__ = (
+        Index("idx_openclaw_instances_tenant", "tenant_id"),
+        UniqueConstraint("tenant_id", "name", name="uq_openclaw_instance_name"),
+    )
+
+
+class OpenClawAgent(Base):
+    """Registered OpenClaw agents for monitoring."""
+    __tablename__ = "openclaw_agents"
+
+    id = Column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
+    tenant_id = Column(UUID(as_uuid=True), ForeignKey("tenants.id"), nullable=False)
+    instance_id = Column(UUID(as_uuid=True), ForeignKey("openclaw_instances.id"), nullable=False)
+
+    # Agent identity (from agents.mapping)
+    agent_key = Column(String(255), nullable=False)  # Key in agents.mapping
+    agent_name = Column(String(255), nullable=True)  # Display name
+    model = Column(String(128), nullable=True)  # Configured model
+    workspace = Column(String(512), nullable=True)  # Agent workspace path
+
+    # Monitoring config
+    webhook_secret = Column(String(255), nullable=True)
+    monitoring_enabled = Column(Boolean, default=True)
+    detection_overrides = Column(JSONB, default=dict)  # Per-agent threshold overrides
+
+    # Statistics
+    total_sessions = Column(Integer, default=0)
+    total_messages = Column(Integer, default=0)
+    last_active_at = Column(DateTime(timezone=True), nullable=True)
+
+    registered_at = Column(DateTime(timezone=True), server_default=func.now())
+
+    instance = relationship("OpenClawInstance", back_populates="agents")
+
+    __table_args__ = (
+        UniqueConstraint("tenant_id", "instance_id", "agent_key", name="uq_openclaw_agent"),
+        Index("idx_openclaw_agents_tenant", "tenant_id"),
+        Index("idx_openclaw_agents_instance", "instance_id"),
+    )
+
+
 class WorkflowGroup(Base):
     """
     Tenant-wide workflow groups for organizing and filtering workflows.

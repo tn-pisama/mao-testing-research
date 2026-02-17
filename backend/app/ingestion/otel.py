@@ -40,12 +40,14 @@ class OTELParser:
         "langgraph.node.name",
         "crewai.agent.role",
         "autogen.agent.name",
+        "openclaw.agent.name",
     ]
-    
+
     STATE_ATTRIBUTES = [
         "gen_ai.state",
         "langgraph.state",
         "crewai.state",
+        "openclaw.session.state",
     ]
     
     def parse_spans(self, spans: List[Dict[str, Any]]) -> List[ParsedState]:
@@ -122,6 +124,8 @@ class OTELParser:
         for attr in self.AGENT_ATTRIBUTES:
             if attr in span.attributes:
                 return True
+        if span.name.startswith("openclaw."):
+            return True
         if "agent" in span.name.lower() or "node" in span.name.lower():
             return True
         return False

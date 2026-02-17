@@ -19,7 +19,7 @@ class CoordinationDetector(BaseDetector):
     name = "coordination"
     description = "Detects multi-agent coordination failures"
     version = "1.0.0"
-    platforms = [Platform.LANGGRAPH, Platform.AUTOGEN, Platform.CREWAI]
+    platforms = [Platform.LANGGRAPH, Platform.AUTOGEN, Platform.CREWAI, Platform.OPENCLAW]
     severity_range = (30, 80)
     realtime_capable = False  # Needs full trace context
 
@@ -61,6 +61,26 @@ class CoordinationDetector(BaseDetector):
         if len(handoffs) > 10:
             severity += 30
             issues.append(f"Excessive handoffs ({len(handoffs)}) - possible coordination loop")
+
+        # OpenClaw-specific: detect session spawn storms
+        if trace.platform == Platform.OPENCLAW:
+            spawn_spans = [s for s in handoffs if "spawn" in s.name.lower()]
+            if len(spawn_spans) > 5:
+                severity += 35
+                issues.append(f"Session spawn storm ({len(spawn_spans)} spawns) - agents spawning without converging")
+
+            # Detect circular routing via sessions_send
+            send_spans = [s for s in handoffs if "send" in s.name.lower()]
+            if len(send_spans) >= 3:
+                senders = [s.attributes.get("source_agent", s.name) for s in send_spans]
+                receivers = [s.attributes.get("target_agent", "") for s in send_spans]
+                pairs = list(zip(senders, receivers))
+                for i, (s1, r1) in enumerate(pairs):
+                    for s2, r2 in pairs[i + 1:]:
+                        if s1 == r2 and s2 == r1:
+                            severity += 40
+                            issues.append(f"Circular routing: {s1} <-> {s2}")
+                            break
 
         if not issues:
             return DetectionResult.no_issue(self.name)

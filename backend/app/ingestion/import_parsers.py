@@ -114,6 +114,7 @@ class ImportParser(ABC):
                 "openai": ["openai", "gpt-4", "gpt-3.5", "assistants", "function_call"],
                 "anthropic": ["anthropic", "claude", "human_turn_idx"],
                 "n8n": ["n8n", "workflowid", "executionid", "nodetype"],
+                "openclaw": ["openclaw", "openclaw.request", "openclaw.agent", "sessions_spawn", "sessions_send"],
             }
 
             for framework, markers in framework_markers.items():
@@ -137,6 +138,7 @@ class ImportParser(ABC):
             "openai": ["openai", "open_ai", "open-ai", "gpt", "chatgpt"],
             "anthropic": ["anthropic", "claude"],
             "n8n": ["n8n"],
+            "openclaw": ["openclaw", "open_claw", "open-claw", "clawdbot", "moltbot"],
             "chatdev": ["chatdev", "chat_dev"],
             "metagpt": ["metagpt", "meta_gpt", "meta-gpt"],
         }
