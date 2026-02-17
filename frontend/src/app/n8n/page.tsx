@@ -23,12 +23,11 @@ interface DisplayWorkflow {
   qualityGrade?: string
   qualityScore?: number
   qualityAssessmentId?: string
+  isRegistered: boolean
 }
 
 function mapWorkflow(w: N8nWorkflow, assessments: QualityAssessment[]): DisplayWorkflow {
-  // Find the most recent quality assessment for this workflow
   const assessment = assessments.find(a => a.workflow_name === (w.workflow_name || `Workflow ${w.workflow_id}`))
-
   return {
     id: w.id,
     workflowId: w.workflow_id,
@@ -38,6 +37,7 @@ function mapWorkflow(w: N8nWorkflow, assessments: QualityAssessment[]): DisplayW
     qualityGrade: assessment?.overall_grade,
     qualityScore: assessment?.overall_score,
     qualityAssessmentId: assessment?.id,
+    isRegistered: true,
   }
 }
 
@@ -63,8 +63,23 @@ export default function N8nPage() {
 
   const isLoading = workflowsLoading || assessmentsLoading || connectionsLoading
 
-  // Map workflows with quality data
-  const workflows = workflowsData.map(w => mapWorkflow(w as any, assessments))
+  // Build unified workflow list: registered webhooks first, then unregistered quality assessments
+  const fromRegistered = workflowsData.map(w => mapWorkflow(w as any, assessments))
+  const registeredNames = new Set(fromRegistered.map(w => w.workflowName))
+  const fromAssessments: DisplayWorkflow[] = assessments
+    .filter(a => !registeredNames.has(a.workflow_name))
+    .map(a => ({
+      id: a.id,
+      workflowId: a.workflow_id ?? a.id,
+      workflowName: a.workflow_name ?? `Workflow ${a.id.slice(0, 8)}`,
+      webhookUrl: '',
+      registeredAt: '',
+      qualityGrade: a.overall_grade,
+      qualityScore: a.overall_score,
+      qualityAssessmentId: a.id,
+      isRegistered: false,
+    }))
+  const workflows = [...fromRegistered, ...fromAssessments]
 
   // Set n8n instance URL from active connection
   useEffect(() => {
@@ -302,27 +317,33 @@ export default function N8nPage() {
                     </div>
                   </div>
 
-                  {/* Webhook URL */}
-                  <div className="mt-3 p-3 bg-slate-900 rounded-lg">
-                    <div className="flex items-center justify-between gap-3">
-                      <div className="flex items-center gap-2 min-w-0">
-                        <Link size={14} className="text-slate-500 flex-shrink-0" />
-                        <code className="text-sm text-slate-400 truncate">
-                          {workflow.webhookUrl}
-                        </code>
+                  {/* Webhook URL or unregistered note */}
+                  {workflow.isRegistered ? (
+                    <div className="mt-3 p-3 bg-slate-900 rounded-lg">
+                      <div className="flex items-center justify-between gap-3">
+                        <div className="flex items-center gap-2 min-w-0">
+                          <Link size={14} className="text-slate-500 flex-shrink-0" />
+                          <code className="text-sm text-slate-400 truncate">
+                            {workflow.webhookUrl}
+                          </code>
+                        </div>
+                        <button
+                          onClick={() => copyWebhookUrl(workflow.webhookUrl)}
+                          className="p-1.5 text-slate-400 hover:text-white hover:bg-slate-700 rounded transition-colors flex-shrink-0"
+                        >
+                          {copiedUrl === workflow.webhookUrl ? (
+                            <CheckCircle size={16} className="text-emerald-400" />
+                          ) : (
+                            <Copy size={16} />
+                          )}
+                        </button>
                       </div>
-                      <button
-                        onClick={() => copyWebhookUrl(workflow.webhookUrl)}
-                        className="p-1.5 text-slate-400 hover:text-white hover:bg-slate-700 rounded transition-colors flex-shrink-0"
-                      >
-                        {copiedUrl === workflow.webhookUrl ? (
-                          <CheckCircle size={16} className="text-emerald-400" />
-                        ) : (
-                          <Copy size={16} />
-                        )}
-                      </button>
                     </div>
-                  </div>
+                  ) : (
+                    <div className="mt-2">
+                      <span className="text-xs text-slate-500 italic">Not connected via webhook</span>
+                    </div>
+                  )}
                 </div>
               ))}
             </div>
