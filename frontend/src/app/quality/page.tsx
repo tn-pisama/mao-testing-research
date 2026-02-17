@@ -158,8 +158,8 @@ export default function QualityPage() {
                             {assessment.workflow_name}
                           </h3>
                           <div className="flex items-center gap-3 text-sm text-slate-400">
-                            <span className={getScoreColor(assessment.overall_score)}>
-                              {Math.round(assessment.overall_score * 100)}% overall
+                            <span className={getScoreColor(assessment.overall_score / 100)}>
+                              {Math.round(assessment.overall_score)}% overall
                             </span>
                             <span>|</span>
                             <span>{assessment.agent_scores.length} agents</span>

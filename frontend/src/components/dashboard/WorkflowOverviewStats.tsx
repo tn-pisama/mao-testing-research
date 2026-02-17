@@ -52,7 +52,7 @@ export function WorkflowOverviewStats({ workflows, isLoading }: WorkflowOverview
   }
 
   const health = calculateHealthDistribution(workflows)
-  const avgQuality = calculateAverageQuality(workflows)
+  const avgQuality = calculateAverageQuality(workflows) / 100 // Normalize 0-100 integer to 0-1 for display
   const criticalIssues = countCriticalIssues(workflows)
 
   return (

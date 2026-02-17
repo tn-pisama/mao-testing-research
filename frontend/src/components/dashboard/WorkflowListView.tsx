@@ -121,12 +121,12 @@ function WorkflowCard({ workflow, isSelected, onClick }: WorkflowCardProps) {
         <div className="flex items-baseline gap-2">
           <span className={clsx(
             'text-2xl font-bold',
-            workflow.overall_score >= 0.8 ? 'text-green-400' :
-            workflow.overall_score >= 0.6 ? 'text-blue-400' :
-            workflow.overall_score >= 0.4 ? 'text-amber-400' :
+            workflow.overall_score >= 80 ? 'text-green-400' :
+            workflow.overall_score >= 60 ? 'text-blue-400' :
+            workflow.overall_score >= 40 ? 'text-amber-400' :
             'text-red-400'
           )}>
-            {(workflow.overall_score * 100).toFixed(0)}%
+            {Math.round(workflow.overall_score)}%
           </span>
           <span className="text-sm text-slate-400">quality</span>
         </div>
