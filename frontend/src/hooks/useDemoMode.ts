@@ -93,6 +93,20 @@ export function useDemoMode(options: UseDemoModeOptions = {}) {
     setDemoState(createInitialState())
   }, [])
 
+  const refreshDataWithAgents = useCallback((agents: AgentInfo[]) => {
+    setDemoState(prev => ({
+      ...prev,
+      agents,
+      messages: generateDemoMessages(agents, 8),
+      activityEvents: generateDemoActivityEvents(agents, 15),
+      agentMetrics: {
+        ...generateDemoAgentMetrics(),
+        totalAgents: agents.length,
+        activeAgents: agents.filter(a => a.status === 'running').length,
+      },
+    }))
+  }, [])
+
   const simulateActivity = useCallback(() => {
     setDemoState((prev) => {
       if (prev.agents.length === 0) return prev
@@ -178,6 +192,7 @@ export function useDemoMode(options: UseDemoModeOptions = {}) {
     stopSimulation,
     toggleSimulation,
     refreshData,
+    refreshDataWithAgents,
     ...demoState,
   }
 }

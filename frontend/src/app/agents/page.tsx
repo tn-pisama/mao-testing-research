@@ -41,6 +41,7 @@ export default function AgentsPage() {
   >('grid')
   const [realAgents, setRealAgents] = useState<AgentInfo[] | null>(null)
   const demo = useDemoMode({ autoSimulate: true })
+  const { refreshDataWithAgents } = demo
 
   const loadAgents = useCallback(async () => {
     try {
@@ -49,11 +50,12 @@ export default function AgentsPage() {
       const data = await api.listAgents()
       if (data.agents.length > 0) {
         setRealAgents(data.agents)
+        refreshDataWithAgents(data.agents)
       }
     } catch {
       // fallback to demo agents
     }
-  }, [getToken, tenantId])
+  }, [getToken, tenantId, refreshDataWithAgents])
 
   useEffect(() => {
     loadAgents()
