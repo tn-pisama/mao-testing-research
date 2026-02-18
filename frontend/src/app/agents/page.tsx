@@ -184,7 +184,7 @@ export default function AgentsPage() {
             </TabsContent>
 
             <TabsContent value="monitoring" className="mt-4">
-              <AgentMonitoringPanel isLive={demo.isSimulating} />
+              <AgentMonitoringPanel agents={agents} events={demo.activityEvents} isLive={demo.isSimulating} />
             </TabsContent>
 
             <TabsContent value="comparison" className="mt-4">
