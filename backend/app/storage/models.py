@@ -871,8 +871,8 @@ class AgentQualityAssessment(Base):
     # Reasoning
     reasoning = Column(Text, nullable=True)
 
-    # Metadata
-    metadata = Column(JSONB, server_default="{}")
+    # Extra metadata
+    extra_metadata = Column("metadata", JSONB, server_default="{}")
 
     # Timestamps
     created_at = Column(DateTime(timezone=True), server_default=func.now())

@@ -198,6 +198,21 @@ export function useApiWithFallback() {
     }
   }, [tenantId, tenantLoaded, loadRealData, loadDemoData]) // ✅ Stable dependencies, no circular reference
 
+  const refresh = useCallback(async () => {
+    setIsLoading(true)
+    setError(null)
+
+    const dataSuccess = await loadRealData()
+
+    if (!dataSuccess && isMountedRef.current) {
+      loadDemoData()
+    }
+
+    if (isMountedRef.current) {
+      setIsLoading(false)
+    }
+  }, [loadRealData, loadDemoData])
+
   const toggleDemoMode = useCallback(async () => {
     if (isDemoMode) {
       // If in demo mode, try to load real data
@@ -232,6 +247,7 @@ export function useApiWithFallback() {
     traces,
     qualityAssessments,
     toggleDemoMode,
+    refresh,
   }
 }
 
