@@ -169,16 +169,26 @@ class LoopPreventionValidator(ValidationStrategy):
             "has_loop_prevention": False,
             "has_circuit_breaker": False,
             "has_backoff": False,
+            "has_execution_timeout": False,
         }
-        
+
         if "max_iterations" in settings:
             checks["has_max_iterations"] = True
+        if "executionTimeout" in settings:
+            checks["has_execution_timeout"] = True
         if settings.get("loop_prevention", {}).get("enabled"):
             checks["has_loop_prevention"] = True
         if settings.get("circuit_breaker", {}).get("enabled"):
             checks["has_circuit_breaker"] = True
         if settings.get("backoff", {}).get("enabled"):
             checks["has_backoff"] = True
+
+        # Also check nodes for maxIterations parameter
+        for node in modified.get("nodes", []):
+            params = node.get("parameters", {})
+            if "maxIterations" in params:
+                checks["has_max_iterations"] = True
+                break
         
         has_any_protection = any(checks.values())
         

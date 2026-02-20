@@ -22,6 +22,10 @@ from .git_backup import (
     BackupRecord,
     create_git_backup_service,
 )
+from .verification import (
+    VerificationOrchestrator,
+    VerificationResult,
+)
 
 __all__ = [
     # Engine
@@ -44,4 +48,7 @@ __all__ = [
     "GitBackupConfig",
     "BackupRecord",
     "create_git_backup_service",
+    # Verification
+    "VerificationOrchestrator",
+    "VerificationResult",
 ]

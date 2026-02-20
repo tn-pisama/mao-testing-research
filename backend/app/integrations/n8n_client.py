@@ -1,5 +1,6 @@
 """n8n REST API client for workflow management."""
 
+import asyncio
 import logging
 from typing import Dict, Any, List, Optional
 from datetime import datetime
@@ -213,6 +214,82 @@ class N8nApiClient:
 
         result = await self._request("GET", "/workflows", params=params)
         return result.get("data", [])
+
+    async def run_workflow(
+        self,
+        workflow_id: str,
+        payload: Optional[Dict[str, Any]] = None,
+    ) -> Dict[str, Any]:
+        """
+        Trigger a test execution of a workflow.
+
+        Uses n8n's POST /workflows/{id}/run endpoint to execute
+        the workflow on-demand (independent of triggers).
+
+        Args:
+            workflow_id: The n8n workflow ID
+            payload: Optional input data for the workflow
+
+        Returns:
+            Execution result including executionId and status
+        """
+        logger.info(f"Running workflow {workflow_id} in n8n")
+        json_data = {}
+        if payload:
+            json_data["payload"] = payload
+        return await self._request(
+            "POST", f"/workflows/{workflow_id}/run", json_data=json_data or None
+        )
+
+    async def get_execution(self, execution_id: str) -> Dict[str, Any]:
+        """
+        Get a specific execution by ID.
+
+        Args:
+            execution_id: The n8n execution ID
+
+        Returns:
+            Full execution data including status and node results
+        """
+        return await self._request("GET", f"/executions/{execution_id}")
+
+    async def wait_for_execution(
+        self,
+        execution_id: str,
+        timeout: float = 60.0,
+        poll_interval: float = 2.0,
+    ) -> Dict[str, Any]:
+        """
+        Poll an execution until it reaches a terminal status.
+
+        Args:
+            execution_id: The n8n execution ID
+            timeout: Maximum time to wait in seconds
+            poll_interval: Time between polls in seconds
+
+        Returns:
+            Final execution data
+
+        Raises:
+            N8nApiError: If execution times out or fails to poll
+        """
+        elapsed = 0.0
+        while elapsed < timeout:
+            execution = await self.get_execution(execution_id)
+            status = execution.get("status", execution.get("finished", False))
+
+            # n8n uses "finished" bool or "status" string depending on version
+            if status in ("success", "error", "crashed", True):
+                return execution
+            if execution.get("finished") is True:
+                return execution
+
+            await asyncio.sleep(poll_interval)
+            elapsed += poll_interval
+
+        raise N8nApiError(
+            f"Execution {execution_id} did not complete within {timeout}s"
+        )
 
     async def test_connection(self) -> bool:
         """

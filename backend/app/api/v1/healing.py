@@ -1,5 +1,6 @@
 """Healing API endpoints for self-healing fix management."""
 
+import logging
 from fastapi import APIRouter, Depends, HTTPException, Query
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy import select
@@ -15,6 +16,9 @@ from app.core.auth import get_current_tenant
 from app.core.encryption import encrypt_value, decrypt_value
 from app.fixes import FixGenerator, LoopFixGenerator, CorruptionFixGenerator, PersonaFixGenerator, DeadlockFixGenerator
 from app.integrations.n8n_client import N8nApiClient, N8nApiError, N8nWorkflowDiff
+from app.healing.verification import VerificationOrchestrator
+
+logger = logging.getLogger(__name__)
 
 router = APIRouter(prefix="/healing", tags=["healing"])
 
@@ -1080,6 +1084,7 @@ class PromoteResponse(BaseModel):
 @router.post("/{healing_id}/promote", response_model=PromoteResponse)
 async def promote_staged_fix(
     healing_id: UUID,
+    skip_verification: bool = Query(False, description="Skip verification gate (emergency only)"),
     tenant_id: str = Depends(get_current_tenant),
     db: AsyncSession = Depends(get_db),
 ):
@@ -1088,6 +1093,9 @@ async def promote_staged_fix(
 
     This endpoint activates a workflow that was previously staged (deactivated)
     after applying a fix, allowing it to run in production.
+
+    Requires verification to have passed (POST /{healing_id}/verify) unless
+    skip_verification=true is set for emergency deployments.
     """
     await set_tenant_context(db, tenant_id)
 
@@ -1106,6 +1114,13 @@ async def promote_staged_fix(
         raise HTTPException(
             status_code=400,
             detail=f"Cannot promote: healing is not staged (current stage: {healing.deployment_stage})"
+        )
+
+    # Verification gate: require verification before promotion
+    if not skip_verification and healing.validation_status != "passed":
+        raise HTTPException(
+            status_code=400,
+            detail="Verification required before promotion. Call POST /{healing_id}/verify first, or use ?skip_verification=true for emergencies."
         )
 
     if not healing.workflow_id or not healing.n8n_connection_id:
@@ -1489,4 +1504,241 @@ async def restore_version(
         restored_from_version=version.version_number,
         new_version_number=next_version,
         message=f"Workflow restored to version {version.version_number}",
+    )
+
+
+# ============================================================================
+# Fix Verification
+# ============================================================================
+
+
+class VerifyRequest(BaseModel):
+    level: int = Field(1, ge=1, le=2, description="Verification level: 1=config, 2=execution")
+
+
+class VerifyResponse(BaseModel):
+    healing_id: str
+    passed: bool
+    level: int
+    before_confidence: float
+    after_confidence: float
+    confidence_reduction: float
+    config_checks: List[Dict[str, Any]]
+    execution_result: Optional[Dict[str, Any]] = None
+    details: Dict[str, Any]
+    error: Optional[str] = None
+
+
+@router.post("/{healing_id}/verify", response_model=VerifyResponse)
+async def verify_fix(
+    healing_id: UUID,
+    request: VerifyRequest,
+    tenant_id: str = Depends(get_current_tenant),
+    db: AsyncSession = Depends(get_db),
+):
+    """
+    Verify that a staged fix resolves the detected failure.
+
+    Level 1: Config-based verification — checks fix settings exist
+    Level 2: Execution-based — runs the workflow, re-detects, compares confidence
+    """
+    await set_tenant_context(db, tenant_id)
+
+    result = await db.execute(
+        select(HealingRecord).where(
+            HealingRecord.id == healing_id,
+            HealingRecord.tenant_id == UUID(tenant_id),
+        )
+    )
+    healing = result.scalar_one_or_none()
+
+    if not healing:
+        raise HTTPException(status_code=404, detail="Healing record not found")
+
+    if healing.deployment_stage not in ("staged", None):
+        if healing.deployment_stage in ("promoted", "rejected"):
+            raise HTTPException(
+                status_code=400,
+                detail=f"Cannot verify: fix already {healing.deployment_stage}"
+            )
+
+    # Get original detection confidence
+    detection_result = await db.execute(
+        select(Detection).where(Detection.id == healing.detection_id)
+    )
+    detection = detection_result.scalar_one_or_none()
+
+    original_confidence = detection.confidence if detection else 0
+    detection_type = detection.detection_type if detection else healing.fix_type
+
+    orchestrator = VerificationOrchestrator()
+
+    if request.level == 1:
+        verification = await orchestrator.verify_level1(
+            detection_type=detection_type,
+            original_confidence=original_confidence,
+            original_state=healing.original_state or {},
+            applied_fixes=healing.applied_fixes or {},
+        )
+    else:
+        # Level 2 requires n8n connection
+        if not healing.n8n_connection_id or not healing.workflow_id:
+            raise HTTPException(
+                status_code=400,
+                detail="Level 2 verification requires an n8n connection. Use level=1 for config-only verification."
+            )
+
+        conn_result = await db.execute(
+            select(N8nConnection).where(N8nConnection.id == healing.n8n_connection_id)
+        )
+        connection = conn_result.scalar_one_or_none()
+
+        if not connection:
+            raise HTTPException(status_code=404, detail="n8n connection not found")
+
+        api_key = decrypt_value(connection.api_key_encrypted)
+
+        try:
+            async with N8nApiClient(
+                instance_url=connection.instance_url,
+                api_key=api_key,
+            ) as client:
+                # Get loop detector for re-detection
+                loop_detector = None
+                if detection_type == "infinite_loop":
+                    from app.detection.loop import MultiLevelLoopDetector
+                    loop_detector = MultiLevelLoopDetector()
+
+                verification = await orchestrator.verify_level2(
+                    detection_type=detection_type,
+                    original_confidence=original_confidence,
+                    original_state=healing.original_state or {},
+                    applied_fixes=healing.applied_fixes or {},
+                    n8n_client=client,
+                    workflow_id=healing.workflow_id,
+                    loop_detector=loop_detector,
+                )
+        except N8nApiError as e:
+            raise HTTPException(
+                status_code=502,
+                detail=f"n8n API error during verification: {e.message}"
+            )
+
+    # Store verification results on healing record
+    healing.validation_status = "passed" if verification.passed else "failed"
+    healing.validation_results = {
+        **(healing.validation_results or {}),
+        "verification": verification.to_dict(),
+    }
+
+    await db.commit()
+
+    return VerifyResponse(
+        healing_id=str(healing.id),
+        passed=verification.passed,
+        level=verification.level,
+        before_confidence=verification.before_confidence,
+        after_confidence=verification.after_confidence,
+        confidence_reduction=round(
+            verification.before_confidence - verification.after_confidence, 4
+        ),
+        config_checks=[
+            {
+                "success": c.success,
+                "validation_type": c.validation_type,
+                "details": c.details,
+                "error_message": c.error_message,
+            }
+            for c in verification.config_checks
+        ],
+        execution_result=verification.execution_result,
+        details=verification.details,
+        error=verification.error,
+    )
+
+
+class VerificationMetricsResponse(BaseModel):
+    total_verifications: int
+    passed: int
+    failed: int
+    pass_rate: float
+    average_confidence_reduction: float
+    by_detection_type: Dict[str, Dict[str, Any]]
+
+
+@router.get("/verification-metrics", response_model=VerificationMetricsResponse)
+async def get_verification_metrics(
+    tenant_id: str = Depends(get_current_tenant),
+    db: AsyncSession = Depends(get_db),
+):
+    """
+    Get aggregate verification metrics for this tenant.
+
+    Shows pass rates, average confidence reduction, and per-detection-type breakdown.
+    """
+    await set_tenant_context(db, tenant_id)
+
+    result = await db.execute(
+        select(HealingRecord).where(
+            HealingRecord.tenant_id == UUID(tenant_id),
+            HealingRecord.validation_status.isnot(None),
+        )
+    )
+    healings = result.scalars().all()
+
+    total = 0
+    passed = 0
+    failed = 0
+    confidence_reductions = []
+    by_type: Dict[str, Dict[str, Any]] = {}
+
+    for h in healings:
+        vr = (h.validation_results or {}).get("verification")
+        if not vr:
+            continue
+
+        total += 1
+        if vr.get("passed"):
+            passed += 1
+        else:
+            failed += 1
+
+        reduction = vr.get("confidence_reduction", 0)
+        confidence_reductions.append(reduction)
+
+        # Per-detection-type breakdown
+        det_type = (vr.get("details") or {}).get("detection_type", h.fix_type)
+        if det_type not in by_type:
+            by_type[det_type] = {"total": 0, "passed": 0, "reductions": []}
+        by_type[det_type]["total"] += 1
+        if vr.get("passed"):
+            by_type[det_type]["passed"] += 1
+        by_type[det_type]["reductions"].append(reduction)
+
+    # Compute averages
+    avg_reduction = (
+        sum(confidence_reductions) / len(confidence_reductions)
+        if confidence_reductions
+        else 0.0
+    )
+
+    by_type_summary = {}
+    for dt, data in by_type.items():
+        reductions = data["reductions"]
+        by_type_summary[dt] = {
+            "total": data["total"],
+            "passed": data["passed"],
+            "pass_rate": data["passed"] / data["total"] if data["total"] > 0 else 0,
+            "avg_confidence_reduction": (
+                sum(reductions) / len(reductions) if reductions else 0
+            ),
+        }
+
+    return VerificationMetricsResponse(
+        total_verifications=total,
+        passed=passed,
+        failed=failed,
+        pass_rate=passed / total if total > 0 else 0.0,
+        average_confidence_reduction=round(avg_reduction, 4),
+        by_detection_type=by_type_summary,
     )
