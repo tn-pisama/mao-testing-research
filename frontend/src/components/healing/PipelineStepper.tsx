@@ -25,7 +25,7 @@ function getSteps(healing: HealingRecord): Step[] {
 
   // Step 2: Staged
   let staged: Step
-  if (isFailed) {
+  if (isFailed && !isPromoted) {
     staged = { label: 'Staged', state: 'failed' }
   } else if (isStaged) {
     staged = { label: 'Staged', state: 'completed' }

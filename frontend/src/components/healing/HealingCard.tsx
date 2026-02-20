@@ -381,6 +381,7 @@ export function HealingCard({
                         isLoading={isVerifying}
                         leftIcon={<ShieldCheck size={14} />}
                         className={isVerified ? 'text-green-400' : ''}
+                        title="Level 1: Checks fix configuration without running the workflow"
                       >
                         {isVerified ? 'Re-verify' : 'Verify Fix'}
                       </Button>

@@ -1,6 +1,6 @@
 'use client'
 
-import { useState } from 'react'
+import { useState, useEffect } from 'react'
 import { X, Plus, Minus, Edit3, AlertTriangle, Loader2 } from 'lucide-react'
 import { Button } from '../ui/Button'
 import { Badge } from '../ui/Badge'
@@ -32,6 +32,15 @@ export function FixPreviewModal({
   const [selectedConnection, setSelectedConnection] = useState<string>('')
   const [stageForTesting, setStageForTesting] = useState(true)
 
+  useEffect(() => {
+    if (!isOpen) return
+    const handleKeyDown = (e: KeyboardEvent) => {
+      if (e.key === 'Escape') onClose()
+    }
+    document.addEventListener('keydown', handleKeyDown)
+    return () => document.removeEventListener('keydown', handleKeyDown)
+  }, [isOpen, onClose])
+
   if (!isOpen) return null
 
   const handleApply = async () => {
@@ -43,7 +52,7 @@ export function FixPreviewModal({
                           fix?.confidence === 'medium' ? 'warning' : 'default'
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center">
+    <div className="fixed inset-0 z-50 flex items-center justify-center" role="dialog" aria-modal="true" aria-labelledby="fix-preview-modal-title">
       {/* Backdrop */}
       <div
         className="absolute inset-0 bg-black/60 backdrop-blur-sm"
@@ -55,12 +64,13 @@ export function FixPreviewModal({
         {/* Header */}
         <div className="flex items-center justify-between p-4 border-b border-slate-700">
           <div>
-            <h2 className="text-lg font-semibold text-white">Preview Fix</h2>
+            <h2 id="fix-preview-modal-title" className="text-lg font-semibold text-white">Preview Fix</h2>
             <p className="text-sm text-slate-400">Review changes before applying to n8n</p>
           </div>
           <button
             onClick={onClose}
             className="p-2 hover:bg-slate-800 rounded-lg transition-colors"
+            aria-label="Close dialog"
           >
             <X size={20} className="text-slate-400" />
           </button>

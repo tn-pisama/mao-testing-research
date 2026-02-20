@@ -20,6 +20,7 @@ class FixValidator:
         self._validators.append(LoopPreventionValidator())
         self._validators.append(StateIntegrityValidator())
         self._validators.append(PersonaConsistencyValidator())
+        self._validators.append(CoordinationDeadlockValidator())
         self._validators.append(RegressionValidator())
     
     async def validate(
@@ -317,6 +318,42 @@ class PersonaConsistencyValidator(ValidationStrategy):
             validation_type=self.name,
             details=checks,
             error_message=None if has_protection else "No persona enforcement mechanism detected",
+        )
+
+
+class CoordinationDeadlockValidator(ValidationStrategy):
+    """Validates coordination/deadlock prevention fixes."""
+
+    @property
+    def name(self) -> str:
+        return "coordination_deadlock_validation"
+
+    def applies_to(self, category: FailureCategory, fix: AppliedFix) -> bool:
+        return category == FailureCategory.COORDINATION_DEADLOCK
+
+    async def validate(
+        self,
+        applied_fix: AppliedFix,
+        workflow_runner: Optional[Callable],
+        test_input: Optional[Dict[str, Any]],
+    ) -> ValidationResult:
+        modified = applied_fix.modified_state
+        settings = modified.get("settings", {})
+
+        checks = {
+            "has_error_workflow": bool(settings.get("errorWorkflow")),
+            "has_timeout": "executionTimeout" in settings,
+            "has_retry_config": bool(settings.get("retry", {}).get("enabled")),
+            "has_deadlock_prevention": settings.get("deadlock_prevention", {}).get("enabled", False),
+        }
+
+        has_protection = any(checks.values())
+
+        return ValidationResult(
+            success=has_protection,
+            validation_type=self.name,
+            details=checks,
+            error_message=None if has_protection else "No deadlock prevention mechanism detected",
         )
 
 

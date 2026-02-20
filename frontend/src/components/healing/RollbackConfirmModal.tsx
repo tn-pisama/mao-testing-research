@@ -1,5 +1,6 @@
 'use client'
 
+import { useEffect } from 'react'
 import { X, AlertTriangle, RotateCcw, Loader2 } from 'lucide-react'
 import { Button } from '../ui/Button'
 
@@ -22,10 +23,19 @@ export function RollbackConfirmModal({
   fixType,
   isRollingBack = false
 }: RollbackConfirmModalProps) {
+  useEffect(() => {
+    if (!isOpen) return
+    const handleKeyDown = (e: KeyboardEvent) => {
+      if (e.key === 'Escape') onClose()
+    }
+    document.addEventListener('keydown', handleKeyDown)
+    return () => document.removeEventListener('keydown', handleKeyDown)
+  }, [isOpen, onClose])
+
   if (!isOpen) return null
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center">
+    <div className="fixed inset-0 z-50 flex items-center justify-center" role="dialog" aria-modal="true" aria-labelledby="rollback-modal-title">
       {/* Backdrop */}
       <div
         className="absolute inset-0 bg-black/60 backdrop-blur-sm"
@@ -40,11 +50,12 @@ export function RollbackConfirmModal({
             <div className="p-2 bg-amber-500/20 rounded-lg">
               <RotateCcw size={20} className="text-amber-400" />
             </div>
-            <h2 className="text-lg font-semibold text-white">Confirm Rollback</h2>
+            <h2 id="rollback-modal-title" className="text-lg font-semibold text-white">Confirm Rollback</h2>
           </div>
           <button
             onClick={onClose}
             className="p-2 hover:bg-slate-800 rounded-lg transition-colors"
+            aria-label="Close dialog"
           >
             <X size={20} className="text-slate-400" />
           </button>

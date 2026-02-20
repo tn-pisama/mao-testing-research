@@ -188,11 +188,96 @@ class TestManualApprovalFlow:
     ):
         """Test approving and applying fixes."""
         result = await healing_engine_manual.heal(loop_detection, langgraph_workflow)
-        
+
         assert result.status == HealingStatus.PENDING
-        
+
         fix_ids = [f["id"] for f in result.metadata.get("fix_suggestions", [])]
-        
+
         if fix_ids:
             approved = healing_engine_manual.approve_and_apply(result.id, fix_ids[:1])
             assert approved.status == HealingStatus.SUCCESS
+
+
+class TestFullLifecycle:
+    """End-to-end test: detect → heal → verify → promote (with rollback)."""
+
+    @pytest.mark.asyncio
+    async def test_detect_heal_verify_promote(
+        self,
+        healing_engine,
+        langgraph_workflow,
+        loop_detection,
+    ):
+        """Full pipeline: detect, heal, verify level 1, then rollback."""
+        from app.healing.verification import VerificationOrchestrator
+
+        # Step 1: Heal
+        result = await healing_engine.heal(loop_detection, langgraph_workflow)
+        assert result.is_successful
+        assert len(result.applied_fixes) > 0
+
+        # Step 2: Verify level 1
+        orchestrator = VerificationOrchestrator()
+        first_fix = result.applied_fixes[0]
+        verification = await orchestrator.verify_level1(
+            detection_type="infinite_loop",
+            original_confidence=0.85,
+            original_state=langgraph_workflow,
+            applied_fixes={
+                "fix_applied": {"id": first_fix.id, "fix_type": first_fix.fix_type},
+                "workflow_id": "wf-lifecycle-test",
+            },
+        )
+        assert verification.level == 1
+        assert verification.before_confidence == 0.85
+        assert verification.after_confidence == 0.0
+        assert len(verification.config_checks) >= 2  # config + regression at minimum
+
+        # Step 3: Verify passes (loop protection should be in the fix)
+        loop_check = next(
+            (c for c in verification.config_checks if c.validation_type == "loop_prevention_validation"),
+            None,
+        )
+        assert loop_check is not None
+
+        # Step 4: Rollback
+        rolled_back = healing_engine.rollback(result.id)
+        assert rolled_back == langgraph_workflow
+        assert "loop_prevention" not in rolled_back.get("settings", {})
+
+    @pytest.mark.asyncio
+    async def test_detect_heal_verify_multiple_types(
+        self,
+        healing_engine,
+        workflow_factory,
+        detection_factory,
+    ):
+        """Verify works across different detection types."""
+        from app.healing.verification import VerificationOrchestrator
+
+        orchestrator = VerificationOrchestrator()
+        test_cases = [
+            (detection_factory.infinite_loop(), "infinite_loop", "loop_prevention_validation"),
+            (detection_factory.state_corruption(), "state_corruption", "state_integrity_validation"),
+            (detection_factory.persona_drift(), "persona_drift", "persona_consistency_validation"),
+        ]
+
+        for detection, det_type, expected_check in test_cases:
+            workflow = workflow_factory.create_workflow("langgraph", "normal")
+            result = await healing_engine.heal(detection, workflow)
+            assert result.is_successful, f"Healing failed for {det_type}"
+
+            first_fix = result.applied_fixes[0]
+            verification = await orchestrator.verify_level1(
+                detection_type=det_type,
+                original_confidence=0.8,
+                original_state=workflow,
+                applied_fixes={
+                    "fix_applied": {"id": first_fix.id, "fix_type": first_fix.fix_type},
+                    "workflow_id": f"wf-{det_type}",
+                },
+            )
+            check_types = [c.validation_type for c in verification.config_checks]
+            assert expected_check in check_types, (
+                f"Expected {expected_check} for {det_type}, got {check_types}"
+            )

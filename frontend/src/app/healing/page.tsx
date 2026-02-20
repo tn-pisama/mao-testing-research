@@ -89,8 +89,16 @@ export default function HealingPage() {
       const api = createApiClient(token, tenantId)
 
       const [healingsRes, connectionsRes, metricsRes] = await Promise.all([
-        api.listHealingRecords({ perPage: 50 }).catch(() => ({ items: [], total: 0, page: 1, per_page: 50 })),
-        api.listN8nConnections().catch(() => ({ items: [], total: 0 })),
+        api.listHealingRecords({ perPage: 50 }).catch((err) => {
+          console.error('Failed to fetch healings:', err)
+          toast.error('Could not load healing records')
+          return { items: [], total: 0, page: 1, per_page: 50 }
+        }),
+        api.listN8nConnections().catch((err) => {
+          console.error('Failed to fetch connections:', err)
+          toast.error('Could not load n8n connections')
+          return { items: [], total: 0 }
+        }),
         api.getVerificationMetrics().catch(() => null),
       ])
 
@@ -108,6 +116,16 @@ export default function HealingPage() {
   useEffect(() => {
     fetchData()
   }, [fetchData])
+
+  // Auto-poll every 15s when there are active healings
+  useEffect(() => {
+    const hasActive = healings.some(
+      h => h.status === 'in_progress' || h.deployment_stage === 'staged'
+    )
+    if (!hasActive) return
+    const interval = setInterval(fetchData, 15_000)
+    return () => clearInterval(interval)
+  }, [healings, fetchData])
 
   const fetchVersions = useCallback(async () => {
     if (!tenantId || !selectedWorkflowId || !selectedConnectionId) {
@@ -158,6 +176,7 @@ export default function HealingPage() {
 
   const handleReject = async (healingId: string) => {
     if (!tenantId) return
+    if (!window.confirm('Reject this fix? The original workflow will be restored.')) return
     try {
       const token = await getToken()
       const api = createApiClient(token, tenantId)
@@ -212,10 +231,15 @@ export default function HealingPage() {
       const token = await getToken()
       const api = createApiClient(token, tenantId)
       await api.rollbackHealing(rollbackModal.healingId)
+      toast.success('Fix rolled back', {
+        description: 'The original workflow has been restored.',
+      })
       setRollbackModal({ isOpen: false, healingId: '' })
       await fetchData()
-    } catch (err) {
-      console.error('Failed to rollback:', err)
+    } catch (err: any) {
+      toast.error('Rollback failed', {
+        description: err.message || 'Failed to roll back the fix.',
+      })
     }
   }
 
@@ -226,21 +250,32 @@ export default function HealingPage() {
       const token = await getToken()
       const api = createApiClient(token, tenantId)
       await api.approveHealing(healingId, { approved: true, notes: notes || undefined })
+      toast.success('Healing approved', {
+        description: 'The fix has been approved and healing has started.',
+      })
       await fetchData()
-    } catch (err) {
-      console.error('Failed to approve healing:', err)
+    } catch (err: any) {
+      toast.error('Approval failed', {
+        description: err.message || 'Failed to approve healing.',
+      })
     }
   }
 
   const handleRejectHealing = async (healingId: string, notes: string) => {
     if (!tenantId) return
+    if (!window.confirm('Reject this healing request?')) return
     try {
       const token = await getToken()
       const api = createApiClient(token, tenantId)
       await api.approveHealing(healingId, { approved: false, notes: notes || undefined })
+      toast.success('Healing rejected', {
+        description: 'The healing request has been rejected.',
+      })
       await fetchData()
-    } catch (err) {
-      console.error('Failed to reject healing:', err)
+    } catch (err: any) {
+      toast.error('Rejection failed', {
+        description: err.message || 'Failed to reject healing.',
+      })
     }
   }
 
@@ -250,14 +285,20 @@ export default function HealingPage() {
 
   const handleRestoreVersion = async (versionId: string) => {
     if (!tenantId) return
+    if (!window.confirm('Restore this version? The current workflow will be overwritten.')) return
     try {
       const token = await getToken()
       const api = createApiClient(token, tenantId)
       await api.restoreVersion(versionId)
+      toast.success('Version restored', {
+        description: 'Workflow has been restored to the selected version.',
+      })
       await fetchVersions()
       await fetchData()
-    } catch (err) {
-      console.error('Failed to restore version:', err)
+    } catch (err: any) {
+      toast.error('Restore failed', {
+        description: err.message || 'Failed to restore version.',
+      })
     }
   }
 
@@ -270,11 +311,16 @@ export default function HealingPage() {
       const token = await getToken()
       const api = createApiClient(token, tenantId)
       await api.createN8nConnection(newConnection)
+      toast.success('Connection added', {
+        description: `${newConnection.name} has been configured.`,
+      })
       setNewConnection({ name: '', instance_url: '', api_key: '' })
       setShowAddConnection(false)
       await fetchData()
-    } catch (err) {
-      console.error('Failed to add connection:', err)
+    } catch (err: any) {
+      toast.error('Failed to add connection', {
+        description: err.message || 'Check the URL and API key.',
+      })
     } finally {
       setIsAddingConnection(false)
     }
@@ -287,9 +333,14 @@ export default function HealingPage() {
       const token = await getToken()
       const api = createApiClient(token, tenantId)
       await api.testN8nConnection(connectionId)
+      toast.success('Connection verified', {
+        description: 'Your n8n instance is reachable.',
+      })
       await fetchData()
-    } catch (err) {
-      console.error('Failed to test connection:', err)
+    } catch (err: any) {
+      toast.error('Connection test failed', {
+        description: err.message || 'Unable to connect to n8n instance.',
+      })
     } finally {
       setTestingConnection(null)
     }
@@ -297,14 +348,18 @@ export default function HealingPage() {
 
   const handleDeleteConnection = async (connectionId: string) => {
     if (!tenantId) return
+    if (!window.confirm('Delete this connection?')) return
     setDeletingConnection(connectionId)
     try {
       const token = await getToken()
       const api = createApiClient(token, tenantId)
       await api.deleteN8nConnection(connectionId)
+      toast.success('Connection deleted')
       await fetchData()
-    } catch (err) {
-      console.error('Failed to delete connection:', err)
+    } catch (err: any) {
+      toast.error('Failed to delete connection', {
+        description: err.message || 'Could not delete the connection.',
+      })
     } finally {
       setDeletingConnection(null)
     }

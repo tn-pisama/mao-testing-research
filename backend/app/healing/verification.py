@@ -71,8 +71,9 @@ class VerificationOrchestrator:
                           and re-runs detection to compare confidence.
     """
 
-    def __init__(self):
+    def __init__(self, verification_timeout: float = 60.0):
         self._validator = FixValidator()
+        self._verification_timeout = verification_timeout
 
     async def verify_level1(
         self,
@@ -93,7 +94,9 @@ class VerificationOrchestrator:
             original_state: Workflow state before fix
             applied_fixes: Dict with fix details including diff
         """
-        # Normalize confidence to 0-1 range
+        # Normalize confidence to 0-1 range (handle None from nullable DB column)
+        if original_confidence is None:
+            original_confidence = 0.0
         before = original_confidence / 100.0 if original_confidence > 1 else original_confidence
 
         category = _detection_type_to_category(detection_type)
@@ -179,7 +182,7 @@ class VerificationOrchestrator:
                 if execution_id:
                     # Wait for completion
                     execution = await n8n_client.wait_for_execution(
-                        str(execution_id), timeout=60.0
+                        str(execution_id), timeout=self._verification_timeout
                     )
 
                     execution_status = execution.get("status", "unknown")

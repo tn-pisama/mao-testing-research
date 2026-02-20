@@ -22,6 +22,27 @@ logger = logging.getLogger(__name__)
 
 router = APIRouter(prefix="/healing", tags=["healing"])
 
+# Valid status transitions for healing records
+VALID_TRANSITIONS = {
+    "pending": {"in_progress", "rejected"},
+    "in_progress": {"applied", "staged", "failed"},
+    "staged": {"applied", "rolled_back", "rejected"},
+    "applied": {"rolled_back"},
+    "failed": set(),
+    "rolled_back": set(),
+    "rejected": set(),
+}
+
+
+def _check_transition(current: str, target: str, healing_id: str):
+    """Validate healing status transition."""
+    allowed = VALID_TRANSITIONS.get(current, set())
+    if target not in allowed:
+        raise HTTPException(
+            status_code=400,
+            detail=f"Cannot transition from '{current}' to '{target}' for healing {healing_id}",
+        )
+
 
 # Request/Response schemas
 class TriggerHealingRequest(BaseModel):
@@ -129,8 +150,8 @@ async def trigger_healing(
     detection_dict = {
         "id": str(detection.id),
         "detection_type": detection.detection_type,
-        "method": detection.method,
-        "details": detection.details,
+        "method": detection.method or "",
+        "details": detection.details or {},
     }
 
     generator = get_fix_generator()
@@ -255,11 +276,8 @@ async def approve_healing(
     if not healing:
         raise HTTPException(status_code=404, detail="Healing record not found")
 
-    if healing.status != "pending":
-        raise HTTPException(
-            status_code=400,
-            detail=f"Cannot approve healing with status '{healing.status}'"
-        )
+    target = "in_progress" if request.approved else "rejected"
+    _check_transition(healing.status, target, str(healing.id))
 
     if request.approved:
         healing.status = "in_progress"
@@ -321,8 +339,7 @@ async def rollback_healing(
             detail="Rollback not available for this healing record"
         )
 
-    if healing.status == "rolled_back":
-        raise HTTPException(status_code=400, detail="Healing already rolled back")
+    _check_transition(healing.status, "rolled_back", str(healing.id))
 
     previous_status = healing.status
     n8n_rolled_back = False
@@ -510,13 +527,10 @@ async def complete_healing(
     if not healing:
         raise HTTPException(status_code=404, detail="Healing record not found")
 
-    if healing.status not in ("in_progress", "pending"):
-        raise HTTPException(
-            status_code=400,
-            detail=f"Cannot complete healing with status '{healing.status}'"
-        )
+    target = "applied" if validation_passed else "failed"
+    _check_transition(healing.status, target, str(healing.id))
 
-    healing.status = "applied" if validation_passed else "failed"
+    healing.status = target
     healing.completed_at = datetime.utcnow()
     healing.validation_status = "passed" if validation_passed else "failed"
 
@@ -812,9 +826,14 @@ async def apply_fix_to_n8n(
     if not trace:
         raise HTTPException(status_code=404, detail="Associated trace not found")
 
-    # Get workflow ID from trace session_id (n8n execution ID format)
-    # The workflow ID should be in the trace metadata or session
-    workflow_id = trace.session_id
+    # Extract workflow ID: check trace metadata first, fall back to session_id
+    workflow_id = None
+    if hasattr(trace, "metadata") and isinstance(trace.metadata, dict):
+        workflow_id = trace.metadata.get("workflow_id") or trace.metadata.get("n8n_workflow_id")
+    if not workflow_id:
+        workflow_id = trace.session_id
+    if not workflow_id:
+        raise HTTPException(status_code=400, detail="Cannot determine workflow ID from trace. Ensure trace metadata includes workflow_id.")
 
     # Get the n8n connection
     conn_result = await db.execute(
@@ -835,8 +854,8 @@ async def apply_fix_to_n8n(
     detection_dict = {
         "id": str(detection.id),
         "detection_type": detection.detection_type,
-        "method": detection.method,
-        "details": detection.details,
+        "method": detection.method or "",
+        "details": detection.details or {},
     }
 
     generator = get_fix_generator()
@@ -1155,6 +1174,7 @@ async def promote_staged_fix(
         )
 
     # Update healing record
+    _check_transition(healing.status, "applied", str(healing.id))
     healing.deployment_stage = "promoted"
     healing.promoted_at = datetime.utcnow()
     healing.status = "applied"
@@ -1299,6 +1319,7 @@ async def reject_staged_fix(
         )
 
     # Update healing record
+    _check_transition(healing.status, "rolled_back", str(healing.id))
     healing.deployment_stage = "rejected"
     healing.status = "rolled_back"
     healing.rolled_back_at = datetime.utcnow()
@@ -1568,7 +1589,7 @@ async def verify_fix(
     )
     detection = detection_result.scalar_one_or_none()
 
-    original_confidence = detection.confidence if detection else 0
+    original_confidence = (detection.confidence if detection and detection.confidence is not None else 0)
     detection_type = detection.detection_type if detection else healing.fix_type
 
     orchestrator = VerificationOrchestrator()

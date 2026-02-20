@@ -287,3 +287,58 @@ class TestVerificationResult:
         assert d["passed"] is False
         assert d["confidence_reduction"] == 0.0
         assert d["error"] == "Execution verification failed"
+
+
+# --- Edge Case Tests ---
+
+
+class TestEdgeCases:
+    @pytest.mark.asyncio
+    async def test_null_confidence_handled(self, orchestrator):
+        """None confidence is normalized to 0.0 without crashing."""
+        original = _make_original_state()
+        result = await orchestrator.verify_level1(
+            detection_type="infinite_loop",
+            original_confidence=None,
+            original_state=original,
+            applied_fixes=_make_applied_fixes(),
+        )
+        assert result.before_confidence == 0.0
+        assert result.level == 1
+
+    @pytest.mark.asyncio
+    async def test_zero_confidence(self, orchestrator):
+        """Zero confidence is handled correctly (not divided)."""
+        original = _make_original_state()
+        result = await orchestrator.verify_level1(
+            detection_type="infinite_loop",
+            original_confidence=0,
+            original_state=original,
+            applied_fixes=_make_applied_fixes(),
+        )
+        assert result.before_confidence == 0.0
+
+    @pytest.mark.asyncio
+    async def test_empty_original_state(self, orchestrator):
+        """Empty original state dict doesn't crash verification."""
+        result = await orchestrator.verify_level1(
+            detection_type="infinite_loop",
+            original_confidence=0.8,
+            original_state={},
+            applied_fixes=_make_applied_fixes(),
+        )
+        assert result.level == 1
+        assert len(result.config_checks) > 0
+
+    @pytest.mark.asyncio
+    async def test_coordination_failure_category(self, orchestrator):
+        """Coordination deadlock detection type runs the deadlock validator."""
+        original = _make_original_state()
+        result = await orchestrator.verify_level1(
+            detection_type="coordination_deadlock",
+            original_confidence=0.75,
+            original_state=original,
+            applied_fixes=_make_applied_fixes("deadlock_prevention"),
+        )
+        check_types = [c.validation_type for c in result.config_checks]
+        assert "coordination_deadlock_validation" in check_types

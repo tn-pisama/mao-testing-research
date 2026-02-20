@@ -129,6 +129,7 @@ export function StagedFixBanner({ healings, onPromote, onReject, onVerify }: Sta
                 }
                 disabled={anyBusy}
                 className={isVerified(healing) ? 'text-green-400 border-green-500/30' : ''}
+                title="Level 1: Checks fix configuration without running the workflow"
               >
                 {isVerified(healing) ? 'Re-verify' : 'Verify'}
               </Button>

@@ -9,11 +9,13 @@ import {
   Upload,
   GitBranch,
   Loader2,
-  ExternalLink
+  ExternalLink,
+  Copy
 } from 'lucide-react'
 import { Card, CardHeader, CardTitle, CardContent } from '../ui/Card'
 import { Button } from '../ui/Button'
 import { Badge } from '../ui/Badge'
+import { toast } from 'sonner'
 import type { WorkflowVersion } from '@/lib/api'
 
 interface VersionHistoryProps {
@@ -187,13 +189,16 @@ export function VersionHistory({
                             </p>
                           )}
                           {version.healing_id && (
-                            <a
-                              href={`/healing?id=${version.healing_id}`}
+                            <button
+                              onClick={() => {
+                                navigator.clipboard.writeText(version.healing_id!)
+                                toast.info('Healing ID copied', { description: version.healing_id })
+                              }}
                               className="inline-flex items-center gap-1 text-xs text-blue-400 hover:text-blue-300"
                             >
-                              <ExternalLink size={12} />
-                              View healing record
-                            </a>
+                              <Copy size={12} />
+                              Healing: {version.healing_id.slice(0, 8)}...
+                            </button>
                           )}
                         </div>
 
