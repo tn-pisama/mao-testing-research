@@ -985,6 +985,10 @@ async def apply_fix_to_n8n(
             status="failed",
             error=f"n8n API error: {e.message}",
         )
+    except Exception as e:
+        import traceback
+        logger.error(f"Unexpected error in apply-to-n8n: {traceback.format_exc()}")
+        raise
 
 
 def _apply_fix_to_workflow(

@@ -23,7 +23,10 @@ class Token(BaseModel):
 
 def verify_api_key(plain_key: str, hashed_key: str) -> bool:
     """Verify API key using bcrypt."""
-    return bcrypt.checkpw(plain_key.encode("utf-8"), hashed_key.encode("utf-8"))
+    try:
+        return bcrypt.checkpw(plain_key.encode("utf-8"), hashed_key.encode("utf-8"))
+    except (ValueError, TypeError):
+        return False
 
 
 def hash_api_key(key: str) -> str:

@@ -135,7 +135,10 @@ class N8nApiClient:
             Updated workflow data
         """
         logger.info(f"Updating workflow {workflow_id} in n8n")
-        return await self._request("PUT", f"/workflows/{workflow_id}", json_data=workflow_data)
+        # Only send fields that n8n PUT /workflows accepts
+        allowed_fields = {"name", "nodes", "connections", "settings"}
+        cleaned_data = {k: v for k, v in workflow_data.items() if k in allowed_fields}
+        return await self._request("PUT", f"/workflows/{workflow_id}", json_data=cleaned_data)
 
     async def activate_workflow(self, workflow_id: str) -> Dict[str, Any]:
         """
