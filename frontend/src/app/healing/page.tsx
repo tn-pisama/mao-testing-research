@@ -15,8 +15,10 @@ import {
   createApiClient,
   HealingRecord,
   N8nConnection,
-  WorkflowVersion
+  WorkflowVersion,
+  VerificationMetrics
 } from '@/lib/api'
+import { toast } from 'sonner'
 import {
   Sparkles,
   Settings,
@@ -55,6 +57,7 @@ export default function HealingPage() {
   const [versions, setVersions] = useState<WorkflowVersion[]>([])
   const [selectedWorkflowId, setSelectedWorkflowId] = useState<string>('')
   const [selectedConnectionId, setSelectedConnectionId] = useState<string>('')
+  const [verificationMetrics, setVerificationMetrics] = useState<VerificationMetrics | null>(null)
 
   // Modals
   const [showAddConnection, setShowAddConnection] = useState(false)
@@ -85,13 +88,15 @@ export default function HealingPage() {
       const token = await getToken()
       const api = createApiClient(token, tenantId)
 
-      const [healingsRes, connectionsRes] = await Promise.all([
+      const [healingsRes, connectionsRes, metricsRes] = await Promise.all([
         api.listHealingRecords({ perPage: 50 }).catch(() => ({ items: [], total: 0, page: 1, per_page: 50 })),
-        api.listN8nConnections().catch(() => ({ items: [], total: 0 }))
+        api.listN8nConnections().catch(() => ({ items: [], total: 0 })),
+        api.getVerificationMetrics().catch(() => null),
       ])
 
       setHealings(healingsRes.items || [])
       setConnections(connectionsRes.items || [])
+      setVerificationMetrics(metricsRes)
     } catch (err) {
       console.error('Failed to fetch healing data:', err)
       setError('Failed to load healing data')
@@ -134,9 +139,20 @@ export default function HealingPage() {
       const token = await getToken()
       const api = createApiClient(token, tenantId)
       await api.promoteHealing(healingId)
+      toast.success('Fix promoted', {
+        description: 'The fix is now live in your workflow.',
+      })
       await fetchData()
-    } catch (err) {
-      console.error('Failed to promote:', err)
+    } catch (err: any) {
+      if (err.status === 400 && err.message?.includes('erification')) {
+        toast.warning('Verification required', {
+          description: 'Please verify the fix before promoting it to production.',
+        })
+      } else {
+        toast.error('Promotion failed', {
+          description: err.message || 'Failed to promote the fix.',
+        })
+      }
     }
   }
 
@@ -146,21 +162,37 @@ export default function HealingPage() {
       const token = await getToken()
       const api = createApiClient(token, tenantId)
       await api.rejectHealing(healingId)
+      toast.success('Fix rejected', {
+        description: 'The staged fix has been rejected.',
+      })
       await fetchData()
-    } catch (err) {
-      console.error('Failed to reject:', err)
+    } catch (err: any) {
+      toast.error('Rejection failed', {
+        description: err.message || 'Failed to reject the fix.',
+      })
     }
   }
 
-  const handleVerify = async (healingId: string) => {
+  const handleVerify = async (healingId: string, level: number = 1) => {
     if (!tenantId) return
     try {
       const token = await getToken()
       const api = createApiClient(token, tenantId)
-      await api.verifyHealing(healingId, 1)
+      const result = await api.verifyHealing(healingId, level)
+      if (result.passed) {
+        toast.success('Verification passed', {
+          description: `Level ${result.level} checks passed. Confidence reduced by ${(result.confidence_reduction * 100).toFixed(0)}%.`,
+        })
+      } else {
+        toast.error('Verification failed', {
+          description: result.error || `${result.config_checks.filter((c: any) => !c.success).length} check(s) did not pass.`,
+        })
+      }
       await fetchData()
-    } catch (err) {
-      console.error('Failed to verify:', err)
+    } catch (err: any) {
+      toast.error('Verification error', {
+        description: err.message || 'Failed to verify the fix.',
+      })
     }
   }
 
@@ -357,6 +389,7 @@ export default function HealingPage() {
             <HealingDashboard
               healings={healings}
               isLoading={isLoading}
+              verificationMetrics={verificationMetrics}
               onPromote={handlePromote}
               onReject={handleReject}
               onRollback={handleRollback}

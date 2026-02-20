@@ -32,7 +32,16 @@ async function fetchApi<T>(endpoint: string, options: FetchOptions = {}): Promis
   })
 
   if (!response.ok) {
-    throw new Error(`API Error: ${response.status}`)
+    let detail = `API Error: ${response.status}`
+    try {
+      const body = await response.json()
+      if (body.detail) detail = body.detail
+    } catch {
+      // non-JSON response, keep status-only message
+    }
+    const err = new Error(detail) as Error & { status: number }
+    err.status = response.status
+    throw err
   }
 
   return response.json()
@@ -1122,7 +1131,7 @@ export function createApiClient(token?: string | null, tenantId?: string | null)
     async verifyHealing(healingId: string, level: number = 1) {
       return fetchApi<VerifyResponse>(
         `/tenants/{tenant_id}/healing/${healingId}/verify`,
-        { ...opts, method: 'POST', body: JSON.stringify({ level }) }
+        { ...opts, method: 'POST', body: { level } }
       )
     },
 

@@ -13,7 +13,8 @@ import {
   Play,
   X,
   ExternalLink,
-  ShieldCheck
+  ShieldCheck,
+  FlaskConical
 } from 'lucide-react'
 import { Card, CardContent } from '../ui/Card'
 import { Badge } from '../ui/Badge'
@@ -26,7 +27,7 @@ interface HealingCardProps {
   onPromote?: (healingId: string) => Promise<void>
   onReject?: (healingId: string) => Promise<void>
   onRollback?: (healingId: string) => Promise<void>
-  onVerify?: (healingId: string) => Promise<void>
+  onVerify?: (healingId: string, level?: number) => Promise<void>
   isExpanded?: boolean
 }
 
@@ -112,11 +113,11 @@ export function HealingCard({
     }
   }
 
-  const handleVerify = async () => {
+  const handleVerify = async (level: number = 1) => {
     if (!onVerify) return
     setIsVerifying(true)
     try {
-      await onVerify(healing.id)
+      await onVerify(healing.id, level)
     } finally {
       setIsVerifying(false)
     }
@@ -368,16 +369,31 @@ export function HealingCard({
               {showPromoteReject && (
                 <>
                   {onVerify && (
-                    <Button
-                      variant="ghost"
-                      size="sm"
-                      onClick={handleVerify}
-                      isLoading={isVerifying}
-                      leftIcon={<ShieldCheck size={14} />}
-                      className={isVerified ? 'text-green-400' : ''}
-                    >
-                      {isVerified ? 'Re-verify' : 'Verify Fix'}
-                    </Button>
+                    <>
+                      <Button
+                        variant="ghost"
+                        size="sm"
+                        onClick={() => handleVerify(1)}
+                        isLoading={isVerifying}
+                        leftIcon={<ShieldCheck size={14} />}
+                        className={isVerified ? 'text-green-400' : ''}
+                      >
+                        {isVerified ? 'Re-verify' : 'Verify Fix'}
+                      </Button>
+                      {healing.n8n_connection_id && healing.workflow_id && (
+                        <Button
+                          variant="ghost"
+                          size="sm"
+                          onClick={() => handleVerify(2)}
+                          isLoading={isVerifying}
+                          leftIcon={<FlaskConical size={14} />}
+                          className="text-blue-400"
+                          title="Run the workflow and verify the fix works in practice"
+                        >
+                          Run Test
+                        </Button>
+                      )}
+                    </>
                   )}
                   <Button
                     variant="success"

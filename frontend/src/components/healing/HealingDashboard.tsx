@@ -16,7 +16,7 @@ import { Button } from '../ui/Button'
 import { Tabs, TabsList, TabsTrigger, TabsContent } from '../ui/Tabs'
 import { HealingCard } from './HealingCard'
 import { StagedFixBanner } from './StagedFixBanner'
-import type { HealingRecord } from '@/lib/api'
+import type { HealingRecord, VerificationMetrics } from '@/lib/api'
 
 interface HealingDashboardProps {
   healings: HealingRecord[]
@@ -24,8 +24,9 @@ interface HealingDashboardProps {
   onPromote: (healingId: string) => Promise<void>
   onReject: (healingId: string) => Promise<void>
   onRollback: (healingId: string) => Promise<void>
-  onVerify: (healingId: string) => Promise<void>
+  onVerify: (healingId: string, level?: number) => Promise<void>
   onRefresh: () => void
+  verificationMetrics?: VerificationMetrics | null
 }
 
 interface StatsCardProps {
@@ -65,6 +66,7 @@ function StatsCard({ title, value, icon: Icon, color }: StatsCardProps) {
 export function HealingDashboard({
   healings,
   isLoading = false,
+  verificationMetrics = null,
   onPromote,
   onReject,
   onRollback,
@@ -174,6 +176,66 @@ export function HealingDashboard({
           color="red"
         />
       </div>
+
+      {/* Verification Metrics */}
+      {verificationMetrics && verificationMetrics.total_verifications > 0 && (
+        <Card>
+          <CardContent className="p-4">
+            <div className="flex items-center gap-2 mb-3">
+              <ShieldCheck size={16} className="text-green-400" />
+              <p className="text-sm font-medium text-white">Verification Metrics</p>
+            </div>
+            <div className="grid grid-cols-5 gap-4 text-sm">
+              <div>
+                <p className="text-xs text-slate-500">Total</p>
+                <p className="text-lg font-bold text-white">{verificationMetrics.total_verifications}</p>
+              </div>
+              <div>
+                <p className="text-xs text-slate-500">Passed</p>
+                <p className="text-lg font-bold text-green-400">{verificationMetrics.passed}</p>
+              </div>
+              <div>
+                <p className="text-xs text-slate-500">Failed</p>
+                <p className="text-lg font-bold text-red-400">{verificationMetrics.failed}</p>
+              </div>
+              <div>
+                <p className="text-xs text-slate-500">Pass Rate</p>
+                <p className="text-lg font-bold text-white">{(verificationMetrics.pass_rate * 100).toFixed(0)}%</p>
+              </div>
+              <div>
+                <p className="text-xs text-slate-500">Avg Confidence Reduction</p>
+                <p className="text-lg font-bold text-green-400">
+                  {(verificationMetrics.average_confidence_reduction * 100).toFixed(0)}%
+                </p>
+              </div>
+            </div>
+            {verificationMetrics.by_detection_type && Object.keys(verificationMetrics.by_detection_type).length > 0 && (
+              <div className="mt-3 pt-3 border-t border-slate-700">
+                <p className="text-xs text-slate-500 mb-2">By Detection Type</p>
+                <div className="flex flex-wrap gap-2">
+                  {Object.entries(verificationMetrics.by_detection_type).map(([type, data]) => (
+                    <span
+                      key={type}
+                      className={`inline-flex items-center gap-1.5 px-2.5 py-1 rounded text-xs ${
+                        data.pass_rate >= 0.8
+                          ? 'bg-green-500/20 text-green-400'
+                          : data.pass_rate >= 0.5
+                            ? 'bg-amber-500/20 text-amber-400'
+                            : 'bg-red-500/20 text-red-400'
+                      }`}
+                    >
+                      <span className="font-medium">{type.replace(/_/g, ' ')}</span>
+                      <span className="opacity-70">
+                        {data.passed}/{data.total} ({(data.pass_rate * 100).toFixed(0)}%)
+                      </span>
+                    </span>
+                  ))}
+                </div>
+              </div>
+            )}
+          </CardContent>
+        </Card>
+      )}
 
       {/* Staged Fix Banner */}
       <StagedFixBanner

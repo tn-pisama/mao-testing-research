@@ -1,7 +1,7 @@
 'use client'
 
 import { useState } from 'react'
-import { AlertTriangle, Play, X, Clock, ExternalLink, Loader2, ShieldCheck, CheckCircle2, XCircle } from 'lucide-react'
+import { AlertTriangle, Play, X, Clock, ExternalLink, Loader2, ShieldCheck, CheckCircle2, XCircle, FlaskConical } from 'lucide-react'
 import { Button } from '../ui/Button'
 import type { HealingRecord } from '@/lib/api'
 
@@ -9,7 +9,7 @@ interface StagedFixBannerProps {
   healings: HealingRecord[]
   onPromote: (healingId: string) => Promise<void>
   onReject: (healingId: string) => Promise<void>
-  onVerify: (healingId: string) => Promise<void>
+  onVerify: (healingId: string, level?: number) => Promise<void>
 }
 
 function formatTime(isoString: string | null): string {
@@ -55,10 +55,10 @@ export function StagedFixBanner({ healings, onPromote, onReject, onVerify }: Sta
     }
   }
 
-  const handleVerify = async (healingId: string) => {
+  const handleVerify = async (healingId: string, level: number = 1) => {
     setVerifyingId(healingId)
     try {
-      await onVerify(healingId)
+      await onVerify(healingId, level)
     } finally {
       setVerifyingId(null)
     }
@@ -120,7 +120,7 @@ export function StagedFixBanner({ healings, onPromote, onReject, onVerify }: Sta
               <Button
                 variant="ghost"
                 size="sm"
-                onClick={() => handleVerify(healing.id)}
+                onClick={() => handleVerify(healing.id, 1)}
                 isLoading={verifyingId === healing.id}
                 leftIcon={verifyingId === healing.id
                   ? <Loader2 className="animate-spin" size={14} />
@@ -131,6 +131,21 @@ export function StagedFixBanner({ healings, onPromote, onReject, onVerify }: Sta
               >
                 {isVerified(healing) ? 'Re-verify' : 'Verify'}
               </Button>
+              {/* Level 2: Run Test - only when n8n connection exists */}
+              {healing.n8n_connection_id && healing.workflow_id && (
+                <Button
+                  variant="ghost"
+                  size="sm"
+                  onClick={() => handleVerify(healing.id, 2)}
+                  isLoading={verifyingId === healing.id}
+                  leftIcon={<FlaskConical size={14} />}
+                  disabled={anyBusy}
+                  className="text-blue-400"
+                  title="Run the workflow and verify the fix works in practice"
+                >
+                  Run Test
+                </Button>
+              )}
               {/* Promote - enabled only after verification */}
               <Button
                 variant="success"
