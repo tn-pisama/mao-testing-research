@@ -3,6 +3,7 @@
 import { useState } from 'react'
 import { AlertTriangle, Play, X, Clock, ExternalLink, Loader2, ShieldCheck, CheckCircle2, XCircle, FlaskConical } from 'lucide-react'
 import { Button } from '../ui/Button'
+import { PipelineStepper } from './PipelineStepper'
 import type { HealingRecord } from '@/lib/api'
 
 interface StagedFixBannerProps {
@@ -187,6 +188,11 @@ export function StagedFixBanner({ healings, onPromote, onReject, onVerify }: Sta
                 </Button>
               )}
             </div>
+          </div>
+
+          {/* Pipeline Progress */}
+          <div className="mt-3 pt-3 border-t border-amber-500/20">
+            <PipelineStepper healing={healing} />
           </div>
 
           {/* Verification results summary */}

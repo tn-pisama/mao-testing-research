@@ -20,6 +20,7 @@ import { Card, CardContent } from '../ui/Card'
 import { Badge } from '../ui/Badge'
 import { Button } from '../ui/Button'
 import { TermTooltip, getPlainEnglishStatus } from '../ui/Tooltip'
+import { PipelineStepper } from './PipelineStepper'
 import type { HealingRecord } from '@/lib/api'
 
 interface HealingCardProps {
@@ -209,6 +210,9 @@ export function HealingCard({
               </div>
               <p className="text-xs text-slate-400">{status.description}</p>
             </div>
+
+            {/* Pipeline Progress */}
+            <PipelineStepper healing={healing} />
 
             {/* Timeline - simple view of what happened */}
             <div className="grid grid-cols-2 gap-4 text-sm">
