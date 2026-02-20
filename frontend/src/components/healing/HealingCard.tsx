@@ -12,7 +12,8 @@ import {
   RotateCcw,
   Play,
   X,
-  ExternalLink
+  ExternalLink,
+  ShieldCheck
 } from 'lucide-react'
 import { Card, CardContent } from '../ui/Card'
 import { Badge } from '../ui/Badge'
@@ -25,6 +26,7 @@ interface HealingCardProps {
   onPromote?: (healingId: string) => Promise<void>
   onReject?: (healingId: string) => Promise<void>
   onRollback?: (healingId: string) => Promise<void>
+  onVerify?: (healingId: string) => Promise<void>
   isExpanded?: boolean
 }
 
@@ -65,12 +67,14 @@ export function HealingCard({
   onPromote,
   onReject,
   onRollback,
+  onVerify,
   isExpanded: initialExpanded = false
 }: HealingCardProps) {
   const [isExpanded, setIsExpanded] = useState(initialExpanded)
   const [isPromoting, setIsPromoting] = useState(false)
   const [isRejecting, setIsRejecting] = useState(false)
   const [isRollingBack, setIsRollingBack] = useState(false)
+  const [isVerifying, setIsVerifying] = useState(false)
 
   const status = statusConfig[healing.status] || statusConfig.pending
   const StatusIcon = status.icon
@@ -108,6 +112,17 @@ export function HealingCard({
     }
   }
 
+  const handleVerify = async () => {
+    if (!onVerify) return
+    setIsVerifying(true)
+    try {
+      await onVerify(healing.id)
+    } finally {
+      setIsVerifying(false)
+    }
+  }
+
+  const isVerified = healing.validation_status === 'passed'
   const showPromoteReject = healing.status === 'staged' || healing.deployment_stage === 'staged'
   const showRollback = healing.rollback_available &&
     (healing.status === 'applied' || healing.deployment_stage === 'promoted')
@@ -154,6 +169,18 @@ export function HealingCard({
               {deploymentStage && (
                 <span className={`text-xs px-2 py-1 rounded ${deploymentStage.color}`}>
                   {deploymentStage.label}
+                </span>
+              )}
+              {healing.validation_status === 'passed' && (
+                <span className="text-xs px-2 py-1 rounded bg-green-500/20 text-green-400 flex items-center gap-1">
+                  <ShieldCheck size={12} />
+                  Verified
+                </span>
+              )}
+              {healing.validation_status === 'failed' && (
+                <span className="text-xs px-2 py-1 rounded bg-red-500/20 text-red-400 flex items-center gap-1">
+                  <XCircle size={12} />
+                  Unverified
                 </span>
               )}
               <div className="flex items-center gap-1 text-xs text-slate-500">
@@ -228,6 +255,66 @@ export function HealingCard({
               </div>
             )}
 
+            {/* Verification Results */}
+            {healing.validation_results && Object.keys(healing.validation_results).length > 0 && (
+              <div className={`rounded-lg p-3 border ${
+                isVerified ? 'bg-green-500/10 border-green-500/20' : 'bg-red-500/10 border-red-500/20'
+              }`}>
+                <div className="flex items-center gap-2 mb-2">
+                  <ShieldCheck size={16} className={isVerified ? 'text-green-400' : 'text-red-400'} />
+                  <p className="text-xs font-medium text-white">
+                    Verification {isVerified ? 'Passed' : 'Failed'}
+                  </p>
+                  <Badge variant={isVerified ? 'success' : 'error'} size="sm">
+                    Level {healing.validation_results.level || 1}
+                  </Badge>
+                </div>
+                <div className="grid grid-cols-3 gap-3 text-xs">
+                  <div>
+                    <p className="text-slate-500">Before</p>
+                    <p className="text-white">
+                      {healing.validation_results.before_confidence != null
+                        ? `${(healing.validation_results.before_confidence * 100).toFixed(0)}% confidence`
+                        : 'N/A'}
+                    </p>
+                  </div>
+                  <div>
+                    <p className="text-slate-500">After</p>
+                    <p className={healing.validation_results.after_confidence === 0 ? 'text-green-400' : 'text-white'}>
+                      {healing.validation_results.after_confidence != null
+                        ? `${(healing.validation_results.after_confidence * 100).toFixed(0)}% confidence`
+                        : 'N/A'}
+                    </p>
+                  </div>
+                  <div>
+                    <p className="text-slate-500">Reduction</p>
+                    <p className="text-green-400">
+                      {healing.validation_results.confidence_reduction != null
+                        ? `${(healing.validation_results.confidence_reduction * 100).toFixed(0)}%`
+                        : 'N/A'}
+                    </p>
+                  </div>
+                </div>
+                {healing.validation_results.config_checks && (
+                  <div className="mt-2 flex items-center gap-2 flex-wrap">
+                    {healing.validation_results.config_checks.map((check: any, i: number) => (
+                      <span
+                        key={i}
+                        className={`inline-flex items-center gap-1 px-2 py-0.5 rounded text-xs ${
+                          check.success
+                            ? 'bg-green-500/20 text-green-400'
+                            : 'bg-red-500/20 text-red-400'
+                        }`}
+                      >
+                        {check.success ? <CheckCircle2 size={10} /> : <XCircle size={10} />}
+                        {check.validation_type.replace(/_/g, ' ')}
+                      </span>
+                    ))}
+                  </div>
+                )}
+              </div>
+            )}
+
             {/* Error Message - explain what went wrong */}
             {healing.error_message && (
               <div className="bg-red-500/10 border border-red-500/20 rounded-lg p-3">
@@ -280,12 +367,26 @@ export function HealingCard({
             <div className="flex items-center gap-2 pt-2 border-t border-slate-700">
               {showPromoteReject && (
                 <>
+                  {onVerify && (
+                    <Button
+                      variant="ghost"
+                      size="sm"
+                      onClick={handleVerify}
+                      isLoading={isVerifying}
+                      leftIcon={<ShieldCheck size={14} />}
+                      className={isVerified ? 'text-green-400' : ''}
+                    >
+                      {isVerified ? 'Re-verify' : 'Verify Fix'}
+                    </Button>
+                  )}
                   <Button
                     variant="success"
                     size="sm"
                     onClick={handlePromote}
                     isLoading={isPromoting}
                     leftIcon={<Play size={14} />}
+                    disabled={!isVerified}
+                    title={!isVerified ? 'Verify the fix first' : undefined}
                   >
                     Make it Live
                   </Button>

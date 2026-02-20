@@ -664,6 +664,43 @@ export interface RejectResponse {
   message: string
 }
 
+// Verification types
+export interface VerifyRequest {
+  level: number // 1 = config, 2 = execution
+}
+
+export interface VerifyResponse {
+  healing_id: string
+  passed: boolean
+  level: number
+  before_confidence: number
+  after_confidence: number
+  confidence_reduction: number
+  config_checks: Array<{
+    success: boolean
+    validation_type: string
+    details: Record<string, any>
+    error_message: string | null
+  }>
+  execution_result: Record<string, any> | null
+  details: Record<string, any>
+  error: string | null
+}
+
+export interface VerificationMetrics {
+  total_verifications: number
+  passed: number
+  failed: number
+  pass_rate: number
+  average_confidence_reduction: number
+  by_detection_type: Record<string, {
+    total: number
+    passed: number
+    pass_rate: number
+    avg_confidence_reduction: number
+  }>
+}
+
 // Version history types
 export interface WorkflowVersion {
   id: string
@@ -1078,6 +1115,21 @@ export function createApiClient(token?: string | null, tenantId?: string | null)
       return fetchApi<RejectResponse>(
         `/tenants/{tenant_id}/healing/${healingId}/reject`,
         { ...opts, method: 'POST' }
+      )
+    },
+
+    // Verification
+    async verifyHealing(healingId: string, level: number = 1) {
+      return fetchApi<VerifyResponse>(
+        `/tenants/{tenant_id}/healing/${healingId}/verify`,
+        { ...opts, method: 'POST', body: JSON.stringify({ level }) }
+      )
+    },
+
+    async getVerificationMetrics() {
+      return fetchApi<VerificationMetrics>(
+        `/tenants/{tenant_id}/healing/verification-metrics`,
+        opts
       )
     },
 

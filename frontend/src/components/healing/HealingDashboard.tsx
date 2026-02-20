@@ -24,6 +24,7 @@ interface HealingDashboardProps {
   onPromote: (healingId: string) => Promise<void>
   onReject: (healingId: string) => Promise<void>
   onRollback: (healingId: string) => Promise<void>
+  onVerify: (healingId: string) => Promise<void>
   onRefresh: () => void
 }
 
@@ -67,6 +68,7 @@ export function HealingDashboard({
   onPromote,
   onReject,
   onRollback,
+  onVerify,
   onRefresh
 }: HealingDashboardProps) {
   const [activeTab, setActiveTab] = useState('all')
@@ -78,6 +80,7 @@ export function HealingDashboard({
     applied: healings.filter(h => h.status === 'applied' || h.deployment_stage === 'promoted').length,
     failed: healings.filter(h => h.status === 'failed' || h.status === 'rejected').length,
     awaitingApproval: healings.filter(h => h.approval_required && h.status === 'pending').length,
+    verified: healings.filter(h => h.validation_status === 'passed').length,
   }
 
   // Filter healings by tab
@@ -100,8 +103,8 @@ export function HealingDashboard({
     return (
       <div className="space-y-6">
         {/* Stats loading */}
-        <div className="grid grid-cols-2 lg:grid-cols-5 gap-4">
-          {[1, 2, 3, 4, 5].map((i) => (
+        <div className="grid grid-cols-2 lg:grid-cols-6 gap-4">
+          {[1, 2, 3, 4, 5, 6].map((i) => (
             <Card key={i}>
               <CardContent className="p-4">
                 <div className="animate-pulse">
@@ -133,7 +136,7 @@ export function HealingDashboard({
   return (
     <div className="space-y-6">
       {/* Stats */}
-      <div className="grid grid-cols-2 lg:grid-cols-5 gap-4">
+      <div className="grid grid-cols-2 lg:grid-cols-6 gap-4">
         <StatsCard
           title="Total Healings"
           value={stats.total}
@@ -151,6 +154,12 @@ export function HealingDashboard({
           value={stats.staged}
           icon={Clock}
           color="amber"
+        />
+        <StatsCard
+          title="Verified"
+          value={stats.verified}
+          icon={ShieldCheck}
+          color="green"
         />
         <StatsCard
           title="Applied"
@@ -171,6 +180,7 @@ export function HealingDashboard({
         healings={healings}
         onPromote={onPromote}
         onReject={onReject}
+        onVerify={onVerify}
       />
 
       {/* Healings List */}
@@ -225,6 +235,7 @@ export function HealingDashboard({
                 onPromote={onPromote}
                 onReject={onReject}
                 onRollback={onRollback}
+                onVerify={onVerify}
               />
             ))}
           </div>

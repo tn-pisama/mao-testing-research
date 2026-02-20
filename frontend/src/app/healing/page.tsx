@@ -152,6 +152,18 @@ export default function HealingPage() {
     }
   }
 
+  const handleVerify = async (healingId: string) => {
+    if (!tenantId) return
+    try {
+      const token = await getToken()
+      const api = createApiClient(token, tenantId)
+      await api.verifyHealing(healingId, 1)
+      await fetchData()
+    } catch (err) {
+      console.error('Failed to verify:', err)
+    }
+  }
+
   const handleRollback = async (healingId: string) => {
     const healing = healings.find(h => h.id === healingId)
     setRollbackModal({
@@ -348,6 +360,7 @@ export default function HealingPage() {
               onPromote={handlePromote}
               onReject={handleReject}
               onRollback={handleRollback}
+              onVerify={handleVerify}
               onRefresh={fetchData}
             />
           </TabsContent>
