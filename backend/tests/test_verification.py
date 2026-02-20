@@ -342,3 +342,173 @@ class TestEdgeCases:
         )
         check_types = [c.validation_type for c in result.config_checks]
         assert "coordination_deadlock_validation" in check_types
+
+    # --- Verification mapping tests for all 12 new detection types ---
+
+    @pytest.mark.asyncio
+    async def test_hallucination_level1(self, orchestrator):
+        result = await orchestrator.verify_level1(
+            detection_type="hallucination",
+            original_confidence=0.85,
+            original_state={"nodes": [], "settings": {}},
+            applied_fixes={
+                "fix_applied": {"id": "fix_1", "fix_type": "fact_checking"},
+                "workflow_id": "wf_test",
+            },
+        )
+        assert result.level == 1
+        assert result.before_confidence == 0.85
+
+    @pytest.mark.asyncio
+    async def test_injection_level1(self, orchestrator):
+        result = await orchestrator.verify_level1(
+            detection_type="injection",
+            original_confidence=0.85,
+            original_state={"nodes": [], "settings": {}},
+            applied_fixes={
+                "fix_applied": {"id": "fix_1", "fix_type": "input_sanitization"},
+                "workflow_id": "wf_test",
+            },
+        )
+        assert result.level == 1
+        assert result.before_confidence == 0.85
+
+    @pytest.mark.asyncio
+    async def test_overflow_level1(self, orchestrator):
+        result = await orchestrator.verify_level1(
+            detection_type="context_overflow",
+            original_confidence=0.85,
+            original_state={"nodes": [], "settings": {}},
+            applied_fixes={
+                "fix_applied": {"id": "fix_1", "fix_type": "context_trimming"},
+                "workflow_id": "wf_test",
+            },
+        )
+        assert result.level == 1
+        assert result.before_confidence == 0.85
+
+    @pytest.mark.asyncio
+    async def test_derailment_level1(self, orchestrator):
+        result = await orchestrator.verify_level1(
+            detection_type="task_derailment",
+            original_confidence=0.85,
+            original_state={"nodes": [], "settings": {}},
+            applied_fixes={
+                "fix_applied": {"id": "fix_1", "fix_type": "task_refocus"},
+                "workflow_id": "wf_test",
+            },
+        )
+        assert result.level == 1
+        assert result.before_confidence == 0.85
+
+    @pytest.mark.asyncio
+    async def test_context_neglect_level1(self, orchestrator):
+        result = await orchestrator.verify_level1(
+            detection_type="context_neglect",
+            original_confidence=0.85,
+            original_state={"nodes": [], "settings": {}},
+            applied_fixes={
+                "fix_applied": {"id": "fix_1", "fix_type": "context_reinforcement"},
+                "workflow_id": "wf_test",
+            },
+        )
+        assert result.level == 1
+        assert result.before_confidence == 0.85
+
+    @pytest.mark.asyncio
+    async def test_communication_breakdown_level1(self, orchestrator):
+        result = await orchestrator.verify_level1(
+            detection_type="communication_breakdown",
+            original_confidence=0.85,
+            original_state={"nodes": [], "settings": {}},
+            applied_fixes={
+                "fix_applied": {"id": "fix_1", "fix_type": "communication_repair"},
+                "workflow_id": "wf_test",
+            },
+        )
+        assert result.level == 1
+        assert result.before_confidence == 0.85
+
+    @pytest.mark.asyncio
+    async def test_specification_mismatch_level1(self, orchestrator):
+        result = await orchestrator.verify_level1(
+            detection_type="specification_mismatch",
+            original_confidence=0.85,
+            original_state={"nodes": [], "settings": {}},
+            applied_fixes={
+                "fix_applied": {"id": "fix_1", "fix_type": "spec_alignment"},
+                "workflow_id": "wf_test",
+            },
+        )
+        assert result.level == 1
+        assert result.before_confidence == 0.85
+
+    @pytest.mark.asyncio
+    async def test_poor_decomposition_level1(self, orchestrator):
+        result = await orchestrator.verify_level1(
+            detection_type="poor_decomposition",
+            original_confidence=0.85,
+            original_state={"nodes": [], "settings": {}},
+            applied_fixes={
+                "fix_applied": {"id": "fix_1", "fix_type": "decomposition_improvement"},
+                "workflow_id": "wf_test",
+            },
+        )
+        assert result.level == 1
+        assert result.before_confidence == 0.85
+
+    @pytest.mark.asyncio
+    async def test_flawed_workflow_level1(self, orchestrator):
+        result = await orchestrator.verify_level1(
+            detection_type="flawed_workflow",
+            original_confidence=0.85,
+            original_state={"nodes": [], "settings": {}},
+            applied_fixes={
+                "fix_applied": {"id": "fix_1", "fix_type": "workflow_repair"},
+                "workflow_id": "wf_test",
+            },
+        )
+        assert result.level == 1
+        assert result.before_confidence == 0.85
+
+    @pytest.mark.asyncio
+    async def test_withholding_level1(self, orchestrator):
+        result = await orchestrator.verify_level1(
+            detection_type="withholding",
+            original_confidence=0.85,
+            original_state={"nodes": [], "settings": {}},
+            applied_fixes={
+                "fix_applied": {"id": "fix_1", "fix_type": "transparency_enforcement"},
+                "workflow_id": "wf_test",
+            },
+        )
+        assert result.level == 1
+        assert result.before_confidence == 0.85
+
+    @pytest.mark.asyncio
+    async def test_completion_misjudgment_level1(self, orchestrator):
+        result = await orchestrator.verify_level1(
+            detection_type="completion",
+            original_confidence=0.85,
+            original_state={"nodes": [], "settings": {}},
+            applied_fixes={
+                "fix_applied": {"id": "fix_1", "fix_type": "completion_calibration"},
+                "workflow_id": "wf_test",
+            },
+        )
+        assert result.level == 1
+        assert result.before_confidence == 0.85
+
+    @pytest.mark.asyncio
+    async def test_cost_overrun_level1(self, orchestrator):
+        result = await orchestrator.verify_level1(
+            detection_type="cost",
+            original_confidence=0.85,
+            original_state={"nodes": [], "settings": {}},
+            applied_fixes={
+                "fix_applied": {"id": "fix_1", "fix_type": "cost_budgeting"},
+                "workflow_id": "wf_test",
+            },
+        )
+        assert result.level == 1
+        assert result.before_confidence == 0.85

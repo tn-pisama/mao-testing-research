@@ -7,6 +7,18 @@ from app.fixes import (
     CorruptionFixGenerator,
     PersonaFixGenerator,
     DeadlockFixGenerator,
+    HallucinationFixGenerator,
+    InjectionFixGenerator,
+    OverflowFixGenerator,
+    DerailmentFixGenerator,
+    ContextNeglectFixGenerator,
+    CommunicationFixGenerator,
+    SpecificationFixGenerator,
+    DecompositionFixGenerator,
+    WorkflowFixGenerator,
+    WithholdingFixGenerator,
+    CompletionFixGenerator,
+    CostFixGenerator,
     FixSuggestion,
     FixType,
     FixConfidence,
@@ -276,3 +288,386 @@ class TestFixSuggestionOutput:
         diff = code_change.to_diff()
         assert "+++" in diff
         assert "@@ " in diff
+
+
+class TestHallucinationFixGenerator:
+    def setup_method(self):
+        self.generator = HallucinationFixGenerator()
+
+    def test_can_handle_hallucination(self):
+        assert self.generator.can_handle("hallucination") is True
+        assert self.generator.can_handle("injection") is False
+
+    def test_generates_fixes(self):
+        detection = {
+            "id": "det_test",
+            "detection_type": "hallucination",
+            "details": {},
+        }
+        fixes = self.generator.generate_fixes(detection, {})
+        assert len(fixes) == 3
+        assert all(len(f.code_changes) > 0 for f in fixes)
+
+    def test_fix_types(self):
+        detection = {
+            "id": "det_test",
+            "detection_type": "hallucination",
+            "details": {},
+        }
+        fixes = self.generator.generate_fixes(detection, {})
+        fix_types = [f.fix_type for f in fixes]
+        assert FixType.FACT_CHECKING in fix_types
+        assert FixType.SOURCE_GROUNDING in fix_types
+        assert FixType.CONFIDENCE_CALIBRATION in fix_types
+
+
+class TestInjectionFixGenerator:
+    def setup_method(self):
+        self.generator = InjectionFixGenerator()
+
+    def test_can_handle_injection(self):
+        assert self.generator.can_handle("injection") is True
+        assert self.generator.can_handle("prompt_injection") is True
+        assert self.generator.can_handle("hallucination") is False
+
+    def test_generates_fixes(self):
+        detection = {
+            "id": "det_test",
+            "detection_type": "injection",
+            "details": {},
+        }
+        fixes = self.generator.generate_fixes(detection, {})
+        assert len(fixes) == 3
+        assert all(len(f.code_changes) > 0 for f in fixes)
+
+    def test_fix_types(self):
+        detection = {
+            "id": "det_test",
+            "detection_type": "injection",
+            "details": {},
+        }
+        fixes = self.generator.generate_fixes(detection, {})
+        fix_types = [f.fix_type for f in fixes]
+        assert FixType.INPUT_FILTERING in fix_types
+        assert FixType.SAFETY_BOUNDARY in fix_types
+        assert FixType.PERMISSION_GATE in fix_types
+
+
+class TestOverflowFixGenerator:
+    def setup_method(self):
+        self.generator = OverflowFixGenerator()
+
+    def test_can_handle_overflow(self):
+        assert self.generator.can_handle("overflow") is True
+        assert self.generator.can_handle("context_overflow") is True
+        assert self.generator.can_handle("hallucination") is False
+
+    def test_generates_fixes(self):
+        detection = {
+            "id": "det_test",
+            "detection_type": "overflow",
+            "details": {},
+        }
+        fixes = self.generator.generate_fixes(detection, {})
+        assert len(fixes) == 3
+        assert all(len(f.code_changes) > 0 for f in fixes)
+
+    def test_fix_types(self):
+        detection = {
+            "id": "det_test",
+            "detection_type": "overflow",
+            "details": {},
+        }
+        fixes = self.generator.generate_fixes(detection, {})
+        fix_types = [f.fix_type for f in fixes]
+        assert FixType.CONTEXT_PRUNING in fix_types
+        assert FixType.SUMMARIZATION in fix_types
+        assert FixType.WINDOW_MANAGEMENT in fix_types
+
+
+class TestDerailmentFixGenerator:
+    def setup_method(self):
+        self.generator = DerailmentFixGenerator()
+
+    def test_can_handle_derailment(self):
+        assert self.generator.can_handle("task_derailment") is True
+        assert self.generator.can_handle("derailment") is True
+        assert self.generator.can_handle("hallucination") is False
+
+    def test_generates_fixes(self):
+        detection = {
+            "id": "det_test",
+            "detection_type": "task_derailment",
+            "details": {},
+        }
+        fixes = self.generator.generate_fixes(detection, {})
+        assert len(fixes) == 3
+        assert all(len(f.code_changes) > 0 for f in fixes)
+
+    def test_fix_types(self):
+        detection = {
+            "id": "det_test",
+            "detection_type": "task_derailment",
+            "details": {},
+        }
+        fixes = self.generator.generate_fixes(detection, {})
+        fix_types = [f.fix_type for f in fixes]
+        assert FixType.TASK_ANCHORING in fix_types
+        assert FixType.GOAL_TRACKING in fix_types
+        assert FixType.PROGRESS_MONITORING in fix_types
+
+
+class TestContextNeglectFixGenerator:
+    def setup_method(self):
+        self.generator = ContextNeglectFixGenerator()
+
+    def test_can_handle_context_neglect(self):
+        assert self.generator.can_handle("context_neglect") is True
+        assert self.generator.can_handle("context") is True
+        assert self.generator.can_handle("hallucination") is False
+
+    def test_generates_fixes(self):
+        detection = {
+            "id": "det_test",
+            "detection_type": "context_neglect",
+            "details": {},
+        }
+        fixes = self.generator.generate_fixes(detection, {})
+        assert len(fixes) == 3
+        assert all(len(f.code_changes) > 0 for f in fixes)
+
+    def test_fix_types(self):
+        detection = {
+            "id": "det_test",
+            "detection_type": "context_neglect",
+            "details": {},
+        }
+        fixes = self.generator.generate_fixes(detection, {})
+        fix_types = [f.fix_type for f in fixes]
+        assert FixType.CHECKPOINT_RECOVERY in fix_types
+        assert FixType.PROMPT_REINFORCEMENT in fix_types
+        assert FixType.STATE_VALIDATION in fix_types
+
+
+class TestCommunicationFixGenerator:
+    def setup_method(self):
+        self.generator = CommunicationFixGenerator()
+
+    def test_can_handle_communication(self):
+        assert self.generator.can_handle("communication_breakdown") is True
+        assert self.generator.can_handle("communication") is True
+        assert self.generator.can_handle("hallucination") is False
+
+    def test_generates_fixes(self):
+        detection = {
+            "id": "det_test",
+            "detection_type": "communication_breakdown",
+            "details": {},
+        }
+        fixes = self.generator.generate_fixes(detection, {})
+        assert len(fixes) == 3
+        assert all(len(f.code_changes) > 0 for f in fixes)
+
+    def test_fix_types(self):
+        detection = {
+            "id": "det_test",
+            "detection_type": "communication_breakdown",
+            "details": {},
+        }
+        fixes = self.generator.generate_fixes(detection, {})
+        fix_types = [f.fix_type for f in fixes]
+        assert FixType.MESSAGE_SCHEMA in fix_types
+        assert FixType.HANDOFF_PROTOCOL in fix_types
+        assert FixType.RETRY_LIMIT in fix_types
+
+
+class TestSpecificationFixGenerator:
+    def setup_method(self):
+        self.generator = SpecificationFixGenerator()
+
+    def test_can_handle_specification(self):
+        assert self.generator.can_handle("specification_mismatch") is True
+        assert self.generator.can_handle("specification") is True
+        assert self.generator.can_handle("hallucination") is False
+
+    def test_generates_fixes(self):
+        detection = {
+            "id": "det_test",
+            "detection_type": "specification_mismatch",
+            "details": {},
+        }
+        fixes = self.generator.generate_fixes(detection, {})
+        assert len(fixes) == 3
+        assert all(len(f.code_changes) > 0 for f in fixes)
+
+    def test_fix_types(self):
+        detection = {
+            "id": "det_test",
+            "detection_type": "specification_mismatch",
+            "details": {},
+        }
+        fixes = self.generator.generate_fixes(detection, {})
+        fix_types = [f.fix_type for f in fixes]
+        assert FixType.SPEC_VALIDATION in fix_types
+        assert FixType.OUTPUT_CONSTRAINT in fix_types
+        assert FixType.SCHEMA_ENFORCEMENT in fix_types
+
+
+class TestDecompositionFixGenerator:
+    def setup_method(self):
+        self.generator = DecompositionFixGenerator()
+
+    def test_can_handle_decomposition(self):
+        assert self.generator.can_handle("poor_decomposition") is True
+        assert self.generator.can_handle("decomposition") is True
+        assert self.generator.can_handle("hallucination") is False
+
+    def test_generates_fixes(self):
+        detection = {
+            "id": "det_test",
+            "detection_type": "poor_decomposition",
+            "details": {},
+        }
+        fixes = self.generator.generate_fixes(detection, {})
+        assert len(fixes) == 3
+        assert all(len(f.code_changes) > 0 for f in fixes)
+
+    def test_fix_types(self):
+        detection = {
+            "id": "det_test",
+            "detection_type": "poor_decomposition",
+            "details": {},
+        }
+        fixes = self.generator.generate_fixes(detection, {})
+        fix_types = [f.fix_type for f in fixes]
+        assert FixType.TASK_DECOMPOSER in fix_types
+        assert FixType.SUBTASK_VALIDATOR in fix_types
+        assert FixType.PROGRESS_MONITORING in fix_types
+
+
+class TestWorkflowFixGenerator:
+    def setup_method(self):
+        self.generator = WorkflowFixGenerator()
+
+    def test_can_handle_workflow(self):
+        assert self.generator.can_handle("flawed_workflow") is True
+        assert self.generator.can_handle("workflow") is True
+        assert self.generator.can_handle("hallucination") is False
+
+    def test_generates_fixes(self):
+        detection = {
+            "id": "det_test",
+            "detection_type": "flawed_workflow",
+            "details": {},
+        }
+        fixes = self.generator.generate_fixes(detection, {})
+        assert len(fixes) == 3
+        assert all(len(f.code_changes) > 0 for f in fixes)
+
+    def test_fix_types(self):
+        detection = {
+            "id": "det_test",
+            "detection_type": "flawed_workflow",
+            "details": {},
+        }
+        fixes = self.generator.generate_fixes(detection, {})
+        fix_types = [f.fix_type for f in fixes]
+        assert FixType.WORKFLOW_GUARD in fix_types
+        assert FixType.STEP_VALIDATOR in fix_types
+        assert FixType.CIRCUIT_BREAKER in fix_types
+
+
+class TestWithholdingFixGenerator:
+    def setup_method(self):
+        self.generator = WithholdingFixGenerator()
+
+    def test_can_handle_withholding(self):
+        assert self.generator.can_handle("withholding") is True
+        assert self.generator.can_handle("information_withholding") is True
+        assert self.generator.can_handle("hallucination") is False
+
+    def test_generates_fixes(self):
+        detection = {
+            "id": "det_test",
+            "detection_type": "withholding",
+            "details": {},
+        }
+        fixes = self.generator.generate_fixes(detection, {})
+        assert len(fixes) == 3
+        assert all(len(f.code_changes) > 0 for f in fixes)
+
+    def test_fix_types(self):
+        detection = {
+            "id": "det_test",
+            "detection_type": "withholding",
+            "details": {},
+        }
+        fixes = self.generator.generate_fixes(detection, {})
+        fix_types = [f.fix_type for f in fixes]
+        assert FixType.TRANSPARENCY_ENFORCER in fix_types
+        assert FixType.INFORMATION_COMPLETENESS in fix_types
+        assert FixType.SOURCE_GROUNDING in fix_types
+
+
+class TestCompletionFixGenerator:
+    def setup_method(self):
+        self.generator = CompletionFixGenerator()
+
+    def test_can_handle_completion(self):
+        assert self.generator.can_handle("completion") is True
+        assert self.generator.can_handle("completion_misjudgment") is True
+        assert self.generator.can_handle("hallucination") is False
+
+    def test_generates_fixes(self):
+        detection = {
+            "id": "det_test",
+            "detection_type": "completion",
+            "details": {},
+        }
+        fixes = self.generator.generate_fixes(detection, {})
+        assert len(fixes) == 3
+        assert all(len(f.code_changes) > 0 for f in fixes)
+
+    def test_fix_types(self):
+        detection = {
+            "id": "det_test",
+            "detection_type": "completion",
+            "details": {},
+        }
+        fixes = self.generator.generate_fixes(detection, {})
+        fix_types = [f.fix_type for f in fixes]
+        assert FixType.COMPLETION_GATE in fix_types
+        assert FixType.QUALITY_CHECKPOINT in fix_types
+        assert FixType.PROGRESS_MONITORING in fix_types
+
+
+class TestCostFixGenerator:
+    def setup_method(self):
+        self.generator = CostFixGenerator()
+
+    def test_can_handle_cost(self):
+        assert self.generator.can_handle("cost") is True
+        assert self.generator.can_handle("cost_overrun") is True
+        assert self.generator.can_handle("hallucination") is False
+
+    def test_generates_fixes(self):
+        detection = {
+            "id": "det_test",
+            "detection_type": "cost",
+            "details": {},
+        }
+        fixes = self.generator.generate_fixes(detection, {})
+        assert len(fixes) == 3
+        assert all(len(f.code_changes) > 0 for f in fixes)
+
+    def test_fix_types(self):
+        detection = {
+            "id": "det_test",
+            "detection_type": "cost",
+            "details": {},
+        }
+        fixes = self.generator.generate_fixes(detection, {})
+        fix_types = [f.fix_type for f in fixes]
+        assert FixType.BUDGET_LIMITER in fix_types
+        assert FixType.COST_MONITOR in fix_types
+        assert FixType.TOKEN_OPTIMIZER in fix_types

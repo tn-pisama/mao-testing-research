@@ -33,7 +33,7 @@ class FailureAnalyzer:
         """Analyze a detection to produce a failure signature."""
         detection_type = detection.get("detection_type", "").lower()
         details = detection.get("details", {})
-        
+
         if "loop" in detection_type or "infinite" in detection_type:
             return self._analyze_loop(detection, details, trace)
         elif "corruption" in detection_type or "state" in detection_type:
@@ -42,8 +42,32 @@ class FailureAnalyzer:
             return self._analyze_drift(detection, details, trace)
         elif "timeout" in detection_type:
             return self._analyze_timeout(detection, details, trace)
-        elif "deadlock" in detection_type:
+        elif "deadlock" in detection_type or "coordination" in detection_type:
             return self._analyze_deadlock(detection, details, trace)
+        elif "hallucination" in detection_type:
+            return self._analyze_hallucination(detection, details, trace)
+        elif "injection" in detection_type:
+            return self._analyze_injection(detection, details, trace)
+        elif "overflow" in detection_type:
+            return self._analyze_overflow(detection, details, trace)
+        elif "derailment" in detection_type:
+            return self._analyze_derailment(detection, details, trace)
+        elif "context" in detection_type and "neglect" in detection_type:
+            return self._analyze_context_neglect(detection, details, trace)
+        elif "communication" in detection_type:
+            return self._analyze_communication(detection, details, trace)
+        elif "specification" in detection_type or "spec" in detection_type:
+            return self._analyze_specification(detection, details, trace)
+        elif "decomposition" in detection_type:
+            return self._analyze_decomposition(detection, details, trace)
+        elif "workflow" in detection_type:
+            return self._analyze_workflow(detection, details, trace)
+        elif "withholding" in detection_type:
+            return self._analyze_withholding(detection, details, trace)
+        elif "completion" in detection_type:
+            return self._analyze_completion(detection, details, trace)
+        elif "cost" in detection_type or "budget" in detection_type:
+            return self._analyze_cost(detection, details, trace)
         else:
             return self._analyze_generic(detection, details, trace)
     
@@ -228,6 +252,229 @@ class FailureAnalyzer:
             affected_components=details.get("waiting_agents", []),
         )
     
+    def _analyze_hallucination(
+        self, detection: Dict[str, Any], details: Dict[str, Any], trace: Optional[Dict[str, Any]],
+    ) -> FailureSignature:
+        indicators = []
+        if details.get("hallucinated_fields"):
+            indicators.append(f"Hallucinated fields: {', '.join(details['hallucinated_fields'][:5])}")
+        if details.get("grounding_score") is not None:
+            indicators.append(f"Grounding score: {details['grounding_score']:.2f}")
+        if details.get("fabricated_facts"):
+            indicators.append(f"Fabricated facts: {len(details['fabricated_facts'])}")
+        return FailureSignature(
+            category=FailureCategory.HALLUCINATION,
+            pattern=details.get("hallucination_type", "ungrounded_claim"),
+            confidence=detection.get("confidence", 0.7),
+            indicators=indicators or ["Hallucinated content detected"],
+            root_cause=details.get("message", "Agent generated ungrounded or fabricated content"),
+            affected_components=details.get("affected_nodes", []),
+        )
+
+    def _analyze_injection(
+        self, detection: Dict[str, Any], details: Dict[str, Any], trace: Optional[Dict[str, Any]],
+    ) -> FailureSignature:
+        indicators = []
+        attack_type = details.get("attack_type", "unknown")
+        indicators.append(f"Attack type: {attack_type}")
+        if details.get("matched_patterns"):
+            indicators.append(f"Matched patterns: {len(details['matched_patterns'])}")
+        severity = details.get("severity", "medium")
+        indicators.append(f"Severity: {severity}")
+        return FailureSignature(
+            category=FailureCategory.INJECTION,
+            pattern=attack_type,
+            confidence=detection.get("confidence", 0.8),
+            indicators=indicators,
+            root_cause=details.get("message", "Prompt injection attempt detected in agent input"),
+            affected_components=details.get("affected_nodes", []),
+        )
+
+    def _analyze_overflow(
+        self, detection: Dict[str, Any], details: Dict[str, Any], trace: Optional[Dict[str, Any]],
+    ) -> FailureSignature:
+        indicators = []
+        if details.get("current_tokens"):
+            indicators.append(f"Current tokens: {details['current_tokens']}")
+        if details.get("context_window"):
+            indicators.append(f"Context window: {details['context_window']}")
+        if details.get("usage_percent"):
+            indicators.append(f"Usage: {details['usage_percent']:.0f}%")
+        return FailureSignature(
+            category=FailureCategory.CONTEXT_OVERFLOW,
+            pattern=details.get("severity", "overflow").lower(),
+            confidence=detection.get("confidence", 0.85),
+            indicators=indicators or ["Context window approaching limit"],
+            root_cause=details.get("message", "Context window exhausted or approaching limit"),
+            affected_components=[details.get("node_name", "unknown")],
+        )
+
+    def _analyze_derailment(
+        self, detection: Dict[str, Any], details: Dict[str, Any], trace: Optional[Dict[str, Any]],
+    ) -> FailureSignature:
+        indicators = []
+        if details.get("deviation_score"):
+            indicators.append(f"Deviation score: {details['deviation_score']:.2f}")
+        if details.get("original_task"):
+            indicators.append(f"Original task: {details['original_task'][:80]}")
+        if details.get("current_focus"):
+            indicators.append(f"Current focus: {details['current_focus'][:80]}")
+        return FailureSignature(
+            category=FailureCategory.TASK_DERAILMENT,
+            pattern=details.get("derailment_type", "topic_drift"),
+            confidence=detection.get("confidence", 0.7),
+            indicators=indicators or ["Agent deviated from assigned task"],
+            root_cause=details.get("message", "Agent lost focus on the original task"),
+            affected_components=details.get("affected_agents", []),
+        )
+
+    def _analyze_context_neglect(
+        self, detection: Dict[str, Any], details: Dict[str, Any], trace: Optional[Dict[str, Any]],
+    ) -> FailureSignature:
+        indicators = []
+        if details.get("neglected_items"):
+            indicators.append(f"Neglected items: {len(details['neglected_items'])}")
+        if details.get("context_utilization") is not None:
+            indicators.append(f"Context utilization: {details['context_utilization']:.0%}")
+        return FailureSignature(
+            category=FailureCategory.CONTEXT_NEGLECT,
+            pattern=details.get("neglect_type", "context_ignored"),
+            confidence=detection.get("confidence", 0.7),
+            indicators=indicators or ["Agent ignored provided context"],
+            root_cause=details.get("message", "Agent failed to use available context in its response"),
+            affected_components=details.get("affected_agents", []),
+        )
+
+    def _analyze_communication(
+        self, detection: Dict[str, Any], details: Dict[str, Any], trace: Optional[Dict[str, Any]],
+    ) -> FailureSignature:
+        indicators = []
+        if details.get("failed_handoffs"):
+            indicators.append(f"Failed handoffs: {len(details['failed_handoffs'])}")
+        if details.get("misunderstood_messages"):
+            indicators.append(f"Misunderstood messages: {details['misunderstood_messages']}")
+        affected = details.get("affected_agents", [])
+        if affected:
+            indicators.append(f"Agents involved: {', '.join(affected[:3])}")
+        return FailureSignature(
+            category=FailureCategory.COMMUNICATION_BREAKDOWN,
+            pattern=details.get("breakdown_type", "intent_mismatch"),
+            confidence=detection.get("confidence", 0.75),
+            indicators=indicators or ["Inter-agent communication failed"],
+            root_cause=details.get("message", "Agents failed to communicate effectively"),
+            affected_components=affected,
+        )
+
+    def _analyze_specification(
+        self, detection: Dict[str, Any], details: Dict[str, Any], trace: Optional[Dict[str, Any]],
+    ) -> FailureSignature:
+        indicators = []
+        if details.get("missing_fields"):
+            indicators.append(f"Missing fields: {', '.join(details['missing_fields'][:5])}")
+        if details.get("requirement_coverage") is not None:
+            indicators.append(f"Coverage: {details['requirement_coverage']:.0%}")
+        return FailureSignature(
+            category=FailureCategory.SPECIFICATION_MISMATCH,
+            pattern=details.get("mismatch_type", "scope_drift"),
+            confidence=detection.get("confidence", 0.75),
+            indicators=indicators or ["Output doesn't match specification"],
+            root_cause=details.get("message", "Agent output deviated from specification"),
+            affected_components=details.get("affected_nodes", []),
+        )
+
+    def _analyze_decomposition(
+        self, detection: Dict[str, Any], details: Dict[str, Any], trace: Optional[Dict[str, Any]],
+    ) -> FailureSignature:
+        indicators = []
+        if details.get("subtask_count"):
+            indicators.append(f"Subtask count: {details['subtask_count']}")
+        if details.get("coverage_score") is not None:
+            indicators.append(f"Coverage: {details['coverage_score']:.0%}")
+        if details.get("problematic_subtasks"):
+            indicators.append(f"Problematic: {', '.join(details['problematic_subtasks'][:3])}")
+        return FailureSignature(
+            category=FailureCategory.POOR_DECOMPOSITION,
+            pattern=details.get("decomposition_type", "imbalanced"),
+            confidence=detection.get("confidence", 0.7),
+            indicators=indicators or ["Task was poorly decomposed"],
+            root_cause=details.get("message", "Task breakdown was incomplete or imbalanced"),
+            affected_components=details.get("affected_agents", []),
+        )
+
+    def _analyze_workflow(
+        self, detection: Dict[str, Any], details: Dict[str, Any], trace: Optional[Dict[str, Any]],
+    ) -> FailureSignature:
+        indicators = []
+        if details.get("failed_steps"):
+            indicators.append(f"Failed steps: {len(details['failed_steps'])}")
+        if details.get("missing_error_handlers"):
+            indicators.append(f"Missing error handlers: {details['missing_error_handlers']}")
+        if details.get("problematic_nodes"):
+            indicators.append(f"Problem nodes: {', '.join(details['problematic_nodes'][:3])}")
+        return FailureSignature(
+            category=FailureCategory.FLAWED_WORKFLOW,
+            pattern=details.get("workflow_issue_type", "execution_error"),
+            confidence=detection.get("confidence", 0.75),
+            indicators=indicators or ["Workflow execution issues detected"],
+            root_cause=details.get("message", "Workflow has structural or execution flaws"),
+            affected_components=details.get("problematic_nodes", []),
+        )
+
+    def _analyze_withholding(
+        self, detection: Dict[str, Any], details: Dict[str, Any], trace: Optional[Dict[str, Any]],
+    ) -> FailureSignature:
+        indicators = []
+        if details.get("withheld_items"):
+            indicators.append(f"Withheld items: {len(details['withheld_items'])}")
+        if details.get("completeness_score") is not None:
+            indicators.append(f"Completeness: {details['completeness_score']:.0%}")
+        return FailureSignature(
+            category=FailureCategory.INFORMATION_WITHHOLDING,
+            pattern=details.get("withholding_type", "selective_reporting"),
+            confidence=detection.get("confidence", 0.7),
+            indicators=indicators or ["Agent withheld information"],
+            root_cause=details.get("message", "Agent omitted important information from its response"),
+            affected_components=details.get("affected_agents", []),
+        )
+
+    def _analyze_completion(
+        self, detection: Dict[str, Any], details: Dict[str, Any], trace: Optional[Dict[str, Any]],
+    ) -> FailureSignature:
+        indicators = []
+        completion_type = details.get("completion_type", "premature")
+        indicators.append(f"Type: {completion_type}")
+        if details.get("quality_score") is not None:
+            indicators.append(f"Quality score: {details['quality_score']:.2f}")
+        if details.get("criteria_met") is not None and details.get("criteria_total") is not None:
+            indicators.append(f"Criteria: {details['criteria_met']}/{details['criteria_total']}")
+        return FailureSignature(
+            category=FailureCategory.COMPLETION_MISJUDGMENT,
+            pattern=completion_type,
+            confidence=detection.get("confidence", 0.7),
+            indicators=indicators,
+            root_cause=details.get("message", "Agent declared task complete prematurely"),
+            affected_components=details.get("affected_agents", []),
+        )
+
+    def _analyze_cost(
+        self, detection: Dict[str, Any], details: Dict[str, Any], trace: Optional[Dict[str, Any]],
+    ) -> FailureSignature:
+        indicators = []
+        if details.get("total_cost"):
+            indicators.append(f"Total cost: ${details['total_cost']:.4f}")
+        if details.get("budget_limit"):
+            indicators.append(f"Budget: ${details['budget_limit']:.4f}")
+        if details.get("token_count"):
+            indicators.append(f"Tokens: {details['token_count']}")
+        return FailureSignature(
+            category=FailureCategory.COST_OVERRUN,
+            pattern=details.get("cost_type", "budget_exceeded"),
+            confidence=detection.get("confidence", 0.9),
+            indicators=indicators or ["Cost budget exceeded"],
+            root_cause=details.get("message", "Workflow execution exceeded cost budget"),
+            affected_components=[],
+        )
+
     def _analyze_generic(
         self,
         detection: Dict[str, Any],

@@ -27,6 +27,18 @@ class FailureCategory(Enum):
     COORDINATION_DEADLOCK = "coordination_deadlock"
     MEMORY_OVERFLOW = "memory_overflow"
     API_FAILURE = "api_failure"
+    HALLUCINATION = "hallucination"
+    INJECTION = "injection"
+    CONTEXT_OVERFLOW = "context_overflow"
+    TASK_DERAILMENT = "task_derailment"
+    CONTEXT_NEGLECT = "context_neglect"
+    COMMUNICATION_BREAKDOWN = "communication_breakdown"
+    SPECIFICATION_MISMATCH = "specification_mismatch"
+    POOR_DECOMPOSITION = "poor_decomposition"
+    FLAWED_WORKFLOW = "flawed_workflow"
+    INFORMATION_WITHHOLDING = "information_withholding"
+    COMPLETION_MISJUDGMENT = "completion_misjudgment"
+    COST_OVERRUN = "cost_overrun"
 
 
 @dataclass

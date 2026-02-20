@@ -57,10 +57,32 @@ def _detection_type_to_category(detection_type: str) -> FailureCategory:
         "state_corruption": FailureCategory.STATE_CORRUPTION,
         "persona_drift": FailureCategory.PERSONA_DRIFT,
         "coordination_failure": FailureCategory.COORDINATION_DEADLOCK,
+        "coordination_deadlock": FailureCategory.COORDINATION_DEADLOCK,
         "timeout": FailureCategory.TIMEOUT,
         "rate_limit": FailureCategory.RATE_LIMIT,
+        "hallucination": FailureCategory.HALLUCINATION,
+        "injection": FailureCategory.INJECTION,
+        "overflow": FailureCategory.CONTEXT_OVERFLOW,
+        "context_overflow": FailureCategory.CONTEXT_OVERFLOW,
+        "task_derailment": FailureCategory.TASK_DERAILMENT,
+        "derailment": FailureCategory.TASK_DERAILMENT,
+        "context_neglect": FailureCategory.CONTEXT_NEGLECT,
+        "communication_breakdown": FailureCategory.COMMUNICATION_BREAKDOWN,
+        "communication": FailureCategory.COMMUNICATION_BREAKDOWN,
+        "specification_mismatch": FailureCategory.SPECIFICATION_MISMATCH,
+        "specification": FailureCategory.SPECIFICATION_MISMATCH,
+        "poor_decomposition": FailureCategory.POOR_DECOMPOSITION,
+        "decomposition": FailureCategory.POOR_DECOMPOSITION,
+        "flawed_workflow": FailureCategory.FLAWED_WORKFLOW,
+        "workflow": FailureCategory.FLAWED_WORKFLOW,
+        "withholding": FailureCategory.INFORMATION_WITHHOLDING,
+        "information_withholding": FailureCategory.INFORMATION_WITHHOLDING,
+        "completion": FailureCategory.COMPLETION_MISJUDGMENT,
+        "completion_misjudgment": FailureCategory.COMPLETION_MISJUDGMENT,
+        "cost": FailureCategory.COST_OVERRUN,
+        "cost_overrun": FailureCategory.COST_OVERRUN,
     }
-    return mapping.get(detection_type, FailureCategory.INFINITE_LOOP)
+    return mapping.get(detection_type, FailureCategory.API_FAILURE)
 
 
 class VerificationOrchestrator:

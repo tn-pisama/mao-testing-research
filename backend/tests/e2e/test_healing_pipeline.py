@@ -224,7 +224,7 @@ class TestFullLifecycle:
             original_confidence=0.85,
             original_state=langgraph_workflow,
             applied_fixes={
-                "fix_applied": {"id": first_fix.id, "fix_type": first_fix.fix_type},
+                "fix_applied": {"id": first_fix.fix_id, "fix_type": first_fix.fix_type},
                 "workflow_id": "wf-lifecycle-test",
             },
         )
@@ -273,7 +273,7 @@ class TestFullLifecycle:
                 original_confidence=0.8,
                 original_state=workflow,
                 applied_fixes={
-                    "fix_applied": {"id": first_fix.id, "fix_type": first_fix.fix_type},
+                    "fix_applied": {"id": first_fix.fix_id, "fix_type": first_fix.fix_type},
                     "workflow_id": f"wf-{det_type}",
                 },
             )
@@ -281,3 +281,53 @@ class TestFullLifecycle:
             assert expected_check in check_types, (
                 f"Expected {expected_check} for {det_type}, got {check_types}"
             )
+
+    @pytest.mark.asyncio
+    async def test_detect_heal_verify_all_16_modes(self):
+        """E2E: All 16 failure modes produce fixes."""
+        from app.fixes import FixGenerator
+        from app.fixes import (
+            LoopFixGenerator, CorruptionFixGenerator, PersonaFixGenerator,
+            DeadlockFixGenerator, HallucinationFixGenerator, InjectionFixGenerator,
+            OverflowFixGenerator, DerailmentFixGenerator, ContextNeglectFixGenerator,
+            CommunicationFixGenerator, SpecificationFixGenerator, DecompositionFixGenerator,
+            WorkflowFixGenerator, WithholdingFixGenerator, CompletionFixGenerator,
+            CostFixGenerator,
+        )
+
+        generator = FixGenerator()
+        generator.register(LoopFixGenerator())
+        generator.register(CorruptionFixGenerator())
+        generator.register(PersonaFixGenerator())
+        generator.register(DeadlockFixGenerator())
+        generator.register(HallucinationFixGenerator())
+        generator.register(InjectionFixGenerator())
+        generator.register(OverflowFixGenerator())
+        generator.register(DerailmentFixGenerator())
+        generator.register(ContextNeglectFixGenerator())
+        generator.register(CommunicationFixGenerator())
+        generator.register(SpecificationFixGenerator())
+        generator.register(DecompositionFixGenerator())
+        generator.register(WorkflowFixGenerator())
+        generator.register(WithholdingFixGenerator())
+        generator.register(CompletionFixGenerator())
+        generator.register(CostFixGenerator())
+
+        all_types = [
+            "infinite_loop", "state_corruption", "persona_drift", "coordination_deadlock",
+            "hallucination", "injection", "context_overflow", "task_derailment",
+            "context_neglect", "communication_breakdown", "specification_mismatch",
+            "poor_decomposition", "flawed_workflow", "information_withholding",
+            "completion_misjudgment", "cost_overrun",
+        ]
+
+        for detection_type in all_types:
+            detection = {
+                "id": f"det_{detection_type}",
+                "detection_type": detection_type,
+                "details": {},
+            }
+            fixes = generator.generate_fixes(detection, {})
+            assert len(fixes) >= 2, f"{detection_type}: expected >= 2 fixes, got {len(fixes)}"
+            for fix in fixes:
+                assert len(fix.code_changes) > 0, f"{detection_type}/{fix.fix_type}: no code changes"

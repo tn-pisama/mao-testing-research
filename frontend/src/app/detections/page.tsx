@@ -30,7 +30,7 @@ import type { Detection } from '@/lib/api'
 import { useUserPreferences } from '@/lib/user-preferences'
 import { useDetections } from '@/hooks/useApiWithFallback'
 
-type DetectionType = 'all' | 'infinite_loop' | 'state_corruption' | 'persona_drift' | 'coordination_deadlock' | 'task_derailment' | 'context_neglect' | 'communication_breakdown' | 'specification_mismatch' | 'poor_decomposition' | 'flawed_workflow'
+type DetectionType = 'all' | 'infinite_loop' | 'state_corruption' | 'persona_drift' | 'coordination_deadlock' | 'task_derailment' | 'context_neglect' | 'communication_breakdown' | 'specification_mismatch' | 'poor_decomposition' | 'flawed_workflow' | 'hallucination' | 'injection' | 'overflow' | 'withholding' | 'completion' | 'cost'
 type Severity = 'all' | 'low' | 'medium' | 'high' | 'critical'
 
 const detectionTypeConfig: Record<string, { label: string; color: string; icon: typeof AlertTriangle; category: string }> = {
@@ -44,6 +44,12 @@ const detectionTypeConfig: Record<string, { label: string; color: string; icon: 
   specification_mismatch: { label: 'Spec Mismatch', color: 'text-blue-400', icon: Shield, category: 'System' },
   poor_decomposition: { label: 'Poor Decomposition', color: 'text-indigo-400', icon: Activity, category: 'System' },
   flawed_workflow: { label: 'Flawed Workflow', color: 'text-violet-400', icon: Zap, category: 'System' },
+  hallucination: { label: 'Hallucination', color: 'text-yellow-400', icon: AlertCircle, category: 'System' },
+  injection: { label: 'Prompt Injection', color: 'text-red-500', icon: Shield, category: 'System' },
+  overflow: { label: 'Context Overflow', color: 'text-orange-500', icon: AlertTriangle, category: 'System' },
+  withholding: { label: 'Info Withholding', color: 'text-teal-400', icon: Eye, category: 'Inter-Agent' },
+  completion: { label: 'Completion Issue', color: 'text-lime-400', icon: CheckCircle, category: 'System' },
+  cost: { label: 'Cost Overrun', color: 'text-emerald-400', icon: TrendingUp, category: 'System' },
 }
 
 const severityConfig: Record<string, { label: string; color: string; bg: string }> = {
@@ -65,6 +71,12 @@ const plainEnglishLabels: Record<string, string> = {
   specification_mismatch: 'Wrong output format',
   poor_decomposition: 'Bad task split',
   flawed_workflow: 'Workflow problem',
+  hallucination: 'Made up facts',
+  injection: 'Security threat detected',
+  overflow: 'Too much data for AI',
+  withholding: 'Missing information',
+  completion: 'Finished too early',
+  cost: 'Over budget',
 }
 
 export default function DetectionsPage() {

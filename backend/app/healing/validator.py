@@ -21,6 +21,18 @@ class FixValidator:
         self._validators.append(StateIntegrityValidator())
         self._validators.append(PersonaConsistencyValidator())
         self._validators.append(CoordinationDeadlockValidator())
+        self._validators.append(HallucinationPreventionValidator())
+        self._validators.append(InjectionPreventionValidator())
+        self._validators.append(ContextOverflowValidator())
+        self._validators.append(DerailmentPreventionValidator())
+        self._validators.append(ContextNeglectValidator())
+        self._validators.append(CommunicationValidator())
+        self._validators.append(SpecificationValidator())
+        self._validators.append(DecompositionValidator())
+        self._validators.append(WorkflowValidator())
+        self._validators.append(WithholdingValidator())
+        self._validators.append(CompletionValidator())
+        self._validators.append(CostValidator())
         self._validators.append(RegressionValidator())
     
     async def validate(
@@ -354,6 +366,428 @@ class CoordinationDeadlockValidator(ValidationStrategy):
             validation_type=self.name,
             details=checks,
             error_message=None if has_protection else "No deadlock prevention mechanism detected",
+        )
+
+
+class HallucinationPreventionValidator(ValidationStrategy):
+    """Validates hallucination prevention fixes."""
+
+    @property
+    def name(self) -> str:
+        return "hallucination_prevention_validation"
+
+    def applies_to(self, category: FailureCategory, fix: AppliedFix) -> bool:
+        return category == FailureCategory.HALLUCINATION
+
+    async def validate(
+        self,
+        applied_fix: AppliedFix,
+        workflow_runner: Optional[Callable],
+        test_input: Optional[Dict[str, Any]],
+    ) -> ValidationResult:
+        modified = applied_fix.modified_state
+        settings = modified.get("settings", {})
+
+        checks = {
+            "has_fact_checking": settings.get("fact_checking", {}).get("enabled", False),
+            "has_source_grounding": settings.get("source_grounding", {}).get("enabled", False),
+            "has_confidence_calibration": settings.get("confidence_calibration", {}).get("enabled", False),
+        }
+
+        has_protection = any(checks.values())
+
+        return ValidationResult(
+            success=has_protection,
+            validation_type=self.name,
+            details=checks,
+            error_message=None if has_protection else "No hallucination prevention mechanism detected",
+        )
+
+
+class InjectionPreventionValidator(ValidationStrategy):
+    """Validates injection prevention fixes."""
+
+    @property
+    def name(self) -> str:
+        return "injection_prevention_validation"
+
+    def applies_to(self, category: FailureCategory, fix: AppliedFix) -> bool:
+        return category == FailureCategory.INJECTION
+
+    async def validate(
+        self,
+        applied_fix: AppliedFix,
+        workflow_runner: Optional[Callable],
+        test_input: Optional[Dict[str, Any]],
+    ) -> ValidationResult:
+        modified = applied_fix.modified_state
+        settings = modified.get("settings", {})
+
+        checks = {
+            "has_input_filtering": settings.get("input_filtering", {}).get("enabled", False),
+            "has_safety_boundary": settings.get("safety_boundary", {}).get("enabled", False),
+            "has_permission_gate": settings.get("permission_gate", {}).get("enabled", False),
+        }
+
+        has_protection = any(checks.values())
+
+        return ValidationResult(
+            success=has_protection,
+            validation_type=self.name,
+            details=checks,
+            error_message=None if has_protection else "No injection prevention mechanism detected",
+        )
+
+
+class ContextOverflowValidator(ValidationStrategy):
+    """Validates context overflow prevention fixes."""
+
+    @property
+    def name(self) -> str:
+        return "context_overflow_validation"
+
+    def applies_to(self, category: FailureCategory, fix: AppliedFix) -> bool:
+        return category == FailureCategory.CONTEXT_OVERFLOW
+
+    async def validate(
+        self,
+        applied_fix: AppliedFix,
+        workflow_runner: Optional[Callable],
+        test_input: Optional[Dict[str, Any]],
+    ) -> ValidationResult:
+        modified = applied_fix.modified_state
+        settings = modified.get("settings", {})
+
+        checks = {
+            "has_context_pruning": settings.get("context_pruning", {}).get("enabled", False),
+            "has_summarization": settings.get("summarization", {}).get("enabled", False),
+            "has_window_management": settings.get("window_management", {}).get("enabled", False),
+            "has_execution_timeout": "executionTimeout" in settings,
+        }
+
+        has_protection = any(checks.values())
+
+        return ValidationResult(
+            success=has_protection,
+            validation_type=self.name,
+            details=checks,
+            error_message=None if has_protection else "No context overflow prevention mechanism detected",
+        )
+
+
+class DerailmentPreventionValidator(ValidationStrategy):
+    """Validates task derailment prevention fixes."""
+
+    @property
+    def name(self) -> str:
+        return "derailment_prevention_validation"
+
+    def applies_to(self, category: FailureCategory, fix: AppliedFix) -> bool:
+        return category == FailureCategory.TASK_DERAILMENT
+
+    async def validate(
+        self,
+        applied_fix: AppliedFix,
+        workflow_runner: Optional[Callable],
+        test_input: Optional[Dict[str, Any]],
+    ) -> ValidationResult:
+        modified = applied_fix.modified_state
+        settings = modified.get("settings", {})
+
+        checks = {
+            "has_task_anchoring": settings.get("task_anchoring", {}).get("enabled", False),
+            "has_goal_tracking": settings.get("goal_tracking", {}).get("enabled", False),
+            "has_progress_monitoring": settings.get("progress_monitoring", {}).get("enabled", False),
+        }
+
+        has_protection = any(checks.values())
+
+        return ValidationResult(
+            success=has_protection,
+            validation_type=self.name,
+            details=checks,
+            error_message=None if has_protection else "No derailment prevention mechanism detected",
+        )
+
+
+class ContextNeglectValidator(ValidationStrategy):
+    """Validates context neglect prevention fixes."""
+
+    @property
+    def name(self) -> str:
+        return "context_neglect_validation"
+
+    def applies_to(self, category: FailureCategory, fix: AppliedFix) -> bool:
+        return category == FailureCategory.CONTEXT_NEGLECT
+
+    async def validate(
+        self,
+        applied_fix: AppliedFix,
+        workflow_runner: Optional[Callable],
+        test_input: Optional[Dict[str, Any]],
+    ) -> ValidationResult:
+        modified = applied_fix.modified_state
+        settings = modified.get("settings", {})
+
+        checks = {
+            "has_context_injection": settings.get("context_injection", {}).get("enabled", False),
+            "has_retrieval_verification": settings.get("retrieval_verification", {}).get("enabled", False),
+            "has_checkpointing": settings.get("checkpointing", {}).get("enabled", False),
+        }
+
+        has_protection = any(checks.values())
+
+        return ValidationResult(
+            success=has_protection,
+            validation_type=self.name,
+            details=checks,
+            error_message=None if has_protection else "No context neglect prevention mechanism detected",
+        )
+
+
+class CommunicationValidator(ValidationStrategy):
+    """Validates communication breakdown prevention fixes."""
+
+    @property
+    def name(self) -> str:
+        return "communication_validation"
+
+    def applies_to(self, category: FailureCategory, fix: AppliedFix) -> bool:
+        return category == FailureCategory.COMMUNICATION_BREAKDOWN
+
+    async def validate(
+        self,
+        applied_fix: AppliedFix,
+        workflow_runner: Optional[Callable],
+        test_input: Optional[Dict[str, Any]],
+    ) -> ValidationResult:
+        modified = applied_fix.modified_state
+        settings = modified.get("settings", {})
+
+        checks = {
+            "has_message_schema": settings.get("message_schema", {}).get("enabled", False),
+            "has_handoff_protocol": settings.get("handoff_protocol", {}).get("enabled", False),
+            "has_retry": bool(settings.get("retry", {}).get("enabled")),
+        }
+
+        has_protection = any(checks.values())
+
+        return ValidationResult(
+            success=has_protection,
+            validation_type=self.name,
+            details=checks,
+            error_message=None if has_protection else "No communication fix mechanism detected",
+        )
+
+
+class SpecificationValidator(ValidationStrategy):
+    """Validates specification mismatch prevention fixes."""
+
+    @property
+    def name(self) -> str:
+        return "specification_validation"
+
+    def applies_to(self, category: FailureCategory, fix: AppliedFix) -> bool:
+        return category == FailureCategory.SPECIFICATION_MISMATCH
+
+    async def validate(
+        self,
+        applied_fix: AppliedFix,
+        workflow_runner: Optional[Callable],
+        test_input: Optional[Dict[str, Any]],
+    ) -> ValidationResult:
+        modified = applied_fix.modified_state
+        settings = modified.get("settings", {})
+
+        checks = {
+            "has_spec_validation": settings.get("spec_validation", {}).get("enabled", False),
+            "has_output_constraints": settings.get("output_constraints", {}).get("enabled", False),
+            "has_schema_enforcement": settings.get("schema_enforcement", {}).get("enabled", False),
+        }
+
+        has_protection = any(checks.values())
+
+        return ValidationResult(
+            success=has_protection,
+            validation_type=self.name,
+            details=checks,
+            error_message=None if has_protection else "No specification validation mechanism detected",
+        )
+
+
+class DecompositionValidator(ValidationStrategy):
+    """Validates poor decomposition prevention fixes."""
+
+    @property
+    def name(self) -> str:
+        return "decomposition_validation"
+
+    def applies_to(self, category: FailureCategory, fix: AppliedFix) -> bool:
+        return category == FailureCategory.POOR_DECOMPOSITION
+
+    async def validate(
+        self,
+        applied_fix: AppliedFix,
+        workflow_runner: Optional[Callable],
+        test_input: Optional[Dict[str, Any]],
+    ) -> ValidationResult:
+        modified = applied_fix.modified_state
+        settings = modified.get("settings", {})
+
+        checks = {
+            "has_task_decomposition": settings.get("task_decomposition", {}).get("enabled", False),
+            "has_subtask_validation": settings.get("subtask_validation", {}).get("enabled", False),
+            "has_progress_monitoring": settings.get("progress_monitoring", {}).get("enabled", False),
+        }
+
+        has_protection = any(checks.values())
+
+        return ValidationResult(
+            success=has_protection,
+            validation_type=self.name,
+            details=checks,
+            error_message=None if has_protection else "No decomposition fix mechanism detected",
+        )
+
+
+class WorkflowValidator(ValidationStrategy):
+    """Validates flawed workflow prevention fixes."""
+
+    @property
+    def name(self) -> str:
+        return "workflow_validation"
+
+    def applies_to(self, category: FailureCategory, fix: AppliedFix) -> bool:
+        return category == FailureCategory.FLAWED_WORKFLOW
+
+    async def validate(
+        self,
+        applied_fix: AppliedFix,
+        workflow_runner: Optional[Callable],
+        test_input: Optional[Dict[str, Any]],
+    ) -> ValidationResult:
+        modified = applied_fix.modified_state
+        settings = modified.get("settings", {})
+
+        checks = {
+            "has_workflow_guards": settings.get("workflow_guards", {}).get("enabled", False),
+            "has_step_validation": settings.get("step_validation", {}).get("enabled", False),
+            "has_error_workflow": bool(settings.get("errorWorkflow")),
+        }
+
+        has_protection = any(checks.values())
+
+        return ValidationResult(
+            success=has_protection,
+            validation_type=self.name,
+            details=checks,
+            error_message=None if has_protection else "No workflow fix mechanism detected",
+        )
+
+
+class WithholdingValidator(ValidationStrategy):
+    """Validates information withholding prevention fixes."""
+
+    @property
+    def name(self) -> str:
+        return "withholding_validation"
+
+    def applies_to(self, category: FailureCategory, fix: AppliedFix) -> bool:
+        return category == FailureCategory.INFORMATION_WITHHOLDING
+
+    async def validate(
+        self,
+        applied_fix: AppliedFix,
+        workflow_runner: Optional[Callable],
+        test_input: Optional[Dict[str, Any]],
+    ) -> ValidationResult:
+        modified = applied_fix.modified_state
+        settings = modified.get("settings", {})
+
+        checks = {
+            "has_transparency": settings.get("transparency", {}).get("enabled", False),
+            "has_completeness_check": settings.get("completeness_check", {}).get("enabled", False),
+            "has_source_grounding": settings.get("source_grounding", {}).get("enabled", False),
+        }
+
+        has_protection = any(checks.values())
+
+        return ValidationResult(
+            success=has_protection,
+            validation_type=self.name,
+            details=checks,
+            error_message=None if has_protection else "No withholding prevention mechanism detected",
+        )
+
+
+class CompletionValidator(ValidationStrategy):
+    """Validates completion misjudgment prevention fixes."""
+
+    @property
+    def name(self) -> str:
+        return "completion_validation"
+
+    def applies_to(self, category: FailureCategory, fix: AppliedFix) -> bool:
+        return category == FailureCategory.COMPLETION_MISJUDGMENT
+
+    async def validate(
+        self,
+        applied_fix: AppliedFix,
+        workflow_runner: Optional[Callable],
+        test_input: Optional[Dict[str, Any]],
+    ) -> ValidationResult:
+        modified = applied_fix.modified_state
+        settings = modified.get("settings", {})
+
+        checks = {
+            "has_completion_gate": settings.get("completion_gate", {}).get("enabled", False),
+            "has_quality_checkpoint": settings.get("quality_checkpoint", {}).get("enabled", False),
+            "has_progress_monitoring": settings.get("progress_monitoring", {}).get("enabled", False),
+        }
+
+        has_protection = any(checks.values())
+
+        return ValidationResult(
+            success=has_protection,
+            validation_type=self.name,
+            details=checks,
+            error_message=None if has_protection else "No completion validation mechanism detected",
+        )
+
+
+class CostValidator(ValidationStrategy):
+    """Validates cost overrun prevention fixes."""
+
+    @property
+    def name(self) -> str:
+        return "cost_validation"
+
+    def applies_to(self, category: FailureCategory, fix: AppliedFix) -> bool:
+        return category == FailureCategory.COST_OVERRUN
+
+    async def validate(
+        self,
+        applied_fix: AppliedFix,
+        workflow_runner: Optional[Callable],
+        test_input: Optional[Dict[str, Any]],
+    ) -> ValidationResult:
+        modified = applied_fix.modified_state
+        settings = modified.get("settings", {})
+
+        checks = {
+            "has_budget_limit": settings.get("budget_limit", {}).get("enabled", False),
+            "has_cost_monitoring": settings.get("cost_monitoring", {}).get("enabled", False),
+            "has_token_optimizer": settings.get("token_optimizer", {}).get("enabled", False),
+            "has_execution_timeout": "executionTimeout" in settings,
+        }
+
+        has_protection = any(checks.values())
+
+        return ValidationResult(
+            success=has_protection,
+            validation_type=self.name,
+            details=checks,
+            error_message=None if has_protection else "No cost control mechanism detected",
         )
 
 

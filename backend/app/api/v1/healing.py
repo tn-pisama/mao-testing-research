@@ -14,7 +14,14 @@ from app.storage.models import Detection, HealingRecord, N8nConnection, Trace, W
 from sqlalchemy import func, desc
 from app.core.auth import get_current_tenant
 from app.core.encryption import encrypt_value, decrypt_value
-from app.fixes import FixGenerator, LoopFixGenerator, CorruptionFixGenerator, PersonaFixGenerator, DeadlockFixGenerator
+from app.fixes import (
+    FixGenerator, LoopFixGenerator, CorruptionFixGenerator, PersonaFixGenerator,
+    DeadlockFixGenerator, HallucinationFixGenerator, InjectionFixGenerator,
+    OverflowFixGenerator, DerailmentFixGenerator, ContextNeglectFixGenerator,
+    CommunicationFixGenerator, SpecificationFixGenerator, DecompositionFixGenerator,
+    WorkflowFixGenerator, WithholdingFixGenerator, CompletionFixGenerator,
+    CostFixGenerator,
+)
 from app.integrations.n8n_client import N8nApiClient, N8nApiError, N8nWorkflowDiff
 from app.healing.verification import VerificationOrchestrator
 
@@ -117,6 +124,18 @@ def get_fix_generator() -> FixGenerator:
     generator.register(CorruptionFixGenerator())
     generator.register(PersonaFixGenerator())
     generator.register(DeadlockFixGenerator())
+    generator.register(HallucinationFixGenerator())
+    generator.register(InjectionFixGenerator())
+    generator.register(OverflowFixGenerator())
+    generator.register(DerailmentFixGenerator())
+    generator.register(ContextNeglectFixGenerator())
+    generator.register(CommunicationFixGenerator())
+    generator.register(SpecificationFixGenerator())
+    generator.register(DecompositionFixGenerator())
+    generator.register(WorkflowFixGenerator())
+    generator.register(WithholdingFixGenerator())
+    generator.register(CompletionFixGenerator())
+    generator.register(CostFixGenerator())
     return generator
 
 

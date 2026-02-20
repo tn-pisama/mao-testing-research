@@ -141,6 +141,191 @@ class TestFailureAnalyzer:
         assert sig.category == FailureCategory.TIMEOUT
         assert "30000" in str(sig.indicators)
 
+    def test_analyze_hallucination(self, analyzer):
+        detection = {
+            "detection_type": "hallucination",
+            "confidence": 0.8,
+            "details": {
+                "hallucinated_fields": ["field1", "field2"],
+                "grounding_score": 0.3,
+                "fabricated_facts": ["fact1"],
+            }
+        }
+        sig = analyzer.analyze(detection)
+        assert sig.category == FailureCategory.HALLUCINATION
+        assert sig.confidence == 0.8
+        assert len(sig.indicators) > 0
+
+    def test_analyze_injection(self, analyzer):
+        detection = {
+            "detection_type": "injection",
+            "confidence": 0.9,
+            "details": {
+                "attack_type": "prompt_override",
+                "matched_patterns": ["ignore previous", "system:"],
+                "severity": "high",
+            }
+        }
+        sig = analyzer.analyze(detection)
+        assert sig.category == FailureCategory.INJECTION
+        assert sig.confidence == 0.9
+        assert len(sig.indicators) > 0
+
+    def test_analyze_overflow(self, analyzer):
+        detection = {
+            "detection_type": "context_overflow",
+            "confidence": 0.85,
+            "details": {
+                "current_tokens": 125000,
+                "context_window": 128000,
+                "usage_percent": 97.6,
+                "node_name": "summarizer",
+            }
+        }
+        sig = analyzer.analyze(detection)
+        assert sig.category == FailureCategory.CONTEXT_OVERFLOW
+        assert sig.confidence == 0.85
+        assert len(sig.indicators) > 0
+
+    def test_analyze_derailment(self, analyzer):
+        detection = {
+            "detection_type": "task_derailment",
+            "confidence": 0.75,
+            "details": {
+                "deviation_score": 0.8,
+                "original_task": "Write a summary of the report",
+                "current_focus": "Discussing unrelated topics",
+                "affected_agents": ["writer"],
+            }
+        }
+        sig = analyzer.analyze(detection)
+        assert sig.category == FailureCategory.TASK_DERAILMENT
+        assert sig.confidence == 0.75
+        assert len(sig.indicators) > 0
+
+    def test_analyze_context_neglect(self, analyzer):
+        detection = {
+            "detection_type": "context_neglect",
+            "confidence": 0.7,
+            "details": {
+                "neglected_items": ["item1", "item2", "item3"],
+                "context_utilization": 0.2,
+                "affected_agents": ["researcher"],
+            }
+        }
+        sig = analyzer.analyze(detection)
+        assert sig.category == FailureCategory.CONTEXT_NEGLECT
+        assert sig.confidence == 0.7
+        assert len(sig.indicators) > 0
+
+    def test_analyze_communication_breakdown(self, analyzer):
+        detection = {
+            "detection_type": "communication_breakdown",
+            "confidence": 0.75,
+            "details": {
+                "failed_handoffs": ["handoff1", "handoff2"],
+                "misunderstood_messages": 3,
+                "affected_agents": ["agent_a", "agent_b"],
+            }
+        }
+        sig = analyzer.analyze(detection)
+        assert sig.category == FailureCategory.COMMUNICATION_BREAKDOWN
+        assert sig.confidence == 0.75
+        assert len(sig.indicators) > 0
+
+    def test_analyze_specification_mismatch(self, analyzer):
+        detection = {
+            "detection_type": "specification_mismatch",
+            "confidence": 0.8,
+            "details": {
+                "missing_fields": ["title", "summary"],
+                "requirement_coverage": 0.4,
+                "affected_nodes": ["output_formatter"],
+            }
+        }
+        sig = analyzer.analyze(detection)
+        assert sig.category == FailureCategory.SPECIFICATION_MISMATCH
+        assert sig.confidence == 0.8
+        assert len(sig.indicators) > 0
+
+    def test_analyze_poor_decomposition(self, analyzer):
+        detection = {
+            "detection_type": "poor_decomposition",
+            "confidence": 0.7,
+            "details": {
+                "subtask_count": 2,
+                "coverage_score": 0.3,
+                "problematic_subtasks": ["subtask_a"],
+                "affected_agents": ["planner"],
+            }
+        }
+        sig = analyzer.analyze(detection)
+        assert sig.category == FailureCategory.POOR_DECOMPOSITION
+        assert sig.confidence == 0.7
+        assert len(sig.indicators) > 0
+
+    def test_analyze_flawed_workflow(self, analyzer):
+        detection = {
+            "detection_type": "flawed_workflow",
+            "confidence": 0.75,
+            "details": {
+                "failed_steps": ["step1", "step2"],
+                "missing_error_handlers": 3,
+                "problematic_nodes": ["node_x", "node_y"],
+            }
+        }
+        sig = analyzer.analyze(detection)
+        assert sig.category == FailureCategory.FLAWED_WORKFLOW
+        assert sig.confidence == 0.75
+        assert len(sig.indicators) > 0
+
+    def test_analyze_information_withholding(self, analyzer):
+        detection = {
+            "detection_type": "information_withholding",
+            "confidence": 0.7,
+            "details": {
+                "withheld_items": ["item1", "item2"],
+                "completeness_score": 0.5,
+                "affected_agents": ["reporter"],
+            }
+        }
+        sig = analyzer.analyze(detection)
+        assert sig.category == FailureCategory.INFORMATION_WITHHOLDING
+        assert sig.confidence == 0.7
+        assert len(sig.indicators) > 0
+
+    def test_analyze_completion_misjudgment(self, analyzer):
+        detection = {
+            "detection_type": "completion_misjudgment",
+            "confidence": 0.7,
+            "details": {
+                "completion_type": "premature",
+                "quality_score": 0.4,
+                "criteria_met": 2,
+                "criteria_total": 5,
+                "affected_agents": ["executor"],
+            }
+        }
+        sig = analyzer.analyze(detection)
+        assert sig.category == FailureCategory.COMPLETION_MISJUDGMENT
+        assert sig.confidence == 0.7
+        assert len(sig.indicators) > 0
+
+    def test_analyze_cost_overrun(self, analyzer):
+        detection = {
+            "detection_type": "cost_overrun",
+            "confidence": 0.9,
+            "details": {
+                "total_cost": 1.5,
+                "budget_limit": 0.5,
+                "token_count": 500000,
+            }
+        }
+        sig = analyzer.analyze(detection)
+        assert sig.category == FailureCategory.COST_OVERRUN
+        assert sig.confidence == 0.9
+        assert len(sig.indicators) > 0
+
 
 class TestFixApplicator:
     """Tests for fix application."""
@@ -392,6 +577,414 @@ class TestFixValidator:
         
         regression_result = next(r for r in results if r.validation_type == "regression_validation")
         assert not regression_result.success
+
+    @pytest.mark.asyncio
+    async def test_hallucination_validator_passes(self, validator):
+        fix = AppliedFix(
+            fix_id="fix_1",
+            fix_type="fact_checking",
+            applied_at=datetime.now(timezone.utc),
+            target_component="workflow",
+            original_state={},
+            modified_state={
+                "settings": {
+                    "fact_checking": {"enabled": True},
+                }
+            },
+        )
+        results = await validator.validate(fix, FailureCategory.HALLUCINATION)
+        hallucination_results = [r for r in results if "hallucination" in r.validation_type]
+        assert len(hallucination_results) > 0
+        assert hallucination_results[0].success is True
+
+    @pytest.mark.asyncio
+    async def test_hallucination_validator_fails_without_settings(self, validator):
+        fix = AppliedFix(
+            fix_id="fix_1",
+            fix_type="fact_checking",
+            applied_at=datetime.now(timezone.utc),
+            target_component="workflow",
+            original_state={},
+            modified_state={"settings": {}},
+        )
+        results = await validator.validate(fix, FailureCategory.HALLUCINATION)
+        hallucination_results = [r for r in results if "hallucination" in r.validation_type]
+        assert len(hallucination_results) > 0
+        assert hallucination_results[0].success is False
+
+    @pytest.mark.asyncio
+    async def test_injection_validator_passes(self, validator):
+        fix = AppliedFix(
+            fix_id="fix_2",
+            fix_type="input_filtering",
+            applied_at=datetime.now(timezone.utc),
+            target_component="workflow",
+            original_state={},
+            modified_state={
+                "settings": {
+                    "input_filtering": {"enabled": True},
+                }
+            },
+        )
+        results = await validator.validate(fix, FailureCategory.INJECTION)
+        injection_results = [r for r in results if "injection" in r.validation_type]
+        assert len(injection_results) > 0
+        assert injection_results[0].success is True
+
+    @pytest.mark.asyncio
+    async def test_injection_validator_fails_without_settings(self, validator):
+        fix = AppliedFix(
+            fix_id="fix_2",
+            fix_type="input_filtering",
+            applied_at=datetime.now(timezone.utc),
+            target_component="workflow",
+            original_state={},
+            modified_state={"settings": {}},
+        )
+        results = await validator.validate(fix, FailureCategory.INJECTION)
+        injection_results = [r for r in results if "injection" in r.validation_type]
+        assert len(injection_results) > 0
+        assert injection_results[0].success is False
+
+    @pytest.mark.asyncio
+    async def test_context_overflow_validator_passes(self, validator):
+        fix = AppliedFix(
+            fix_id="fix_3",
+            fix_type="context_pruning",
+            applied_at=datetime.now(timezone.utc),
+            target_component="workflow",
+            original_state={},
+            modified_state={
+                "settings": {
+                    "context_pruning": {"enabled": True},
+                }
+            },
+        )
+        results = await validator.validate(fix, FailureCategory.CONTEXT_OVERFLOW)
+        overflow_results = [r for r in results if "context_overflow" in r.validation_type]
+        assert len(overflow_results) > 0
+        assert overflow_results[0].success is True
+
+    @pytest.mark.asyncio
+    async def test_context_overflow_validator_fails_without_settings(self, validator):
+        fix = AppliedFix(
+            fix_id="fix_3",
+            fix_type="context_pruning",
+            applied_at=datetime.now(timezone.utc),
+            target_component="workflow",
+            original_state={},
+            modified_state={"settings": {}},
+        )
+        results = await validator.validate(fix, FailureCategory.CONTEXT_OVERFLOW)
+        overflow_results = [r for r in results if "context_overflow" in r.validation_type]
+        assert len(overflow_results) > 0
+        assert overflow_results[0].success is False
+
+    @pytest.mark.asyncio
+    async def test_derailment_validator_passes(self, validator):
+        fix = AppliedFix(
+            fix_id="fix_4",
+            fix_type="task_anchoring",
+            applied_at=datetime.now(timezone.utc),
+            target_component="workflow",
+            original_state={},
+            modified_state={
+                "settings": {
+                    "task_anchoring": {"enabled": True},
+                }
+            },
+        )
+        results = await validator.validate(fix, FailureCategory.TASK_DERAILMENT)
+        derailment_results = [r for r in results if "derailment" in r.validation_type]
+        assert len(derailment_results) > 0
+        assert derailment_results[0].success is True
+
+    @pytest.mark.asyncio
+    async def test_derailment_validator_fails_without_settings(self, validator):
+        fix = AppliedFix(
+            fix_id="fix_4",
+            fix_type="task_anchoring",
+            applied_at=datetime.now(timezone.utc),
+            target_component="workflow",
+            original_state={},
+            modified_state={"settings": {}},
+        )
+        results = await validator.validate(fix, FailureCategory.TASK_DERAILMENT)
+        derailment_results = [r for r in results if "derailment" in r.validation_type]
+        assert len(derailment_results) > 0
+        assert derailment_results[0].success is False
+
+    @pytest.mark.asyncio
+    async def test_context_neglect_validator_passes(self, validator):
+        fix = AppliedFix(
+            fix_id="fix_5",
+            fix_type="context_injection",
+            applied_at=datetime.now(timezone.utc),
+            target_component="workflow",
+            original_state={},
+            modified_state={
+                "settings": {
+                    "context_injection": {"enabled": True},
+                }
+            },
+        )
+        results = await validator.validate(fix, FailureCategory.CONTEXT_NEGLECT)
+        neglect_results = [r for r in results if "context_neglect" in r.validation_type]
+        assert len(neglect_results) > 0
+        assert neglect_results[0].success is True
+
+    @pytest.mark.asyncio
+    async def test_context_neglect_validator_fails_without_settings(self, validator):
+        fix = AppliedFix(
+            fix_id="fix_5",
+            fix_type="context_injection",
+            applied_at=datetime.now(timezone.utc),
+            target_component="workflow",
+            original_state={},
+            modified_state={"settings": {}},
+        )
+        results = await validator.validate(fix, FailureCategory.CONTEXT_NEGLECT)
+        neglect_results = [r for r in results if "context_neglect" in r.validation_type]
+        assert len(neglect_results) > 0
+        assert neglect_results[0].success is False
+
+    @pytest.mark.asyncio
+    async def test_communication_validator_passes(self, validator):
+        fix = AppliedFix(
+            fix_id="fix_6",
+            fix_type="message_schema",
+            applied_at=datetime.now(timezone.utc),
+            target_component="workflow",
+            original_state={},
+            modified_state={
+                "settings": {
+                    "message_schema": {"enabled": True},
+                }
+            },
+        )
+        results = await validator.validate(fix, FailureCategory.COMMUNICATION_BREAKDOWN)
+        comm_results = [r for r in results if "communication" in r.validation_type]
+        assert len(comm_results) > 0
+        assert comm_results[0].success is True
+
+    @pytest.mark.asyncio
+    async def test_communication_validator_fails_without_settings(self, validator):
+        fix = AppliedFix(
+            fix_id="fix_6",
+            fix_type="message_schema",
+            applied_at=datetime.now(timezone.utc),
+            target_component="workflow",
+            original_state={},
+            modified_state={"settings": {}},
+        )
+        results = await validator.validate(fix, FailureCategory.COMMUNICATION_BREAKDOWN)
+        comm_results = [r for r in results if "communication" in r.validation_type]
+        assert len(comm_results) > 0
+        assert comm_results[0].success is False
+
+    @pytest.mark.asyncio
+    async def test_specification_validator_passes(self, validator):
+        fix = AppliedFix(
+            fix_id="fix_7",
+            fix_type="spec_validation",
+            applied_at=datetime.now(timezone.utc),
+            target_component="workflow",
+            original_state={},
+            modified_state={
+                "settings": {
+                    "spec_validation": {"enabled": True},
+                }
+            },
+        )
+        results = await validator.validate(fix, FailureCategory.SPECIFICATION_MISMATCH)
+        spec_results = [r for r in results if "specification" in r.validation_type]
+        assert len(spec_results) > 0
+        assert spec_results[0].success is True
+
+    @pytest.mark.asyncio
+    async def test_specification_validator_fails_without_settings(self, validator):
+        fix = AppliedFix(
+            fix_id="fix_7",
+            fix_type="spec_validation",
+            applied_at=datetime.now(timezone.utc),
+            target_component="workflow",
+            original_state={},
+            modified_state={"settings": {}},
+        )
+        results = await validator.validate(fix, FailureCategory.SPECIFICATION_MISMATCH)
+        spec_results = [r for r in results if "specification" in r.validation_type]
+        assert len(spec_results) > 0
+        assert spec_results[0].success is False
+
+    @pytest.mark.asyncio
+    async def test_decomposition_validator_passes(self, validator):
+        fix = AppliedFix(
+            fix_id="fix_8",
+            fix_type="task_decomposition",
+            applied_at=datetime.now(timezone.utc),
+            target_component="workflow",
+            original_state={},
+            modified_state={
+                "settings": {
+                    "task_decomposition": {"enabled": True},
+                }
+            },
+        )
+        results = await validator.validate(fix, FailureCategory.POOR_DECOMPOSITION)
+        decomp_results = [r for r in results if "decomposition" in r.validation_type]
+        assert len(decomp_results) > 0
+        assert decomp_results[0].success is True
+
+    @pytest.mark.asyncio
+    async def test_decomposition_validator_fails_without_settings(self, validator):
+        fix = AppliedFix(
+            fix_id="fix_8",
+            fix_type="task_decomposition",
+            applied_at=datetime.now(timezone.utc),
+            target_component="workflow",
+            original_state={},
+            modified_state={"settings": {}},
+        )
+        results = await validator.validate(fix, FailureCategory.POOR_DECOMPOSITION)
+        decomp_results = [r for r in results if "decomposition" in r.validation_type]
+        assert len(decomp_results) > 0
+        assert decomp_results[0].success is False
+
+    @pytest.mark.asyncio
+    async def test_workflow_validator_passes(self, validator):
+        fix = AppliedFix(
+            fix_id="fix_9",
+            fix_type="workflow_guards",
+            applied_at=datetime.now(timezone.utc),
+            target_component="workflow",
+            original_state={},
+            modified_state={
+                "settings": {
+                    "workflow_guards": {"enabled": True},
+                }
+            },
+        )
+        results = await validator.validate(fix, FailureCategory.FLAWED_WORKFLOW)
+        workflow_results = [r for r in results if "workflow" in r.validation_type]
+        assert len(workflow_results) > 0
+        assert workflow_results[0].success is True
+
+    @pytest.mark.asyncio
+    async def test_workflow_validator_fails_without_settings(self, validator):
+        fix = AppliedFix(
+            fix_id="fix_9",
+            fix_type="workflow_guards",
+            applied_at=datetime.now(timezone.utc),
+            target_component="workflow",
+            original_state={},
+            modified_state={"settings": {}},
+        )
+        results = await validator.validate(fix, FailureCategory.FLAWED_WORKFLOW)
+        workflow_results = [r for r in results if "workflow" in r.validation_type]
+        assert len(workflow_results) > 0
+        assert workflow_results[0].success is False
+
+    @pytest.mark.asyncio
+    async def test_withholding_validator_passes(self, validator):
+        fix = AppliedFix(
+            fix_id="fix_10",
+            fix_type="transparency",
+            applied_at=datetime.now(timezone.utc),
+            target_component="workflow",
+            original_state={},
+            modified_state={
+                "settings": {
+                    "transparency": {"enabled": True},
+                }
+            },
+        )
+        results = await validator.validate(fix, FailureCategory.INFORMATION_WITHHOLDING)
+        withholding_results = [r for r in results if "withholding" in r.validation_type]
+        assert len(withholding_results) > 0
+        assert withholding_results[0].success is True
+
+    @pytest.mark.asyncio
+    async def test_withholding_validator_fails_without_settings(self, validator):
+        fix = AppliedFix(
+            fix_id="fix_10",
+            fix_type="transparency",
+            applied_at=datetime.now(timezone.utc),
+            target_component="workflow",
+            original_state={},
+            modified_state={"settings": {}},
+        )
+        results = await validator.validate(fix, FailureCategory.INFORMATION_WITHHOLDING)
+        withholding_results = [r for r in results if "withholding" in r.validation_type]
+        assert len(withholding_results) > 0
+        assert withholding_results[0].success is False
+
+    @pytest.mark.asyncio
+    async def test_completion_validator_passes(self, validator):
+        fix = AppliedFix(
+            fix_id="fix_11",
+            fix_type="completion_gate",
+            applied_at=datetime.now(timezone.utc),
+            target_component="workflow",
+            original_state={},
+            modified_state={
+                "settings": {
+                    "completion_gate": {"enabled": True},
+                }
+            },
+        )
+        results = await validator.validate(fix, FailureCategory.COMPLETION_MISJUDGMENT)
+        completion_results = [r for r in results if "completion" in r.validation_type]
+        assert len(completion_results) > 0
+        assert completion_results[0].success is True
+
+    @pytest.mark.asyncio
+    async def test_completion_validator_fails_without_settings(self, validator):
+        fix = AppliedFix(
+            fix_id="fix_11",
+            fix_type="completion_gate",
+            applied_at=datetime.now(timezone.utc),
+            target_component="workflow",
+            original_state={},
+            modified_state={"settings": {}},
+        )
+        results = await validator.validate(fix, FailureCategory.COMPLETION_MISJUDGMENT)
+        completion_results = [r for r in results if "completion" in r.validation_type]
+        assert len(completion_results) > 0
+        assert completion_results[0].success is False
+
+    @pytest.mark.asyncio
+    async def test_cost_validator_passes(self, validator):
+        fix = AppliedFix(
+            fix_id="fix_12",
+            fix_type="budget_limit",
+            applied_at=datetime.now(timezone.utc),
+            target_component="workflow",
+            original_state={},
+            modified_state={
+                "settings": {
+                    "budget_limit": {"enabled": True},
+                }
+            },
+        )
+        results = await validator.validate(fix, FailureCategory.COST_OVERRUN)
+        cost_results = [r for r in results if "cost" in r.validation_type]
+        assert len(cost_results) > 0
+        assert cost_results[0].success is True
+
+    @pytest.mark.asyncio
+    async def test_cost_validator_fails_without_settings(self, validator):
+        fix = AppliedFix(
+            fix_id="fix_12",
+            fix_type="budget_limit",
+            applied_at=datetime.now(timezone.utc),
+            target_component="workflow",
+            original_state={},
+            modified_state={"settings": {}},
+        )
+        results = await validator.validate(fix, FailureCategory.COST_OVERRUN)
+        cost_results = [r for r in results if "cost" in r.validation_type]
+        assert len(cost_results) > 0
+        assert cost_results[0].success is False
 
 
 class TestSelfHealingEngine:

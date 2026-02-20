@@ -6,18 +6,61 @@ from typing import List, Optional, Dict, Any
 
 
 class FixType(Enum):
+    # Loop
     RETRY_LIMIT = "retry_limit"
     EXPONENTIAL_BACKOFF = "exponential_backoff"
     CIRCUIT_BREAKER = "circuit_breaker"
+    # Corruption
     STATE_VALIDATION = "state_validation"
     SCHEMA_ENFORCEMENT = "schema_enforcement"
     INPUT_SANITIZATION = "input_sanitization"
+    CHECKPOINT_RECOVERY = "checkpoint_recovery"
+    # Persona
     PROMPT_REINFORCEMENT = "prompt_reinforcement"
     ROLE_BOUNDARY = "role_boundary"
+    # Deadlock
     TIMEOUT_ADDITION = "timeout_addition"
     PRIORITY_ADJUSTMENT = "priority_adjustment"
     ASYNC_HANDOFF = "async_handoff"
-    CHECKPOINT_RECOVERY = "checkpoint_recovery"
+    # Hallucination
+    FACT_CHECKING = "fact_checking"
+    SOURCE_GROUNDING = "source_grounding"
+    CONFIDENCE_CALIBRATION = "confidence_calibration"
+    # Injection
+    INPUT_FILTERING = "input_filtering"
+    SAFETY_BOUNDARY = "safety_boundary"
+    PERMISSION_GATE = "permission_gate"
+    # Overflow
+    CONTEXT_PRUNING = "context_pruning"
+    SUMMARIZATION = "summarization"
+    WINDOW_MANAGEMENT = "window_management"
+    # Derailment
+    TASK_ANCHORING = "task_anchoring"
+    GOAL_TRACKING = "goal_tracking"
+    # Communication
+    MESSAGE_SCHEMA = "message_schema"
+    HANDOFF_PROTOCOL = "handoff_protocol"
+    # Specification
+    SPEC_VALIDATION = "spec_validation"
+    OUTPUT_CONSTRAINT = "output_constraint"
+    # Decomposition
+    TASK_DECOMPOSER = "task_decomposer"
+    SUBTASK_VALIDATOR = "subtask_validator"
+    # Workflow
+    WORKFLOW_GUARD = "workflow_guard"
+    STEP_VALIDATOR = "step_validator"
+    # Withholding
+    TRANSPARENCY_ENFORCER = "transparency_enforcer"
+    INFORMATION_COMPLETENESS = "information_completeness"
+    # Completion
+    COMPLETION_GATE = "completion_gate"
+    QUALITY_CHECKPOINT = "quality_checkpoint"
+    # Cost
+    BUDGET_LIMITER = "budget_limiter"
+    COST_MONITOR = "cost_monitor"
+    TOKEN_OPTIMIZER = "token_optimizer"
+    # Shared
+    PROGRESS_MONITORING = "progress_monitoring"
 
 
 class FixConfidence(Enum):

@@ -23,6 +23,19 @@ from ..fixes.generator import FixGenerator
 from ..fixes.loop_fixes import LoopFixGenerator
 from ..fixes.corruption_fixes import CorruptionFixGenerator
 from ..fixes.persona_fixes import PersonaFixGenerator
+from ..fixes.deadlock_fixes import DeadlockFixGenerator
+from ..fixes.hallucination_fixes import HallucinationFixGenerator
+from ..fixes.injection_fixes import InjectionFixGenerator
+from ..fixes.overflow_fixes import OverflowFixGenerator
+from ..fixes.derailment_fixes import DerailmentFixGenerator
+from ..fixes.context_neglect_fixes import ContextNeglectFixGenerator
+from ..fixes.communication_fixes import CommunicationFixGenerator
+from ..fixes.specification_fixes import SpecificationFixGenerator
+from ..fixes.decomposition_fixes import DecompositionFixGenerator
+from ..fixes.workflow_fixes import WorkflowFixGenerator
+from ..fixes.withholding_fixes import WithholdingFixGenerator
+from ..fixes.completion_fixes import CompletionFixGenerator
+from ..fixes.cost_fixes import CostFixGenerator
 
 logger = logging.getLogger(__name__)
 
@@ -76,6 +89,19 @@ class SelfHealingEngine:
         self.fix_generator.register(LoopFixGenerator())
         self.fix_generator.register(CorruptionFixGenerator())
         self.fix_generator.register(PersonaFixGenerator())
+        self.fix_generator.register(DeadlockFixGenerator())
+        self.fix_generator.register(HallucinationFixGenerator())
+        self.fix_generator.register(InjectionFixGenerator())
+        self.fix_generator.register(OverflowFixGenerator())
+        self.fix_generator.register(DerailmentFixGenerator())
+        self.fix_generator.register(ContextNeglectFixGenerator())
+        self.fix_generator.register(CommunicationFixGenerator())
+        self.fix_generator.register(SpecificationFixGenerator())
+        self.fix_generator.register(DecompositionFixGenerator())
+        self.fix_generator.register(WorkflowFixGenerator())
+        self.fix_generator.register(WithholdingFixGenerator())
+        self.fix_generator.register(CompletionFixGenerator())
+        self.fix_generator.register(CostFixGenerator())
 
         self._healing_history: List[HealingResult] = []
         self._apply_results: List[ApplyResult] = []

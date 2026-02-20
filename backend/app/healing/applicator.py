@@ -22,6 +22,18 @@ class FixApplicator:
         self._strategies[FailureCategory.PERSONA_DRIFT] = DriftFixApplicator()
         self._strategies[FailureCategory.TIMEOUT] = TimeoutFixApplicator()
         self._strategies[FailureCategory.COORDINATION_DEADLOCK] = DeadlockFixApplicator()
+        self._strategies[FailureCategory.HALLUCINATION] = HallucinationFixApplicator()
+        self._strategies[FailureCategory.INJECTION] = InjectionFixApplicator()
+        self._strategies[FailureCategory.CONTEXT_OVERFLOW] = OverflowFixApplicator()
+        self._strategies[FailureCategory.TASK_DERAILMENT] = DerailmentFixApplicator()
+        self._strategies[FailureCategory.CONTEXT_NEGLECT] = ContextNeglectFixApplicator()
+        self._strategies[FailureCategory.COMMUNICATION_BREAKDOWN] = CommunicationFixApplicator()
+        self._strategies[FailureCategory.SPECIFICATION_MISMATCH] = SpecificationFixApplicator()
+        self._strategies[FailureCategory.POOR_DECOMPOSITION] = DecompositionFixApplicator()
+        self._strategies[FailureCategory.FLAWED_WORKFLOW] = WorkflowFixApplicator()
+        self._strategies[FailureCategory.INFORMATION_WITHHOLDING] = WithholdingFixApplicator()
+        self._strategies[FailureCategory.COMPLETION_MISJUDGMENT] = CompletionFixApplicator()
+        self._strategies[FailureCategory.COST_OVERRUN] = CostFixApplicator()
     
     def apply(
         self,
@@ -291,5 +303,443 @@ class DeadlockFixApplicator(ApplicatorStrategy):
             "resolution_strategy": "preempt_lowest_priority",
             "max_wait_time_ms": 30000,
         }
-        
+
+        return result
+
+
+class HallucinationFixApplicator(ApplicatorStrategy):
+    """Applies hallucination prevention fixes."""
+
+    def apply(self, fix: Dict[str, Any], config: Dict[str, Any]) -> Dict[str, Any]:
+        result = copy.deepcopy(config)
+        fix_type = fix.get("fix_type", "")
+
+        if "settings" not in result:
+            result["settings"] = {}
+
+        if fix_type == "fact_checking":
+            result["settings"]["fact_checking"] = {
+                "enabled": True,
+                "verification_sources": ["internal_knowledge", "grounding_docs"],
+                "confidence_threshold": 0.7,
+                "on_low_confidence": "flag_and_cite",
+            }
+        elif fix_type == "source_grounding":
+            result["settings"]["source_grounding"] = {
+                "enabled": True,
+                "require_citations": True,
+                "max_unsupported_claims": 0,
+                "grounding_strategy": "retrieval_augmented",
+            }
+        elif fix_type == "confidence_calibration":
+            result["settings"]["confidence_calibration"] = {
+                "enabled": True,
+                "min_confidence": 0.6,
+                "require_uncertainty_markers": True,
+                "calibration_method": "verbalized_probability",
+            }
+        else:
+            result["settings"]["fact_checking"] = {"enabled": True}
+
+        return result
+
+
+class InjectionFixApplicator(ApplicatorStrategy):
+    """Applies injection prevention fixes."""
+
+    def apply(self, fix: Dict[str, Any], config: Dict[str, Any]) -> Dict[str, Any]:
+        result = copy.deepcopy(config)
+        fix_type = fix.get("fix_type", "")
+
+        if "settings" not in result:
+            result["settings"] = {}
+
+        if fix_type == "input_filtering":
+            result["settings"]["input_filtering"] = {
+                "enabled": True,
+                "filter_patterns": ["ignore previous", "system:", "jailbreak"],
+                "sanitize_mode": "escape_and_flag",
+                "block_on_detection": True,
+            }
+        elif fix_type == "safety_boundary":
+            result["settings"]["safety_boundary"] = {
+                "enabled": True,
+                "boundary_type": "instruction_hierarchy",
+                "system_prompt_priority": "highest",
+                "reject_conflicting_instructions": True,
+            }
+        elif fix_type == "permission_gate":
+            result["settings"]["permission_gate"] = {
+                "enabled": True,
+                "require_approval_for": ["code_execution", "data_access", "external_calls"],
+                "approval_timeout_ms": 30000,
+            }
+        else:
+            result["settings"]["input_filtering"] = {"enabled": True}
+
+        return result
+
+
+class OverflowFixApplicator(ApplicatorStrategy):
+    """Applies context overflow prevention fixes."""
+
+    def apply(self, fix: Dict[str, Any], config: Dict[str, Any]) -> Dict[str, Any]:
+        result = copy.deepcopy(config)
+        fix_type = fix.get("fix_type", "")
+
+        if "settings" not in result:
+            result["settings"] = {}
+
+        if fix_type == "context_pruning":
+            result["settings"]["context_pruning"] = {
+                "enabled": True,
+                "max_context_tokens": 4000,
+                "pruning_strategy": "relevance_weighted",
+                "preserve_system_prompt": True,
+            }
+        elif fix_type == "summarization":
+            result["settings"]["summarization"] = {
+                "enabled": True,
+                "trigger_threshold_tokens": 3000,
+                "summary_target_tokens": 500,
+                "preserve_recent_turns": 3,
+            }
+        elif fix_type == "window_management":
+            result["settings"]["window_management"] = {
+                "enabled": True,
+                "window_type": "sliding",
+                "max_window_size": 4096,
+                "overlap_tokens": 200,
+            }
+        else:
+            result["settings"]["context_pruning"] = {"enabled": True}
+
+        result["settings"]["executionTimeout"] = result["settings"].get("executionTimeout", 300)
+
+        return result
+
+
+class DerailmentFixApplicator(ApplicatorStrategy):
+    """Applies task derailment prevention fixes."""
+
+    def apply(self, fix: Dict[str, Any], config: Dict[str, Any]) -> Dict[str, Any]:
+        result = copy.deepcopy(config)
+        fix_type = fix.get("fix_type", "")
+
+        if "settings" not in result:
+            result["settings"] = {}
+
+        if fix_type == "task_anchoring":
+            result["settings"]["task_anchoring"] = {
+                "enabled": True,
+                "anchor_frequency": "every_turn",
+                "include_original_goal": True,
+                "deviation_threshold": 0.3,
+            }
+        elif fix_type == "goal_tracking":
+            result["settings"]["goal_tracking"] = {
+                "enabled": True,
+                "track_subtask_completion": True,
+                "alert_on_drift": True,
+                "max_off_topic_turns": 2,
+            }
+        elif fix_type == "progress_monitoring":
+            result["settings"]["progress_monitoring"] = {
+                "enabled": True,
+                "checkpoint_interval": 5,
+                "report_progress": True,
+            }
+        else:
+            result["settings"]["task_anchoring"] = {"enabled": True}
+
+        return result
+
+
+class ContextNeglectFixApplicator(ApplicatorStrategy):
+    """Applies context neglect prevention fixes."""
+
+    def apply(self, fix: Dict[str, Any], config: Dict[str, Any]) -> Dict[str, Any]:
+        result = copy.deepcopy(config)
+        fix_type = fix.get("fix_type", "")
+
+        if "settings" not in result:
+            result["settings"] = {}
+
+        if fix_type == "checkpoint_recovery":
+            result["settings"]["context_injection"] = {
+                "enabled": True,
+                "inject_at": "every_turn",
+                "include_key_facts": True,
+                "max_injection_tokens": 500,
+            }
+        elif fix_type in ("retrieval_enhancement", "retrieval_verification"):
+            result["settings"]["retrieval_verification"] = {
+                "enabled": True,
+                "verify_context_used": True,
+                "min_context_coverage": 0.8,
+                "flag_ignored_context": True,
+            }
+        else:
+            result["settings"]["context_injection"] = {"enabled": True}
+
+        result["settings"]["checkpointing"] = result["settings"].get("checkpointing", {"enabled": True})
+
+        return result
+
+
+class CommunicationFixApplicator(ApplicatorStrategy):
+    """Applies communication breakdown prevention fixes."""
+
+    def apply(self, fix: Dict[str, Any], config: Dict[str, Any]) -> Dict[str, Any]:
+        result = copy.deepcopy(config)
+        fix_type = fix.get("fix_type", "")
+
+        if "settings" not in result:
+            result["settings"] = {}
+
+        if fix_type == "message_schema":
+            result["settings"]["message_schema"] = {
+                "enabled": True,
+                "schema_version": "1.0",
+                "required_fields": ["sender", "recipient", "content", "timestamp"],
+                "validate_on_send": True,
+            }
+        elif fix_type == "handoff_protocol":
+            result["settings"]["handoff_protocol"] = {
+                "enabled": True,
+                "require_acknowledgment": True,
+                "handoff_timeout_ms": 15000,
+                "include_context_summary": True,
+            }
+        elif fix_type == "retry_limit":
+            result["settings"]["retry"] = {
+                "enabled": True,
+                "max_retries": 3,
+                "backoff_ms": 1000,
+            }
+        else:
+            result["settings"]["message_schema"] = {"enabled": True}
+
+        return result
+
+
+class SpecificationFixApplicator(ApplicatorStrategy):
+    """Applies specification mismatch prevention fixes."""
+
+    def apply(self, fix: Dict[str, Any], config: Dict[str, Any]) -> Dict[str, Any]:
+        result = copy.deepcopy(config)
+        fix_type = fix.get("fix_type", "")
+
+        if "settings" not in result:
+            result["settings"] = {}
+
+        if fix_type == "spec_validation":
+            result["settings"]["spec_validation"] = {
+                "enabled": True,
+                "validate_output_format": True,
+                "validate_required_fields": True,
+                "on_mismatch": "retry_with_feedback",
+            }
+        elif fix_type == "output_constraint":
+            result["settings"]["output_constraints"] = {
+                "enabled": True,
+                "max_length": fix.get("metadata", {}).get("max_length", 4096),
+                "required_sections": [],
+                "forbidden_patterns": [],
+            }
+        elif fix_type == "schema_enforcement":
+            result["settings"]["schema_enforcement"] = {
+                "enabled": True,
+                "strict_mode": True,
+                "reject_unknown_fields": False,
+                "coerce_types": True,
+            }
+        else:
+            result["settings"]["spec_validation"] = {"enabled": True}
+
+        return result
+
+
+class DecompositionFixApplicator(ApplicatorStrategy):
+    """Applies poor decomposition prevention fixes."""
+
+    def apply(self, fix: Dict[str, Any], config: Dict[str, Any]) -> Dict[str, Any]:
+        result = copy.deepcopy(config)
+        fix_type = fix.get("fix_type", "")
+
+        if "settings" not in result:
+            result["settings"] = {}
+
+        if fix_type == "task_decomposer":
+            result["settings"]["task_decomposition"] = {
+                "enabled": True,
+                "max_subtask_depth": 3,
+                "min_subtasks": 2,
+                "require_completion_criteria": True,
+            }
+        elif fix_type == "subtask_validator":
+            result["settings"]["subtask_validation"] = {
+                "enabled": True,
+                "validate_completeness": True,
+                "validate_ordering": True,
+                "check_dependencies": True,
+            }
+        elif fix_type == "progress_monitoring":
+            result["settings"]["progress_monitoring"] = {
+                "enabled": True,
+                "checkpoint_interval": 5,
+                "report_progress": True,
+            }
+        else:
+            result["settings"]["task_decomposition"] = {"enabled": True}
+
+        return result
+
+
+class WorkflowFixApplicator(ApplicatorStrategy):
+    """Applies flawed workflow prevention fixes."""
+
+    def apply(self, fix: Dict[str, Any], config: Dict[str, Any]) -> Dict[str, Any]:
+        result = copy.deepcopy(config)
+        fix_type = fix.get("fix_type", "")
+
+        if "settings" not in result:
+            result["settings"] = {}
+
+        if fix_type == "workflow_guard":
+            result["settings"]["workflow_guards"] = {
+                "enabled": True,
+                "validate_transitions": True,
+                "max_steps": 50,
+                "on_guard_failure": "halt_and_report",
+            }
+        elif fix_type == "step_validator":
+            result["settings"]["step_validation"] = {
+                "enabled": True,
+                "validate_input": True,
+                "validate_output": True,
+                "log_step_results": True,
+            }
+        elif fix_type == "circuit_breaker":
+            result["settings"]["circuit_breaker"] = {
+                "enabled": True,
+                "failure_threshold": 5,
+                "recovery_timeout_seconds": 60,
+            }
+        else:
+            result["settings"]["workflow_guards"] = {"enabled": True}
+
+        if not result["settings"].get("errorWorkflow"):
+            result["settings"]["errorWorkflow"] = "error_handler"
+
+        return result
+
+
+class WithholdingFixApplicator(ApplicatorStrategy):
+    """Applies information withholding prevention fixes."""
+
+    def apply(self, fix: Dict[str, Any], config: Dict[str, Any]) -> Dict[str, Any]:
+        result = copy.deepcopy(config)
+        fix_type = fix.get("fix_type", "")
+
+        if "settings" not in result:
+            result["settings"] = {}
+
+        if fix_type == "transparency_enforcer":
+            result["settings"]["transparency"] = {
+                "enabled": True,
+                "require_reasoning": True,
+                "expose_confidence": True,
+                "cite_sources": True,
+            }
+        elif fix_type == "information_completeness":
+            result["settings"]["completeness_check"] = {
+                "enabled": True,
+                "min_response_coverage": 0.8,
+                "flag_omissions": True,
+                "require_explicit_unknowns": True,
+            }
+        elif fix_type == "source_grounding":
+            result["settings"]["source_grounding"] = {
+                "enabled": True,
+                "require_citations": True,
+            }
+        else:
+            result["settings"]["transparency"] = {"enabled": True}
+
+        return result
+
+
+class CompletionFixApplicator(ApplicatorStrategy):
+    """Applies completion misjudgment prevention fixes."""
+
+    def apply(self, fix: Dict[str, Any], config: Dict[str, Any]) -> Dict[str, Any]:
+        result = copy.deepcopy(config)
+        fix_type = fix.get("fix_type", "")
+
+        if "settings" not in result:
+            result["settings"] = {}
+
+        if fix_type == "completion_gate":
+            result["settings"]["completion_gate"] = {
+                "enabled": True,
+                "require_all_subtasks": True,
+                "quality_threshold": 0.8,
+                "review_before_finalize": True,
+            }
+        elif fix_type == "quality_checkpoint":
+            result["settings"]["quality_checkpoint"] = {
+                "enabled": True,
+                "checkpoint_frequency": "after_each_subtask",
+                "min_quality_score": 0.7,
+                "block_on_failure": True,
+            }
+        elif fix_type == "progress_monitoring":
+            result["settings"]["progress_monitoring"] = {
+                "enabled": True,
+                "checkpoint_interval": 5,
+                "report_progress": True,
+            }
+        else:
+            result["settings"]["completion_gate"] = {"enabled": True}
+
+        return result
+
+
+class CostFixApplicator(ApplicatorStrategy):
+    """Applies cost overrun prevention fixes."""
+
+    def apply(self, fix: Dict[str, Any], config: Dict[str, Any]) -> Dict[str, Any]:
+        result = copy.deepcopy(config)
+        fix_type = fix.get("fix_type", "")
+
+        if "settings" not in result:
+            result["settings"] = {}
+
+        if fix_type == "budget_limiter":
+            result["settings"]["budget_limit"] = {
+                "enabled": True,
+                "max_tokens": fix.get("metadata", {}).get("max_tokens", 100000),
+                "max_cost_usd": fix.get("metadata", {}).get("max_cost_usd", 1.0),
+                "on_limit_exceeded": "terminate_gracefully",
+            }
+        elif fix_type == "cost_monitor":
+            result["settings"]["cost_monitoring"] = {
+                "enabled": True,
+                "track_tokens": True,
+                "track_api_calls": True,
+                "alert_threshold_pct": 80,
+            }
+        elif fix_type == "token_optimizer":
+            result["settings"]["token_optimizer"] = {
+                "enabled": True,
+                "optimize_prompts": True,
+                "cache_responses": True,
+                "deduplicate_context": True,
+            }
+        else:
+            result["settings"]["budget_limit"] = {"enabled": True}
+
+        result["settings"]["executionTimeout"] = result["settings"].get("executionTimeout", 300)
+
         return result
