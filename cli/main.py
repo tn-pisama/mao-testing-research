@@ -33,6 +33,9 @@ app = typer.Typer(
 )
 console = Console()
 
+from .commands.quality import quality_app
+app.add_typer(quality_app)
+
 
 @app.command()
 def init(

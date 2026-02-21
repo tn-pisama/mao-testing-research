@@ -677,6 +677,690 @@ class ConfigAppropriatenessImprovementGenerator(BaseImprovementGenerator):
         return improvements
 
 
+class DataFlowClarityImprovementGenerator(BaseImprovementGenerator):
+    """Generate improvements for data flow clarity issues."""
+
+    def can_handle(self, dimension: str) -> bool:
+        return dimension == OrchestrationDimension.DATA_FLOW_CLARITY.value
+
+    def generate(
+        self,
+        score: DimensionScore,
+        context: Dict[str, Any],
+    ) -> List[QualityImprovement]:
+        improvements = []
+        workflow_id = context.get("workflow_id", "unknown")
+        evidence = score.evidence
+
+        if score.score < 0.5:
+            connection_coverage = evidence.get("connection_coverage", 1.0)
+            if connection_coverage < 0.7:
+                improvements.append(QualityImprovement.create(
+                    target_type="orchestration",
+                    target_id=workflow_id,
+                    severity=Severity.MEDIUM,
+                    category="data_flow_clarity",
+                    title="Add explicit connections between nodes",
+                    description=f"Only {connection_coverage:.0%} of nodes have explicit input/output connections defined.",
+                    rationale="Nodes without explicit connections rely on implicit data passing, which makes the workflow harder to understand and debug. Explicit connections document the intended data flow.",
+                    suggested_change="Add connections between all nodes that exchange data, and remove any orphaned nodes",
+                    code_example='''{
+  "connections": {
+    "AI Agent": {
+      "main": [[{"node": "Output Parser", "type": "main", "index": 0}]]
+    },
+    "Output Parser": {
+      "main": [[{"node": "Save Results", "type": "main", "index": 0}]]
+    }
+  }
+}''',
+                    estimated_impact="Improve workflow readability and reduce data passing errors",
+                    effort=Effort.LOW,
+                ))
+
+        state_manipulation_ratio = evidence.get("state_manipulation_ratio", 0)
+        if state_manipulation_ratio > 0.3:
+            improvements.append(QualityImprovement.create(
+                target_type="orchestration",
+                target_id=workflow_id,
+                severity=Severity.MEDIUM,
+                category="data_flow_clarity",
+                title="Replace direct state manipulation with explicit data mapping",
+                description=f"High state manipulation ratio ({state_manipulation_ratio:.2f}) indicates nodes are modifying shared state directly.",
+                rationale="Direct state manipulation creates hidden dependencies between nodes. Using explicit data mapping through Set or Code nodes makes transformations visible and testable.",
+                suggested_change="Use Set nodes or explicit expressions to map data between nodes instead of mutating shared state",
+                code_example='''// Instead of modifying $json directly in a Function node:
+// $json.result = someTransformation($json.input);
+
+// Use a Set node with explicit field mapping:
+{
+  "type": "n8n-nodes-base.set",
+  "name": "Map Analysis Results",
+  "parameters": {
+    "values": {
+      "string": [
+        {"name": "analysis_result", "value": "={{ $json.raw_output.summary }}"},
+        {"name": "confidence", "value": "={{ $json.raw_output.score }}"}
+      ]
+    }
+  }
+}''',
+                estimated_impact="Reduce hidden data dependencies and improve testability",
+                effort=Effort.MEDIUM,
+            ))
+
+        generic_name_ratio = evidence.get("generic_name_ratio", 0)
+        if generic_name_ratio > 0.5:
+            improvements.append(QualityImprovement.create(
+                target_type="orchestration",
+                target_id=workflow_id,
+                severity=Severity.MEDIUM,
+                category="data_flow_clarity",
+                title="Rename nodes with descriptive names",
+                description=f"{generic_name_ratio:.0%} of nodes have generic names (e.g., 'Code', 'HTTP Request', 'Set').",
+                rationale="Generic node names make it impossible to understand data flow at a glance. Descriptive names document what each node does and what data it produces.",
+                suggested_change="Rename nodes to describe their purpose, e.g., 'HTTP Request' -> 'Fetch Customer Orders', 'Code' -> 'Parse Invoice PDF'",
+                code_example='''// Before:
+"name": "HTTP Request"   // What does this fetch?
+"name": "Code"           // What does this compute?
+"name": "Set"            // What is being set?
+
+// After:
+"name": "Fetch Customer Profile from CRM"
+"name": "Extract Key Metrics from Report"
+"name": "Map Agent Output to API Schema"''',
+                estimated_impact="Improve workflow readability and onboarding speed",
+                effort=Effort.LOW,
+            ))
+
+        return improvements
+
+
+class BestPracticesImprovementGenerator(BaseImprovementGenerator):
+    """Generate improvements for best practices compliance."""
+
+    def can_handle(self, dimension: str) -> bool:
+        return dimension == OrchestrationDimension.BEST_PRACTICES.value
+
+    def generate(
+        self,
+        score: DimensionScore,
+        context: Dict[str, Any],
+    ) -> List[QualityImprovement]:
+        improvements = []
+        workflow_id = context.get("workflow_id", "unknown")
+        evidence = score.evidence
+
+        if not evidence.get("error_handler_present"):
+            improvements.append(QualityImprovement.create(
+                target_type="orchestration",
+                target_id=workflow_id,
+                severity=Severity.HIGH,
+                category="best_practices",
+                title="Add a global error handler to the workflow",
+                description="No error handling trigger or catch mechanism detected in this workflow.",
+                rationale="Without a global error handler, workflow failures are silent and unrecoverable. An error trigger captures failure context and enables alerting, logging, and graceful degradation.",
+                suggested_change="Add an Error Trigger node connected to an alerting or logging node",
+                code_example='''{
+  "nodes": [
+    {
+      "type": "n8n-nodes-base.errorTrigger",
+      "name": "On Workflow Error",
+      "position": [250, 0]
+    },
+    {
+      "type": "n8n-nodes-base.slack",
+      "name": "Alert Team on Failure",
+      "parameters": {
+        "channel": "#workflow-alerts",
+        "text": "Workflow failed: {{ $json.execution.error.message }}"
+      }
+    }
+  ]
+}''',
+                estimated_impact="Enable failure detection and prevent silent errors",
+                effort=Effort.MEDIUM,
+            ))
+
+        error_branch_coverage = evidence.get("error_branch_coverage", 1.0)
+        if error_branch_coverage < 0.2:
+            improvements.append(QualityImprovement.create(
+                target_type="orchestration",
+                target_id=workflow_id,
+                severity=Severity.MEDIUM,
+                category="best_practices",
+                title="Add error output branches to critical nodes",
+                description=f"Only {error_branch_coverage:.0%} of nodes have error handling branches configured.",
+                rationale="Nodes without error branches halt the entire workflow on failure. Adding error outputs allows the workflow to handle failures gracefully per node.",
+                suggested_change="Enable 'Continue on Fail' on critical nodes and route error outputs to fallback logic",
+                code_example='''// For each critical node, add error handling:
+{
+  "name": "AI Agent - Summarize",
+  "continueOnFail": true,
+  "onError": "continueErrorOutput",
+  // Connect error output to fallback node:
+  "connections": {
+    "error": [[{"node": "Fallback: Use Cached Summary", "type": "main", "index": 0}]]
+  }
+}''',
+                estimated_impact="Prevent complete workflow failure from single node errors",
+                effort=Effort.MEDIUM,
+            ))
+
+        if not evidence.get("execution_timeout"):
+            improvements.append(QualityImprovement.create(
+                target_type="orchestration",
+                target_id=workflow_id,
+                severity=Severity.MEDIUM,
+                category="best_practices",
+                title="Set an execution timeout for the workflow",
+                description="No executionTimeout is configured for this workflow.",
+                rationale="Without a timeout, stuck workflows (e.g., waiting on an unresponsive API or a hung LLM call) run indefinitely, consuming resources and potentially causing cascading issues.",
+                suggested_change="Add executionTimeout to workflow settings (recommended: 120-300 seconds for AI workflows)",
+                code_example='''{
+  "settings": {
+    "executionTimeout": 300,
+    "timezone": "UTC",
+    "errorWorkflow": "error-handler-workflow-id"
+  }
+}''',
+                estimated_impact="Prevent hung executions and resource exhaustion",
+                effort=Effort.LOW,
+            ))
+
+        config_uniformity = evidence.get("config_uniformity", 1.0)
+        if config_uniformity < 0.5:
+            improvements.append(QualityImprovement.create(
+                target_type="orchestration",
+                target_id=workflow_id,
+                severity=Severity.LOW,
+                category="best_practices",
+                title="Standardize node configuration patterns",
+                description=f"Low configuration uniformity ({config_uniformity:.2f}) across similar node types.",
+                rationale="Inconsistent configuration across similar nodes (e.g., different retry settings, different timeout values) makes the workflow unpredictable and harder to maintain.",
+                suggested_change="Apply consistent settings (retries, timeouts, error handling) across all nodes of the same type",
+                code_example='''// Standardize all AI Agent nodes:
+{
+  "retryOnFail": true,
+  "maxRetries": 3,
+  "waitBetweenTries": 1000,
+  "continueOnFail": true,
+  "timeout": 30000
+}
+
+// Standardize all HTTP Request nodes:
+{
+  "retryOnFail": true,
+  "maxRetries": 2,
+  "timeout": 15000
+}''',
+                estimated_impact="Improve workflow predictability and reduce maintenance overhead",
+                effort=Effort.LOW,
+            ))
+
+        return improvements
+
+
+class DocumentationQualityImprovementGenerator(BaseImprovementGenerator):
+    """Generate improvements for documentation quality."""
+
+    def can_handle(self, dimension: str) -> bool:
+        return dimension == OrchestrationDimension.DOCUMENTATION_QUALITY.value
+
+    def generate(
+        self,
+        score: DimensionScore,
+        context: Dict[str, Any],
+    ) -> List[QualityImprovement]:
+        improvements = []
+        workflow_id = context.get("workflow_id", "unknown")
+        evidence = score.evidence
+
+        if score.score < 0.3:
+            sticky_note_count = evidence.get("sticky_note_count", 0)
+            if sticky_note_count == 0:
+                improvements.append(QualityImprovement.create(
+                    target_type="orchestration",
+                    target_id=workflow_id,
+                    severity=Severity.MEDIUM,
+                    category="documentation_quality",
+                    title="Add sticky note documentation to workflow",
+                    description="This workflow has no sticky notes or inline documentation.",
+                    rationale="Undocumented workflows are difficult to maintain, debug, and hand off to other team members. Sticky notes provide context about design decisions, expected inputs/outputs, and known limitations.",
+                    suggested_change="Add sticky notes for: workflow purpose, each major section, expected inputs/outputs, and any non-obvious logic",
+                    code_example='''{
+  "type": "n8n-nodes-base.stickyNote",
+  "name": "Documentation: Workflow Overview",
+  "parameters": {
+    "content": "## Customer Feedback Analyzer\\n\\n**Purpose:** Processes incoming customer feedback, classifies sentiment, and routes to appropriate team.\\n\\n**Trigger:** Webhook from support platform\\n**Output:** Slack notification + CRM update\\n\\n**Owner:** Data Team | Last updated: 2025-01"
+  },
+  "position": [0, -200]
+}''',
+                    estimated_impact="Reduce onboarding time and prevent knowledge loss",
+                    effort=Effort.LOW,
+                ))
+
+        workflow_description = evidence.get("workflow_description", "")
+        if not workflow_description or len(str(workflow_description)) < 10:
+            improvements.append(QualityImprovement.create(
+                target_type="orchestration",
+                target_id=workflow_id,
+                severity=Severity.LOW,
+                category="documentation_quality",
+                title="Add a workflow description",
+                description="The workflow has no description or a very brief one.",
+                rationale="A workflow description appears in the workflow list and search results. It helps team members quickly understand what the workflow does without opening it.",
+                suggested_change="Add a 1-2 sentence description in the workflow settings that explains what the workflow does and when it runs",
+                code_example='''"meta": {
+  "description": "Processes daily customer feedback from Zendesk, classifies sentiment using GPT-4, and routes critical issues to the escalation team via Slack."
+}''',
+                estimated_impact="Improve discoverability and team understanding",
+                effort=Effort.LOW,
+            ))
+
+        if score.score < 0.7:
+            substantive_notes = evidence.get("substantive_notes", 0)
+            if substantive_notes < 2:
+                improvements.append(QualityImprovement.create(
+                    target_type="orchestration",
+                    target_id=workflow_id,
+                    severity=Severity.LOW,
+                    category="documentation_quality",
+                    title="Expand inline documentation with section notes",
+                    description=f"Only {substantive_notes} substantive documentation note(s) found in the workflow.",
+                    rationale="Complex workflows benefit from section-level documentation that explains the purpose of each group of nodes. This helps with debugging and maintenance.",
+                    suggested_change="Add sticky notes at each major workflow section explaining: what it does, expected data shape, and error handling strategy",
+                    estimated_impact="Improve maintainability and reduce debugging time",
+                    effort=Effort.LOW,
+                ))
+
+        return improvements
+
+
+class AIArchitectureImprovementGenerator(BaseImprovementGenerator):
+    """Generate improvements for AI architecture design."""
+
+    def can_handle(self, dimension: str) -> bool:
+        return dimension == OrchestrationDimension.AI_ARCHITECTURE.value
+
+    def generate(
+        self,
+        score: DimensionScore,
+        context: Dict[str, Any],
+    ) -> List[QualityImprovement]:
+        improvements = []
+        workflow_id = context.get("workflow_id", "unknown")
+        evidence = score.evidence
+
+        ai_connection_diversity = evidence.get("ai_connection_diversity", 1.0)
+        if ai_connection_diversity < 0.5:
+            improvements.append(QualityImprovement.create(
+                target_type="orchestration",
+                target_id=workflow_id,
+                severity=Severity.MEDIUM,
+                category="ai_architecture",
+                title="Enhance AI agent connections with memory and tools",
+                description=f"AI connection diversity is low ({ai_connection_diversity:.2f}). Agents may lack memory or tool integrations.",
+                rationale="AI agents that only have simple input/output connections miss opportunities for tool use, memory retrieval, and structured output parsing. Richer connections improve agent capability and reliability.",
+                suggested_change="Connect AI agent nodes to memory stores (vector DB, buffer), tool nodes, and output parsers",
+                code_example='''{
+  "nodes": [
+    {
+      "type": "@n8n/n8n-nodes-langchain.agent",
+      "name": "Research Agent",
+      "parameters": {"model": "gpt-4o"}
+    },
+    {
+      "type": "@n8n/n8n-nodes-langchain.memoryBufferWindow",
+      "name": "Conversation Memory",
+      "parameters": {"sessionKey": "research_session", "contextWindowLength": 10}
+    },
+    {
+      "type": "@n8n/n8n-nodes-langchain.toolHttpRequest",
+      "name": "Search API Tool",
+      "parameters": {"url": "https://api.search.example/query"}
+    }
+  ],
+  "connections": {
+    "Conversation Memory": {"ai_memory": [[{"node": "Research Agent"}]]},
+    "Search API Tool": {"ai_tool": [[{"node": "Research Agent"}]]}
+  }
+}''',
+                estimated_impact="Improve agent capabilities and response quality",
+                effort=Effort.MEDIUM,
+            ))
+
+        if not evidence.get("guardrails_present"):
+            improvements.append(QualityImprovement.create(
+                target_type="orchestration",
+                target_id=workflow_id,
+                severity=Severity.MEDIUM,
+                category="ai_architecture",
+                title="Add output validation guardrails after AI nodes",
+                description="No guardrail or validation nodes detected after AI agent outputs.",
+                rationale="AI agents can produce hallucinated, malformed, or unsafe outputs. Adding validation nodes between AI outputs and downstream actions prevents bad data from propagating through the workflow.",
+                suggested_change="Add a Code or IF node after each AI agent to validate output structure, check for required fields, and filter unsafe content",
+                code_example='''// Add after each AI Agent node:
+{
+  "type": "n8n-nodes-base.code",
+  "name": "Guardrail: Validate Agent Output",
+  "parameters": {
+    "jsCode": "const output = $input.first().json;\\n\\n// Validate required fields\\nif (!output.response || typeof output.response !== 'string') {\\n  throw new Error('Agent output missing required response field');\\n}\\n\\n// Check for common hallucination patterns\\nif (output.response.includes('I cannot') || output.response.length < 10) {\\n  return [{json: {\\n    ...output,\\n    flagged: true,\\n    flag_reason: 'Potential refusal or empty response'\\n  }}];\\n}\\n\\nreturn [{json: {...output, validated: true}}];"
+  }
+}''',
+                estimated_impact="Prevent hallucinated or malformed outputs from reaching users",
+                effort=Effort.MEDIUM,
+            ))
+
+        expensive_for_simple = evidence.get("expensive_models_for_simple_tasks", False)
+        if expensive_for_simple:
+            improvements.append(QualityImprovement.create(
+                target_type="orchestration",
+                target_id=workflow_id,
+                severity=Severity.LOW,
+                category="ai_architecture",
+                title="Optimize model selection for task complexity",
+                description="Expensive models (e.g., GPT-4, Claude Opus) are used for tasks that could be handled by smaller models.",
+                rationale="Using powerful models for simple classification, extraction, or formatting tasks wastes cost and adds latency. Smaller models often perform equally well on straightforward tasks.",
+                suggested_change="Use smaller models (gpt-4o-mini, claude-3-5-haiku) for simple tasks and reserve powerful models for complex reasoning",
+                code_example='''// Task-based model selection:
+// Simple classification/extraction -> gpt-4o-mini or claude-3-5-haiku
+// Complex reasoning/analysis     -> gpt-4o or claude-3-5-sonnet
+// Multi-step planning             -> o1 or claude-opus
+
+// Example: Switch a formatting node from GPT-4 to GPT-4o-mini
+{
+  "name": "Format Report Output",
+  "parameters": {
+    "model": "gpt-4o-mini",  // Was: gpt-4 (overkill for formatting)
+    "temperature": 0.1
+  }
+}''',
+                estimated_impact="Reduce AI costs by 50-80% for simple tasks with no quality loss",
+                effort=Effort.LOW,
+            ))
+
+        return improvements
+
+
+class MaintenanceQualityImprovementGenerator(BaseImprovementGenerator):
+    """Generate improvements for workflow maintenance quality."""
+
+    def can_handle(self, dimension: str) -> bool:
+        return dimension == OrchestrationDimension.MAINTENANCE_QUALITY.value
+
+    def generate(
+        self,
+        score: DimensionScore,
+        context: Dict[str, Any],
+    ) -> List[QualityImprovement]:
+        improvements = []
+        workflow_id = context.get("workflow_id", "unknown")
+        evidence = score.evidence
+
+        disabled_nodes = evidence.get("disabled_nodes", 0)
+        if disabled_nodes > 0:
+            improvements.append(QualityImprovement.create(
+                target_type="orchestration",
+                target_id=workflow_id,
+                severity=Severity.LOW,
+                category="maintenance_quality",
+                title="Remove or document disabled nodes",
+                description=f"{disabled_nodes} disabled node(s) found in the workflow.",
+                rationale="Disabled nodes are dead code that clutters the workflow canvas, confuses maintainers, and may contain outdated logic. If they serve as documentation of a removed feature, replace them with a sticky note instead.",
+                suggested_change="Delete disabled nodes that are no longer needed, or add a sticky note explaining why they are kept disabled",
+                code_example='''// Instead of keeping a disabled node:
+// "disabled": true, "name": "Old Slack Notification"
+
+// Either delete it entirely, or replace with documentation:
+{
+  "type": "n8n-nodes-base.stickyNote",
+  "name": "Note: Removed Slack Notification",
+  "parameters": {
+    "content": "Slack notification was removed 2025-01 in favor of email alerts. See ticket PROJ-456."
+  }
+}''',
+                estimated_impact="Reduce workflow clutter and confusion",
+                effort=Effort.LOW,
+            ))
+
+        outdated_versions = evidence.get("outdated_versions", 0)
+        if outdated_versions > 0:
+            improvements.append(QualityImprovement.create(
+                target_type="orchestration",
+                target_id=workflow_id,
+                severity=Severity.MEDIUM,
+                category="maintenance_quality",
+                title="Update nodes to latest versions",
+                description=f"{outdated_versions} node(s) are running outdated versions.",
+                rationale="Outdated node versions may have known bugs, security vulnerabilities, or missing features. Keeping nodes up to date ensures you benefit from fixes and improvements.",
+                suggested_change="Update outdated nodes to their latest available versions and verify workflow behavior after update",
+                code_example='''// Check node version in the workflow JSON:
+{
+  "type": "n8n-nodes-base.httpRequest",
+  "typeVersion": 3,  // Current latest might be 4.2
+  "name": "Fetch Data"
+}
+
+// Update to latest:
+{
+  "type": "n8n-nodes-base.httpRequest",
+  "typeVersion": 4.2,
+  "name": "Fetch Data"
+}
+
+// After updating, run a test execution to verify behavior is unchanged.''',
+                estimated_impact="Reduce bugs and security risks from outdated node versions",
+                effort=Effort.MEDIUM,
+            ))
+
+        workflow_description = evidence.get("workflow_description", "")
+        if not workflow_description:
+            improvements.append(QualityImprovement.create(
+                target_type="orchestration",
+                target_id=workflow_id,
+                severity=Severity.LOW,
+                category="maintenance_quality",
+                title="Add workflow metadata for maintenance tracking",
+                description="Workflow lacks a description and maintenance metadata.",
+                rationale="Workflow metadata (description, owner, last review date) helps teams track ownership and schedule regular reviews. Without it, workflows become orphaned and drift from best practices.",
+                suggested_change="Add a description and consider using tags or sticky notes to track ownership and review schedule",
+                code_example='''"meta": {
+  "description": "Processes inbound leads from HubSpot and enriches with Clearbit data",
+  "tags": ["production", "marketing-team", "reviewed-2025-01"]
+}
+
+// Or add an ownership sticky note:
+{
+  "type": "n8n-nodes-base.stickyNote",
+  "name": "Workflow Ownership",
+  "parameters": {
+    "content": "**Owner:** Marketing Ops\\n**Last Review:** 2025-01-15\\n**Next Review:** 2025-04-15\\n**Slack:** #marketing-workflows"
+  }
+}''',
+                estimated_impact="Enable workflow lifecycle management and prevent orphaned workflows",
+                effort=Effort.LOW,
+            ))
+
+        return improvements
+
+
+class TestCoverageImprovementGenerator(BaseImprovementGenerator):
+    """Generate improvements for test coverage."""
+
+    def can_handle(self, dimension: str) -> bool:
+        return dimension == OrchestrationDimension.TEST_COVERAGE.value
+
+    def generate(
+        self,
+        score: DimensionScore,
+        context: Dict[str, Any],
+    ) -> List[QualityImprovement]:
+        improvements = []
+        workflow_id = context.get("workflow_id", "unknown")
+        evidence = score.evidence
+
+        test_coverage_ratio = evidence.get("test_coverage_ratio", 0)
+
+        if test_coverage_ratio == 0:
+            improvements.append(QualityImprovement.create(
+                target_type="orchestration",
+                target_id=workflow_id,
+                severity=Severity.MEDIUM,
+                category="test_coverage",
+                title="Add test data using pinData for workflow validation",
+                description="No test data or pinned data detected in any workflow nodes.",
+                rationale="Workflows without test data cannot be validated before deployment. Using n8n's pinData feature, you can attach sample inputs to nodes and run the workflow in test mode to verify behavior without triggering live integrations.",
+                suggested_change="Pin sample data on trigger and key intermediate nodes, then run test executions",
+                code_example='''// Add pinData to the workflow trigger node:
+{
+  "name": "Webhook Trigger",
+  "type": "n8n-nodes-base.webhook",
+  "pinData": [
+    {
+      "json": {
+        "customer_id": "CUST-001",
+        "feedback": "The product quality has declined significantly",
+        "rating": 2,
+        "timestamp": "2025-01-15T10:30:00Z"
+      }
+    },
+    {
+      "json": {
+        "customer_id": "CUST-002",
+        "feedback": "Excellent support experience, very helpful team",
+        "rating": 5,
+        "timestamp": "2025-01-15T11:00:00Z"
+      }
+    }
+  ]
+}''',
+                estimated_impact="Enable pre-deployment validation and regression testing",
+                effort=Effort.MEDIUM,
+            ))
+
+        elif test_coverage_ratio < 0.5:
+            improvements.append(QualityImprovement.create(
+                target_type="orchestration",
+                target_id=workflow_id,
+                severity=Severity.LOW,
+                category="test_coverage",
+                title="Increase test coverage for critical workflow paths",
+                description=f"Test coverage ratio is {test_coverage_ratio:.0%}. Several nodes lack test data.",
+                rationale="Partial test coverage means some execution paths are untested and may fail in production. Focus on adding test data for nodes that handle branching logic, error cases, and external integrations.",
+                suggested_change="Add pinData to untested nodes, especially IF/Switch nodes and nodes after error branches",
+                code_example='''// Pin data on a branching node to test both paths:
+{
+  "name": "IF: High Priority",
+  "type": "n8n-nodes-base.if",
+  "pinData": [
+    {"json": {"priority": "high", "escalate": true}},
+    {"json": {"priority": "low", "escalate": false}}
+  ]
+}
+
+// Pin error case data to verify error handling:
+{
+  "name": "AI Agent - Classify",
+  "pinData": [
+    {"json": {"error": true, "message": "Rate limit exceeded"}}
+  ]
+}''',
+                estimated_impact="Catch edge case failures before they reach production",
+                effort=Effort.LOW,
+            ))
+
+        # Always suggest pinning critical nodes if not fully covered
+        if test_coverage_ratio < 1.0:
+            critical_nodes_unpinned = evidence.get("critical_nodes_unpinned", [])
+            if critical_nodes_unpinned:
+                node_list = ", ".join(critical_nodes_unpinned[:5])
+                improvements.append(QualityImprovement.create(
+                    target_type="orchestration",
+                    target_id=workflow_id,
+                    severity=Severity.LOW,
+                    category="test_coverage",
+                    title="Pin test data on critical AI and integration nodes",
+                    description=f"Critical nodes without pinned test data: {node_list}.",
+                    rationale="AI nodes and external integration nodes are the most likely failure points. Pinning representative test data on these nodes enables quick validation after any workflow change.",
+                    suggested_change="Add pinData with representative inputs (including edge cases) to all AI agent and HTTP request nodes",
+                    estimated_impact="Enable rapid regression testing for high-risk nodes",
+                    effort=Effort.LOW,
+                ))
+
+        return improvements
+
+
+class LayoutQualityImprovementGenerator(BaseImprovementGenerator):
+    """Generate improvements for workflow layout quality."""
+
+    def can_handle(self, dimension: str) -> bool:
+        return dimension == OrchestrationDimension.LAYOUT_QUALITY.value
+
+    def generate(
+        self,
+        score: DimensionScore,
+        context: Dict[str, Any],
+    ) -> List[QualityImprovement]:
+        improvements = []
+        workflow_id = context.get("workflow_id", "unknown")
+        evidence = score.evidence
+
+        overlapping_nodes = evidence.get("overlapping_nodes", 0)
+        if overlapping_nodes > 0:
+            improvements.append(QualityImprovement.create(
+                target_type="orchestration",
+                target_id=workflow_id,
+                severity=Severity.LOW,
+                category="layout_quality",
+                title="Fix overlapping node positions",
+                description=f"{overlapping_nodes} node(s) have overlapping positions on the canvas.",
+                rationale="Overlapping nodes obscure connections and make the workflow difficult to read. They often result from copy-paste operations or imports where positions were not adjusted.",
+                suggested_change="Reposition overlapping nodes to maintain at least 200px horizontal and 100px vertical spacing",
+                code_example='''// Ensure consistent spacing between nodes:
+// Horizontal flow (left to right): 250px between nodes
+// Vertical branches: 150px between parallel paths
+
+// Example layout for a 3-node sequence:
+{"name": "Trigger",    "position": [250, 300]}
+{"name": "Process",    "position": [500, 300]}  // +250 horizontal
+{"name": "Output",     "position": [750, 300]}  // +250 horizontal
+
+// Parallel branches:
+{"name": "Branch A",   "position": [500, 200]}  // -100 vertical
+{"name": "Branch B",   "position": [500, 400]}  // +100 vertical''',
+                estimated_impact="Improve workflow readability and reduce editing errors",
+                effort=Effort.LOW,
+            ))
+
+        alignment_score = evidence.get("alignment_score", 1.0)
+        if alignment_score < 0.5:
+            improvements.append(QualityImprovement.create(
+                target_type="orchestration",
+                target_id=workflow_id,
+                severity=Severity.INFO,
+                category="layout_quality",
+                title="Align nodes to a grid for visual consistency",
+                description=f"Node alignment score is low ({alignment_score:.2f}), indicating nodes are placed irregularly.",
+                rationale="Grid-aligned nodes create clean visual flow that makes workflows easier to scan and understand. Consistent alignment also makes it easier to add new nodes without disrupting the layout.",
+                suggested_change="Snap all nodes to a 50px grid and arrange in a left-to-right flow with consistent vertical alignment for branches",
+                code_example='''// Snap positions to nearest 50px grid:
+// Before: {"position": [237, 418]}
+// After:  {"position": [250, 400]}
+
+// Use consistent vertical alignment for sequential nodes:
+{"name": "Step 1", "position": [250, 300]}
+{"name": "Step 2", "position": [500, 300]}  // Same Y for sequential
+{"name": "Step 3", "position": [750, 300]}
+
+// Use n8n's built-in "Tidy Up" feature (Ctrl+Shift+T) for automatic alignment''',
+                estimated_impact="Improve visual clarity and workflow navigation",
+                effort=Effort.LOW,
+            ))
+
+        return improvements
+
+
 class ImprovementSuggester:
     """Orchestrates improvement generation across all dimensions."""
 
@@ -697,6 +1381,15 @@ class ImprovementSuggester:
         self.register(ObservabilityImprovementGenerator())
         self.register(ComplexityImprovementGenerator())
         self.register(CouplingImprovementGenerator())
+
+        # Additional orchestration dimension generators
+        self.register(DataFlowClarityImprovementGenerator())
+        self.register(BestPracticesImprovementGenerator())
+        self.register(DocumentationQualityImprovementGenerator())
+        self.register(AIArchitectureImprovementGenerator())
+        self.register(MaintenanceQualityImprovementGenerator())
+        self.register(TestCoverageImprovementGenerator())
+        self.register(LayoutQualityImprovementGenerator())
 
     def register(self, generator: BaseImprovementGenerator) -> None:
         """Register an improvement generator."""

@@ -885,6 +885,65 @@ class AgentQualityAssessment(Base):
     )
 
 
+class QualityHealingRecord(Base):
+    """
+    Tracks quality healing fix applications and outcomes.
+
+    Records the full lifecycle of a quality healing operation: the assessment
+    that triggered it, fixes generated and applied, before/after scores,
+    and rollback state.
+    """
+    __tablename__ = "quality_healing_records"
+
+    id = Column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
+    tenant_id = Column(UUID(as_uuid=True), ForeignKey("tenants.id"), nullable=False)
+    assessment_id = Column(UUID(as_uuid=True), ForeignKey("workflow_quality_assessments.id"), nullable=False)
+
+    # Status
+    status = Column(String(32), nullable=False, default="pending")
+
+    # Scores
+    before_score = Column(Float, nullable=False)
+    after_score = Column(Float, nullable=True)
+
+    # Fix details
+    dimensions_targeted = Column(JSONB, nullable=False, server_default="[]")
+    fix_suggestions = Column(JSONB, nullable=False, server_default="[]")
+    applied_fixes = Column(JSONB, server_default="[]")
+
+    # State for rollback
+    original_state = Column(JSONB, server_default="{}")
+    modified_state = Column(JSONB, server_default="{}")
+    rollback_available = Column(Boolean, default=True)
+
+    # Validation
+    validation_results = Column(JSONB, server_default="[]")
+
+    # Approval workflow
+    approval_required = Column(Boolean, default=False)
+    approved_by = Column(String(128), nullable=True)
+    approved_at = Column(DateTime(timezone=True), nullable=True)
+
+    # Timestamps
+    started_at = Column(DateTime(timezone=True), nullable=True)
+    completed_at = Column(DateTime(timezone=True), nullable=True)
+    rolled_back_at = Column(DateTime(timezone=True), nullable=True)
+    created_at = Column(DateTime(timezone=True), server_default=func.now())
+
+    # Workflow reference
+    workflow_id = Column(String(255), nullable=True)
+
+    # Error tracking
+    error_message = Column(Text, nullable=True)
+
+    __table_args__ = (
+        Index("idx_qh_tenant", "tenant_id"),
+        Index("idx_qh_assessment", "assessment_id"),
+        Index("idx_qh_status", "status"),
+        Index("idx_qh_created", "created_at"),
+    )
+
+
 class MASTTraceEmbedding(Base):
     """
     MAST benchmark trace embeddings for few-shot learning.

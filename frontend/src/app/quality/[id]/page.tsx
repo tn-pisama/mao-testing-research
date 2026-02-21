@@ -7,20 +7,32 @@ import { useSafeAuth as useAuth } from '@/hooks/useSafeAuth'
 import { useTenant } from '@/hooks/useTenant'
 import {
   Star, ArrowLeft, Loader2, AlertCircle, AlertTriangle, Info, Clock,
-  CheckCircle, Bot, GitBranch, MessageSquare, Lightbulb, ChevronDown
+  CheckCircle, Bot, GitBranch, MessageSquare, Lightbulb, ChevronDown, Heart
 } from 'lucide-react'
 import { Layout } from '@/components/common/Layout'
 import { Card, CardHeader, CardTitle, CardContent } from '@/components/ui/Card'
+import { Button } from '@/components/ui/Button'
 import { Badge } from '@/components/ui/Badge'
 import { QualityGradeBadge, getScoreColor, getGradeColor } from '@/components/quality/QualityGradeBadge'
-import { createApiClient, QualityAssessment, QualityDimensionScore, AgentQualityScore, QualityImprovement } from '@/lib/api'
+import { QualityHealingPanel } from '@/components/quality/QualityHealingPanel'
+import { QualityBeforeAfterChart } from '@/components/quality/QualityBeforeAfterChart'
+import { QualityHealingStatusBadge } from '@/components/quality/QualityHealingStatusBadge'
+import {
+  createApiClient,
+  QualityAssessment,
+  QualityDimensionScore,
+  AgentQualityScore,
+  QualityImprovement,
+  QualityHealingRecord,
+  FixSuggestionSummary,
+} from '@/lib/api'
 import {
   RadarChart, PolarGrid, PolarAngleAxis, PolarRadiusAxis, Radar, Legend, ResponsiveContainer
 } from 'recharts'
 import Link from 'next/link'
 import { useParams } from 'next/navigation'
 
-type TabType = 'summary' | 'agents' | 'orchestration' | 'improvements'
+type TabType = 'summary' | 'agents' | 'orchestration' | 'improvements' | 'healing'
 
 const severityConfig = {
   critical: { icon: AlertCircle, color: 'text-red-400', bg: 'bg-red-500/20', label: 'Critical' },
@@ -258,6 +270,12 @@ export default function QualityDetailPage() {
   const [assessment, setAssessment] = useState<QualityAssessment | null>(null)
   const [isLoading, setIsLoading] = useState(true)
   const [activeTab, setActiveTab] = useState<TabType>('summary')
+  // Healing state
+  const [healingRecord, setHealingRecord] = useState<QualityHealingRecord | null>(null)
+  const [healingSuggestions, setHealingSuggestions] = useState<FixSuggestionSummary[]>([])
+  const [isHealingLoading, setIsHealingLoading] = useState(false)
+  const [isTriggeringHealing, setIsTriggeringHealing] = useState(false)
+  const [healingError, setHealingError] = useState<string | null>(null)
 
   const loadAssessment = useCallback(async () => {
     setIsLoading(true)
@@ -277,11 +295,112 @@ export default function QualityDetailPage() {
     loadAssessment()
   }, [loadAssessment])
 
+  const loadHealingData = useCallback(async () => {
+    if (!assessment) return
+    setIsHealingLoading(true)
+    setHealingError(null)
+    try {
+      const token = await getToken()
+      const api = createApiClient(token, tenantId)
+      const result = await api.listQualityHealings({ page: 1, page_size: 50, status: undefined })
+      // Find a healing record for this assessment
+      const matching = result.items.find(
+        (h: QualityHealingRecord) => h.assessment_id === assessmentId || h.id === assessmentId
+      )
+      if (matching) {
+        setHealingRecord(matching)
+        // Try to get detailed healing info
+        try {
+          const detail = await api.getQualityHealing(matching.id)
+          setHealingRecord(detail)
+        } catch {
+          // Use the list item as fallback
+        }
+      }
+    } catch (err) {
+      console.warn('Failed to load healing data:', err)
+    }
+    setIsHealingLoading(false)
+  }, [getToken, tenantId, assessment, assessmentId])
+
+  const triggerHealing = useCallback(async () => {
+    if (!assessment) return
+    setIsTriggeringHealing(true)
+    setHealingError(null)
+    try {
+      const token = await getToken()
+      const api = createApiClient(token, tenantId)
+      const result = await api.triggerQualityHealing(
+        { workflow_id: assessment.workflow_id, assessment_id: assessmentId },
+        { auto_apply: false }
+      )
+      if (result.fix_suggestions) {
+        setHealingSuggestions(result.fix_suggestions)
+      }
+      // Reload healing data to get the new record
+      if (result.healing_id) {
+        try {
+          const record = await api.getQualityHealing(result.healing_id)
+          setHealingRecord(record)
+        } catch {
+          // Will appear on next reload
+        }
+      }
+    } catch (err: any) {
+      setHealingError(err?.message || 'Failed to trigger healing. Please try again.')
+    }
+    setIsTriggeringHealing(false)
+  }, [getToken, tenantId, assessment, assessmentId])
+
+  const handleApplyFix = useCallback(async (fixId: string) => {
+    if (!healingRecord) return
+    try {
+      const token = await getToken()
+      const api = createApiClient(token, tenantId)
+      await api.approveQualityHealing(healingRecord.id, [fixId])
+      await loadHealingData()
+    } catch (err: any) {
+      setHealingError(err?.message || 'Failed to apply fix.')
+    }
+  }, [getToken, tenantId, healingRecord, loadHealingData])
+
+  const handleApplyAll = useCallback(async () => {
+    if (!healingRecord) return
+    const allFixIds = healingSuggestions.map((s) => s.id)
+    try {
+      const token = await getToken()
+      const api = createApiClient(token, tenantId)
+      await api.approveQualityHealing(healingRecord.id, allFixIds)
+      await loadHealingData()
+    } catch (err: any) {
+      setHealingError(err?.message || 'Failed to apply fixes.')
+    }
+  }, [getToken, tenantId, healingRecord, healingSuggestions, loadHealingData])
+
+  const handleRollback = useCallback(async () => {
+    if (!healingRecord) return
+    try {
+      const token = await getToken()
+      const api = createApiClient(token, tenantId)
+      await api.rollbackQualityHealing(healingRecord.id)
+      await loadHealingData()
+    } catch (err: any) {
+      setHealingError(err?.message || 'Failed to rollback healing.')
+    }
+  }, [getToken, tenantId, healingRecord, loadHealingData])
+
+  useEffect(() => {
+    if (activeTab === 'healing' && assessment) {
+      loadHealingData()
+    }
+  }, [activeTab, assessment, loadHealingData])
+
   const tabs: { id: TabType; label: string }[] = [
     { id: 'summary', label: 'Summary' },
     { id: 'agents', label: 'Agent Scores' },
     { id: 'orchestration', label: 'Orchestration' },
     { id: 'improvements', label: 'Improvements' },
+    { id: 'healing', label: 'Healing' },
   ]
 
   if (isLoading) {
@@ -361,6 +480,11 @@ export default function QualityDetailPage() {
               {tab.id === 'improvements' && assessment.improvements.length > 0 && (
                 <span className="ml-2 px-1.5 py-0.5 text-xs bg-amber-500/20 text-amber-400 rounded">
                   {assessment.improvements.length}
+                </span>
+              )}
+              {tab.id === 'healing' && healingRecord && (
+                <span className="ml-2 px-1.5 py-0.5 text-xs bg-green-500/20 text-green-400 rounded">
+                  {healingRecord.status === 'applied' || healingRecord.status === 'success' ? '✓' : '●'}
                 </span>
               )}
             </button>
@@ -623,6 +747,172 @@ export default function QualityDetailPage() {
                     <ImprovementCard key={improvement.id} improvement={improvement} />
                   ))}
               </>
+            )}
+          </div>
+        )}
+
+        {activeTab === 'healing' && (
+          <div className="space-y-6">
+            {/* Trigger Healing Button */}
+            <div className="flex items-center justify-between">
+              <div className="flex items-center gap-3">
+                <Heart size={20} className="text-green-400" />
+                <div>
+                  <h3 className="text-white font-medium">Quality Healing</h3>
+                  <p className="text-sm text-slate-400">
+                    Analyze and auto-fix quality issues in this workflow
+                  </p>
+                </div>
+              </div>
+              <Button
+                variant="success"
+                size="md"
+                onClick={triggerHealing}
+                disabled={isTriggeringHealing}
+                isLoading={isTriggeringHealing}
+              >
+                Trigger Healing
+              </Button>
+            </div>
+
+            {/* Healing Error */}
+            {healingError && (
+              <div className="p-4 bg-red-500/10 border border-red-500/20 rounded-xl flex items-center gap-3">
+                <AlertTriangle size={20} className="text-red-400 flex-shrink-0" />
+                <p className="text-sm text-red-300 flex-1">{healingError}</p>
+              </div>
+            )}
+
+            {/* Loading state */}
+            {isHealingLoading && (
+              <Card>
+                <div className="flex items-center justify-center py-12">
+                  <Loader2 className="w-8 h-8 text-green-400 animate-spin" />
+                </div>
+              </Card>
+            )}
+
+            {/* Healing content */}
+            {!isHealingLoading && (healingRecord || healingSuggestions.length > 0) && (
+              <Card>
+                <CardContent className="p-6">
+                  <QualityHealingPanel
+                    healingRecord={healingRecord as any}
+                    fixSuggestions={
+                      healingRecord?.fix_suggestions ||
+                      healingSuggestions ||
+                      []
+                    }
+                    isApplying={isTriggeringHealing}
+                    onApplyFix={handleApplyFix}
+                    onApplyAll={handleApplyAll}
+                    onRollback={healingRecord?.rollback_available ? handleRollback : undefined}
+                    beforeScores={
+                      healingRecord
+                        ? assessment.agent_scores.reduce(
+                            (acc, agent) => {
+                              agent.dimensions.forEach((dim) => {
+                                acc[dim.dimension] = dim.score
+                              })
+                              return acc
+                            },
+                            {} as Record<string, number>
+                          )
+                        : undefined
+                    }
+                    afterScores={
+                      healingRecord?.after_score !== null && healingRecord?.after_score !== undefined
+                        ? assessment.agent_scores.reduce(
+                            (acc, agent) => {
+                              agent.dimensions.forEach((dim) => {
+                                const improvement = healingRecord.score_improvement
+                                  ? healingRecord.score_improvement / 100
+                                  : 0
+                                acc[dim.dimension] = Math.min(1, dim.score + improvement * dim.weight)
+                              })
+                              return acc
+                            },
+                            {} as Record<string, number>
+                          )
+                        : undefined
+                    }
+                  />
+                </CardContent>
+              </Card>
+            )}
+
+            {/* Before/After comparison when healing is complete */}
+            {healingRecord && healingRecord.after_score !== null && (
+              <Card>
+                <CardHeader>
+                  <CardTitle className="flex items-center gap-2">
+                    <Heart size={18} className="text-green-400" />
+                    Healing Results
+                  </CardTitle>
+                </CardHeader>
+                <CardContent>
+                  <div className="grid grid-cols-3 gap-4 mb-6">
+                    <div className="p-4 bg-slate-800 rounded-lg text-center">
+                      <div className="text-2xl font-bold text-slate-400">
+                        {Math.round(healingRecord.before_score)}%
+                      </div>
+                      <div className="text-xs text-slate-500 mt-1">Before Score</div>
+                    </div>
+                    <div className="p-4 bg-slate-800 rounded-lg text-center">
+                      <div className="text-2xl font-bold text-green-400">
+                        {Math.round(healingRecord.after_score)}%
+                      </div>
+                      <div className="text-xs text-slate-500 mt-1">After Score</div>
+                    </div>
+                    <div className="p-4 bg-slate-800 rounded-lg text-center">
+                      <div
+                        className={`text-2xl font-bold ${
+                          (healingRecord.score_improvement || 0) > 0
+                            ? 'text-green-400'
+                            : 'text-slate-400'
+                        }`}
+                      >
+                        {healingRecord.score_improvement !== null
+                          ? `+${Math.round(healingRecord.score_improvement)}%`
+                          : 'N/A'}
+                      </div>
+                      <div className="text-xs text-slate-500 mt-1">Improvement</div>
+                    </div>
+                  </div>
+
+                  <QualityBeforeAfterChart
+                    dimensions={assessment.agent_scores.flatMap((agent) =>
+                      agent.dimensions.map((dim) => ({
+                        dimension: `${agent.agent_name} - ${dim.dimension}`,
+                        before: dim.score,
+                        after: Math.min(
+                          1,
+                          dim.score +
+                            (healingRecord.score_improvement
+                              ? healingRecord.score_improvement / 100
+                              : 0) *
+                              dim.weight
+                        ),
+                      }))
+                    ).slice(0, 10)}
+                    beforeLabel="Before Healing"
+                    afterLabel="After Healing"
+                  />
+                </CardContent>
+              </Card>
+            )}
+
+            {/* Empty state */}
+            {!isHealingLoading && !healingRecord && healingSuggestions.length === 0 && (
+              <Card>
+                <div className="text-center py-12">
+                  <Heart className="w-12 h-12 text-slate-600 mx-auto mb-4" />
+                  <p className="text-slate-400 mb-2">No healing data yet</p>
+                  <p className="text-slate-500 text-sm">
+                    Click &quot;Trigger Healing&quot; to analyze and generate fix suggestions
+                  </p>
+                </div>
+              </Card>
             )}
           </div>
         )}

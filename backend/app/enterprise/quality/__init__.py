@@ -103,6 +103,14 @@ from .improvement_suggester import (
     ImprovementSuggester,
     BaseImprovementGenerator,
 )
+from .healing import (
+    QualityHealingEngine,
+    QualityHealingStatus,
+    QualityHealingResult,
+    QualityFixGenerator,
+    QualityFixApplicator,
+    QualityFixValidator,
+)
 
 from typing import Dict, Any, List, Optional
 from datetime import datetime, UTC
@@ -332,4 +340,11 @@ __all__ = [
     "BaseImprovementGenerator",
     # Main orchestrator
     "QualityAssessor",
+    # Healing
+    "QualityHealingEngine",
+    "QualityHealingStatus",
+    "QualityHealingResult",
+    "QualityFixGenerator",
+    "QualityFixApplicator",
+    "QualityFixValidator",
 ]

@@ -858,6 +858,40 @@ export interface QualityAssessmentListResponse {
   page_size: number
 }
 
+// ============================================================================
+// Quality Healing Types
+// ============================================================================
+
+export interface QualityHealingRecord {
+  id: string
+  assessment_id?: string
+  status: string
+  before_score: number
+  after_score: number | null
+  dimensions_targeted: string[]
+  fix_suggestions_count: number
+  fix_suggestions?: FixSuggestionSummary[]
+  applied_fixes: any[]
+  validation_results: any[]
+  validation_status?: string | null
+  rollback_available?: boolean
+  is_successful: boolean
+  score_improvement: number | null
+  metadata: Record<string, any>
+}
+
+export interface QualityHealingListResponse {
+  items: QualityHealingRecord[]
+  total: number
+}
+
+export interface QualityHealingTriggerResponse {
+  healing_id: string
+  status: string
+  message: string
+  fix_suggestions: FixSuggestionSummary[]
+}
+
 export interface QualityDimensionInfo {
   name: string
   description: string
@@ -1645,6 +1679,75 @@ export function createApiClient(token?: string | null, tenantId?: string | null)
           method: 'POST',
           body: { workflow, trace_id: traceId, max_suggestions: maxSuggestions },
         }
+      )
+    },
+
+    // ========================================================================
+    // Quality Healing endpoints
+    // ========================================================================
+
+    async triggerQualityHealing(
+      workflow: Record<string, any>,
+      options?: { threshold?: number; auto_apply?: boolean }
+    ) {
+      return fetchApi<QualityHealingTriggerResponse>(
+        `/enterprise/quality-healing/tenants/{tenant_id}/trigger`,
+        {
+          ...opts,
+          method: 'POST',
+          body: { workflow, ...options },
+        }
+      )
+    },
+
+    async getQualityHealing(healingId: string) {
+      return fetchApi<QualityHealingRecord>(
+        `/enterprise/quality-healing/tenants/{tenant_id}/healings/${healingId}`,
+        opts
+      )
+    },
+
+    async approveQualityHealing(healingId: string, fixIds: string[], approvedBy?: string) {
+      return fetchApi<QualityHealingRecord>(
+        `/enterprise/quality-healing/tenants/{tenant_id}/healings/${healingId}/approve`,
+        {
+          ...opts,
+          method: 'POST',
+          body: { selected_fix_ids: fixIds, approved_by: approvedBy },
+        }
+      )
+    },
+
+    async rollbackQualityHealing(healingId: string) {
+      return fetchApi<{ healing_id: string; rolled_back: boolean; message: string }>(
+        `/enterprise/quality-healing/tenants/{tenant_id}/healings/${healingId}/rollback`,
+        { ...opts, method: 'POST' }
+      )
+    },
+
+    async listQualityHealings(params?: { page?: number; page_size?: number; status?: string }) {
+      const query = new URLSearchParams()
+      if (params?.page) query.set('page', String(params.page))
+      if (params?.page_size) query.set('page_size', String(params.page_size))
+      if (params?.status) query.set('status', params.status)
+
+      return fetchApi<QualityHealingListResponse>(
+        `/enterprise/quality-healing/tenants/{tenant_id}/healings?${query}`,
+        opts
+      )
+    },
+
+    async getQualityHealingStats() {
+      return fetchApi<Record<string, any>>(
+        `/enterprise/quality-healing/tenants/{tenant_id}/stats`,
+        opts
+      )
+    },
+
+    async verifyQualityHealing(healingId: string) {
+      return fetchApi<QualityHealingRecord>(
+        `/enterprise/quality-healing/tenants/{tenant_id}/healings/${healingId}/verify`,
+        { ...opts, method: 'POST' }
       )
     },
 
