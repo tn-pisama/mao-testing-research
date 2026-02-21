@@ -92,7 +92,7 @@ class TestOutputConsistencyDimension:
     """Test output_consistency dimension scoring."""
 
     def test_no_history_uses_default_score(self):
-        """Without execution history, should use default score (0.55 = 0.4 base + 0.15 JSON bonus)."""
+        """Without execution history, should use provisional score (0.72 when JSON specified)."""
         scorer = AgentQualityScorer()
         node = {
             "id": "test-agent",
@@ -106,8 +106,9 @@ class TestOutputConsistencyDimension:
         score = scorer.score_agent(node, execution_history=None)
         consistency_dim = next(d for d in score.dimensions if d.dimension == QualityDimension.OUTPUT_CONSISTENCY.value)
 
-        # Default base is 0.4, plus 0.15 JSON bonus (systemMessage mentions JSON)
-        assert consistency_dim.score == 0.55
+        # Provisional base is 0.65, bumped to 0.72 when JSON format specified
+        assert consistency_dim.score == 0.72
+        assert consistency_dim.is_provisional is True
         assert consistency_dim.evidence.get("execution_samples", 0) == 0
 
     def test_consistent_outputs_score_high(self):
@@ -440,7 +441,7 @@ class TestOverallAgentScoring:
         assert score.agent_name == "Test Agent"
         assert len(score.dimensions) == 5
         assert 0 <= score.overall_score <= 1
-        assert score.grade in ["Healthy", "Degraded", "At Risk", "Critical"]
+        assert score.grade in ["Healthy", "Good", "Needs Attention", "Needs Data", "At Risk", "Critical"]
 
     def test_all_dimensions_present(self):
         """Verify all 5 agent dimensions are scored."""

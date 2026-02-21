@@ -21,17 +21,21 @@ class TestTierBoundaries:
         """Score of exactly 0.90 should be Healthy."""
         assert _score_to_grade(0.90) == "Healthy"
 
-    def test_score_0_899_is_degraded(self):
-        """Score just below 0.90 should be Degraded."""
-        assert _score_to_grade(0.899) == "Degraded"
+    def test_score_0_899_is_good(self):
+        """Score just below 0.90 should be Good."""
+        assert _score_to_grade(0.899) == "Good"
 
-    def test_score_0_80_exact_is_degraded(self):
-        """Score of exactly 0.80 should be Degraded."""
-        assert _score_to_grade(0.80) == "Degraded"
+    def test_score_0_80_exact_is_good(self):
+        """Score of exactly 0.80 should be Good."""
+        assert _score_to_grade(0.80) == "Good"
 
-    def test_score_0_70_exact_is_degraded(self):
-        """Score of exactly 0.70 should be Degraded."""
-        assert _score_to_grade(0.70) == "Degraded"
+    def test_score_0_799_is_needs_attention(self):
+        """Score just below 0.80 should be Needs Attention."""
+        assert _score_to_grade(0.799) == "Needs Attention"
+
+    def test_score_0_70_exact_is_needs_attention(self):
+        """Score of exactly 0.70 should be Needs Attention."""
+        assert _score_to_grade(0.70) == "Needs Attention"
 
     def test_score_0_699_is_at_risk(self):
         """Score just below 0.70 should be At Risk."""
@@ -65,13 +69,21 @@ class TestTierBoundaryEdgeCases:
         """Score just above 0.90 should still be Healthy."""
         assert _score_to_grade(0.9001) == "Healthy"
 
-    def test_score_0_8999_is_degraded(self):
-        """Score very close to but below 0.90 should be Degraded."""
-        assert _score_to_grade(0.8999) == "Degraded"
+    def test_score_0_8999_is_good(self):
+        """Score very close to but below 0.90 should be Good."""
+        assert _score_to_grade(0.8999) == "Good"
 
-    def test_score_0_7001_is_degraded(self):
-        """Score just above 0.70 should be Degraded."""
-        assert _score_to_grade(0.7001) == "Degraded"
+    def test_score_0_8001_is_good(self):
+        """Score just above 0.80 should be Good."""
+        assert _score_to_grade(0.8001) == "Good"
+
+    def test_score_0_7999_is_needs_attention(self):
+        """Score very close to but below 0.80 should be Needs Attention."""
+        assert _score_to_grade(0.7999) == "Needs Attention"
+
+    def test_score_0_7001_is_needs_attention(self):
+        """Score just above 0.70 should be Needs Attention."""
+        assert _score_to_grade(0.7001) == "Needs Attention"
 
     def test_score_0_6999_is_at_risk(self):
         """Score very close to but below 0.70 should be At Risk."""
@@ -92,3 +104,31 @@ class TestTierBoundaryEdgeCases:
     def test_score_0_3999_is_critical(self):
         """Score very close to but below 0.40 should be Critical."""
         assert _score_to_grade(0.3999) == "Critical"
+
+
+class TestProvisionalGrade:
+    """Test provisional grade override behavior."""
+
+    def test_provisional_good_becomes_needs_data(self):
+        """Good score with provisional flag should show Needs Data."""
+        assert _score_to_grade(0.85, is_provisional=True) == "Needs Data"
+
+    def test_provisional_needs_attention_becomes_needs_data(self):
+        """Needs Attention score with provisional flag should show Needs Data."""
+        assert _score_to_grade(0.75, is_provisional=True) == "Needs Data"
+
+    def test_provisional_healthy_stays_healthy(self):
+        """Healthy score is not overridden by provisional flag."""
+        assert _score_to_grade(0.95, is_provisional=True) == "Healthy"
+
+    def test_provisional_at_risk_stays_at_risk(self):
+        """At Risk score is not overridden by provisional flag."""
+        assert _score_to_grade(0.55, is_provisional=True) == "At Risk"
+
+    def test_provisional_critical_stays_critical(self):
+        """Critical score is not overridden by provisional flag."""
+        assert _score_to_grade(0.3, is_provisional=True) == "Critical"
+
+    def test_non_provisional_good_stays_good(self):
+        """Good score without provisional flag stays Good."""
+        assert _score_to_grade(0.85, is_provisional=False) == "Good"

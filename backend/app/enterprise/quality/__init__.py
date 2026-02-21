@@ -112,8 +112,14 @@ from .healing import (
     QualityFixValidator,
 )
 
+import os
 from typing import Dict, Any, List, Optional
 from datetime import datetime, UTC
+
+
+def _llm_available() -> bool:
+    """True when an LLM API key is set and non-empty."""
+    return bool(os.getenv("ANTHROPIC_API_KEY") or os.getenv("OPENAI_API_KEY"))
 
 
 class QualityAssessor:
@@ -126,7 +132,7 @@ class QualityAssessor:
 
     def __init__(
         self,
-        use_llm_judge: bool = False,
+        use_llm_judge: Optional[bool] = None,
         include_reasoning: bool = False,
         execution_weight: float = 0.0,
     ):
@@ -134,11 +140,14 @@ class QualityAssessor:
         Initialize the quality assessor.
 
         Args:
-            use_llm_judge: Whether to use LLM for ambiguous cases (Tier 3 escalation)
+            use_llm_judge: Whether to use LLM for ambiguous cases (Tier 3 escalation).
+                None (default) = auto-detect from ANTHROPIC_API_KEY / OPENAI_API_KEY.
             include_reasoning: Whether to generate detailed reasoning for each score
             execution_weight: Weight for execution-based scoring (0.0-0.4). Default 0.0
                 means pure static analysis. Recommended 0.2-0.3 when execution data available.
         """
+        if use_llm_judge is None:
+            use_llm_judge = _llm_available()
         self.include_reasoning = include_reasoning
         self.execution_weight = min(max(execution_weight, 0.0), 0.4)
         self.agent_scorer = AgentQualityScorer(use_llm_judge=use_llm_judge)

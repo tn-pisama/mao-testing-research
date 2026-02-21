@@ -1,5 +1,5 @@
 {
-  "generated_at": "2026-02-21T18:08:08.798298+00:00",
+  "generated_at": "2026-02-21T21:40:31.058785+00:00",
   "assessor_config": {
     "use_llm_judge": false,
     "scoring_mode": "heuristic_only"
@@ -7,7 +7,7 @@
   "results": {
     "empty_agent": {
       "workflow_name": "Empty Agent Workflow",
-      "overall_score": 0.41,
+      "overall_score": 0.44,
       "overall_grade": "Critical",
       "agent_dimensions": {
         "role_clarity": {
@@ -17,17 +17,23 @@
           ],
           "evidence": {
             "has_system_prompt": false,
-            "prompt_length": 0
+            "prompt_length": 0,
+            "error_codes": [
+              "QE-RC-001"
+            ]
           }
         },
         "output_consistency": {
-          "score": 0.4,
+          "score": 0.65,
           "issues": [
             "No execution history \u2014 output consistency is unverified"
           ],
           "evidence": {
             "execution_samples": 0,
-            "score_provisional": true
+            "score_provisional": true,
+            "error_codes": [
+              "QE-OC-001"
+            ]
           }
         },
         "error_handling": {
@@ -41,7 +47,12 @@
             "retry_on_fail": false,
             "max_retries": 0,
             "timeout_ms": 0,
-            "has_error_output": false
+            "has_error_output": false,
+            "error_codes": [
+              "QE-EH-003",
+              "QE-EH-001",
+              "QE-EH-002"
+            ]
           }
         },
         "tool_usage": {
@@ -50,7 +61,10 @@
             "Agent has no tools defined"
           ],
           "evidence": {
-            "tool_count": 0
+            "tool_count": 0,
+            "error_codes": [
+              "QE-TU-001"
+            ]
           }
         },
         "config_appropriateness": {
@@ -59,7 +73,10 @@
           "evidence": {
             "model": "",
             "temperature": null,
-            "max_tokens": null
+            "max_tokens": null,
+            "error_codes": [
+              "QE-CA-003"
+            ]
           }
         }
       },
@@ -115,13 +132,13 @@
         }
       },
       "orchestration_overall": 0.544,
-      "reasoning": "Workflow 'Empty Agent Workflow' overall quality: 41% (Critical). Agent quality (1 agents, avg 32%): weighted 60% of overall score. Agents needing attention: AI Agent. Orchestration quality: 54% (At Risk), weighted 40% of overall score. Critical issues (5): No system prompt defined; Limited error handling configuration; No checkpoint or logging nodes.",
+      "reasoning": "Workflow 'Empty Agent Workflow' overall quality: 44% (Critical). Agent quality (1 agents, avg 37%): weighted 60% of overall score. Agents needing attention: AI Agent. Orchestration quality: 54% (At Risk), weighted 40% of overall score. Critical issues (5): No system prompt defined; Limited error handling configuration; No checkpoint or logging nodes.",
       "improvements_count": 10,
       "critical_issues": 5
     },
     "keyword_stuffed": {
       "workflow_name": "Keyword Stuffed Workflow",
-      "overall_score": 0.476,
+      "overall_score": 0.496,
       "overall_grade": "Critical",
       "agent_dimensions": {
         "role_clarity": {
@@ -141,14 +158,18 @@
           }
         },
         "output_consistency": {
-          "score": 0.55,
+          "score": 0.72,
           "issues": [
             "No execution history \u2014 output consistency is unverified"
           ],
           "evidence": {
             "expects_json": true,
             "execution_samples": 0,
-            "score_provisional": true
+            "score_provisional": true,
+            "error_codes": [
+              "QE-OC-001",
+              "QE-OC-003"
+            ]
           }
         },
         "error_handling": {
@@ -162,7 +183,12 @@
             "retry_on_fail": false,
             "max_retries": 0,
             "timeout_ms": 0,
-            "has_error_output": false
+            "has_error_output": false,
+            "error_codes": [
+              "QE-EH-003",
+              "QE-EH-001",
+              "QE-EH-002"
+            ]
           }
         },
         "tool_usage": {
@@ -171,7 +197,10 @@
             "Agent has no tools defined"
           ],
           "evidence": {
-            "tool_count": 0
+            "tool_count": 0,
+            "error_codes": [
+              "QE-TU-001"
+            ]
           }
         },
         "config_appropriateness": {
@@ -180,7 +209,10 @@
           "evidence": {
             "model": "",
             "temperature": null,
-            "max_tokens": null
+            "max_tokens": null,
+            "error_codes": [
+              "QE-CA-003"
+            ]
           }
         }
       },
@@ -236,13 +268,13 @@
         }
       },
       "orchestration_overall": 0.544,
-      "reasoning": "Workflow 'Keyword Stuffed Workflow' overall quality: 48% (Critical). Agent quality (1 agents, avg 43%): weighted 60% of overall score. Agents needing attention: Stuffed Agent. Orchestration quality: 54% (At Risk), weighted 40% of overall score. Critical issues (4): Limited error handling configuration; No checkpoint or logging nodes; No global error handler in workflow.",
+      "reasoning": "Workflow 'Keyword Stuffed Workflow' overall quality: 50% (Critical). Agent quality (1 agents, avg 46%): weighted 60% of overall score. Agents needing attention: Stuffed Agent. Orchestration quality: 54% (At Risk), weighted 40% of overall score. Critical issues (4): Limited error handling configuration; No checkpoint or logging nodes; No global error handler in workflow.",
       "improvements_count": 10,
       "critical_issues": 4
     },
     "checkbox_warrior": {
       "workflow_name": "Checkbox Warrior Workflow",
-      "overall_score": 0.505,
+      "overall_score": 0.535,
       "overall_grade": "At Risk",
       "agent_dimensions": {
         "role_clarity": {
@@ -252,17 +284,23 @@
           ],
           "evidence": {
             "has_system_prompt": false,
-            "prompt_length": 0
+            "prompt_length": 0,
+            "error_codes": [
+              "QE-RC-001"
+            ]
           }
         },
         "output_consistency": {
-          "score": 0.4,
+          "score": 0.65,
           "issues": [
             "No execution history \u2014 output consistency is unverified"
           ],
           "evidence": {
             "execution_samples": 0,
-            "score_provisional": true
+            "score_provisional": true,
+            "error_codes": [
+              "QE-OC-001"
+            ]
           }
         },
         "error_handling": {
@@ -286,7 +324,10 @@
             "Agent has no tools defined"
           ],
           "evidence": {
-            "tool_count": 0
+            "tool_count": 0,
+            "error_codes": [
+              "QE-TU-001"
+            ]
           }
         },
         "config_appropriateness": {
@@ -296,7 +337,10 @@
             "model": "",
             "temperature": 0.1,
             "max_tokens": 2000,
-            "inferred_task_type": "default"
+            "inferred_task_type": "default",
+            "error_codes": [
+              "QE-CA-003"
+            ]
           }
         }
       },
@@ -351,13 +395,13 @@
         }
       },
       "orchestration_overall": 0.588,
-      "reasoning": "Workflow 'Checkbox Warrior Workflow' overall quality: 51% (At Risk). Agent quality (1 agents, avg 45%): weighted 60% of overall score. Agents needing attention: Checkbox Agent. Orchestration quality: 59% (At Risk), weighted 40% of overall score. Critical issues (2): No system prompt defined; No documentation (sticky notes) found.",
+      "reasoning": "Workflow 'Checkbox Warrior Workflow' overall quality: 54% (At Risk). Agent quality (1 agents, avg 50%): weighted 60% of overall score. Agents needing attention: Checkbox Agent. Orchestration quality: 59% (At Risk), weighted 40% of overall score. Critical issues (2): No system prompt defined; No documentation (sticky notes) found.",
       "improvements_count": 10,
       "critical_issues": 2
     },
     "genuine_basic": {
       "workflow_name": "Basic Quality Workflow",
-      "overall_score": 0.476,
+      "overall_score": 0.496,
       "overall_grade": "Critical",
       "agent_dimensions": {
         "role_clarity": {
@@ -374,18 +418,26 @@
             "boundary_keywords": 0,
             "word_count": 16,
             "specificity_score": 0.6666666666666666,
-            "keyword_stuffing_detected": true
+            "keyword_stuffing_detected": true,
+            "error_codes": [
+              "QE-RC-004",
+              "QE-RC-005"
+            ]
           }
         },
         "output_consistency": {
-          "score": 0.55,
+          "score": 0.72,
           "issues": [
             "No execution history \u2014 output consistency is unverified"
           ],
           "evidence": {
             "expects_json": true,
             "execution_samples": 0,
-            "score_provisional": true
+            "score_provisional": true,
+            "error_codes": [
+              "QE-OC-001",
+              "QE-OC-003"
+            ]
           }
         },
         "error_handling": {
@@ -399,7 +451,12 @@
             "retry_on_fail": false,
             "max_retries": 0,
             "timeout_ms": 0,
-            "has_error_output": false
+            "has_error_output": false,
+            "error_codes": [
+              "QE-EH-003",
+              "QE-EH-001",
+              "QE-EH-002"
+            ]
           }
         },
         "tool_usage": {
@@ -408,7 +465,10 @@
             "Agent has no tools defined"
           ],
           "evidence": {
-            "tool_count": 0
+            "tool_count": 0,
+            "error_codes": [
+              "QE-TU-001"
+            ]
           }
         },
         "config_appropriateness": {
@@ -417,7 +477,10 @@
           "evidence": {
             "model": "",
             "temperature": null,
-            "max_tokens": null
+            "max_tokens": null,
+            "error_codes": [
+              "QE-CA-003"
+            ]
           }
         }
       },
@@ -473,14 +536,14 @@
         }
       },
       "orchestration_overall": 0.544,
-      "reasoning": "Workflow 'Basic Quality Workflow' overall quality: 48% (Critical). Agent quality (1 agents, avg 43%): weighted 60% of overall score. Agents needing attention: Data Extractor. Orchestration quality: 54% (At Risk), weighted 40% of overall score. Critical issues (4): Limited error handling configuration; No checkpoint or logging nodes; No global error handler in workflow.",
+      "reasoning": "Workflow 'Basic Quality Workflow' overall quality: 50% (Critical). Agent quality (1 agents, avg 46%): weighted 60% of overall score. Agents needing attention: Data Extractor. Orchestration quality: 54% (At Risk), weighted 40% of overall score. Critical issues (4): Limited error handling configuration; No checkpoint or logging nodes; No global error handler in workflow.",
       "improvements_count": 10,
       "critical_issues": 4
     },
     "genuine_good": {
       "workflow_name": "Good Quality Workflow",
-      "overall_score": 0.703,
-      "overall_grade": "Degraded",
+      "overall_score": 0.723,
+      "overall_grade": "Needs Data",
       "agent_dimensions": {
         "role_clarity": {
           "score": 1.0,
@@ -496,14 +559,18 @@
           }
         },
         "output_consistency": {
-          "score": 0.55,
+          "score": 0.72,
           "issues": [
             "No execution history \u2014 output consistency is unverified"
           ],
           "evidence": {
             "expects_json": true,
             "execution_samples": 0,
-            "score_provisional": true
+            "score_provisional": true,
+            "error_codes": [
+              "QE-OC-001",
+              "QE-OC-003"
+            ]
           }
         },
         "error_handling": {
@@ -524,7 +591,10 @@
             "Agent has no tools defined"
           ],
           "evidence": {
-            "tool_count": 0
+            "tool_count": 0,
+            "error_codes": [
+              "QE-TU-001"
+            ]
           }
         },
         "config_appropriateness": {
@@ -534,7 +604,10 @@
             "model": "",
             "temperature": 0.1,
             "max_tokens": 4000,
-            "inferred_task_type": "analysis"
+            "inferred_task_type": "analysis",
+            "error_codes": [
+              "QE-CA-003"
+            ]
           }
         }
       },
@@ -591,14 +664,14 @@
         }
       },
       "orchestration_overall": 0.632,
-      "reasoning": "Workflow 'Good Quality Workflow' overall quality: 70% (Degraded). Agent quality (1 agents, avg 75%): weighted 60% of overall score. Orchestration quality: 63% (At Risk), weighted 40% of overall score. Critical issues (1): No documentation (sticky notes) found.",
+      "reasoning": "Workflow 'Good Quality Workflow' overall quality: 72% (Needs Attention). Agent quality (1 agents, avg 78%): weighted 60% of overall score. Orchestration quality: 63% (At Risk), weighted 40% of overall score. Critical issues (1): No documentation (sticky notes) found.",
       "improvements_count": 10,
       "critical_issues": 1
     },
     "production_grade": {
       "workflow_name": "Production Grade Workflow",
-      "overall_score": 0.836,
-      "overall_grade": "Degraded",
+      "overall_score": 0.856,
+      "overall_grade": "Needs Data",
       "agent_dimensions": {
         "role_clarity": {
           "score": 1.0,
@@ -614,14 +687,18 @@
           }
         },
         "output_consistency": {
-          "score": 0.55,
+          "score": 0.72,
           "issues": [
             "No execution history \u2014 output consistency is unverified"
           ],
           "evidence": {
             "expects_json": true,
             "execution_samples": 0,
-            "score_provisional": true
+            "score_provisional": true,
+            "error_codes": [
+              "QE-OC-001",
+              "QE-OC-003"
+            ]
           }
         },
         "error_handling": {
@@ -706,13 +783,13 @@
         }
       },
       "orchestration_overall": 0.784,
-      "reasoning": "Workflow 'Production Grade Workflow' overall quality: 84% (Degraded). Agent quality (1 agents, avg 87%): weighted 60% of overall score. Orchestration quality: 78% (Degraded), weighted 40% of overall score.",
-      "improvements_count": 8,
+      "reasoning": "Workflow 'Production Grade Workflow' overall quality: 86% (Good). Agent quality (1 agents, avg 90%): weighted 60% of overall score. Orchestration quality: 78% (Needs Attention), weighted 40% of overall score.",
+      "improvements_count": 7,
       "critical_issues": 0
     },
     "score_maximizer": {
       "workflow_name": "Score Maximizer (Gaming)",
-      "overall_score": 0.643,
+      "overall_score": 0.664,
       "overall_grade": "At Risk",
       "agent_dimensions": {
         "role_clarity": {
@@ -732,14 +809,18 @@
           }
         },
         "output_consistency": {
-          "score": 0.55,
+          "score": 0.72,
           "issues": [
             "No execution history \u2014 output consistency is unverified"
           ],
           "evidence": {
             "expects_json": true,
             "execution_samples": 0,
-            "score_provisional": true
+            "score_provisional": true,
+            "error_codes": [
+              "QE-OC-001",
+              "QE-OC-003"
+            ]
           }
         },
         "error_handling": {
@@ -829,7 +910,7 @@
         }
       },
       "orchestration_overall": 0.588,
-      "reasoning": "Workflow 'Score Maximizer (Gaming)' overall quality: 64% (At Risk). Agent quality (1 agents, avg 68%): weighted 60% of overall score. Orchestration quality: 59% (At Risk), weighted 40% of overall score. Critical issues (1): No documentation (sticky notes) found.",
+      "reasoning": "Workflow 'Score Maximizer (Gaming)' overall quality: 66% (At Risk). Agent quality (1 agents, avg 71%): weighted 60% of overall score. Orchestration quality: 59% (At Risk), weighted 40% of overall score. Critical issues (1): No documentation (sticky notes) found.",
       "improvements_count": 10,
       "critical_issues": 1
     }

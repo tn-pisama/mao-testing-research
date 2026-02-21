@@ -35,11 +35,14 @@ class QualityHealingEngine:
         auto_apply: bool = False,
         score_threshold: float = 0.7,
         max_fix_attempts: int = 5,
-        use_llm_fixes: bool = False,
+        use_llm_fixes: Optional[bool] = None,
     ):
+        import os
         self.auto_apply = auto_apply
         self.score_threshold = score_threshold
         self.max_fix_attempts = max_fix_attempts
+        if use_llm_fixes is None:
+            use_llm_fixes = bool(os.getenv("ANTHROPIC_API_KEY"))
         self.use_llm_fixes = use_llm_fixes
 
         # Initialize fix generator with all 15 dimension generators
@@ -53,7 +56,7 @@ class QualityHealingEngine:
         self.validator = QualityFixValidator()
         # Lazy import to avoid circular dependency (quality.__init__ -> healing -> engine -> quality)
         from .. import QualityAssessor as _QualityAssessor
-        self._assessor = _QualityAssessor(use_llm_judge=False)
+        self._assessor = _QualityAssessor(use_llm_judge=None)
 
         # LLM fix enrichment (optional, requires API key)
         self._llm_fix_generator = None

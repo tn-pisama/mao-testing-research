@@ -73,6 +73,8 @@ class WorkflowQualityResponse(BaseModel):
     total_issues: int
     critical_issues_count: int
     reasoning: Optional[str] = None
+    is_provisional: bool = False
+    confidence_note: Optional[str] = None
 
 
 class AgentQualityRequest(BaseModel):
@@ -90,6 +92,10 @@ class AgentQualityRequest(BaseModel):
         default=False,
         description="Include detailed reasoning for each score"
     )
+    use_llm_analysis: bool = Field(
+        default=False,
+        description="Use LLM for semantic evaluation (auto-enabled when ANTHROPIC_API_KEY is set)"
+    )
 
 
 class AgentQualityResponse(BaseModel):
@@ -103,6 +109,7 @@ class AgentQualityResponse(BaseModel):
     issues_count: int
     critical_issues: List[str]
     reasoning: Optional[str] = None
+    is_provisional: bool = False
 
 
 class SuggestionsRequest(BaseModel):
@@ -166,6 +173,11 @@ async def assess_workflow_quality(
             total_issues=report.total_issues,
             critical_issues_count=report.critical_issues_count,
             reasoning=report.reasoning,
+            is_provisional=report.is_provisional,
+            confidence_note=(
+                "Score includes provisional output_consistency estimate. "
+                "Run 3+ executions and re-assess for a verified score."
+            ) if report.is_provisional else None,
         )
     except Exception as e:
         raise HTTPException(status_code=500, detail=f"Quality assessment failed: {str(e)}")
@@ -187,7 +199,10 @@ async def assess_agent_quality(
     - Config Appropriateness: Temperature/token settings
     """
     try:
-        assessor = QualityAssessor(include_reasoning=request.include_reasoning)
+        assessor = QualityAssessor(
+            use_llm_judge=request.use_llm_analysis if request.use_llm_analysis else None,
+            include_reasoning=request.include_reasoning,
+        )
 
         score = assessor.assess_agent(
             node=request.node_json,
@@ -205,6 +220,7 @@ async def assess_agent_quality(
             issues_count=score.issues_count,
             critical_issues=score.critical_issues,
             reasoning=score.reasoning,
+            is_provisional=score.has_provisional_dimensions,
         )
     except Exception as e:
         raise HTTPException(status_code=500, detail=f"Agent assessment failed: {str(e)}")
@@ -527,7 +543,7 @@ async def list_assessments(
 
     if min_grade:
         # Tier ordering: best → worst
-        grade_order = ["Healthy", "Degraded", "At Risk", "Critical"]
+        grade_order = ["Healthy", "Good", "Needs Attention", "Needs Data", "At Risk", "Critical"]
         if min_grade in grade_order:
             min_index = grade_order.index(min_grade)
             valid_grades = grade_order[:min_index + 1]

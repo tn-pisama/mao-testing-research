@@ -23,9 +23,12 @@ class ErrorCode:
     description: str
     remediation: str
     doc_link: str = ""
+    example_bad: str = ""
+    example_good: str = ""
+    quantified_target: str = ""
 
     def to_dict(self) -> dict:
-        return {
+        result = {
             "code": self.code,
             "severity": self.severity,
             "dimension": self.dimension,
@@ -33,13 +36,20 @@ class ErrorCode:
             "remediation": self.remediation,
             "doc_link": self.doc_link,
         }
+        if self.example_bad:
+            result["example_bad"] = self.example_bad
+        if self.example_good:
+            result["example_good"] = self.example_good
+        if self.quantified_target:
+            result["quantified_target"] = self.quantified_target
+        return result
 
 
 # ---------------------------------------------------------------------------
 # Error code registry
 # ---------------------------------------------------------------------------
 
-_DOC_BASE = "https://docs.pisama.dev/quality/errors"
+_DOC_BASE = ""  # Empty until hosted docs exist — avoids 404s
 
 ERROR_CODES: Dict[str, ErrorCode] = {
     # ── Role Clarity (RC) ─────────────────────────────────────────────────
@@ -53,7 +63,14 @@ ERROR_CODES: Dict[str, ErrorCode] = {
             "expected behaviour, and constraints. A missing system prompt "
             "means the agent has no guidance on how to respond."
         ),
-        doc_link=f"{_DOC_BASE}/QE-RC-001",
+        example_bad="(empty — no system prompt set)",
+        example_good=(
+            "You are a customer support triage agent. Classify incoming "
+            "tickets by urgency (P0-P3) and route them to the correct team. "
+            "Never promise resolution timelines. Always include the ticket ID "
+            "in your response."
+        ),
+        quantified_target="50+ words covering role, task, constraints, and output format",
     ),
     "QE-RC-002": ErrorCode(
         code="QE-RC-002",
@@ -65,7 +82,13 @@ ERROR_CODES: Dict[str, ErrorCode] = {
             "'You are a data-extraction specialist...' to anchor the agent's "
             "identity and reduce persona drift."
         ),
-        doc_link=f"{_DOC_BASE}/QE-RC-002",
+        example_bad="Help the user with their request.",
+        example_good=(
+            "You are a contract review specialist. Your role is to identify "
+            "non-standard clauses in B2B contracts and flag them by severity. "
+            "Never give legal advice. Return results as a JSON array."
+        ),
+        quantified_target="Start with 'You are a...' and include explicit role, boundaries, and output format",
     ),
     "QE-RC-003": ErrorCode(
         code="QE-RC-003",
@@ -77,7 +100,7 @@ ERROR_CODES: Dict[str, ErrorCode] = {
             "markdown table, etc.) so downstream nodes can reliably parse the "
             "agent's response."
         ),
-        doc_link=f"{_DOC_BASE}/QE-RC-003",
+        doc_link=f"{_DOC_BASE}QE-RC-003",
     ),
     "QE-RC-004": ErrorCode(
         code="QE-RC-004",
@@ -89,7 +112,7 @@ ERROR_CODES: Dict[str, ErrorCode] = {
             "'Only answer questions about X', or 'Refuse requests outside "
             "your domain' to prevent scope creep and hallucination."
         ),
-        doc_link=f"{_DOC_BASE}/QE-RC-004",
+        doc_link=f"{_DOC_BASE}QE-RC-004",
     ),
     "QE-RC-005": ErrorCode(
         code="QE-RC-005",
@@ -101,7 +124,14 @@ ERROR_CODES: Dict[str, ErrorCode] = {
             "format, boundary constraints, and examples. Very short prompts "
             "leave too much ambiguity for the model."
         ),
-        doc_link=f"{_DOC_BASE}/QE-RC-005",
+        example_bad="Summarize the input.",
+        example_good=(
+            "You are an executive summary writer. Given a document, produce "
+            "a 3-paragraph summary: key findings, recommendations, and next "
+            "steps. Use bullet points for recommendations. Keep the summary "
+            "under 300 words."
+        ),
+        quantified_target="50+ words with sections for role, output format, constraints, and examples",
     ),
 
     # ── Output Consistency (OC) ───────────────────────────────────────────
@@ -115,7 +145,9 @@ ERROR_CODES: Dict[str, ErrorCode] = {
             "history so PISAMA can detect structural inconsistencies across "
             "runs."
         ),
-        doc_link=f"{_DOC_BASE}/QE-OC-001",
+        example_bad="(no executions — score is provisional)",
+        example_good="5+ executions with consistent JSON output structure across runs",
+        quantified_target="3-5 executions minimum for a verified output consistency score",
     ),
     "QE-OC-002": ErrorCode(
         code="QE-OC-002",
@@ -127,7 +159,7 @@ ERROR_CODES: Dict[str, ErrorCode] = {
             "consider adding a JSON-mode or structured-output setting. "
             "Validate outputs with a downstream schema-check node."
         ),
-        doc_link=f"{_DOC_BASE}/QE-OC-002",
+        doc_link=f"{_DOC_BASE}QE-OC-002",
     ),
     "QE-OC-003": ErrorCode(
         code="QE-OC-003",
@@ -139,7 +171,7 @@ ERROR_CODES: Dict[str, ErrorCode] = {
             "JSON mode (responseFormat: json_object) or include an explicit "
             "JSON schema in the system prompt."
         ),
-        doc_link=f"{_DOC_BASE}/QE-OC-003",
+        doc_link=f"{_DOC_BASE}QE-OC-003",
     ),
 
     # ── Error Handling (EH) ───────────────────────────────────────────────
@@ -153,7 +185,9 @@ ERROR_CODES: Dict[str, ErrorCode] = {
             "waitBetweenTries: 1000) to handle transient LLM API failures "
             "gracefully."
         ),
-        doc_link=f"{_DOC_BASE}/QE-EH-001",
+        example_bad='{ "retryOnFail": false }',
+        example_good='{ "retryOnFail": true, "maxTries": 3, "waitBetweenTries": 1000 }',
+        quantified_target="maxTries >= 2 with waitBetweenTries >= 500ms",
     ),
     "QE-EH-002": ErrorCode(
         code="QE-EH-002",
@@ -165,7 +199,7 @@ ERROR_CODES: Dict[str, ErrorCode] = {
             "workflow from hanging indefinitely when the LLM provider is "
             "slow or unresponsive."
         ),
-        doc_link=f"{_DOC_BASE}/QE-EH-002",
+        doc_link=f"{_DOC_BASE}QE-EH-002",
     ),
     "QE-EH-003": ErrorCode(
         code="QE-EH-003",
@@ -177,7 +211,7 @@ ERROR_CODES: Dict[str, ErrorCode] = {
             "failures, or add an error-output branch so the workflow can "
             "degrade gracefully instead of stopping."
         ),
-        doc_link=f"{_DOC_BASE}/QE-EH-003",
+        doc_link=f"{_DOC_BASE}QE-EH-003",
     ),
     "QE-EH-004": ErrorCode(
         code="QE-EH-004",
@@ -189,7 +223,7 @@ ERROR_CODES: Dict[str, ErrorCode] = {
             "an alert, or triggers a fallback path. Unhandled errors cause "
             "silent workflow failures."
         ),
-        doc_link=f"{_DOC_BASE}/QE-EH-004",
+        doc_link=f"{_DOC_BASE}QE-EH-004",
     ),
 
     # ── Tool Usage (TU) ──────────────────────────────────────────────────
@@ -204,7 +238,7 @@ ERROR_CODES: Dict[str, ErrorCode] = {
             "them as sub-nodes. Agents without tools are limited to text "
             "generation."
         ),
-        doc_link=f"{_DOC_BASE}/QE-TU-001",
+        doc_link=f"{_DOC_BASE}QE-TU-001",
     ),
     "QE-TU-002": ErrorCode(
         code="QE-TU-002",
@@ -216,7 +250,7 @@ ERROR_CODES: Dict[str, ErrorCode] = {
             "understands when and how to use each one. Missing descriptions "
             "lead to incorrect tool selection."
         ),
-        doc_link=f"{_DOC_BASE}/QE-TU-002",
+        doc_link=f"{_DOC_BASE}QE-TU-002",
     ),
     "QE-TU-003": ErrorCode(
         code="QE-TU-003",
@@ -228,7 +262,7 @@ ERROR_CODES: Dict[str, ErrorCode] = {
             "This helps the agent construct correct tool calls and parse "
             "results reliably."
         ),
-        doc_link=f"{_DOC_BASE}/QE-TU-003",
+        doc_link=f"{_DOC_BASE}QE-TU-003",
     ),
     "QE-TU-004": ErrorCode(
         code="QE-TU-004",
@@ -240,7 +274,7 @@ ERROR_CODES: Dict[str, ErrorCode] = {
             "grouping related tools or splitting the agent into specialised "
             "sub-agents with focused toolsets."
         ),
-        doc_link=f"{_DOC_BASE}/QE-TU-004",
+        doc_link=f"{_DOC_BASE}QE-TU-004",
     ),
 
     # ── Config Appropriateness (CA) ───────────────────────────────────────
@@ -254,7 +288,7 @@ ERROR_CODES: Dict[str, ErrorCode] = {
             "(creative). Values above 1.0 produce unreliable outputs; "
             "values below 0.0 are invalid for most providers."
         ),
-        doc_link=f"{_DOC_BASE}/QE-CA-001",
+        doc_link=f"{_DOC_BASE}QE-CA-001",
     ),
     "QE-CA-002": ErrorCode(
         code="QE-CA-002",
@@ -266,7 +300,7 @@ ERROR_CODES: Dict[str, ErrorCode] = {
             "complete responses. A low limit causes truncated outputs that "
             "break downstream parsing."
         ),
-        doc_link=f"{_DOC_BASE}/QE-CA-002",
+        doc_link=f"{_DOC_BASE}QE-CA-002",
     ),
     "QE-CA-003": ErrorCode(
         code="QE-CA-003",
@@ -278,7 +312,7 @@ ERROR_CODES: Dict[str, ErrorCode] = {
             "ensure reproducible behaviour. Provider defaults may change "
             "without notice."
         ),
-        doc_link=f"{_DOC_BASE}/QE-CA-003",
+        doc_link=f"{_DOC_BASE}QE-CA-003",
     ),
 
     # ── Data Flow Clarity (DF) ────────────────────────────────────────────
@@ -292,7 +326,7 @@ ERROR_CODES: Dict[str, ErrorCode] = {
             "and every non-terminal node has at least one output connection. "
             "Disconnected nodes indicate dead code or missing data flow."
         ),
-        doc_link=f"{_DOC_BASE}/QE-DF-001",
+        doc_link=f"{_DOC_BASE}QE-DF-001",
     ),
     "QE-DF-002": ErrorCode(
         code="QE-DF-002",
@@ -304,7 +338,7 @@ ERROR_CODES: Dict[str, ErrorCode] = {
             "Data', 'Send Slack Notification'). Descriptive names make "
             "workflows self-documenting."
         ),
-        doc_link=f"{_DOC_BASE}/QE-DF-002",
+        doc_link=f"{_DOC_BASE}QE-DF-002",
     ),
     "QE-DF-003": ErrorCode(
         code="QE-DF-003",
@@ -316,7 +350,7 @@ ERROR_CODES: Dict[str, ErrorCode] = {
             "variables or shared state. Explicit data flow is easier to "
             "debug, test, and maintain."
         ),
-        doc_link=f"{_DOC_BASE}/QE-DF-003",
+        doc_link=f"{_DOC_BASE}QE-DF-003",
     ),
 
     # ── Complexity Management (CM) ────────────────────────────────────────
@@ -330,7 +364,7 @@ ERROR_CODES: Dict[str, ErrorCode] = {
             "Execute Workflow node. Aim for 10-30 nodes per workflow to "
             "keep each unit understandable."
         ),
-        doc_link=f"{_DOC_BASE}/QE-CM-001",
+        doc_link=f"{_DOC_BASE}QE-CM-001",
     ),
     "QE-CM-002": ErrorCode(
         code="QE-CM-002",
@@ -342,7 +376,7 @@ ERROR_CODES: Dict[str, ErrorCode] = {
             "or flattening conditional logic. Deep graphs are hard to debug "
             "and prone to timeout."
         ),
-        doc_link=f"{_DOC_BASE}/QE-CM-002",
+        doc_link=f"{_DOC_BASE}QE-CM-002",
     ),
     "QE-CM-003": ErrorCode(
         code="QE-CM-003",
@@ -354,7 +388,7 @@ ERROR_CODES: Dict[str, ErrorCode] = {
             "complex decision logic into a dedicated Code or Function node "
             "that can be unit-tested independently."
         ),
-        doc_link=f"{_DOC_BASE}/QE-CM-003",
+        doc_link=f"{_DOC_BASE}QE-CM-003",
     ),
 
     # ── Agent Coupling (AC) ──────────────────────────────────────────────
@@ -368,7 +402,7 @@ ERROR_CODES: Dict[str, ErrorCode] = {
             "or parallelisation. Long chains amplify errors: each agent's "
             "mistakes propagate to all downstream agents."
         ),
-        doc_link=f"{_DOC_BASE}/QE-AC-001",
+        doc_link=f"{_DOC_BASE}QE-AC-001",
     ),
     "QE-AC-002": ErrorCode(
         code="QE-AC-002",
@@ -380,7 +414,7 @@ ERROR_CODES: Dict[str, ErrorCode] = {
             "agents. A high coupling ratio means agents depend heavily on "
             "each other with no intermediate checks."
         ),
-        doc_link=f"{_DOC_BASE}/QE-AC-002",
+        doc_link=f"{_DOC_BASE}QE-AC-002",
     ),
 
     # ── Observability (OB) ───────────────────────────────────────────────
@@ -394,7 +428,7 @@ ERROR_CODES: Dict[str, ErrorCode] = {
             "after agent processing, before final output) to capture "
             "intermediate state for debugging."
         ),
-        doc_link=f"{_DOC_BASE}/QE-OB-001",
+        doc_link=f"{_DOC_BASE}QE-OB-001",
     ),
     "QE-OB-002": ErrorCode(
         code="QE-OB-002",
@@ -406,7 +440,7 @@ ERROR_CODES: Dict[str, ErrorCode] = {
             "routes them to alerting (Slack, email, PagerDuty) so issues "
             "are detected promptly."
         ),
-        doc_link=f"{_DOC_BASE}/QE-OB-002",
+        doc_link=f"{_DOC_BASE}QE-OB-002",
     ),
     "QE-OB-003": ErrorCode(
         code="QE-OB-003",
@@ -418,7 +452,7 @@ ERROR_CODES: Dict[str, ErrorCode] = {
             "to track execution frequency, latency, error rates, and token "
             "costs over time."
         ),
-        doc_link=f"{_DOC_BASE}/QE-OB-003",
+        doc_link=f"{_DOC_BASE}QE-OB-003",
     ),
 
     # ── Best Practices (BP) ──────────────────────────────────────────────
@@ -432,7 +466,7 @@ ERROR_CODES: Dict[str, ErrorCode] = {
             "errors. Without a global handler, failures may go unnoticed "
             "and data may be lost silently."
         ),
-        doc_link=f"{_DOC_BASE}/QE-BP-001",
+        doc_link=f"{_DOC_BASE}QE-BP-001",
     ),
     "QE-BP-002": ErrorCode(
         code="QE-BP-002",
@@ -444,7 +478,7 @@ ERROR_CODES: Dict[str, ErrorCode] = {
             "across all agent nodes. Inconsistent configuration makes "
             "failure behaviour unpredictable."
         ),
-        doc_link=f"{_DOC_BASE}/QE-BP-002",
+        doc_link=f"{_DOC_BASE}QE-BP-002",
     ),
     "QE-BP-003": ErrorCode(
         code="QE-BP-003",
@@ -455,7 +489,7 @@ ERROR_CODES: Dict[str, ErrorCode] = {
             "Set a workflow-level execution timeout (e.g. 5-15 minutes) to "
             "prevent runaway workflows from consuming resources indefinitely."
         ),
-        doc_link=f"{_DOC_BASE}/QE-BP-003",
+        doc_link=f"{_DOC_BASE}QE-BP-003",
     ),
 }
 

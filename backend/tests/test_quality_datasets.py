@@ -79,7 +79,7 @@ class TestN8nWorkflowDataset:
         """All workflows should have valid health tier grades."""
         assessor = QualityAssessor(use_llm_judge=False)
 
-        valid_grades = ["Healthy", "Degraded", "At Risk", "Critical"]
+        valid_grades = ["Healthy", "Good", "Needs Attention", "Needs Data", "At Risk", "Critical"]
 
         for name, workflow in n8n_workflow_files.items():
             report = assessor.assess_workflow(workflow)
@@ -102,15 +102,14 @@ class TestN8nWorkflowDataset:
 
     def test_all_workflows_score_similarly(self, n8n_workflow_files):
         """
-        FINDING: All workflows score in the Degraded tier (~72-85%).
+        FINDING: All workflows score in the Good/Needs Attention tier (~75-90%).
 
-        The output_consistency default lowered from 0.7 to ~0.4-0.55, which causes
-        more score variance across workflows depending on whether they specify JSON
-        output format. This reveals a limitation: the quality assessor evaluates
-        static workflow structure (prompts, error handling, connections) but cannot
-        detect runtime logic bugs (loops, corruption, drift) without execution history.
-
-        This is working as designed - quality assessment is orthogonal to runtime debugging.
+        The output_consistency provisional score is 0.65 (or 0.72 with JSON), which
+        provides a neutral baseline when no execution history is available. The quality
+        assessor evaluates static workflow structure (prompts, error handling, connections)
+        but cannot detect runtime logic bugs (loops, corruption, drift) without execution
+        history. This is working as designed - quality assessment is orthogonal to runtime
+        debugging.
         """
         assessor = QualityAssessor(use_llm_judge=False)
 
@@ -119,13 +118,13 @@ class TestN8nWorkflowDataset:
             report = assessor.assess_workflow(workflow)
             scores.append(report.overall_score)
 
-        # All workflows should be in the Degraded tier range (0.65 - 0.9)
+        # All workflows should be in the Good/Needs Attention range (0.65 - 0.95)
         for score in scores:
-            assert 0.65 <= score <= 0.9, f"Score {score:.2%} outside expected Degraded range"
+            assert 0.65 <= score <= 0.95, f"Score {score:.2%} outside expected range"
 
-        # Score variance should be moderate (< 15%) due to output_consistency variation
+        # Score variance should be moderate (< 20%) due to output_consistency variation
         score_range = max(scores) - min(scores)
-        assert score_range < 0.15, f"Score variance {score_range:.2%} higher than expected"
+        assert score_range < 0.20, f"Score variance {score_range:.2%} higher than expected"
 
 
 class TestFixtureComparison:
@@ -265,8 +264,8 @@ class TestDatasetScoreDistribution:
         all_scores = [s["score"] for s in scores]
         score_range = max(all_scores) - min(all_scores)
 
-        # Demo workflows have moderate range (< 15%) due to output_consistency variation
-        assert 0.0 < score_range < 0.15, (
+        # Demo workflows have moderate range (< 20%) due to output_consistency variation
+        assert 0.0 < score_range < 0.20, (
             f"Score range {score_range:.2%} outside expected range"
         )
 

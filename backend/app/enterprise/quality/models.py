@@ -46,16 +46,27 @@ class Effort(str, Enum):
     HIGH = "high"
 
 
-def _score_to_grade(score: float) -> str:
-    """Convert 0.0-1.0 score to health tier."""
+def _score_to_grade(score: float, is_provisional: bool = False) -> str:
+    """Convert 0.0-1.0 score to health tier.
+
+    Args:
+        score: Quality score between 0.0 and 1.0.
+        is_provisional: When True and the label would be "Good" or
+            "Needs Attention", returns "Needs Data" instead.
+    """
     if score >= 0.90:
-        return "Healthy"
+        label = "Healthy"
+    elif score >= 0.80:
+        label = "Good"
     elif score >= 0.70:
-        return "Degraded"
+        label = "Needs Attention"
     elif score >= 0.50:
-        return "At Risk"
+        label = "At Risk"
     else:
-        return "Critical"
+        label = "Critical"
+    if is_provisional and label in ("Good", "Needs Attention"):
+        return "Needs Data"
+    return label
 
 
 @dataclass
@@ -68,6 +79,7 @@ class DimensionScore:
     evidence: Dict[str, Any] = field(default_factory=dict)
     suggestions: List[str] = field(default_factory=list)
     reasoning: Optional[str] = None
+    is_provisional: bool = False
 
     def to_dict(self) -> Dict[str, Any]:
         result = {
@@ -80,6 +92,8 @@ class DimensionScore:
         }
         if self.reasoning is not None:
             result["reasoning"] = self.reasoning
+        if self.is_provisional:
+            result["is_provisional"] = True
         return result
 
 
@@ -97,8 +111,12 @@ class AgentQualityScore:
     reasoning: Optional[str] = None
 
     @property
+    def has_provisional_dimensions(self) -> bool:
+        return any(d.is_provisional for d in self.dimensions)
+
+    @property
     def grade(self) -> str:
-        return _score_to_grade(self.overall_score)
+        return _score_to_grade(self.overall_score, is_provisional=self.has_provisional_dimensions)
 
     def to_dict(self) -> Dict[str, Any]:
         result = {
@@ -114,6 +132,8 @@ class AgentQualityScore:
         }
         if self.reasoning is not None:
             result["reasoning"] = self.reasoning
+        if self.has_provisional_dimensions:
+            result["is_provisional"] = True
         return result
 
 
@@ -249,8 +269,12 @@ class QualityReport:
     generated_at: datetime = field(default_factory=lambda: datetime.now(UTC))
 
     @property
+    def is_provisional(self) -> bool:
+        return any(a.has_provisional_dimensions for a in self.agent_scores)
+
+    @property
     def overall_grade(self) -> str:
-        return _score_to_grade(self.overall_score)
+        return _score_to_grade(self.overall_score, is_provisional=self.is_provisional)
 
     @property
     def total_issues(self) -> int:
@@ -278,4 +302,10 @@ class QualityReport:
         }
         if self.reasoning is not None:
             result["reasoning"] = self.reasoning
+        if self.is_provisional:
+            result["is_provisional"] = True
+            result["confidence_note"] = (
+                "Score includes provisional output_consistency estimate. "
+                "Run 3+ executions and re-assess for a verified score."
+            )
         return result

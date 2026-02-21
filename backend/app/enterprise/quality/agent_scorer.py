@@ -80,10 +80,13 @@ class AgentQualityScorer:
 
     def __init__(
         self,
-        use_llm_judge: bool = False,
+        use_llm_judge: Optional[bool] = None,
         judge_model: str = "claude-3-5-haiku-20241022",
         escalation_range: tuple = (0.35, 0.65),
     ):
+        import os
+        if use_llm_judge is None:
+            use_llm_judge = bool(os.getenv("ANTHROPIC_API_KEY") or os.getenv("OPENAI_API_KEY"))
         self.use_llm_judge = use_llm_judge
         self.judge_model = judge_model
         self.escalation_range = escalation_range
@@ -318,7 +321,7 @@ class AgentQualityScorer:
         issues = []
         suggestions = []
         evidence = {}
-        score = 0.4  # Provisional score when no execution history (was 0.7 — too generous)
+        score = 0.65  # Neutral provisional — no history means we don't know yet
 
         # Check if JSON output is expected
         system_prompt = self._extract_system_prompt(node)
@@ -328,7 +331,7 @@ class AgentQualityScorer:
             evidence["expects_json"] = expects_json
             # Bump score if the prompt at least specifies an output format
             if expects_json:
-                score = 0.55  # Better than nothing, but still unverified
+                score = 0.72  # Output format specified but unverified
 
         if not execution_history:
             evidence["execution_samples"] = 0
@@ -345,6 +348,7 @@ class AgentQualityScorer:
                 issues=issues,
                 evidence=evidence,
                 suggestions=suggestions,
+                is_provisional=True,
             )
 
         evidence["execution_samples"] = len(execution_history)
@@ -913,12 +917,19 @@ class AgentQualityScorer:
         if llm_result is None:
             return heuristic_score
         llm_score = llm_result["score"]
+        tokens = llm_result.get("tokens", 0)
+        reasoning = llm_result.get("reasoning", "")
+        # If LLM call failed (0 tokens or API error), fall back to heuristic only
+        if tokens == 0 or "API error" in reasoning or "Error" in reasoning[:20]:
+            dim_score.evidence["llm_fallback"] = True
+            dim_score.evidence["llm_error"] = reasoning
+            return heuristic_score
         blended = 0.3 * heuristic_score + 0.7 * llm_score
         dim_score.evidence["llm_score"] = round(llm_score, 3)
         dim_score.evidence["heuristic_score"] = round(heuristic_score, 3)
-        dim_score.evidence["llm_reasoning"] = llm_result.get("reasoning", "")
+        dim_score.evidence["llm_reasoning"] = reasoning
         dim_score.evidence["scoring_tier"] = "llm"
-        dim_score.evidence["llm_tokens"] = llm_result.get("tokens", 0)
+        dim_score.evidence["llm_tokens"] = tokens
         return blended
 
     # --- Anti-Gaming Guards ---

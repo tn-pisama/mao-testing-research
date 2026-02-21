@@ -18,13 +18,11 @@ function calculateAverageScore(assessments: QualityAssessment[]): number {
 }
 
 function getAverageGrade(score: number): string {
-  if (score >= 0.9) return 'A'
-  if (score >= 0.8) return 'B+'
-  if (score >= 0.7) return 'B'
-  if (score >= 0.6) return 'C+'
-  if (score >= 0.5) return 'C'
-  if (score >= 0.4) return 'D'
-  return 'F'
+  if (score >= 0.9) return 'Healthy'
+  if (score >= 0.8) return 'Good'
+  if (score >= 0.7) return 'Needs Attention'
+  if (score >= 0.5) return 'At Risk'
+  return 'Critical'
 }
 
 export function QualityScoreCard({ assessments = [], isLoading }: QualityScoreCardProps) {
