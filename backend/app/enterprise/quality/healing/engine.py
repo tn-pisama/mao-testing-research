@@ -35,10 +35,12 @@ class QualityHealingEngine:
         auto_apply: bool = False,
         score_threshold: float = 0.7,
         max_fix_attempts: int = 5,
+        use_llm_fixes: bool = False,
     ):
         self.auto_apply = auto_apply
         self.score_threshold = score_threshold
         self.max_fix_attempts = max_fix_attempts
+        self.use_llm_fixes = use_llm_fixes
 
         # Initialize fix generator with all 15 dimension generators
         self.fix_generator = QualityFixGenerator()
@@ -52,6 +54,17 @@ class QualityHealingEngine:
         # Lazy import to avoid circular dependency (quality.__init__ -> healing -> engine -> quality)
         from .. import QualityAssessor as _QualityAssessor
         self._assessor = _QualityAssessor(use_llm_judge=False)
+
+        # LLM fix enrichment (optional, requires API key)
+        self._llm_fix_generator = None
+        if use_llm_fixes:
+            try:
+                from .llm_fix_generator import LLMContextualFixGenerator
+                gen = LLMContextualFixGenerator()
+                if gen.available:
+                    self._llm_fix_generator = gen
+            except Exception:
+                pass
 
         self._healing_history: List[QualityHealingResult] = []
 
@@ -106,9 +119,22 @@ class QualityHealingEngine:
             current_config = workflow_config
             fixes_to_apply = fix_suggestions[:self.max_fix_attempts]
 
+            # Enrich fixes with LLM context if available
+            if self._llm_fix_generator:
+                for i, fix in enumerate(fixes_to_apply):
+                    try:
+                        fixes_to_apply[i] = self._llm_fix_generator.enrich_fix(
+                            fix, self._find_target_node(fix, current_config), workflow_config
+                        )
+                    except Exception:
+                        pass  # Keep template fix as fallback
+
             for fix in fixes_to_apply:
                 try:
                     applied = self.applicator.apply(fix, current_config)
+                    # Track generation method for cross-signal validation
+                    if self._llm_fix_generator and fix.metadata.get("generation_method") == "llm":
+                        applied.generation_method = "llm"
                     result.applied_fixes.append(applied)
                     current_config = applied.modified_state
                 except Exception as e:
@@ -259,3 +285,12 @@ class QualityHealingEngine:
             "by_status": by_status,
             "by_dimension": by_dimension,
         }
+
+    @staticmethod
+    def _find_target_node(fix, config: Dict[str, Any]) -> Dict[str, Any]:
+        """Find the target node for a fix suggestion in the workflow config."""
+        target_id = fix.target_id
+        for node in config.get("nodes", []):
+            if node.get("id") == target_id or node.get("name") == target_id:
+                return node
+        return {"id": target_id, "name": target_id, "parameters": {}}

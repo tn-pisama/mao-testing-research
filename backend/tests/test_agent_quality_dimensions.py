@@ -92,7 +92,7 @@ class TestOutputConsistencyDimension:
     """Test output_consistency dimension scoring."""
 
     def test_no_history_uses_default_score(self):
-        """Without execution history, should use default score (0.7)."""
+        """Without execution history, should use default score (0.55 = 0.4 base + 0.15 JSON bonus)."""
         scorer = AgentQualityScorer()
         node = {
             "id": "test-agent",
@@ -106,8 +106,8 @@ class TestOutputConsistencyDimension:
         score = scorer.score_agent(node, execution_history=None)
         consistency_dim = next(d for d in score.dimensions if d.dimension == QualityDimension.OUTPUT_CONSISTENCY.value)
 
-        # Default score when no history
-        assert consistency_dim.score == 0.7
+        # Default base is 0.4, plus 0.15 JSON bonus (systemMessage mentions JSON)
+        assert consistency_dim.score == 0.55
         assert consistency_dim.evidence.get("execution_samples", 0) == 0
 
     def test_consistent_outputs_score_high(self):
@@ -197,7 +197,7 @@ class TestErrorHandlingDimension:
         assert error_dim.evidence.get("continue_on_fail") is True
 
     def test_full_config_scores_high(self):
-        """Agent with full error handling should score 85%+."""
+        """Agent with full error handling but no system prompt gets capped at 0.5 (anti-gaming)."""
         scorer = AgentQualityScorer()
         node = {
             "id": "test-agent",
@@ -217,8 +217,11 @@ class TestErrorHandlingDimension:
         score = scorer.score_agent(node)
         error_dim = next(d for d in score.dimensions if d.dimension == QualityDimension.ERROR_HANDLING.value)
 
-        # Has continueOnFail (25%) + alwaysOutput (15%) + retry (20%) + maxRetries (10%) + timeout (15%) = 85%
-        assert error_dim.score >= 0.8
+        # Anti-gaming guard: nodes without a system prompt get capped at 0.5
+        # for error_handling, even with full config. This prevents gaming the
+        # quality score by adding error handling flags without a real prompt.
+        assert error_dim.score == 0.5
+        assert error_dim.evidence.get("no_prompt_penalty") is True
         assert error_dim.evidence.get("continue_on_fail") is True
         assert error_dim.evidence.get("retry_on_fail") is True
         assert error_dim.evidence.get("timeout_ms") == 30000
@@ -437,7 +440,7 @@ class TestOverallAgentScoring:
         assert score.agent_name == "Test Agent"
         assert len(score.dimensions) == 5
         assert 0 <= score.overall_score <= 1
-        assert score.grade in ["A", "B+", "B", "C+", "C", "D", "F"]
+        assert score.grade in ["Healthy", "Degraded", "At Risk", "Critical"]
 
     def test_all_dimensions_present(self):
         """Verify all 5 agent dimensions are scored."""

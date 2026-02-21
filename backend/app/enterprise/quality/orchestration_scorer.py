@@ -1,5 +1,6 @@
 """Orchestration quality scorer with complexity metrics."""
 
+import json
 from collections import defaultdict
 from typing import Dict, Any, List, Optional, Set, Tuple
 from .models import (
@@ -9,6 +10,7 @@ from .models import (
     OrchestrationDimension,
 )
 from .agent_scorer import AI_NODE_TYPES, LM_CONFIG_NODE_TYPES
+from .error_codes import get_error_code
 
 
 # Orchestration pattern thresholds
@@ -45,7 +47,33 @@ class OrchestrationQualityScorer:
     3. Agent Coupling - Independence vs interdependence balance
     4. Observability - Checkpoints, logging, monitoring
     5. Best Practices - Retry, timeout, rate limiting
+
+    Supports two-tier scoring:
+    - Tier 1 (fast): Heuristic structural analysis (~1ms)
+    - Tier 2 (deep): LLM judge for semantic evaluation (~1-2s)
+
+    When use_llm_judge=True, ALL 5 core dimensions get LLM evaluation.
+    When use_llm_judge=False but a dimension score falls in the
+    escalation_range, it can optionally be escalated to LLM.
     """
+
+    def __init__(
+        self,
+        use_llm_judge: bool = False,
+        judge_model: str = "claude-3-5-haiku-20241022",
+        escalation_range: tuple = (0.35, 0.65),
+    ):
+        self.use_llm_judge = use_llm_judge
+        self.judge_model = judge_model
+        self.escalation_range = escalation_range
+        self._judge = None
+        if use_llm_judge:
+            try:
+                from ..evals.llm_judge import LLMJudge, JudgeModel
+                model = JudgeModel(judge_model) if judge_model in [m.value for m in JudgeModel] else JudgeModel.CLAUDE_HAIKU
+                self._judge = LLMJudge(model=model)
+            except Exception:
+                pass  # LLM judge unavailable, fall back to heuristic-only
 
     def score_orchestration(
         self,
@@ -65,12 +93,42 @@ class OrchestrationQualityScorer:
 
         dimensions: List[DimensionScore] = []
 
-        # Score each dimension
-        dimensions.append(self._score_data_flow_clarity(workflow))
-        dimensions.append(self._score_complexity_management(workflow, complexity_metrics, detected_pattern))
-        dimensions.append(self._score_agent_coupling(workflow, complexity_metrics))
-        dimensions.append(self._score_observability(workflow))
-        dimensions.append(self._score_best_practices(workflow))
+        # Score each dimension (heuristic first)
+        dim_data_flow = self._score_data_flow_clarity(workflow)
+        dim_complexity = self._score_complexity_management(workflow, complexity_metrics, detected_pattern)
+        dim_coupling = self._score_agent_coupling(workflow, complexity_metrics)
+        dim_observability = self._score_observability(workflow)
+        dim_best_practices = self._score_best_practices(workflow)
+
+        core_dims = [dim_data_flow, dim_complexity, dim_coupling, dim_observability, dim_best_practices]
+
+        # LLM blending: if LLM judge is available, enhance scores with semantic evaluation
+        if self._judge:
+            try:
+                llm_scores = self._llm_score_orchestration(workflow, complexity_metrics, detected_pattern)
+                if llm_scores:
+                    dim_map = {
+                        "data_flow_score": dim_data_flow,
+                        "complexity_score": dim_complexity,
+                        "coupling_score": dim_coupling,
+                        "observability_score": dim_observability,
+                        "best_practices_score": dim_best_practices,
+                    }
+                    for key, dim_obj in dim_map.items():
+                        if self._should_use_llm(dim_obj.score) and key in llm_scores:
+                            llm_result = {
+                                "score": llm_scores[key],
+                                "reasoning": llm_scores.get("overall_assessment", ""),
+                                "tokens": llm_scores.get("tokens", 0),
+                            }
+                            dim_obj.score = self._blend_scores(dim_obj.score, llm_result, dim_obj)
+                        else:
+                            dim_obj.evidence["scoring_tier"] = "heuristic"
+            except Exception:
+                for dim_obj in core_dims:
+                    dim_obj.evidence["scoring_tier"] = "heuristic_fallback"
+
+        dimensions.extend(core_dims)
 
         # n8n-specific dimensions
         doc_score = self._score_documentation_quality(workflow)
@@ -347,6 +405,7 @@ class OrchestrationQualityScorer:
         # Initialize connection_coverage to avoid UnboundLocalError with empty workflows
         connection_coverage = 0.0
 
+        df_error_codes = []
         if total_nodes > 0:
             connection_coverage = connected_nodes / total_nodes
             evidence["connection_coverage"] = connection_coverage
@@ -355,6 +414,7 @@ class OrchestrationQualityScorer:
                 issues.append("Many nodes have no explicit connections")
                 suggestions.append("Ensure all nodes have clear input/output connections")
                 score -= 0.2
+                df_error_codes.append("QE-DF-001")
 
         # Check for Set/Code nodes that might be passing implicit state
         state_manipulation_nodes = sum(
@@ -367,6 +427,7 @@ class OrchestrationQualityScorer:
             issues.append("High ratio of state manipulation nodes")
             suggestions.append("Consider reducing implicit state passing")
             score -= 0.15
+            df_error_codes.append("QE-DF-003")
 
         # Check for descriptive node names
         generic_names = sum(
@@ -382,10 +443,14 @@ class OrchestrationQualityScorer:
             issues.append(f"{generic_names} nodes have generic/unclear names")
             suggestions.append("Use descriptive names for nodes to clarify data flow")
             score -= 0.1
+            df_error_codes.append("QE-DF-002")
 
         # Boost for well-structured workflows
         if connection_coverage > 0.8 and generic_names < total_nodes * 0.2:
             score += 0.2
+
+        if df_error_codes:
+            evidence["error_codes"] = df_error_codes
 
         return DimensionScore(
             dimension=OrchestrationDimension.DATA_FLOW_CLARITY.value,
@@ -421,12 +486,15 @@ class OrchestrationQualityScorer:
 
         thresholds = PATTERN_THRESHOLDS.get(pattern, PATTERN_THRESHOLDS["linear"])
 
+        cm_error_codes = []
+
         # Check node count
         max_nodes = thresholds.get("max_nodes", 10)
         if metrics.node_count > max_nodes:
             score -= 0.2
             issues.append(f"Workflow has {metrics.node_count} nodes (recommended max: {max_nodes} for {pattern} pattern)")
             suggestions.append("Consider breaking into sub-workflows")
+            cm_error_codes.append("QE-CM-001")
 
         # Check depth
         max_depth = thresholds.get("max_depth", 5)
@@ -434,12 +502,14 @@ class OrchestrationQualityScorer:
             score -= 0.2
             issues.append(f"Workflow depth ({metrics.max_depth}) exceeds recommended ({max_depth})")
             suggestions.append("Flatten deep nesting or extract sub-workflows")
+            cm_error_codes.append("QE-CM-002")
 
         # Check cyclomatic complexity
         if metrics.cyclomatic_complexity > 10:
             score -= 0.2
             issues.append(f"High cyclomatic complexity ({metrics.cyclomatic_complexity})")
             suggestions.append("Reduce branching to improve maintainability")
+            cm_error_codes.append("QE-CM-003")
         elif metrics.cyclomatic_complexity > 5:
             score -= 0.1
 
@@ -448,6 +518,9 @@ class OrchestrationQualityScorer:
             score -= 0.15
             issues.append(f"Many agents ({metrics.agent_count}) may be hard to coordinate")
             suggestions.append("Consider consolidating agent responsibilities")
+
+        if cm_error_codes:
+            evidence["error_codes"] = cm_error_codes
 
         return DimensionScore(
             dimension=OrchestrationDimension.COMPLEXITY_MANAGEMENT.value,
@@ -487,11 +560,14 @@ class OrchestrationQualityScorer:
                 suggestions=suggestions,
             )
 
+        ac_error_codes = []
+
         # Check coupling ratio
         if metrics.coupling_ratio > 0.7:
             score -= 0.3
             issues.append("High agent coupling may cause cascading failures")
             suggestions.append("Add intermediate processing nodes between agents")
+            ac_error_codes.append("QE-AC-002")
         elif metrics.coupling_ratio > 0.5:
             score -= 0.15
             suggestions.append("Consider reducing direct agent dependencies")
@@ -508,6 +584,10 @@ class OrchestrationQualityScorer:
             score -= 0.2
             issues.append(f"Long agent chain ({chain_length} agents in sequence)")
             suggestions.append("Add checkpoints or fan-out to reduce chain dependencies")
+            ac_error_codes.append("QE-AC-001")
+
+        if ac_error_codes:
+            evidence["error_codes"] = ac_error_codes
 
         return DimensionScore(
             dimension=OrchestrationDimension.AGENT_COUPLING.value,
@@ -598,6 +678,7 @@ class OrchestrationQualityScorer:
         )
         evidence["observability_nodes"] = observability_nodes
 
+        ob_error_codes = []
         obs_ratio = observability_nodes / total_nodes
         if obs_ratio >= 0.2:
             score += 0.2
@@ -605,6 +686,7 @@ class OrchestrationQualityScorer:
             issues.append("No checkpoint or logging nodes")
             suggestions.append("Add Set nodes as checkpoints for debugging")
             score -= 0.2
+            ob_error_codes.append("QE-OB-001")
 
         # Check for HTTP nodes that might be monitoring webhooks
         http_nodes = [n for n in nodes if n.get("type") == "n8n-nodes-base.httpRequest"]
@@ -616,6 +698,8 @@ class OrchestrationQualityScorer:
 
         if monitoring_webhooks > 0:
             score += 0.15
+        else:
+            ob_error_codes.append("QE-OB-003")
 
         # Check for error trigger nodes
         error_triggers = sum(
@@ -628,6 +712,7 @@ class OrchestrationQualityScorer:
             score += 0.15
         else:
             suggestions.append("Add error trigger node for failure alerting")
+            ob_error_codes.append("QE-OB-002")
 
         # Check agent nodes have alwaysOutputData
         agent_nodes = [n for n in nodes if n.get("type") in AI_NODE_TYPES]
@@ -638,6 +723,9 @@ class OrchestrationQualityScorer:
             score += 0.1
         elif agent_nodes and agents_with_output == 0:
             suggestions.append("Enable 'Always Output Data' on agent nodes for debugging")
+
+        if ob_error_codes:
+            evidence["error_codes"] = ob_error_codes
 
         return DimensionScore(
             dimension=OrchestrationDimension.OBSERVABILITY.value,
@@ -702,11 +790,13 @@ class OrchestrationQualityScorer:
         )
         evidence["has_global_error_handler"] = has_global_error_handler
 
+        bp_error_codes = []
         if has_global_error_handler:
             score += 0.25
         else:
             issues.append("No global error handler in workflow")
             suggestions.append("Add an Error Trigger node to catch workflow-level failures")
+            bp_error_codes.append("QE-BP-001")
 
         # NEW: Check for error branching patterns (dedicated error handling flows)
         # Count nodes that have explicit error output connections
@@ -761,6 +851,7 @@ class OrchestrationQualityScorer:
 
             if retry_coverage > 0 and retry_coverage < 1.0:
                 suggestions.append("Apply retry configuration consistently across all AI nodes")
+                bp_error_codes.append("QE-BP-002")
 
         # Check workflow-level settings
         settings = workflow.get("settings", {})
@@ -784,6 +875,9 @@ class OrchestrationQualityScorer:
             # Only flag as issue if severely lacking
             if basic_coverage < 0.25:
                 issues.append("Workflow lacks basic resilience configuration")
+
+        if bp_error_codes:
+            evidence["error_codes"] = bp_error_codes
 
         return DimensionScore(
             dimension=OrchestrationDimension.BEST_PRACTICES.value,
@@ -1139,3 +1233,114 @@ class OrchestrationQualityScorer:
             evidence=evidence,
             suggestions=suggestions,
         )
+
+    # --- LLM-Based Scoring Methods ---
+
+    def _should_use_llm(self, heuristic_score: float) -> bool:
+        """Determine if LLM evaluation should be used for this score."""
+        if not self._judge:
+            return False
+        if self.use_llm_judge:
+            return True
+        # Escalate ambiguous scores
+        return self.escalation_range[0] < heuristic_score < self.escalation_range[1]
+
+    def _llm_score_orchestration(
+        self,
+        workflow: Dict[str, Any],
+        complexity_metrics: ComplexityMetrics,
+        detected_pattern: str,
+    ) -> Optional[Dict[str, Any]]:
+        """Use LLM to semantically evaluate all 5 core orchestration dimensions in one call."""
+        if not self._judge:
+            return None
+
+        from .prompts import format_orchestration_analysis_prompt
+
+        # Build a compact workflow structure summary for the prompt
+        nodes = workflow.get("nodes", [])
+        connections = workflow.get("connections", {})
+        node_summaries = []
+        for n in nodes[:30]:  # Cap to avoid prompt explosion
+            node_summaries.append(
+                f"  - {n.get('name', '?')} ({n.get('type', '?')})"
+            )
+        conn_summaries = []
+        for source, conns in list(connections.items())[:20]:
+            if isinstance(conns, dict):
+                for output_type, targets in conns.items():
+                    if isinstance(targets, list):
+                        for target_list in targets:
+                            if isinstance(target_list, list):
+                                for t in target_list:
+                                    if isinstance(t, dict):
+                                        conn_summaries.append(
+                                            f"  {source} --[{output_type}]--> {t.get('node', '?')}"
+                                        )
+
+        workflow_structure = "Nodes:\n" + "\n".join(node_summaries) if node_summaries else "Nodes: (none)"
+        if conn_summaries:
+            workflow_structure += "\nConnections:\n" + "\n".join(conn_summaries)
+
+        metrics_dict = {
+            "node_count": complexity_metrics.node_count,
+            "agent_count": complexity_metrics.agent_count,
+            "connection_count": complexity_metrics.connection_count,
+            "max_depth": complexity_metrics.max_depth,
+            "cyclomatic_complexity": complexity_metrics.cyclomatic_complexity,
+            "coupling_ratio": round(complexity_metrics.coupling_ratio, 3),
+            "ai_node_ratio": round(complexity_metrics.ai_node_ratio, 3),
+        }
+
+        prompt = format_orchestration_analysis_prompt(
+            workflow_name=workflow.get("name", "Unnamed Workflow"),
+            node_count=complexity_metrics.node_count,
+            agent_count=complexity_metrics.agent_count,
+            detected_pattern=detected_pattern,
+            complexity_metrics=metrics_dict,
+            workflow_structure=workflow_structure,
+        )
+
+        result = self._judge.judge(
+            eval_type=None,
+            output="",
+            custom_prompt=prompt,
+        )
+
+        # Parse the structured JSON response
+        try:
+            parsed = json.loads(result.reasoning) if isinstance(result.reasoning, str) else {}
+        except (json.JSONDecodeError, TypeError):
+            # Try to extract from the raw result if reasoning isn't JSON
+            parsed = {}
+
+        # Use the parsed scores if available, otherwise fall back to the single score
+        scores = {
+            "data_flow_score": parsed.get("data_flow_score", result.score),
+            "complexity_score": parsed.get("complexity_score", result.score),
+            "coupling_score": parsed.get("coupling_score", result.score),
+            "observability_score": parsed.get("observability_score", result.score),
+            "best_practices_score": parsed.get("best_practices_score", result.score),
+            "overall_assessment": parsed.get("overall_assessment", result.reasoning or ""),
+            "tokens": result.tokens_used,
+        }
+
+        return scores
+
+    def _blend_scores(
+        self,
+        heuristic_score: float,
+        llm_result: Optional[Dict[str, Any]],
+        dim_score: "DimensionScore",
+    ) -> float:
+        """Blend heuristic and LLM scores, annotating the dimension with reasoning."""
+        if llm_result is None:
+            return heuristic_score
+        llm_score = llm_result["score"]
+        blended = 0.3 * heuristic_score + 0.7 * llm_score
+        dim_score.evidence["llm_score"] = round(llm_score, 3)
+        dim_score.evidence["heuristic_score"] = round(heuristic_score, 3)
+        dim_score.evidence["llm_reasoning"] = llm_result.get("reasoning", "")
+        dim_score.evidence["scoring_tier"] = "llm"
+        dim_score.evidence["llm_tokens"] = llm_result.get("tokens", 0)
+        return blended

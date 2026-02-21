@@ -84,7 +84,7 @@ class TestQualityAssessor:
         assert report.workflow_id == "wf-api-test"
         assert report.workflow_name == "API Test Workflow"
         assert 0 <= report.overall_score <= 1
-        assert report.overall_grade in ["A", "B+", "B", "C+", "C", "D", "F"]
+        assert report.overall_grade in ["Healthy", "Degraded", "At Risk", "Critical"]
         assert len(report.agent_scores) == 1
         assert report.orchestration_score is not None
 
@@ -303,13 +303,13 @@ Never include PII.""",
         report = assessor.assess_workflow(well_configured)
 
         # Check grade is valid
-        assert report.overall_grade in ["A", "B+", "B", "C+", "C", "D", "F"]
+        assert report.overall_grade in ["Healthy", "Degraded", "At Risk", "Critical"]
 
         # Grade should roughly match score
         if report.overall_score >= 0.9:
-            assert report.overall_grade == "A"
-        elif report.overall_score >= 0.8:
-            assert report.overall_grade in ["A", "B+"]
+            assert report.overall_grade == "Healthy"
         elif report.overall_score >= 0.7:
-            assert report.overall_grade in ["B+", "B"]
+            assert report.overall_grade in ["Healthy", "Degraded"]
+        elif report.overall_score >= 0.5:
+            assert report.overall_grade in ["Degraded", "At Risk"]
 

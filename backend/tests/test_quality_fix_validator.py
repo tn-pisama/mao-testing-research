@@ -369,11 +369,11 @@ class TestQualityFixValidator:
         assert result.before_score == 0.2  # from original_report
         assert isinstance(result.after_score, float)
         assert 0.0 <= result.after_score <= 1.0
-        assert "overall_before" in result.details
-        assert "overall_after" in result.details
+        assert "validation_method" in result.details
+        assert result.details["validation_method"] == "structural"
 
     def test_validate_returns_correct_detail_keys(self):
-        """validate() result details should include overall_before, overall_after, and overall_improvement."""
+        """validate() result details should include validation_method, config_changed, and json_valid."""
         validator = QualityFixValidator()
 
         config = make_workflow(nodes=[make_agent_node()])
@@ -386,13 +386,12 @@ class TestQualityFixValidator:
 
         result = validator.validate(applied_fix, original_report)
 
-        assert "overall_before" in result.details
-        assert "overall_after" in result.details
-        assert "overall_improvement" in result.details
-        assert result.details["overall_before"] == 0.5
+        assert "validation_method" in result.details
+        assert "config_changed" in result.details
+        assert "json_valid" in result.details
 
-    def test_validate_all_uses_single_assessment(self):
-        """validate_all should re-assess the final config only once, not per fix."""
+    def test_validate_all_returns_results_per_fix(self):
+        """validate_all should return one validation result per applied fix."""
         validator = QualityFixValidator()
 
         config = make_workflow(nodes=[make_agent_node()])
@@ -404,22 +403,12 @@ class TestQualityFixValidator:
             make_applied_fix(dimension="tool_usage", modified_state=config, fix_id="f3"),
         ]
 
-        # Spy on the assessor
-        original_assess = validator._assessor.assess_workflow
-        call_count = 0
-
-        def counting_assess(*args, **kwargs):
-            nonlocal call_count
-            call_count += 1
-            return original_assess(*args, **kwargs)
-
-        validator._assessor.assess_workflow = counting_assess
-
         results = validator.validate_all(fixes, original_report, config)
 
         assert len(results) == 3
-        # validate_all should call assess_workflow exactly once
-        assert call_count == 1
+        for r in results:
+            assert isinstance(r, QualityValidationResult)
+            assert "validation_method" in r.details
 
     def test_validate_result_to_dict(self):
         """QualityValidationResult.to_dict() should produce a serializable dict."""

@@ -121,21 +121,30 @@ class QualityAssessor:
     Main orchestrator for quality assessment.
 
     Combines agent scoring, orchestration scoring, and improvement suggestions
-    into a comprehensive quality report.
+    into a comprehensive quality report. Optionally blends execution feedback.
     """
 
-    def __init__(self, use_llm_judge: bool = False, include_reasoning: bool = False):
+    def __init__(
+        self,
+        use_llm_judge: bool = False,
+        include_reasoning: bool = False,
+        execution_weight: float = 0.0,
+    ):
         """
         Initialize the quality assessor.
 
         Args:
             use_llm_judge: Whether to use LLM for ambiguous cases (Tier 3 escalation)
             include_reasoning: Whether to generate detailed reasoning for each score
+            execution_weight: Weight for execution-based scoring (0.0-0.4). Default 0.0
+                means pure static analysis. Recommended 0.2-0.3 when execution data available.
         """
         self.include_reasoning = include_reasoning
+        self.execution_weight = min(max(execution_weight, 0.0), 0.4)
         self.agent_scorer = AgentQualityScorer(use_llm_judge=use_llm_judge)
-        self.orchestration_scorer = OrchestrationQualityScorer()
+        self.orchestration_scorer = OrchestrationQualityScorer(use_llm_judge=use_llm_judge)
         self.improvement_suggester = ImprovementSuggester()
+        self._execution_scorer = None
 
     def assess_workflow(
         self,
@@ -187,10 +196,25 @@ class QualityAssessor:
         )
 
         # Calculate overall score (weighted average of agent and orchestration)
+        ew = self.execution_weight
+        execution_score_value = 0.0
+        if ew > 0 and execution_history:
+            if self._execution_scorer is None:
+                from .execution_scorer import ExecutionQualityScorer
+                self._execution_scorer = ExecutionQualityScorer()
+            exec_scores = self._execution_scorer.score_from_executions(execution_history)
+            execution_score_value = exec_scores.overall_score
+
         if agent_scores:
             avg_agent_score = sum(a.overall_score for a in agent_scores) / len(agent_scores)
-            # Weight: 60% agents, 40% orchestration
-            overall_score = (avg_agent_score * 0.6) + (orchestration_score.overall_score * 0.4)
+            if ew > 0 and execution_history:
+                # Blend: agent * (0.6 - ew/2) + orchestration * (0.4 - ew/2) + execution * ew
+                agent_w = 0.6 - ew / 2
+                orch_w = 0.4 - ew / 2
+                overall_score = (avg_agent_score * agent_w) + (orchestration_score.overall_score * orch_w) + (execution_score_value * ew)
+            else:
+                # Weight: 60% agents, 40% orchestration
+                overall_score = (avg_agent_score * 0.6) + (orchestration_score.overall_score * 0.4)
         else:
             # No agents - orchestration only
             overall_score = orchestration_score.overall_score
@@ -335,6 +359,8 @@ __all__ = [
     "AgentQualityScorer",
     "OrchestrationQualityScorer",
     "is_agent_node",
+    # Execution scorer
+    "ExecutionQualityScorer",
     # Suggester
     "ImprovementSuggester",
     "BaseImprovementGenerator",
@@ -348,3 +374,9 @@ __all__ = [
     "QualityFixApplicator",
     "QualityFixValidator",
 ]
+
+
+def _lazy_import_execution_scorer():
+    """Lazy import to avoid circular dependency."""
+    from .execution_scorer import ExecutionQualityScorer
+    return ExecutionQualityScorer

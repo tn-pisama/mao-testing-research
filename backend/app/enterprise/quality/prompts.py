@@ -195,6 +195,120 @@ def format_orchestration_analysis_prompt(
     )
 
 
+ERROR_HANDLING_SEMANTIC_PROMPT = """Evaluate this agent's error handling configuration in context of its role.
+
+Agent Name: {agent_name}
+Agent Type: {agent_type}
+System Prompt: {system_prompt}
+Error Configuration: {error_config}
+
+Score from 0.0 to 1.0 where:
+- 0.0-0.3: No meaningful error handling, or config without any prompt context
+- 0.4-0.6: Basic error handling but not tailored to the agent's role
+- 0.7-0.8: Good error handling appropriate for the task
+- 0.9-1.0: Comprehensive, role-appropriate error recovery
+
+Consider:
+1. Are retry counts appropriate for the type of work? (API calls need retries, transformations don't)
+2. Are timeouts reasonable? (LLM calls need longer than simple lookups)
+3. Does continueOnFail make sense for this node? (Critical validators should NOT continue on fail)
+4. Is there error handling without a system prompt? (This is low-value — error recovery is undefined)
+
+Respond ONLY with valid JSON:
+{{"score": <float>, "reasoning": "<1-2 sentence explanation>"}}"""
+
+TOOL_USAGE_SEMANTIC_PROMPT = """Evaluate the quality of these tool definitions for an AI agent.
+
+Agent Name: {agent_name}
+Agent Role: {agent_role}
+
+Tools:
+{tool_descriptions}
+
+Score from 0.0 to 1.0 where:
+- 0.0-0.3: Tools are undefined, generic, or duplicated
+- 0.4-0.6: Basic tool definitions but missing detail
+- 0.7-0.8: Good tool definitions with clear purposes
+- 0.9-1.0: Excellent, specific descriptions with schemas
+
+Consider:
+1. Are descriptions specific enough for the agent to know WHEN to use each tool?
+2. Are tools distinct from each other (no duplicates or near-duplicates)?
+3. Do parameter schemas help the agent construct correct inputs?
+4. Generic descriptions like "A useful tool" or "Does things" should score very low.
+
+Respond ONLY with valid JSON:
+{{"score": <float>, "reasoning": "<1-2 sentence explanation>"}}"""
+
+CONFIG_APPROPRIATENESS_PROMPT = """Evaluate this agent's model configuration for its specific task.
+
+Agent Name: {agent_name}
+System Prompt (summary): {prompt_summary}
+Temperature: {temperature}
+Max Tokens: {max_tokens}
+Model: {model}
+
+Score from 0.0 to 1.0 where:
+- 0.0-0.3: Configuration is clearly wrong for the task (e.g., high temperature for data extraction)
+- 0.4-0.6: Configuration is acceptable but not optimized
+- 0.7-0.8: Good configuration choices for the task
+- 0.9-1.0: Optimal configuration showing deep understanding of the task
+
+Consider:
+1. Temperature: Data extraction/classification needs low (0.0-0.3), creative tasks need higher (0.5-0.9)
+2. Max tokens: Must be sufficient for expected output length
+3. Model tier: Complex analysis needs capable models, simple tasks can use smaller models
+4. Configuration without a meaningful prompt is low-value regardless of settings
+
+Respond ONLY with valid JSON:
+{{"score": <float>, "reasoning": "<1-2 sentence explanation>"}}"""
+
+
+def format_error_handling_prompt(
+    agent_name: str,
+    agent_type: str,
+    system_prompt: str,
+    error_config: str,
+) -> str:
+    """Format the error handling semantic evaluation prompt."""
+    return ERROR_HANDLING_SEMANTIC_PROMPT.format(
+        agent_name=agent_name,
+        agent_type=agent_type,
+        system_prompt=system_prompt[:500] if system_prompt else "(no system prompt)",
+        error_config=error_config,
+    )
+
+
+def format_tool_usage_prompt(
+    agent_name: str,
+    agent_role: str,
+    tool_descriptions: str,
+) -> str:
+    """Format the tool usage evaluation prompt."""
+    return TOOL_USAGE_SEMANTIC_PROMPT.format(
+        agent_name=agent_name,
+        agent_role=agent_role[:200] if agent_role else "(no role defined)",
+        tool_descriptions=tool_descriptions,
+    )
+
+
+def format_config_appropriateness_prompt(
+    agent_name: str,
+    prompt_summary: str,
+    temperature: str,
+    max_tokens: str,
+    model: str,
+) -> str:
+    """Format the config appropriateness evaluation prompt."""
+    return CONFIG_APPROPRIATENESS_PROMPT.format(
+        agent_name=agent_name,
+        prompt_summary=prompt_summary[:300] if prompt_summary else "(no prompt)",
+        temperature=temperature,
+        max_tokens=max_tokens,
+        model=model,
+    )
+
+
 def format_summary_prompt(
     workflow_name: str,
     overall_score: float,

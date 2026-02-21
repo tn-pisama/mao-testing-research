@@ -6,6 +6,7 @@ from datetime import datetime
 import time
 
 from fastapi import APIRouter, HTTPException, Depends, Path, Query
+from fastapi.responses import JSONResponse, PlainTextResponse
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy import select, func
 from pydantic import BaseModel, Field
@@ -17,6 +18,14 @@ from app.enterprise.quality import (
     OrchestrationQualityScore,
     Severity,
 )
+from app.enterprise.quality.models import (
+    DimensionScore,
+    ComplexityMetrics,
+    QualityImprovement,
+    Effort,
+)
+from app.enterprise.quality.reporters.sarif_reporter import QualitySARIFReporter
+from app.enterprise.quality.reporters.csv_reporter import QualityCSVReporter
 from app.detection.quality_correlation import (
     correlate_quality_to_detections,
     get_remediation_priority,
@@ -112,6 +121,7 @@ class SuggestionsResponse(BaseModel):
 @router.post("/workflow", response_model=WorkflowQualityResponse)
 async def assess_workflow_quality(
     request: WorkflowQualityRequest,
+    export_format: Optional[str] = Query(None, description="Export format: json (default), sarif, csv"),
     tenant=Depends(get_current_tenant),
 ):
     """
@@ -121,6 +131,8 @@ async def assess_workflow_quality(
     - Each agent node (role clarity, output consistency, error handling, tool usage, config)
     - Overall orchestration (data flow, complexity, coupling, observability, best practices)
     - Prioritized improvement suggestions
+
+    Use `export_format` query parameter to get results as SARIF or CSV.
     """
     try:
         assessor = QualityAssessor(
@@ -133,6 +145,14 @@ async def assess_workflow_quality(
             execution_history=request.execution_history,
             max_suggestions=request.max_suggestions,
         )
+
+        if export_format == "sarif":
+            sarif_data = QualitySARIFReporter().export_report(report)
+            return JSONResponse(content=sarif_data)
+
+        if export_format == "csv":
+            csv_text = QualityCSVReporter().export_report(report)
+            return PlainTextResponse(content=csv_text, media_type="text/csv")
 
         return WorkflowQualityResponse(
             workflow_id=report.workflow_id,
@@ -306,6 +326,106 @@ async def list_quality_dimensions():
     }
 
 
+# --- Helpers for report reconstruction ---
+
+
+def _reconstruct_dimension_score(d: dict) -> DimensionScore:
+    """Reconstruct a DimensionScore from its serialised dict."""
+    return DimensionScore(
+        dimension=d.get("dimension", ""),
+        score=d.get("score", 0.0),
+        weight=d.get("weight", 1.0),
+        issues=d.get("issues", []),
+        evidence=d.get("evidence", {}),
+        suggestions=d.get("suggestions", []),
+        reasoning=d.get("reasoning"),
+    )
+
+
+def _reconstruct_quality_report(assessment) -> QualityReport:
+    """Rebuild a QualityReport from a stored WorkflowQualityAssessment row.
+
+    The reporters require full dataclass instances, so we reconstruct the
+    object graph from the JSON columns persisted in the database.
+    """
+    # Reconstruct agent scores
+    agent_scores: list[AgentQualityScore] = []
+    for a in (assessment.agent_scores or []):
+        agent_scores.append(
+            AgentQualityScore(
+                agent_id=a.get("agent_id", ""),
+                agent_name=a.get("agent_name", ""),
+                agent_type=a.get("agent_type", ""),
+                overall_score=a.get("overall_score", 0.0),
+                dimensions=[_reconstruct_dimension_score(d) for d in a.get("dimensions", [])],
+                issues_count=a.get("issues_count", 0),
+                critical_issues=a.get("critical_issues", []),
+                metadata=a.get("metadata", {}),
+                reasoning=a.get("reasoning"),
+            )
+        )
+
+    # Reconstruct orchestration score
+    orch = assessment.orchestration_score or {}
+    orch_dims = [_reconstruct_dimension_score(d) for d in orch.get("dimensions", [])]
+    cm = assessment.complexity_metrics or orch.get("complexity_metrics", {})
+    complexity = ComplexityMetrics(
+        node_count=cm.get("node_count", 0),
+        agent_count=cm.get("agent_count", 0),
+        connection_count=cm.get("connection_count", 0),
+        max_depth=cm.get("max_depth", 0),
+        cyclomatic_complexity=cm.get("cyclomatic_complexity", 0),
+        coupling_ratio=cm.get("coupling_ratio", 0.0),
+        ai_node_ratio=cm.get("ai_node_ratio", 0.0),
+        parallel_branches=cm.get("parallel_branches", 0),
+        conditional_branches=cm.get("conditional_branches", 0),
+    )
+    orchestration_score = OrchestrationQualityScore(
+        workflow_id=assessment.workflow_id or "",
+        workflow_name=assessment.workflow_name or "",
+        overall_score=orch.get("overall_score", 0.0),
+        dimensions=orch_dims,
+        complexity_metrics=complexity,
+        issues_count=orch.get("issues_count", 0),
+        critical_issues=orch.get("critical_issues", []),
+        detected_pattern=orch.get("detected_pattern", "unknown"),
+        reasoning=orch.get("reasoning"),
+    )
+
+    # Reconstruct improvements (best-effort)
+    improvements: list[QualityImprovement] = []
+    for imp in (assessment.improvements or []):
+        sev = imp.get("severity", "medium")
+        eff = imp.get("effort", "medium")
+        improvements.append(
+            QualityImprovement(
+                id=imp.get("id", ""),
+                target_type=imp.get("target_type", ""),
+                target_id=imp.get("target_id", ""),
+                severity=Severity(sev) if sev in Severity._value2member_map_ else Severity.MEDIUM,
+                category=imp.get("category", ""),
+                title=imp.get("title", ""),
+                description=imp.get("description", ""),
+                rationale=imp.get("rationale", ""),
+                suggested_change=imp.get("suggested_change"),
+                code_example=imp.get("code_example"),
+                estimated_impact=imp.get("estimated_impact", ""),
+                effort=Effort(eff) if eff in Effort._value2member_map_ else Effort.MEDIUM,
+            )
+        )
+
+    return QualityReport(
+        workflow_id=assessment.workflow_id or "",
+        workflow_name=assessment.workflow_name or "",
+        overall_score=assessment.overall_score / 100.0,
+        agent_scores=agent_scores,
+        orchestration_score=orchestration_score,
+        improvements=improvements,
+        summary=assessment.summary or "",
+        reasoning=assessment.reasoning,
+    )
+
+
 # Persistence models
 class StoredAssessmentResponse(BaseModel):
     """Response for a stored quality assessment."""
@@ -474,10 +594,14 @@ async def list_assessments(
 async def get_assessment(
     tenant_id: UUID = Path(...),
     assessment_id: UUID = Path(...),
+    export_format: Optional[str] = Query(None, description="Export format: json (default), sarif, csv"),
     db: AsyncSession = Depends(get_db),
     tenant=Depends(get_current_tenant),
 ):
-    """Get a specific quality assessment by ID."""
+    """Get a specific quality assessment by ID.
+
+    Use `export_format` query parameter to get results as SARIF or CSV.
+    """
     await set_tenant_context(db, str(tenant_id))
 
     result = await db.execute(
@@ -490,6 +614,14 @@ async def get_assessment(
 
     if not assessment:
         raise HTTPException(status_code=404, detail="Assessment not found")
+
+    if export_format in ("sarif", "csv"):
+        report = _reconstruct_quality_report(assessment)
+        if export_format == "sarif":
+            sarif_data = QualitySARIFReporter().export_report(report)
+            return JSONResponse(content=sarif_data)
+        csv_text = QualityCSVReporter().export_report(report)
+        return PlainTextResponse(content=csv_text, media_type="text/csv")
 
     return StoredAssessmentResponse(
         id=str(assessment.id),

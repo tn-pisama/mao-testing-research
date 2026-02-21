@@ -79,7 +79,7 @@ class TestQualityAssessmentBackgroundTask:
         # Verify report structure is valid for database storage
         assert report.workflow_id == "wf-quality-test"
         assert 0 <= report.overall_score <= 1
-        assert report.overall_grade in ["A", "B+", "B", "C+", "C", "D", "F"]
+        assert report.overall_grade in ["Healthy", "Degraded", "At Risk", "Critical"]
 
         # Verify serialization works (used in background task)
         for agent in report.agent_scores:
@@ -121,7 +121,7 @@ class TestQualityAssessmentDirectScoring:
 
         # Sample workflow has some good practices
         assert 0.4 <= report.overall_score <= 0.9
-        assert report.overall_grade in ["A", "B+", "B", "C+", "C"]
+        assert report.overall_grade in ["Healthy", "Degraded", "At Risk"]
 
         # Should have 1 agent
         assert len(report.agent_scores) == 1
@@ -257,7 +257,7 @@ Only respond to data analysis requests.""",
         assert report.workflow_id == "wf-quality-test"
         assert report.workflow_name == "Quality Test Workflow"
         assert 0 <= report.overall_score <= 1
-        assert report.overall_grade in ["A", "B+", "B", "C+", "C", "D", "F"]
+        assert report.overall_grade in ["Healthy", "Degraded", "At Risk", "Critical"]
         assert isinstance(report.agent_scores, list)
         assert report.orchestration_score is not None
         assert isinstance(report.improvements, list)

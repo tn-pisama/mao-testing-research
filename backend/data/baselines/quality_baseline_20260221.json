@@ -1,0 +1,838 @@
+{
+  "generated_at": "2026-02-21T18:08:08.798298+00:00",
+  "assessor_config": {
+    "use_llm_judge": false,
+    "scoring_mode": "heuristic_only"
+  },
+  "results": {
+    "empty_agent": {
+      "workflow_name": "Empty Agent Workflow",
+      "overall_score": 0.41,
+      "overall_grade": "Critical",
+      "agent_dimensions": {
+        "role_clarity": {
+          "score": 0.0,
+          "issues": [
+            "No system prompt defined"
+          ],
+          "evidence": {
+            "has_system_prompt": false,
+            "prompt_length": 0
+          }
+        },
+        "output_consistency": {
+          "score": 0.4,
+          "issues": [
+            "No execution history \u2014 output consistency is unverified"
+          ],
+          "evidence": {
+            "execution_samples": 0,
+            "score_provisional": true
+          }
+        },
+        "error_handling": {
+          "score": 0.0,
+          "issues": [
+            "Limited error handling configuration"
+          ],
+          "evidence": {
+            "continue_on_fail": false,
+            "always_output_data": false,
+            "retry_on_fail": false,
+            "max_retries": 0,
+            "timeout_ms": 0,
+            "has_error_output": false
+          }
+        },
+        "tool_usage": {
+          "score": 0.5,
+          "issues": [
+            "Agent has no tools defined"
+          ],
+          "evidence": {
+            "tool_count": 0
+          }
+        },
+        "config_appropriateness": {
+          "score": 0.7,
+          "issues": [],
+          "evidence": {
+            "model": "",
+            "temperature": null,
+            "max_tokens": null
+          }
+        }
+      },
+      "orchestration_dimensions": {
+        "data_flow_clarity": {
+          "score": 0.5,
+          "issues": [
+            "Many nodes have no explicit connections"
+          ]
+        },
+        "complexity_management": {
+          "score": 1.0,
+          "issues": []
+        },
+        "agent_coupling": {
+          "score": 0.9,
+          "issues": []
+        },
+        "observability": {
+          "score": 0.3,
+          "issues": [
+            "No checkpoint or logging nodes"
+          ]
+        },
+        "best_practices": {
+          "score": 0.15,
+          "issues": [
+            "No global error handler in workflow",
+            "Workflow lacks basic resilience configuration"
+          ]
+        },
+        "documentation_quality": {
+          "score": 0.3,
+          "issues": [
+            "No documentation (sticky notes) found"
+          ]
+        },
+        "ai_architecture": {
+          "score": 0.4,
+          "issues": [
+            "AI nodes present but no specialized AI connections configured"
+          ]
+        },
+        "maintenance_quality": {
+          "score": 0.95,
+          "issues": []
+        },
+        "test_coverage": {
+          "score": 0.4,
+          "issues": [
+            "No test data (pinData) found"
+          ]
+        }
+      },
+      "orchestration_overall": 0.544,
+      "reasoning": "Workflow 'Empty Agent Workflow' overall quality: 41% (Critical). Agent quality (1 agents, avg 32%): weighted 60% of overall score. Agents needing attention: AI Agent. Orchestration quality: 54% (At Risk), weighted 40% of overall score. Critical issues (5): No system prompt defined; Limited error handling configuration; No checkpoint or logging nodes.",
+      "improvements_count": 10,
+      "critical_issues": 5
+    },
+    "keyword_stuffed": {
+      "workflow_name": "Keyword Stuffed Workflow",
+      "overall_score": 0.476,
+      "overall_grade": "Critical",
+      "agent_dimensions": {
+        "role_clarity": {
+          "score": 0.4,
+          "issues": [
+            "Keyword stuffing detected \u2014 prompt contains repeated keywords without substance"
+          ],
+          "evidence": {
+            "has_system_prompt": true,
+            "prompt_length": 238,
+            "role_keywords_found": 7,
+            "output_format_keywords": 9,
+            "boundary_keywords": 9,
+            "word_count": 47,
+            "specificity_score": 0.6666666666666666,
+            "keyword_stuffing_detected": true
+          }
+        },
+        "output_consistency": {
+          "score": 0.55,
+          "issues": [
+            "No execution history \u2014 output consistency is unverified"
+          ],
+          "evidence": {
+            "expects_json": true,
+            "execution_samples": 0,
+            "score_provisional": true
+          }
+        },
+        "error_handling": {
+          "score": 0.0,
+          "issues": [
+            "Limited error handling configuration"
+          ],
+          "evidence": {
+            "continue_on_fail": false,
+            "always_output_data": false,
+            "retry_on_fail": false,
+            "max_retries": 0,
+            "timeout_ms": 0,
+            "has_error_output": false
+          }
+        },
+        "tool_usage": {
+          "score": 0.5,
+          "issues": [
+            "Agent has no tools defined"
+          ],
+          "evidence": {
+            "tool_count": 0
+          }
+        },
+        "config_appropriateness": {
+          "score": 0.7,
+          "issues": [],
+          "evidence": {
+            "model": "",
+            "temperature": null,
+            "max_tokens": null
+          }
+        }
+      },
+      "orchestration_dimensions": {
+        "data_flow_clarity": {
+          "score": 0.5,
+          "issues": [
+            "Many nodes have no explicit connections"
+          ]
+        },
+        "complexity_management": {
+          "score": 1.0,
+          "issues": []
+        },
+        "agent_coupling": {
+          "score": 0.9,
+          "issues": []
+        },
+        "observability": {
+          "score": 0.3,
+          "issues": [
+            "No checkpoint or logging nodes"
+          ]
+        },
+        "best_practices": {
+          "score": 0.15,
+          "issues": [
+            "No global error handler in workflow",
+            "Workflow lacks basic resilience configuration"
+          ]
+        },
+        "documentation_quality": {
+          "score": 0.3,
+          "issues": [
+            "No documentation (sticky notes) found"
+          ]
+        },
+        "ai_architecture": {
+          "score": 0.4,
+          "issues": [
+            "AI nodes present but no specialized AI connections configured"
+          ]
+        },
+        "maintenance_quality": {
+          "score": 0.95,
+          "issues": []
+        },
+        "test_coverage": {
+          "score": 0.4,
+          "issues": [
+            "No test data (pinData) found"
+          ]
+        }
+      },
+      "orchestration_overall": 0.544,
+      "reasoning": "Workflow 'Keyword Stuffed Workflow' overall quality: 48% (Critical). Agent quality (1 agents, avg 43%): weighted 60% of overall score. Agents needing attention: Stuffed Agent. Orchestration quality: 54% (At Risk), weighted 40% of overall score. Critical issues (4): Limited error handling configuration; No checkpoint or logging nodes; No global error handler in workflow.",
+      "improvements_count": 10,
+      "critical_issues": 4
+    },
+    "checkbox_warrior": {
+      "workflow_name": "Checkbox Warrior Workflow",
+      "overall_score": 0.505,
+      "overall_grade": "At Risk",
+      "agent_dimensions": {
+        "role_clarity": {
+          "score": 0.0,
+          "issues": [
+            "No system prompt defined"
+          ],
+          "evidence": {
+            "has_system_prompt": false,
+            "prompt_length": 0
+          }
+        },
+        "output_consistency": {
+          "score": 0.4,
+          "issues": [
+            "No execution history \u2014 output consistency is unverified"
+          ],
+          "evidence": {
+            "execution_samples": 0,
+            "score_provisional": true
+          }
+        },
+        "error_handling": {
+          "score": 0.5,
+          "issues": [
+            "Error handling configured but agent has no system prompt \u2014 recovery behavior is undefined"
+          ],
+          "evidence": {
+            "continue_on_fail": true,
+            "always_output_data": true,
+            "retry_on_fail": true,
+            "max_retries": 3,
+            "timeout_ms": 30000,
+            "has_error_output": false,
+            "no_prompt_penalty": true
+          }
+        },
+        "tool_usage": {
+          "score": 0.5,
+          "issues": [
+            "Agent has no tools defined"
+          ],
+          "evidence": {
+            "tool_count": 0
+          }
+        },
+        "config_appropriateness": {
+          "score": 0.85,
+          "issues": [],
+          "evidence": {
+            "model": "",
+            "temperature": 0.1,
+            "max_tokens": 2000,
+            "inferred_task_type": "default"
+          }
+        }
+      },
+      "orchestration_dimensions": {
+        "data_flow_clarity": {
+          "score": 0.5,
+          "issues": [
+            "Many nodes have no explicit connections"
+          ]
+        },
+        "complexity_management": {
+          "score": 1.0,
+          "issues": []
+        },
+        "agent_coupling": {
+          "score": 0.9,
+          "issues": []
+        },
+        "observability": {
+          "score": 0.4,
+          "issues": [
+            "No checkpoint or logging nodes"
+          ]
+        },
+        "best_practices": {
+          "score": 0.4,
+          "issues": [
+            "No global error handler in workflow"
+          ]
+        },
+        "documentation_quality": {
+          "score": 0.3,
+          "issues": [
+            "No documentation (sticky notes) found"
+          ]
+        },
+        "ai_architecture": {
+          "score": 0.4,
+          "issues": [
+            "AI nodes present but no specialized AI connections configured"
+          ]
+        },
+        "maintenance_quality": {
+          "score": 0.95,
+          "issues": []
+        },
+        "test_coverage": {
+          "score": 0.4,
+          "issues": [
+            "No test data (pinData) found"
+          ]
+        }
+      },
+      "orchestration_overall": 0.588,
+      "reasoning": "Workflow 'Checkbox Warrior Workflow' overall quality: 51% (At Risk). Agent quality (1 agents, avg 45%): weighted 60% of overall score. Agents needing attention: Checkbox Agent. Orchestration quality: 59% (At Risk), weighted 40% of overall score. Critical issues (2): No system prompt defined; No documentation (sticky notes) found.",
+      "improvements_count": 10,
+      "critical_issues": 2
+    },
+    "genuine_basic": {
+      "workflow_name": "Basic Quality Workflow",
+      "overall_score": 0.476,
+      "overall_grade": "Critical",
+      "agent_dimensions": {
+        "role_clarity": {
+          "score": 0.4,
+          "issues": [
+            "System prompt is too brief (16 words)",
+            "Keyword stuffing detected \u2014 prompt contains repeated keywords without substance"
+          ],
+          "evidence": {
+            "has_system_prompt": true,
+            "prompt_length": 110,
+            "role_keywords_found": 1,
+            "output_format_keywords": 4,
+            "boundary_keywords": 0,
+            "word_count": 16,
+            "specificity_score": 0.6666666666666666,
+            "keyword_stuffing_detected": true
+          }
+        },
+        "output_consistency": {
+          "score": 0.55,
+          "issues": [
+            "No execution history \u2014 output consistency is unverified"
+          ],
+          "evidence": {
+            "expects_json": true,
+            "execution_samples": 0,
+            "score_provisional": true
+          }
+        },
+        "error_handling": {
+          "score": 0.0,
+          "issues": [
+            "Limited error handling configuration"
+          ],
+          "evidence": {
+            "continue_on_fail": false,
+            "always_output_data": false,
+            "retry_on_fail": false,
+            "max_retries": 0,
+            "timeout_ms": 0,
+            "has_error_output": false
+          }
+        },
+        "tool_usage": {
+          "score": 0.5,
+          "issues": [
+            "Agent has no tools defined"
+          ],
+          "evidence": {
+            "tool_count": 0
+          }
+        },
+        "config_appropriateness": {
+          "score": 0.7,
+          "issues": [],
+          "evidence": {
+            "model": "",
+            "temperature": null,
+            "max_tokens": null
+          }
+        }
+      },
+      "orchestration_dimensions": {
+        "data_flow_clarity": {
+          "score": 0.5,
+          "issues": [
+            "Many nodes have no explicit connections"
+          ]
+        },
+        "complexity_management": {
+          "score": 1.0,
+          "issues": []
+        },
+        "agent_coupling": {
+          "score": 0.9,
+          "issues": []
+        },
+        "observability": {
+          "score": 0.3,
+          "issues": [
+            "No checkpoint or logging nodes"
+          ]
+        },
+        "best_practices": {
+          "score": 0.15,
+          "issues": [
+            "No global error handler in workflow",
+            "Workflow lacks basic resilience configuration"
+          ]
+        },
+        "documentation_quality": {
+          "score": 0.3,
+          "issues": [
+            "No documentation (sticky notes) found"
+          ]
+        },
+        "ai_architecture": {
+          "score": 0.4,
+          "issues": [
+            "AI nodes present but no specialized AI connections configured"
+          ]
+        },
+        "maintenance_quality": {
+          "score": 0.95,
+          "issues": []
+        },
+        "test_coverage": {
+          "score": 0.4,
+          "issues": [
+            "No test data (pinData) found"
+          ]
+        }
+      },
+      "orchestration_overall": 0.544,
+      "reasoning": "Workflow 'Basic Quality Workflow' overall quality: 48% (Critical). Agent quality (1 agents, avg 43%): weighted 60% of overall score. Agents needing attention: Data Extractor. Orchestration quality: 54% (At Risk), weighted 40% of overall score. Critical issues (4): Limited error handling configuration; No checkpoint or logging nodes; No global error handler in workflow.",
+      "improvements_count": 10,
+      "critical_issues": 4
+    },
+    "genuine_good": {
+      "workflow_name": "Good Quality Workflow",
+      "overall_score": 0.703,
+      "overall_grade": "Degraded",
+      "agent_dimensions": {
+        "role_clarity": {
+          "score": 1.0,
+          "issues": [],
+          "evidence": {
+            "has_system_prompt": true,
+            "prompt_length": 622,
+            "role_keywords_found": 2,
+            "output_format_keywords": 2,
+            "boundary_keywords": 2,
+            "word_count": 96,
+            "specificity_score": 1.0
+          }
+        },
+        "output_consistency": {
+          "score": 0.55,
+          "issues": [
+            "No execution history \u2014 output consistency is unverified"
+          ],
+          "evidence": {
+            "expects_json": true,
+            "execution_samples": 0,
+            "score_provisional": true
+          }
+        },
+        "error_handling": {
+          "score": 0.85,
+          "issues": [],
+          "evidence": {
+            "continue_on_fail": true,
+            "always_output_data": true,
+            "retry_on_fail": true,
+            "max_retries": 2,
+            "timeout_ms": 60000,
+            "has_error_output": false
+          }
+        },
+        "tool_usage": {
+          "score": 0.5,
+          "issues": [
+            "Agent has no tools defined"
+          ],
+          "evidence": {
+            "tool_count": 0
+          }
+        },
+        "config_appropriateness": {
+          "score": 0.85,
+          "issues": [],
+          "evidence": {
+            "model": "",
+            "temperature": 0.1,
+            "max_tokens": 4000,
+            "inferred_task_type": "analysis"
+          }
+        }
+      },
+      "orchestration_dimensions": {
+        "data_flow_clarity": {
+          "score": 0.7,
+          "issues": []
+        },
+        "complexity_management": {
+          "score": 1.0,
+          "issues": []
+        },
+        "agent_coupling": {
+          "score": 0.9,
+          "issues": []
+        },
+        "observability": {
+          "score": 0.4,
+          "issues": [
+            "No checkpoint or logging nodes"
+          ]
+        },
+        "best_practices": {
+          "score": 0.4,
+          "issues": [
+            "No global error handler in workflow"
+          ]
+        },
+        "documentation_quality": {
+          "score": 0.3,
+          "issues": [
+            "No documentation (sticky notes) found"
+          ]
+        },
+        "ai_architecture": {
+          "score": 0.4,
+          "issues": [
+            "AI nodes present but no specialized AI connections configured"
+          ]
+        },
+        "maintenance_quality": {
+          "score": 0.95,
+          "issues": []
+        },
+        "test_coverage": {
+          "score": 0.4,
+          "issues": [
+            "No test data (pinData) found"
+          ]
+        },
+        "layout_quality": {
+          "score": 1.0,
+          "issues": []
+        }
+      },
+      "orchestration_overall": 0.632,
+      "reasoning": "Workflow 'Good Quality Workflow' overall quality: 70% (Degraded). Agent quality (1 agents, avg 75%): weighted 60% of overall score. Orchestration quality: 63% (At Risk), weighted 40% of overall score. Critical issues (1): No documentation (sticky notes) found.",
+      "improvements_count": 10,
+      "critical_issues": 1
+    },
+    "production_grade": {
+      "workflow_name": "Production Grade Workflow",
+      "overall_score": 0.836,
+      "overall_grade": "Degraded",
+      "agent_dimensions": {
+        "role_clarity": {
+          "score": 1.0,
+          "issues": [],
+          "evidence": {
+            "has_system_prompt": true,
+            "prompt_length": 998,
+            "role_keywords_found": 2,
+            "output_format_keywords": 5,
+            "boundary_keywords": 3,
+            "word_count": 143,
+            "specificity_score": 1.0
+          }
+        },
+        "output_consistency": {
+          "score": 0.55,
+          "issues": [
+            "No execution history \u2014 output consistency is unverified"
+          ],
+          "evidence": {
+            "expects_json": true,
+            "execution_samples": 0,
+            "score_provisional": true
+          }
+        },
+        "error_handling": {
+          "score": 0.85,
+          "issues": [],
+          "evidence": {
+            "continue_on_fail": true,
+            "always_output_data": true,
+            "retry_on_fail": true,
+            "max_retries": 3,
+            "timeout_ms": 120000,
+            "has_error_output": false
+          }
+        },
+        "tool_usage": {
+          "score": 1.0,
+          "issues": [],
+          "evidence": {
+            "tool_count": 2,
+            "tools_with_description": 2,
+            "tools_with_schema": 2
+          }
+        },
+        "config_appropriateness": {
+          "score": 0.95,
+          "issues": [],
+          "evidence": {
+            "model": "claude-3-5-sonnet-20241022",
+            "temperature": 0.0,
+            "max_tokens": 4000,
+            "inferred_task_type": "analysis",
+            "model_tier": "standard"
+          }
+        }
+      },
+      "orchestration_dimensions": {
+        "data_flow_clarity": {
+          "score": 0.55,
+          "issues": [
+            "High ratio of state manipulation nodes"
+          ]
+        },
+        "complexity_management": {
+          "score": 1.0,
+          "issues": []
+        },
+        "agent_coupling": {
+          "score": 0.9,
+          "issues": []
+        },
+        "observability": {
+          "score": 0.95,
+          "issues": []
+        },
+        "best_practices": {
+          "score": 0.8,
+          "issues": []
+        },
+        "documentation_quality": {
+          "score": 0.9,
+          "issues": []
+        },
+        "ai_architecture": {
+          "score": 0.4,
+          "issues": [
+            "AI nodes present but no specialized AI connections configured"
+          ]
+        },
+        "maintenance_quality": {
+          "score": 0.95,
+          "issues": []
+        },
+        "test_coverage": {
+          "score": 0.4,
+          "issues": [
+            "No test data (pinData) found"
+          ]
+        },
+        "layout_quality": {
+          "score": 1.0,
+          "issues": []
+        }
+      },
+      "orchestration_overall": 0.784,
+      "reasoning": "Workflow 'Production Grade Workflow' overall quality: 84% (Degraded). Agent quality (1 agents, avg 87%): weighted 60% of overall score. Orchestration quality: 78% (Degraded), weighted 40% of overall score.",
+      "improvements_count": 8,
+      "critical_issues": 0
+    },
+    "score_maximizer": {
+      "workflow_name": "Score Maximizer (Gaming)",
+      "overall_score": 0.643,
+      "overall_grade": "At Risk",
+      "agent_dimensions": {
+        "role_clarity": {
+          "score": 0.4,
+          "issues": [
+            "Keyword stuffing detected \u2014 prompt contains repeated keywords without substance"
+          ],
+          "evidence": {
+            "has_system_prompt": true,
+            "prompt_length": 546,
+            "role_keywords_found": 9,
+            "output_format_keywords": 8,
+            "boundary_keywords": 9,
+            "word_count": 86,
+            "specificity_score": 1.0,
+            "keyword_stuffing_detected": true
+          }
+        },
+        "output_consistency": {
+          "score": 0.55,
+          "issues": [
+            "No execution history \u2014 output consistency is unverified"
+          ],
+          "evidence": {
+            "expects_json": true,
+            "execution_samples": 0,
+            "score_provisional": true
+          }
+        },
+        "error_handling": {
+          "score": 0.5,
+          "issues": [
+            "Error handling configured but system prompt is keyword-stuffed \u2014 recovery context is unreliable"
+          ],
+          "evidence": {
+            "continue_on_fail": true,
+            "always_output_data": true,
+            "retry_on_fail": true,
+            "max_retries": 3,
+            "timeout_ms": 30000,
+            "has_error_output": false,
+            "stuffed_prompt_penalty": true
+          }
+        },
+        "tool_usage": {
+          "score": 1.0,
+          "issues": [],
+          "evidence": {
+            "tool_count": 2,
+            "tools_with_description": 2,
+            "tools_with_schema": 2
+          }
+        },
+        "config_appropriateness": {
+          "score": 0.95,
+          "issues": [],
+          "evidence": {
+            "model": "claude-3-5-haiku-20241022",
+            "temperature": 0.1,
+            "max_tokens": 2000,
+            "inferred_task_type": "analysis",
+            "model_tier": "fast"
+          }
+        }
+      },
+      "orchestration_dimensions": {
+        "data_flow_clarity": {
+          "score": 0.5,
+          "issues": [
+            "Many nodes have no explicit connections"
+          ]
+        },
+        "complexity_management": {
+          "score": 1.0,
+          "issues": []
+        },
+        "agent_coupling": {
+          "score": 0.9,
+          "issues": []
+        },
+        "observability": {
+          "score": 0.4,
+          "issues": [
+            "No checkpoint or logging nodes"
+          ]
+        },
+        "best_practices": {
+          "score": 0.4,
+          "issues": [
+            "No global error handler in workflow"
+          ]
+        },
+        "documentation_quality": {
+          "score": 0.3,
+          "issues": [
+            "No documentation (sticky notes) found"
+          ]
+        },
+        "ai_architecture": {
+          "score": 0.4,
+          "issues": [
+            "AI nodes present but no specialized AI connections configured"
+          ]
+        },
+        "maintenance_quality": {
+          "score": 0.95,
+          "issues": []
+        },
+        "test_coverage": {
+          "score": 0.4,
+          "issues": [
+            "No test data (pinData) found"
+          ]
+        }
+      },
+      "orchestration_overall": 0.588,
+      "reasoning": "Workflow 'Score Maximizer (Gaming)' overall quality: 64% (At Risk). Agent quality (1 agents, avg 68%): weighted 60% of overall score. Orchestration quality: 59% (At Risk), weighted 40% of overall score. Critical issues (1): No documentation (sticky notes) found.",
+      "improvements_count": 10,
+      "critical_issues": 1
+    }
+  },
+  "gaming_detected": false
+}

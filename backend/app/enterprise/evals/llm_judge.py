@@ -150,16 +150,18 @@ class LLMJudge:
         expected: Optional[str] = None,
         custom_prompt: Optional[str] = None,
     ) -> JudgmentResult:
-        prompt_template = custom_prompt or EVAL_PROMPTS.get(eval_type)
-        
-        if not prompt_template:
-            raise ValueError(f"No prompt template for eval type: {eval_type}")
-        
-        prompt = prompt_template.format(
-            output=output,
-            context=context or "N/A",
-            expected=expected or "N/A",
-        )
+        if custom_prompt:
+            # Custom prompts are already fully formed — no template substitution
+            prompt = custom_prompt
+        else:
+            prompt_template = EVAL_PROMPTS.get(eval_type)
+            if not prompt_template:
+                raise ValueError(f"No prompt template for eval type: {eval_type}")
+            prompt = prompt_template.format(
+                output=output,
+                context=context or "N/A",
+                expected=expected or "N/A",
+            )
         
         if "claude" in self.model.value:
             return self._call_anthropic(prompt)

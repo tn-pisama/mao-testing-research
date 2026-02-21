@@ -76,10 +76,10 @@ class TestN8nWorkflowDataset:
             )
 
     def test_workflow_grades_are_valid(self, n8n_workflow_files):
-        """All workflows should have valid letter grades."""
+        """All workflows should have valid health tier grades."""
         assessor = QualityAssessor(use_llm_judge=False)
 
-        valid_grades = ["A", "B+", "B", "C+", "C", "D", "F"]
+        valid_grades = ["Healthy", "Degraded", "At Risk", "Critical"]
 
         for name, workflow in n8n_workflow_files.items():
             report = assessor.assess_workflow(workflow)
@@ -102,11 +102,13 @@ class TestN8nWorkflowDataset:
 
     def test_all_workflows_score_similarly(self, n8n_workflow_files):
         """
-        FINDING: All workflows score similarly (B+ grade, 85-87%).
+        FINDING: All workflows score in the Degraded tier (~72-85%).
 
-        This reveals a limitation: the quality assessor evaluates static workflow
-        structure (prompts, error handling, connections) but cannot detect runtime
-        logic bugs (loops, corruption, drift) without execution history.
+        The output_consistency default lowered from 0.7 to ~0.4-0.55, which causes
+        more score variance across workflows depending on whether they specify JSON
+        output format. This reveals a limitation: the quality assessor evaluates
+        static workflow structure (prompts, error handling, connections) but cannot
+        detect runtime logic bugs (loops, corruption, drift) without execution history.
 
         This is working as designed - quality assessment is orthogonal to runtime debugging.
         """
@@ -117,13 +119,13 @@ class TestN8nWorkflowDataset:
             report = assessor.assess_workflow(workflow)
             scores.append(report.overall_score)
 
-        # All workflows should be in the B range (0.7 - 0.9)
+        # All workflows should be in the Degraded tier range (0.65 - 0.9)
         for score in scores:
-            assert 0.7 <= score <= 0.9, f"Score {score:.2%} outside expected B range"
+            assert 0.65 <= score <= 0.9, f"Score {score:.2%} outside expected Degraded range"
 
-        # Score variance should be low (< 5%)
+        # Score variance should be moderate (< 15%) due to output_consistency variation
         score_range = max(scores) - min(scores)
-        assert score_range < 0.05, f"Score variance {score_range:.2%} higher than expected"
+        assert score_range < 0.15, f"Score variance {score_range:.2%} higher than expected"
 
 
 class TestFixtureComparison:
@@ -182,13 +184,13 @@ class TestGoldenTracesDataset:
     """Test quality assessment correlation with golden traces."""
 
     def test_golden_traces_load_successfully(self, golden_traces):
-        """Golden traces dataset should load 420 traces."""
+        """Golden traces dataset should load ~1067 traces (original 420 + MAST failure types)."""
         # Check we have traces
         assert len(golden_traces) > 0, "Golden traces dataset is empty"
 
-        # Should be around 420 traces
-        assert 400 <= len(golden_traces) <= 450, (
-            f"Expected ~420 traces, got {len(golden_traces)}"
+        # Should be around 1067 traces (expanded with MAST failure types)
+        assert 1000 <= len(golden_traces) <= 1200, (
+            f"Expected ~1067 traces, got {len(golden_traces)}"
         )
 
     def test_golden_traces_grouped_by_type(self, golden_traces_by_type):
@@ -198,8 +200,16 @@ class TestGoldenTracesDataset:
         Note: "Healthy" traces have detection_type=None (no failure detected).
         """
         # Expected types (None represents healthy traces)
+        # Includes original types + MAST failure types (F1-F14)
         expected_types = ["infinite_loop", None, "coordination_deadlock",
-                          "persona_drift", "state_corruption"]
+                          "persona_drift", "state_corruption",
+                          "F1_spec_mismatch", "F2_poor_decomposition",
+                          "F3_resource_misallocation", "F4_inadequate_tool",
+                          "F5_flawed_workflow", "F6_task_derailment",
+                          "F7_context_neglect", "F8_information_withholding",
+                          "F9_role_usurpation", "F10_communication_breakdown",
+                          "F12_output_validation_failure",
+                          "F13_quality_gate_bypass", "F14_completion_misjudgment"]
 
         for trace_type in expected_types:
             assert trace_type in golden_traces_by_type, f"Missing trace type: {trace_type}"
@@ -211,9 +221,9 @@ class TestGoldenTracesDataset:
         """Golden traces should have balanced distribution across types."""
         for trace_type, traces in golden_traces_by_type.items():
             count = len(traces)
-            # Each type should have roughly 80-90 traces
-            assert 70 <= count <= 100, (
-                f"Type {trace_type} has {count} traces (expected 70-100)"
+            # Each type should have roughly 50-100 traces (18 types, 1067 total)
+            assert 40 <= count <= 110, (
+                f"Type {trace_type} has {count} traces (expected 40-110)"
             )
 
     @pytest.mark.skip(reason="Golden traces are in OTEL format, not n8n workflow format")
@@ -235,8 +245,8 @@ class TestDatasetScoreDistribution:
         """
         Generate score distribution report for n8n workflows.
 
-        FINDING: n8n demo workflows have narrow score distribution (2% range)
-        because they all have similar static structure quality.
+        FINDING: n8n demo workflows have moderate score distribution (~13% range)
+        due to output_consistency variation across workflows.
         """
         assessor = QualityAssessor(use_llm_judge=False)
 
@@ -255,9 +265,9 @@ class TestDatasetScoreDistribution:
         all_scores = [s["score"] for s in scores]
         score_range = max(all_scores) - min(all_scores)
 
-        # Demo workflows have narrow range (< 5%)
-        assert 0.0 < score_range < 0.1, (
-            f"Score range {score_range:.2%} outside expected narrow range"
+        # Demo workflows have moderate range (< 15%) due to output_consistency variation
+        assert 0.0 < score_range < 0.15, (
+            f"Score range {score_range:.2%} outside expected range"
         )
 
     def test_fixtures_score_distribution(

@@ -115,6 +115,7 @@ class QualityAppliedFix:
     original_state: Dict[str, Any]
     modified_state: Dict[str, Any]
     rollback_available: bool = True
+    generation_method: str = "heuristic"  # "heuristic" or "llm"
 
     def to_dict(self) -> Dict[str, Any]:
         return {
@@ -123,6 +124,7 @@ class QualityAppliedFix:
             "applied_at": self.applied_at.isoformat(),
             "target_component": self.target_component,
             "rollback_available": self.rollback_available,
+            "generation_method": self.generation_method,
         }
 
 
