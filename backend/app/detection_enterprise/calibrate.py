@@ -273,6 +273,90 @@ def _build_detector_runners() -> Dict[DetectionType, Any]:
     except Exception as exc:
         logger.warning("Skipping RETRIEVAL_QUALITY detector (not available): %s", exc)
 
+    # --- DERAILMENT (tiered detector adapter) ---
+    try:
+        from app.detection_enterprise.tiered import create_tiered_derailment_detector
+
+        _tiered_derailment = create_tiered_derailment_detector()
+
+        def _run_derailment(entry: GoldenDatasetEntry) -> Tuple[bool, float]:
+            output = entry.input_data.get("output", "")
+            task = entry.input_data.get("task", "")
+            result = _tiered_derailment.detect(text=output, context=task)
+            return result.detected, result.confidence
+
+        runners[DetectionType.DERAILMENT] = _run_derailment
+    except Exception as exc:
+        logger.warning("Could not import derailment detector: %s", exc)
+
+    # --- SPECIFICATION (tiered detector adapter) ---
+    try:
+        from app.detection_enterprise.tiered import create_tiered_specification_detector
+
+        _tiered_specification = create_tiered_specification_detector()
+
+        def _run_specification(entry: GoldenDatasetEntry) -> Tuple[bool, float]:
+            task_specification = entry.input_data.get("task_specification", "")
+            user_intent = entry.input_data.get("user_intent", "")
+            result = _tiered_specification.detect(text=task_specification, context=user_intent)
+            return result.detected, result.confidence
+
+        runners[DetectionType.SPECIFICATION] = _run_specification
+    except Exception as exc:
+        logger.warning("Could not import specification detector: %s", exc)
+
+    # --- DECOMPOSITION (tiered detector adapter) ---
+    try:
+        from app.detection_enterprise.tiered import create_tiered_decomposition_detector
+
+        _tiered_decomposition = create_tiered_decomposition_detector()
+
+        def _run_decomposition(entry: GoldenDatasetEntry) -> Tuple[bool, float]:
+            decomposition = entry.input_data.get("decomposition", "")
+            task_description = entry.input_data.get("task_description", "")
+            result = _tiered_decomposition.detect(text=decomposition, context=task_description)
+            return result.detected, result.confidence
+
+        runners[DetectionType.DECOMPOSITION] = _run_decomposition
+    except Exception as exc:
+        logger.warning("Could not import decomposition detector: %s", exc)
+
+    # --- WITHHOLDING (tiered detector adapter) ---
+    try:
+        from app.detection_enterprise.tiered import create_tiered_withholding_detector
+
+        _tiered_withholding = create_tiered_withholding_detector()
+
+        def _run_withholding(entry: GoldenDatasetEntry) -> Tuple[bool, float]:
+            agent_output = entry.input_data.get("agent_output", "")
+            internal_state = entry.input_data.get("internal_state", "")
+            result = _tiered_withholding.detect(text=agent_output, context=internal_state)
+            return result.detected, result.confidence
+
+        runners[DetectionType.WITHHOLDING] = _run_withholding
+    except Exception as exc:
+        logger.warning("Could not import withholding detector: %s", exc)
+
+    # --- WORKFLOW (tiered detector adapter) ---
+    try:
+        from app.detection_enterprise.tiered import create_tiered_workflow_detector
+
+        _tiered_workflow = create_tiered_workflow_detector()
+
+        def _run_workflow(entry: GoldenDatasetEntry) -> Tuple[bool, float]:
+            workflow_def = entry.input_data.get("workflow_definition", {})
+            workflow_nodes = workflow_def.get("nodes", [])
+            workflow_connections = workflow_def.get("connections", [])
+            result = _tiered_workflow.detect(
+                text=str(workflow_nodes),
+                context=str(workflow_connections),
+            )
+            return result.detected, result.confidence
+
+        runners[DetectionType.WORKFLOW] = _run_workflow
+    except Exception as exc:
+        logger.warning("Could not import workflow detector: %s", exc)
+
     return runners
 
 
@@ -442,6 +526,11 @@ def calibrate_all() -> Dict[str, Any]:
         DetectionType.GROUNDING,
         DetectionType.RETRIEVAL_QUALITY,
         DetectionType.COMPLETION,
+        DetectionType.DERAILMENT,
+        DetectionType.SPECIFICATION,
+        DetectionType.DECOMPOSITION,
+        DetectionType.WITHHOLDING,
+        DetectionType.WORKFLOW,
     ]
 
     for dt in target_types:

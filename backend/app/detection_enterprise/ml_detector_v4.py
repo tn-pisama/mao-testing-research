@@ -1433,11 +1433,36 @@ def load_pretrained(model_path: Optional[Path] = None) -> Optional[MultiTaskDete
     if not path.exists() or not (path / "config.json").exists():
         logger.info("No pre-trained v4 model found at %s", path)
         return None
+
+    # Config exists but model weights are missing -- the model directory
+    # has been created but training has not been run yet.
+    weights_path = path / "model.pt"
+    if not weights_path.exists():
+        logger.info(
+            "ML v4 model is untrained — using rule-based detection only"
+        )
+        return None
+
     try:
         return MultiTaskDetectorV4.load(path)
     except Exception as e:
         logger.warning("Failed to load v4 model from %s: %s", path, e)
         return None
+
+
+def model_status(model_path: Optional[Path] = None) -> str:
+    """Return the training status of the ML v4 model."""
+    path = model_path or get_default_model_path()
+    config_path = path / "config.json"
+    if not config_path.exists():
+        return "unavailable"
+    try:
+        import json
+        with open(config_path) as f:
+            config = json.load(f)
+        return config.get("training_status", "unknown")
+    except Exception:
+        return "unavailable"
 
 
 if __name__ == "__main__":

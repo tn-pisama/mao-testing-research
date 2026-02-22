@@ -77,7 +77,7 @@ class QualityFixValidator:
         """Validate all applied fixes.
 
         Pipeline order:
-        1. n8n schema validation (warning-only, does not fail)
+        1. n8n schema validation (blocking for known node types, warning-only for unknown)
         2. Cross-signal / heuristic / LLM validation per fix
         """
         results: List[QualityValidationResult] = []
@@ -94,6 +94,13 @@ class QualityFixValidator:
             if schema_warnings:
                 result.details["n8n_schema_warnings"] = schema_warnings
 
+            # For known node types with invalid keys, fail the validation
+            schema_failures = self._n8n_schema_failures.get(fix.fix_id)
+            if schema_failures is not None:
+                result.success = False
+                result.details["schema_validation_failed"] = True
+                result.details["invalid_keys"] = schema_failures
+
             results.append(result)
 
         return results
@@ -103,8 +110,14 @@ class QualityFixValidator:
         applied_fixes: List[QualityAppliedFix],
         final_config: Dict[str, Any],
     ) -> None:
-        """Run n8n schema validation on applied fixes. Results stored as warnings."""
+        """Run n8n schema validation on applied fixes.
+
+        For known node types, schema violations are blocking: the corresponding
+        per-fix QualityValidationResult will have success=False.
+        For unknown node types, warnings are informational only.
+        """
         self._n8n_schema_warnings: Dict[str, List[str]] = {}
+        self._n8n_schema_failures: Dict[str, List[str]] = {}
 
         # Build a map of node_id -> node_type from the final config
         node_type_map: Dict[str, str] = {}
@@ -124,14 +137,22 @@ class QualityFixValidator:
                 continue
 
             schema_result = validate_fix_against_n8n_schema(changes, node_type)
-            if not schema_result.valid or schema_result.warnings:
+            if not schema_result.valid:
+                # Known node type with invalid keys -- blocking failure
+                invalid_key_names = schema_result.invalid_keys or []
+                self._n8n_schema_failures[fix.fix_id] = invalid_key_names
                 warnings = schema_result.warnings.copy()
-                if schema_result.invalid_keys:
+                if invalid_key_names:
                     warnings.append(
-                        f"Invalid parameter keys: {', '.join(schema_result.invalid_keys)}"
+                        f"Invalid parameter keys: {', '.join(invalid_key_names)}"
                     )
                 self._n8n_schema_warnings[fix.fix_id] = warnings
                 for w in warnings:
+                    logger.warning(f"n8n schema validation [{fix.fix_id}]: {w}")
+            elif schema_result.warnings:
+                # Unknown node type or informational warnings -- non-blocking
+                self._n8n_schema_warnings[fix.fix_id] = schema_result.warnings
+                for w in schema_result.warnings:
                     logger.warning(f"n8n schema validation [{fix.fix_id}]: {w}")
 
     @staticmethod

@@ -74,6 +74,7 @@ class QualityHealingEngine:
                 pass
 
         self._healing_history: List[QualityHealingResult] = []
+        self._load_history_from_db()
 
     def heal(
         self,
@@ -142,6 +143,7 @@ class QualityHealingEngine:
 
             # Step 3: Apply fixes iteratively
             result.status = QualityHealingStatus.APPLYING
+            result.metadata["original_workflow"] = workflow_config
             current_config = workflow_config
             fixes_to_apply = fix_suggestions[:self.max_fix_attempts]
 
@@ -240,6 +242,9 @@ class QualityHealingEngine:
 
         if result.status != QualityHealingStatus.PENDING:
             raise ValueError(f"Healing result is {result.status.value}, not pending")
+
+        if result.applied_fixes:
+            raise ValueError(f"Healing result {healing_id} already has applied fixes")
 
         # Get selected fix suggestion dicts
         all_suggestions = result.metadata.get("fix_suggestions", [])
@@ -356,7 +361,10 @@ class QualityHealingEngine:
             details={"healing_id": healing_id},
         ))
 
-        # Get the original state from the first applied fix
+        # Get the original state from the first applied fix.
+        # applied_fixes[0].original_state is the workflow config before ANY fixes
+        # were applied (the pre-all-fixes state), so rolling back to it undoes
+        # the entire chain of applied fixes in one step.
         original = result.applied_fixes[0].original_state
         result.status = QualityHealingStatus.ROLLED_BACK
         result.metadata["rolled_back_at"] = datetime.now(UTC).isoformat()
@@ -430,7 +438,11 @@ class QualityHealingEngine:
                 logger.warning(f"Failed to persist healing result to DB: {e}")
 
     def _load_history_from_db(self) -> None:
-        """Load healing history from DB if session available."""
+        """Load healing history from DB if session available.
+
+        Reconstructs QualityHealingResult objects from DB records and merges
+        them into the in-memory history, skipping any IDs already present.
+        """
         if self._db_session is None:
             return
         try:
@@ -438,8 +450,48 @@ class QualityHealingEngine:
             records = self._db_session.query(QualityHealingRecord).order_by(
                 QualityHealingRecord.created_at.desc()
             ).limit(100).all()
-            # History is loaded; existing in-memory entries are merged
-            logger.info(f"Loaded {len(records)} healing records from DB")
+
+            existing_ids = {hr.id for hr in self._healing_history}
+
+            for record in records:
+                record_id = str(record.id)
+                if record_id in existing_ids:
+                    continue
+
+                result = QualityHealingResult(
+                    id=record_id,
+                    assessment_id=str(record.assessment_id),
+                    status=QualityHealingStatus(record.status),
+                    started_at=record.started_at or record.created_at,
+                    completed_at=record.completed_at,
+                    dimensions_targeted=record.dimensions_targeted or [],
+                    applied_fixes=[],
+                    validation_results=[],
+                    before_score=record.before_score,
+                    after_score=record.after_score,
+                    metadata={},
+                )
+
+                # Reconstruct applied fixes from stored dicts
+                for fix_dict in (record.applied_fixes or []):
+                    try:
+                        applied = QualityAppliedFix(
+                            fix_id=fix_dict["fix_id"],
+                            dimension=fix_dict["dimension"],
+                            applied_at=datetime.fromisoformat(fix_dict["applied_at"]),
+                            target_component=fix_dict["target_component"],
+                            original_state=fix_dict.get("original_state", {}),
+                            modified_state=fix_dict.get("modified_state", {}),
+                            rollback_available=fix_dict.get("rollback_available", True),
+                            generation_method=fix_dict.get("generation_method", "heuristic"),
+                        )
+                        result.applied_fixes.append(applied)
+                    except (KeyError, ValueError) as e:
+                        logger.debug(f"Skipping malformed applied_fix in record {record_id}: {e}")
+
+                self._healing_history.append(result)
+
+            logger.info(f"Loaded {len(records)} healing records from DB, {len(self._healing_history)} total in history")
         except Exception as e:
             logger.warning(f"Failed to load healing history from DB: {e}")
 
