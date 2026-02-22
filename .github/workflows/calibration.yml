@@ -1,0 +1,34 @@
+name: Detection Calibration
+
+on:
+  push:
+    paths:
+      - 'backend/app/detection/**'
+      - 'backend/app/detection_enterprise/**'
+      - 'backend/tests/test_calibration_regression.py'
+  pull_request:
+    paths:
+      - 'backend/app/detection/**'
+      - 'backend/app/detection_enterprise/**'
+      - 'backend/tests/test_calibration_regression.py'
+
+jobs:
+  calibration-regression:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+          cache: 'pip'
+
+      - name: Install dependencies
+        run: |
+          pip install -r backend/requirements.txt
+          pip install pytest
+
+      - name: Run calibration regression tests
+        working-directory: backend
+        run: pytest tests/test_calibration_regression.py -m slow -v --tb=short

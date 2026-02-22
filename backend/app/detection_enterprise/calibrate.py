@@ -7,6 +7,7 @@ thresholds via grid search, and reports precision/recall/F1 metrics.
 import hashlib
 import json
 import logging
+import sys
 from dataclasses import dataclass, asdict
 from pathlib import Path
 from typing import Dict, List, Any, Optional, Tuple
@@ -660,8 +661,12 @@ def calibrate_single(
     )
 
 
-def calibrate_all() -> Dict[str, Any]:
+def calibrate_all(phoenix_tracer: Optional[Any] = None) -> Dict[str, Any]:
     """Run calibration across all detector types using the golden dataset.
+
+    Args:
+        phoenix_tracer: Optional OTEL tracer for Phoenix observability.
+            When provided, each detector calibration is exported as a span.
 
     Returns:
         A dict with the structure::
@@ -710,13 +715,68 @@ def calibrate_all() -> Dict[str, Any]:
         DetectionType.WORKFLOW,
     ]
 
+    # Optional: wrap in a Phoenix parent span
+    _parent_ctx = None
+    if phoenix_tracer:
+        try:
+            _parent_ctx = phoenix_tracer.start_as_current_span(
+                "calibration_run",
+                attributes={
+                    "calibration.detector_count": len(target_types),
+                    "calibration.dataset_size": len(dataset.entries),
+                },
+            )
+            _parent_ctx.__enter__()
+        except Exception:
+            _parent_ctx = None
+
     for dt in target_types:
         entries = dataset.get_entries_by_type(dt)
+
+        # Optional: child span per detector
+        _child_ctx = None
+        if phoenix_tracer:
+            try:
+                _child_ctx = phoenix_tracer.start_as_current_span(
+                    f"calibrate_{dt.value}",
+                    attributes={
+                        "detector.type": dt.value,
+                        "detector.sample_count": len(entries),
+                    },
+                )
+                _child_ctx.__enter__()
+            except Exception:
+                _child_ctx = None
+
         cal = calibrate_single(dt, entries)
+
         if cal is None:
             skipped.append(dt.value)
-            continue
-        results[cal.detection_type] = asdict(cal)
+        else:
+            results[cal.detection_type] = asdict(cal)
+            # Set span attributes with results
+            if _child_ctx and phoenix_tracer:
+                try:
+                    from opentelemetry import trace as _otrace
+                    span = _otrace.get_current_span()
+                    span.set_attribute("detector.f1", cal.f1)
+                    span.set_attribute("detector.precision", cal.precision)
+                    span.set_attribute("detector.recall", cal.recall)
+                    span.set_attribute("detector.threshold", cal.optimal_threshold)
+                except Exception:
+                    pass
+
+        if _child_ctx:
+            try:
+                _child_ctx.__exit__(None, None, None)
+            except Exception:
+                pass
+
+    if _parent_ctx:
+        try:
+            _parent_ctx.__exit__(None, None, None)
+        except Exception:
+            pass
 
     report = {
         "calibrated_at": datetime.now(timezone.utc).isoformat(),
@@ -750,12 +810,75 @@ def save_calibration_report(results: Dict[str, Any], path: Path) -> None:
 # ---------------------------------------------------------------------------
 
 if __name__ == "__main__":
+    import argparse
+
+    parser = argparse.ArgumentParser(description="Detection threshold calibration")
+    parser.add_argument("--compare", type=int, metavar="N", help="Compare last N experiments")
+    parser.add_argument("--no-history", action="store_true", help="Skip saving to history")
+    parser.add_argument(
+        "--generate-data", action="store_true",
+        help="Generate LLM golden data for types below 30 samples, then re-calibrate",
+    )
+    parser.add_argument(
+        "--generate-target", type=int, default=30, metavar="N",
+        help="Target entries per type for --generate-data (default: 30)",
+    )
+    parser.add_argument(
+        "--phoenix", action="store_true",
+        help="Export calibration spans to Phoenix via OTEL",
+    )
+    parser.add_argument(
+        "--phoenix-endpoint", type=str, default="http://localhost:6006/v1/traces",
+        help="Phoenix OTLP endpoint (default: http://localhost:6006/v1/traces)",
+    )
+    args = parser.parse_args()
+
     logging.basicConfig(
         level=logging.INFO,
         format="%(asctime)s [%(levelname)s] %(name)s: %(message)s",
     )
 
-    report = calibrate_all()
+    if args.compare:
+        from app.detection_enterprise.calibration_history import CalibrationHistory
+        history = CalibrationHistory()
+        print(history.format_comparison(args.compare))
+        sys.exit(0)
+
+    # --- LLM golden data expansion ---
+    if args.generate_data:
+        from app.detection_enterprise.golden_data_generator import GoldenDataGenerator
+        from app.detection_enterprise.golden_dataset import create_default_golden_dataset
+
+        generator = GoldenDataGenerator()
+        if not generator.is_available:
+            print("  ERROR: No ANTHROPIC_API_KEY set — cannot generate data")
+            sys.exit(1)
+
+        dataset = create_default_golden_dataset()
+        print(f"\n  Current dataset: {len(dataset.entries)} entries")
+        new_entries = generator.generate_all(dataset, target_per_type=args.generate_target)
+        if new_entries:
+            for entry in new_entries:
+                dataset.add_entry(entry)
+            save_path = Path(__file__).parent.parent.parent / "data" / "golden_dataset_expanded.json"
+            dataset.save(save_path)
+            print(f"  Generated {len(new_entries)} new entries")
+            print(f"  Expanded dataset saved to: {save_path}")
+        else:
+            print("  All types already at target — no generation needed")
+        print()
+
+    # --- Phoenix OTEL setup ---
+    phoenix_tracer = None
+    if args.phoenix:
+        try:
+            from app.detection_enterprise.phoenix_exporter import setup_phoenix_exporter
+            phoenix_tracer = setup_phoenix_exporter(endpoint=args.phoenix_endpoint)
+            print(f"  Phoenix tracing enabled → {args.phoenix_endpoint}")
+        except Exception as exc:
+            print(f"  WARNING: Could not enable Phoenix tracing: {exc}")
+
+    report = calibrate_all(phoenix_tracer=phoenix_tracer)
 
     # Pretty-print summary to stdout.
     print("\n" + "=" * 72)
@@ -783,7 +906,17 @@ if __name__ == "__main__":
 
     print("\n" + "=" * 72)
 
-    # Optionally write the report to a JSON file.
+    # Save to history (unless --no-history)
+    if not args.no_history:
+        from app.detection_enterprise.calibration_history import (
+            CalibrationHistory, create_experiment_from_report,
+        )
+        history = CalibrationHistory()
+        experiment = create_experiment_from_report(report)
+        history.append(experiment)
+        print(f"  Experiment {experiment.id} saved to history")
+
+    # Write the report to a JSON file.
     default_report_path = Path(__file__).parent.parent.parent / "data" / "calibration_report.json"
     save_calibration_report(report, default_report_path)
     print(f"\n  Report written to: {default_report_path}\n")
