@@ -4,6 +4,8 @@ import pytest
 from datetime import datetime, timedelta
 from uuid import uuid4
 
+pytest.importorskip("asyncpg", reason="asyncpg required for API integration tests")
+
 from app.storage.models import WorkflowQualityAssessment
 
 

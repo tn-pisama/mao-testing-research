@@ -2,8 +2,19 @@ import time
 import logging
 from typing import Optional
 from fastapi import HTTPException, Request, status
-from redis import asyncio as aioredis
-from redis.exceptions import RedisError
+
+try:
+    from redis import asyncio as aioredis
+    from redis.exceptions import RedisError
+    _REDIS_AVAILABLE = True
+except ImportError:
+    _REDIS_AVAILABLE = False
+    aioredis = None
+
+    class RedisError(Exception):
+        """Stub for when redis is not installed."""
+        pass
+
 from app.config import get_settings
 
 logger = logging.getLogger(__name__)
@@ -17,6 +28,8 @@ class RateLimiter:
         self._redis: Optional[aioredis.Redis] = None
     
     async def connect(self):
+        if not _REDIS_AVAILABLE:
+            return
         if self._redis is None:
             self._redis = await aioredis.from_url(self.redis_url)
     

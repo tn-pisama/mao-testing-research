@@ -2,7 +2,11 @@ from contextlib import asynccontextmanager
 from fastapi import FastAPI, Request
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import JSONResponse
-from opentelemetry.instrumentation.fastapi import FastAPIInstrumentor
+try:
+    from opentelemetry.instrumentation.fastapi import FastAPIInstrumentor
+    _OTEL_AVAILABLE = True
+except ImportError:
+    _OTEL_AVAILABLE = False
 
 from app.config import get_settings
 from app.core.rate_limit import rate_limiter
@@ -165,7 +169,8 @@ if enterprise_routers_loaded:
         app.include_router(quality.router, prefix="/api/v1", tags=["enterprise"])  # Quality Assessment
         app.include_router(quality_healing.router, prefix="/api/v1", tags=["enterprise"])  # Quality Healing
 
-FastAPIInstrumentor.instrument_app(app)
+if _OTEL_AVAILABLE:
+    FastAPIInstrumentor.instrument_app(app)
 
 
 @app.get("/")
