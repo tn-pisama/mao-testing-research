@@ -1,6 +1,7 @@
 """Quality healing engine that orchestrates the full quality improvement pipeline."""
 
 import logging
+from pathlib import Path
 from datetime import datetime, UTC
 from typing import Dict, Any, List, Optional
 
@@ -19,6 +20,71 @@ from .applicator import QualityFixApplicator
 from .validator import QualityFixValidator
 
 logger = logging.getLogger(__name__)
+
+
+class FixFeedbackStore:
+    """Tracks healing fix outcomes for feedback-driven improvement.
+
+    Records which fix categories succeed/fail, enabling future generation
+    to weight toward more successful fix patterns.
+    """
+
+    DEFAULT_PATH = Path(__file__).resolve().parent.parent.parent.parent.parent / "data" / "fix_feedback.jsonl"
+
+    def __init__(self, path: Optional[Path] = None):
+        self.path = path or self.DEFAULT_PATH
+
+    def record(
+        self,
+        fix_id: str,
+        dimension: str,
+        category: str,
+        generation_method: str,
+        success: bool,
+        reason: str = "",
+    ) -> None:
+        """Record a fix outcome."""
+        import json
+        from datetime import datetime, UTC
+        entry = {
+            "timestamp": datetime.now(UTC).isoformat(),
+            "fix_id": fix_id,
+            "dimension": dimension,
+            "category": category,
+            "generation_method": generation_method,
+            "success": success,
+            "reason": reason,
+        }
+        self.path.parent.mkdir(parents=True, exist_ok=True)
+        with open(self.path, "a") as f:
+            f.write(json.dumps(entry) + "\n")
+
+    def get_success_rate(self, dimension: Optional[str] = None) -> Dict[str, float]:
+        """Get success rates, optionally filtered by dimension."""
+        import json
+        if not self.path.exists():
+            return {}
+
+        counts: Dict[str, Dict[str, int]] = {}  # {key: {"success": N, "total": N}}
+        with open(self.path) as f:
+            for line in f:
+                line = line.strip()
+                if not line:
+                    continue
+                try:
+                    entry = json.loads(line)
+                    if dimension and entry.get("dimension") != dimension:
+                        continue
+                    key = f"{entry.get('dimension', '?')}:{entry.get('generation_method', '?')}"
+                    if key not in counts:
+                        counts[key] = {"success": 0, "total": 0}
+                    counts[key]["total"] += 1
+                    if entry.get("success"):
+                        counts[key]["success"] += 1
+                except (json.JSONDecodeError, KeyError):
+                    continue
+
+        return {k: v["success"] / v["total"] if v["total"] > 0 else 0.0 for k, v in counts.items()}
 
 
 class QualityHealingEngine:
@@ -74,6 +140,7 @@ class QualityHealingEngine:
                 pass
 
         self._healing_history: List[QualityHealingResult] = []
+        self._feedback_store = FixFeedbackStore()
         self._load_history_from_db()
 
     def heal(
@@ -187,6 +254,21 @@ class QualityHealingEngine:
                 current_config,
             )
             result.validation_results = validation_results
+
+            # Record fix outcomes for feedback (harness engineering: errors teach)
+            for applied_fix in result.applied_fixes:
+                validation_match = next(
+                    (v for v in validation_results if v.dimension == applied_fix.dimension),
+                    None,
+                )
+                self._feedback_store.record(
+                    fix_id=applied_fix.fix_id,
+                    dimension=applied_fix.dimension,
+                    category=applied_fix.dimension,  # Use dimension as category
+                    generation_method=applied_fix.generation_method,
+                    success=validation_match.success if validation_match else False,
+                    reason=str(validation_match.details) if validation_match else "no validation result",
+                )
 
             # Step 5: Re-assess overall score (pass execution_history so
             # output_consistency is evaluated against real data, not provisional)

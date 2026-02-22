@@ -476,6 +476,35 @@ class GoldenDataGenerator:
             return []
 
         entries = self._parse_entries(raw_response, detection_type)
+
+        # Validate entries against input schema and retry invalid ones
+        try:
+            from app.detection_enterprise.input_schemas import validate_input
+            valid_entries = []
+            invalid_errors = []
+            for entry in entries:
+                ok, err = validate_input(detection_type.value, entry.input_data)
+                if ok:
+                    valid_entries.append(entry)
+                else:
+                    invalid_errors.append(err)
+
+            if invalid_errors and len(valid_entries) < count:
+                # Feed errors back as context for retry (harness engineering: errors teach)
+                logger.info(
+                    "Retrying %d invalid entries for %s with error feedback",
+                    len(invalid_errors), detection_type.value,
+                )
+                retry_entries = self._retry_with_feedback(
+                    detection_type, count - len(valid_entries),
+                    invalid_errors, examples,
+                )
+                valid_entries.extend(retry_entries)
+
+            entries = valid_entries
+        except ImportError:
+            pass  # input_schemas not available, skip validation
+
         logger.info(
             "Parsed %d/%d entries for %s", len(entries), count, detection_type.value,
         )
@@ -648,6 +677,40 @@ Return ONLY the JSON array, no other text."""
         except Exception as exc:
             logger.error("LLM call failed: %s", exc)
             return ""
+
+    def _retry_with_feedback(
+        self,
+        detection_type: DetectionType,
+        count: int,
+        errors: List[str],
+        examples: List[GoldenDatasetEntry],
+    ) -> List[GoldenDatasetEntry]:
+        """Retry generation with error feedback (harness: errors as teaching context)."""
+        type_info = TYPE_PROMPTS.get(detection_type.value, {})
+        error_context = "\n".join(f"- {err}" for err in errors[:10])
+
+        retry_prompt = f"""You previously generated entries for detection type "{detection_type.value}" but some were invalid.
+
+Errors found:
+{error_context}
+
+The input_data schema MUST match:
+{type_info.get('schema', 'See original prompt')}
+
+Generate {count} replacement entries that fix these errors. Each entry must have:
+- "input_data": <object matching the schema EXACTLY>
+- "expected_detected": <boolean>
+- "expected_confidence_min": <float>
+- "expected_confidence_max": <float>
+- "description": <string>
+- "tags": <list of strings>
+
+Split evenly between positive and negative samples. Return ONLY a JSON array."""
+
+        raw = self._call_llm(retry_prompt)
+        if not raw:
+            return []
+        return self._parse_entries(raw, detection_type)
 
     def _parse_entries(
         self,

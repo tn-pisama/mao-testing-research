@@ -41,6 +41,7 @@ class CalibrationResult:
     true_negatives: int
     false_positives: int
     false_negatives: int
+    ece: float = 0.0
 
 
 # ---------------------------------------------------------------------------
@@ -499,6 +500,56 @@ def _stratified_split(
     return splits
 
 
+def _compute_ece(
+    predictions: List[Tuple[bool, float]],
+    ground_truths: List[bool],
+    threshold: float,
+    n_bins: int = 5,
+) -> float:
+    """Compute Expected Calibration Error.
+
+    Measures how well confidence scores match actual accuracy.
+    Lower is better (0.0 = perfectly calibrated).
+
+    Uses the threshold to determine predicted labels, then bins by
+    confidence and compares predicted accuracy vs actual accuracy per bin.
+    """
+    if not predictions:
+        return 0.0
+
+    # Collect (confidence, correct) pairs
+    pairs = []
+    for (detected, confidence), expected in zip(predictions, ground_truths):
+        predicted_positive = detected and confidence >= threshold
+        correct = (predicted_positive == expected)
+        pairs.append((confidence, correct))
+
+    if not pairs:
+        return 0.0
+
+    # Bin by confidence
+    bin_size = 1.0 / n_bins
+    total_ece = 0.0
+    total_samples = len(pairs)
+
+    for bin_idx in range(n_bins):
+        bin_lower = bin_idx * bin_size
+        bin_upper = (bin_idx + 1) * bin_size
+
+        bin_pairs = [(conf, correct) for conf, correct in pairs
+                     if bin_lower <= conf < bin_upper]
+
+        if not bin_pairs:
+            continue
+
+        avg_confidence = sum(conf for conf, _ in bin_pairs) / len(bin_pairs)
+        accuracy = sum(1 for _, correct in bin_pairs if correct) / len(bin_pairs)
+
+        total_ece += (len(bin_pairs) / total_samples) * abs(accuracy - avg_confidence)
+
+    return round(total_ece, 4)
+
+
 def calibrate_single(
     detection_type: DetectionType,
     entries: List[GoldenDatasetEntry],
@@ -602,13 +653,17 @@ def calibrate_single(
 
         precision, recall, f1 = _precision_recall_f1(fold_tp, fold_tn, fold_fp, fold_fn)
 
+        # Compute ECE on full predictions using the averaged threshold
+        ece = _compute_ece(predictions, ground_truths, avg_threshold)
+
         logger.info(
-            "CV calibration for %s: threshold=%.2f  P=%.3f  R=%.3f  F1=%.3f  (fold thresholds=%s)",
+            "CV calibration for %s: threshold=%.2f  P=%.3f  R=%.3f  F1=%.3f  ECE=%.4f  (fold thresholds=%s)",
             detection_type.value,
             avg_threshold,
             precision,
             recall,
             f1,
+            ece,
             fold_best_thresholds,
         )
 
@@ -623,6 +678,7 @@ def calibrate_single(
             true_negatives=fold_tn,
             false_positives=fold_fp,
             false_negatives=fold_fn,
+            ece=ece,
         )
 
     # -----------------------------------------------------------------
@@ -647,6 +703,9 @@ def calibrate_single(
     tp, tn, fp, fn = best_metrics
     precision, recall, f1 = _precision_recall_f1(tp, tn, fp, fn)
 
+    # Compute ECE on full predictions using best threshold
+    ece = _compute_ece(predictions, ground_truths, best_threshold)
+
     return CalibrationResult(
         detection_type=detection_type.value,
         optimal_threshold=best_threshold,
@@ -658,6 +717,7 @@ def calibrate_single(
         true_negatives=tn,
         false_positives=fp,
         false_negatives=fn,
+        ece=ece,
     )
 
 
@@ -831,6 +891,14 @@ if __name__ == "__main__":
         "--phoenix-endpoint", type=str, default="http://localhost:6006/v1/traces",
         help="Phoenix OTLP endpoint (default: http://localhost:6006/v1/traces)",
     )
+    parser.add_argument(
+        "--apply-thresholds", action="store_true",
+        help="Auto-apply calibrated thresholds to threshold config",
+    )
+    parser.add_argument(
+        "--dry-run", action="store_true",
+        help="Print report only — skip threshold application and history save",
+    )
     args = parser.parse_args()
 
     logging.basicConfig(
@@ -903,11 +971,29 @@ if __name__ == "__main__":
             f"FP={metrics['false_positives']}  "
             f"FN={metrics['false_negatives']}"
         )
+        if "ece" in metrics:
+            print(f"    ECE               : {metrics['ece']:.4f}")
 
     print("\n" + "=" * 72)
 
-    # Save to history (unless --no-history)
-    if not args.no_history:
+    # Apply thresholds (unless --dry-run)
+    if args.apply_thresholds and not args.dry_run:
+        from app.detection_enterprise.threshold_config import ThresholdConfig
+        config = ThresholdConfig()
+        changes = config.update_from_calibration(report)
+        config.save()
+        if changes:
+            print(f"\n  Thresholds updated ({len(changes)} changed):")
+            for dtype, delta in sorted(changes.items()):
+                print(f"    {dtype}: {delta['old']:.2f} \u2192 {delta['new']:.2f} (F1={delta['f1']:.4f})")
+        else:
+            print(f"\n  Thresholds unchanged (no significant changes)")
+
+    if args.dry_run:
+        print("\n  Dry run \u2014 no thresholds or history saved")
+
+    # Save to history (unless --no-history or --dry-run)
+    if not args.no_history and not args.dry_run:
         from app.detection_enterprise.calibration_history import (
             CalibrationHistory, create_experiment_from_report,
         )

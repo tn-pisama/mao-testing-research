@@ -49,6 +49,12 @@ jobs:
           cd backend
           pip install -r requirements-ci.txt
 
+      - name: Lint
+        run: |
+          pip install ruff
+          cd backend
+          ruff check app/ --select E,W,F --ignore E501
+
       - name: Run tests
         env:
           DATABASE_URL: postgresql+asyncpg://mao:mao@localhost:5432/mao
@@ -56,7 +62,7 @@ jobs:
           JWT_SECRET: aB3kJ9mLpQ2vXnRw5zFcGhIe8tYo1uNiWdE7sH4jKlM
         run: |
           cd backend
-          pytest --cov=app tests/ -v
+          pytest --cov=app --cov-fail-under=70 tests/ -v
 
       - name: Security scan
         run: |

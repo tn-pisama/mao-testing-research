@@ -141,6 +141,25 @@ class MAOMetrics:
             ["tenant_id", "eval_type"],
             buckets=[0.1, 0.2, 0.3, 0.4, 0.5, 0.6, 0.7, 0.8, 0.9, 1.0],
         )
+
+        # --- Per-detector calibration metrics (harness engineering) ---
+        self.detector_f1 = Gauge(
+            "pisama_detector_f1",
+            "Current calibrated F1 score per detector",
+            ["detector_type"],
+        )
+
+        self.detector_threshold = Gauge(
+            "pisama_detector_threshold",
+            "Current optimal threshold per detector",
+            ["detector_type"],
+        )
+
+        self.detector_ece = Gauge(
+            "pisama_detector_ece",
+            "Expected Calibration Error per detector",
+            ["detector_type"],
+        )
     
     def record_trace(self, tenant_id: str, framework: str, status: str):
         self.traces_total.inc(tenant_id=tenant_id, framework=framework, status=status)
@@ -165,6 +184,14 @@ class MAOMetrics:
     def record_eval(self, tenant_id: str, eval_type: str, score: float):
         self.eval_scores.observe(score, tenant_id=tenant_id, eval_type=eval_type)
 
+    def update_calibration_metrics(self, report: dict) -> None:
+        """Update per-detector gauges from a calibration report."""
+        for dtype, metrics in report.get("results", {}).items():
+            self.detector_f1.set(metrics.get("f1", 0.0), detector_type=dtype)
+            self.detector_threshold.set(metrics.get("optimal_threshold", 0.5), detector_type=dtype)
+            if "ece" in metrics:
+                self.detector_ece.set(metrics["ece"], detector_type=dtype)
+
 
 class PrometheusExporter:
     def __init__(self, metrics: MAOMetrics):
@@ -182,7 +209,10 @@ class PrometheusExporter:
         lines.extend(self._export_histogram(self.metrics.ingestion_latency))
         lines.extend(self._export_histogram(self.metrics.detection_latency))
         lines.extend(self._export_histogram(self.metrics.eval_scores))
-        
+        lines.extend(self._export_gauge(self.metrics.detector_f1))
+        lines.extend(self._export_gauge(self.metrics.detector_threshold))
+        lines.extend(self._export_gauge(self.metrics.detector_ece))
+
         return "\n".join(lines)
     
     def _format_labels(self, label_tuple: tuple) -> str:

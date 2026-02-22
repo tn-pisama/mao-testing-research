@@ -113,4 +113,35 @@ def test_detectors_below_target_count():
         warning_msg = "Detectors below target F1 ({}):\n".format(TARGET_F1)
         for name, f1 in sorted_below:
             warning_msg += f"  {name}: {f1:.4f}\n"
-        pytest.warns(None)  # Just log it, don't fail
+        import warnings
+        warnings.warn(warning_msg, stacklevel=1)
+
+
+@pytest.mark.slow
+def test_no_significant_f1_regression():
+    """No detector should drop more than 0.10 F1 vs previous calibration."""
+    from app.detection_enterprise.calibration_history import CalibrationHistory
+
+    history = CalibrationHistory()
+    experiments = history.load_all()
+    if len(experiments) < 2:
+        pytest.skip("Need at least 2 experiments for regression comparison")
+
+    current = experiments[-1]
+    previous = experiments[-2]
+
+    regressions = []
+    for dtype in current.results:
+        if dtype in previous.results:
+            current_f1 = current.results[dtype].get("f1", 0.0)
+            previous_f1 = previous.results[dtype].get("f1", 0.0)
+            delta = current_f1 - previous_f1
+            if delta < -0.10:
+                regressions.append(
+                    f"{dtype}: {previous_f1:.4f} → {current_f1:.4f} ({delta:+.4f})"
+                )
+
+    assert not regressions, (
+        f"Significant F1 regressions (>0.10 drop) vs previous experiment:\n"
+        + "\n".join(f"  {r}" for r in regressions)
+    )

@@ -26,6 +26,9 @@ async def metrics_json():
         "tokens": dict(mao_metrics.tokens_total.get_all()),
         "cost": dict(mao_metrics.cost_total.get_all()),
         "active_traces": dict(mao_metrics.active_traces.get_all()),
+        "detector_f1": dict(mao_metrics.detector_f1.get_all()),
+        "detector_threshold": dict(mao_metrics.detector_threshold.get_all()),
+        "detector_ece": dict(mao_metrics.detector_ece.get_all()),
     }
 
 
