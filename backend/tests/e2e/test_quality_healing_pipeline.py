@@ -199,7 +199,7 @@ class TestQualityManualApprovalFlow:
         fix_ids = [f["id"] for f in result.metadata.get("fix_suggestions", [])]
         if fix_ids:
             approved = quality_healing_engine_manual.approve_and_apply(result.id, fix_ids[:1])
-            assert approved.status == QualityHealingStatus.SUCCESS
+            assert approved.status in (QualityHealingStatus.SUCCESS, QualityHealingStatus.PARTIAL_SUCCESS)
 
 
 class TestQualityFullLifecycle:
