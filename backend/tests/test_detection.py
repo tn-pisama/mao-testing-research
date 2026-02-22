@@ -1,4 +1,6 @@
 import pytest
+from unittest.mock import MagicMock, patch
+import numpy as np
 from app.detection.loop import MultiLevelLoopDetector, StateSnapshot
 from app.detection.corruption import SemanticCorruptionDetector, StateSnapshot as CorruptionState, Schema
 from app.detection.persona import PersonaConsistencyScorer, Agent, RoleType
@@ -338,6 +340,20 @@ class TestPersonaScorer:
 class TestInjectionDetector:
     def setup_method(self):
         self.detector = InjectionDetector()
+        # Mock semantic check to avoid MPS GPU memory issues during full suite runs.
+        # Pattern matching and jailbreak signature detection still run normally.
+        # Returns high semantic score for attack-like texts, low for clean inputs.
+        from app.detection.injection import JAILBREAK_SIGNATURES
+        def _mock_semantic_check(text):
+            text_lower = text.lower()
+            if any(sig in text_lower for sig in JAILBREAK_SIGNATURES):
+                return 0.85
+            attack_keywords = ["ignore", "override", "bypass", "jailbreak", "dan mode",
+                               "system prompt", "developer mode", "pretend"]
+            if any(kw in text_lower for kw in attack_keywords):
+                return 0.6
+            return 0.1
+        self.detector._semantic_injection_check = _mock_semantic_check
     
     def test_clean_input_no_detection(self):
         text = "What is the capital of France?"
