@@ -595,7 +595,7 @@ class TestModuleImports:
         """Test DOCKER_AVAILABLE reflects actual availability."""
         try:
             import docker
-            expected = True
+            expected = hasattr(docker, 'from_env')
         except ImportError:
             expected = False
 

@@ -126,10 +126,13 @@ class TestN8nApiClient:
 
             result = await client.update_workflow("wf-test-001", sample_workflow)
 
+            # update_workflow strips to allowed_fields (name, nodes, connections, settings)
+            expected_json = {k: v for k, v in sample_workflow.items()
+                            if k in {"name", "nodes", "connections", "settings"}}
             mock_http_client.request.assert_called_once_with(
                 method="PUT",
                 url="/workflows/wf-test-001",
-                json=sample_workflow,
+                json=expected_json,
                 params=None,
             )
             assert result["versionId"] == 2

@@ -21,7 +21,8 @@ from pathlib import Path
 
 try:
     import docker
-    DOCKER_AVAILABLE = True
+    # Verify it's the real docker SDK, not a local namespace package
+    DOCKER_AVAILABLE = hasattr(docker, 'from_env')
 except ImportError:
     DOCKER_AVAILABLE = False
 

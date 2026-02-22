@@ -68,29 +68,41 @@ class TestEmbeddingService:
     @patch('sentence_transformers.SentenceTransformer')
     def test_e5_prefix_for_passages(self, mock_st):
         from app.core.embeddings import get_embedder
-        
+
         mock_model = MagicMock()
         mock_model.encode.return_value = np.random.randn(1024).astype(np.float32)
         mock_st.return_value = mock_model
-        
-        embedder = get_embedder()
-        embedder.encode("test text", is_query=False)
-        
+
+        mock_settings = MagicMock()
+        mock_settings.embedding_model = "intfloat/e5-large-v2"
+        mock_settings.embedding_dimensions = 1024
+        mock_settings.embedding_instruction_prefix = True
+
+        with patch('app.config.get_settings', return_value=mock_settings):
+            embedder = get_embedder()
+            embedder.encode("test text", is_query=False)
+
         call_args = mock_model.encode.call_args
         called_text = call_args[0][0]
         assert called_text.startswith("passage: ")
-    
+
     @patch('sentence_transformers.SentenceTransformer')
     def test_e5_prefix_for_queries(self, mock_st):
         from app.core.embeddings import get_embedder
-        
+
         mock_model = MagicMock()
         mock_model.encode.return_value = np.random.randn(1024).astype(np.float32)
         mock_st.return_value = mock_model
-        
-        embedder = get_embedder()
-        embedder.encode_query("test query")
-        
+
+        mock_settings = MagicMock()
+        mock_settings.embedding_model = "intfloat/e5-large-v2"
+        mock_settings.embedding_dimensions = 1024
+        mock_settings.embedding_instruction_prefix = True
+
+        with patch('app.config.get_settings', return_value=mock_settings):
+            embedder = get_embedder()
+            embedder.encode_query("test query")
+
         call_args = mock_model.encode.call_args
         called_text = call_args[0][0]
         assert called_text.startswith("query: ")
