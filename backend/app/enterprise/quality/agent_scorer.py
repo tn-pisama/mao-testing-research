@@ -135,10 +135,13 @@ class AgentQualityScorer:
                     try:
                         llm_result = llm_method(node)
                         dim_obj.score = self._blend_scores(dim_obj.score, llm_result, dim_obj)
+                        dim_obj.confidence = 0.8
                     except Exception:
                         dim_obj.evidence["scoring_tier"] = "heuristic_fallback"
+                        dim_obj.confidence = 0.6
                 else:
                     dim_obj.evidence["scoring_tier"] = "heuristic"
+                    dim_obj.confidence = 0.6
 
         dimensions = [dim_role, dim_output, dim_error, dim_tool, dim_config]
 

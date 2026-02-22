@@ -195,6 +195,23 @@ class FlawedWorkflowDetector:
                 missing.append(node.id)
         return missing
 
+    def _detect_orphan_nodes(
+        self,
+        nodes: list[WorkflowNode],
+        forward: dict,
+        backward: dict,
+    ) -> list[str]:
+        """Detect nodes with no incoming AND no outgoing connections (disconnected)."""
+        if len(nodes) <= 1:
+            return []
+        orphans = []
+        for node in nodes:
+            has_incoming = bool(backward.get(node.id))
+            has_outgoing = bool(forward.get(node.id))
+            if not has_incoming and not has_outgoing:
+                orphans.append(node.id)
+        return orphans
+
     def _detect_missing_termination(
         self,
         nodes: list[WorkflowNode],
@@ -252,7 +269,12 @@ class FlawedWorkflowDetector:
         if bottlenecks:
             issues.append(WorkflowIssue.BOTTLENECK)
             problematic.extend(bottlenecks)
-        
+
+        orphans = self._detect_orphan_nodes(nodes, forward, backward)
+        if orphans:
+            issues.append(WorkflowIssue.ORPHAN_NODE)
+            problematic.extend(orphans)
+
         if self.require_error_handling:
             missing_handlers = self._detect_missing_error_handling(nodes)
             if len(missing_handlers) > len(nodes) / 2:

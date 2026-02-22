@@ -154,8 +154,11 @@ class QualityHealingEngine:
                         fixes_to_apply[i] = self._llm_fix_generator.enrich_fix(
                             fix, self._find_target_node(fix, current_config), workflow_config
                         )
-                    except Exception:
-                        pass  # Keep template fix as fallback
+                    except Exception as e:
+                        logger.warning(
+                            "LLM enrichment failed for fix %s (dimension=%s): %s — using template fix",
+                            fix.id, fix.dimension, e,
+                        )
 
             for fix in fixes_to_apply:
                 try:
@@ -366,6 +369,12 @@ class QualityHealingEngine:
         # were applied (the pre-all-fixes state), so rolling back to it undoes
         # the entire chain of applied fixes in one step.
         original = result.applied_fixes[0].original_state
+        if not original or not original.get("nodes"):
+            raise ValueError(
+                f"Cannot rollback healing {healing_id}: original workflow state is empty. "
+                f"This record may predate the serialization fix."
+            )
+
         result.status = QualityHealingStatus.ROLLED_BACK
         result.metadata["rolled_back_at"] = datetime.now(UTC).isoformat()
 
@@ -482,7 +491,7 @@ class QualityHealingEngine:
                             target_component=fix_dict["target_component"],
                             original_state=fix_dict.get("original_state", {}),
                             modified_state=fix_dict.get("modified_state", {}),
-                            rollback_available=fix_dict.get("rollback_available", True),
+                            rollback_available=bool(fix_dict.get("original_state")),
                             generation_method=fix_dict.get("generation_method", "heuristic"),
                         )
                         result.applied_fixes.append(applied)

@@ -80,12 +80,14 @@ class DimensionScore:
     suggestions: List[str] = field(default_factory=list)
     reasoning: Optional[str] = None
     is_provisional: bool = False
+    confidence: float = 0.6  # 0.6=heuristic, 0.8=LLM blended, 0.9=with execution data
 
     def to_dict(self) -> Dict[str, Any]:
         result = {
             "dimension": self.dimension,
             "score": round(self.score, 3),
             "weight": self.weight,
+            "confidence": round(self.confidence, 2),
             "issues": self.issues,
             "evidence": self.evidence,
             "suggestions": self.suggestions,

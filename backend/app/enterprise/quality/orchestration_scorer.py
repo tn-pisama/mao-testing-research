@@ -154,11 +154,14 @@ class OrchestrationQualityScorer:
                                 "tokens": llm_scores.get("tokens", 0),
                             }
                             dim_obj.score = self._blend_scores(dim_obj.score, llm_result, dim_obj)
+                            dim_obj.confidence = 0.8
                         else:
                             dim_obj.evidence["scoring_tier"] = "heuristic"
+                            dim_obj.confidence = 0.6
             except Exception:
                 for dim_obj in core_dims:
                     dim_obj.evidence["scoring_tier"] = "heuristic_fallback"
+                    dim_obj.confidence = 0.6
 
         dimensions.extend(core_dims)
 

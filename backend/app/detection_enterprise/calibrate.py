@@ -4,6 +4,7 @@ Runs each detector against its golden test samples, finds optimal confidence
 thresholds via grid search, and reports precision/recall/F1 metrics.
 """
 
+import hashlib
 import json
 import logging
 from dataclasses import dataclass, asdict
@@ -237,7 +238,28 @@ def _build_detector_runners() -> Dict[DetectionType, Any]:
         def _run_completion(entry: GoldenDatasetEntry) -> Tuple[bool, float]:
             task = entry.input_data.get("task", "")
             agent_output = entry.input_data.get("agent_output", "")
-            result = completion_detector.detect(task, agent_output)
+
+            # Convert subtask names to dict format expected by the detector.
+            # Golden data stores subtasks as plain strings (names); the detector
+            # expects List[Dict] with 'name' and 'status' keys.  Without
+            # explicit status info we mark them as "pending" so the detector can
+            # compare the subtask list against evidence in the agent output.
+            raw_subtasks = entry.input_data.get("subtasks", None)
+            subtasks = None
+            if raw_subtasks:
+                subtasks = [
+                    {"name": s, "status": "pending"} if isinstance(s, str) else s
+                    for s in raw_subtasks
+                ]
+
+            success_criteria = entry.input_data.get("success_criteria", None)
+
+            result = completion_detector.detect(
+                task,
+                agent_output,
+                subtasks=subtasks,
+                success_criteria=success_criteria,
+            )
             return result.detected, result.confidence
 
         runners[DetectionType.COMPLETION] = _run_completion
@@ -289,16 +311,19 @@ def _build_detector_runners() -> Dict[DetectionType, Any]:
     except Exception as exc:
         logger.warning("Could not import derailment detector: %s", exc)
 
-    # --- SPECIFICATION (tiered detector adapter) ---
+    # --- SPECIFICATION (direct detector adapter) ---
     try:
-        from app.detection_enterprise.tiered import create_tiered_specification_detector
+        from app.detection.specification import SpecificationMismatchDetector
 
-        _tiered_specification = create_tiered_specification_detector()
+        _spec_detector = SpecificationMismatchDetector()
 
         def _run_specification(entry: GoldenDatasetEntry) -> Tuple[bool, float]:
-            task_specification = entry.input_data.get("task_specification", "")
             user_intent = entry.input_data.get("user_intent", "")
-            result = _tiered_specification.detect(text=task_specification, context=user_intent)
+            task_specification = entry.input_data.get("task_specification", "")
+            result = _spec_detector.detect(
+                user_intent=user_intent,
+                task_specification=task_specification,
+            )
             return result.detected, result.confidence
 
         runners[DetectionType.SPECIFICATION] = _run_specification
@@ -337,20 +362,43 @@ def _build_detector_runners() -> Dict[DetectionType, Any]:
     except Exception as exc:
         logger.warning("Could not import withholding detector: %s", exc)
 
-    # --- WORKFLOW (tiered detector adapter) ---
+    # --- WORKFLOW (direct detector adapter) ---
     try:
-        from app.detection_enterprise.tiered import create_tiered_workflow_detector
+        from app.detection.workflow import FlawedWorkflowDetector, WorkflowNode
 
-        _tiered_workflow = create_tiered_workflow_detector()
+        _workflow_detector = FlawedWorkflowDetector(require_error_handling=False)
 
         def _run_workflow(entry: GoldenDatasetEntry) -> Tuple[bool, float]:
             workflow_def = entry.input_data.get("workflow_definition", {})
-            workflow_nodes = workflow_def.get("nodes", [])
-            workflow_connections = workflow_def.get("connections", [])
-            result = _tiered_workflow.detect(
-                text=str(workflow_nodes),
-                context=str(workflow_connections),
-            )
+            raw_nodes = workflow_def.get("nodes", [])
+            raw_connections = workflow_def.get("connections", [])
+
+            # Build incoming/outgoing maps from connections
+            outgoing_map: Dict[str, List[str]] = {}
+            incoming_map: Dict[str, List[str]] = {}
+            for conn in raw_connections:
+                src = conn["from"]
+                dst = conn["to"]
+                outgoing_map.setdefault(src, []).append(dst)
+                incoming_map.setdefault(dst, []).append(src)
+
+            # Construct WorkflowNode objects from node names + connection maps
+            nodes = []
+            for name in raw_nodes:
+                node_type = "start" if name not in incoming_map else (
+                    "end" if name not in outgoing_map else "agent"
+                )
+                nodes.append(WorkflowNode(
+                    id=name,
+                    name=name,
+                    node_type=node_type,
+                    incoming=incoming_map.get(name, []),
+                    outgoing=outgoing_map.get(name, []),
+                    has_error_handler="error" in name.lower(),
+                    is_terminal=name not in outgoing_map,
+                ))
+
+            result = _workflow_detector.detect(nodes)
             return result.detected, result.confidence
 
         runners[DetectionType.WORKFLOW] = _run_workflow
@@ -399,11 +447,67 @@ def _precision_recall_f1(tp: int, tn: int, fp: int, fn: int) -> Tuple[float, flo
     return precision, recall, f1
 
 
+def _stratified_split(
+    entries: List[GoldenDatasetEntry],
+    n_folds: int = 3,
+) -> List[Tuple[List[int], List[int]]]:
+    """Create stratified fold indices for cross-validation.
+
+    Splits entries into *n_folds* folds such that each fold preserves
+    (approximately) the class distribution of positive/negative samples.
+
+    Returns a list of (train_indices, test_indices) tuples, one per fold.
+    """
+    positive_idx = [i for i, e in enumerate(entries) if e.expected_detected]
+    negative_idx = [i for i, e in enumerate(entries) if not e.expected_detected]
+
+    # Deterministic shuffle using a simple seed-based approach
+    def _seeded_shuffle(lst: List[int], seed: int = 42) -> List[int]:
+        """Simple deterministic shuffle without external dependencies."""
+        result = list(lst)
+        n = len(result)
+        h = seed
+        for i in range(n - 1, 0, -1):
+            h = int(hashlib.md5(f"{seed}_{i}".encode()).hexdigest()[:8], 16)
+            j = h % (i + 1)
+            result[i], result[j] = result[j], result[i]
+        return result
+
+    positive_idx = _seeded_shuffle(positive_idx)
+    negative_idx = _seeded_shuffle(negative_idx)
+
+    # Distribute indices across folds
+    folds_pos: List[List[int]] = [[] for _ in range(n_folds)]
+    folds_neg: List[List[int]] = [[] for _ in range(n_folds)]
+
+    for i, idx in enumerate(positive_idx):
+        folds_pos[i % n_folds].append(idx)
+    for i, idx in enumerate(negative_idx):
+        folds_neg[i % n_folds].append(idx)
+
+    splits = []
+    for fold_i in range(n_folds):
+        test_idx = folds_pos[fold_i] + folds_neg[fold_i]
+        train_idx = []
+        for fold_j in range(n_folds):
+            if fold_j != fold_i:
+                train_idx.extend(folds_pos[fold_j])
+                train_idx.extend(folds_neg[fold_j])
+        splits.append((train_idx, test_idx))
+
+    return splits
+
+
 def calibrate_single(
     detection_type: DetectionType,
     entries: List[GoldenDatasetEntry],
 ) -> Optional[CalibrationResult]:
     """Run calibration for a single detector type.
+
+    When ``len(entries) >= 8``, uses 3-fold stratified cross-validation to
+    find the optimal threshold on training folds and reports the averaged
+    held-out metrics.  For fewer samples, falls back to grid search on the
+    full dataset (original behaviour).
 
     Args:
         detection_type: The type of detection to calibrate.
@@ -448,8 +552,81 @@ def calibrate_single(
             predictions.append((False, 0.0))
             ground_truths.append(entry.expected_detected)
 
-    # Grid search: find the threshold that maximises F1.  Ties broken by
-    # higher precision (fewer false positives).
+    # -----------------------------------------------------------------
+    # Cross-validation path (>= 8 samples)
+    # -----------------------------------------------------------------
+    n_positive = sum(1 for g in ground_truths if g)
+    n_negative = len(ground_truths) - n_positive
+    use_cv = len(entries) >= 8 and n_positive >= 2 and n_negative >= 2
+
+    if use_cv:
+        n_folds = 3
+        splits = _stratified_split(entries, n_folds=n_folds)
+
+        fold_best_thresholds = []
+        fold_tp = fold_tn = fold_fp = fold_fn = 0
+
+        for train_idx, test_idx in splits:
+            # Find best threshold on the training fold
+            train_preds = [predictions[i] for i in train_idx]
+            train_labels = [ground_truths[i] for i in train_idx]
+
+            best_thr = THRESHOLD_GRID[0]
+            best_f1_train = -1.0
+            best_prec_train = -1.0
+
+            for thr in THRESHOLD_GRID:
+                tp, tn, fp, fn = _compute_metrics_at_threshold(train_preds, train_labels, thr)
+                prec, rec, f1 = _precision_recall_f1(tp, tn, fp, fn)
+                if f1 > best_f1_train or (f1 == best_f1_train and prec > best_prec_train):
+                    best_f1_train = f1
+                    best_prec_train = prec
+                    best_thr = thr
+
+            fold_best_thresholds.append(best_thr)
+
+            # Evaluate on held-out fold
+            test_preds = [predictions[i] for i in test_idx]
+            test_labels = [ground_truths[i] for i in test_idx]
+            tp, tn, fp, fn = _compute_metrics_at_threshold(test_preds, test_labels, best_thr)
+            fold_tp += tp
+            fold_tn += tn
+            fold_fp += fp
+            fold_fn += fn
+
+        # Average threshold across folds
+        avg_threshold = round(sum(fold_best_thresholds) / len(fold_best_thresholds), 2)
+        # Snap to nearest grid point
+        avg_threshold = min(THRESHOLD_GRID, key=lambda t: abs(t - avg_threshold))
+
+        precision, recall, f1 = _precision_recall_f1(fold_tp, fold_tn, fold_fp, fold_fn)
+
+        logger.info(
+            "CV calibration for %s: threshold=%.2f  P=%.3f  R=%.3f  F1=%.3f  (fold thresholds=%s)",
+            detection_type.value,
+            avg_threshold,
+            precision,
+            recall,
+            f1,
+            fold_best_thresholds,
+        )
+
+        return CalibrationResult(
+            detection_type=detection_type.value,
+            optimal_threshold=avg_threshold,
+            precision=round(precision, 4),
+            recall=round(recall, 4),
+            f1=round(f1, 4),
+            sample_count=len(entries),
+            true_positives=fold_tp,
+            true_negatives=fold_tn,
+            false_positives=fold_fp,
+            false_negatives=fold_fn,
+        )
+
+    # -----------------------------------------------------------------
+    # Fallback: full-dataset grid search (< 8 samples)
+    # -----------------------------------------------------------------
     best_threshold = THRESHOLD_GRID[0]
     best_f1 = -1.0
     best_precision = -1.0

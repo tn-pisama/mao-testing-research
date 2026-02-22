@@ -35,7 +35,7 @@ class HallucinationDetector:
         confidence_scaling: float = 1.0,
     ):
         self._embedder = None
-        self.grounding_threshold = grounding_threshold or 0.65
+        self.grounding_threshold = grounding_threshold or 0.55
         self.confidence_scaling = confidence_scaling
         self.citation_pattern = re.compile(r'\[(\d+)\]|\(source:?\s*([^)]+)\)|\{\{cite:[^}]+\}\}', re.IGNORECASE)
         self.confidence_phrases = [
@@ -272,6 +272,10 @@ class HallucinationDetector:
             (r'\d+(?:\.\d+)?% of (?:people|users|companies)', "Specific percentage statistic"),
             (r'(?:Dr\.|Professor) [A-Z][a-z]+ [A-Z][a-z]+', "Named expert"),
             (r'published in (?:the )?[A-Z][a-zA-Z\s]+ Journal', "Journal reference"),
+            # Fabricated URL patterns
+            (r'https?://(?:www\.)?[a-z]+(?:-[a-z]+)+\.(?:com|org|io)/[a-z0-9/-]+', "Specific URL"),
+            (r'https?://(?:docs|api|support)\.[a-z]+\.(?:com|org)/[a-z0-9/-]+', "Documentation URL"),
+            (r'(?:visit|see|check|refer to)\s+https?://\S+', "Referenced URL"),
         ]
         
         for pattern, desc in specific_patterns:

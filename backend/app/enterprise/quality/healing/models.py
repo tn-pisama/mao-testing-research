@@ -162,6 +162,8 @@ class QualityAppliedFix:
             "dimension": self.dimension,
             "applied_at": self.applied_at.isoformat(),
             "target_component": self.target_component,
+            "original_state": self.original_state,
+            "modified_state": self.modified_state,
             "rollback_available": self.rollback_available,
             "generation_method": self.generation_method,
         }

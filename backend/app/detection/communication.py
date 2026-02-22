@@ -148,6 +148,12 @@ class CommunicationBreakdownDetector:
             "create", "update", "delete", "get", "fetch", "send", "process",
             "analyze", "generate", "search", "find", "calculate", "compare",
             "summarize", "extract", "transform", "validate", "verify",
+            "confirm", "acknowledge", "respond", "reply", "escalate",
+            "delegate", "forward", "submit", "report", "transfer",
+            "approve", "reject", "notify", "announce", "broadcast",
+            "check", "monitor", "review", "implement", "deploy",
+            "configure", "install", "migrate", "test", "debug",
+            "fix", "resolve", "handle", "execute", "run",
         }
         
         request_actions = request_words & action_verbs
