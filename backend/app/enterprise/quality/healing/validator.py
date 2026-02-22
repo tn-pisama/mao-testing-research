@@ -6,10 +6,14 @@ Breaks circular validation by ensuring:
 - Both paths provide independent confirmation that fixes improved quality
 """
 
+import logging
 from typing import Dict, Any, List, Optional
 
 from ..models import QualityReport, DimensionScore
 from .models import QualityAppliedFix, QualityValidationResult
+from .n8n_schema import validate_fix_against_n8n_schema
+
+logger = logging.getLogger(__name__)
 
 
 class QualityFixValidator:
@@ -70,11 +74,89 @@ class QualityFixValidator:
         original_report: QualityReport,
         final_config: Dict[str, Any],
     ) -> List[QualityValidationResult]:
-        """Validate all applied fixes."""
+        """Validate all applied fixes.
+
+        Pipeline order:
+        1. n8n schema validation (warning-only, does not fail)
+        2. Cross-signal / heuristic / LLM validation per fix
+        """
         results: List[QualityValidationResult] = []
+
+        # Step 1: n8n schema validation on the final config nodes
+        self._run_n8n_schema_validation(applied_fixes, final_config)
+
+        # Step 2: Per-fix cross-signal validation
         for fix in applied_fixes:
-            results.append(self.validate(fix, original_report))
+            result = self.validate(fix, original_report)
+
+            # Attach any n8n schema warnings to the validation details
+            schema_warnings = self._n8n_schema_warnings.get(fix.fix_id, [])
+            if schema_warnings:
+                result.details["n8n_schema_warnings"] = schema_warnings
+
+            results.append(result)
+
         return results
+
+    def _run_n8n_schema_validation(
+        self,
+        applied_fixes: List[QualityAppliedFix],
+        final_config: Dict[str, Any],
+    ) -> None:
+        """Run n8n schema validation on applied fixes. Results stored as warnings."""
+        self._n8n_schema_warnings: Dict[str, List[str]] = {}
+
+        # Build a map of node_id -> node_type from the final config
+        node_type_map: Dict[str, str] = {}
+        for node in final_config.get("nodes", []):
+            node_id = node.get("id", node.get("name", ""))
+            node_type_map[node_id] = node.get("type", "")
+
+        for fix in applied_fixes:
+            # Determine the node type for this fix's target
+            node_type = node_type_map.get(fix.target_component, "")
+            if not node_type:
+                continue
+
+            # Extract changes: diff between original and modified state parameters
+            changes = self._extract_fix_changes(fix)
+            if not changes:
+                continue
+
+            schema_result = validate_fix_against_n8n_schema(changes, node_type)
+            if not schema_result.valid or schema_result.warnings:
+                warnings = schema_result.warnings.copy()
+                if schema_result.invalid_keys:
+                    warnings.append(
+                        f"Invalid parameter keys: {', '.join(schema_result.invalid_keys)}"
+                    )
+                self._n8n_schema_warnings[fix.fix_id] = warnings
+                for w in warnings:
+                    logger.warning(f"n8n schema validation [{fix.fix_id}]: {w}")
+
+    @staticmethod
+    def _extract_fix_changes(fix: QualityAppliedFix) -> Dict[str, Any]:
+        """Extract the parameter changes between original and modified state."""
+        changes: Dict[str, Any] = {}
+        original_nodes = {
+            n.get("id", n.get("name", "")): n
+            for n in fix.original_state.get("nodes", [])
+        }
+        modified_nodes = {
+            n.get("id", n.get("name", "")): n
+            for n in fix.modified_state.get("nodes", [])
+        }
+
+        target = fix.target_component
+        orig_params = original_nodes.get(target, {}).get("parameters", {})
+        mod_params = modified_nodes.get(target, {}).get("parameters", {})
+
+        # Find keys that were added or changed
+        for key, value in mod_params.items():
+            if key not in orig_params or orig_params[key] != value:
+                changes[key] = value
+
+        return changes
 
     def _cross_signal_validate(
         self,

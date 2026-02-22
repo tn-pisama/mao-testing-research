@@ -101,6 +101,13 @@ ERROR_CODES: Dict[str, ErrorCode] = {
             "agent's response."
         ),
         doc_link=f"{_DOC_BASE}QE-RC-003",
+        example_bad="Analyze the customer feedback and share your thoughts.",
+        example_good=(
+            "Analyze the customer feedback and return a JSON object with keys: "
+            '"sentiment" (positive/negative/neutral), "topics" (string array), '
+            '"urgency" (1-5).'
+        ),
+        quantified_target="Explicit output format (JSON schema, markdown, or structured template) in every agent prompt",
     ),
     "QE-RC-004": ErrorCode(
         code="QE-RC-004",
@@ -113,6 +120,13 @@ ERROR_CODES: Dict[str, ErrorCode] = {
             "your domain' to prevent scope creep and hallucination."
         ),
         doc_link=f"{_DOC_BASE}QE-RC-004",
+        example_bad="You are a helpful assistant. Answer any question the user asks.",
+        example_good=(
+            "You are an invoice processing agent. Only extract data from invoices. "
+            "Do not answer general questions. Never fabricate amounts or dates. "
+            "If a field is missing, return null instead of guessing."
+        ),
+        quantified_target="At least 2 boundary constraints (e.g. 'do not', 'only', 'never') per agent prompt",
     ),
     "QE-RC-005": ErrorCode(
         code="QE-RC-005",
@@ -183,6 +197,13 @@ ERROR_CODES: Dict[str, ErrorCode] = {
             "JSON schema in the system prompt."
         ),
         doc_link=f"{_DOC_BASE}QE-OC-003",
+        example_bad='{ "responseFormat": "text" }  // free-form text output from a data extraction agent',
+        example_good=(
+            '{ "responseFormat": "json_object" }\n'
+            '// System prompt includes: "Return JSON matching schema: '
+            '{ status: string, items: array, total: number }"'
+        ),
+        quantified_target="All data-producing agents must use responseFormat: json_object or equivalent",
     ),
 
     # ── Error Handling (EH) ───────────────────────────────────────────────
@@ -226,6 +247,9 @@ ERROR_CODES: Dict[str, ErrorCode] = {
             "degrade gracefully instead of stopping."
         ),
         doc_link=f"{_DOC_BASE}QE-EH-003",
+        example_bad='{ "continueOnFail": false }  // workflow stops on any error',
+        example_good='{ "continueOnFail": true }  // downstream nodes receive error info and handle gracefully',
+        quantified_target="continueOnFail=true on all non-critical nodes; false only for validators",
     ),
     "QE-EH-004": ErrorCode(
         code="QE-EH-004",
@@ -238,6 +262,12 @@ ERROR_CODES: Dict[str, ErrorCode] = {
             "silent workflow failures."
         ),
         doc_link=f"{_DOC_BASE}QE-EH-004",
+        example_bad="Agent Node -> (no error output connected)",
+        example_good=(
+            "Agent Node -> [error output] -> Send Slack Alert\n"
+            "Agent Node -> [error output] -> Log to Database"
+        ),
+        quantified_target="Every agent node must have at least one error output path connected",
     ),
 
     # ── Tool Usage (TU) ──────────────────────────────────────────────────
@@ -292,6 +322,15 @@ ERROR_CODES: Dict[str, ErrorCode] = {
             "results reliably."
         ),
         doc_link=f"{_DOC_BASE}QE-TU-003",
+        example_bad='{ "name": "lookup_order", "parameters": {} }  // no schema defined',
+        example_good=(
+            '{ "name": "lookup_order", "parameters": {\n'
+            '    "type": "object",\n'
+            '    "properties": { "order_id": { "type": "string" } },\n'
+            '    "required": ["order_id"]\n'
+            "} }"
+        ),
+        quantified_target="Every tool must have a JSON schema for parameters with required fields specified",
     ),
     "QE-TU-004": ErrorCode(
         code="QE-TU-004",
@@ -304,6 +343,13 @@ ERROR_CODES: Dict[str, ErrorCode] = {
             "sub-agents with focused toolsets."
         ),
         doc_link=f"{_DOC_BASE}QE-TU-004",
+        example_bad="Agent with 15 tools: search, create, update, delete, list, export, import, ...",
+        example_good=(
+            "Split into 2 agents:\n"
+            "- CRUD Agent (4 tools): create, read, update, delete\n"
+            "- Analytics Agent (3 tools): search, export, report"
+        ),
+        quantified_target="Maximum 10 tools per agent; split into sub-agents if more are needed",
     ),
 
     # ── Config Appropriateness (CA) ───────────────────────────────────────
@@ -336,6 +382,12 @@ ERROR_CODES: Dict[str, ErrorCode] = {
             "break downstream parsing."
         ),
         doc_link=f"{_DOC_BASE}QE-CA-002",
+        example_bad='{ "maxTokens": 50 }  // truncated JSON output guaranteed',
+        example_good=(
+            '{ "maxTokens": 1024 }  // for short classifications\n'
+            '{ "maxTokens": 4096 }  // for detailed analysis or generation'
+        ),
+        quantified_target="maxTokens >= 256 for classification, >= 1024 for generation, >= 2048 for analysis",
     ),
     "QE-CA-003": ErrorCode(
         code="QE-CA-003",
@@ -348,6 +400,9 @@ ERROR_CODES: Dict[str, ErrorCode] = {
             "without notice."
         ),
         doc_link=f"{_DOC_BASE}QE-CA-003",
+        example_bad='{ "model": "" }  // provider picks whatever is default today',
+        example_good='{ "model": "gpt-4o-2024-08-06" }  // pinned model version for reproducibility',
+        quantified_target="Every agent node must specify an explicit model identifier",
     ),
 
     # ── Data Flow Clarity (DF) ────────────────────────────────────────────
@@ -362,6 +417,15 @@ ERROR_CODES: Dict[str, ErrorCode] = {
             "Disconnected nodes indicate dead code or missing data flow."
         ),
         doc_link=f"{_DOC_BASE}QE-DF-001",
+        example_bad=(
+            "Webhook Trigger -> Agent A -> (output)\n"
+            "Agent B (no input, no output)  // orphaned node"
+        ),
+        example_good=(
+            "Webhook Trigger -> Agent A -> Transform -> Agent B -> Response\n"
+            "// All nodes connected with clear input/output flow"
+        ),
+        quantified_target="100% connection coverage: every non-trigger node has input, every non-terminal has output",
     ),
     "QE-DF-002": ErrorCode(
         code="QE-DF-002",
@@ -374,6 +438,15 @@ ERROR_CODES: Dict[str, ErrorCode] = {
             "workflows self-documenting."
         ),
         doc_link=f"{_DOC_BASE}QE-DF-002",
+        example_bad=(
+            '{ "name": "AI Agent" }     // what does it do?\n'
+            '{ "name": "HTTP Request" } // which API?'
+        ),
+        example_good=(
+            '{ "name": "Extract Invoice Line Items" }\n'
+            '{ "name": "Fetch Customer from Salesforce" }'
+        ),
+        quantified_target="0 generic names; every node name describes its specific purpose",
     ),
     "QE-DF-003": ErrorCode(
         code="QE-DF-003",
@@ -386,6 +459,15 @@ ERROR_CODES: Dict[str, ErrorCode] = {
             "debug, test, and maintain."
         ),
         doc_link=f"{_DOC_BASE}QE-DF-003",
+        example_bad=(
+            '// Agent reads from global variable set by another node\n'
+            '{{ $workflow.variables.lastResult }}'
+        ),
+        example_good=(
+            '// Agent receives data via explicit connection\n'
+            '{{ $json.previousAgent.output }}'
+        ),
+        quantified_target="0 global variable references; all data passed via explicit node connections",
     ),
 
     # ── Complexity Management (CM) ────────────────────────────────────────
@@ -400,6 +482,14 @@ ERROR_CODES: Dict[str, ErrorCode] = {
             "keep each unit understandable."
         ),
         doc_link=f"{_DOC_BASE}QE-CM-001",
+        example_bad="Single workflow with 65 nodes handling ingestion, processing, and reporting",
+        example_good=(
+            "3 sub-workflows:\n"
+            "- Ingestion (8 nodes) -> Execute Workflow\n"
+            "- Processing (12 nodes) -> Execute Workflow\n"
+            "- Reporting (6 nodes)"
+        ),
+        quantified_target="10-30 nodes per workflow; use Execute Workflow node to decompose larger flows",
     ),
     "QE-CM-002": ErrorCode(
         code="QE-CM-002",
@@ -412,6 +502,16 @@ ERROR_CODES: Dict[str, ErrorCode] = {
             "and prone to timeout."
         ),
         doc_link=f"{_DOC_BASE}QE-CM-002",
+        example_bad=(
+            "Trigger -> IF -> IF -> Switch -> IF -> Agent -> IF -> ...\n"
+            "// 12 levels deep, impossible to follow"
+        ),
+        example_good=(
+            "Trigger -> Router (Switch) -> [Branch A sub-workflow]\n"
+            "                           -> [Branch B sub-workflow]\n"
+            "// Max 4 levels deep per branch"
+        ),
+        quantified_target="Maximum 10 levels of execution depth; extract deep branches into sub-workflows",
     ),
     "QE-CM-003": ErrorCode(
         code="QE-CM-003",
@@ -424,6 +524,15 @@ ERROR_CODES: Dict[str, ErrorCode] = {
             "that can be unit-tested independently."
         ),
         doc_link=f"{_DOC_BASE}QE-CM-003",
+        example_bad=(
+            "8 IF nodes + 3 Switch nodes = 20+ execution paths\n"
+            "// Cannot reasonably test all combinations"
+        ),
+        example_good=(
+            "Code node: classify(input) -> single category string\n"
+            "Switch node: route by category (3-4 branches max)"
+        ),
+        quantified_target="Cyclomatic complexity <= 10; consolidate branching logic into Code nodes",
     ),
 
     # ── Agent Coupling (AC) ──────────────────────────────────────────────
@@ -438,6 +547,13 @@ ERROR_CODES: Dict[str, ErrorCode] = {
             "mistakes propagate to all downstream agents."
         ),
         doc_link=f"{_DOC_BASE}QE-AC-001",
+        example_bad="Agent A -> Agent B -> Agent C -> Agent D -> Agent E -> Agent F  // 6 in series",
+        example_good=(
+            "Agent A -> Validate -> Agent B -> Checkpoint\n"
+            "                    -> Agent C (parallel)\n"
+            "Merge -> Agent D  // max 3 in series with validation"
+        ),
+        quantified_target="Maximum 4 agents in series; add validation or checkpoint nodes between them",
     ),
     "QE-AC-002": ErrorCode(
         code="QE-AC-002",
@@ -450,6 +566,15 @@ ERROR_CODES: Dict[str, ErrorCode] = {
             "each other with no intermediate checks."
         ),
         doc_link=f"{_DOC_BASE}QE-AC-002",
+        example_bad=(
+            "8 of 10 nodes are AI Agents (80% coupling ratio)\n"
+            "// No validation or transformation between them"
+        ),
+        example_good=(
+            "4 of 12 nodes are AI Agents (33% coupling ratio)\n"
+            "// Interspersed with Code, IF, and HTTP Request nodes"
+        ),
+        quantified_target="Agent coupling ratio <= 50%; add non-agent nodes for validation and data transformation",
     ),
 
     # ── Observability (OB) ───────────────────────────────────────────────
@@ -464,6 +589,12 @@ ERROR_CODES: Dict[str, ErrorCode] = {
             "intermediate state for debugging."
         ),
         doc_link=f"{_DOC_BASE}QE-OB-001",
+        example_bad="Trigger -> Agent -> Agent -> Response  // no visibility into intermediate states",
+        example_good=(
+            "Trigger -> Agent -> Log to DB -> Agent -> Log to DB -> Response\n"
+            '// Each checkpoint captures: { "stage": "...", "data": {...}, "timestamp": "..." }'
+        ),
+        quantified_target="At least 1 checkpoint/logging node per 5 workflow nodes",
     ),
     "QE-OB-002": ErrorCode(
         code="QE-OB-002",
@@ -476,6 +607,13 @@ ERROR_CODES: Dict[str, ErrorCode] = {
             "are detected promptly."
         ),
         doc_link=f"{_DOC_BASE}QE-OB-002",
+        example_bad="// No Error Trigger node — failures are silent",
+        example_good=(
+            '{ "type": "n8n-nodes-base.errorTrigger" }\n'
+            "-> Send Slack message with error details\n"
+            "-> Log error to monitoring dashboard"
+        ),
+        quantified_target="Every workflow must have at least 1 Error Trigger node connected to alerting",
     ),
     "QE-OB-003": ErrorCode(
         code="QE-OB-003",
@@ -488,6 +626,12 @@ ERROR_CODES: Dict[str, ErrorCode] = {
             "costs over time."
         ),
         doc_link=f"{_DOC_BASE}QE-OB-003",
+        example_bad="// Workflow runs with no external monitoring — issues discovered manually",
+        example_good=(
+            "HTTP Request node -> POST to Datadog /api/v1/series\n"
+            '{ "metric": "workflow.execution_time", "tags": ["workflow:invoice_processing"] }'
+        ),
+        quantified_target="At least 1 monitoring integration (Datadog, Grafana, or PISAMA webhook) per workflow",
     ),
 
     # ── Best Practices (BP) ──────────────────────────────────────────────
@@ -502,6 +646,12 @@ ERROR_CODES: Dict[str, ErrorCode] = {
             "and data may be lost silently."
         ),
         doc_link=f"{_DOC_BASE}QE-BP-001",
+        example_bad="// No Error Trigger node in workflow — unhandled errors are silently dropped",
+        example_good=(
+            "Error Trigger -> Code (format error) -> Slack (alert team)\n"
+            "                                     -> Database (log for audit)"
+        ),
+        quantified_target="Every production workflow must have exactly 1 global Error Trigger node",
     ),
     "QE-BP-002": ErrorCode(
         code="QE-BP-002",
@@ -514,6 +664,16 @@ ERROR_CODES: Dict[str, ErrorCode] = {
             "failure behaviour unpredictable."
         ),
         doc_link=f"{_DOC_BASE}QE-BP-002",
+        example_bad=(
+            "Agent A: { maxTries: 5, waitBetweenTries: 100 }\n"
+            "Agent B: { maxTries: 1, waitBetweenTries: 5000 }\n"
+            "Agent C: (no retry config)"
+        ),
+        example_good=(
+            "All agents: { maxTries: 3, waitBetweenTries: 1000 }\n"
+            "// Consistent retry policy across the workflow"
+        ),
+        quantified_target="All agent nodes must share the same retry policy (maxTries, waitBetweenTries)",
     ),
     "QE-BP-003": ErrorCode(
         code="QE-BP-003",
@@ -525,6 +685,9 @@ ERROR_CODES: Dict[str, ErrorCode] = {
             "prevent runaway workflows from consuming resources indefinitely."
         ),
         doc_link=f"{_DOC_BASE}QE-BP-003",
+        example_bad='{ "executionTimeout": -1 }  // no timeout — runaway workflows possible',
+        example_good='{ "executionTimeout": 600 }  // 10-minute workflow timeout with graceful shutdown',
+        quantified_target="Workflow executionTimeout between 300s (5min) and 900s (15min) for production",
     ),
 }
 

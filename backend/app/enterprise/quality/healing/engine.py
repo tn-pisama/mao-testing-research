@@ -10,6 +10,7 @@ from .models import (
     QualityHealingResult,
     QualityAppliedFix,
     QualityFixSuggestion,
+    HealingAuditEntry,
 )
 from .fix_generator import QualityFixGenerator
 from .agent_fixes import ALL_AGENT_FIX_GENERATORS
@@ -37,11 +38,13 @@ class QualityHealingEngine:
         score_threshold: float = 0.7,
         max_fix_attempts: int = 5,
         use_llm_fixes: Optional[bool] = None,
+        db_session=None,
     ):
         import os
         self.auto_apply = auto_apply
         self.score_threshold = score_threshold
         self.max_fix_attempts = max_fix_attempts
+        self._db_session = db_session
         if use_llm_fixes is None:
             use_llm_fixes = bool(os.getenv("ANTHROPIC_API_KEY"))
         self.use_llm_fixes = use_llm_fixes
@@ -96,6 +99,18 @@ class QualityHealingEngine:
             before_score=quality_report.overall_score,
         )
 
+        # Audit: healing triggered
+        result.audit_trail.append(HealingAuditEntry(
+            timestamp=datetime.now(UTC),
+            action="trigger",
+            actor="auto" if self.auto_apply else "system",
+            details={
+                "workflow_id": quality_report.workflow_id,
+                "before_score": quality_report.overall_score,
+                "score_threshold": self.score_threshold,
+            },
+        ))
+
         try:
             # Step 1: Generate fixes for low-scoring dimensions
             fix_suggestions = self.fix_generator.generate_fixes(
@@ -107,7 +122,7 @@ class QualityHealingEngine:
                 result.after_score = quality_report.overall_score
                 result.completed_at = datetime.now(UTC)
                 result.metadata["message"] = "All dimensions above threshold"
-                self._healing_history.append(result)
+                self._persist_result(result)
                 return result
 
             result.dimensions_targeted = list(set(f.dimension for f in fix_suggestions))
@@ -122,7 +137,7 @@ class QualityHealingEngine:
                 if execution_history is not None:
                     result.metadata["execution_history"] = execution_history
                 result.completed_at = datetime.now(UTC)
-                self._healing_history.append(result)
+                self._persist_result(result)
                 return result
 
             # Step 3: Apply fixes iteratively
@@ -156,7 +171,7 @@ class QualityHealingEngine:
                 result.status = QualityHealingStatus.FAILED
                 result.error = "All fix applications failed"
                 result.completed_at = datetime.now(UTC)
-                self._healing_history.append(result)
+                self._persist_result(result)
                 return result
 
             # Step 4: Validate — re-run quality assessment
@@ -188,7 +203,7 @@ class QualityHealingEngine:
                 result.status = QualityHealingStatus.FAILED
 
             result.completed_at = datetime.now(UTC)
-            self._healing_history.append(result)
+            self._persist_result(result)
             return result
 
         except Exception as e:
@@ -196,7 +211,7 @@ class QualityHealingEngine:
             result.status = QualityHealingStatus.FAILED
             result.error = str(e)
             result.completed_at = datetime.now(UTC)
-            self._healing_history.append(result)
+            self._persist_result(result)
             return result
 
     def approve_and_apply(
@@ -241,6 +256,15 @@ class QualityHealingEngine:
         # Use provided execution_history or fall back to stored one
         if execution_history is None:
             execution_history = result.metadata.get("execution_history")
+
+        # Audit: approval
+        result.audit_trail.append(HealingAuditEntry(
+            timestamp=datetime.now(UTC),
+            action="approve",
+            actor="system",
+            fix_ids=selected_fix_ids,
+            details={"healing_id": healing_id},
+        ))
 
         try:
             # Reconstruct QualityFixSuggestion objects from stored dicts
@@ -323,6 +347,15 @@ class QualityHealingEngine:
         if not result.applied_fixes:
             raise ValueError("No fixes to rollback")
 
+        # Audit: rollback
+        result.audit_trail.append(HealingAuditEntry(
+            timestamp=datetime.now(UTC),
+            action="rollback",
+            actor="system",
+            fix_ids=[f.fix_id for f in result.applied_fixes],
+            details={"healing_id": healing_id},
+        ))
+
         # Get the original state from the first applied fix
         original = result.applied_fixes[0].original_state
         result.status = QualityHealingStatus.ROLLED_BACK
@@ -373,6 +406,42 @@ class QualityHealingEngine:
             "by_status": by_status,
             "by_dimension": by_dimension,
         }
+
+    def _persist_result(self, result: QualityHealingResult) -> None:
+        """Save healing result to DB if session available, otherwise keep in memory."""
+        self._healing_history.append(result)
+        if self._db_session is not None:
+            try:
+                from app.storage.models import QualityHealingRecord
+                record = QualityHealingRecord(
+                    id=result.id,
+                    assessment_id=result.assessment_id,
+                    status=result.status.value,
+                    before_score=result.before_score,
+                    after_score=result.after_score,
+                    dimensions_targeted=result.dimensions_targeted,
+                    applied_fixes=[f.to_dict() for f in result.applied_fixes],
+                    validation_results=[v.to_dict() for v in result.validation_results],
+                    metadata=result.metadata,
+                )
+                self._db_session.add(record)
+                self._db_session.commit()
+            except Exception as e:
+                logger.warning(f"Failed to persist healing result to DB: {e}")
+
+    def _load_history_from_db(self) -> None:
+        """Load healing history from DB if session available."""
+        if self._db_session is None:
+            return
+        try:
+            from app.storage.models import QualityHealingRecord
+            records = self._db_session.query(QualityHealingRecord).order_by(
+                QualityHealingRecord.created_at.desc()
+            ).limit(100).all()
+            # History is loaded; existing in-memory entries are merged
+            logger.info(f"Loaded {len(records)} healing records from DB")
+        except Exception as e:
+            logger.warning(f"Failed to load healing history from DB: {e}")
 
     @staticmethod
     def _find_target_node(fix, config: Dict[str, Any]) -> Dict[str, Any]:

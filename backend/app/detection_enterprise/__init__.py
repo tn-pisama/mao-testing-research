@@ -21,18 +21,23 @@ if is_feature_enabled("ml_detection"):
     from .ml_detector import MLDetector
     from .ml_detector_v2 import MLDetectorV2
     from .ml_detector_v3 import MLDetectorV3
-    from .tiered import TieredDetector
+    from .ml_detector_v4 import MultiTaskDetectorV4, load_pretrained as load_pretrained_v4
+    from .tiered import TieredDetector, create_all_tiered_detectors
     from .orchestrator import DetectionOrchestrator
     from .turn_aware import TurnAwareDetector
-    from .golden_dataset import GoldenDatasetEvaluator
+    from .golden_dataset import GoldenDataset, create_default_golden_dataset
     __all__.extend([
         "MLDetector",
         "MLDetectorV2",
         "MLDetectorV3",
+        "MultiTaskDetectorV4",
+        "load_pretrained_v4",
         "TieredDetector",
+        "create_all_tiered_detectors",
         "DetectionOrchestrator",
         "TurnAwareDetector",
-        "GoldenDatasetEvaluator",
+        "GoldenDataset",
+        "create_default_golden_dataset",
     ])
 
 if is_feature_enabled("advanced_evals"):

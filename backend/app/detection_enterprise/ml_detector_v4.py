@@ -1409,6 +1409,37 @@ def train_v4(data_path: Path, output_dir: Optional[Path] = None) -> Tuple[MultiT
     return detector, results
 
 
+def get_default_model_path() -> Path:
+    """Return the default path for pre-trained v4 model weights."""
+    return Path(__file__).parent.parent.parent / "data" / "models" / "mast_v4"
+
+
+def load_pretrained(model_path: Optional[Path] = None) -> Optional[MultiTaskDetectorV4]:
+    """Load a pre-trained v4 model, returning None if no weights exist.
+
+    This is the recommended entry point for production code. It handles
+    missing dependencies (torch, sentence_transformers) and missing weights
+    gracefully so callers don't need try/except boilerplate.
+
+    Args:
+        model_path: Path to saved model directory. Defaults to
+            ``backend/data/models/mast_v4/``.
+
+    Returns:
+        A trained :class:`MultiTaskDetectorV4` instance, or ``None`` if
+        weights are unavailable or dependencies are missing.
+    """
+    path = model_path or get_default_model_path()
+    if not path.exists() or not (path / "config.json").exists():
+        logger.info("No pre-trained v4 model found at %s", path)
+        return None
+    try:
+        return MultiTaskDetectorV4.load(path)
+    except Exception as e:
+        logger.warning("Failed to load v4 model from %s: %s", path, e)
+        return None
+
+
 if __name__ == "__main__":
     logging.basicConfig(
         level=logging.INFO,

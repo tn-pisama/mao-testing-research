@@ -7,6 +7,7 @@ from .models import (
     QualityAppliedFix,
     QualityValidationResult,
     QualityHealingResult,
+    HealingAuditEntry,
 )
 from .engine import QualityHealingEngine
 from .fix_generator import QualityFixGenerator, BaseQualityFixGenerator
@@ -20,6 +21,7 @@ __all__ = [
     "QualityAppliedFix",
     "QualityValidationResult",
     "QualityHealingResult",
+    "HealingAuditEntry",
     "QualityHealingEngine",
     "QualityFixGenerator",
     "BaseQualityFixGenerator",

@@ -125,6 +125,8 @@ class TieredDetector(Generic[T]):
             DetectionTier.HUMAN_REVIEW: 50.0,
         }
 
+    _LLM_JUDGE_UNAVAILABLE = object()  # Sentinel for failed imports
+
     @property
     def llm_judge(self):
         """Lazy load LLM Judge to avoid import overhead."""
@@ -137,7 +139,9 @@ class TieredDetector(Generic[T]):
                 }
             except ImportError:
                 logger.warning("LLM Judge not available, AI tiers disabled")
-                self._llm_judge = None
+                self._llm_judge = self._LLM_JUDGE_UNAVAILABLE
+        if self._llm_judge is self._LLM_JUDGE_UNAVAILABLE:
+            return None
         return self._llm_judge
 
     def _default_extractor(self, result: T) -> Dict[str, Any]:
@@ -258,13 +262,16 @@ Respond in JSON: {{"score": <float>, "reasoning": "<explanation>"}}""",
     ) -> Dict[str, Any]:
         """Run AI-based evaluation using LLM-as-Judge."""
         if not self.llm_judge:
-            return {"error": "LLM Judge not available"}
+            return {"error": "LLM Judge not available", "escalation_skipped": "import_unavailable"}
 
         judge_key = "cheap" if tier == DetectionTier.CHEAP_AI else "expensive"
         judge = self.llm_judge.get(judge_key)
 
         if not judge:
-            return {"error": f"Judge not available for tier {tier}"}
+            return {"error": f"Judge not available for tier {tier}", "escalation_skipped": "tier_missing"}
+
+        if not judge.is_available:
+            return {"error": "No API key configured", "escalation_skipped": "no_api_key"}
 
         try:
             from app.enterprise.evals.scorer import EvalType

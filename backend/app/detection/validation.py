@@ -23,6 +23,8 @@ class DetectionType(Enum):
     GROUNDING = "grounding"  # F15: OfficeQA-inspired
     RETRIEVAL_QUALITY = "retrieval_quality"  # F16: OfficeQA-inspired
     COMPLETION = "completion"  # F14: Completion misjudgment
+    SPECIFICATION = "specification"  # F9: Spec-intent mismatch
+    WITHHOLDING = "withholding"  # F12: Information withholding
 
 
 @dataclass

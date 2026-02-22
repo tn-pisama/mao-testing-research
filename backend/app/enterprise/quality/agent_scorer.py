@@ -125,6 +125,7 @@ class AgentQualityScorer:
         if self._judge:
             llm_methods = {
                 "role_clarity": (dim_role, self._llm_score_role_clarity),
+                "output_consistency": (dim_output, self._llm_score_output_consistency),
                 "error_handling": (dim_error, self._llm_score_error_handling),
                 "tool_usage": (dim_tool, self._llm_score_tool_usage),
                 "config_appropriateness": (dim_config, self._llm_score_config),
@@ -820,6 +821,38 @@ class AgentQualityScorer:
             output="",
             custom_prompt=prompt,
         )
+        return {"score": result.score, "reasoning": result.reasoning, "tokens": result.tokens_used}
+
+    def _llm_score_output_consistency(self, node: Dict[str, Any]) -> Optional[Dict[str, Any]]:
+        """Use LLM to evaluate output consistency based on prompt and config."""
+        if not self._judge:
+            return None
+        system_prompt = self._extract_system_prompt(node) or "(no prompt)"
+        agent_name = node.get("name", "Unknown")
+        parameters = node.get("parameters", {})
+        options = parameters.get("options", {})
+
+        # Check for JSON mode or structured output settings
+        response_format = options.get("responseFormat", parameters.get("responseFormat", "not set"))
+        expects_json = "json" in system_prompt.lower()
+
+        prompt = (
+            f"Evaluate the output consistency posture of this agent.\n\n"
+            f"Agent Name: {agent_name}\n"
+            f"Agent Type: {node.get('type', 'unknown')}\n"
+            f"System Prompt (first 500 chars): {system_prompt[:500]}\n"
+            f"Response Format Setting: {response_format}\n"
+            f"Prompt mentions JSON: {expects_json}\n\n"
+            f"Score from 0.0 to 1.0 based on:\n"
+            f"1. Does the prompt specify a clear, parseable output format?\n"
+            f"2. Is JSON mode or structured output enabled when appropriate?\n"
+            f"3. Would outputs be consistent across multiple runs with varied inputs?\n"
+            f"4. Are there field definitions, schemas, or examples in the prompt?\n\n"
+            f"A prompt with no output format spec should score LOW.\n"
+            f"A prompt with explicit JSON schema + JSON mode enabled should score HIGH.\n\n"
+            f'Respond ONLY with valid JSON: {{"score": <float>, "reasoning": "<explanation>"}}'
+        )
+        result = self._judge.judge(eval_type=None, output="", custom_prompt=prompt)
         return {"score": result.score, "reasoning": result.reasoning, "tokens": result.tokens_used}
 
     def _llm_score_error_handling(self, node: Dict[str, Any]) -> Optional[Dict[str, Any]]:

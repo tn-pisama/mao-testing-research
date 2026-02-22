@@ -126,6 +126,25 @@ class QualityFixSuggestion:
 
 
 @dataclass
+class HealingAuditEntry:
+    """Structured audit log entry for healing operations."""
+    timestamp: datetime
+    action: str  # "trigger", "approve", "apply", "validate", "rollback"
+    actor: str  # user_id or "auto" or "system"
+    fix_ids: List[str] = field(default_factory=list)
+    details: Dict[str, Any] = field(default_factory=dict)
+
+    def to_dict(self) -> Dict[str, Any]:
+        return {
+            "timestamp": self.timestamp.isoformat(),
+            "action": self.action,
+            "actor": self.actor,
+            "fix_ids": self.fix_ids,
+            "details": self.details,
+        }
+
+
+@dataclass
 class QualityAppliedFix:
     """Record of a fix that was applied."""
     fix_id: str
@@ -183,6 +202,7 @@ class QualityHealingResult:
     before_score: float
     after_score: Optional[float] = None
     error: Optional[str] = None
+    audit_trail: List[HealingAuditEntry] = field(default_factory=list)
     metadata: Dict[str, Any] = field(default_factory=dict)
 
     @classmethod
@@ -228,6 +248,7 @@ class QualityHealingResult:
             "after_score": round(self.after_score, 3) if self.after_score is not None else None,
             "is_successful": self.is_successful,
             "score_improvement": round(self.score_improvement, 3) if self.score_improvement is not None else None,
+            "audit_trail": [entry.to_dict() for entry in self.audit_trail],
             "metadata": self.metadata,
         }
         if self.error:

@@ -354,6 +354,289 @@ class LLMContextualFixGenerator:
             },
         )
 
+    # --- Orchestration Dimension Generators ---
+
+    def generate_data_flow_fix(
+        self,
+        workflow_context: Dict[str, Any],
+        dimension_score: float,
+        issues: List[str],
+    ) -> Optional[QualityFixSuggestion]:
+        """Generate a fix for data_flow_clarity issues (disconnected nodes, generic names, implicit state)."""
+        if not self._judge:
+            return None
+
+        nodes = workflow_context.get("nodes", [])
+        connections = workflow_context.get("connections", {})
+        node_names = [n.get("name", "Unknown") for n in nodes[:20]]
+
+        prompt = (
+            f"Suggest fixes for data flow clarity issues in this n8n workflow.\n\n"
+            f"Current Score: {dimension_score:.0%}\n"
+            f"Issues: {'; '.join(issues) if issues else 'none flagged'}\n"
+            f"Node Names: {', '.join(node_names)}\n"
+            f"Connection Count: {len(connections)}\n"
+            f"Node Count: {len(nodes)}\n\n"
+            f"Provide n8n-specific fixes:\n"
+            f"1. Identify disconnected or orphaned nodes\n"
+            f"2. Suggest descriptive renames for generic node names\n"
+            f"3. Replace implicit state passing with explicit connections\n\n"
+            f"Respond ONLY with valid JSON:\n"
+            f'{{"changes": [{{"type": "rename"|"connect"|"remove", '
+            f'"node": "<name>", "value": "<new_name or target>"}}], '
+            f'"explanation": "<why these fixes improve data flow>"}}'
+        )
+
+        result = self._judge.judge(eval_type=None, output="", custom_prompt=prompt)
+        parsed = self._parse_json(result.raw_response)
+        if not parsed:
+            return None
+
+        return QualityFixSuggestion.create(
+            dimension="data_flow_clarity",
+            category=QualityFixCategory.DATA_FLOW_CLARITY,
+            title="Improve workflow data flow clarity",
+            description=parsed.get("explanation", "LLM-recommended data flow improvements"),
+            confidence=min(result.confidence, 0.80),
+            expected_improvement=0.15,
+            target_type="orchestration",
+            target_id="workflow",
+            changes={
+                "action": "fix_data_flow",
+                "modifications": parsed.get("changes", []),
+            },
+            metadata={"generation_method": "llm", "llm_reasoning": result.reasoning},
+        )
+
+    def generate_complexity_fix(
+        self,
+        workflow_context: Dict[str, Any],
+        dimension_score: float,
+        issues: List[str],
+    ) -> Optional[QualityFixSuggestion]:
+        """Generate a fix for complexity_management issues (too many nodes, deep nesting, high branching)."""
+        if not self._judge:
+            return None
+
+        nodes = workflow_context.get("nodes", [])
+        node_types = [n.get("type", "unknown") for n in nodes]
+
+        prompt = (
+            f"Suggest fixes for workflow complexity issues in this n8n workflow.\n\n"
+            f"Current Score: {dimension_score:.0%}\n"
+            f"Issues: {'; '.join(issues) if issues else 'none flagged'}\n"
+            f"Total Nodes: {len(nodes)}\n"
+            f"Node Types: {', '.join(set(node_types))}\n\n"
+            f"Provide n8n-specific fixes:\n"
+            f"1. Identify groups of nodes to extract into sub-workflows\n"
+            f"2. Suggest flattening deeply nested conditional branches\n"
+            f"3. Recommend consolidating branching logic into Code nodes\n\n"
+            f"Respond ONLY with valid JSON:\n"
+            f'{{"changes": [{{"type": "extract_subworkflow"|"flatten"|"consolidate", '
+            f'"nodes": ["<node_name>", ...], "description": "<what to do>"}}], '
+            f'"explanation": "<why these changes reduce complexity>"}}'
+        )
+
+        result = self._judge.judge(eval_type=None, output="", custom_prompt=prompt)
+        parsed = self._parse_json(result.raw_response)
+        if not parsed:
+            return None
+
+        return QualityFixSuggestion.create(
+            dimension="complexity_management",
+            category=QualityFixCategory.COMPLEXITY_MANAGEMENT,
+            title="Reduce workflow complexity",
+            description=parsed.get("explanation", "LLM-recommended complexity reduction"),
+            confidence=min(result.confidence, 0.75),
+            expected_improvement=0.18,
+            target_type="orchestration",
+            target_id="workflow",
+            changes={
+                "action": "reduce_complexity",
+                "modifications": parsed.get("changes", []),
+            },
+            metadata={"generation_method": "llm", "llm_reasoning": result.reasoning},
+        )
+
+    def generate_observability_fix(
+        self,
+        workflow_context: Dict[str, Any],
+        dimension_score: float,
+        issues: List[str],
+    ) -> Optional[QualityFixSuggestion]:
+        """Generate a fix for observability issues (missing logging, error triggers, monitoring)."""
+        if not self._judge:
+            return None
+
+        nodes = workflow_context.get("nodes", [])
+        node_types = [n.get("type", "unknown") for n in nodes]
+        has_error_trigger = any("errorTrigger" in t for t in node_types)
+
+        prompt = (
+            f"Suggest observability improvements for this n8n workflow.\n\n"
+            f"Current Score: {dimension_score:.0%}\n"
+            f"Issues: {'; '.join(issues) if issues else 'none flagged'}\n"
+            f"Total Nodes: {len(nodes)}\n"
+            f"Has Error Trigger: {has_error_trigger}\n"
+            f"Node Types: {', '.join(set(node_types))}\n\n"
+            f"Provide n8n-specific fixes:\n"
+            f"1. Where to add checkpoint/logging nodes\n"
+            f"2. Error Trigger configuration if missing\n"
+            f"3. Monitoring integration (Datadog, Slack alerts, etc.)\n\n"
+            f"Respond ONLY with valid JSON:\n"
+            f'{{"changes": [{{"type": "add_checkpoint"|"add_error_trigger"|"add_monitoring", '
+            f'"after_node": "<node_name>", "config": {{...}}}}], '
+            f'"explanation": "<why these improve observability>"}}'
+        )
+
+        result = self._judge.judge(eval_type=None, output="", custom_prompt=prompt)
+        parsed = self._parse_json(result.raw_response)
+        if not parsed:
+            return None
+
+        return QualityFixSuggestion.create(
+            dimension="observability",
+            category=QualityFixCategory.OBSERVABILITY,
+            title="Improve workflow observability",
+            description=parsed.get("explanation", "LLM-recommended observability improvements"),
+            confidence=min(result.confidence, 0.80),
+            expected_improvement=0.20,
+            target_type="orchestration",
+            target_id="workflow",
+            changes={
+                "action": "improve_observability",
+                "modifications": parsed.get("changes", []),
+            },
+            metadata={
+                "generation_method": "llm",
+                "llm_reasoning": result.reasoning,
+                "has_error_trigger": has_error_trigger,
+            },
+        )
+
+    def generate_best_practices_fix(
+        self,
+        workflow_context: Dict[str, Any],
+        dimension_score: float,
+        issues: List[str],
+    ) -> Optional[QualityFixSuggestion]:
+        """Generate a fix for best_practices issues (missing global error handler, inconsistent retries, no timeout)."""
+        if not self._judge:
+            return None
+
+        nodes = workflow_context.get("nodes", [])
+        settings = workflow_context.get("settings", {})
+        execution_timeout = settings.get("executionTimeout", "not set")
+
+        # Gather retry configs across agent nodes
+        retry_configs = []
+        for n in nodes:
+            opts = n.get("parameters", {}).get("options", {})
+            if opts.get("retryOnFail") is not None:
+                retry_configs.append(
+                    f"{n.get('name', '?')}: maxTries={opts.get('maxRetries', 0)}, "
+                    f"wait={opts.get('waitBetweenTries', 0)}"
+                )
+
+        prompt = (
+            f"Suggest best-practice improvements for this n8n workflow.\n\n"
+            f"Current Score: {dimension_score:.0%}\n"
+            f"Issues: {'; '.join(issues) if issues else 'none flagged'}\n"
+            f"Execution Timeout: {execution_timeout}\n"
+            f"Retry Configs: {'; '.join(retry_configs) if retry_configs else 'none'}\n"
+            f"Total Nodes: {len(nodes)}\n\n"
+            f"Provide n8n-specific fixes:\n"
+            f"1. Global error handler configuration\n"
+            f"2. Standardized retry policy across all agents\n"
+            f"3. Workflow-level execution timeout\n\n"
+            f"Respond ONLY with valid JSON:\n"
+            f'{{"changes": [{{"type": "set_timeout"|"standardize_retries"|"add_error_handler", '
+            f'"config": {{...}}}}], '
+            f'"explanation": "<why these align with best practices>"}}'
+        )
+
+        result = self._judge.judge(eval_type=None, output="", custom_prompt=prompt)
+        parsed = self._parse_json(result.raw_response)
+        if not parsed:
+            return None
+
+        return QualityFixSuggestion.create(
+            dimension="best_practices",
+            category=QualityFixCategory.BEST_PRACTICES,
+            title="Apply workflow best practices",
+            description=parsed.get("explanation", "LLM-recommended best practice improvements"),
+            confidence=min(result.confidence, 0.80),
+            expected_improvement=0.15,
+            target_type="orchestration",
+            target_id="workflow",
+            changes={
+                "action": "apply_best_practices",
+                "modifications": parsed.get("changes", []),
+            },
+            metadata={"generation_method": "llm", "llm_reasoning": result.reasoning},
+        )
+
+    def generate_ai_architecture_fix(
+        self,
+        workflow_context: Dict[str, Any],
+        dimension_score: float,
+        issues: List[str],
+    ) -> Optional[QualityFixSuggestion]:
+        """Generate a fix for ai_architecture issues (model selection, agent topology, prompt chaining)."""
+        if not self._judge:
+            return None
+
+        nodes = workflow_context.get("nodes", [])
+        # Collect agent-specific info
+        agent_info = []
+        for n in nodes:
+            ntype = n.get("type", "")
+            if "agent" in ntype.lower() or "chain" in ntype.lower():
+                params = n.get("parameters", {})
+                model = params.get("model", params.get("options", {}).get("model", "not set"))
+                agent_info.append(f"{n.get('name', '?')}: type={ntype}, model={model}")
+
+        prompt = (
+            f"Suggest AI architecture improvements for this n8n workflow.\n\n"
+            f"Current Score: {dimension_score:.0%}\n"
+            f"Issues: {'; '.join(issues) if issues else 'none flagged'}\n"
+            f"Agents: {'; '.join(agent_info) if agent_info else 'none'}\n"
+            f"Total Nodes: {len(nodes)}\n\n"
+            f"Provide n8n-specific fixes:\n"
+            f"1. Model selection per agent (cost vs capability tradeoff)\n"
+            f"2. Agent topology improvements (parallel vs serial, specialist vs generalist)\n"
+            f"3. Prompt chaining and context window management\n\n"
+            f"Respond ONLY with valid JSON:\n"
+            f'{{"changes": [{{"type": "change_model"|"restructure_agents"|"optimize_prompts", '
+            f'"agent": "<name>", "config": {{...}}}}], '
+            f'"explanation": "<why these improve the AI architecture>"}}'
+        )
+
+        result = self._judge.judge(eval_type=None, output="", custom_prompt=prompt)
+        parsed = self._parse_json(result.raw_response)
+        if not parsed:
+            return None
+
+        return QualityFixSuggestion.create(
+            dimension="ai_architecture",
+            category=QualityFixCategory.AI_ARCHITECTURE,
+            title="Improve AI architecture design",
+            description=parsed.get("explanation", "LLM-recommended AI architecture improvements"),
+            confidence=min(result.confidence, 0.75),
+            expected_improvement=0.20,
+            target_type="orchestration",
+            target_id="workflow",
+            changes={
+                "action": "improve_ai_architecture",
+                "modifications": parsed.get("changes", []),
+            },
+            metadata={
+                "generation_method": "llm",
+                "llm_reasoning": result.reasoning,
+                "agent_count": len(agent_info),
+            },
+        )
+
     def enrich_fix(
         self,
         template_fix: QualityFixSuggestion,
@@ -396,6 +679,52 @@ class LLMContextualFixGenerator:
                 template_fix.metadata["llm_enriched"] = True
         elif dimension == "config_appropriateness":
             llm_fix = self.generate_config_fix(node, workflow_context)
+            if llm_fix:
+                template_fix.changes = llm_fix.changes
+                template_fix.description = llm_fix.description
+                template_fix.metadata["generation_method"] = "llm"
+                template_fix.metadata["llm_enriched"] = True
+        # Orchestration dimensions
+        elif dimension == "data_flow_clarity":
+            issues = template_fix.metadata.get("issues", [])
+            score = template_fix.metadata.get("score", 0.5)
+            llm_fix = self.generate_data_flow_fix(workflow_context, score, issues)
+            if llm_fix:
+                template_fix.changes = llm_fix.changes
+                template_fix.description = llm_fix.description
+                template_fix.metadata["generation_method"] = "llm"
+                template_fix.metadata["llm_enriched"] = True
+        elif dimension == "complexity_management":
+            issues = template_fix.metadata.get("issues", [])
+            score = template_fix.metadata.get("score", 0.5)
+            llm_fix = self.generate_complexity_fix(workflow_context, score, issues)
+            if llm_fix:
+                template_fix.changes = llm_fix.changes
+                template_fix.description = llm_fix.description
+                template_fix.metadata["generation_method"] = "llm"
+                template_fix.metadata["llm_enriched"] = True
+        elif dimension == "observability":
+            issues = template_fix.metadata.get("issues", [])
+            score = template_fix.metadata.get("score", 0.5)
+            llm_fix = self.generate_observability_fix(workflow_context, score, issues)
+            if llm_fix:
+                template_fix.changes = llm_fix.changes
+                template_fix.description = llm_fix.description
+                template_fix.metadata["generation_method"] = "llm"
+                template_fix.metadata["llm_enriched"] = True
+        elif dimension == "best_practices":
+            issues = template_fix.metadata.get("issues", [])
+            score = template_fix.metadata.get("score", 0.5)
+            llm_fix = self.generate_best_practices_fix(workflow_context, score, issues)
+            if llm_fix:
+                template_fix.changes = llm_fix.changes
+                template_fix.description = llm_fix.description
+                template_fix.metadata["generation_method"] = "llm"
+                template_fix.metadata["llm_enriched"] = True
+        elif dimension == "ai_architecture":
+            issues = template_fix.metadata.get("issues", [])
+            score = template_fix.metadata.get("score", 0.5)
+            llm_fix = self.generate_ai_architecture_fix(workflow_context, score, issues)
             if llm_fix:
                 template_fix.changes = llm_fix.changes
                 template_fix.description = llm_fix.description
