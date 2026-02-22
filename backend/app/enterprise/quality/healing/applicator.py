@@ -85,8 +85,17 @@ class RoleClarityApplicator(QualityApplicatorStrategy):
 
             params = node.setdefault("parameters", {})
             param_name = changes.get("parameter", "systemMessage")
-            value = changes.get("value", "")
-            mode = changes.get("mode", "set")
+
+            # Backward compat: detect legacy "prepend"/"append" key format
+            if "prepend" in changes and "mode" not in changes:
+                mode = "prepend"
+                value = changes["prepend"]
+            elif "append" in changes and "mode" not in changes:
+                mode = "append"
+                value = changes["append"]
+            else:
+                value = changes.get("value", "")
+                mode = changes.get("mode", "set")
 
             current = params.get(param_name, "")
             if mode == "prepend":
@@ -112,8 +121,17 @@ class OutputConsistencyApplicator(QualityApplicatorStrategy):
                 return config
             params = node.setdefault("parameters", {})
             param_name = changes.get("parameter", "systemMessage")
-            value = changes.get("value", "")
-            mode = changes.get("mode", "append")
+
+            # Backward compat: detect legacy "prepend"/"append" key format
+            if "prepend" in changes and "mode" not in changes:
+                mode = "prepend"
+                value = changes["prepend"]
+            elif "append" in changes and "mode" not in changes:
+                mode = "append"
+                value = changes["append"]
+            else:
+                value = changes.get("value", "")
+                mode = changes.get("mode", "append")
 
             current = params.get(param_name, "")
             if mode == "prepend":

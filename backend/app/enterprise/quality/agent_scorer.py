@@ -105,6 +105,7 @@ class AgentQualityScorer:
         workflow_context: Optional[Dict[str, Any]] = None,
         execution_history: Optional[List[Dict[str, Any]]] = None,
         include_reasoning: bool = False,
+        connected_tools: Optional[List[Dict[str, Any]]] = None,
     ) -> AgentQualityScore:
         """Score a single agent node across all quality dimensions."""
         agent_id = node.get("id", "unknown")
@@ -117,7 +118,7 @@ class AgentQualityScorer:
         dim_role = self._score_role_clarity(node)
         dim_output = self._score_output_consistency(node, execution_history)
         dim_error = self._score_error_handling(node, workflow_context)
-        dim_tool = self._score_tool_usage(node)
+        dim_tool = self._score_tool_usage(node, connected_tools=connected_tools)
         dim_config = self._score_config_appropriateness(node)
 
         # LLM blending: if LLM judge is available, enhance scores with semantic evaluation
@@ -519,12 +520,16 @@ class AgentQualityScorer:
             suggestions=suggestions,
         )
 
-    def _score_tool_usage(self, node: Dict[str, Any]) -> DimensionScore:
+    def _score_tool_usage(
+        self,
+        node: Dict[str, Any],
+        connected_tools: Optional[List[Dict[str, Any]]] = None,
+    ) -> DimensionScore:
         """
         Score tool integration quality.
 
         Checks for:
-        - Tool definitions present
+        - Tool definitions present (including sub-node connections via ai_tool)
         - Tool descriptions
         - Parameter schemas
         - Tool count appropriateness
@@ -551,6 +556,12 @@ class AgentQualityScorer:
             functions = []
 
         all_tools = tools + functions
+
+        # Merge tools connected via ai_tool sub-node connections (real n8n workflows
+        # define tools as separate nodes wired into the agent, not as inline parameters)
+        if connected_tools:
+            all_tools = all_tools + connected_tools
+            evidence["connected_tool_count"] = len(connected_tools)
 
         evidence["tool_count"] = len(all_tools)
 
@@ -937,18 +948,24 @@ class AgentQualityScorer:
     def _detect_keyword_stuffing(self, text: str) -> bool:
         """Detect keyword repetition gaming in prompts.
 
-        Catches two patterns:
-        1. High keyword *occurrence* density — the same scoring keywords
-           appear many times relative to total word count.
-        2. Repeated phrases — the same keyword phrase appears more than
-           twice, which is unlikely in a genuine prompt.
+        Uses relaxed thresholds to avoid false positives on concise but
+        legitimate prompts.  Short texts (<25 words) are skipped entirely
+        because meaningful keyword stuffing requires enough repetition to
+        exceed what fits in a brief instruction.
+
+        Patterns checked (all thresholds tuned to minimise false positives):
+        1. 5+ keywords each repeated 2+ times in a short (<80 word) prompt.
+        2. >15 total keyword occurrences in a very short (<40 word) prompt.
+        3. >8 distinct keywords present with <2 unique sentences.
+        4. Keyword density ratio >0.30 at any prompt length.
         """
         if not text:
             return False
         text_lower = text.lower()
         words = text_lower.split()
         word_count = len(words)
-        if word_count < 10:
+        # Short prompts cannot contain meaningful keyword stuffing.
+        if word_count < 25:
             return False
 
         all_keywords = ROLE_KEYWORDS + OUTPUT_FORMAT_KEYWORDS + BOUNDARY_KEYWORDS
@@ -962,27 +979,29 @@ class AgentQualityScorer:
             if count >= 2:
                 repeated_keywords += 1
 
-        # Pattern 1: multiple keywords are each repeated 2+ times in a SHORT prompt.
-        # Long prompts (80+ words) naturally repeat keywords in detailed specifications.
-        if repeated_keywords >= 3 and word_count < 80:
+        # Pattern 1: many keywords each repeated 2+ times in a SHORT prompt.
+        # Raised from 3→5 because genuine prompts can naturally repeat 3-4 keywords.
+        if repeated_keywords >= 5 and word_count < 80:
             return True
 
-        # Pattern 2: high keyword occurrence density relative to word count
-        if total_occurrences > 10 and word_count < 60:
+        # Pattern 2: high keyword occurrence density relative to word count.
+        # Raised occurrence threshold (10→15) and lowered word cap (60→40).
+        if total_occurrences > 15 and word_count < 40:
             return True
 
-        # Pattern 3: many distinct keywords present + few unique sentences
+        # Pattern 3: many distinct keywords present + very few unique sentences.
+        # Raised distinct keyword bar (5→8) and lowered sentence bar (3→2).
         sentences = [s.strip() for s in text.split('.') if s.strip()]
         unique_sentences = len(set(s.lower() for s in sentences))
         distinct_keywords = sum(1 for kw in all_keywords if kw in text_lower)
-        if distinct_keywords > 5 and unique_sentences < 3:
+        if distinct_keywords > 8 and unique_sentences < 2:
             return True
 
         # Pattern 4: keyword density ratio — catches gaming at any prompt length.
-        # Genuine prompts use ~10-15% keyword density; gaming prompts >22%.
-        if word_count >= 10:
+        # Raised from 0.22→0.30; genuine English easily hits 0.22 with common phrases.
+        if word_count >= 25:
             density = total_occurrences / word_count
-            if density > 0.22:
+            if density > 0.30:
                 return True
 
         return False

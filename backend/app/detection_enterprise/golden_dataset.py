@@ -187,6 +187,63 @@ LOOP_DETECTION_SAMPLES = [
         description="Exact repetition - error loop",
         tags=["structural", "error_loop", "clear_positive"],
     ),
+    # --- Negative samples: healthy traces that should NOT trigger loop detection ---
+    GoldenDatasetEntry(
+        id="loop_neg_001",
+        detection_type=DetectionType.LOOP,
+        input_data={
+            "states": [
+                {"agent_id": "agent1", "content": "Processing invoice #1001 for Acme Corp", "state_delta": {"invoice": 1001}},
+                {"agent_id": "agent1", "content": "Processing invoice #1002 for Beta LLC", "state_delta": {"invoice": 1002}},
+                {"agent_id": "agent1", "content": "Processing invoice #1003 for Gamma Inc", "state_delta": {"invoice": 1003}},
+                {"agent_id": "agent1", "content": "Processing invoice #1004 for Delta Co", "state_delta": {"invoice": 1004}},
+            ],
+        },
+        expected_detected=False,
+        expected_confidence_min=0.0,
+        expected_confidence_max=0.3,
+        description="Batch processing different invoices - repetitive structure but each item is unique, not a loop",
+        source="manual_negative",
+        tags=["batch_processing", "negative"],
+        human_verified=True,
+    ),
+    GoldenDatasetEntry(
+        id="loop_neg_002",
+        detection_type=DetectionType.LOOP,
+        input_data={
+            "states": [
+                {"agent_id": "agent1", "content": "Running test suite: unit tests", "state_delta": {"suite": "unit", "passed": 42}},
+                {"agent_id": "agent1", "content": "Running test suite: integration tests", "state_delta": {"suite": "integration", "passed": 18}},
+                {"agent_id": "agent1", "content": "Running test suite: e2e tests", "state_delta": {"suite": "e2e", "passed": 7}},
+                {"agent_id": "agent1", "content": "All test suites completed successfully", "state_delta": {"suite": "done", "total_passed": 67}},
+            ],
+        },
+        expected_detected=False,
+        expected_confidence_min=0.0,
+        expected_confidence_max=0.3,
+        description="Sequential test suite execution - similar pattern but distinct phases with progression to completion",
+        source="manual_negative",
+        tags=["sequential_processing", "negative"],
+        human_verified=True,
+    ),
+    GoldenDatasetEntry(
+        id="loop_neg_003",
+        detection_type=DetectionType.LOOP,
+        input_data={
+            "states": [
+                {"agent_id": "agent1", "content": "Sending daily report email to team-alpha@corp.com", "state_delta": {"recipient": "team-alpha", "day": "monday"}},
+                {"agent_id": "agent1", "content": "Sending daily report email to team-beta@corp.com", "state_delta": {"recipient": "team-beta", "day": "monday"}},
+                {"agent_id": "agent1", "content": "Sending daily report email to team-gamma@corp.com", "state_delta": {"recipient": "team-gamma", "day": "monday"}},
+            ],
+        },
+        expected_detected=False,
+        expected_confidence_min=0.0,
+        expected_confidence_max=0.3,
+        description="Fan-out to multiple recipients - same action template but different targets, legitimate broadcast pattern",
+        source="manual_negative",
+        tags=["fan_out", "negative"],
+        human_verified=True,
+    ),
 ]
 
 PERSONA_DETECTION_SAMPLES = [
@@ -222,6 +279,61 @@ PERSONA_DETECTION_SAMPLES = [
         description="Completely off-persona casual output",
         tags=["drift", "clear_positive"],
     ),
+    # --- Negative samples: appropriate persona behavior that should NOT trigger drift detection ---
+    GoldenDatasetEntry(
+        id="persona_neg_001",
+        detection_type=DetectionType.PERSONA_DRIFT,
+        input_data={
+            "agent": {
+                "id": "medical_assistant",
+                "persona_description": "A medical assistant that helps patients understand diagnoses and treatment options",
+            },
+            "output": "While I understand your interest in alternative treatments, I should clarify that the clinical evidence for that specific supplement is limited. Your doctor recommended ibuprofen for the inflammation, which has well-documented efficacy for your condition.",
+        },
+        expected_detected=False,
+        expected_confidence_min=0.0,
+        expected_confidence_max=0.3,
+        description="Medical assistant redirecting to evidence-based advice - stays in medical persona while shifting topic appropriately",
+        source="manual_negative",
+        tags=["topic_shift", "in_persona", "negative"],
+        human_verified=True,
+    ),
+    GoldenDatasetEntry(
+        id="persona_neg_002",
+        detection_type=DetectionType.PERSONA_DRIFT,
+        input_data={
+            "agent": {
+                "id": "customer_support",
+                "persona_description": "A professional customer support agent for a SaaS product that helps resolve technical issues",
+            },
+            "output": "I understand your frustration with the billing error. I have escalated this to our billing department and applied a $25 credit to your account. You should see the correction reflected within 2 business days. Is there anything else I can help with?",
+        },
+        expected_detected=False,
+        expected_confidence_min=0.0,
+        expected_confidence_max=0.3,
+        description="Support agent handling billing issue - different topic than tech support but still within customer support persona",
+        source="manual_negative",
+        tags=["cross_domain_in_role", "negative"],
+        human_verified=True,
+    ),
+    GoldenDatasetEntry(
+        id="persona_neg_003",
+        detection_type=DetectionType.PERSONA_DRIFT,
+        input_data={
+            "agent": {
+                "id": "financial_advisor",
+                "persona_description": "A financial advisor that provides investment advice and portfolio analysis",
+            },
+            "output": "Given current market volatility, I would recommend diversifying into bonds. However, I must note that tax implications vary by jurisdiction, so please consult with a tax professional before making changes to your retirement accounts.",
+        },
+        expected_detected=False,
+        expected_confidence_min=0.0,
+        expected_confidence_max=0.3,
+        description="Financial advisor mentioning tax advice - appropriately deferring to another domain while staying in financial context",
+        source="manual_negative",
+        tags=["appropriate_deferral", "negative"],
+        human_verified=True,
+    ),
 ]
 
 HALLUCINATION_DETECTION_SAMPLES = [
@@ -255,6 +367,59 @@ HALLUCINATION_DETECTION_SAMPLES = [
         expected_confidence_max=0.95,
         description="Fabricated statistics and citations",
         tags=["fabricated", "clear_positive"],
+    ),
+    # --- Negative samples: correctly grounded outputs that should NOT trigger hallucination detection ---
+    GoldenDatasetEntry(
+        id="hallucination_neg_001",
+        detection_type=DetectionType.HALLUCINATION,
+        input_data={
+            "sources": [
+                {"content": "Python 3.12 was released on October 2, 2023. It includes performance improvements and new typing features."},
+                {"content": "The release introduced PEP 695 for type parameter syntax and PEP 709 for comprehension inlining."},
+            ],
+            "output": "Python 3.12, released October 2, 2023, brought several improvements including PEP 695 (type parameter syntax) and PEP 709 (comprehension inlining) for better performance.",
+        },
+        expected_detected=False,
+        expected_confidence_min=0.0,
+        expected_confidence_max=0.3,
+        description="Accurate synthesis of multiple sources with correct dates and PEP numbers - no fabrication",
+        source="manual_negative",
+        tags=["grounded", "multi_source", "negative"],
+        human_verified=True,
+    ),
+    GoldenDatasetEntry(
+        id="hallucination_neg_002",
+        detection_type=DetectionType.HALLUCINATION,
+        input_data={
+            "sources": [
+                {"content": "The experiment yielded a p-value of 0.03, indicating statistical significance at the 0.05 level."},
+            ],
+            "output": "The results were statistically significant (p=0.03, below the 0.05 threshold). However, I should note that statistical significance does not necessarily imply practical significance, and the effect size should also be considered.",
+        },
+        expected_detected=False,
+        expected_confidence_min=0.0,
+        expected_confidence_max=0.3,
+        description="Agent adds appropriate caveats about statistical interpretation - hedging is not hallucination",
+        source="manual_negative",
+        tags=["appropriate_hedging", "negative"],
+        human_verified=True,
+    ),
+    GoldenDatasetEntry(
+        id="hallucination_neg_003",
+        detection_type=DetectionType.HALLUCINATION,
+        input_data={
+            "sources": [
+                {"content": "Acme Corp reported revenue of $50M in 2024. The CEO mentioned plans to expand into European markets."},
+            ],
+            "output": "Based on the available information, Acme Corp had $50M in revenue for 2024 and is planning European expansion. I don't have specific details about the timeline or target countries for the expansion.",
+        },
+        expected_detected=False,
+        expected_confidence_min=0.0,
+        expected_confidence_max=0.3,
+        description="Agent correctly states what is known and explicitly acknowledges gaps - honest uncertainty is not hallucination",
+        source="manual_negative",
+        tags=["honest_uncertainty", "negative"],
+        human_verified=True,
     ),
 ]
 
@@ -331,6 +496,49 @@ INJECTION_DETECTION_SAMPLES = [
         description="Role hijack with constraint manipulation",
         tags=["role_hijack", "clear_positive"],
     ),
+    # --- Negative samples: benign input with programming keywords that should NOT trigger injection detection ---
+    GoldenDatasetEntry(
+        id="injection_neg_001",
+        detection_type=DetectionType.INJECTION,
+        input_data={
+            "text": "Can you help me write a Python function that overrides the default behavior of the base class? I need to implement __init__ and __str__ methods.",
+        },
+        expected_detected=False,
+        expected_confidence_min=0.0,
+        expected_confidence_max=0.3,
+        description="Legitimate programming question using terms like 'override' and 'default' - not an injection attempt",
+        source="manual_negative",
+        tags=["programming_context", "negative"],
+        human_verified=True,
+    ),
+    GoldenDatasetEntry(
+        id="injection_neg_002",
+        detection_type=DetectionType.INJECTION,
+        input_data={
+            "text": "My system administrator told me to reset my password. Can you explain the instructions for changing credentials in the admin panel?",
+        },
+        expected_detected=False,
+        expected_confidence_min=0.0,
+        expected_confidence_max=0.3,
+        description="Benign user asking about password reset - contains 'system', 'reset', 'admin', 'credentials' but is a normal request",
+        source="manual_negative",
+        tags=["benign_keywords", "negative"],
+        human_verified=True,
+    ),
+    GoldenDatasetEntry(
+        id="injection_neg_003",
+        detection_type=DetectionType.INJECTION,
+        input_data={
+            "text": "I'm writing an essay about how AI models should ignore biased training data. What are the best practices for filtering out harmful content from datasets?",
+        },
+        expected_detected=False,
+        expected_confidence_min=0.0,
+        expected_confidence_max=0.3,
+        description="Academic discussion about AI that uses terms like 'ignore' and 'filter' in a legitimate educational context",
+        source="manual_negative",
+        tags=["academic_context", "negative"],
+        human_verified=True,
+    ),
 ]
 
 OVERFLOW_DETECTION_SAMPLES = [
@@ -385,6 +593,52 @@ OVERFLOW_DETECTION_SAMPLES = [
         expected_confidence_max=0.99,
         description="Overflow threshold - immediate action needed",
         tags=["overflow", "clear_positive"],
+    ),
+    # --- Negative samples: normal context usage that should NOT trigger overflow detection ---
+    GoldenDatasetEntry(
+        id="overflow_neg_001",
+        detection_type=DetectionType.OVERFLOW,
+        input_data={
+            "current_tokens": 45000,
+            "model": "gpt-4o",
+        },
+        expected_detected=False,
+        expected_confidence_min=0.0,
+        expected_confidence_max=0.3,
+        description="Moderate token usage at ~35% of gpt-4o 128k limit - well within safe operating range",
+        source="manual_negative",
+        tags=["moderate_usage", "negative"],
+        human_verified=True,
+    ),
+    GoldenDatasetEntry(
+        id="overflow_neg_002",
+        detection_type=DetectionType.OVERFLOW,
+        input_data={
+            "current_tokens": 70000,
+            "model": "gpt-4o",
+        },
+        expected_detected=False,
+        expected_confidence_min=0.0,
+        expected_confidence_max=0.3,
+        description="Substantial but normal usage at ~55% of limit - typical for long document analysis tasks",
+        source="manual_negative",
+        tags=["substantial_usage", "negative"],
+        human_verified=True,
+    ),
+    GoldenDatasetEntry(
+        id="overflow_neg_003",
+        detection_type=DetectionType.OVERFLOW,
+        input_data={
+            "current_tokens": 15000,
+            "model": "gpt-4o-mini",
+        },
+        expected_detected=False,
+        expected_confidence_min=0.0,
+        expected_confidence_max=0.3,
+        description="Low token usage on a smaller model - well within bounds even for mini context windows",
+        source="manual_negative",
+        tags=["low_usage", "small_model", "negative"],
+        human_verified=True,
     ),
 ]
 
@@ -443,6 +697,52 @@ CORRUPTION_DETECTION_SAMPLES = [
         expected_confidence_max=0.5,
         description="Suspicious value copying between fields",
         tags=["value_copy", "clear_positive"],
+    ),
+    # --- Negative samples: valid state transitions that should NOT trigger corruption detection ---
+    GoldenDatasetEntry(
+        id="corruption_neg_001",
+        detection_type=DetectionType.CORRUPTION,
+        input_data={
+            "prev_state": {"status": "pending", "items": ["item1", "item2"]},
+            "current_state": {"status": "processing", "items": ["item1", "item2"], "started_at": "2025-01-15T10:00:00Z"},
+        },
+        expected_detected=False,
+        expected_confidence_min=0.0,
+        expected_confidence_max=0.3,
+        description="Normal workflow state transition from pending to processing with timestamp added - valid progression",
+        source="manual_negative",
+        tags=["valid_transition", "negative"],
+        human_verified=True,
+    ),
+    GoldenDatasetEntry(
+        id="corruption_neg_002",
+        detection_type=DetectionType.CORRUPTION,
+        input_data={
+            "prev_state": {"cart_total": 150.00, "items": 3, "discount": 0},
+            "current_state": {"cart_total": 127.50, "items": 3, "discount": 15, "coupon_code": "SAVE15"},
+        },
+        expected_detected=False,
+        expected_confidence_min=0.0,
+        expected_confidence_max=0.3,
+        description="Applying a discount coupon changes the total - the value decrease is explained by the new coupon field",
+        source="manual_negative",
+        tags=["explained_change", "negative"],
+        human_verified=True,
+    ),
+    GoldenDatasetEntry(
+        id="corruption_neg_003",
+        detection_type=DetectionType.CORRUPTION,
+        input_data={
+            "prev_state": {"name": "John Smith", "address": "123 Main St", "verified": False},
+            "current_state": {"name": "John Smith", "address": "456 Oak Ave", "verified": True, "verification_date": "2025-02-01"},
+        },
+        expected_detected=False,
+        expected_confidence_min=0.0,
+        expected_confidence_max=0.3,
+        description="User updates their address and gets verified - multiple fields change but all are part of a valid profile update flow",
+        source="manual_negative",
+        tags=["multi_field_update", "negative"],
+        human_verified=True,
     ),
 ]
 
@@ -510,6 +810,66 @@ COORDINATION_DETECTION_SAMPLES = [
         expected_confidence_max=0.7,
         description="Excessive back-and-forth communication",
         tags=["excessive", "clear_positive"],
+    ),
+    # --- Negative samples: healthy coordination that should NOT trigger coordination failure detection ---
+    GoldenDatasetEntry(
+        id="coordination_neg_001",
+        detection_type=DetectionType.COORDINATION,
+        input_data={
+            "messages": [
+                {"from_agent": "planner", "to_agent": "researcher", "content": "Research market trends for Q1 2025", "timestamp": 1.0, "acknowledged": True},
+                {"from_agent": "researcher", "to_agent": "analyst", "content": "Here are the raw market data findings", "timestamp": 5.0, "acknowledged": True},
+                {"from_agent": "analyst", "to_agent": "writer", "content": "Analysis complete, key insights attached", "timestamp": 10.0, "acknowledged": True},
+                {"from_agent": "writer", "to_agent": "planner", "content": "Report draft ready for review", "timestamp": 15.0, "acknowledged": True},
+            ],
+            "agent_ids": ["planner", "researcher", "analyst", "writer"],
+        },
+        expected_detected=False,
+        expected_confidence_min=0.0,
+        expected_confidence_max=0.3,
+        description="Linear pipeline handoff: planner -> researcher -> analyst -> writer -> planner. Each agent completes its task before passing to the next",
+        source="manual_negative",
+        tags=["pipeline", "negative"],
+        human_verified=True,
+    ),
+    GoldenDatasetEntry(
+        id="coordination_neg_002",
+        detection_type=DetectionType.COORDINATION,
+        input_data={
+            "messages": [
+                {"from_agent": "orchestrator", "to_agent": "agent_a", "content": "Process batch A", "timestamp": 1.0, "acknowledged": True},
+                {"from_agent": "orchestrator", "to_agent": "agent_b", "content": "Process batch B", "timestamp": 1.5, "acknowledged": True},
+                {"from_agent": "agent_a", "to_agent": "orchestrator", "content": "Batch A complete: 50 records processed", "timestamp": 8.0, "acknowledged": True},
+                {"from_agent": "agent_b", "to_agent": "orchestrator", "content": "Batch B complete: 47 records processed", "timestamp": 9.0, "acknowledged": True},
+            ],
+            "agent_ids": ["orchestrator", "agent_a", "agent_b"],
+        },
+        expected_detected=False,
+        expected_confidence_min=0.0,
+        expected_confidence_max=0.3,
+        description="Fan-out/fan-in pattern: orchestrator dispatches parallel work and collects results - normal coordination",
+        source="manual_negative",
+        tags=["fan_out_fan_in", "negative"],
+        human_verified=True,
+    ),
+    GoldenDatasetEntry(
+        id="coordination_neg_003",
+        detection_type=DetectionType.COORDINATION,
+        input_data={
+            "messages": [
+                {"from_agent": "agent1", "to_agent": "agent2", "content": "Can you verify this calculation: total = $15,230?", "timestamp": 1.0, "acknowledged": True},
+                {"from_agent": "agent2", "to_agent": "agent1", "content": "Verified. I got $15,230 as well. Approved.", "timestamp": 3.0, "acknowledged": True},
+                {"from_agent": "agent1", "to_agent": "agent3", "content": "Calculation verified, proceeding with payment of $15,230", "timestamp": 4.0, "acknowledged": True},
+            ],
+            "agent_ids": ["agent1", "agent2", "agent3"],
+        },
+        expected_detected=False,
+        expected_confidence_min=0.0,
+        expected_confidence_max=0.3,
+        description="Verification handshake: agent1 asks agent2 to verify, then proceeds to agent3 - a healthy check-and-proceed pattern, not circular",
+        source="manual_negative",
+        tags=["verification_handshake", "negative"],
+        human_verified=True,
     ),
 ]
 

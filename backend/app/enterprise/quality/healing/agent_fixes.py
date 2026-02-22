@@ -63,9 +63,48 @@ class RoleClarityFixGenerator(BaseQualityFixGenerator):
         ttype = _target_type(context)
         agent_name = context.get("agent_name", "Agent")
 
+        # Extract available context for smarter fixes
+        system_prompt = context.get("system_prompt", "")
+        workflow_name = context.get("workflow_name", "")
+        connected_agents = context.get("connected_agents", [])
+
         # Fix 1 -- Add explicit role definition
         has_role = evidence.get("has_role_definition", False)
-        if not has_role or score < 0.5:
+
+        # Check if there's already a role definition in the existing prompt
+        _prompt_lower = system_prompt.lower() if system_prompt else ""
+        _has_existing_role = any(
+            marker in _prompt_lower
+            for marker in ("you are a", "you are an", "your role is", "as a ", "as an ")
+        )
+
+        if (not has_role or score < 0.5) and not _has_existing_role:
+            # Build a context-aware role definition
+            role_parts = [f"You are a {agent_name}"]
+
+            if workflow_name:
+                role_parts.append(f"operating within the '{workflow_name}' workflow")
+
+            if connected_agents:
+                agent_list = ", ".join(connected_agents[:5])
+                role_parts.append(
+                    f"collaborating with the following agents: {agent_list}"
+                )
+
+            # If there's already a partial prompt, complement rather than duplicate
+            if system_prompt:
+                role_parts.append(
+                    "Your role is to complement the instructions below by "
+                    "processing inputs accurately and returning structured results"
+                )
+            else:
+                role_parts.append(
+                    "responsible for processing inputs accurately and "
+                    "returning structured results"
+                )
+
+            role_text = ".  ".join(role_parts) + ".  "
+
             fixes.append(QualityFixSuggestion.create(
                 dimension="role_clarity",
                 category=QualityFixCategory.ROLE_CLARITY,
@@ -74,6 +113,8 @@ class RoleClarityFixGenerator(BaseQualityFixGenerator):
                     f"The agent '{agent_name}' lacks a clear role definition in its "
                     "system message.  Prepend an explicit role statement so the LLM "
                     "understands its purpose, responsibilities, and limitations."
+                    + (f"  Workflow context: '{workflow_name}'." if workflow_name else "")
+                    + (f"  Connected agents: {', '.join(connected_agents[:3])}." if connected_agents else "")
                 ),
                 confidence=_confidence_from_score(score, base=0.80),
                 expected_improvement=0.15 if score < 0.4 else 0.10,
@@ -83,11 +124,8 @@ class RoleClarityFixGenerator(BaseQualityFixGenerator):
                     "action": "modify_parameter",
                     "node_id": tid,
                     "parameter": "systemMessage",
-                    "prepend": (
-                        f"You are a {agent_name} responsible for a specific task "
-                        "within this workflow.  Your role is to process inputs "
-                        "accurately and return structured results.  "
-                    ),
+                    "mode": "prepend",
+                    "value": role_text,
                 },
                 code_example=(
                     '// n8n node parameter patch\n'
@@ -102,12 +140,57 @@ class RoleClarityFixGenerator(BaseQualityFixGenerator):
         # Fix 2 -- Add output format specification
         has_format = evidence.get("has_output_format", False)
         if not has_format or score < 0.6:
+            # Infer task type from agent name to suggest a relevant format
+            _name_lower = agent_name.lower()
+            if any(kw in _name_lower for kw in ("classif", "categor", "label", "tag")):
+                format_value = (
+                    "\n\nAlways respond in the following JSON format:\n"
+                    '{"label": "<classification label>", "confidence": <0.0-1.0>, '
+                    '"reasoning": "<brief explanation for the classification>"}'
+                )
+                format_hint = "classification output format"
+            elif any(kw in _name_lower for kw in ("extract", "pars", "scrape")):
+                format_value = (
+                    "\n\nAlways respond in the following JSON format:\n"
+                    '{"extracted_data": {<key-value pairs>}, "confidence": <0.0-1.0>, '
+                    '"source_reference": "<where the data was found>"}'
+                )
+                format_hint = "extraction output format"
+            elif any(kw in _name_lower for kw in ("summar", "digest")):
+                format_value = (
+                    "\n\nAlways respond in the following JSON format:\n"
+                    '{"summary": "<concise summary>", "key_points": ["<point1>", "<point2>"], '
+                    '"confidence": <0.0-1.0>}'
+                )
+                format_hint = "summarization output format"
+            elif any(kw in _name_lower for kw in ("route", "dispatch", "direct")):
+                format_value = (
+                    "\n\nAlways respond in the following JSON format:\n"
+                    '{"route_to": "<target agent or path>", "reasoning": "<why this route>", '
+                    '"confidence": <0.0-1.0>}'
+                )
+                format_hint = "routing output format"
+            elif any(kw in _name_lower for kw in ("valid", "check", "verify")):
+                format_value = (
+                    "\n\nAlways respond in the following JSON format:\n"
+                    '{"is_valid": <true/false>, "errors": ["<error1>", "<error2>"], '
+                    '"confidence": <0.0-1.0>}'
+                )
+                format_hint = "validation output format"
+            else:
+                format_value = (
+                    "\n\nAlways respond in the following JSON format:\n"
+                    '{"result": "<your answer>", "confidence": <0.0-1.0>, '
+                    '"reasoning": "<brief explanation>"}'
+                )
+                format_hint = "general output format"
+
             fixes.append(QualityFixSuggestion.create(
                 dimension="role_clarity",
                 category=QualityFixCategory.ROLE_CLARITY,
                 title="Add output format specification",
                 description=(
-                    "Append a clear output format definition (preferably JSON schema) "
+                    f"Append a {format_hint} definition (JSON schema) "
                     "to the system message so downstream nodes receive predictable data."
                 ),
                 confidence=_confidence_from_score(score, base=0.75),
@@ -118,11 +201,8 @@ class RoleClarityFixGenerator(BaseQualityFixGenerator):
                     "action": "modify_parameter",
                     "node_id": tid,
                     "parameter": "systemMessage",
-                    "append": (
-                        "\n\nAlways respond in the following JSON format:\n"
-                        '{"result": "<your answer>", "confidence": <0.0-1.0>, '
-                        '"reasoning": "<brief explanation>"}'
-                    ),
+                    "mode": "append",
+                    "value": format_value,
                 },
                 code_example=(
                     '// Append to systemMessage\n'
@@ -153,7 +233,8 @@ class RoleClarityFixGenerator(BaseQualityFixGenerator):
                     "action": "modify_parameter",
                     "node_id": tid,
                     "parameter": "systemMessage",
-                    "append": (
+                    "mode": "append",
+                    "value": (
                         "\n\nConstraints:\n"
                         "- Do not make assumptions about data you have not been given.\n"
                         "- If you are unsure, say so instead of guessing.\n"
@@ -219,7 +300,8 @@ class OutputConsistencyFixGenerator(BaseQualityFixGenerator):
                     "action": "modify_parameter",
                     "node_id": tid,
                     "parameter": "systemMessage",
-                    "append": (
+                    "mode": "append",
+                    "value": (
                         "\n\nYou MUST respond with valid JSON matching this schema:\n"
                         "{\n"
                         '  "type": "object",\n'

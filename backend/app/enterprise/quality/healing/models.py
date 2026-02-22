@@ -104,6 +104,26 @@ class QualityFixSuggestion:
             "metadata": self.metadata,
         }
 
+    @classmethod
+    def from_dict(cls, data: Dict[str, Any]) -> "QualityFixSuggestion":
+        """Reconstruct a QualityFixSuggestion from a dict (e.g. stored in metadata)."""
+        return cls(
+            id=data["id"],
+            dimension=data["dimension"],
+            category=QualityFixCategory(data["category"]),
+            title=data["title"],
+            description=data["description"],
+            confidence=data["confidence"],
+            expected_improvement=data["expected_improvement"],
+            target_type=data["target_type"],
+            target_id=data["target_id"],
+            changes=data["changes"],
+            code_example=data.get("code_example"),
+            breaking_changes=data.get("breaking_changes", False),
+            effort=data.get("effort", "low"),
+            metadata=data.get("metadata", {}),
+        )
+
 
 @dataclass
 class QualityAppliedFix:

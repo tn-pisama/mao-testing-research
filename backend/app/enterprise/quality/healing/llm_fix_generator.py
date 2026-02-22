@@ -204,6 +204,156 @@ class LLMContextualFixGenerator:
             metadata={"generation_method": "llm", "downstream": downstream},
         )
 
+    def generate_tool_usage_fix(
+        self,
+        node: Dict[str, Any],
+        workflow_context: Dict[str, Any],
+    ) -> Optional[QualityFixSuggestion]:
+        """Generate context-aware tool descriptions and schemas based on the agent's role."""
+        if not self._judge:
+            return None
+
+        agent_name = node.get("name", "Unknown")
+        agent_type = node.get("type", "unknown")
+        current_prompt = self._extract_prompt(node) or "(no prompt)"
+        connected_tools = self._get_connected_tools(node, workflow_context)
+
+        prompt = (
+            f"Suggest tool descriptions and parameter schemas for this agent.\n\n"
+            f"Agent Name: {agent_name}\n"
+            f"Agent Type: {agent_type}\n"
+            f"Agent Role: {current_prompt[:300]}\n"
+            f"Connected Tools: {', '.join(connected_tools) if connected_tools else 'none'}\n\n"
+            f"For each connected tool (or suggest new ones if none exist):\n"
+            f"1. Write a clear, concise description of what the tool does\n"
+            f"2. Define input parameter schemas (JSON Schema format)\n"
+            f"3. Explain when the agent should use this tool vs others\n\n"
+            f"Respond ONLY with valid JSON:\n"
+            f'{{"tools": [{{"name": "<tool_name>", "description": "<clear description>", '
+            f'"parameters": {{"type": "object", "properties": {{...}}, "required": [...]}}, '
+            f'"usage_guidance": "<when to use>"}}], '
+            f'"reasoning": "<why these descriptions help>"}}'
+        )
+
+        result = self._judge.judge(eval_type=None, output="", custom_prompt=prompt)
+        parsed = self._parse_json(result.raw_response)
+        if not parsed or "tools" not in parsed:
+            return None
+
+        tool_suggestions = parsed.get("tools", [])
+        if not tool_suggestions:
+            return None
+
+        return QualityFixSuggestion.create(
+            dimension="tool_usage",
+            category=QualityFixCategory.TOOL_USAGE,
+            title=f"LLM-generated tool descriptions for {agent_name}",
+            description=f"Context-aware tool descriptions and schemas based on agent role: {parsed.get('reasoning', 'LLM-recommended')}",
+            confidence=min(result.confidence, 0.80),
+            expected_improvement=0.15,
+            target_type="agent",
+            target_id=node.get("id", agent_name),
+            changes={
+                "action": "modify_tools",
+                "node_id": node.get("id", agent_name),
+                "tool_definitions": tool_suggestions,
+                "add_descriptions": True,
+                "add_schemas": True,
+            },
+            metadata={
+                "generation_method": "llm",
+                "llm_reasoning": result.reasoning,
+                "connected_tools": connected_tools,
+                "suggested_tool_count": len(tool_suggestions),
+            },
+        )
+
+    def generate_config_fix(
+        self,
+        node: Dict[str, Any],
+        workflow_context: Dict[str, Any],
+    ) -> Optional[QualityFixSuggestion]:
+        """Generate context-aware temperature/model configuration based on the task type."""
+        if not self._judge:
+            return None
+
+        agent_name = node.get("name", "Unknown")
+        agent_type = node.get("type", "unknown")
+        current_prompt = self._extract_prompt(node) or "(no prompt)"
+        connected_tools = self._get_connected_tools(node, workflow_context)
+        downstream = self._get_downstream_nodes(node, workflow_context)
+
+        # Extract current config values
+        params = node.get("parameters", {})
+        options = params.get("options", {})
+        current_temp = options.get("temperature")
+        current_model = options.get("model")
+        current_max_tokens = options.get("maxTokens")
+
+        prompt = (
+            f"Recommend optimal LLM configuration for this agent.\n\n"
+            f"Agent Name: {agent_name}\n"
+            f"Agent Type: {agent_type}\n"
+            f"Agent Role: {current_prompt[:300]}\n"
+            f"Connected Tools: {', '.join(connected_tools) if connected_tools else 'none'}\n"
+            f"Downstream Consumers: {', '.join(downstream) if downstream else 'none'}\n"
+            f"Current Config: temperature={current_temp}, model={current_model}, maxTokens={current_max_tokens}\n\n"
+            f"Based on the agent's task type, recommend:\n"
+            f"1. temperature (0.0-1.0): Lower for deterministic tasks like classification/extraction, "
+            f"higher for creative tasks like writing/brainstorming\n"
+            f"2. model: Best cost/performance tradeoff for this task type "
+            f"(e.g., gpt-4o-mini for simple tasks, gpt-4o for complex reasoning)\n"
+            f"3. maxTokens: Appropriate output length for the task\n\n"
+            f"Respond ONLY with valid JSON:\n"
+            f'{{"temperature": <float>, "model": "<model_name>", "maxTokens": <int>, '
+            f'"task_type": "<classification|extraction|generation|reasoning|routing|other>", '
+            f'"reasoning": "<why these settings match the task>"}}'
+        )
+
+        result = self._judge.judge(eval_type=None, output="", custom_prompt=prompt)
+        parsed = self._parse_json(result.raw_response)
+        if not parsed:
+            return None
+
+        recommended_temp = parsed.get("temperature", 0.4)
+        recommended_model = parsed.get("model", "gpt-4o")
+        recommended_tokens = parsed.get("maxTokens", 2048)
+        task_type = parsed.get("task_type", "other")
+
+        # Clamp values to safe ranges
+        recommended_temp = min(max(float(recommended_temp), 0.0), 1.0)
+        recommended_tokens = min(max(int(recommended_tokens), 256), 8192)
+
+        return QualityFixSuggestion.create(
+            dimension="config_appropriateness",
+            category=QualityFixCategory.CONFIG_APPROPRIATENESS,
+            title=f"LLM-recommended config for {agent_name} ({task_type})",
+            description=f"Configuration tuned for {task_type} task: {parsed.get('reasoning', 'LLM-recommended')}",
+            confidence=min(result.confidence, 0.80),
+            expected_improvement=0.12,
+            target_type="agent",
+            target_id=node.get("id", agent_name),
+            changes={
+                "action": "modify_options",
+                "node_id": node.get("id", agent_name),
+                "options": {
+                    "temperature": recommended_temp,
+                    "model": recommended_model,
+                    "maxTokens": recommended_tokens,
+                },
+            },
+            metadata={
+                "generation_method": "llm",
+                "llm_reasoning": result.reasoning,
+                "task_type": task_type,
+                "previous_config": {
+                    "temperature": current_temp,
+                    "model": current_model,
+                    "maxTokens": current_max_tokens,
+                },
+            },
+        )
+
     def enrich_fix(
         self,
         template_fix: QualityFixSuggestion,
@@ -237,6 +387,20 @@ class LLMContextualFixGenerator:
             if llm_fix:
                 template_fix.changes = llm_fix.changes
                 template_fix.metadata["generation_method"] = "llm"
+        elif dimension == "tool_usage":
+            llm_fix = self.generate_tool_usage_fix(node, workflow_context)
+            if llm_fix:
+                template_fix.changes = llm_fix.changes
+                template_fix.description = llm_fix.description
+                template_fix.metadata["generation_method"] = "llm"
+                template_fix.metadata["llm_enriched"] = True
+        elif dimension == "config_appropriateness":
+            llm_fix = self.generate_config_fix(node, workflow_context)
+            if llm_fix:
+                template_fix.changes = llm_fix.changes
+                template_fix.description = llm_fix.description
+                template_fix.metadata["generation_method"] = "llm"
+                template_fix.metadata["llm_enriched"] = True
 
         return template_fix
 
@@ -283,26 +447,68 @@ class LLMContextualFixGenerator:
 
     @staticmethod
     def _parse_json(text: str) -> Optional[Dict[str, Any]]:
-        """Parse JSON from LLM response text."""
-        import re
+        """Parse JSON from LLM response text.
+
+        Tries direct json.loads first, then falls back to extracting
+        a JSON object by finding balanced braces. This handles nested
+        objects correctly unlike regex-based approaches.
+        """
+        # Try parsing the entire text directly
         try:
-            match = re.search(r'\{[^{}]*\}', text, re.DOTALL)
-            if match:
-                return json.loads(match.group())
+            parsed = json.loads(text.strip())
+            if isinstance(parsed, dict):
+                return parsed
         except (json.JSONDecodeError, ValueError):
             pass
+
+        # Fall back to extracting a JSON object by finding balanced braces
+        start = text.find("{")
+        if start == -1:
+            return None
+
+        depth = 0
+        for i in range(start, len(text)):
+            if text[i] == "{":
+                depth += 1
+            elif text[i] == "}":
+                depth -= 1
+                if depth == 0:
+                    try:
+                        return json.loads(text[start:i + 1])
+                    except (json.JSONDecodeError, ValueError):
+                        return None
         return None
 
     @staticmethod
     def _parse_json_field(text: str, field: str) -> Optional[str]:
-        """Parse a specific field from JSON in LLM response."""
-        import re
+        """Parse a specific field from JSON in LLM response.
+
+        Uses proper json.loads with balanced-brace extraction instead
+        of regex, which cannot handle nested JSON objects correctly.
+        """
+        # Try parsing the entire text directly
         try:
-            # Try to find the outermost JSON object
-            match = re.search(r'\{.*\}', text, re.DOTALL)
-            if match:
-                parsed = json.loads(match.group())
+            parsed = json.loads(text.strip())
+            if isinstance(parsed, dict):
                 return parsed.get(field)
         except (json.JSONDecodeError, ValueError):
             pass
+
+        # Fall back to extracting a JSON object by finding balanced braces
+        start = text.find("{")
+        if start == -1:
+            return None
+
+        depth = 0
+        for i in range(start, len(text)):
+            if text[i] == "{":
+                depth += 1
+            elif text[i] == "}":
+                depth -= 1
+                if depth == 0:
+                    try:
+                        parsed = json.loads(text[start:i + 1])
+                        return parsed.get(field)
+                    except (json.JSONDecodeError, ValueError):
+                        return None
         return None

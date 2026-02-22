@@ -189,11 +189,13 @@ class QualityAssessor:
                         if e.get("node_id") == node_id or e.get("node_name") == node.get("name")
                     ]
 
+                connected_tools = self._get_connected_tools(node, workflow)
                 score = self.agent_scorer.score_agent(
                     node=node,
                     workflow_context=workflow,
                     execution_history=node_history,
                     include_reasoning=self.include_reasoning,
+                    connected_tools=connected_tools,
                 )
                 agent_scores.append(score)
 
@@ -283,6 +285,29 @@ class QualityAssessor:
             execution_history=execution_history,
             include_reasoning=self.include_reasoning,
         )
+
+    def _get_connected_tools(self, node: Dict, workflow: Dict) -> List[Dict]:
+        """Extract tool sub-nodes connected to an agent node via ai_tool connections."""
+        node_name = node.get("name", "")
+        connections = workflow.get("connections", {})
+        connected_tools = []
+
+        # Check all nodes for connections TO this agent node
+        for src_name, conn_data in connections.items():
+            # ai_tool connections use the "ai_tool" key in the connection data
+            for conn_type in ["ai_tool", "ai_outputParser", "ai_languageModel"]:
+                for output_group in conn_data.get(conn_type, []):
+                    for conn in output_group:
+                        if conn.get("node") == node_name and conn_type == "ai_tool":
+                            # Find the source node
+                            src_node = next(
+                                (n for n in workflow.get("nodes", []) if n.get("name") == src_name),
+                                None
+                            )
+                            if src_node:
+                                connected_tools.append(src_node)
+
+        return connected_tools
 
     def _generate_workflow_reasoning(
         self,

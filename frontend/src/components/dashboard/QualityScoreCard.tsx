@@ -35,15 +35,15 @@ export function QualityScoreCard({ assessments = [], isLoading }: QualityScoreCa
   }
 
   const totalAssessments = assessments.length
-  const avgScore = calculateAverageScore(assessments) / 100 // Normalize 0-100 integer to 0-1 for shared utilities
+  const avgScore = calculateAverageScore(assessments)
   const avgGrade = getAverageGrade(avgScore)
 
   const criticalIssues = assessments.reduce((acc, a) => acc + a.critical_issues_count, 0)
   const totalIssues = assessments.reduce((acc, a) => acc + a.total_issues, 0)
 
   // Calculate scores for different grades (overall_score is 0-100 integer)
-  const excellentCount = assessments.filter(a => a.overall_score >= 80).length
-  const needsWorkCount = assessments.filter(a => a.overall_score < 60).length
+  const excellentCount = assessments.filter(a => a.overall_score >= 0.80).length
+  const needsWorkCount = assessments.filter(a => a.overall_score < 0.60).length
 
   return (
     <Card>

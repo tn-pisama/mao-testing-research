@@ -49,7 +49,7 @@ class ErrorCode:
 # Error code registry
 # ---------------------------------------------------------------------------
 
-_DOC_BASE = ""  # Empty until hosted docs exist — avoids 404s
+_DOC_BASE = "/docs/quality/"  # Relative path for frontend to resolve
 
 ERROR_CODES: Dict[str, ErrorCode] = {
     # ── Role Clarity (RC) ─────────────────────────────────────────────────
@@ -160,6 +160,17 @@ ERROR_CODES: Dict[str, ErrorCode] = {
             "Validate outputs with a downstream schema-check node."
         ),
         doc_link=f"{_DOC_BASE}QE-OC-002",
+        example_bad=(
+            'Run 1: { "result": "approved" }\n'
+            'Run 2: "The request is approved"\n'
+            'Run 3: { "status": "approved", "reason": "..." }'
+        ),
+        example_good=(
+            'Run 1: { "status": "approved", "confidence": 0.95 }\n'
+            'Run 2: { "status": "rejected", "confidence": 0.87 }\n'
+            'Run 3: { "status": "approved", "confidence": 0.91 }'
+        ),
+        quantified_target="100% structural consistency across runs (same keys, same types)",
     ),
     "QE-OC-003": ErrorCode(
         code="QE-OC-003",
@@ -200,6 +211,9 @@ ERROR_CODES: Dict[str, ErrorCode] = {
             "slow or unresponsive."
         ),
         doc_link=f"{_DOC_BASE}QE-EH-002",
+        example_bad='{ "timeout": 0 }  // no timeout — request can hang forever',
+        example_good='{ "timeout": 60000 }  // 60-second timeout with graceful error handling',
+        quantified_target="Timeout between 30s and 120s depending on expected response complexity",
     ),
     "QE-EH-003": ErrorCode(
         code="QE-EH-003",
@@ -239,6 +253,14 @@ ERROR_CODES: Dict[str, ErrorCode] = {
             "generation."
         ),
         doc_link=f"{_DOC_BASE}QE-TU-001",
+        example_bad="Agent node with no connected tool sub-nodes (can only generate text)",
+        example_good=(
+            "Agent node with 2-3 connected tools:\n"
+            "- HTTP Request tool for API calls\n"
+            "- Code tool for data transformation\n"
+            "- Database tool for record lookup"
+        ),
+        quantified_target="1-10 tools for agents that need external interactions; 0 is acceptable for pure text agents",
     ),
     "QE-TU-002": ErrorCode(
         code="QE-TU-002",
@@ -251,6 +273,13 @@ ERROR_CODES: Dict[str, ErrorCode] = {
             "lead to incorrect tool selection."
         ),
         doc_link=f"{_DOC_BASE}QE-TU-002",
+        example_bad='{ "name": "HTTP Request", "description": "" }  // empty description',
+        example_good=(
+            '{ "name": "HTTP Request", "description": "Fetch customer order '
+            "history from the Orders API. Returns a JSON array of orders "
+            'with fields: order_id, date, total, status." }'
+        ),
+        quantified_target="Every tool must have a description of 10+ words explaining when and how to use it",
     ),
     "QE-TU-003": ErrorCode(
         code="QE-TU-003",
@@ -289,6 +318,12 @@ ERROR_CODES: Dict[str, ErrorCode] = {
             "values below 0.0 are invalid for most providers."
         ),
         doc_link=f"{_DOC_BASE}QE-CA-001",
+        example_bad='{ "temperature": 1.8 }  // too high — outputs become incoherent',
+        example_good=(
+            '{ "temperature": 0.1 }  // for data extraction and classification\n'
+            '{ "temperature": 0.7 }  // for creative writing or brainstorming'
+        ),
+        quantified_target="0.0-0.3 for deterministic tasks; 0.5-0.8 for creative tasks; never above 1.0",
     ),
     "QE-CA-002": ErrorCode(
         code="QE-CA-002",

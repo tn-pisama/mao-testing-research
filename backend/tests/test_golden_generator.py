@@ -29,10 +29,10 @@ class TestGoldenDataGenerator:
             tags=["unit_test"],
         )
 
-        assert entry.id.startswith("test_LOOP_test_001")
+        assert entry.id.startswith("test_loop_test_001")
         assert entry.detection_type == DetectionType.LOOP
         assert entry.expected_detected is True
-        assert "test" in entry.tags
+        assert "unit_test" in entry.tags
         assert entry.source_workflow_id == "test_001"
 
     def test_analyze_workflow_structure(self):

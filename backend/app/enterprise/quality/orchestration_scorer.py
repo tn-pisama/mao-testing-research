@@ -78,6 +78,35 @@ class OrchestrationQualityScorer:
             except Exception:
                 pass  # LLM judge unavailable, fall back to heuristic-only
 
+    def _has_ai_language_model_input(self, node: Dict[str, Any], workflow: Dict[str, Any]) -> bool:
+        """Check if a node has incoming ai_languageModel connections (sub-node LLM provider)."""
+        node_name = node.get("name", "")
+        connections = workflow.get("connections", {})
+        for src_name, conn_data in connections.items():
+            if not isinstance(conn_data, dict):
+                continue
+            for output_group in conn_data.get("ai_languageModel", []):
+                if isinstance(output_group, list):
+                    for conn in output_group:
+                        if isinstance(conn, dict) and conn.get("node") == node_name:
+                            return True
+        return False
+
+    def _find_agent_nodes(self, workflow: Dict[str, Any]) -> List[Dict[str, Any]]:
+        """Find agent nodes by type AND by incoming ai_languageModel connections."""
+        nodes = workflow.get("nodes", [])
+        agent_nodes = []
+        for n in nodes:
+            node_type = n.get("type", "")
+            # Skip LM config nodes — they are model settings, not agents
+            if node_type in LM_CONFIG_NODE_TYPES:
+                continue
+            if node_type in AI_NODE_TYPES:
+                agent_nodes.append(n)
+            elif self._has_ai_language_model_input(n, workflow):
+                agent_nodes.append(n)
+        return agent_nodes
+
     def score_orchestration(
         self,
         workflow: Dict[str, Any],
@@ -226,11 +255,9 @@ class OrchestrationQualityScorer:
 
         # Count nodes by type
         node_count = len(nodes)
-        # Count actual agents (exclude LM config nodes)
-        agent_count = sum(
-            1 for n in nodes
-            if n.get("type") in AI_NODE_TYPES and n.get("type") not in LM_CONFIG_NODE_TYPES
-        )
+        # Count actual agents (by type AND by ai_languageModel connections)
+        agent_nodes = self._find_agent_nodes(workflow)
+        agent_count = len(agent_nodes)
         ai_node_ratio = agent_count / node_count if node_count > 0 else 0.0
 
         # Count connections
@@ -324,10 +351,9 @@ class OrchestrationQualityScorer:
 
     def _calculate_coupling_ratio(self, workflow: Dict[str, Any]) -> float:
         """Calculate agent coupling ratio based on direct connections."""
-        nodes = workflow.get("nodes", [])
         connections = workflow.get("connections", {})
 
-        agent_nodes = [n for n in nodes if n.get("type") in AI_NODE_TYPES]
+        agent_nodes = self._find_agent_nodes(workflow)
         if len(agent_nodes) < 2:
             return 0.0
 
@@ -420,13 +446,16 @@ class OrchestrationQualityScorer:
                 df_error_codes.append("QE-DF-001")
 
         # Check for Set/Code nodes that might be passing implicit state
-        state_manipulation_nodes = sum(
+        # Only count "empty" Set nodes (no meaningful field mappings) and
+        # Code nodes with no actual code — configured nodes are doing useful work.
+        empty_manipulation_nodes = sum(
             1 for n in nodes
-            if n.get("type") in ["n8n-nodes-base.set", "n8n-nodes-base.code"]
+            if (n.get("type") == "n8n-nodes-base.set" and not n.get("parameters", {}).get("assignments"))
+            or (n.get("type") == "n8n-nodes-base.code" and not (n.get("parameters", {}).get("jsCode") or n.get("parameters", {}).get("code")))
         )
-        evidence["state_manipulation_nodes"] = state_manipulation_nodes
+        evidence["state_manipulation_nodes"] = empty_manipulation_nodes
 
-        if state_manipulation_nodes > total_nodes * 0.3:
+        if empty_manipulation_nodes > total_nodes * 0.5:
             issues.append("High ratio of state manipulation nodes")
             suggestions.append("Consider reducing implicit state passing")
             score -= 0.15
@@ -576,9 +605,8 @@ class OrchestrationQualityScorer:
             suggestions.append("Consider reducing direct agent dependencies")
 
         # Check for agent chains (A -> B -> C -> D pattern)
-        nodes = workflow.get("nodes", [])
         connections = workflow.get("connections", {})
-        agent_names = {n.get("name") for n in nodes if n.get("type") in AI_NODE_TYPES}
+        agent_names = {n.get("name") for n in self._find_agent_nodes(workflow)}
 
         chain_length = self._detect_agent_chain_length(connections, agent_names)
         evidence["max_agent_chain"] = chain_length
@@ -718,7 +746,7 @@ class OrchestrationQualityScorer:
             ob_error_codes.append("QE-OB-002")
 
         # Check agent nodes have alwaysOutputData
-        agent_nodes = [n for n in nodes if n.get("type") in AI_NODE_TYPES]
+        agent_nodes = self._find_agent_nodes(workflow)
         agents_with_output = sum(1 for n in agent_nodes if n.get("alwaysOutputData", False))
         evidence["agents_with_always_output"] = agents_with_output
 
@@ -773,7 +801,7 @@ class OrchestrationQualityScorer:
 
         nodes = workflow.get("nodes", [])
         connections = workflow.get("connections", {})
-        ai_nodes = [n for n in nodes if n.get("type") in AI_NODE_TYPES]
+        ai_nodes = self._find_agent_nodes(workflow)
 
         if not ai_nodes:
             return DimensionScore(

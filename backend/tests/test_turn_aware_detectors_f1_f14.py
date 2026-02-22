@@ -205,11 +205,10 @@ class TestTurnAwareRoleUsurpationDetector:
         self.detector = TurnAwareRoleUsurpationDetector()
 
     def test_no_detection_few_turns(self):
-        """Should not detect with fewer than min_turns (3)."""
-        # F9 requires min_turns=3, so 2 agent turns returns early with no detection
+        """Should not detect with fewer than min_turns (2)."""
+        # F9 has min_turns=2 default, so 1 turn returns early with no detection
         turns = [
             make_turn(1, "user", "Do something"),
-            make_turn(2, "agent", "Done", pid="agent1"),
         ]
         result = self.detector.detect(turns)
         assert not result.detected

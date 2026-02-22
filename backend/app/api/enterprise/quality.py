@@ -1,6 +1,6 @@
 """Quality assessment API endpoints."""
 
-from typing import Optional, List
+from typing import Any, Dict, Optional, List
 from uuid import UUID
 from datetime import datetime
 import time
@@ -60,15 +60,77 @@ class WorkflowQualityRequest(BaseModel):
     )
 
 
+class DimensionScoreResponse(BaseModel):
+    """Typed response for a single quality dimension score."""
+    dimension: str
+    score: float
+    issues: List[str] = Field(default_factory=list)
+    suggestions: List[str] = Field(default_factory=list)
+    is_provisional: bool = False
+    evidence: Dict[str, Any] = Field(default_factory=dict)
+    weight: float = 1.0
+    reasoning: Optional[str] = None
+
+
+class AgentScoreResponse(BaseModel):
+    """Typed response for a single agent's quality score."""
+    agent_id: str
+    agent_name: str
+    agent_type: str = ""
+    overall_score: float
+    grade: str
+    dimensions: List[DimensionScoreResponse] = Field(default_factory=list)
+    is_provisional: bool = False
+    issues_count: int = 0
+    critical_issues: List[str] = Field(default_factory=list)
+    metadata: Dict[str, Any] = Field(default_factory=dict)
+    reasoning: Optional[str] = None
+
+
+class ImprovementResponse(BaseModel):
+    """Typed response for a single improvement suggestion."""
+    id: str = ""
+    target_type: str = ""
+    target_id: str = ""
+    dimension: str = ""
+    severity: str = "medium"
+    category: str = ""
+    title: str = ""
+    description: str = ""
+    rationale: str = ""
+    suggestion: str = ""
+    suggested_change: Optional[str] = None
+    code_example: Optional[str] = None
+    estimated_impact: str = ""
+    effort: str = "medium"
+    priority: str = "medium"
+    current_score: float = 0.0
+    expected_improvement: float = 0.0
+
+
+class OrchestrationScoreResponse(BaseModel):
+    """Typed response for orchestration quality score."""
+    workflow_id: str = ""
+    workflow_name: str = ""
+    overall_score: float = 0.0
+    grade: str = ""
+    dimensions: List[DimensionScoreResponse] = Field(default_factory=list)
+    complexity_metrics: Dict[str, Any] = Field(default_factory=dict)
+    issues_count: int = 0
+    critical_issues: List[str] = Field(default_factory=list)
+    detected_pattern: str = "unknown"
+    reasoning: Optional[str] = None
+
+
 class WorkflowQualityResponse(BaseModel):
     """Response with workflow quality assessment."""
     workflow_id: str
     workflow_name: str
     overall_score: float
     overall_grade: str
-    agent_scores: List[dict]
-    orchestration_score: dict
-    improvements: List[dict]
+    agent_scores: List[AgentScoreResponse]
+    orchestration_score: OrchestrationScoreResponse
+    improvements: List[ImprovementResponse]
     summary: str
     total_issues: int
     critical_issues_count: int
@@ -105,7 +167,7 @@ class AgentQualityResponse(BaseModel):
     agent_type: str
     overall_score: float
     grade: str
-    dimensions: List[dict]
+    dimensions: List[DimensionScoreResponse]
     issues_count: int
     critical_issues: List[str]
     reasoning: Optional[str] = None
@@ -121,7 +183,7 @@ class SuggestionsRequest(BaseModel):
 
 class SuggestionsResponse(BaseModel):
     """Response with improvement suggestions."""
-    suggestions: List[dict]
+    suggestions: List[ImprovementResponse]
     count: int
 
 
@@ -200,7 +262,7 @@ async def assess_agent_quality(
     """
     try:
         assessor = QualityAssessor(
-            use_llm_judge=request.use_llm_analysis if request.use_llm_analysis else None,
+            use_llm_judge=request.use_llm_analysis if request.use_llm_analysis is not None else None,
             include_reasoning=request.include_reasoning,
         )
 
@@ -451,10 +513,10 @@ class StoredAssessmentResponse(BaseModel):
     trace_id: Optional[str]
     overall_score: int
     overall_grade: str
-    agent_scores: List[dict]
-    orchestration_score: dict
-    improvements: List[dict]
-    complexity_metrics: dict
+    agent_scores: List[AgentScoreResponse]
+    orchestration_score: OrchestrationScoreResponse
+    improvements: List[ImprovementResponse]
+    complexity_metrics: Dict[str, Any] = Field(default_factory=dict)
     total_issues: int
     critical_issues_count: int
     source: str
@@ -807,7 +869,7 @@ class StoredAgentAssessmentResponse(BaseModel):
     agent_type: str
     overall_score: int
     grade: str
-    dimensions: List[dict]
+    dimensions: List[DimensionScoreResponse]
     issues_count: int
     critical_issues: List[str]
     reasoning: Optional[str] = None

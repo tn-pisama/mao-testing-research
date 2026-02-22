@@ -346,30 +346,63 @@ async def approve_healing(
         )
 
     try:
-        # Re-run engine with auto_apply on the original workflow using selected fixes
-        engine = QualityHealingEngine(auto_apply=True)
-        assessor = QualityAssessor(use_llm_judge=False)
-        report = assessor.assess_workflow(workflow=record.original_state or {})
-        heal_result = engine.heal(report, record.original_state or {})
+        from app.enterprise.quality.healing.models import QualityFixSuggestion
+        from app.enterprise.quality.healing.applicator import QualityFixApplicator
+
+        # Filter to user-selected fixes only
+        all_suggestions = record.fix_suggestions or []
+        selected = [s for s in all_suggestions if s.get("id") in request.selected_fix_ids]
+
+        if not selected:
+            raise HTTPException(
+                status_code=400,
+                detail=f"No matching fix suggestions found for IDs: {request.selected_fix_ids}",
+            )
+
+        # Apply selected fixes
+        applicator = QualityFixApplicator()
+        current_config = dict(record.original_state or {})
+        applied_fixes = []
+
+        for fix_dict in selected:
+            try:
+                fix = QualityFixSuggestion.from_dict(fix_dict)
+                applied = applicator.apply(fix, current_config)
+                applied_fixes.append(applied)
+                current_config = applied.modified_state
+            except Exception as e:
+                import logging
+                logging.getLogger(__name__).warning(f"Failed to apply fix {fix_dict.get('id')}: {e}")
+                continue
+
+        # Re-assess modified workflow
+        assessor = QualityAssessor(use_llm_judge=None)
+        new_report = assessor.assess_workflow(workflow=current_config)
 
         now = datetime.now(timezone.utc)
-        record.status = heal_result.status.value
-        record.applied_fixes = [f.to_dict() for f in heal_result.applied_fixes]
-        record.validation_results = [v.to_dict() for v in heal_result.validation_results]
-        record.after_score = heal_result.after_score
-        record.modified_state = (
-            heal_result.applied_fixes[-1].modified_state
-            if heal_result.applied_fixes
-            else {}
-        )
+        record.applied_fixes = [f.to_dict() for f in applied_fixes]
+        record.after_score = new_report.overall_score
+        record.modified_state = current_config if applied_fixes else {}
+
+        # Set status based on results
+        if applied_fixes and new_report.overall_score > (record.before_score or 0):
+            record.status = "success"
+        elif applied_fixes:
+            record.status = "partial_success"
+        else:
+            record.status = "failed"
+
         record.approved_by = request.approved_by
         record.approved_at = now
         record.completed_at = now
+        record.rollback_available = bool(applied_fixes)
 
         await db.commit()
         await db.refresh(record)
 
         return _record_to_status(record)
+    except HTTPException:
+        raise
     except Exception as e:
         raise HTTPException(status_code=500, detail=f"Approval failed: {str(e)}")
 

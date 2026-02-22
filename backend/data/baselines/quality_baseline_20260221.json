@@ -1,5 +1,5 @@
 {
-  "generated_at": "2026-02-21T21:40:31.058785+00:00",
+  "generated_at": "2026-02-21T23:59:39.414478+00:00",
   "assessor_config": {
     "use_llm_judge": false,
     "scoring_mode": "heuristic_only"
@@ -401,14 +401,13 @@
     },
     "genuine_basic": {
       "workflow_name": "Basic Quality Workflow",
-      "overall_score": 0.496,
-      "overall_grade": "Critical",
+      "overall_score": 0.504,
+      "overall_grade": "At Risk",
       "agent_dimensions": {
         "role_clarity": {
-          "score": 0.4,
+          "score": 0.467,
           "issues": [
-            "System prompt is too brief (16 words)",
-            "Keyword stuffing detected \u2014 prompt contains repeated keywords without substance"
+            "System prompt is too brief (16 words)"
           ],
           "evidence": {
             "has_system_prompt": true,
@@ -418,7 +417,6 @@
             "boundary_keywords": 0,
             "word_count": 16,
             "specificity_score": 0.6666666666666666,
-            "keyword_stuffing_detected": true,
             "error_codes": [
               "QE-RC-004",
               "QE-RC-005"
@@ -536,7 +534,7 @@
         }
       },
       "orchestration_overall": 0.544,
-      "reasoning": "Workflow 'Basic Quality Workflow' overall quality: 50% (Critical). Agent quality (1 agents, avg 46%): weighted 60% of overall score. Agents needing attention: Data Extractor. Orchestration quality: 54% (At Risk), weighted 40% of overall score. Critical issues (4): Limited error handling configuration; No checkpoint or logging nodes; No global error handler in workflow.",
+      "reasoning": "Workflow 'Basic Quality Workflow' overall quality: 50% (At Risk). Agent quality (1 agents, avg 48%): weighted 60% of overall score. Agents needing attention: Data Extractor. Orchestration quality: 54% (At Risk), weighted 40% of overall score. Critical issues (4): Limited error handling configuration; No checkpoint or logging nodes; No global error handler in workflow.",
       "improvements_count": 10,
       "critical_issues": 4
     },
@@ -670,7 +668,7 @@
     },
     "production_grade": {
       "workflow_name": "Production Grade Workflow",
-      "overall_score": 0.856,
+      "overall_score": 0.863,
       "overall_grade": "Needs Data",
       "agent_dimensions": {
         "role_clarity": {
@@ -736,10 +734,8 @@
       },
       "orchestration_dimensions": {
         "data_flow_clarity": {
-          "score": 0.55,
-          "issues": [
-            "High ratio of state manipulation nodes"
-          ]
+          "score": 0.7,
+          "issues": []
         },
         "complexity_management": {
           "score": 1.0,
@@ -782,8 +778,8 @@
           "issues": []
         }
       },
-      "orchestration_overall": 0.784,
-      "reasoning": "Workflow 'Production Grade Workflow' overall quality: 86% (Good). Agent quality (1 agents, avg 90%): weighted 60% of overall score. Orchestration quality: 78% (Needs Attention), weighted 40% of overall score.",
+      "orchestration_overall": 0.802,
+      "reasoning": "Workflow 'Production Grade Workflow' overall quality: 86% (Good). Agent quality (1 agents, avg 90%): weighted 60% of overall score. Orchestration quality: 80% (Good), weighted 40% of overall score.",
       "improvements_count": 7,
       "critical_issues": 0
     },

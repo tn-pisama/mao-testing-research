@@ -9,6 +9,7 @@ from .models import (
     QualityHealingStatus,
     QualityHealingResult,
     QualityAppliedFix,
+    QualityFixSuggestion,
 )
 from .fix_generator import QualityFixGenerator
 from .agent_fixes import ALL_AGENT_FIX_GENERATORS
@@ -75,6 +76,7 @@ class QualityHealingEngine:
         self,
         quality_report: QualityReport,
         workflow_config: Dict[str, Any],
+        execution_history: Optional[List[Dict[str, Any]]] = None,
     ) -> QualityHealingResult:
         """
         Attempt to heal quality issues in a workflow.
@@ -82,6 +84,9 @@ class QualityHealingEngine:
         Args:
             quality_report: The quality assessment report
             workflow_config: Current workflow JSON configuration
+            execution_history: Optional list of past execution records.
+                When provided, the re-assessment can evaluate output_consistency
+                against real data instead of producing provisional scores.
 
         Returns:
             QualityHealingResult with status and applied fixes
@@ -113,6 +118,9 @@ class QualityHealingEngine:
             if not self.auto_apply:
                 result.status = QualityHealingStatus.PENDING
                 result.metadata["requires_approval"] = True
+                result.metadata["original_workflow"] = workflow_config
+                if execution_history is not None:
+                    result.metadata["execution_history"] = execution_history
                 result.completed_at = datetime.now(UTC)
                 self._healing_history.append(result)
                 return result
@@ -160,8 +168,11 @@ class QualityHealingEngine:
             )
             result.validation_results = validation_results
 
-            # Step 5: Re-assess overall score
-            final_report = self._assessor.assess_workflow(current_config)
+            # Step 5: Re-assess overall score (pass execution_history so
+            # output_consistency is evaluated against real data, not provisional)
+            final_report = self._assessor.assess_workflow(
+                current_config, execution_history=execution_history
+            )
             result.after_score = final_report.overall_score
 
             # Determine final status
@@ -192,8 +203,16 @@ class QualityHealingEngine:
         self,
         healing_id: str,
         selected_fix_ids: List[str],
+        execution_history: Optional[List[Dict[str, Any]]] = None,
     ) -> QualityHealingResult:
-        """Approve and apply specific fixes from a pending healing result."""
+        """Approve and apply specific fixes from a pending healing result.
+
+        Args:
+            healing_id: ID of the pending healing result.
+            selected_fix_ids: IDs of fixes the user approved.
+            execution_history: Optional execution history. If not provided,
+                falls back to the execution_history stored during heal().
+        """
         # Find the pending result
         result = None
         for hr in self._healing_history:
@@ -207,22 +226,88 @@ class QualityHealingEngine:
         if result.status != QualityHealingStatus.PENDING:
             raise ValueError(f"Healing result is {result.status.value}, not pending")
 
-        # Get selected fix suggestions
+        # Get selected fix suggestion dicts
         all_suggestions = result.metadata.get("fix_suggestions", [])
-        selected = [s for s in all_suggestions if s["id"] in selected_fix_ids]
+        selected_dicts = [s for s in all_suggestions if s["id"] in selected_fix_ids]
 
-        if not selected:
+        if not selected_dicts:
             raise ValueError("No matching fix suggestions found")
 
-        # We need to re-create QualityFixSuggestion objects from the dicts
-        # For now, apply using the stored workflow config
-        result.status = QualityHealingStatus.APPLYING
-        result.metadata["approved_fix_ids"] = selected_fix_ids
-        result.metadata["approved_at"] = datetime.now(UTC).isoformat()
-        result.completed_at = datetime.now(UTC)
-        result.status = QualityHealingStatus.SUCCESS
+        # Get original workflow config stored during heal()
+        original_workflow = result.metadata.get("original_workflow")
+        if original_workflow is None:
+            raise ValueError("Original workflow config not found in healing result metadata")
 
-        return result
+        # Use provided execution_history or fall back to stored one
+        if execution_history is None:
+            execution_history = result.metadata.get("execution_history")
+
+        try:
+            # Reconstruct QualityFixSuggestion objects from stored dicts
+            fix_suggestions = [QualityFixSuggestion.from_dict(d) for d in selected_dicts]
+
+            # Apply fixes
+            result.status = QualityHealingStatus.APPLYING
+            result.metadata["approved_fix_ids"] = selected_fix_ids
+            result.metadata["approved_at"] = datetime.now(UTC).isoformat()
+
+            current_config = original_workflow
+            for fix in fix_suggestions:
+                try:
+                    applied = self.applicator.apply(fix, current_config)
+                    result.applied_fixes.append(applied)
+                    current_config = applied.modified_state
+                except Exception as e:
+                    logger.warning(f"Failed to apply fix {fix.id}: {e}")
+                    continue
+
+            if not result.applied_fixes:
+                result.status = QualityHealingStatus.FAILED
+                result.error = "All fix applications failed"
+                result.completed_at = datetime.now(UTC)
+                return result
+
+            # Validate -- re-run quality checks on the modified config
+            result.status = QualityHealingStatus.VALIDATING
+
+            # Build a minimal QualityReport for the validator from stored metadata
+            original_report = self._assessor.assess_workflow(
+                original_workflow, execution_history=execution_history
+            )
+            validation_results = self.validator.validate_all(
+                result.applied_fixes,
+                original_report,
+                current_config,
+            )
+            result.validation_results = validation_results
+
+            # Re-assess overall score on the healed workflow
+            final_report = self._assessor.assess_workflow(
+                current_config, execution_history=execution_history
+            )
+            result.after_score = final_report.overall_score
+
+            # Determine final status based on actual results
+            successful_validations = sum(1 for v in validation_results if v.success)
+            if result.after_score > result.before_score:
+                if successful_validations == len(validation_results):
+                    result.status = QualityHealingStatus.SUCCESS
+                else:
+                    result.status = QualityHealingStatus.PARTIAL_SUCCESS
+            elif successful_validations > 0:
+                result.status = QualityHealingStatus.PARTIAL_SUCCESS
+            else:
+                result.status = QualityHealingStatus.FAILED
+
+            result.completed_at = datetime.now(UTC)
+            return result
+
+        except Exception as e:
+            logger.error(f"approve_and_apply failed: {e}")
+            result.status = QualityHealingStatus.FAILED
+            result.error = str(e)
+            result.completed_at = datetime.now(UTC)
+            return result
 
     def rollback(self, healing_id: str) -> Dict[str, Any]:
         """Rollback all applied quality fixes for a healing operation."""

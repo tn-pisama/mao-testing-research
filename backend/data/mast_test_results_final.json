@@ -2,6 +2,7 @@
   "run_timestamp": "2026-01-30T08:06:22.188582",
   "traces_path": "/Users/tuomonikulainen/mao-testing-research/backend/fixtures/golden/mast_traces.jsonl/golden_traces.jsonl",
   "total_traces": 935,
+  "methodology_note": "CAUTION: All F1/Precision/Recall scores are 1.0 because this benchmark tested ONLY positive samples (true_negatives=0 for all detectors). Without negative samples, Precision is trivially 1.0 (no chance of false positives) and these metrics are not meaningful. A proper benchmark requires negative samples — healthy traces that should NOT trigger each detector. The golden_dataset_n8n.json contains 122 negative samples that were not included in this run. See Phase D of the customer-readiness plan for the honest benchmark re-run.",
   "detectors_tested": [
     "infinite_loop",
     "coordination_deadlock",
