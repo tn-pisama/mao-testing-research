@@ -196,6 +196,22 @@ class QualityHealingEngine:
                 quality_report, threshold=self.score_threshold
             )
 
+            # Readiness gate: skip dimensions with historically low success rates
+            if hasattr(self, '_feedback_store') and self._feedback_store:
+                gated_suggestions = []
+                skipped_dims = set()
+                for fix in fix_suggestions:
+                    dim = fix.dimension
+                    if dim in skipped_dims:
+                        continue
+                    rates = self._feedback_store.get_success_rate(dimension=dim)
+                    if rates and all(r < 0.50 for r in rates.values()):
+                        logger.warning("Skipping %s fixes — success rate below 50%%", dim)
+                        skipped_dims.add(dim)
+                        continue
+                    gated_suggestions.append(fix)
+                fix_suggestions = gated_suggestions
+
             if not fix_suggestions:
                 result.status = QualityHealingStatus.SUCCESS
                 result.after_score = quality_report.overall_score

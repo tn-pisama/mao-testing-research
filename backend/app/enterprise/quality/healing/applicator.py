@@ -159,13 +159,18 @@ class OutputConsistencyApplicator(QualityApplicatorStrategy):
             config.setdefault("nodes", []).append(new_node)
 
             # Add connection from target to new node
-            target_name = target_node.get("name", "")
-            new_name = new_node.get("name", "")
+            from_name = target_node.get("name", "")
             connections = config.setdefault("connections", {})
-            conn_entry = connections.setdefault(target_name, {"main": [[]]})
-            main_outputs = conn_entry.setdefault("main", [[]])
-            if main_outputs:
-                main_outputs[0].append({"node": new_name, "type": "main", "index": 0})
+            if from_name not in connections:
+                connections[from_name] = {"main": [[]]}
+            main = connections[from_name].setdefault("main", [[]])
+            if not main:
+                main.append([])
+            main[0].append({
+                "node": new_node["name"],
+                "type": "main",
+                "index": 0,
+            })
 
         return config
 
@@ -377,8 +382,16 @@ class AgentCouplingApplicator(QualityApplicatorStrategy):
                     break
 
             # Add from -> checkpoint
-            from_conns = connections.setdefault(from_node_name, {"main": [[]]})
-            from_conns["main"][0].append({"node": checkpoint_name, "type": "main", "index": 0})
+            if from_node_name not in connections:
+                connections[from_node_name] = {"main": [[]]}
+            main = connections[from_node_name].setdefault("main", [[]])
+            if not main:
+                main.append([])
+            main[0].append({
+                "node": checkpoint_name,
+                "type": "main",
+                "index": 0,
+            })
 
             # Add checkpoint -> to
             connections[checkpoint_name] = {
@@ -409,10 +422,15 @@ class ObservabilityApplicator(QualityApplicatorStrategy):
             # Optionally wire the node
             connect_after = changes.get("connect_after")
             if connect_after:
+                from_name = connect_after
                 connections = config.setdefault("connections", {})
-                conn = connections.setdefault(connect_after, {"main": [[]]})
-                conn["main"][0].append({
-                    "node": new_node.get("name", ""),
+                if from_name not in connections:
+                    connections[from_name] = {"main": [[]]}
+                main = connections[from_name].setdefault("main", [[]])
+                if not main:
+                    main.append([])
+                main[0].append({
+                    "node": new_node["name"],
                     "type": "main",
                     "index": 0,
                 })

@@ -269,6 +269,7 @@ class QualityReport:
     summary: str = ""
     reasoning: Optional[str] = None
     generated_at: datetime = field(default_factory=lambda: datetime.now(UTC))
+    dimension_reliability: Dict[str, str] = field(default_factory=dict)
 
     @property
     def is_provisional(self) -> bool:
@@ -302,6 +303,8 @@ class QualityReport:
             "critical_issues_count": self.critical_issues_count,
             "generated_at": self.generated_at.isoformat(),
         }
+        if self.dimension_reliability:
+            result["dimension_reliability"] = self.dimension_reliability
         if self.reasoning is not None:
             result["reasoning"] = self.reasoning
         if self.is_provisional:

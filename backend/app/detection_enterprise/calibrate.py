@@ -42,6 +42,8 @@ class CalibrationResult:
     false_positives: int
     false_negatives: int
     ece: float = 0.0
+    f1_ci_lower: float = 0.0
+    f1_ci_upper: float = 0.0
 
 
 # ---------------------------------------------------------------------------
@@ -414,6 +416,79 @@ def _build_detector_runners() -> Dict[DetectionType, Any]:
 DETECTOR_RUNNERS: Dict[DetectionType, Any] = _build_detector_runners()
 
 
+def _apply_tiered_runners() -> None:
+    """Replace weak heuristic runners with tiered detectors that escalate to LLM.
+
+    This upgrades detectors that have low F1 scores (<0.70) to use the tiered
+    detection system, which escalates ambiguous cases to LLM verification.
+    The tiered detectors use lower confidence thresholds to escalate more
+    aggressively for these weak detectors.
+    """
+    from app.detection_enterprise.tiered import (
+        TierConfig,
+        create_tiered_specification_detector,
+        create_tiered_communication_detector,
+        create_tiered_coordination_detector,
+        create_tiered_completion_detector,
+        create_tiered_withholding_detector,
+        create_tiered_loop_detector,
+    )
+
+    # Lower thresholds → escalate more aggressively for weak detectors
+    weak_config = TierConfig(
+        rule_confidence_threshold=0.6,
+        gray_zone_lower=0.30,
+        gray_zone_upper=0.70,
+    )
+
+    tiered_map = {
+        DetectionType.SPECIFICATION: ("specification", create_tiered_specification_detector),
+        DetectionType.COMMUNICATION: ("communication", create_tiered_communication_detector),
+        DetectionType.COORDINATION: ("coordination", create_tiered_coordination_detector),
+        DetectionType.COMPLETION: ("completion", create_tiered_completion_detector),
+        DetectionType.LOOP: ("loop", create_tiered_loop_detector),
+    }
+
+    for dt, (name, factory) in tiered_map.items():
+        try:
+            tiered = factory(config=weak_config)
+
+            def _make_runner(tiered_det, det_type):
+                """Create a calibration runner from a tiered detector."""
+                def _run(entry: GoldenDatasetEntry) -> Tuple[bool, float]:
+                    # Build text/context from entry input_data based on detection type
+                    input_data = entry.input_data
+                    text = ""
+                    context = ""
+
+                    if det_type == "specification":
+                        text = input_data.get("task_specification", "")
+                        context = input_data.get("user_intent", "")
+                    elif det_type == "communication":
+                        text = input_data.get("receiver_response", "")
+                        context = input_data.get("sender_message", "")
+                    elif det_type == "coordination":
+                        # Use the existing direct runner for coordination (complex input)
+                        return DETECTOR_RUNNERS[DetectionType.COORDINATION](entry)
+                    elif det_type == "completion":
+                        text = input_data.get("agent_output", "")
+                        context = input_data.get("task", "")
+                    elif det_type == "loop":
+                        # Use the existing direct runner for loop (needs StateSnapshot)
+                        return DETECTOR_RUNNERS[DetectionType.LOOP](entry)
+                    else:
+                        text = str(input_data)
+
+                    result = tiered_det.detect(text=text, context=context)
+                    return result.detected, result.confidence
+                return _run
+
+            DETECTOR_RUNNERS[dt] = _make_runner(tiered, name)
+            logger.info("Upgraded %s to tiered detector", name)
+        except Exception as exc:
+            logger.warning("Could not create tiered %s: %s", name, exc)
+
+
 # ---------------------------------------------------------------------------
 # Core calibration logic
 # ---------------------------------------------------------------------------
@@ -550,6 +625,49 @@ def _compute_ece(
     return round(total_ece, 4)
 
 
+def _bootstrap_confidence_interval(
+    predictions: List[Tuple[bool, float]],
+    ground_truths: List[bool],
+    threshold: float,
+    n_bootstrap: int = 1000,
+    ci: float = 0.95,
+) -> Tuple[float, float]:
+    """Compute bootstrap 95% confidence interval for F1 at a given threshold.
+
+    Resamples predictions with replacement, computes F1 for each bootstrap
+    sample, and returns the percentile-based CI bounds.
+    """
+    n = len(predictions)
+    if n < 4:
+        return 0.0, 1.0
+
+    # Deterministic seed for reproducibility
+    seed = 42
+    f1_scores = []
+
+    for b in range(n_bootstrap):
+        # Generate indices via hash-based PRNG (no numpy dependency)
+        indices = []
+        for i in range(n):
+            h = int(hashlib.md5(f"{seed}_{b}_{i}".encode()).hexdigest()[:8], 16)
+            indices.append(h % n)
+
+        boot_preds = [predictions[j] for j in indices]
+        boot_truths = [ground_truths[j] for j in indices]
+        tp, tn, fp, fn = _compute_metrics_at_threshold(boot_preds, boot_truths, threshold)
+        _, _, f1 = _precision_recall_f1(tp, tn, fp, fn)
+        f1_scores.append(f1)
+
+    f1_scores.sort()
+    alpha = 1.0 - ci
+    lower_idx = int(alpha / 2 * n_bootstrap)
+    upper_idx = int((1 - alpha / 2) * n_bootstrap) - 1
+    lower_idx = max(0, min(lower_idx, n_bootstrap - 1))
+    upper_idx = max(0, min(upper_idx, n_bootstrap - 1))
+
+    return round(f1_scores[lower_idx], 4), round(f1_scores[upper_idx], 4)
+
+
 def calibrate_single(
     detection_type: DetectionType,
     entries: List[GoldenDatasetEntry],
@@ -667,6 +785,10 @@ def calibrate_single(
             fold_best_thresholds,
         )
 
+        ci_lower, ci_upper = _bootstrap_confidence_interval(
+            predictions, ground_truths, avg_threshold,
+        )
+
         return CalibrationResult(
             detection_type=detection_type.value,
             optimal_threshold=avg_threshold,
@@ -679,6 +801,8 @@ def calibrate_single(
             false_positives=fold_fp,
             false_negatives=fold_fn,
             ece=ece,
+            f1_ci_lower=ci_lower,
+            f1_ci_upper=ci_upper,
         )
 
     # -----------------------------------------------------------------
@@ -706,6 +830,10 @@ def calibrate_single(
     # Compute ECE on full predictions using best threshold
     ece = _compute_ece(predictions, ground_truths, best_threshold)
 
+    ci_lower, ci_upper = _bootstrap_confidence_interval(
+        predictions, ground_truths, best_threshold,
+    )
+
     return CalibrationResult(
         detection_type=detection_type.value,
         optimal_threshold=best_threshold,
@@ -718,6 +846,8 @@ def calibrate_single(
         false_positives=fp,
         false_negatives=fn,
         ece=ece,
+        f1_ci_lower=ci_lower,
+        f1_ci_upper=ci_upper,
     )
 
 
@@ -873,6 +1003,25 @@ DETECTOR_METADATA: Dict[str, Dict[str, str]] = {
 
 MINIMUM_PASSING_F1 = 0.40
 
+READINESS_CRITERIA = {
+    "production":   {"min_f1": 0.80, "min_precision": 0.70, "min_samples": 30},
+    "beta":         {"min_f1": 0.65, "min_samples": 15},
+    "experimental": {"min_f1": 0.40, "min_samples": 8},
+    "failing":      {},
+}
+
+
+def _compute_readiness(f1: float, precision: float, sample_count: int) -> str:
+    """Determine readiness tier based on metrics and sample count."""
+    for tier, criteria in READINESS_CRITERIA.items():
+        if not criteria:
+            return tier
+        if (f1 >= criteria.get("min_f1", 0.0)
+                and precision >= criteria.get("min_precision", 0.0)
+                and sample_count >= criteria.get("min_samples", 0)):
+            return tier
+    return "failing"
+
 
 def generate_capability_registry(
     report: Dict[str, Any],
@@ -890,59 +1039,55 @@ def generate_capability_registry(
     calibrated_at = report.get("calibrated_at", "")
 
     capabilities = {}
-    passing = failing = untested = 0
+    readiness_counts = {"production": 0, "beta": 0, "experimental": 0, "failing": 0, "untested": 0}
 
     for dtype_value, meta in DETECTOR_METADATA.items():
-        if dtype_value in skipped:
-            status = "untested"
-            untested += 1
+        if dtype_value in skipped or dtype_value not in results:
+            readiness_counts["untested"] += 1
             entry = {
                 "name": meta["name"],
                 "tier": meta["tier"],
-                "status": status,
+                "status": "untested",
+                "readiness": "untested",
                 "module": meta["module"],
-            }
-        elif dtype_value in results:
-            metrics = results[dtype_value]
-            f1 = metrics.get("f1", 0.0)
-            status = "passing" if f1 >= MINIMUM_PASSING_F1 else "failing"
-            if status == "passing":
-                passing += 1
-            else:
-                failing += 1
-            entry = {
-                "name": meta["name"],
-                "tier": meta["tier"],
-                "status": status,
-                "module": meta["module"],
-                "f1_score": metrics.get("f1", 0.0),
-                "precision": metrics.get("precision", 0.0),
-                "recall": metrics.get("recall", 0.0),
-                "optimal_threshold": metrics.get("optimal_threshold", 0.5),
-                "sample_count": metrics.get("sample_count", 0),
-                "last_calibrated": calibrated_at,
             }
         else:
-            status = "untested"
-            untested += 1
+            metrics = results[dtype_value]
+            f1 = metrics.get("f1", 0.0)
+            precision = metrics.get("precision", 0.0)
+            sample_count = metrics.get("sample_count", 0)
+            readiness = _compute_readiness(f1, precision, sample_count)
+            readiness_counts[readiness] += 1
+            status = "passing" if f1 >= MINIMUM_PASSING_F1 else "failing"
             entry = {
                 "name": meta["name"],
                 "tier": meta["tier"],
                 "status": status,
+                "readiness": readiness,
                 "module": meta["module"],
+                "f1_score": f1,
+                "precision": precision,
+                "recall": metrics.get("recall", 0.0),
+                "optimal_threshold": metrics.get("optimal_threshold", 0.5),
+                "sample_count": sample_count,
+                "f1_ci_lower": metrics.get("f1_ci_lower", 0.0),
+                "f1_ci_upper": metrics.get("f1_ci_upper", 0.0),
+                "last_calibrated": calibrated_at,
             }
 
         capabilities[dtype_value] = entry
 
     registry = {
-        "version": "1.0",
+        "version": "2.0",
         "generated_at": datetime.now(timezone.utc).isoformat(),
         "capabilities": capabilities,
         "summary": {
             "total": len(capabilities),
-            "passing": passing,
-            "failing": failing,
-            "untested": untested,
+            "production": readiness_counts["production"],
+            "beta": readiness_counts["beta"],
+            "experimental": readiness_counts["experimental"],
+            "failing": readiness_counts["failing"],
+            "untested": readiness_counts["untested"],
         },
     }
 
@@ -987,8 +1132,13 @@ if __name__ == "__main__":
         help="Generate LLM golden data for types below 30 samples, then re-calibrate",
     )
     parser.add_argument(
-        "--generate-target", type=int, default=30, metavar="N",
-        help="Target entries per type for --generate-data (default: 30)",
+        "--generate-target", type=int, default=50, metavar="N",
+        help="Target entries per type for --generate-data (default: 50)",
+    )
+    parser.add_argument(
+        "--difficulty", type=str, choices=["easy", "medium", "hard", "mixed"],
+        default="mixed",
+        help="Difficulty level for --generate-data (default: mixed = easy/medium/hard passes)",
     )
     parser.add_argument(
         "--phoenix", action="store_true",
@@ -1013,6 +1163,10 @@ if __name__ == "__main__":
     parser.add_argument(
         "--status", action="store_true",
         help="Print progress log summary and exit",
+    )
+    parser.add_argument(
+        "--tiered", action="store_true",
+        help="Use tiered detectors (with LLM escalation) instead of raw heuristic detectors",
     )
     args = parser.parse_args()
 
@@ -1042,11 +1196,13 @@ if __name__ == "__main__":
             existing_report = json.load(f)
         registry = generate_capability_registry(existing_report)
         s = registry["summary"]
-        print(f"  Registry: {s['passing']} passing, {s['failing']} failing, {s['untested']} untested")
+        print(f"  Registry: {s['production']} production, {s['beta']} beta, "
+              f"{s['experimental']} experimental, {s['failing']} failing, {s['untested']} untested")
         try:
             from app.detection_enterprise.progress_log import ProgressLog
             ProgressLog().log("registry_updated", "calibrate.py",
-                f"Registry: {s['passing']} passing, {s['failing']} failing, {s['untested']} untested")
+                f"Registry: {s['production']} production, {s['beta']} beta, "
+                f"{s['experimental']} experimental, {s['failing']} failing, {s['untested']} untested")
         except Exception:
             pass
         sys.exit(0)
@@ -1063,7 +1219,12 @@ if __name__ == "__main__":
 
         dataset = create_default_golden_dataset()
         print(f"\n  Current dataset: {len(dataset.entries)} entries")
-        new_entries = generator.generate_all(dataset, target_per_type=args.generate_target)
+        use_difficulty_passes = (args.difficulty == "mixed")
+        new_entries = generator.generate_all(
+            dataset,
+            target_per_type=args.generate_target,
+            use_difficulty_passes=use_difficulty_passes,
+        )
         if new_entries:
             for entry in new_entries:
                 dataset.add_entry(entry)
@@ -1085,6 +1246,10 @@ if __name__ == "__main__":
         except Exception as exc:
             print(f"  WARNING: Could not enable Phoenix tracing: {exc}")
 
+    # If --tiered, rebuild detector runners to use tiered detectors
+    if args.tiered:
+        _apply_tiered_runners()
+
     report = calibrate_all(phoenix_tracer=phoenix_tracer)
 
     # Pretty-print summary to stdout.
@@ -1098,11 +1263,18 @@ if __name__ == "__main__":
     print("-" * 72)
 
     for dtype, metrics in report["results"].items():
+        f1 = metrics['f1']
+        ci_lo = metrics.get('f1_ci_lower', 0.0)
+        ci_hi = metrics.get('f1_ci_upper', 0.0)
+        readiness = _compute_readiness(
+            f1, metrics.get('precision', 0.0), metrics.get('sample_count', 0),
+        )
         print(f"\n  [{dtype.upper()}]")
         print(f"    Optimal threshold : {metrics['optimal_threshold']:.2f}")
         print(f"    Precision         : {metrics['precision']:.4f}")
         print(f"    Recall            : {metrics['recall']:.4f}")
-        print(f"    F1                : {metrics['f1']:.4f}")
+        print(f"    F1                : {f1:.4f} (95% CI: {ci_lo:.2f}\u2013{ci_hi:.2f})")
+        print(f"    Readiness         : {readiness}")
         print(f"    Samples           : {metrics['sample_count']}")
         print(
             f"    Confusion         : TP={metrics['true_positives']}  "
@@ -1150,7 +1322,8 @@ if __name__ == "__main__":
     if args.registry:
         registry = generate_capability_registry(report)
         s = registry["summary"]
-        print(f"  Registry: {s['passing']} passing, {s['failing']} failing, {s['untested']} untested")
+        print(f"  Registry: {s['production']} production, {s['beta']} beta, "
+              f"{s['experimental']} experimental, {s['failing']} failing, {s['untested']} untested")
 
     # Log to progress log (unless dry-run)
     if not args.dry_run:
@@ -1169,7 +1342,8 @@ if __name__ == "__main__":
             if args.registry:
                 s = registry["summary"]
                 progress.log("registry_updated", "calibrate.py",
-                    f"Registry: {s['passing']} passing, {s['failing']} failing, {s['untested']} untested")
+                    f"Registry: {s['production']} production, {s['beta']} beta, "
+                    f"{s['experimental']} experimental, {s['failing']} failing, {s['untested']} untested")
         except Exception:
             pass  # Progress logging is non-critical
 

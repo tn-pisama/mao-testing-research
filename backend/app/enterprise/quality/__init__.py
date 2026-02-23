@@ -117,6 +117,23 @@ from typing import Dict, Any, List, Optional
 from datetime import datetime, UTC
 
 
+# Reliability indicators for each scoring dimension.
+# "high"   = deterministic / rule-based checks with strong signal.
+# "medium" = heuristic checks that may miss edge cases.
+# "low"    = checks that rely on limited data or subjective judgement.
+DIMENSION_RELIABILITY: Dict[str, str] = {
+    "error_handling": "high",
+    "config_appropriateness": "high",
+    "role_clarity": "medium",
+    "output_consistency": "low",
+    "tool_usage": "medium",
+    "observability": "medium",
+    "best_practices": "medium",
+    "data_flow_clarity": "medium",
+    "complexity_management": "low",
+}
+
+
 def _llm_available() -> bool:
     """True when an LLM API key is set and non-empty."""
     return bool(os.getenv("ANTHROPIC_API_KEY") or os.getenv("OPENAI_API_KEY"))
@@ -248,6 +265,7 @@ class QualityAssessor:
             summary="",
             reasoning=reasoning,
             generated_at=datetime.now(UTC),
+            dimension_reliability=dict(DIMENSION_RELIABILITY),
         )
 
         # Generate improvements
@@ -398,6 +416,8 @@ __all__ = [
     # Suggester
     "ImprovementSuggester",
     "BaseImprovementGenerator",
+    # Reliability indicators
+    "DIMENSION_RELIABILITY",
     # Main orchestrator
     "QualityAssessor",
     # Healing

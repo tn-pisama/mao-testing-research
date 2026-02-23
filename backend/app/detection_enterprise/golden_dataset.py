@@ -26,6 +26,7 @@ class GoldenDatasetEntry:
     source_workflow_id: Optional[str] = None
     augmentation_method: Optional[str] = None
     human_verified: bool = False
+    difficulty: str = "easy"  # easy, medium, hard
     
     def to_labeled_sample(self) -> LabeledSample:
         return LabeledSample(

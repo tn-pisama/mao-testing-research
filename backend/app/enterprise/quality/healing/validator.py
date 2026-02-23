@@ -62,11 +62,29 @@ class QualityFixValidator:
     ) -> QualityValidationResult:
         """Validate a single applied fix using cross-signal evaluation."""
         if self.validation_mode == "cross_signal":
-            return self._cross_signal_validate(applied_fix, original_report)
+            result = self._cross_signal_validate(applied_fix, original_report)
         elif self.validation_mode == "llm_only":
-            return self._llm_validation(applied_fix, original_report)
+            result = self._llm_validation(applied_fix, original_report)
         else:
-            return self._heuristic_validation(applied_fix, original_report)
+            result = self._heuristic_validation(applied_fix, original_report)
+
+        # Non-blocking behavioral validation after structural pass
+        if result.success:
+            behavioral_ok = self._behavioral_validate(
+                applied_fix,
+                applied_fix.original_state,
+                applied_fix.modified_state,
+                original_report,
+            )
+            if not behavioral_ok:
+                logger.warning(
+                    "Behavioral validation failed for fix %s (dimension=%s) — allowing fix anyway",
+                    applied_fix.fix_id,
+                    applied_fix.dimension,
+                )
+            result.details["behavioral_validation"] = behavioral_ok
+
+        return result
 
     def validate_all(
         self,
@@ -284,8 +302,20 @@ class QualityFixValidator:
             new_nodes = mod_nodes - orig_nodes
             if new_nodes:
                 # Check at least one new node is referenced in connections
-                connections_str = str(modified.get("connections", {}))
-                any_connected = any(n in connections_str for n in new_nodes)
+                any_connected = False
+                for src, conn_data in modified.get("connections", {}).items():
+                    for output_groups in conn_data.values():
+                        for group in output_groups:
+                            for conn in group:
+                                if conn.get("node") in new_nodes:
+                                    any_connected = True
+                                    break
+                            if any_connected:
+                                break
+                        if any_connected:
+                            break
+                    if any_connected:
+                        break
                 checks.append(any_connected)
                 details["new_nodes"] = list(new_nodes)
                 details["new_nodes_connected"] = any_connected
@@ -311,6 +341,18 @@ class QualityFixValidator:
             improvement=0.05 if success else 0.0,
             details=details,
         )
+
+    def _behavioral_validate(self, fix, original_config, modified_config, quality_report) -> bool:
+        """Re-score the modified config and check if the target dimension improved."""
+        try:
+            from .. import QualityAssessor
+            assessor = QualityAssessor(use_llm_judge=None)
+            new_report = assessor.assess_workflow(modified_config)
+            old_score = self._find_dimension_score(quality_report, fix.dimension)
+            new_score = self._find_dimension_score(new_report, fix.dimension)
+            return new_score > old_score
+        except Exception:
+            return True  # If re-scoring fails, don't block the fix
 
     def _llm_validation(
         self,

@@ -24,6 +24,25 @@ except ImportError:
     _HAS_ANTHROPIC = False
 
 
+DIFFICULTY_INSTRUCTIONS = {
+    "easy": (
+        "Create clear, unambiguous examples where the correct label is obvious. "
+        "Positive cases should have strong, unmistakable failure signals. "
+        "Negative cases should clearly show normal, healthy behavior."
+    ),
+    "medium": (
+        "Create realistic scenarios that might occur in production. "
+        "Positive cases should have noticeable but not blatant failure signals. "
+        "Negative cases may have superficial similarity to failures but are clearly benign on closer inspection."
+    ),
+    "hard": (
+        "Create subtle, borderline cases where detection is genuinely difficult. "
+        "Positive cases should have weak or ambiguous failure signals that reasonable people might disagree about. "
+        "Negative cases should closely mimic failure patterns but actually be valid behavior."
+    ),
+}
+
+
 # ---------------------------------------------------------------------------
 # Per-type prompt metadata
 # ---------------------------------------------------------------------------
@@ -409,6 +428,7 @@ class GoldenDataGenerator:
         self._client: Optional[Any] = None
         self.max_tokens = max_tokens
         self.temperature = temperature
+        self._current_difficulty = "easy"
 
     @property
     def client(self):
@@ -432,6 +452,7 @@ class GoldenDataGenerator:
         count: int = 20,
         positive_ratio: float = 0.5,
         existing_entries: Optional[List[GoldenDatasetEntry]] = None,
+        difficulty: str = "easy",
     ) -> List[GoldenDatasetEntry]:
         """Generate golden entries for a single detection type.
 
@@ -440,6 +461,7 @@ class GoldenDataGenerator:
             count: Total number of samples to generate.
             positive_ratio: Fraction of samples that should be positive (failure detected).
             existing_entries: Optional existing entries to use as few-shot examples.
+            difficulty: One of "easy", "medium", "hard".
 
         Returns:
             List of generated GoldenDatasetEntry objects.
@@ -463,11 +485,14 @@ class GoldenDataGenerator:
             n_positive=n_positive,
             n_negative=n_negative,
             examples=examples,
+            difficulty=difficulty,
         )
 
+        self._current_difficulty = difficulty
+
         logger.info(
-            "Generating %d samples for %s (%d positive, %d negative)",
-            count, detection_type.value, n_positive, n_negative,
+            "Generating %d %s samples for %s (%d positive, %d negative)",
+            count, difficulty, detection_type.value, n_positive, n_negative,
         )
 
         raw_response = self._call_llm(prompt)
@@ -514,11 +539,12 @@ class GoldenDataGenerator:
         self,
         existing_dataset: GoldenDataset,
         target_per_type: int = 30,
+        use_difficulty_passes: bool = True,
     ) -> List[GoldenDatasetEntry]:
         """Generate entries for all detection types below *target_per_type*.
 
-        Skips types that already have enough entries and uses existing entries
-        as few-shot examples for the LLM.
+        When use_difficulty_passes=True, generates in 3 passes (easy/medium/hard)
+        with a 30%/40%/30% split. Otherwise generates all at "easy" difficulty.
 
         Returns:
             All newly generated entries across all types.
@@ -536,13 +562,33 @@ class GoldenDataGenerator:
                 continue
 
             needed = target_per_type - current_count
-            entries = self.generate(
-                detection_type=dt,
-                count=needed,
-                positive_ratio=0.5,
-                existing_entries=existing,
-            )
-            all_generated.extend(entries)
+
+            if use_difficulty_passes and needed >= 6:
+                # Split across difficulty levels: 30% easy, 40% medium, 30% hard
+                n_easy = max(2, round(needed * 0.3))
+                n_hard = max(2, round(needed * 0.3))
+                n_medium = needed - n_easy - n_hard
+
+                for difficulty, count in [("easy", n_easy), ("medium", n_medium), ("hard", n_hard)]:
+                    if count <= 0:
+                        continue
+                    entries = self.generate(
+                        detection_type=dt,
+                        count=count,
+                        positive_ratio=0.5,
+                        existing_entries=existing,
+                        difficulty=difficulty,
+                    )
+                    all_generated.extend(entries)
+                    existing = existing + entries  # Use new entries as context for next pass
+            else:
+                entries = self.generate(
+                    detection_type=dt,
+                    count=needed,
+                    positive_ratio=0.5,
+                    existing_entries=existing,
+                )
+                all_generated.extend(entries)
 
         logger.info("Generated %d total entries across all types", len(all_generated))
         return all_generated
@@ -584,6 +630,7 @@ class GoldenDataGenerator:
         n_positive: int,
         n_negative: int,
         examples: List[GoldenDatasetEntry],
+        difficulty: str = "easy",
     ) -> str:
         """Build the generation prompt with per-type instructions and few-shot examples."""
         type_key = detection_type.value
@@ -609,11 +656,17 @@ class GoldenDataGenerator:
                 + "\n---\n".join(examples_block for examples_block in example_items)
             )
 
+        difficulty_instruction = DIFFICULTY_INSTRUCTIONS.get(difficulty, DIFFICULTY_INSTRUCTIONS["easy"])
+
         prompt = f"""You are a test data engineer generating golden dataset entries for a multi-agent orchestration failure detection system.
 
 ## Detection Type: {type_key}
 
 {type_info['description']}
+
+## Difficulty Level: {difficulty.upper()}
+
+{difficulty_instruction}
 
 ## Input Data Schema
 
@@ -783,6 +836,7 @@ Split evenly between positive and negative samples. Return ONLY a JSON array."""
                     tags=tags,
                     augmentation_method="claude_sonnet",
                     human_verified=False,
+                    difficulty=self._current_difficulty,
                 )
                 entries.append(entry)
 

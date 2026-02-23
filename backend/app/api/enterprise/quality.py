@@ -17,6 +17,7 @@ from app.enterprise.quality import (
     AgentQualityScore,
     OrchestrationQualityScore,
     Severity,
+    DIMENSION_RELIABILITY,
 )
 from app.enterprise.quality.models import (
     DimensionScore,
@@ -134,6 +135,7 @@ class WorkflowQualityResponse(BaseModel):
     summary: str
     total_issues: int
     critical_issues_count: int
+    dimension_reliability: Dict[str, str] = Field(default_factory=dict)
     reasoning: Optional[str] = None
     is_provisional: bool = False
     confidence_note: Optional[str] = None
@@ -234,6 +236,7 @@ async def assess_workflow_quality(
             summary=report.summary,
             total_issues=report.total_issues,
             critical_issues_count=report.critical_issues_count,
+            dimension_reliability=report.dimension_reliability or DIMENSION_RELIABILITY,
             reasoning=report.reasoning,
             is_provisional=report.is_provisional,
             confidence_note=(
@@ -346,26 +349,31 @@ async def list_quality_dimensions():
                 "description": "How well the agent's role and purpose are defined in the system prompt",
                 "weight": 1.0,
                 "checks": ["Role keywords", "Output format", "Boundary constraints", "Prompt detail"],
+                "reliability": DIMENSION_RELIABILITY.get("role_clarity", "medium"),
             },
             "output_consistency": {
                 "description": "Whether the agent produces consistent output structures",
                 "weight": 1.0,
                 "checks": ["Schema consistency", "Field presence", "Type consistency"],
+                "reliability": DIMENSION_RELIABILITY.get("output_consistency", "medium"),
             },
             "error_handling": {
                 "description": "How well errors are handled",
                 "weight": 1.0,
                 "checks": ["Continue on fail", "Timeout", "Retry config", "Error paths"],
+                "reliability": DIMENSION_RELIABILITY.get("error_handling", "medium"),
             },
             "tool_usage": {
                 "description": "Quality of tool integration",
                 "weight": 1.0,
                 "checks": ["Tool descriptions", "Parameter schemas", "Tool count"],
+                "reliability": DIMENSION_RELIABILITY.get("tool_usage", "medium"),
             },
             "config_appropriateness": {
                 "description": "Whether configuration settings are appropriate",
                 "weight": 1.0,
                 "checks": ["Temperature", "Max tokens", "Model selection"],
+                "reliability": DIMENSION_RELIABILITY.get("config_appropriateness", "medium"),
             },
         },
         "orchestration_dimensions": {
@@ -373,28 +381,34 @@ async def list_quality_dimensions():
                 "description": "How explicit and clear the data flow is",
                 "weight": 1.0,
                 "checks": ["Connection coverage", "State manipulation", "Node naming"],
+                "reliability": DIMENSION_RELIABILITY.get("data_flow_clarity", "medium"),
             },
             "complexity_management": {
                 "description": "Whether complexity is appropriate for the task",
                 "weight": 1.0,
                 "checks": ["Node count", "Cyclomatic complexity", "Depth"],
+                "reliability": DIMENSION_RELIABILITY.get("complexity_management", "medium"),
             },
             "agent_coupling": {
                 "description": "Balance of agent interdependence",
                 "weight": 1.0,
                 "checks": ["Coupling ratio", "Agent chains"],
+                "reliability": DIMENSION_RELIABILITY.get("agent_coupling", "medium"),
             },
             "observability": {
                 "description": "Coverage of checkpoints and monitoring",
                 "weight": 1.0,
                 "checks": ["Checkpoint nodes", "Error triggers", "Monitoring webhooks"],
+                "reliability": DIMENSION_RELIABILITY.get("observability", "medium"),
             },
             "best_practices": {
                 "description": "Adherence to best practices",
                 "weight": 1.0,
                 "checks": ["Retry config", "Timeout config", "Continue on fail"],
+                "reliability": DIMENSION_RELIABILITY.get("best_practices", "medium"),
             },
         },
+        "dimension_reliability": DIMENSION_RELIABILITY,
         "grades": {
             "Healthy":  "90-100% - System operating normally",
             "Degraded": "70-89%  - Performance below optimal",
@@ -519,6 +533,7 @@ class StoredAssessmentResponse(BaseModel):
     complexity_metrics: Dict[str, Any] = Field(default_factory=dict)
     total_issues: int
     critical_issues_count: int
+    dimension_reliability: Dict[str, str] = Field(default_factory=dict)
     source: str
     assessment_time_ms: Optional[int]
     summary: Optional[str]
@@ -654,6 +669,7 @@ async def list_assessments(
                 complexity_metrics=a.complexity_metrics or {},
                 total_issues=a.total_issues,
                 critical_issues_count=a.critical_issues_count,
+                dimension_reliability=DIMENSION_RELIABILITY,
                 source=a.source,
                 assessment_time_ms=a.assessment_time_ms,
                 summary=a.summary,
@@ -714,6 +730,7 @@ async def get_assessment(
         complexity_metrics=assessment.complexity_metrics or {},
         total_issues=assessment.total_issues,
         critical_issues_count=assessment.critical_issues_count,
+        dimension_reliability=DIMENSION_RELIABILITY,
         source=assessment.source,
         assessment_time_ms=assessment.assessment_time_ms,
         summary=assessment.summary,
@@ -756,6 +773,7 @@ async def get_assessment_by_trace(
         complexity_metrics=assessment.complexity_metrics or {},
         total_issues=assessment.total_issues,
         critical_issues_count=assessment.critical_issues_count,
+        dimension_reliability=DIMENSION_RELIABILITY,
         source=assessment.source,
         assessment_time_ms=assessment.assessment_time_ms,
         summary=assessment.summary,
@@ -847,6 +865,7 @@ async def assess_and_save(
             complexity_metrics=assessment.complexity_metrics or {},
             total_issues=assessment.total_issues,
             critical_issues_count=assessment.critical_issues_count,
+            dimension_reliability=DIMENSION_RELIABILITY,
             source=assessment.source,
             assessment_time_ms=assessment.assessment_time_ms,
             summary=assessment.summary,
