@@ -97,6 +97,36 @@ class FixFeedbackStore:
 
         return {k: v["success"] / v["total"] if v["total"] > 0 else 0.0 for k, v in counts.items()}
 
+    def get_dimension_success_rates(self) -> Dict[str, float]:
+        """Get success rates aggregated by dimension (not by generation method).
+
+        Returns a dict mapping dimension name to its overall success rate.
+        """
+        import json
+        if not self.path.exists():
+            return {}
+
+        counts: Dict[str, Dict[str, int]] = {}  # {dimension: {"success": N, "total": N}}
+        with open(self.path) as f:
+            for line in f:
+                line = line.strip()
+                if not line:
+                    continue
+                try:
+                    entry = json.loads(line)
+                    dim = entry.get("dimension", "")
+                    if not dim:
+                        continue
+                    if dim not in counts:
+                        counts[dim] = {"success": 0, "total": 0}
+                    counts[dim]["total"] += 1
+                    if entry.get("success"):
+                        counts[dim]["success"] += 1
+                except (json.JSONDecodeError, KeyError):
+                    continue
+
+        return {k: v["success"] / v["total"] if v["total"] > 0 else 0.0 for k, v in counts.items()}
+
 
 class QualityHealingEngine:
     """
@@ -200,14 +230,19 @@ class QualityHealingEngine:
             if hasattr(self, '_feedback_store') and self._feedback_store:
                 gated_suggestions = []
                 skipped_dims = set()
+                try:
+                    dim_rates = self._feedback_store.get_dimension_success_rates()
+                except Exception:
+                    dim_rates = {}
                 for fix in fix_suggestions:
-                    dim = fix.dimension
-                    if dim in skipped_dims:
+                    dim_name = fix.dimension
+                    if dim_name in skipped_dims:
                         continue
-                    rates = self._feedback_store.get_success_rate(dimension=dim)
-                    if rates and all(r < 0.50 for r in rates.values()):
-                        logger.warning("Skipping %s fixes — success rate below 50%%", dim)
-                        skipped_dims.add(dim)
+                    # Check if this dimension's fixes historically succeed
+                    rate = dim_rates.get(dim_name) if dim_rates else None
+                    if rate is not None and rate < 0.30:
+                        logger.info("Skipping %s fixes — historical success rate %.0f%%", dim_name, rate * 100)
+                        skipped_dims.add(dim_name)
                         continue
                     gated_suggestions.append(fix)
                 fix_suggestions = gated_suggestions

@@ -13,6 +13,7 @@ unlike conversational agents where data flow is implicit.
 
 import json
 import logging
+import re
 from typing import Any, Dict, List, Optional, Set
 
 from app.detection.turn_aware._base import (
@@ -23,6 +24,50 @@ from app.detection.turn_aware._base import (
 )
 
 logger = logging.getLogger(__name__)
+
+# Known n8n node output types for schema inference
+NODE_OUTPUT_TYPES: Dict[str, str] = {
+    "n8n-nodes-base.httpRequest": "json",
+    "@n8n/n8n-nodes-langchain.agent": "text",
+    "@n8n/n8n-nodes-langchain.chainLlm": "text",
+    "n8n-nodes-base.code": "any",
+    "n8n-nodes-base.set": "items",
+    "n8n-nodes-base.if": "items",
+    "n8n-nodes-base.switch": "items",
+    "n8n-nodes-base.merge": "items",
+    "n8n-nodes-base.spreadsheetFile": "items",
+    "n8n-nodes-base.postgres": "items",
+    "n8n-nodes-base.mysql": "items",
+}
+
+# Known input type expectations for n8n node types
+NODE_INPUT_TYPES: Dict[str, str] = {
+    "n8n-nodes-base.httpRequest": "any",
+    "@n8n/n8n-nodes-langchain.agent": "text",
+    "@n8n/n8n-nodes-langchain.chainLlm": "text",
+    "n8n-nodes-base.code": "any",
+    "n8n-nodes-base.set": "items",
+    "n8n-nodes-base.if": "items",
+    "n8n-nodes-base.switch": "items",
+    "n8n-nodes-base.merge": "items",
+    "n8n-nodes-base.spreadsheetFile": "items",
+    "n8n-nodes-base.postgres": "items",
+    "n8n-nodes-base.mysql": "items",
+}
+
+# Type compatibility matrix: (source_output, dest_input) -> compatible
+TYPE_COMPATIBILITY: Dict[tuple, bool] = {
+    ("json", "text"): False,
+    ("json", "items"): False,
+    ("text", "items"): False,
+    ("text", "json"): False,
+    ("items", "text"): False,
+    ("items", "json"): False,
+    ("json", "json"): True,
+    ("text", "text"): True,
+    ("items", "items"): True,
+    ("any", "any"): True,
+}
 
 
 class N8NSchemaDetector(TurnAwareDetector):
@@ -157,6 +202,260 @@ class N8NSchemaDetector(TurnAwareDetector):
             ),
             detector_name=self.name,
         )
+
+    def detect_workflow(self, workflow_json: Dict[str, Any]) -> TurnAwareDetectionResult:
+        """Detect schema mismatches by analyzing raw n8n workflow JSON directly.
+
+        Builds a node lookup from workflow_json["nodes"], iterates over connections
+        to find connected pairs, infers output/input types using known n8n node types,
+        and flags type mismatches and invalid expression references.
+
+        Args:
+            workflow_json: Raw n8n workflow JSON with "nodes" and "connections" keys.
+
+        Returns:
+            TurnAwareDetectionResult with detected schema issues.
+        """
+        nodes = workflow_json.get("nodes", [])
+        connections = workflow_json.get("connections", {})
+
+        if not nodes:
+            return TurnAwareDetectionResult(
+                detected=False,
+                severity=TurnAwareSeverity.NONE,
+                confidence=0.0,
+                failure_mode=None,
+                explanation="No nodes found in workflow JSON",
+                detector_name=self.name,
+            )
+
+        # Build node lookup dict keyed by node name
+        node_lookup: Dict[str, Dict[str, Any]] = {}
+        for node in nodes:
+            node_name = node.get("name", "")
+            if node_name:
+                node_lookup[node_name] = node
+
+        issues: List[Dict[str, Any]] = []
+        affected_node_names: List[str] = []
+
+        # Iterate over connections to find connected node pairs
+        # n8n connections format: { "SourceNode": { "main": [[{"node": "DestNode", "type": "main", "index": 0}]] } }
+        for source_name, outputs in connections.items():
+            source_node = node_lookup.get(source_name)
+            if source_node is None:
+                continue
+
+            source_type = source_node.get("type", "")
+            source_output_type = NODE_OUTPUT_TYPES.get(source_type, "unknown")
+
+            # outputs is typically {"main": [[{...}], [{...}]]}
+            if not isinstance(outputs, dict):
+                continue
+
+            for output_key, output_branches in outputs.items():
+                if not isinstance(output_branches, list):
+                    continue
+                for branch in output_branches:
+                    if not isinstance(branch, list):
+                        continue
+                    for conn in branch:
+                        if not isinstance(conn, dict):
+                            continue
+                        dest_name = conn.get("node", "")
+                        dest_node = node_lookup.get(dest_name)
+                        if dest_node is None:
+                            continue
+
+                        dest_type = dest_node.get("type", "")
+                        dest_input_type = NODE_INPUT_TYPES.get(dest_type, "unknown")
+
+                        # Check type compatibility between source output and dest input
+                        if source_output_type != "unknown" and dest_input_type != "unknown":
+                            # "any" is compatible with everything
+                            if source_output_type == "any" or dest_input_type == "any":
+                                pass  # compatible
+                            else:
+                                compat_key = (source_output_type, dest_input_type)
+                                is_compatible = TYPE_COMPATIBILITY.get(compat_key, True)
+                                if not is_compatible:
+                                    issues.append({
+                                        "type": "type_mismatch",
+                                        "source_node": source_name,
+                                        "source_node_type": source_type,
+                                        "source_output_type": source_output_type,
+                                        "dest_node": dest_name,
+                                        "dest_node_type": dest_type,
+                                        "dest_input_type": dest_input_type,
+                                        "description": (
+                                            f"Type mismatch: {source_name} ({source_type}) outputs "
+                                            f"'{source_output_type}' but {dest_name} ({dest_type}) "
+                                            f"expects '{dest_input_type}'"
+                                        ),
+                                    })
+                                    affected_node_names.extend([source_name, dest_name])
+
+        # Check for $json.fieldName expression references in node parameters
+        # that reference fields not produced by known upstream nodes
+        expression_issues = self._check_expression_references(
+            node_lookup, connections
+        )
+        issues.extend(expression_issues)
+        for issue in expression_issues:
+            affected_node_names.extend([
+                issue.get("node", ""),
+                issue.get("upstream_node", ""),
+            ])
+
+        if not issues:
+            return TurnAwareDetectionResult(
+                detected=False,
+                severity=TurnAwareSeverity.NONE,
+                confidence=0.85,
+                failure_mode=None,
+                explanation="No schema mismatches detected in workflow JSON",
+                detector_name=self.name,
+            )
+
+        # Determine severity
+        type_mismatch_count = sum(1 for i in issues if i.get("type") == "type_mismatch")
+        expr_ref_count = sum(1 for i in issues if i.get("type") == "expression_reference")
+
+        if type_mismatch_count >= 3 or (type_mismatch_count >= 1 and expr_ref_count >= 2):
+            severity = TurnAwareSeverity.SEVERE
+        elif type_mismatch_count >= 2 or expr_ref_count >= 2:
+            severity = TurnAwareSeverity.MODERATE
+        else:
+            severity = TurnAwareSeverity.MINOR
+
+        confidence = min(0.95, 0.6 + len(issues) * 0.1)
+
+        # Map affected node names to turn indices (use node list order)
+        node_index_map = {node.get("name", ""): idx for idx, node in enumerate(nodes)}
+        affected_turns = sorted({
+            node_index_map[name]
+            for name in set(affected_node_names)
+            if name in node_index_map
+        })
+
+        return TurnAwareDetectionResult(
+            detected=True,
+            severity=severity,
+            confidence=confidence,
+            failure_mode="F12",
+            explanation=f"Schema mismatch: {len(issues)} incompatibilities found in workflow JSON",
+            affected_turns=affected_turns,
+            evidence={
+                "issues": issues,
+                "total_nodes": len(nodes),
+                "total_connections": sum(
+                    sum(
+                        len(conn_list)
+                        for branch in output_branches
+                        if isinstance(branch, list)
+                        for conn_list in [branch]
+                    )
+                    for outputs in connections.values()
+                    if isinstance(outputs, dict)
+                    for output_branches in outputs.values()
+                    if isinstance(output_branches, list)
+                ),
+            },
+            suggested_fix=(
+                "Ensure consistent data types between connected nodes. "
+                "Add Set or Code nodes to transform data between incompatible types. "
+                "Verify $json expression references match fields produced by upstream nodes."
+            ),
+            detector_name=self.name,
+        )
+
+    def _check_expression_references(
+        self,
+        node_lookup: Dict[str, Dict[str, Any]],
+        connections: Dict[str, Any],
+    ) -> List[Dict[str, Any]]:
+        """Check for $json.fieldName expression references that may be invalid.
+
+        Scans node parameters for $json.fieldName expressions and checks
+        whether the referenced fields are plausibly produced by upstream nodes.
+
+        Returns list of issues for invalid references.
+        """
+        issues: List[Dict[str, Any]] = []
+
+        # Build reverse lookup: dest_name -> list of source_names
+        upstream_map: Dict[str, List[str]] = {}
+        for source_name, outputs in connections.items():
+            if not isinstance(outputs, dict):
+                continue
+            for output_key, output_branches in outputs.items():
+                if not isinstance(output_branches, list):
+                    continue
+                for branch in output_branches:
+                    if not isinstance(branch, list):
+                        continue
+                    for conn in branch:
+                        if not isinstance(conn, dict):
+                            continue
+                        dest_name = conn.get("node", "")
+                        if dest_name:
+                            if dest_name not in upstream_map:
+                                upstream_map[dest_name] = []
+                            upstream_map[dest_name].append(source_name)
+
+        # For each node, find $json references in parameters
+        json_field_pattern = re.compile(r'\$json\.([a-zA-Z_][a-zA-Z0-9_]*)')
+
+        for node_name, node_data in node_lookup.items():
+            parameters = node_data.get("parameters", {})
+            params_str = json.dumps(parameters)
+            referenced_fields = set(json_field_pattern.findall(params_str))
+
+            if not referenced_fields:
+                continue
+
+            # Get upstream node types to check what fields they might produce
+            upstream_sources = upstream_map.get(node_name, [])
+            if not upstream_sources:
+                # Node has $json references but no upstream connection
+                for field_name in referenced_fields:
+                    issues.append({
+                        "type": "expression_reference",
+                        "node": node_name,
+                        "upstream_node": "",
+                        "field": field_name,
+                        "description": (
+                            f"Node '{node_name}' references $json.{field_name} "
+                            f"but has no upstream connections"
+                        ),
+                    })
+                continue
+
+            # Check if upstream nodes are of types that produce specific known output types
+            # Text-outputting nodes (LLM agents/chains) don't produce structured JSON fields
+            for source_name in upstream_sources:
+                source_node = node_lookup.get(source_name)
+                if source_node is None:
+                    continue
+                source_type = source_node.get("type", "")
+                source_output = NODE_OUTPUT_TYPES.get(source_type, "unknown")
+
+                if source_output == "text":
+                    # Text nodes produce plain text, not structured JSON fields
+                    for field_name in referenced_fields:
+                        issues.append({
+                            "type": "expression_reference",
+                            "node": node_name,
+                            "upstream_node": source_name,
+                            "field": field_name,
+                            "description": (
+                                f"Node '{node_name}' references $json.{field_name} "
+                                f"but upstream '{source_name}' ({source_type}) "
+                                f"outputs plain text, not structured JSON"
+                            ),
+                        })
+
+        return issues
 
     def _extract_schema(self, content: str) -> Optional[Dict[str, str]]:
         """Extract JSON schema (field names and types) from node output.

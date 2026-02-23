@@ -2895,6 +2895,11 @@ def create_default_golden_dataset() -> GoldenDataset:
     for sample in WORKFLOW_DETECTION_SAMPLES:
         dataset.add_entry(sample)
 
+    # n8n structural detector entries (60 total: 10 per detector)
+    from app.detection_enterprise.n8n_golden_entries import create_n8n_golden_entries
+    for sample in create_n8n_golden_entries():
+        dataset.add_entry(sample)
+
     return dataset
 
 

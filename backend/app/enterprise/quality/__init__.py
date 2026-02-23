@@ -133,6 +133,12 @@ DIMENSION_RELIABILITY: Dict[str, str] = {
     "complexity_management": "low",
 }
 
+RELIABILITY_WEIGHTS: Dict[str, float] = {
+    "high": 1.0,
+    "medium": 0.7,
+    "low": 0.4,
+}
+
 
 def _llm_available() -> bool:
     """True when an LLM API key is set and non-empty."""
@@ -216,6 +222,9 @@ class QualityAssessor:
                 )
                 agent_scores.append(score)
 
+        # Run n8n structural detectors on raw workflow JSON
+        n8n_findings = self._run_n8n_detectors(workflow)
+
         # Score orchestration
         orchestration_score = self.orchestration_scorer.score_orchestration(
             workflow=workflow,
@@ -266,6 +275,7 @@ class QualityAssessor:
             reasoning=reasoning,
             generated_at=datetime.now(UTC),
             dimension_reliability=dict(DIMENSION_RELIABILITY),
+            n8n_detection_findings=n8n_findings,
         )
 
         # Generate improvements
@@ -365,6 +375,54 @@ class QualityAssessor:
 
         return " ".join(parts)
 
+    def _run_n8n_detectors(self, workflow: Dict[str, Any]) -> List[Dict[str, Any]]:
+        """Run n8n-specific structural detectors on raw workflow JSON.
+
+        Returns a list of detection findings (only detected=True results).
+        """
+        findings: List[Dict[str, Any]] = []
+        try:
+            from app.detection.n8n import (
+                N8NSchemaDetector,
+                N8NCycleDetector,
+                N8NComplexityDetector,
+                N8NErrorDetector,
+                N8NResourceDetector,
+                N8NTimeoutDetector,
+            )
+
+            detectors = [
+                N8NSchemaDetector(),
+                N8NCycleDetector(),
+                N8NComplexityDetector(),
+                N8NErrorDetector(),
+                N8NResourceDetector(),
+                N8NTimeoutDetector(),
+            ]
+
+            for detector in detectors:
+                if hasattr(detector, "detect_workflow"):
+                    try:
+                        result = detector.detect_workflow(workflow)
+                        if result.detected:
+                            findings.append({
+                                "detector": detector.name,
+                                "failure_mode": result.failure_mode,
+                                "severity": result.severity.value if hasattr(result.severity, "value") else str(result.severity),
+                                "confidence": result.confidence,
+                                "explanation": result.explanation,
+                                "suggested_fix": result.suggested_fix,
+                            })
+                    except Exception as e:
+                        import logging
+                        logging.getLogger(__name__).debug(
+                            "n8n detector %s failed: %s", detector.name, e
+                        )
+        except ImportError:
+            pass  # n8n detectors not available
+
+        return findings
+
     def _generate_summary(self, report: QualityReport) -> str:
         """Generate a human-readable summary of the quality report."""
         parts = []
@@ -418,6 +476,7 @@ __all__ = [
     "BaseImprovementGenerator",
     # Reliability indicators
     "DIMENSION_RELIABILITY",
+    "RELIABILITY_WEIGHTS",
     # Main orchestrator
     "QualityAssessor",
     # Healing

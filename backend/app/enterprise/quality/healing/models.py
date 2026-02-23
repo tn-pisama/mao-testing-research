@@ -178,9 +178,10 @@ class QualityValidationResult:
     after_score: float
     improvement: float
     details: Dict[str, Any] = field(default_factory=dict)
+    reason: str = ""
 
     def to_dict(self) -> Dict[str, Any]:
-        return {
+        result = {
             "success": self.success,
             "dimension": self.dimension,
             "before_score": round(self.before_score, 3),
@@ -188,6 +189,9 @@ class QualityValidationResult:
             "improvement": round(self.improvement, 3),
             "details": self.details,
         }
+        if self.reason:
+            result["reason"] = self.reason
+        return result
 
 
 @dataclass

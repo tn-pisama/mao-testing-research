@@ -145,9 +145,17 @@ class AgentQualityScorer:
 
         dimensions = [dim_role, dim_output, dim_error, dim_tool, dim_config]
 
-        # Calculate overall score (weighted average)
-        total_weight = sum(d.weight for d in dimensions)
-        overall_score = sum(d.score * d.weight for d in dimensions) / total_weight if total_weight > 0 else 0.0
+        # Apply reliability-based weighting
+        from . import DIMENSION_RELIABILITY, RELIABILITY_WEIGHTS
+        weighted_sum = 0.0
+        weight_total = 0.0
+        for dim in dimensions:
+            reliability = DIMENSION_RELIABILITY.get(dim.dimension, "medium")
+            w = RELIABILITY_WEIGHTS.get(reliability, 0.7)
+            dim.weight = w  # Set weight on the dimension object
+            weighted_sum += dim.score * w
+            weight_total += w
+        overall_score = weighted_sum / weight_total if weight_total > 0 else 0.0
 
         # Collect issues
         all_issues = []

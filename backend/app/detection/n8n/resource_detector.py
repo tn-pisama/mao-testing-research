@@ -365,3 +365,297 @@ class N8NResourceDetector(TurnAwareDetector):
         cleaned = re.sub(r'[{}\[\]":,]', ' ', content)
         words = cleaned.split()
         return len(words) + len(content) // 4
+
+    # ---- Workflow JSON analysis (static / pre-execution) ----
+
+    # Known AI node types (case-sensitive, as they appear in n8n exports)
+    _AI_NODE_TYPES = {
+        "@n8n/n8n-nodes-langchain.agent",
+        "@n8n/n8n-nodes-langchain.chainLlm",
+        "n8n-nodes-base.openAi",
+        "@n8n/n8n-nodes-langchain.lmChatOpenAi",
+        "@n8n/n8n-nodes-langchain.lmChatAnthropic",
+    }
+
+    # Broader check for any AI-adjacent node
+    _AI_TYPE_KEYWORDS = {"langchain", "openai", "anthropic", "llm", "chat"}
+
+    # Loop / batch node types
+    _LOOP_NODE_TYPES = {
+        "n8n-nodes-base.splitInBatches",
+        "n8n-nodes-base.loop",
+    }
+
+    # HTTP / request node types
+    _HTTP_NODE_TYPES = {
+        "n8n-nodes-base.httpRequest",
+        "n8n-nodes-base.http",
+    }
+
+    def _is_ai_node_type(self, node_type: str) -> bool:
+        """Return True if *node_type* represents an AI / LLM node."""
+        if node_type in self._AI_NODE_TYPES:
+            return True
+        lower = node_type.lower()
+        return any(kw in lower for kw in self._AI_TYPE_KEYWORDS)
+
+    def _build_connection_map(
+        self, workflow_json: Dict[str, Any]
+    ) -> Dict[str, List[str]]:
+        """Map source-node name -> list of target-node names."""
+        connections: Dict[str, List[str]] = {}
+        raw = workflow_json.get("connections", {})
+        for source_name, outputs in raw.items():
+            targets: List[str] = []
+            for _output_type, output_groups in outputs.items():
+                for group in output_groups:
+                    if isinstance(group, list):
+                        for link in group:
+                            if isinstance(link, dict) and "node" in link:
+                                targets.append(link["node"])
+            connections[source_name] = targets
+        return connections
+
+    def detect_workflow(
+        self, workflow_json: Dict[str, Any]
+    ) -> TurnAwareDetectionResult:
+        """Analyze raw n8n workflow JSON for resource / token-explosion risks.
+
+        Checks performed:
+        1. AI nodes without ``maxTokens`` setting -- risk of unbounded token usage.
+        2. Loop patterns (SplitInBatches, Loop) without ``maxIterations`` or
+           batch-size limits.
+        3. HTTP request nodes without ``timeout`` settings.
+        4. Multiple AI nodes in sequence without intermediate data-reduction
+           steps -- token cost explosion risk.
+        """
+        nodes: List[Dict[str, Any]] = workflow_json.get("nodes", [])
+        if not nodes:
+            return TurnAwareDetectionResult(
+                detected=False,
+                severity=TurnAwareSeverity.NONE,
+                confidence=0.0,
+                failure_mode=None,
+                explanation="Workflow contains no nodes to analyze",
+                detector_name=self.name,
+            )
+
+        connection_map = self._build_connection_map(workflow_json)
+        node_by_name: Dict[str, Dict[str, Any]] = {
+            n.get("name", ""): n for n in nodes
+        }
+
+        issues: List[Dict[str, Any]] = []
+
+        # --- 1: AI nodes without maxTokens ---
+        unbounded_ai: List[Dict[str, Any]] = []
+        for node in nodes:
+            node_type = node.get("type", "")
+            if not self._is_ai_node_type(node_type):
+                continue
+            params = node.get("parameters", {}) or {}
+            # maxTokens can be at top-level params or nested under options/additionalOptions
+            has_max_tokens = (
+                params.get("maxTokens") is not None
+                or params.get("max_tokens") is not None
+                or (params.get("options", {}) or {}).get("maxTokens") is not None
+                or (params.get("options", {}) or {}).get("max_tokens") is not None
+                or (params.get("additionalOptions", {}) or {}).get("maxTokens") is not None
+            )
+            if not has_max_tokens:
+                unbounded_ai.append({
+                    "node_name": node.get("name", "unknown"),
+                    "node_type": node_type,
+                })
+
+        if unbounded_ai:
+            issues.append({
+                "detected": True,
+                "type": "unbounded_ai_tokens",
+                "nodes": unbounded_ai,
+                "explanation": (
+                    f"{len(unbounded_ai)} AI node(s) have no maxTokens limit -- "
+                    "each call could consume the model's full context window"
+                ),
+            })
+
+        # --- 2: Loop patterns without limits ---
+        unbounded_loops: List[Dict[str, Any]] = []
+        for node in nodes:
+            node_type = node.get("type", "")
+            if node_type not in self._LOOP_NODE_TYPES:
+                lower_type = node_type.lower()
+                if "splitinbatches" not in lower_type and "loop" not in lower_type:
+                    continue
+
+            params = node.get("parameters", {}) or {}
+            has_iteration_limit = (
+                params.get("maxIterations") is not None
+                or params.get("options", {}).get("maxIterations") is not None  # type: ignore[union-attr]
+            )
+            has_batch_size = params.get("batchSize") is not None
+
+            if not has_iteration_limit and not has_batch_size:
+                unbounded_loops.append({
+                    "node_name": node.get("name", "unknown"),
+                    "node_type": node_type,
+                })
+
+        if unbounded_loops:
+            issues.append({
+                "detected": True,
+                "type": "unbounded_loops",
+                "nodes": unbounded_loops,
+                "explanation": (
+                    f"{len(unbounded_loops)} loop/batch node(s) have no maxIterations or "
+                    "batchSize limit -- could process unlimited items"
+                ),
+            })
+
+        # --- 3: HTTP nodes without timeout ---
+        http_no_timeout: List[Dict[str, Any]] = []
+        for node in nodes:
+            node_type = node.get("type", "")
+            if node_type not in self._HTTP_NODE_TYPES:
+                lower_type = node_type.lower()
+                if "httprequest" not in lower_type and "http" not in lower_type:
+                    continue
+                # Avoid false-positives on nodes that just have "http" in the name
+                # but aren't HTTP request nodes (e.g. webhook triggers)
+                if "webhook" in lower_type or "trigger" in lower_type:
+                    continue
+
+            params = node.get("parameters", {}) or {}
+            options = params.get("options", {}) or {}
+            has_timeout = (
+                params.get("timeout") is not None
+                or options.get("timeout") is not None
+            )
+            if not has_timeout:
+                http_no_timeout.append({
+                    "node_name": node.get("name", "unknown"),
+                    "node_type": node_type,
+                })
+
+        if http_no_timeout:
+            issues.append({
+                "detected": True,
+                "type": "http_no_timeout",
+                "nodes": http_no_timeout,
+                "explanation": (
+                    f"{len(http_no_timeout)} HTTP request node(s) have no timeout setting -- "
+                    "could hang indefinitely on slow/unresponsive endpoints"
+                ),
+            })
+
+        # --- 4: Sequential AI nodes without data reduction ---
+        sequential_ai_chains: List[Dict[str, Any]] = []
+
+        def _walk_ai_chain(
+            start_name: str, visited: set
+        ) -> List[str]:
+            """Walk forward from *start_name* collecting consecutive AI nodes."""
+            chain: List[str] = [start_name]
+            visited.add(start_name)
+            for target_name in connection_map.get(start_name, []):
+                if target_name in visited:
+                    continue
+                target_node = node_by_name.get(target_name)
+                if target_node and self._is_ai_node_type(target_node.get("type", "")):
+                    chain.extend(_walk_ai_chain(target_name, visited))
+                    break  # follow one path
+            return chain
+
+        visited_global: set = set()
+        for node in nodes:
+            node_name = node.get("name", "")
+            node_type = node.get("type", "")
+            if node_name in visited_global:
+                continue
+            if not self._is_ai_node_type(node_type):
+                continue
+            chain = _walk_ai_chain(node_name, visited_global)
+            if len(chain) >= 2:
+                sequential_ai_chains.append({
+                    "chain": chain,
+                    "length": len(chain),
+                })
+
+        if sequential_ai_chains:
+            total_chained = sum(c["length"] for c in sequential_ai_chains)
+            issues.append({
+                "detected": True,
+                "type": "sequential_ai_no_reduction",
+                "chains": sequential_ai_chains,
+                "explanation": (
+                    f"{len(sequential_ai_chains)} chain(s) of sequential AI nodes found "
+                    f"({total_chained} nodes total) without intermediate data reduction -- "
+                    "each stage may amplify token count, leading to cost explosion"
+                ),
+            })
+
+        # --- Build result ---
+        if not issues:
+            return TurnAwareDetectionResult(
+                detected=False,
+                severity=TurnAwareSeverity.NONE,
+                confidence=0.85,
+                failure_mode=None,
+                explanation="No resource risks detected in workflow JSON",
+                detector_name=self.name,
+            )
+
+        # Determine severity
+        has_token_risk = any(
+            i["type"] in ("unbounded_ai_tokens", "sequential_ai_no_reduction")
+            for i in issues
+        )
+        has_loop_risk = any(i["type"] == "unbounded_loops" for i in issues)
+
+        if has_token_risk and has_loop_risk:
+            severity = TurnAwareSeverity.SEVERE
+        elif has_token_risk or has_loop_risk:
+            severity = TurnAwareSeverity.MODERATE
+        else:
+            severity = TurnAwareSeverity.MINOR
+
+        # Failure mode: F6 for token explosion, F3 for resource misallocation
+        failure_mode = "F6" if has_token_risk else "F3"
+
+        confidence = min(0.95, 0.60 + len(issues) * 0.10)
+
+        explanations = [issue["explanation"] for issue in issues]
+        full_explanation = "; ".join(explanations)
+
+        fixes: List[str] = []
+        if unbounded_ai:
+            fixes.append(
+                "Set maxTokens on all AI nodes to cap per-call token usage"
+            )
+        if unbounded_loops:
+            fixes.append(
+                "Set maxIterations and/or batchSize on loop/batch nodes to prevent runaway processing"
+            )
+        if http_no_timeout:
+            fixes.append(
+                "Add explicit timeout settings to HTTP request nodes (e.g. 30000 ms)"
+            )
+        if sequential_ai_chains:
+            fixes.append(
+                "Insert data-reduction nodes (Summarize, Limit, Function) between sequential AI nodes "
+                "to prevent token cost amplification"
+            )
+
+        suggested_fix = "; ".join(fixes) if fixes else None
+
+        return TurnAwareDetectionResult(
+            detected=True,
+            severity=severity,
+            confidence=confidence,
+            failure_mode=failure_mode,
+            explanation=full_explanation,
+            evidence={"issues": issues, "total_nodes": len(nodes)},
+            suggested_fix=suggested_fix,
+            detector_name=self.name,
+            detector_version=self.version,
+        )

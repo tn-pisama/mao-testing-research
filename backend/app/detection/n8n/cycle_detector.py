@@ -290,6 +290,220 @@ class N8NCycleDetector(TurnAwareDetector):
             detector_name=self.name,
         )
 
+    def detect_workflow(self, workflow_json: Dict[str, Any]) -> TurnAwareDetectionResult:
+        """Detect graph cycles by analyzing raw n8n workflow JSON directly.
+
+        Builds an adjacency graph from workflow connections and runs DFS-based
+        cycle detection. Checks for explicit loop-break conditions (IF nodes with
+        exit paths) and flags cycles without break conditions as potential infinite
+        loops. Also detects self-loops.
+
+        Args:
+            workflow_json: Raw n8n workflow JSON with "nodes" and "connections" keys.
+
+        Returns:
+            TurnAwareDetectionResult with detected cycle issues.
+        """
+        nodes = workflow_json.get("nodes", [])
+        connections = workflow_json.get("connections", {})
+
+        if not nodes:
+            return TurnAwareDetectionResult(
+                detected=False,
+                severity=TurnAwareSeverity.NONE,
+                confidence=0.0,
+                failure_mode=None,
+                explanation="No nodes found in workflow JSON",
+                detector_name=self.name,
+            )
+
+        # Build node lookup
+        node_lookup: Dict[str, Dict[str, Any]] = {}
+        for node in nodes:
+            node_name = node.get("name", "")
+            if node_name:
+                node_lookup[node_name] = node
+
+        # Build adjacency graph from connections
+        adjacency: Dict[str, List[str]] = {
+            node.get("name", ""): [] for node in nodes if node.get("name")
+        }
+
+        for source_name, outputs in connections.items():
+            if not isinstance(outputs, dict):
+                continue
+            for output_key, output_branches in outputs.items():
+                if not isinstance(output_branches, list):
+                    continue
+                for branch in output_branches:
+                    if not isinstance(branch, list):
+                        continue
+                    for conn in branch:
+                        if not isinstance(conn, dict):
+                            continue
+                        dest_name = conn.get("node", "")
+                        if dest_name and source_name in adjacency:
+                            adjacency[source_name].append(dest_name)
+
+        issues: List[Dict[str, Any]] = []
+        affected_node_names: List[str] = []
+
+        # 1. Detect self-loops (node connected to itself)
+        for node_name, neighbors in adjacency.items():
+            if node_name in neighbors:
+                node_type = node_lookup.get(node_name, {}).get("type", "")
+                issues.append({
+                    "type": "self_loop",
+                    "node": node_name,
+                    "node_type": node_type,
+                    "has_break_condition": False,
+                    "potentially_infinite": True,
+                    "description": f"Self-loop: node '{node_name}' is connected to itself",
+                })
+                affected_node_names.append(node_name)
+
+        # 2. DFS-based cycle detection
+        visited: Set[str] = set()
+        rec_stack: Set[str] = set()
+        cycles_found: List[List[str]] = []
+
+        def dfs_find_cycles(node: str, path: List[str]) -> None:
+            """DFS traversal to find all cycles in the graph."""
+            visited.add(node)
+            rec_stack.add(node)
+            path.append(node)
+
+            for neighbor in adjacency.get(node, []):
+                if neighbor == node:
+                    # Self-loop already handled above
+                    continue
+                if neighbor not in visited:
+                    dfs_find_cycles(neighbor, path)
+                elif neighbor in rec_stack:
+                    # Found a cycle: extract the cycle from the path
+                    cycle_start_idx = path.index(neighbor)
+                    cycle = path[cycle_start_idx:] + [neighbor]
+                    cycles_found.append(cycle)
+
+            path.pop()
+            rec_stack.discard(node)
+
+        for node_name in adjacency:
+            if node_name not in visited:
+                dfs_find_cycles(node_name, [])
+
+        # 3. Analyze each detected cycle
+        for cycle in cycles_found:
+            cycle_nodes = cycle[:-1]  # Remove the repeated closing node
+            has_break_condition = self._cycle_has_break_condition(
+                cycle_nodes, node_lookup, adjacency
+            )
+
+            potentially_infinite = not has_break_condition
+
+            issues.append({
+                "type": "graph_cycle",
+                "cycle": cycle,
+                "cycle_length": len(cycle_nodes),
+                "has_break_condition": has_break_condition,
+                "potentially_infinite": potentially_infinite,
+                "description": (
+                    f"Cycle detected: {' -> '.join(cycle)}"
+                    + (" (no break condition found)" if potentially_infinite else " (has break condition)")
+                ),
+            })
+            affected_node_names.extend(cycle_nodes)
+
+        if not issues:
+            return TurnAwareDetectionResult(
+                detected=False,
+                severity=TurnAwareSeverity.NONE,
+                confidence=0.85,
+                failure_mode=None,
+                explanation="No cycle patterns detected in workflow graph",
+                detector_name=self.name,
+            )
+
+        # Determine severity
+        infinite_count = sum(1 for i in issues if i.get("potentially_infinite", False))
+        self_loop_count = sum(1 for i in issues if i.get("type") == "self_loop")
+        cycle_count = sum(1 for i in issues if i.get("type") == "graph_cycle")
+
+        if infinite_count >= 2 or self_loop_count >= 1:
+            severity = TurnAwareSeverity.SEVERE
+        elif infinite_count >= 1 or cycle_count >= 2:
+            severity = TurnAwareSeverity.MODERATE
+        else:
+            severity = TurnAwareSeverity.MINOR
+
+        confidence = min(0.95, 0.7 + len(issues) * 0.1)
+
+        # Map affected node names to indices
+        node_index_map = {node.get("name", ""): idx for idx, node in enumerate(nodes)}
+        affected_turns = sorted({
+            node_index_map[name]
+            for name in set(affected_node_names)
+            if name in node_index_map
+        })
+
+        return TurnAwareDetectionResult(
+            detected=True,
+            severity=severity,
+            confidence=confidence,
+            failure_mode="F11",
+            explanation=f"Workflow cycle detected: {len(issues)} cycle patterns found in graph structure",
+            affected_turns=affected_turns,
+            evidence={
+                "issues": issues,
+                "total_nodes": len(nodes),
+                "total_cycles": cycle_count,
+                "total_self_loops": self_loop_count,
+                "cycles_without_break": infinite_count,
+            },
+            suggested_fix=(
+                "Add cycle-breaking conditions to prevent infinite loops. "
+                "Use IF nodes with explicit exit conditions inside cycles. "
+                "Add maximum iteration limits or use the Loop Over Items node with bounds."
+            ),
+            detector_name=self.name,
+        )
+
+    def _cycle_has_break_condition(
+        self,
+        cycle_nodes: List[str],
+        node_lookup: Dict[str, Dict[str, Any]],
+        adjacency: Dict[str, List[str]],
+    ) -> bool:
+        """Check if a detected cycle has an explicit loop-break condition.
+
+        A break condition exists if there is an IF node in the cycle that has
+        at least one output branch leading outside the cycle (an exit path).
+
+        Args:
+            cycle_nodes: List of node names forming the cycle.
+            node_lookup: Dict mapping node name to node definition.
+            adjacency: Adjacency list for the graph.
+
+        Returns:
+            True if the cycle has a break condition, False otherwise.
+        """
+        cycle_set = set(cycle_nodes)
+
+        for node_name in cycle_nodes:
+            node_data = node_lookup.get(node_name, {})
+            node_type = node_data.get("type", "")
+
+            # IF and Switch nodes can serve as break conditions
+            if node_type in ("n8n-nodes-base.if", "n8n-nodes-base.switch"):
+                # Check if any output branch leads outside the cycle
+                neighbors = adjacency.get(node_name, [])
+                for neighbor in neighbors:
+                    if neighbor not in cycle_set:
+                        # This IF/Switch has a branch that exits the cycle
+                        return True
+
+        return False
+
     def _detect_semantic_loop(self, turns: List[TurnSnapshot]) -> Dict[str, Any]:
         """Detect semantic loops where normalized node names repeat in a pattern.
 

@@ -81,6 +81,361 @@ class N8NComplexityDetector(TurnAwareDetector):
         self.max_cyclomatic_complexity = max_cyclomatic_complexity
         self.max_execution_time_ms = max_execution_time_ms
 
+    def detect_workflow(self, workflow_json: Dict[str, Any]) -> TurnAwareDetectionResult:
+        """Detect complexity issues by analyzing raw n8n workflow JSON directly.
+
+        Calculates:
+        1. Node count from workflow_json["nodes"]
+        2. Branching depth from the connection graph
+        3. Cyclomatic complexity: E - N + 2P (edges, nodes, connected components)
+        4. Branching node count using BRANCHING_NODE_TYPES
+        5. Multiple unrelated concerns by categorizing node types
+
+        Args:
+            workflow_json: Raw n8n workflow JSON with "nodes" and "connections" keys.
+
+        Returns:
+            TurnAwareDetectionResult with detected complexity issues.
+        """
+        nodes = workflow_json.get("nodes", [])
+        connections = workflow_json.get("connections", {})
+
+        if len(nodes) < 2:
+            return TurnAwareDetectionResult(
+                detected=False,
+                severity=TurnAwareSeverity.NONE,
+                confidence=0.0,
+                failure_mode=None,
+                explanation="Need at least 2 nodes to detect complexity issues",
+                detector_name=self.name,
+            )
+
+        # Build node lookup and adjacency graph
+        node_lookup: Dict[str, Dict[str, Any]] = {}
+        for node in nodes:
+            node_name = node.get("name", "")
+            if node_name:
+                node_lookup[node_name] = node
+
+        adjacency: Dict[str, List[str]] = {
+            node.get("name", ""): [] for node in nodes if node.get("name")
+        }
+        total_edges = 0
+
+        for source_name, outputs in connections.items():
+            if not isinstance(outputs, dict):
+                continue
+            for output_key, output_branches in outputs.items():
+                if not isinstance(output_branches, list):
+                    continue
+                for branch in output_branches:
+                    if not isinstance(branch, list):
+                        continue
+                    for conn in branch:
+                        if not isinstance(conn, dict):
+                            continue
+                        dest_name = conn.get("node", "")
+                        if dest_name and source_name in adjacency:
+                            adjacency[source_name].append(dest_name)
+                            total_edges += 1
+
+        issues: List[Dict[str, Any]] = []
+        affected_node_indices: List[int] = []
+        node_index_map = {node.get("name", ""): idx for idx, node in enumerate(nodes)}
+
+        # 1. Check node count
+        node_count = len(nodes)
+        if node_count > self.max_node_count:
+            issues.append({
+                "detected": True,
+                "type": "excessive_nodes",
+                "node_count": node_count,
+                "threshold": self.max_node_count,
+                "explanation": f"Workflow has {node_count} nodes (threshold: {self.max_node_count})",
+                "turns": list(range(node_count)),
+            })
+            affected_node_indices.extend(range(node_count))
+
+        # 2. Calculate branching depth from the connection graph
+        branching_depth = self._calculate_workflow_branch_depth(
+            adjacency, node_lookup
+        )
+        if branching_depth > self.max_branch_depth:
+            branching_indices = [
+                node_index_map[name]
+                for name, data in node_lookup.items()
+                if data.get("type", "") in BRANCHING_NODE_TYPES
+                and name in node_index_map
+            ]
+            issues.append({
+                "detected": True,
+                "type": "deep_branching",
+                "branch_depth": branching_depth,
+                "threshold": self.max_branch_depth,
+                "explanation": f"Workflow has {branching_depth} levels of nested branches (threshold: {self.max_branch_depth})",
+                "turns": branching_indices,
+            })
+            affected_node_indices.extend(branching_indices)
+
+        # 3. Calculate cyclomatic complexity: E - N + 2P
+        num_connected_components = self._count_connected_components(
+            adjacency, set(node_lookup.keys())
+        )
+        cyclomatic_complexity = total_edges - node_count + 2 * num_connected_components
+        # Ensure minimum of 1
+        cyclomatic_complexity = max(1, cyclomatic_complexity)
+
+        if cyclomatic_complexity > self.max_cyclomatic_complexity:
+            branching_indices = [
+                node_index_map[name]
+                for name, data in node_lookup.items()
+                if data.get("type", "") in BRANCHING_NODE_TYPES
+                and name in node_index_map
+            ]
+            issues.append({
+                "detected": True,
+                "type": "high_cyclomatic_complexity",
+                "complexity": cyclomatic_complexity,
+                "edges": total_edges,
+                "nodes": node_count,
+                "connected_components": num_connected_components,
+                "threshold": self.max_cyclomatic_complexity,
+                "explanation": (
+                    f"Workflow has cyclomatic complexity of {cyclomatic_complexity} "
+                    f"(E={total_edges} - N={node_count} + 2*P={num_connected_components}, "
+                    f"threshold: {self.max_cyclomatic_complexity})"
+                ),
+                "turns": branching_indices,
+            })
+            affected_node_indices.extend(branching_indices)
+
+        # 4. Count branching nodes directly from node types
+        branching_nodes = []
+        for node in nodes:
+            node_type = node.get("type", "")
+            if node_type in BRANCHING_NODE_TYPES:
+                branching_nodes.append({
+                    "name": node.get("name", ""),
+                    "type": node_type,
+                })
+
+        # 5. Check for multiple unrelated concerns
+        multiple_concerns = self._detect_workflow_multiple_concerns(nodes)
+        if multiple_concerns:
+            issues.append(multiple_concerns)
+            affected_node_indices.extend(range(node_count))
+
+        if not issues:
+            return TurnAwareDetectionResult(
+                detected=False,
+                severity=TurnAwareSeverity.NONE,
+                confidence=0.0,
+                failure_mode=None,
+                explanation="No complexity issues detected in workflow JSON",
+                detector_name=self.name,
+                evidence={
+                    "node_count": node_count,
+                    "branching_depth": branching_depth,
+                    "cyclomatic_complexity": cyclomatic_complexity,
+                    "branching_nodes": len(branching_nodes),
+                    "connected_components": num_connected_components,
+                },
+            )
+
+        # Determine severity
+        has_excessive = any(i.get("type") == "excessive_nodes" for i in issues)
+        has_high_complexity = any(i.get("type") == "high_cyclomatic_complexity" for i in issues)
+
+        severity = TurnAwareSeverity.MINOR
+        if has_excessive or has_high_complexity:
+            severity = TurnAwareSeverity.MODERATE
+        if len(issues) >= 3:
+            severity = TurnAwareSeverity.SEVERE
+
+        confidence = 0.85 if len(issues) >= 2 else 0.75
+
+        explanations = [issue["explanation"] for issue in issues]
+        full_explanation = "; ".join(explanations)
+
+        fixes = []
+        if has_excessive or multiple_concerns:
+            fixes.append("Split workflow into smaller sub-workflows using Execute Workflow nodes")
+        if branching_depth > self.max_branch_depth or has_high_complexity:
+            fixes.append("Simplify branching logic - consider using Switch node instead of nested IFs")
+
+        suggested_fix = "; ".join(fixes) if fixes else None
+
+        return TurnAwareDetectionResult(
+            detected=True,
+            severity=severity,
+            confidence=confidence,
+            failure_mode="F15",
+            explanation=full_explanation,
+            affected_turns=sorted(set(affected_node_indices)),
+            evidence={
+                "issues": issues,
+                "node_count": node_count,
+                "branching_depth": branching_depth,
+                "cyclomatic_complexity": cyclomatic_complexity,
+                "branching_nodes": branching_nodes,
+                "connected_components": num_connected_components,
+                "total_edges": total_edges,
+            },
+            suggested_fix=suggested_fix,
+            detector_name=self.name,
+            detector_version=self.version,
+        )
+
+    def _calculate_workflow_branch_depth(
+        self,
+        adjacency: Dict[str, List[str]],
+        node_lookup: Dict[str, Dict[str, Any]],
+    ) -> int:
+        """Calculate maximum branching depth from the workflow connection graph.
+
+        Traverses the graph tracking depth changes: branching nodes (if, switch)
+        increase depth, merge nodes decrease depth.
+
+        Args:
+            adjacency: Adjacency list of the workflow graph.
+            node_lookup: Dict mapping node name to node definition.
+
+        Returns:
+            Maximum branch depth encountered.
+        """
+        if not adjacency:
+            return 0
+
+        # Find root nodes (nodes with no incoming edges)
+        all_nodes = set(adjacency.keys())
+        nodes_with_incoming: Set[str] = set()
+        for neighbors in adjacency.values():
+            for n in neighbors:
+                nodes_with_incoming.add(n)
+        root_nodes = all_nodes - nodes_with_incoming
+        if not root_nodes:
+            # No clear root, start from first node
+            root_nodes = {next(iter(adjacency))} if adjacency else set()
+
+        max_depth = 0
+        visited: Set[str] = set()
+
+        def dfs_depth(node: str, current_depth: int) -> None:
+            nonlocal max_depth
+            if node in visited:
+                return
+            visited.add(node)
+
+            node_type = node_lookup.get(node, {}).get("type", "")
+
+            if node_type in ("n8n-nodes-base.if", "n8n-nodes-base.switch", "n8n-nodes-base.router"):
+                current_depth += 1
+                max_depth = max(max_depth, current_depth)
+            elif node_type in ("n8n-nodes-base.merge",):
+                current_depth = max(0, current_depth - 1)
+
+            for neighbor in adjacency.get(node, []):
+                dfs_depth(neighbor, current_depth)
+
+            visited.discard(node)
+
+        for root in root_nodes:
+            dfs_depth(root, 0)
+
+        return max_depth
+
+    def _count_connected_components(
+        self,
+        adjacency: Dict[str, List[str]],
+        all_nodes: Set[str],
+    ) -> int:
+        """Count connected components in the workflow graph (undirected).
+
+        Args:
+            adjacency: Directed adjacency list.
+            all_nodes: Set of all node names.
+
+        Returns:
+            Number of connected components.
+        """
+        # Build undirected adjacency
+        undirected: Dict[str, Set[str]] = {node: set() for node in all_nodes}
+        for source, neighbors in adjacency.items():
+            for dest in neighbors:
+                if source in undirected:
+                    undirected[source].add(dest)
+                if dest in undirected:
+                    undirected[dest].add(source)
+
+        visited: Set[str] = set()
+        components = 0
+
+        for node in all_nodes:
+            if node not in visited:
+                components += 1
+                # BFS to visit entire component
+                queue = [node]
+                while queue:
+                    current = queue.pop(0)
+                    if current in visited:
+                        continue
+                    visited.add(current)
+                    for neighbor in undirected.get(current, set()):
+                        if neighbor not in visited:
+                            queue.append(neighbor)
+
+        return max(1, components)
+
+    def _detect_workflow_multiple_concerns(
+        self, nodes: List[Dict[str, Any]]
+    ) -> Optional[Dict[str, Any]]:
+        """Detect if workflow handles multiple unrelated concerns by categorizing node types.
+
+        Args:
+            nodes: List of node definitions from workflow JSON.
+
+        Returns:
+            Dict describing the issue if detected, None otherwise.
+        """
+        categories: Dict[str, List[int]] = defaultdict(list)
+
+        for i, node in enumerate(nodes):
+            node_type = node.get("type", "").lower()
+
+            if "http" in node_type or "api" in node_type:
+                categories["data_fetch"].append(i)
+            elif "function" in node_type or "code" in node_type:
+                categories["transform"].append(i)
+            elif "if" in node_type or "switch" in node_type:
+                categories["validation"].append(i)
+            elif "email" in node_type or "slack" in node_type or "webhook" in node_type:
+                categories["notification"].append(i)
+            elif "database" in node_type or "sql" in node_type or "postgres" in node_type or "mysql" in node_type:
+                categories["storage"].append(i)
+            elif "ai" in node_type or "openai" in node_type or "langchain" in node_type:
+                categories["ai_processing"].append(i)
+            elif "spreadsheet" in node_type or "csv" in node_type:
+                categories["file_processing"].append(i)
+            else:
+                categories["other"].append(i)
+
+        active_categories = {k: v for k, v in categories.items() if v}
+
+        # Production workflows commonly span 4-5 categories (fetch, transform,
+        # validate, notify, other).  Only flag when a workflow touches 6+
+        # distinct functional areas, which indicates it should be split.
+        if len(active_categories) >= 6:
+            return {
+                "detected": True,
+                "type": "multiple_concerns",
+                "categories": list(active_categories.keys()),
+                "category_count": len(active_categories),
+                "explanation": f"Workflow handles {len(active_categories)} distinct concerns: {', '.join(active_categories.keys())}",
+                "turns": list(range(len(nodes))),
+            }
+
+        return None
+
     def _detect_excessive_nodes(
         self, turns: List[TurnSnapshot]
     ) -> Optional[Dict[str, Any]]:

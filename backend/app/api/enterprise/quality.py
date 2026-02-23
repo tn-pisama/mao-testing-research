@@ -225,6 +225,11 @@ async def assess_workflow_quality(
             csv_text = QualityCSVReporter().export_report(report)
             return PlainTextResponse(content=csv_text, media_type="text/csv")
 
+        if export_format == "narrative":
+            from app.enterprise.quality.reporters.narrative_reporter import QualityNarrativeReporter
+            narrative = QualityNarrativeReporter().generate(report)
+            return PlainTextResponse(content=narrative, media_type="text/markdown")
+
         return WorkflowQualityResponse(
             workflow_id=report.workflow_id,
             workflow_name=report.workflow_name,
@@ -246,6 +251,54 @@ async def assess_workflow_quality(
         )
     except Exception as e:
         raise HTTPException(status_code=500, detail=f"Quality assessment failed: {str(e)}")
+
+
+class NarrativeResponse(BaseModel):
+    """Response with human-readable quality narrative."""
+    narrative: str
+    overall_score: float
+    overall_grade: str
+    n8n_findings_count: int = 0
+
+
+@router.post("/workflow/narrative", response_model=NarrativeResponse)
+async def assess_workflow_narrative(
+    request: WorkflowQualityRequest,
+    tenant=Depends(get_current_tenant),
+):
+    """
+    Get a human-readable quality narrative for an n8n workflow.
+
+    Returns a markdown-formatted narrative covering:
+    - Quality summary with grade and score
+    - Strengths (high-confidence, well-scoring dimensions)
+    - Risks (low scores and critical issues)
+    - n8n structural analysis findings
+    - Prioritized recommendations
+    """
+    try:
+        assessor = QualityAssessor(
+            use_llm_judge=request.use_llm_analysis,
+            include_reasoning=request.include_reasoning,
+        )
+
+        report = assessor.assess_workflow(
+            workflow=request.workflow_json,
+            execution_history=request.execution_history,
+            max_suggestions=request.max_suggestions,
+        )
+
+        from app.enterprise.quality.reporters.narrative_reporter import QualityNarrativeReporter
+        narrative = QualityNarrativeReporter().generate(report)
+
+        return NarrativeResponse(
+            narrative=narrative,
+            overall_score=round(report.overall_score, 3),
+            overall_grade=report.overall_grade,
+            n8n_findings_count=len(getattr(report, "n8n_detection_findings", [])),
+        )
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"Narrative assessment failed: {str(e)}")
 
 
 @router.post("/agent", response_model=AgentQualityResponse)

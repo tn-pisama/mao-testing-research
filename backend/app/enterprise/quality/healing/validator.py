@@ -68,7 +68,6 @@ class QualityFixValidator:
         else:
             result = self._heuristic_validation(applied_fix, original_report)
 
-        # Non-blocking behavioral validation after structural pass
         if result.success:
             behavioral_ok = self._behavioral_validate(
                 applied_fix,
@@ -78,11 +77,15 @@ class QualityFixValidator:
             )
             if not behavioral_ok:
                 logger.warning(
-                    "Behavioral validation failed for fix %s (dimension=%s) — allowing fix anyway",
+                    "Behavioral validation failed for fix %s (dimension=%s)",
                     applied_fix.fix_id,
                     applied_fix.dimension,
                 )
-            result.details["behavioral_validation"] = behavioral_ok
+                result.success = False
+                result.reason = f"Fix did not improve {applied_fix.dimension} score"
+                result.details["behavioral_validation"] = False
+                return result
+            result.details["behavioral_validation"] = True
 
         return result
 

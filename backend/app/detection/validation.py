@@ -25,6 +25,13 @@ class DetectionType(Enum):
     COMPLETION = "completion"  # F14: Completion misjudgment
     SPECIFICATION = "specification"  # F9: Spec-intent mismatch
     WITHHOLDING = "withholding"  # F12: Information withholding
+    # n8n structural detectors
+    N8N_SCHEMA = "n8n_schema"  # Schema/type mismatches between connected nodes
+    N8N_CYCLE = "n8n_cycle"  # Graph cycles in workflow connections
+    N8N_COMPLEXITY = "n8n_complexity"  # Excessive nodes, branching, cyclomatic complexity
+    N8N_ERROR = "n8n_error"  # Missing error handling, unprotected AI nodes
+    N8N_RESOURCE = "n8n_resource"  # Missing maxTokens, unbounded loops, no timeout on HTTP
+    N8N_TIMEOUT = "n8n_timeout"  # Missing workflow timeout, webhook timeout, AI node timeout
 
 
 @dataclass

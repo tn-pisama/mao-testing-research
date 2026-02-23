@@ -421,6 +421,24 @@ class ObservabilityApplicator(QualityApplicatorStrategy):
 
             # Optionally wire the node
             connect_after = changes.get("connect_after")
+
+            # Auto-detect connection point if not specified
+            if not connect_after:
+                ai_types = [
+                    "@n8n/n8n-nodes-langchain.agent",
+                    "@n8n/n8n-nodes-langchain.chainLlm",
+                    "n8n-nodes-base.openAi",
+                    "@n8n/n8n-nodes-langchain.lmChatOpenAi",
+                    "@n8n/n8n-nodes-langchain.lmChatAnthropic",
+                ]
+                for node in reversed(config.get("nodes", [])):
+                    if node.get("type") in ai_types:
+                        connect_after = node.get("name")
+                        break
+                # Fallback: connect after the last node
+                if not connect_after and config.get("nodes"):
+                    connect_after = config["nodes"][-1].get("name")
+
             if connect_after:
                 from_name = connect_after
                 connections = config.setdefault("connections", {})

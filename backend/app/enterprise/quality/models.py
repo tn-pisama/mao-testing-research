@@ -270,6 +270,7 @@ class QualityReport:
     reasoning: Optional[str] = None
     generated_at: datetime = field(default_factory=lambda: datetime.now(UTC))
     dimension_reliability: Dict[str, str] = field(default_factory=dict)
+    n8n_detection_findings: List[Dict[str, Any]] = field(default_factory=list)
 
     @property
     def is_provisional(self) -> bool:
