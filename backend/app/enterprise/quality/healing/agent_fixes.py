@@ -29,8 +29,16 @@ def _confidence_from_score(score: float, base: float = 0.7) -> float:
 
 
 def _target_id(context: Dict[str, Any]) -> str:
-    """Extract the target node / workflow id from the generator context."""
-    return context.get("agent_id", context.get("workflow_id", "unknown"))
+    """Extract the target node / workflow id from the generator context.
+
+    Falls back to agent_name when agent_id is missing or 'unknown',
+    since _find_node() matches on both node id and name.
+    """
+    aid = context.get("agent_id", "")
+    if aid and aid != "unknown":
+        return aid
+    # Fall back to agent_name which matches the n8n node "name" field
+    return context.get("agent_name", context.get("workflow_id", "unknown"))
 
 
 def _target_type(context: Dict[str, Any]) -> str:
@@ -408,7 +416,7 @@ class ErrorHandlingFixGenerator(BaseQualityFixGenerator):
         ttype = _target_type(context)
 
         # Fix 1 -- Enable continueOnFail + alwaysOutputData
-        has_continue = evidence.get("has_continue_on_fail", False)
+        has_continue = evidence.get("continue_on_fail", False)
         if not has_continue or score < 0.5:
             fixes.append(QualityFixSuggestion.create(
                 dimension="error_handling",
@@ -425,27 +433,25 @@ class ErrorHandlingFixGenerator(BaseQualityFixGenerator):
                 target_type=ttype,
                 target_id=tid,
                 changes={
-                    "action": "modify_settings",
+                    "action": "set_top_level",
                     "node_id": tid,
-                    "settings": {
+                    "properties": {
                         "continueOnFail": True,
                         "alwaysOutputData": True,
                     },
                 },
                 code_example=(
-                    '// Node settings patch\n'
+                    '// Top-level node properties\n'
                     '{\n'
-                    '  "settings": {\n'
-                    '    "continueOnFail": true,\n'
-                    '    "alwaysOutputData": true\n'
-                    '  }\n'
+                    '  "continueOnFail": true,\n'
+                    '  "alwaysOutputData": true\n'
                     '}'
                 ),
                 effort="low",
             ))
 
         # Fix 2 -- Add retry configuration
-        has_retry = evidence.get("has_retry", False)
+        has_retry = evidence.get("retry_on_fail", False)
         if not has_retry or score < 0.6:
             fixes.append(QualityFixSuggestion.create(
                 dimension="error_handling",
@@ -461,18 +467,18 @@ class ErrorHandlingFixGenerator(BaseQualityFixGenerator):
                 target_type=ttype,
                 target_id=tid,
                 changes={
-                    "action": "modify_settings",
+                    "action": "modify_options",
                     "node_id": tid,
-                    "settings": {
+                    "options": {
                         "retryOnFail": True,
                         "maxRetries": 3,
                         "waitBetweenTries": 1000,
                     },
                 },
                 code_example=(
-                    '// Node settings patch\n'
+                    '// Node options patch\n'
                     '{\n'
-                    '  "settings": {\n'
+                    '  "options": {\n'
                     '    "retryOnFail": true,\n'
                     '    "maxRetries": 3,\n'
                     '    "waitBetweenTries": 1000\n'

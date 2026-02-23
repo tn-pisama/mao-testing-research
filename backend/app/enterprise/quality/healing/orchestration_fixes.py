@@ -351,6 +351,7 @@ class ObservabilityFixGenerator(BaseQualityFixGenerator):
                     target_id=workflow_id,
                     changes={
                         "action": "add_node",
+                        "connect_after": "last_ai_node",
                         "node": {
                             "type": "n8n-nodes-base.set",
                             "name": "Checkpoint: Stage Complete",
@@ -407,6 +408,7 @@ class ObservabilityFixGenerator(BaseQualityFixGenerator):
                     target_id=workflow_id,
                     changes={
                         "action": "add_node",
+                        "is_trigger": True,
                         "node": {
                             "type": "n8n-nodes-base.errorTrigger",
                             "name": "Error Trigger",
@@ -443,6 +445,7 @@ class ObservabilityFixGenerator(BaseQualityFixGenerator):
                     target_id=workflow_id,
                     changes={
                         "action": "add_node",
+                        "connect_after": "last_main_node",
                         "node": {
                             "type": "n8n-nodes-base.httpRequest",
                             "name": "Send Trace to MAO",
@@ -513,7 +516,7 @@ class BestPracticesFixGenerator(BaseQualityFixGenerator):
         workflow_id = context.get("workflow_id", "unknown")
 
         # Fix 1: Add global error handler
-        error_handler_present = evidence.get("error_handler_present", False)
+        error_handler_present = evidence.get("has_global_error_handler", False)
         if not error_handler_present:
             fixes.append(
                 QualityFixSuggestion.create(
@@ -531,18 +534,22 @@ class BestPracticesFixGenerator(BaseQualityFixGenerator):
                     target_type="orchestration",
                     target_id=workflow_id,
                     changes={
-                        "action": "set_workflow_setting",
-                        "settings": {
-                            "errorWorkflow": "error-handler-workflow-id",
+                        "action": "add_node",
+                        "is_trigger": True,
+                        "node": {
+                            "type": "n8n-nodes-base.errorTrigger",
+                            "name": "Error Trigger",
+                            "parameters": {},
+                            "position": [250, 600],
                         },
                     },
                     effort="low",
                     code_example=(
-                        '// In workflow settings\n'
+                        '// Add error trigger node to workflow\n'
                         '{\n'
-                        '  "settings": {\n'
-                        '    "errorWorkflow": "error-handler-workflow-id"\n'
-                        '  }\n'
+                        '  "type": "n8n-nodes-base.errorTrigger",\n'
+                        '  "name": "Error Trigger",\n'
+                        '  "parameters": {}\n'
                         '}'
                     ),
                 )
@@ -973,10 +980,29 @@ class TestCoverageFixGenerator(BaseQualityFixGenerator):
         evidence = dimension_score.evidence
         workflow_id = context.get("workflow_id", "unknown")
 
-        test_coverage_ratio = evidence.get("test_coverage_ratio", 0.0)
+        coverage_ratio = evidence.get("coverage_ratio", 0.0)
 
         # Fix 1: Add test data fixtures (zero coverage)
-        if test_coverage_ratio == 0:
+        if coverage_ratio == 0:
+            # Build pin_data dict using actual node names from evidence
+            uncovered_names = evidence.get("uncovered_node_names", [])
+            pin_data: Dict[str, Any] = {}
+            for name in uncovered_names[:5]:  # Cap at 5 nodes
+                pin_data[name] = [
+                    {
+                        "json": {
+                            "id": 1,
+                            "input": "test input",
+                            "timestamp": "2025-01-01T00:00:00Z",
+                        }
+                    }
+                ]
+            # Fallback if no node names available
+            if not pin_data:
+                pin_data["Trigger"] = [
+                    {"json": {"id": 1, "input": "test input"}}
+                ]
+
             fixes.append(
                 QualityFixSuggestion.create(
                     dimension=OrchestrationDimension.TEST_COVERAGE.value,
@@ -993,18 +1019,7 @@ class TestCoverageFixGenerator(BaseQualityFixGenerator):
                     target_id=workflow_id,
                     changes={
                         "action": "add_pin_data",
-                        "coverage_target": 0.5,
-                        "sample_data": {
-                            "trigger": [
-                                {
-                                    "json": {
-                                        "id": 1,
-                                        "input": "test input",
-                                        "timestamp": "2025-01-01T00:00:00Z",
-                                    }
-                                }
-                            ],
-                        },
+                        "pin_data": pin_data,
                     },
                     effort="medium",
                     code_example=(
@@ -1021,15 +1036,20 @@ class TestCoverageFixGenerator(BaseQualityFixGenerator):
             )
 
         # Fix 2: Increase test coverage (partial coverage)
-        elif test_coverage_ratio < 0.5:
-            uncovered_nodes = evidence.get("uncovered_nodes", [])
+        elif coverage_ratio < 0.5:
+            uncovered_names = evidence.get("uncovered_node_names", [])
+            pin_data_partial: Dict[str, Any] = {}
+            for name in uncovered_names[:5]:
+                pin_data_partial[name] = [
+                    {"json": {"result": "expected output"}}
+                ]
             fixes.append(
                 QualityFixSuggestion.create(
                     dimension=OrchestrationDimension.TEST_COVERAGE.value,
                     category=QualityFixCategory.TEST_COVERAGE,
                     title="Increase test coverage",
                     description=(
-                        f"Test coverage is at {test_coverage_ratio:.0%}, "
+                        f"Test coverage is at {coverage_ratio:.0%}, "
                         "below the recommended 50% minimum.  Add pinned data "
                         "to additional nodes to improve coverage and catch "
                         "regressions earlier."
@@ -1040,7 +1060,7 @@ class TestCoverageFixGenerator(BaseQualityFixGenerator):
                     target_id=workflow_id,
                     changes={
                         "action": "add_pin_data",
-                        "target_nodes": uncovered_nodes,
+                        "pin_data": pin_data_partial,
                     },
                     effort="medium",
                     code_example=(

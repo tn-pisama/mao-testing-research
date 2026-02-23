@@ -409,6 +409,35 @@ def _build_detector_runners() -> Dict[DetectionType, Any]:
     except Exception as exc:
         logger.warning("Could not import workflow detector: %s", exc)
 
+    # --- N8N DETECTORS ---
+    # All n8n detectors follow the same pattern: instantiate detector,
+    # call detect_workflow(workflow_json), return (detected, confidence).
+    _n8n_detector_map = {
+        DetectionType.N8N_SCHEMA: ("app.detection.n8n.schema_detector", "N8NSchemaDetector"),
+        DetectionType.N8N_CYCLE: ("app.detection.n8n.cycle_detector", "N8NCycleDetector"),
+        DetectionType.N8N_COMPLEXITY: ("app.detection.n8n.complexity_detector", "N8NComplexityDetector"),
+        DetectionType.N8N_ERROR: ("app.detection.n8n.error_detector", "N8NErrorDetector"),
+        DetectionType.N8N_RESOURCE: ("app.detection.n8n.resource_detector", "N8NResourceDetector"),
+        DetectionType.N8N_TIMEOUT: ("app.detection.n8n.timeout_detector", "N8NTimeoutDetector"),
+    }
+    for det_type, (module_path, class_name) in _n8n_detector_map.items():
+        try:
+            import importlib
+            mod = importlib.import_module(module_path)
+            detector_cls = getattr(mod, class_name)
+            detector_instance = detector_cls()
+
+            def _make_n8n_runner(det):
+                def _run(entry: GoldenDatasetEntry) -> Tuple[bool, float]:
+                    wf = entry.input_data.get("workflow_json", entry.input_data)
+                    result = det.detect_workflow(wf)
+                    return result.detected, result.confidence
+                return _run
+
+            runners[det_type] = _make_n8n_runner(detector_instance)
+        except Exception as exc:
+            logger.warning("Could not import n8n detector %s: %s", det_type.value, exc)
+
     return runners
 
 

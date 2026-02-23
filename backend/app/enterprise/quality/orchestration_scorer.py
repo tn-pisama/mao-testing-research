@@ -1170,11 +1170,22 @@ class OrchestrationQualityScorer:
         evidence = {}
 
         # Check for pinData on nodes
-        nodes_with_test_data = [n for n in nodes if n.get("pinData")]
+        workflow_pin_data = workflow.get("pinData", {})
+        nodes_with_test_data = [
+            n for n in nodes
+            if n.get("pinData") or n.get("name", "") in workflow_pin_data
+        ]
         evidence["nodes_with_test_data"] = len(nodes_with_test_data)
         evidence["total_nodes"] = len(nodes)
 
+        # Store names of nodes WITHOUT test data so fix generators can target them
+        covered_names = {n.get("name", "") for n in nodes_with_test_data}
+        uncovered = [n.get("name", f"Node_{i}") for i, n in enumerate(nodes)
+                     if n.get("name", f"Node_{i}") not in covered_names]
+        evidence["uncovered_node_names"] = uncovered
+
         if not nodes_with_test_data:
+            evidence["coverage_ratio"] = 0.0
             return DimensionScore(
                 dimension=OrchestrationDimension.TEST_COVERAGE.value,
                 score=0.4,

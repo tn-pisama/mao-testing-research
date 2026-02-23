@@ -198,6 +198,13 @@ class ErrorHandlingApplicator(QualityApplicatorStrategy):
             for key, value in changes.get("options", {}).items():
                 options[key] = value
 
+        elif action == "set_top_level":
+            node = _find_node(config, changes.get("node_id", fix.target_id))
+            if not node:
+                return config
+            for key, value in changes.get("properties", {}).items():
+                node[key] = value
+
         return config
 
 
@@ -409,7 +416,8 @@ class ObservabilityApplicator(QualityApplicatorStrategy):
         action = changes.get("action", "add_node")
 
         if action == "add_node":
-            new_node = changes.get("new_node", {})
+            # Accept both "node" and "new_node" keys for the node definition
+            new_node = changes.get("node", changes.get("new_node", {}))
             new_node.setdefault("id", _make_node_id())
             new_node.setdefault("typeVersion", 1)
 
@@ -419,11 +427,15 @@ class ObservabilityApplicator(QualityApplicatorStrategy):
 
             config.setdefault("nodes", []).append(new_node)
 
-            # Optionally wire the node
+            # Trigger nodes (e.g. errorTrigger) don't need input connections
+            if changes.get("is_trigger"):
+                return config
+
+            # Wire the node into the workflow
             connect_after = changes.get("connect_after")
 
-            # Auto-detect connection point if not specified
-            if not connect_after:
+            if connect_after == "last_ai_node" or not connect_after:
+                # Find the last AI / agent node in the workflow
                 ai_types = [
                     "@n8n/n8n-nodes-langchain.agent",
                     "@n8n/n8n-nodes-langchain.chainLlm",
@@ -431,15 +443,22 @@ class ObservabilityApplicator(QualityApplicatorStrategy):
                     "@n8n/n8n-nodes-langchain.lmChatOpenAi",
                     "@n8n/n8n-nodes-langchain.lmChatAnthropic",
                 ]
+                connect_after = None
                 for node in reversed(config.get("nodes", [])):
-                    if node.get("type") in ai_types:
+                    if node.get("type") in ai_types and node.get("name") != new_node.get("name"):
                         connect_after = node.get("name")
                         break
-                # Fallback: connect after the last node
-                if not connect_after and config.get("nodes"):
-                    connect_after = config["nodes"][-1].get("name")
 
-            if connect_after:
+            if connect_after == "last_main_node" or not connect_after:
+                # Find the last node that has a name and isn't the one we just added
+                connect_after = None
+                for node in reversed(config.get("nodes", [])):
+                    node_name = node.get("name")
+                    if node_name and node_name != new_node.get("name"):
+                        connect_after = node_name
+                        break
+
+            if connect_after and new_node.get("name"):
                 from_name = connect_after
                 connections = config.setdefault("connections", {})
                 if from_name not in connections:
@@ -482,6 +501,11 @@ class BestPracticesApplicator(QualityApplicatorStrategy):
                         if key not in node_settings:
                             node_settings[key] = value
 
+        elif action == "add_node":
+            new_node = changes.get("node", {})
+            if new_node:
+                config.setdefault("nodes", []).append(new_node)
+
         return config
 
 
@@ -498,7 +522,7 @@ class DocumentationQualityApplicator(QualityApplicatorStrategy):
                 settings[key] = value
 
         elif action == "add_node":
-            sticky = changes.get("new_node", {})
+            sticky = changes.get("node", changes.get("new_node", {}))
             sticky.setdefault("id", _make_node_id())
             sticky.setdefault("type", "n8n-nodes-base.stickyNote")
             sticky.setdefault("typeVersion", 1)

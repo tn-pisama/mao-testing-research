@@ -271,29 +271,36 @@ class N8NSchemaDetector(TurnAwareDetector):
                         dest_input_type = NODE_INPUT_TYPES.get(dest_type, "unknown")
 
                         # Check type compatibility between source output and dest input
-                        if source_output_type != "unknown" and dest_input_type != "unknown":
-                            # "any" is compatible with everything
-                            if source_output_type == "any" or dest_input_type == "any":
-                                pass  # compatible
-                            else:
-                                compat_key = (source_output_type, dest_input_type)
-                                is_compatible = TYPE_COMPATIBILITY.get(compat_key, True)
-                                if not is_compatible:
-                                    issues.append({
-                                        "type": "type_mismatch",
-                                        "source_node": source_name,
-                                        "source_node_type": source_type,
-                                        "source_output_type": source_output_type,
-                                        "dest_node": dest_name,
-                                        "dest_node_type": dest_type,
-                                        "dest_input_type": dest_input_type,
-                                        "description": (
-                                            f"Type mismatch: {source_name} ({source_type}) outputs "
-                                            f"'{source_output_type}' but {dest_name} ({dest_type}) "
-                                            f"expects '{dest_input_type}'"
-                                        ),
-                                    })
-                                    affected_node_names.extend([source_name, dest_name])
+                        if source_output_type == "unknown" or dest_input_type == "unknown":
+                            # Don't count as a schema mismatch, but note it
+                            issues.append({
+                                "type": "unknown_node_type",
+                                "severity": "info",
+                                "src": source_name,
+                                "dst": dest_name,
+                                "explanation": f"Cannot verify type compatibility for {source_name} → {dest_name} — unknown node type",
+                            })
+                        elif source_output_type == "any" or dest_input_type == "any":
+                            pass  # compatible
+                        else:
+                            compat_key = (source_output_type, dest_input_type)
+                            is_compatible = TYPE_COMPATIBILITY.get(compat_key, True)
+                            if not is_compatible:
+                                issues.append({
+                                    "type": "type_mismatch",
+                                    "source_node": source_name,
+                                    "source_node_type": source_type,
+                                    "source_output_type": source_output_type,
+                                    "dest_node": dest_name,
+                                    "dest_node_type": dest_type,
+                                    "dest_input_type": dest_input_type,
+                                    "description": (
+                                        f"Type mismatch: {source_name} ({source_type}) outputs "
+                                        f"'{source_output_type}' but {dest_name} ({dest_type}) "
+                                        f"expects '{dest_input_type}'"
+                                    ),
+                                })
+                                affected_node_names.extend([source_name, dest_name])
 
         # Check for $json.fieldName expression references in node parameters
         # that reference fields not produced by known upstream nodes

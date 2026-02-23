@@ -334,7 +334,7 @@ class N8NErrorDetector(TurnAwareDetector):
     # ---- Workflow JSON analysis (static / pre-execution) ----
 
     # Node types considered AI / high-risk
-    _AI_NODE_KEYWORDS = {"langchain", "openai", "anthropic"}
+    _AI_NODE_KEYWORDS = {"langchain", "openai", "anthropic", "llm", "agent", "chain", "chat"}
 
     # Node types that are error-handling infrastructure (don't need their own
     # error handling and should not be counted as "unprotected").

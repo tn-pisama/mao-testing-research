@@ -299,29 +299,52 @@ class QualityFixValidator:
             details["prompt_length_delta"] = mod_total_len - orig_total_len
 
         # Check 3: For node-adding fixes, verify new nodes are connected
+        # Trigger nodes (errorTrigger etc.) don't need input connections
+        trigger_types = {"n8n-nodes-base.errorTrigger", "n8n-nodes-base.manualTrigger", "n8n-nodes-base.webhook"}
+
         if dimension in ("observability", "agent_coupling", "best_practices"):
             orig_nodes = set(n.get("id", n.get("name", "")) for n in original.get("nodes", []))
             mod_nodes = set(n.get("id", n.get("name", "")) for n in modified.get("nodes", []))
             new_nodes = mod_nodes - orig_nodes
             if new_nodes:
-                # Check at least one new node is referenced in connections
-                any_connected = False
-                for src, conn_data in modified.get("connections", {}).items():
-                    for output_groups in conn_data.values():
-                        for group in output_groups:
-                            for conn in group:
-                                if conn.get("node") in new_nodes:
-                                    any_connected = True
+                # Check if all new nodes are trigger types (don't need connections)
+                new_node_objects = [n for n in modified.get("nodes", []) if n.get("id", n.get("name", "")) in new_nodes]
+                all_triggers = all(n.get("type", "") in trigger_types for n in new_node_objects)
+
+                if all_triggers:
+                    # Trigger nodes are valid without connections
+                    checks.append(True)
+                    details["new_nodes"] = list(new_nodes)
+                    details["new_nodes_connected"] = True
+                    details["new_nodes_are_triggers"] = True
+                else:
+                    # Non-trigger nodes must be referenced in connections
+                    any_connected = False
+                    # Check if new node appears as TARGET in connections
+                    for src, conn_data in modified.get("connections", {}).items():
+                        for output_groups in conn_data.values():
+                            for group in output_groups:
+                                for conn in group:
+                                    if conn.get("node") in new_nodes:
+                                        any_connected = True
+                                        break
+                                if any_connected:
                                     break
                             if any_connected:
                                 break
                         if any_connected:
                             break
-                    if any_connected:
-                        break
-                checks.append(any_connected)
-                details["new_nodes"] = list(new_nodes)
-                details["new_nodes_connected"] = any_connected
+                    # Also check if new node appears as SOURCE in connections
+                    if not any_connected:
+                        for node_id in new_nodes:
+                            # Match by name since connections use node names
+                            node_obj = next((n for n in new_node_objects if n.get("id", n.get("name", "")) == node_id), None)
+                            if node_obj and node_obj.get("name") in modified.get("connections", {}):
+                                any_connected = True
+                                break
+                    checks.append(any_connected)
+                    details["new_nodes"] = list(new_nodes)
+                    details["new_nodes_connected"] = any_connected
 
         # Check 4: JSON validity (modified config is parseable)
         try:

@@ -332,6 +332,9 @@ class QualityHealingEngine:
                     reason=str(validation_match.details) if validation_match else "no validation result",
                 )
 
+            # Store healed workflow for callers
+            result.metadata["healed_workflow"] = current_config
+
             # Step 5: Re-assess overall score (pass execution_history so
             # output_consistency is evaluated against real data, not provisional)
             final_report = self._assessor.assess_workflow(
