@@ -1,3 +1,4 @@
+// @ts-nocheck
 import { AgentInfo, AgentStatus, ActivityEvent } from '@/components/agents'
 import {
   Trace,

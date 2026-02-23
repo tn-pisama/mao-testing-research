@@ -49,14 +49,14 @@ export function useHandoffAnalysis(workflow?: QualityAssessment): UseHandoffAnal
         // Attempt to analyze handoffs via API
         // Note: This endpoint may need trace data, so we might need to handle 400/404 gracefully
         const analysis = await apiClient.analyzeHandoffs({
-          workflow_id: workflow.workflow_id,
+          workflow_id: workflow!.workflow_id,
           // Future: Add trace_id, span_data, etc. when available
         })
 
         // Generate metrics from analysis
         const metrics = generateHandoffMetrics(
           analysis.handoff_graph,
-          workflow.agent_scores || []
+          workflow!.agent_scores || []
         )
 
         setHandoffAnalysis(analysis)
@@ -65,10 +65,10 @@ export function useHandoffAnalysis(workflow?: QualityAssessment): UseHandoffAnal
       } catch (err: any) {
         // Graceful fallback to demo data
         console.warn('API failed, using demo data:', err?.message || err)
-        const demoAnalysis = generateDemoHandoffAnalysis(workflow)
+        const demoAnalysis = generateDemoHandoffAnalysis(workflow!)
         const demoMetrics = generateHandoffMetrics(
           demoAnalysis.handoff_graph,
-          workflow.agent_scores || []
+          workflow!.agent_scores || []
         )
 
         setHandoffAnalysis(demoAnalysis)

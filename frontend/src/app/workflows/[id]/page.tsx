@@ -34,10 +34,7 @@ export default function WorkflowPage() {
   const reactFlowRef = useRef<HTMLDivElement>(null)
 
   // Fetch workflow data
-  const { data: workflows = [], isLoading } = useApiWithFallback(
-    `/api/v1/enterprise/quality/tenants/default/assessments?workflow_id=${workflowId}`,
-    []
-  )
+  const { qualityAssessments: workflows = [], isLoading } = useApiWithFallback()
 
   const workflow = workflows[0]
 

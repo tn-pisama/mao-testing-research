@@ -386,7 +386,7 @@ export function useHealingRecords(params?: { page?: number; pageSize?: number; s
       try {
         const token = await getToken()
         const api = createApiClient(token, tenantId)
-        const data = await api.listHealingRecords({ page, pageSize, status })
+        const data = await api.listHealingRecords({ page, perPage: pageSize, status })
         setRecords(data.items)
         setTotal(data.total || data.items.length)
         setIsDemoMode(false)
@@ -640,8 +640,8 @@ export function useSecurityChecks(messageInput?: string) {
         const [injection, hallucination, overflow, cost] = await Promise.all([
           api.checkInjection(message),
           api.checkHallucination(message),
-          api.checkOverflow(message, model),
-          api.calculateCost(message, model),
+          api.checkOverflow(message.length, model),
+          api.calculateCost(model, message.length, 0),
         ])
 
         setInjectionCheck(injection)

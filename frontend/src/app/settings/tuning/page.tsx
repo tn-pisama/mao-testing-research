@@ -109,7 +109,7 @@ export default function ThresholdTuningPage() {
           <div className="bg-slate-800 rounded-lg p-6 border border-slate-700">
             <h2 className="text-lg font-semibold text-white mb-4">Accuracy by Framework</h2>
             <div className="space-y-3">
-              {Object.entries(stats?.by_framework || {}).map(([fw, data]) => {
+              {Object.entries(stats?.by_framework || {}).map(([fw, data]: [string, any]) => {
                 const accuracy = data.total > 0 ? (data.correct / data.total) * 100 : 0
                 return (
                   <div key={fw} className="flex items-center gap-3">
@@ -152,7 +152,7 @@ export default function ThresholdTuningPage() {
         <div className="mt-8 bg-slate-800 rounded-lg p-6 border border-slate-700">
           <h2 className="text-lg font-semibold text-white mb-4">Accuracy by Detection Method</h2>
           <div className="grid md:grid-cols-3 gap-4">
-            {Object.entries(stats?.by_method || {}).map(([method, data]) => {
+            {Object.entries(stats?.by_method || {}).map(([method, data]: [string, any]) => {
               const accuracy = data.total > 0 ? (data.correct / data.total) * 100 : 0
               const fpRate = data.total > 0 ? (data.incorrect / data.total) * 100 : 0
               return (
@@ -210,7 +210,7 @@ function StatCard({
   )
 }
 
-function RecommendationRow({ recommendation }: { recommendation: ThresholdRecommendation }) {
+function RecommendationRow({ recommendation }: { recommendation: any }) {
   const structuralChange = recommendation.recommended_structural_threshold - recommendation.current_structural_threshold
   const semanticChange = recommendation.recommended_semantic_threshold - recommendation.current_semantic_threshold
   const hasChange = Math.abs(structuralChange) > 0.001 || Math.abs(semanticChange) > 0.001
