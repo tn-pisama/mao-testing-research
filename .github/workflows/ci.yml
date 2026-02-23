@@ -7,7 +7,34 @@ on:
     branches: [main]
 
 jobs:
+  smoke-test:
+    runs-on: ubuntu-latest
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+          cache: 'pip'
+
+      - name: Install dependencies
+        run: |
+          cd backend
+          pip install -r requirements-ci.txt
+
+      - name: Run smoke tests
+        env:
+          JWT_SECRET: aB3kJ9mLpQ2vXnRw5zFcGhIe8tYo1uNiWdE7sH4jKlM
+          FEATURE_ENTERPRISE_ENABLED: "true"
+          TESTING: "1"
+        run: |
+          cd backend
+          pytest tests/test_smoke.py -v --tb=short
+
   backend-test:
+    needs: smoke-test
     runs-on: ubuntu-latest
 
     services:
@@ -78,6 +105,36 @@ jobs:
           scan-ref: 'backend/'
           severity: 'CRITICAL,HIGH'
           exit-code: '0'
+
+  calibration-gate:
+    needs: backend-test
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+          cache: 'pip'
+
+      - name: Install dependencies
+        run: |
+          cd backend
+          pip install -r requirements-ci.txt
+
+      - name: Run calibration regression tests
+        env:
+          JWT_SECRET: aB3kJ9mLpQ2vXnRw5zFcGhIe8tYo1uNiWdE7sH4jKlM
+          FEATURE_ENTERPRISE_ENABLED: "true"
+          FEATURE_ML_DETECTION: "true"
+          FEATURE_ADVANCED_EVALS: "true"
+          TESTING: "1"
+        run: |
+          cd backend
+          pytest tests/test_calibration_regression.py -m slow -v
 
   frontend-build:
     runs-on: ubuntu-latest

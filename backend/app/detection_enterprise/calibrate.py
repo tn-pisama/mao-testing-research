@@ -848,6 +848,113 @@ def calibrate_all(phoenix_tracer: Optional[Any] = None) -> Dict[str, Any]:
 
 
 # ---------------------------------------------------------------------------
+# Capability registry generation
+# ---------------------------------------------------------------------------
+
+DETECTOR_METADATA: Dict[str, Dict[str, str]] = {
+    "loop": {"name": "Loop Detection", "tier": "icp", "module": "app.detection.loop"},
+    "persona_drift": {"name": "Persona Drift", "tier": "icp", "module": "app.detection.persona"},
+    "hallucination": {"name": "Hallucination Detection", "tier": "icp", "module": "app.detection.hallucination"},
+    "injection": {"name": "Injection Detection", "tier": "icp", "module": "app.detection.injection"},
+    "overflow": {"name": "Context Overflow", "tier": "icp", "module": "app.detection.overflow"},
+    "corruption": {"name": "State Corruption", "tier": "icp", "module": "app.detection.corruption"},
+    "coordination": {"name": "Coordination Analysis", "tier": "icp", "module": "app.detection.coordination"},
+    "communication": {"name": "Communication Breakdown", "tier": "icp", "module": "app.detection.communication"},
+    "context": {"name": "Context Neglect", "tier": "icp", "module": "app.detection.context"},
+    "derailment": {"name": "Task Derailment", "tier": "icp", "module": "app.detection.derailment"},
+    "specification": {"name": "Specification Mismatch", "tier": "icp", "module": "app.detection.specification"},
+    "decomposition": {"name": "Task Decomposition", "tier": "icp", "module": "app.detection.decomposition"},
+    "workflow": {"name": "Workflow Analysis", "tier": "icp", "module": "app.detection.workflow"},
+    "withholding": {"name": "Information Withholding", "tier": "icp", "module": "app.detection.withholding"},
+    "completion": {"name": "Completion Misjudgment", "tier": "icp", "module": "app.detection.completion"},
+    "grounding": {"name": "Grounding Detection", "tier": "enterprise", "module": "app.detection_enterprise.grounding"},
+    "retrieval_quality": {"name": "Retrieval Quality", "tier": "enterprise", "module": "app.detection_enterprise.retrieval_quality"},
+}
+
+MINIMUM_PASSING_F1 = 0.40
+
+
+def generate_capability_registry(
+    report: Dict[str, Any],
+    output_path: Optional[Path] = None,
+) -> Dict[str, Any]:
+    """Generate a machine-readable capability registry from calibration results.
+
+    The registry is a structured JSON spec listing every detector with its
+    current status (passing/failing/untested), calibration metrics, and metadata.
+    Follows the Anthropic pattern of "structured specification as JSON, not markdown."
+    """
+    output_path = output_path or Path(__file__).parent.parent.parent / "data" / "capability_registry.json"
+    results = report.get("results", {})
+    skipped = set(report.get("skipped", []))
+    calibrated_at = report.get("calibrated_at", "")
+
+    capabilities = {}
+    passing = failing = untested = 0
+
+    for dtype_value, meta in DETECTOR_METADATA.items():
+        if dtype_value in skipped:
+            status = "untested"
+            untested += 1
+            entry = {
+                "name": meta["name"],
+                "tier": meta["tier"],
+                "status": status,
+                "module": meta["module"],
+            }
+        elif dtype_value in results:
+            metrics = results[dtype_value]
+            f1 = metrics.get("f1", 0.0)
+            status = "passing" if f1 >= MINIMUM_PASSING_F1 else "failing"
+            if status == "passing":
+                passing += 1
+            else:
+                failing += 1
+            entry = {
+                "name": meta["name"],
+                "tier": meta["tier"],
+                "status": status,
+                "module": meta["module"],
+                "f1_score": metrics.get("f1", 0.0),
+                "precision": metrics.get("precision", 0.0),
+                "recall": metrics.get("recall", 0.0),
+                "optimal_threshold": metrics.get("optimal_threshold", 0.5),
+                "sample_count": metrics.get("sample_count", 0),
+                "last_calibrated": calibrated_at,
+            }
+        else:
+            status = "untested"
+            untested += 1
+            entry = {
+                "name": meta["name"],
+                "tier": meta["tier"],
+                "status": status,
+                "module": meta["module"],
+            }
+
+        capabilities[dtype_value] = entry
+
+    registry = {
+        "version": "1.0",
+        "generated_at": datetime.now(timezone.utc).isoformat(),
+        "capabilities": capabilities,
+        "summary": {
+            "total": len(capabilities),
+            "passing": passing,
+            "failing": failing,
+            "untested": untested,
+        },
+    }
+
+    output_path.parent.mkdir(parents=True, exist_ok=True)
+    with open(output_path, "w") as f:
+        json.dump(registry, f, indent=2)
+    logger.info("Capability registry written to %s", output_path)
+
+    return registry
+
+
+# ---------------------------------------------------------------------------
 # Report persistence
 # ---------------------------------------------------------------------------
 
@@ -899,6 +1006,14 @@ if __name__ == "__main__":
         "--dry-run", action="store_true",
         help="Print report only — skip threshold application and history save",
     )
+    parser.add_argument(
+        "--registry", action="store_true",
+        help="Generate/update capability_registry.json from calibration results",
+    )
+    parser.add_argument(
+        "--status", action="store_true",
+        help="Print progress log summary and exit",
+    )
     args = parser.parse_args()
 
     logging.basicConfig(
@@ -906,10 +1021,34 @@ if __name__ == "__main__":
         format="%(asctime)s [%(levelname)s] %(name)s: %(message)s",
     )
 
+    if args.status:
+        from app.detection_enterprise.progress_log import ProgressLog
+        print(ProgressLog().format_status())
+        sys.exit(0)
+
     if args.compare:
         from app.detection_enterprise.calibration_history import CalibrationHistory
         history = CalibrationHistory()
         print(history.format_comparison(args.compare))
+        sys.exit(0)
+
+    if args.registry and not args.generate_data:
+        # Standalone registry generation from existing report (no re-calibration)
+        report_path = Path(__file__).parent.parent.parent / "data" / "calibration_report.json"
+        if not report_path.exists():
+            print("  ERROR: No calibration report found. Run calibration first.")
+            sys.exit(1)
+        with open(report_path) as f:
+            existing_report = json.load(f)
+        registry = generate_capability_registry(existing_report)
+        s = registry["summary"]
+        print(f"  Registry: {s['passing']} passing, {s['failing']} failing, {s['untested']} untested")
+        try:
+            from app.detection_enterprise.progress_log import ProgressLog
+            ProgressLog().log("registry_updated", "calibrate.py",
+                f"Registry: {s['passing']} passing, {s['failing']} failing, {s['untested']} untested")
+        except Exception:
+            pass
         sys.exit(0)
 
     # --- LLM golden data expansion ---
@@ -1005,4 +1144,33 @@ if __name__ == "__main__":
     # Write the report to a JSON file.
     default_report_path = Path(__file__).parent.parent.parent / "data" / "calibration_report.json"
     save_calibration_report(report, default_report_path)
-    print(f"\n  Report written to: {default_report_path}\n")
+    print(f"\n  Report written to: {default_report_path}")
+
+    # Generate capability registry (if --registry or always after calibration)
+    if args.registry:
+        registry = generate_capability_registry(report)
+        s = registry["summary"]
+        print(f"  Registry: {s['passing']} passing, {s['failing']} failing, {s['untested']} untested")
+
+    # Log to progress log (unless dry-run)
+    if not args.dry_run:
+        try:
+            from app.detection_enterprise.progress_log import ProgressLog
+            progress = ProgressLog()
+            avg_f1 = sum(m["f1"] for m in report["results"].values()) / len(report["results"])
+            progress.log("calibration_run", "calibrate.py",
+                f"Calibrated {report['detector_count']} detectors, avg F1={avg_f1:.4f}",
+                detector_count=report["detector_count"],
+                average_f1=round(avg_f1, 4),
+                skipped=report["skipped"])
+            if args.apply_thresholds:
+                progress.log("threshold_update", "calibrate.py",
+                    f"Updated thresholds from calibration")
+            if args.registry:
+                s = registry["summary"]
+                progress.log("registry_updated", "calibrate.py",
+                    f"Registry: {s['passing']} passing, {s['failing']} failing, {s['untested']} untested")
+        except Exception:
+            pass  # Progress logging is non-critical
+
+    print()

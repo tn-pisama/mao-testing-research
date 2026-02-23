@@ -59,6 +59,17 @@ class FixFeedbackStore:
         with open(self.path, "a") as f:
             f.write(json.dumps(entry) + "\n")
 
+        # Also log to unified progress log (non-critical)
+        try:
+            from app.detection_enterprise.progress_log import ProgressLog
+            ProgressLog().log(
+                "healing_fix_applied", "healing_engine",
+                f"Fix {fix_id} for {dimension}: {'success' if success else 'failed'}",
+                fix_id=fix_id, dimension=dimension, success=success,
+            )
+        except Exception:
+            pass
+
     def get_success_rate(self, dimension: Optional[str] = None) -> Dict[str, float]:
         """Get success rates, optionally filtered by dimension."""
         import json
