@@ -276,12 +276,12 @@ class ContextNeglectDetector:
 
             missing.add(topic)
 
-        # Require at least 30% of critical topics to be addressed
+        # v1.3: Require at least 50% of critical topics to be addressed (raised from 30%)
         if not critical_topics:
             return True, set()
 
         coverage = len(addressed) / len(critical_topics)
-        return coverage >= 0.3, missing
+        return coverage >= 0.5, missing
 
     def _is_task_addressed(self, task: str, output: str) -> bool:
         """v1.1: Check if output addresses the core task request.
@@ -371,9 +371,10 @@ class ContextNeglectDetector:
         # Critical context requires higher utilization to pass
         task_utilization_threshold = 0.25 if has_critical_context else 0.15
 
-        # v1.1/v1.2: Improved detection logic
-        # Key insight: explicit context reference shows awareness,
-        # but task completion alone doesn't prove context use.
+        # v1.3: Improved detection logic with tighter skip conditions.
+        # Key insight: explicit context reference shows awareness, but
+        # saying "based on your context" while ignoring actual content
+        # should still be flagged.
         #
         # v1.2.2: CRITICAL CONTEXT OVERRIDE
         # If there are critical topics that aren't addressed, detect failure
@@ -385,9 +386,10 @@ class ContextNeglectDetector:
         # 1. If utilization is good, no neglect
         elif utilization >= self.utilization_threshold:
             detected = False
-        # 2. If output explicitly references prior context → OK
-        #    (explicit reference like "our previous", "reflecting on" shows awareness)
-        elif context_referenced:
+        # 2. If output explicitly references prior context → OK only if some
+        #    utilization exists. v1.3: reference without any actual context usage
+        #    (utilization < 0.10) suggests a superficial reference.
+        elif context_referenced and utilization >= 0.10:
             detected = False
         # 3. If output shows adaptation AND addresses task → OK
         #    (legitimate methodology change while doing the task)

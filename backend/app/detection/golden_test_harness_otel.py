@@ -444,17 +444,28 @@ class OTELGoldenTraceTestHarness:
         })()
 
     def _run_f4_tool_provision(self, detector_input: Dict) -> Any:
-        """Run F4 Inadequate Tool Provision detector."""
-        # Note: Tool provision is typically detected at workflow level
-        # For now, use a simple heuristic based on tool failures
-        tool_failures = detector_input.get("tool_failures", [])
-        detected = len(tool_failures) > 0
-        confidence = min(len(tool_failures) * 0.3, 0.9) if detected else 0.1
+        """Run F4 Inadequate Tool Provision detector.
+
+        v1.1: Use the real ToolProvisionDetector instead of a stub that only
+        counts tool_failures.  The adapter now provides task, agent_output,
+        available_tools and tool_calls.
+        """
+        # Lazy import to respect architecture boundary (detection/ cannot
+        # import detection_enterprise/ at module level).
+        from app.detection_enterprise.tool_provision import ToolProvisionDetector
+
+        detector = ToolProvisionDetector()
+        result = detector.detect(
+            task=detector_input.get("task", ""),
+            agent_output=detector_input.get("agent_output", ""),
+            available_tools=detector_input.get("available_tools"),
+            tool_calls=detector_input.get("tool_calls"),
+        )
 
         return type('Result', (), {
-            'detected': detected,
-            'confidence': confidence,
-            'raw_score': len(tool_failures),
+            'detected': result.detected,
+            'confidence': result.confidence,
+            'raw_score': len(result.issues),
         })()
 
     def _run_f5_workflow_design(self, detector_input: Dict) -> Any:

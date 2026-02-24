@@ -210,6 +210,12 @@ class DetectionOrchestrator:
         return self._overflow_detector
 
     @property
+    def tool_provision_detector(self) -> ToolProvisionDetector:
+        if self._tool_provision_detector is None:
+            self._tool_provision_detector = ToolProvisionDetector()
+        return self._tool_provision_detector
+
+    @property
     def grounding_detector(self) -> GroundingDetector:
         if self._grounding_detector is None:
             self._grounding_detector = GroundingDetector()
@@ -263,6 +269,12 @@ class DetectionOrchestrator:
         all_detections.extend(tool_results)
         if tool_results:
             result.detectors_run.append("tool_issues")
+
+        # Run F4: Inadequate Tool Provision detection
+        tool_provision_result = self._detect_tool_provision(trace)
+        if tool_provision_result:
+            all_detections.append(tool_provision_result)
+            result.detectors_run.append("tool_provision")
 
         # Run error pattern detection
         error_results = self._detect_error_patterns(trace)
@@ -471,6 +483,84 @@ class DetectionOrchestrator:
                 ))
 
         return results
+
+    def _detect_tool_provision(self, trace: UniversalTrace) -> Optional[DetectionResult]:
+        """Detect F4: Inadequate Tool Provision using the real ToolProvisionDetector.
+
+        Extracts task description, agent output, available tools and tool call
+        data from the trace, then delegates to ToolProvisionDetector.detect().
+        """
+        from app.detection_enterprise.tool_provision import ProvisionSeverity
+
+        # Extract task, agent output, tools from trace spans
+        task = ""
+        agent_output_parts: List[str] = []
+        available_tools: List[str] = []
+        tool_calls: List[Dict[str, Any]] = []
+
+        for span in trace.spans:
+            # Extract task from span metadata
+            if not task:
+                task = (span.metadata or {}).get("gen_ai.task", "")
+                if not task and span.prompt:
+                    task = span.prompt[:500]
+
+            # Collect agent output
+            if span.response:
+                agent_output_parts.append(span.response)
+
+            # Collect available tools
+            if span.tool_name:
+                if not span.has_error:
+                    available_tools.append(span.tool_name)
+                tool_calls.append({
+                    "name": span.tool_name,
+                    "status": "error" if span.has_error else "success",
+                    "error": span.error or "",
+                    "result": {"args": span.tool_args} if span.tool_args else {},
+                })
+
+        agent_output = "\n".join(agent_output_parts)
+
+        if not task and not agent_output:
+            return None
+
+        try:
+            result = self.tool_provision_detector.detect(
+                task=task,
+                agent_output=agent_output,
+                available_tools=available_tools if available_tools else None,
+                tool_calls=tool_calls if tool_calls else None,
+            )
+
+            if result.detected:
+                severity_map = {
+                    ProvisionSeverity.CRITICAL: Severity.CRITICAL,
+                    ProvisionSeverity.SEVERE: Severity.HIGH,
+                    ProvisionSeverity.MODERATE: Severity.MEDIUM,
+                    ProvisionSeverity.MINOR: Severity.LOW,
+                    ProvisionSeverity.NONE: Severity.INFO,
+                }
+
+                return DetectionResult(
+                    category=DetectionCategory.TOOL_PROVISION,
+                    detected=True,
+                    confidence=result.confidence,
+                    severity=severity_map.get(result.severity, Severity.MEDIUM),
+                    title="Inadequate Tool Provision",
+                    description=result.explanation,
+                    evidence=[{
+                        "issues": [{"type": i.issue_type.value, "tool": i.tool_name, "desc": i.description} for i in result.issues],
+                        "missing_tools": result.missing_tools,
+                        "hallucinated_tools": result.hallucinated_tools,
+                    }],
+                    suggested_fix=result.suggested_fix,
+                    raw_result=result,
+                )
+        except Exception as e:
+            logger.warning("Tool provision detector failed: %s", e)
+
+        return None
 
     def _detect_error_patterns(self, trace: UniversalTrace) -> List[DetectionResult]:
         """Detect general error patterns in the trace."""

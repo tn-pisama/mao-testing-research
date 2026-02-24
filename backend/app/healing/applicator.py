@@ -271,12 +271,20 @@ class DriftFixApplicator(ApplicatorStrategy):
 
 class TimeoutFixApplicator(ApplicatorStrategy):
     """Applies timeout fixes."""
-    
+
     def apply(self, fix: Dict[str, Any], config: Dict[str, Any]) -> Dict[str, Any]:
         result = copy.deepcopy(config)
-        
-        timeout_ms = fix.get("metadata", {}).get("timeout_ms", 30000)
-        
+
+        # v1.1: Context-aware timeout — use actual timeout * 1.5 buffer if available
+        metadata = fix.get("metadata", {})
+        timeout_ms = metadata.get("timeout_ms")
+        if timeout_ms is None:
+            actual_timeout = metadata.get("actual_timeout_ms", 0)
+            if actual_timeout > 0:
+                timeout_ms = int(actual_timeout * 1.5)  # 50% buffer over actual
+            else:
+                timeout_ms = 30000  # Sensible default
+
         if "settings" not in result:
             result["settings"] = {}
         result["settings"]["timeouts"] = {
@@ -285,7 +293,7 @@ class TimeoutFixApplicator(ApplicatorStrategy):
             "per_node_timeouts": {},
             "on_timeout": "terminate_and_report",
         }
-        
+
         return result
 
 
@@ -390,26 +398,34 @@ class OverflowFixApplicator(ApplicatorStrategy):
         if "settings" not in result:
             result["settings"] = {}
 
+        # v1.1: Context-aware token limits from fix metadata
+        metadata = fix.get("metadata", {})
+        context_window = metadata.get("context_window", 128000)
+        # Target 60% of context window for pruning, or 4000 min
+        max_context_tokens = max(4000, int(context_window * 0.6))
+        trigger_threshold = max(3000, int(context_window * 0.5))
+        window_size = max(4096, int(context_window * 0.4))
+
         if fix_type == "context_pruning":
             result["settings"]["context_pruning"] = {
                 "enabled": True,
-                "max_context_tokens": 4000,
+                "max_context_tokens": max_context_tokens,
                 "pruning_strategy": "relevance_weighted",
                 "preserve_system_prompt": True,
             }
         elif fix_type == "summarization":
             result["settings"]["summarization"] = {
                 "enabled": True,
-                "trigger_threshold_tokens": 3000,
-                "summary_target_tokens": 500,
+                "trigger_threshold_tokens": trigger_threshold,
+                "summary_target_tokens": max(500, int(trigger_threshold * 0.15)),
                 "preserve_recent_turns": 3,
             }
         elif fix_type == "window_management":
             result["settings"]["window_management"] = {
                 "enabled": True,
                 "window_type": "sliding",
-                "max_window_size": 4096,
-                "overlap_tokens": 200,
+                "max_window_size": window_size,
+                "overlap_tokens": max(200, int(window_size * 0.05)),
             }
         else:
             result["settings"]["context_pruning"] = {"enabled": True}

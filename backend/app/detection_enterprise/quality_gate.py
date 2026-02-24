@@ -93,6 +93,13 @@ class QualityGateDetector:
         (r'--skip-\w+', "skip_flag"),
         (r'-f\s|--force\b', "force_flag"),
         (r'\bTODO:?\s*(?:add|fix|implement)\s+(?:validation|test|check)', "missing_todo"),
+        # v1.1: Implicit bypass patterns (improve recall)
+        (r'\bmoving forward without\s+(?:\w+\s+)?(?:validation|test|review)', "implicit_bypass"),
+        (r'\baccept(?:ing)?\s+(?:the\s+)?(?:risk|technical debt)', "risk_acceptance"),
+        (r'\bdefer(?:ring|red)?\s+(?:validation|testing|review)', "deferred_gate"),
+        (r'\btemporarily\s+(?:skip|disable|bypass)', "temporary_bypass"),
+        (r'\bwill\s+(?:add|fix|implement)\s+(?:tests?|validation|checks?)\s+later', "deferred_gate"),
+        (r'\b(?:manual|manually)\s+(?:verified|checked|tested)', "manual_override"),
     ]
 
     # Patterns indicating quality gate execution
@@ -110,6 +117,12 @@ class QualityGateDetector:
         "data_processing": ["validation", "verification"],
         "api_integration": ["test", "validation"],
         "security_change": ["security_scan", "review", "approval"],
+        # v1.1: Expanded task types (improve recall)
+        "database_change": ["backup", "test", "validation"],
+        "config_change": ["test", "validation"],
+        "ml_model": ["evaluation", "validation", "test"],
+        "documentation": ["review"],
+        "infrastructure": ["test", "review", "approval"],
     }
 
     def __init__(

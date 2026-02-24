@@ -378,6 +378,24 @@ class OutputValidationDetector:
                     explanation=f"Single minor issue detected, below threshold (need {self.min_issues_for_detection})",
                 )
 
+        # v1.2: Ensemble voting — require 2+ distinct issue types for non-critical.
+        # Multiple issues of the same type (e.g., 3 "missing_validation") are
+        # often from the same pattern-matching pass and don't increase confidence.
+        distinct_issue_types = set(i.issue_type for i in all_issues)
+        if len(distinct_issue_types) < 2 and max_severity not in [
+            ValidationSeverity.CRITICAL, ValidationSeverity.SEVERE
+        ]:
+            return OutputValidationResult(
+                detected=False,
+                severity=ValidationSeverity.NONE,
+                confidence=0.4,
+                total_validations=len(validation_steps),
+                explanation=(
+                    f"Only one signal type ({next(iter(distinct_issue_types)).value}) "
+                    "detected. Require 2+ distinct signal types to confirm detection."
+                ),
+            )
+
         # Calculate metrics
         bypassed_count = len([s for s in validation_steps if s.bypassed])
         skipped_count = len([s for s in validation_steps if s.skipped])

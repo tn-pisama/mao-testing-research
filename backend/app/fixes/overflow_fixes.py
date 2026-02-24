@@ -21,6 +21,26 @@ class OverflowFixGenerator(BaseFixGenerator):
         detection_id = detection.get("id", "")
         details = detection.get("details", {})
 
+        # v1.1: Extract context-aware token limits from failure signature
+        signature = context.get("failure_signature")
+        if signature:
+            for indicator in getattr(signature, "indicators", []):
+                indicator_lower = indicator.lower()
+                if "context window" in indicator_lower or "max tokens" in indicator_lower:
+                    try:
+                        num = int("".join(c for c in indicator if c.isdigit()) or 0)
+                        if num > 1000:
+                            details.setdefault("context_window", num)
+                    except (ValueError, TypeError):
+                        pass
+                elif "current tokens" in indicator_lower or "token count" in indicator_lower:
+                    try:
+                        num = int("".join(c for c in indicator if c.isdigit()) or 0)
+                        if num > 0:
+                            details.setdefault("current_tokens", num)
+                    except (ValueError, TypeError):
+                        pass
+
         fixes.append(self._context_pruning_fix(detection_id, details, context))
         fixes.append(self._summarization_fix(detection_id, details, context))
         fixes.append(self._window_management_fix(detection_id, details, context))

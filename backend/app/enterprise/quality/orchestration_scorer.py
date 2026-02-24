@@ -109,33 +109,33 @@ class OrchestrationQualityScorer(LLMScorerMixin):
 
         core_dims = [dim_data_flow, dim_complexity, dim_coupling, dim_observability, dim_best_practices]
 
-        # LLM blending: if LLM judge is available, enhance scores with semantic evaluation
+        # LLM blending: per-dimension LLM calls (matching agent scorer pattern)
         if self._judge:
-            try:
-                llm_scores = self._llm_score_orchestration(workflow, complexity_metrics, detected_pattern)
-                if llm_scores:
-                    dim_map = {
-                        "data_flow_score": dim_data_flow,
-                        "complexity_score": dim_complexity,
-                        "coupling_score": dim_coupling,
-                        "observability_score": dim_observability,
-                        "best_practices_score": dim_best_practices,
-                    }
-                    for key, dim_obj in dim_map.items():
-                        if self._should_use_llm(dim_obj.score) and key in llm_scores:
-                            llm_result = {
-                                "score": llm_scores[key],
-                                "reasoning": llm_scores.get("overall_assessment", ""),
-                                "tokens": llm_scores.get("tokens", 0),
-                            }
-                            dim_obj.score = self._blend_scores(dim_obj.score, llm_result, dim_obj)
-                            dim_obj.confidence = 0.8
-                        else:
-                            dim_obj.evidence["scoring_tier"] = "heuristic"
-                            dim_obj.confidence = 0.6
-            except Exception:
-                for dim_obj in core_dims:
-                    dim_obj.evidence["scoring_tier"] = "heuristic_fallback"
+            # Build workflow structure summary once for all LLM calls
+            workflow_structure = self._build_workflow_structure_summary(workflow)
+            workflow_name = workflow.get("name", "Unnamed Workflow")
+
+            llm_methods = {
+                "data_flow_clarity": (dim_data_flow, self._llm_score_data_flow),
+                "complexity_management": (dim_complexity, self._llm_score_complexity),
+                "agent_coupling": (dim_coupling, self._llm_score_coupling),
+                "observability": (dim_observability, self._llm_score_observability),
+                "best_practices": (dim_best_practices, self._llm_score_best_practices),
+            }
+            for dim_name, (dim_obj, llm_method) in llm_methods.items():
+                if self._should_use_llm(dim_obj.score):
+                    try:
+                        llm_result = llm_method(
+                            workflow, complexity_metrics, detected_pattern,
+                            workflow_name, workflow_structure,
+                        )
+                        dim_obj.score = self._blend_scores(dim_obj.score, llm_result, dim_obj)
+                        dim_obj.confidence = 0.8
+                    except Exception:
+                        dim_obj.evidence["scoring_tier"] = "heuristic_fallback"
+                        dim_obj.confidence = 0.6
+                else:
+                    dim_obj.evidence["scoring_tier"] = "heuristic"
                     dim_obj.confidence = 0.6
 
         dimensions.extend(core_dims)
@@ -1270,19 +1270,8 @@ class OrchestrationQualityScorer(LLMScorerMixin):
 
     # _should_use_llm inherited from LLMScorerMixin
 
-    def _llm_score_orchestration(
-        self,
-        workflow: Dict[str, Any],
-        complexity_metrics: ComplexityMetrics,
-        detected_pattern: str,
-    ) -> Optional[Dict[str, Any]]:
-        """Use LLM to semantically evaluate all 5 core orchestration dimensions in one call."""
-        if not self._judge:
-            return None
-
-        from .prompts import format_orchestration_analysis_prompt
-
-        # Build a compact workflow structure summary for the prompt
+    def _build_workflow_structure_summary(self, workflow: Dict[str, Any]) -> str:
+        """Build a compact workflow structure summary for LLM prompts."""
         nodes = workflow.get("nodes", [])
         connections = workflow.get("connections", {})
         node_summaries = []
@@ -1303,10 +1292,37 @@ class OrchestrationQualityScorer(LLMScorerMixin):
                                             f"  {source} --[{output_type}]--> {t.get('node', '?')}"
                                         )
 
-        workflow_structure = "Nodes:\n" + "\n".join(node_summaries) if node_summaries else "Nodes: (none)"
+        structure = "Nodes:\n" + "\n".join(node_summaries) if node_summaries else "Nodes: (none)"
         if conn_summaries:
-            workflow_structure += "\nConnections:\n" + "\n".join(conn_summaries)
+            structure += "\nConnections:\n" + "\n".join(conn_summaries)
+        return structure
 
+    def _llm_score_data_flow(
+        self, workflow: Dict[str, Any], complexity_metrics: ComplexityMetrics,
+        detected_pattern: str, workflow_name: str, workflow_structure: str,
+    ) -> Optional[Dict[str, Any]]:
+        """Use LLM to evaluate data flow clarity."""
+        if not self._judge:
+            return None
+        from .prompts import format_orch_data_flow_prompt
+        prompt = format_orch_data_flow_prompt(
+            workflow_name=workflow_name,
+            node_count=complexity_metrics.node_count,
+            agent_count=complexity_metrics.agent_count,
+            detected_pattern=detected_pattern,
+            workflow_structure=workflow_structure,
+        )
+        result = self._judge.judge(eval_type=None, output="", custom_prompt=prompt)
+        return {"score": result.score, "reasoning": result.reasoning, "tokens": result.tokens_used}
+
+    def _llm_score_complexity(
+        self, workflow: Dict[str, Any], complexity_metrics: ComplexityMetrics,
+        detected_pattern: str, workflow_name: str, workflow_structure: str,
+    ) -> Optional[Dict[str, Any]]:
+        """Use LLM to evaluate complexity management."""
+        if not self._judge:
+            return None
+        from .prompts import format_orch_complexity_prompt
         metrics_dict = {
             "node_count": complexity_metrics.node_count,
             "agent_count": complexity_metrics.agent_count,
@@ -1316,40 +1332,62 @@ class OrchestrationQualityScorer(LLMScorerMixin):
             "coupling_ratio": round(complexity_metrics.coupling_ratio, 3),
             "ai_node_ratio": round(complexity_metrics.ai_node_ratio, 3),
         }
-
-        prompt = format_orchestration_analysis_prompt(
-            workflow_name=workflow.get("name", "Unnamed Workflow"),
-            node_count=complexity_metrics.node_count,
-            agent_count=complexity_metrics.agent_count,
+        prompt = format_orch_complexity_prompt(
+            workflow_name=workflow_name,
             detected_pattern=detected_pattern,
             complexity_metrics=metrics_dict,
             workflow_structure=workflow_structure,
         )
+        result = self._judge.judge(eval_type=None, output="", custom_prompt=prompt)
+        return {"score": result.score, "reasoning": result.reasoning, "tokens": result.tokens_used}
 
-        result = self._judge.judge(
-            eval_type=None,
-            output="",
-            custom_prompt=prompt,
+    def _llm_score_coupling(
+        self, workflow: Dict[str, Any], complexity_metrics: ComplexityMetrics,
+        detected_pattern: str, workflow_name: str, workflow_structure: str,
+    ) -> Optional[Dict[str, Any]]:
+        """Use LLM to evaluate agent coupling."""
+        if not self._judge:
+            return None
+        from .prompts import format_orch_coupling_prompt
+        prompt = format_orch_coupling_prompt(
+            workflow_name=workflow_name,
+            agent_count=complexity_metrics.agent_count,
+            coupling_ratio=complexity_metrics.coupling_ratio,
+            workflow_structure=workflow_structure,
         )
+        result = self._judge.judge(eval_type=None, output="", custom_prompt=prompt)
+        return {"score": result.score, "reasoning": result.reasoning, "tokens": result.tokens_used}
 
-        # Parse the structured JSON response
-        try:
-            parsed = json.loads(result.reasoning) if isinstance(result.reasoning, str) else {}
-        except (json.JSONDecodeError, TypeError):
-            # Try to extract from the raw result if reasoning isn't JSON
-            parsed = {}
+    def _llm_score_observability(
+        self, workflow: Dict[str, Any], complexity_metrics: ComplexityMetrics,
+        detected_pattern: str, workflow_name: str, workflow_structure: str,
+    ) -> Optional[Dict[str, Any]]:
+        """Use LLM to evaluate observability."""
+        if not self._judge:
+            return None
+        from .prompts import format_orch_observability_prompt
+        prompt = format_orch_observability_prompt(
+            workflow_name=workflow_name,
+            node_count=complexity_metrics.node_count,
+            workflow_structure=workflow_structure,
+        )
+        result = self._judge.judge(eval_type=None, output="", custom_prompt=prompt)
+        return {"score": result.score, "reasoning": result.reasoning, "tokens": result.tokens_used}
 
-        # Use the parsed scores if available, otherwise fall back to the single score
-        scores = {
-            "data_flow_score": parsed.get("data_flow_score", result.score),
-            "complexity_score": parsed.get("complexity_score", result.score),
-            "coupling_score": parsed.get("coupling_score", result.score),
-            "observability_score": parsed.get("observability_score", result.score),
-            "best_practices_score": parsed.get("best_practices_score", result.score),
-            "overall_assessment": parsed.get("overall_assessment", result.reasoning or ""),
-            "tokens": result.tokens_used,
-        }
-
-        return scores
+    def _llm_score_best_practices(
+        self, workflow: Dict[str, Any], complexity_metrics: ComplexityMetrics,
+        detected_pattern: str, workflow_name: str, workflow_structure: str,
+    ) -> Optional[Dict[str, Any]]:
+        """Use LLM to evaluate best practices compliance."""
+        if not self._judge:
+            return None
+        from .prompts import format_orch_best_practices_prompt
+        prompt = format_orch_best_practices_prompt(
+            workflow_name=workflow_name,
+            detected_pattern=detected_pattern,
+            workflow_structure=workflow_structure,
+        )
+        result = self._judge.judge(eval_type=None, output="", custom_prompt=prompt)
+        return {"score": result.score, "reasoning": result.reasoning, "tokens": result.tokens_used}
 
     # _blend_scores inherited from LLMScorerMixin

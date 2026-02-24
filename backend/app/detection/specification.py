@@ -182,18 +182,18 @@ class SpecificationMismatchDetector:
     # Phase 1: Framework-specific thresholds to reduce false positives
     # v1.3: Lowered coverage thresholds (stricter about flagging)
     FRAMEWORK_THRESHOLDS = {
-        "ChatDev": {"spec_coverage": 0.60, "ambiguity_threshold": 5},
-        "MetaGPT": {"spec_coverage": 0.65, "ambiguity_threshold": 4},
-        "AG2": {"spec_coverage": 0.70, "ambiguity_threshold": 4},
-        "Magentic": {"spec_coverage": 0.65, "ambiguity_threshold": 4},
-        "AutoGen": {"spec_coverage": 0.70, "ambiguity_threshold": 4},
-        "LangGraph": {"spec_coverage": 0.65, "ambiguity_threshold": 4},
-        "default": {"spec_coverage": 0.65, "ambiguity_threshold": 4},
+        "ChatDev": {"spec_coverage": 0.50, "ambiguity_threshold": 5},
+        "MetaGPT": {"spec_coverage": 0.50, "ambiguity_threshold": 4},
+        "AG2": {"spec_coverage": 0.55, "ambiguity_threshold": 4},
+        "Magentic": {"spec_coverage": 0.50, "ambiguity_threshold": 4},
+        "AutoGen": {"spec_coverage": 0.55, "ambiguity_threshold": 4},
+        "LangGraph": {"spec_coverage": 0.50, "ambiguity_threshold": 4},
+        "default": {"spec_coverage": 0.50, "ambiguity_threshold": 4},
     }
 
     def __init__(
         self,
-        coverage_threshold: float = 0.65,  # v1.3: Lowered from 0.80 (stricter)
+        coverage_threshold: float = 0.50,  # v1.5: Lowered from 0.65 to improve recall
         ambiguity_threshold: int = 4,  # v1.3: Raised from 3
         framework: Optional[str] = None,
     ):
@@ -543,12 +543,13 @@ class SpecificationMismatchDetector:
         # v1.1: If numeric constraint is met, don't flag based on coverage/ambiguity
         # (the primary requirement was satisfied)
         # v1.3: Also skip if this is a reformulation of the task (not a violation)
-        # v1.4: Also skip if bonus features or benign expansion AND coverage is reasonable
+        # v1.5: Tightened bonus/benign skip — require coverage >= 0.65 (was 0.5)
+        # to prevent agents from masking missing requirements with extras
         skip_coverage_check = (
             numeric_constraint_met or
-            is_reformulation or
-            (has_bonus and coverage >= 0.5) or  # Bonus features with decent coverage
-            (has_benign_expansion and coverage >= 0.5)  # Benign expansion with decent coverage
+            (is_reformulation and coverage >= 0.4) or  # v1.5: reformulation must still show some coverage
+            (has_bonus and coverage >= 0.65) or  # Tightened: extras only skip at high coverage
+            (has_benign_expansion and coverage >= 0.65)  # Tightened: expansion only skip at high coverage
         )
         if not skip_coverage_check:
             if coverage < self.coverage_threshold and not detected:

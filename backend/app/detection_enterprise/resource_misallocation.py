@@ -341,6 +341,7 @@ class ResourceMisallocationDetector:
 
         events = []
         agent_ids = set()
+        has_metadata_signal = False  # v1.1: Track if we have structural evidence
 
         for span in spans:
             agent_id = span.get("agent_id", span.get("name", "unknown"))
@@ -348,8 +349,9 @@ class ResourceMisallocationDetector:
 
             metadata = span.get("metadata", {})
 
-            # Check for resource contention indicators
+            # Check for resource contention indicators (structural signal)
             if metadata.get("resource_contention"):
+                has_metadata_signal = True
                 events.append(ResourceEvent(
                     agent_id=agent_id,
                     resource_id=metadata.get("resource_id", "shared_pool"),
@@ -358,9 +360,10 @@ class ResourceMisallocationDetector:
                     wait_time_ms=metadata.get("resource_wait_ms", 0),
                 ))
 
-            # Check for resource wait time
+            # Check for resource wait time (structural signal)
             wait_ms = metadata.get("resource_wait_ms", 0)
             if wait_ms > 0:
+                has_metadata_signal = True
                 events.append(ResourceEvent(
                     agent_id=agent_id,
                     resource_id=metadata.get("resource_id", "shared_pool"),
@@ -369,7 +372,7 @@ class ResourceMisallocationDetector:
                     wait_time_ms=wait_ms,
                 ))
 
-            # Check output for contention indicators
+            # Check output for contention indicators (text signal — weak)
             output = span.get("output_data", {}).get("result", "")
             if isinstance(output, str):
                 if "contention" in output.lower() or "waiting" in output.lower():
@@ -386,6 +389,21 @@ class ResourceMisallocationDetector:
                         event_type="wait",
                         timestamp=span.get("start_time", 0),
                     ))
+
+        # v1.1 Ensemble voting: require at least one metadata-based signal.
+        # Output-text-only matches (keyword "waiting", "pool", etc.) are too
+        # unreliable to trigger detection on their own.
+        if events and not has_metadata_signal:
+            return ResourceMisallocationResult(
+                detected=False,
+                severity=ResourceSeverity.NONE,
+                confidence=0.3,
+                explanation=(
+                    "Resource keywords found in output text but no structural "
+                    "metadata signals (resource_contention, resource_wait_ms). "
+                    "Suppressed to reduce false positives."
+                ),
+            )
 
         return self.detect(events, list(agent_ids))
 

@@ -82,12 +82,24 @@ class DimensionScore:
     is_provisional: bool = False
     confidence: float = 0.6  # 0.6=heuristic, 0.8=LLM blended, 0.9=with execution data
 
+    @property
+    def scoring_tier(self) -> str:
+        """Return the scoring tier: 'llm', 'heuristic', or 'heuristic_fallback'."""
+        return self.evidence.get("scoring_tier", "heuristic")
+
+    @property
+    def llm_enhanced(self) -> bool:
+        """Return True if this dimension was scored with LLM assistance."""
+        return self.scoring_tier == "llm"
+
     def to_dict(self) -> Dict[str, Any]:
         result = {
             "dimension": self.dimension,
             "score": round(self.score, 3),
             "weight": self.weight,
             "confidence": round(self.confidence, 2),
+            "scoring_tier": self.scoring_tier,
+            "llm_enhanced": self.llm_enhanced,
             "issues": self.issues,
             "evidence": self.evidence,
             "suggestions": self.suggestions,

@@ -23,14 +23,28 @@ class LoopFixGenerator(BaseFixGenerator):
         method = detection.get("method", "")
         loop_length = details.get("loop_length", 3)
         affected_agents = details.get("affected_agents", [])
-        
+
+        # v1.1: Context-aware parameterization from failure signature
+        signature = context.get("failure_signature")
+        if signature:
+            # Override loop_length from signature indicators if available
+            for indicator in getattr(signature, "indicators", []):
+                if "loop length" in indicator.lower():
+                    try:
+                        loop_length = int("".join(c for c in indicator if c.isdigit()) or loop_length)
+                    except (ValueError, TypeError):
+                        pass
+            # Use affected_components from signature if detection doesn't provide them
+            if not affected_agents and hasattr(signature, "affected_components"):
+                affected_agents = signature.affected_components or []
+
         fixes.append(self._retry_limit_fix(detection_id, loop_length, context))
         fixes.append(self._exponential_backoff_fix(detection_id, context))
         fixes.append(self._circuit_breaker_fix(detection_id, affected_agents, context))
-        
+
         if method == "structural" and len(affected_agents) >= 2:
             fixes.append(self._conversation_terminator_fix(detection_id, affected_agents, context))
-        
+
         return fixes
     
     def _retry_limit_fix(
@@ -185,7 +199,19 @@ async def agent_with_backoff(state):
         context: Dict[str, Any],
     ) -> FixSuggestion:
         agents_str = ", ".join(f'"{a}"' for a in affected_agents[:3]) if affected_agents else '"agent"'
-        
+
+        # v1.1: Context-aware thresholds based on agent count
+        agent_count = len(affected_agents) if affected_agents else 1
+        if agent_count >= 3:
+            failure_threshold = 3  # Cascade risk — trip faster
+            recovery_timeout = 30
+        elif agent_count == 2:
+            failure_threshold = 4
+            recovery_timeout = 45
+        else:
+            failure_threshold = 5
+            recovery_timeout = 60
+
         code = f'''from datetime import datetime, timedelta
 from enum import Enum
 
@@ -197,8 +223,8 @@ class CircuitState(Enum):
 class CircuitBreaker:
     def __init__(
         self,
-        failure_threshold=5,
-        recovery_timeout=60,
+        failure_threshold={failure_threshold},
+        recovery_timeout={recovery_timeout},
         agents=[{agents_str}],
     ):
         self.failure_threshold = failure_threshold

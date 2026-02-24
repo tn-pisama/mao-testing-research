@@ -106,6 +106,118 @@ Respond ONLY with valid JSON:
   "critical_issues": ["<issue1>", "<issue2>"]
 }}"""
 
+# --- Per-dimension orchestration prompts ---
+
+ORCH_DATA_FLOW_PROMPT = """Evaluate the data flow clarity of this n8n workflow.
+
+Workflow: {workflow_name} ({node_count} nodes, {agent_count} agents)
+Pattern: {detected_pattern}
+
+Workflow Structure:
+{workflow_structure}
+
+Score from 0.0 to 1.0 where:
+- 0.0-0.3: Data flow is implicit, unclear, or relies on global state
+- 0.4-0.6: Some explicit data passing but gaps or ambiguity exist
+- 0.7-0.8: Mostly explicit data flow with minor implicit dependencies
+- 0.9-1.0: Fully explicit data flow, clear input/output contracts between nodes
+
+Consider:
+1. Are connections between nodes explicit and well-defined?
+2. Is data transformation visible at each step?
+3. Are there hidden dependencies through shared state or side effects?
+4. Can you trace data from input to output without ambiguity?
+
+Respond ONLY with valid JSON: {{"score": <float>, "reasoning": "<1-2 sentence explanation>"}}"""
+
+ORCH_COMPLEXITY_PROMPT = """Evaluate complexity management for this n8n workflow.
+
+Workflow: {workflow_name}
+Pattern: {detected_pattern}
+Metrics: {complexity_metrics}
+
+Workflow Structure:
+{workflow_structure}
+
+Score from 0.0 to 1.0 where:
+- 0.0-0.3: Over-engineered or under-engineered for the task
+- 0.4-0.6: Complexity is manageable but could be simplified
+- 0.7-0.8: Good balance between simplicity and capability
+- 0.9-1.0: Optimal complexity, each node serves a clear purpose
+
+Consider:
+1. Is the node count appropriate for what the workflow does?
+2. Is the depth manageable (not too deep or too flat)?
+3. Are there unnecessary intermediary nodes that could be combined?
+4. Does cyclomatic complexity match task requirements?
+
+Respond ONLY with valid JSON: {{"score": <float>, "reasoning": "<1-2 sentence explanation>"}}"""
+
+ORCH_COUPLING_PROMPT = """Evaluate agent coupling in this n8n workflow.
+
+Workflow: {workflow_name} ({agent_count} agents)
+Coupling Ratio: {coupling_ratio}
+
+Workflow Structure:
+{workflow_structure}
+
+Score from 0.0 to 1.0 where:
+- 0.0-0.3: Agents are tightly coupled, changes cascade unpredictably
+- 0.4-0.6: Moderate coupling, some agents depend heavily on others
+- 0.7-0.8: Loose coupling with clear interfaces between agents
+- 0.9-1.0: Well-decoupled agents with minimal dependencies
+
+Consider:
+1. Can individual agents be replaced without affecting others?
+2. Are there long chains of agent-to-agent dependencies?
+3. Is there a central bottleneck agent everything flows through?
+4. Are agent responsibilities clearly separated?
+
+Respond ONLY with valid JSON: {{"score": <float>, "reasoning": "<1-2 sentence explanation>"}}"""
+
+ORCH_OBSERVABILITY_PROMPT = """Evaluate observability of this n8n workflow.
+
+Workflow: {workflow_name} ({node_count} nodes)
+
+Workflow Structure:
+{workflow_structure}
+
+Score from 0.0 to 1.0 where:
+- 0.0-0.3: No observability, failures would be silent and hard to diagnose
+- 0.4-0.6: Basic observability, some checkpoints or error triggers
+- 0.7-0.8: Good observability with error handling and logging nodes
+- 0.9-1.0: Comprehensive monitoring, checkpoints, and failure alerting
+
+Consider:
+1. Are there error trigger or error handling nodes?
+2. Are there checkpoints or state-saving nodes at critical points?
+3. Could you diagnose a failure from the workflow structure alone?
+4. Are long-running operations instrumented?
+
+Respond ONLY with valid JSON: {{"score": <float>, "reasoning": "<1-2 sentence explanation>"}}"""
+
+ORCH_BEST_PRACTICES_PROMPT = """Evaluate best practices compliance for this n8n workflow.
+
+Workflow: {workflow_name}
+Pattern: {detected_pattern}
+
+Workflow Structure:
+{workflow_structure}
+
+Score from 0.0 to 1.0 where:
+- 0.0-0.3: No error handling, retries, or timeouts configured
+- 0.4-0.6: Some best practices followed but gaps in critical areas
+- 0.7-0.8: Good coverage of retry, timeout, and error handling patterns
+- 0.9-1.0: Comprehensive best practices including rate limiting and graceful degradation
+
+Consider:
+1. Do HTTP/API nodes have retry and timeout configured?
+2. Are there error handling paths for critical operations?
+3. Is rate limiting considered for external API calls?
+4. Are there appropriate fallback paths?
+
+Respond ONLY with valid JSON: {{"score": <float>, "reasoning": "<1-2 sentence explanation>"}}"""
+
 SUMMARY_GENERATION_PROMPT = """Generate a concise summary of this quality assessment.
 
 Workflow: {workflow_name}
@@ -306,6 +418,79 @@ def format_config_appropriateness_prompt(
         temperature=temperature,
         max_tokens=max_tokens,
         model=model,
+    )
+
+
+def format_orch_data_flow_prompt(
+    workflow_name: str,
+    node_count: int,
+    agent_count: int,
+    detected_pattern: str,
+    workflow_structure: str,
+) -> str:
+    """Format the orchestration data flow clarity prompt."""
+    return ORCH_DATA_FLOW_PROMPT.format(
+        workflow_name=workflow_name,
+        node_count=node_count,
+        agent_count=agent_count,
+        detected_pattern=detected_pattern,
+        workflow_structure=workflow_structure,
+    )
+
+
+def format_orch_complexity_prompt(
+    workflow_name: str,
+    detected_pattern: str,
+    complexity_metrics: dict,
+    workflow_structure: str,
+) -> str:
+    """Format the orchestration complexity management prompt."""
+    return ORCH_COMPLEXITY_PROMPT.format(
+        workflow_name=workflow_name,
+        detected_pattern=detected_pattern,
+        complexity_metrics=str(complexity_metrics),
+        workflow_structure=workflow_structure,
+    )
+
+
+def format_orch_coupling_prompt(
+    workflow_name: str,
+    agent_count: int,
+    coupling_ratio: float,
+    workflow_structure: str,
+) -> str:
+    """Format the orchestration agent coupling prompt."""
+    return ORCH_COUPLING_PROMPT.format(
+        workflow_name=workflow_name,
+        agent_count=agent_count,
+        coupling_ratio=round(coupling_ratio, 3),
+        workflow_structure=workflow_structure,
+    )
+
+
+def format_orch_observability_prompt(
+    workflow_name: str,
+    node_count: int,
+    workflow_structure: str,
+) -> str:
+    """Format the orchestration observability prompt."""
+    return ORCH_OBSERVABILITY_PROMPT.format(
+        workflow_name=workflow_name,
+        node_count=node_count,
+        workflow_structure=workflow_structure,
+    )
+
+
+def format_orch_best_practices_prompt(
+    workflow_name: str,
+    detected_pattern: str,
+    workflow_structure: str,
+) -> str:
+    """Format the orchestration best practices prompt."""
+    return ORCH_BEST_PRACTICES_PROMPT.format(
+        workflow_name=workflow_name,
+        detected_pattern=detected_pattern,
+        workflow_structure=workflow_structure,
     )
 
 

@@ -710,6 +710,41 @@ class CompletionMisjudgmentDetector:
                 CompletionSeverity.SEVERE, CompletionSeverity.CRITICAL
             ]]
 
+        # v1.4: Ensemble voting — require 2+ distinct signal categories
+        # to trigger detection for non-critical issues.  A single signal
+        # category (e.g., only "partial_indicators" without a completion
+        # claim) produces too many false positives.
+        distinct_issue_types = set(i.issue_type for i in issues)
+        max_issue_severity = max(
+            (i.severity for i in issues), default=CompletionSeverity.NONE
+        )
+        if issues and max_issue_severity not in [
+            CompletionSeverity.SEVERE, CompletionSeverity.CRITICAL
+        ]:
+            # Count distinct signal categories (not just issue types)
+            signal_categories = set()
+            if completion_claimed:
+                signal_categories.add("completion_claim")
+            if incomplete_markers:
+                signal_categories.add("incomplete_markers")
+            if partial_indicators:
+                signal_categories.add("partial_indicators")
+            if qualifiers:
+                signal_categories.add("qualifiers")
+            if numeric_ratio and numeric_ratio[2] < 1.0:
+                signal_categories.add("numeric_ratio")
+            if json_incomplete:
+                signal_categories.add("json_incomplete")
+            if planned_work:
+                signal_categories.add("planned_work")
+            if errors:
+                signal_categories.add("errors")
+            if incomplete_subtasks:
+                signal_categories.add("incomplete_subtasks")
+
+            if len(signal_categories) < 2:
+                issues = []  # Suppress detection — single signal insufficient
+
         # Determine result
         detected = len(issues) > 0
 

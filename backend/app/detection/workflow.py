@@ -27,6 +27,7 @@ class WorkflowIssue(str, Enum):
     BOTTLENECK = "bottleneck"
     MISSING_TERMINATION = "missing_termination"
     ORPHAN_NODE = "orphan_node"
+    EXCESSIVE_DEPTH = "excessive_depth"  # v1.1: Long sequential chains
 
 
 class WorkflowSeverity(str, Enum):
@@ -173,16 +174,21 @@ class FlawedWorkflowDetector:
     ) -> list[str]:
         bottlenecks = []
         total_edges = sum(len(edges) for edges in forward.values())
-        
+        num_nodes = len(nodes)
+
         for node in nodes:
             incoming = len(backward.get(node.id, []))
             outgoing = len(forward.get(node.id, []))
-            
+
             if total_edges > 0:
                 throughput = (incoming + outgoing) / total_edges
-                if throughput > self.max_bottleneck_ratio and incoming > 2:
+                # v1.1: Improved bottleneck formula — also detect nodes
+                # with incoming > half the total nodes (convergence hub)
+                is_throughput_bottleneck = throughput > self.max_bottleneck_ratio and incoming > 2
+                is_convergence_hub = num_nodes > 3 and incoming > num_nodes / 2
+                if is_throughput_bottleneck or is_convergence_hub:
                     bottlenecks.append(node.id)
-        
+
         return bottlenecks
 
     def _detect_missing_error_handling(
@@ -211,6 +217,41 @@ class FlawedWorkflowDetector:
             if not has_incoming and not has_outgoing:
                 orphans.append(node.id)
         return orphans
+
+    def _detect_excessive_depth(
+        self,
+        nodes: list[WorkflowNode],
+        forward: dict,
+        backward: dict,
+    ) -> int:
+        """v1.1: Detect excessive sequential chain depth.
+
+        Returns the longest path length.  Workflows with depth > 8 are
+        likely over-sequential and should be parallelised or decomposed.
+        """
+        if not nodes:
+            return 0
+
+        # Find entry points (no incoming edges)
+        entry_points = [n.id for n in nodes if not backward.get(n.id)]
+        if not entry_points:
+            entry_points = [nodes[0].id]
+
+        max_depth = 0
+        for start in entry_points:
+            visited: set[str] = set()
+            stack = [(start, 0)]
+            while stack:
+                node_id, depth = stack.pop()
+                if node_id in visited:
+                    continue
+                visited.add(node_id)
+                max_depth = max(max_depth, depth)
+                for neighbor in forward.get(node_id, []):
+                    if neighbor not in visited:
+                        stack.append((neighbor, depth + 1))
+
+        return max_depth
 
     def _detect_missing_termination(
         self,
@@ -274,6 +315,11 @@ class FlawedWorkflowDetector:
         if orphans:
             issues.append(WorkflowIssue.ORPHAN_NODE)
             problematic.extend(orphans)
+
+        # v1.1: Check for excessive sequential depth
+        max_depth = self._detect_excessive_depth(nodes, forward, backward)
+        if max_depth > 8:
+            issues.append(WorkflowIssue.EXCESSIVE_DEPTH)
 
         if self.require_error_handling:
             missing_handlers = self._detect_missing_error_handling(nodes)

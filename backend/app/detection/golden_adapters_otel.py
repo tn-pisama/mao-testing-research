@@ -420,7 +420,12 @@ class F3ResourceMisallocationOTELAdapter(BaseOTELAdapter):
 
 
 class F4ToolProvisionOTELAdapter(BaseOTELAdapter):
-    """Convert OTEL traces for F4 Inadequate Tool Provision detection."""
+    """Convert OTEL traces for F4 Inadequate Tool Provision detection.
+
+    v1.1: Extract rich context (task, agent_output, available_tools,
+    tool_calls) so the real ToolProvisionDetector can be used instead of
+    a simple tool_failures count stub.
+    """
 
     def get_detection_type(self) -> str:
         return "F4_inadequate_tool"
@@ -428,30 +433,74 @@ class F4ToolProvisionOTELAdapter(BaseOTELAdapter):
     def adapt(self, trace: Dict[str, Any]) -> OTELAdapterResult:
         spans = self._extract_spans(trace)
 
-        tool_failures = []
+        task = ""
+        agent_output_parts: list[str] = []
+        available_tools: list[str] = []
+        tool_calls: list[dict] = []
+        tool_failures: list[dict] = []
+
         for span in spans:
             attrs = self._parse_attributes(span)
 
+            # Extract task description
+            if not task and attrs.get('gen_ai.task'):
+                task = attrs['gen_ai.task']
+
+            # Collect agent output text
+            response = attrs.get('gen_ai.response.sample', '')
+            if response:
+                agent_output_parts.append(response)
+
+            # Collect content from spans
+            content = attrs.get('gen_ai.content', '')
+            if content:
+                agent_output_parts.append(content)
+
+            # Track tool availability and calls
             tool_name = attrs.get('gen_ai.tool.name')
             tool_available = attrs.get('gen_ai.tool.available', 'true')
 
-            if tool_name and tool_available == 'false':
-                tool_failures.append({
-                    'tool_name': tool_name,
-                    'agent_id': attrs.get('gen_ai.agent.id', 'unknown'),
-                    'action': attrs.get('gen_ai.action', 'unknown'),
-                })
+            if tool_name:
+                if tool_available == 'true':
+                    available_tools.append(tool_name)
 
-        if len(tool_failures) == 0:
-            return OTELAdapterResult(
-                success=False,
-                detector_input=None,
-                error="No tool failures detected"
-            )
+                if tool_available == 'false':
+                    tool_failures.append({
+                        'tool_name': tool_name,
+                        'agent_id': attrs.get('gen_ai.agent.id', 'unknown'),
+                        'action': attrs.get('gen_ai.action', 'unknown'),
+                    })
+                    tool_calls.append({
+                        'name': tool_name,
+                        'status': 'not_found',
+                        'error': f'Tool {tool_name} not available',
+                    })
 
+                # Track tool call results
+                tool_status = attrs.get('gen_ai.tool.status', '')
+                tool_error = attrs.get('gen_ai.tool.error', '')
+                if tool_status or tool_error:
+                    tool_calls.append({
+                        'name': tool_name,
+                        'status': tool_status or ('error' if tool_error else 'success'),
+                        'error': tool_error,
+                    })
+
+        agent_output = "\n".join(agent_output_parts)
+
+        # Always return success — let the detector decide if issues exist.
+        # The old adapter returned success=False when no tool_failures existed,
+        # which prevented detection of workarounds, hallucinated tools, and
+        # missing tool categories.
         return OTELAdapterResult(
             success=True,
-            detector_input={'tool_failures': tool_failures}
+            detector_input={
+                'task': task,
+                'agent_output': agent_output,
+                'available_tools': available_tools,
+                'tool_calls': tool_calls,
+                'tool_failures': tool_failures,  # backward compat
+            }
         )
 
 

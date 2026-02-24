@@ -150,10 +150,11 @@ class SelfHealingEngine:
         try:
             result.failure_signature = self.analyzer.analyze(detection, trace)
             result.status = HealingStatus.GENERATING_FIX
-            
+
             context = {
                 "framework": workflow_config.get("framework", "generic"),
                 "trace": trace,
+                "failure_signature": result.failure_signature,
             }
             fix_suggestions = self.fix_generator.generate_fixes(detection, context)
             
@@ -401,11 +402,12 @@ class SelfHealingEngine:
             # Step 2: Get workflow config from n8n
             workflow_config = await n8n_client.get_workflow(workflow_id)
 
-            # Step 3: Generate fix suggestions
+            # Step 3: Generate fix suggestions (with failure signature for context-aware fixes)
             context = {
                 "framework": "n8n",
                 "trace": trace,
                 "workflow_id": workflow_id,
+                "failure_signature": result.failure_signature,
             }
             fix_suggestions = self.fix_generator.generate_fixes(detection, context)
 
