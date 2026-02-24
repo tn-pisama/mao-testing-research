@@ -51,6 +51,23 @@ def _check_transition(current: str, target: str, healing_id: str):
         )
 
 
+async def _get_healing_or_404(
+    healing_id: UUID, tenant_id: str, db: AsyncSession
+) -> HealingRecord:
+    """Fetch a healing record by ID + tenant, or raise 404."""
+    await set_tenant_context(db, tenant_id)
+    result = await db.execute(
+        select(HealingRecord).where(
+            HealingRecord.id == healing_id,
+            HealingRecord.tenant_id == UUID(tenant_id),
+        )
+    )
+    healing = result.scalar_one_or_none()
+    if not healing:
+        raise HTTPException(status_code=404, detail="Healing record not found")
+    return healing
+
+
 # Request/Response schemas
 class TriggerHealingRequest(BaseModel):
     fix_id: Optional[str] = None  # If not specified, use first suggested fix
@@ -238,18 +255,7 @@ async def get_healing_status(
     db: AsyncSession = Depends(get_db),
 ):
     """Get the status of a healing operation."""
-    await set_tenant_context(db, tenant_id)
-
-    result = await db.execute(
-        select(HealingRecord).where(
-            HealingRecord.id == healing_id,
-            HealingRecord.tenant_id == UUID(tenant_id),
-        )
-    )
-    healing = result.scalar_one_or_none()
-
-    if not healing:
-        raise HTTPException(status_code=404, detail="Healing record not found")
+    healing = await _get_healing_or_404(healing_id, tenant_id, db)
 
     return HealingStatusResponse(
         id=str(healing.id),
@@ -282,18 +288,7 @@ async def approve_healing(
     db: AsyncSession = Depends(get_db),
 ):
     """Approve or reject a pending healing operation."""
-    await set_tenant_context(db, tenant_id)
-
-    result = await db.execute(
-        select(HealingRecord).where(
-            HealingRecord.id == healing_id,
-            HealingRecord.tenant_id == UUID(tenant_id),
-        )
-    )
-    healing = result.scalar_one_or_none()
-
-    if not healing:
-        raise HTTPException(status_code=404, detail="Healing record not found")
+    healing = await _get_healing_or_404(healing_id, tenant_id, db)
 
     target = "in_progress" if request.approved else "rejected"
     _check_transition(healing.status, target, str(healing.id))
@@ -339,18 +334,7 @@ async def rollback_healing(
     If the healing was applied to an n8n workflow, this will restore
     the original workflow configuration in n8n.
     """
-    await set_tenant_context(db, tenant_id)
-
-    result = await db.execute(
-        select(HealingRecord).where(
-            HealingRecord.id == healing_id,
-            HealingRecord.tenant_id == UUID(tenant_id),
-        )
-    )
-    healing = result.scalar_one_or_none()
-
-    if not healing:
-        raise HTTPException(status_code=404, detail="Healing record not found")
+    healing = await _get_healing_or_404(healing_id, tenant_id, db)
 
     if not healing.rollback_available:
         raise HTTPException(
@@ -533,18 +517,7 @@ async def complete_healing(
     db: AsyncSession = Depends(get_db),
 ):
     """Mark a healing operation as complete after the fix has been applied."""
-    await set_tenant_context(db, tenant_id)
-
-    result = await db.execute(
-        select(HealingRecord).where(
-            HealingRecord.id == healing_id,
-            HealingRecord.tenant_id == UUID(tenant_id),
-        )
-    )
-    healing = result.scalar_one_or_none()
-
-    if not healing:
-        raise HTTPException(status_code=404, detail="Healing record not found")
+    healing = await _get_healing_or_404(healing_id, tenant_id, db)
 
     target = "applied" if validation_passed else "failed"
     _check_transition(healing.status, target, str(healing.id))
@@ -1135,18 +1108,7 @@ async def promote_staged_fix(
     Requires verification to have passed (POST /{healing_id}/verify) unless
     skip_verification=true is set for emergency deployments.
     """
-    await set_tenant_context(db, tenant_id)
-
-    result = await db.execute(
-        select(HealingRecord).where(
-            HealingRecord.id == healing_id,
-            HealingRecord.tenant_id == UUID(tenant_id),
-        )
-    )
-    healing = result.scalar_one_or_none()
-
-    if not healing:
-        raise HTTPException(status_code=404, detail="Healing record not found")
+    healing = await _get_healing_or_404(healing_id, tenant_id, db)
 
     if healing.deployment_stage != "staged":
         raise HTTPException(
@@ -1272,18 +1234,7 @@ async def reject_staged_fix(
     This endpoint restores the original workflow configuration and activates it,
     effectively undoing the staged fix.
     """
-    await set_tenant_context(db, tenant_id)
-
-    result = await db.execute(
-        select(HealingRecord).where(
-            HealingRecord.id == healing_id,
-            HealingRecord.tenant_id == UUID(tenant_id),
-        )
-    )
-    healing = result.scalar_one_or_none()
-
-    if not healing:
-        raise HTTPException(status_code=404, detail="Healing record not found")
+    healing = await _get_healing_or_404(healing_id, tenant_id, db)
 
     if healing.deployment_stage != "staged":
         raise HTTPException(
@@ -1582,18 +1533,7 @@ async def verify_fix(
     Level 1: Config-based verification — checks fix settings exist
     Level 2: Execution-based — runs the workflow, re-detects, compares confidence
     """
-    await set_tenant_context(db, tenant_id)
-
-    result = await db.execute(
-        select(HealingRecord).where(
-            HealingRecord.id == healing_id,
-            HealingRecord.tenant_id == UUID(tenant_id),
-        )
-    )
-    healing = result.scalar_one_or_none()
-
-    if not healing:
-        raise HTTPException(status_code=404, detail="Healing record not found")
+    healing = await _get_healing_or_404(healing_id, tenant_id, db)
 
     if healing.deployment_stage not in ("staged", None):
         if healing.deployment_stage in ("promoted", "rejected"):

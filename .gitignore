@@ -41,8 +41,16 @@ htmlcov/
 .nox/
 backend/backend/
 
-# Generated test results (timestamped)
+# Generated test results and runtime data
 detector_test_results_*.json
+backend/data/fix_feedback.jsonl
+backend/data/progress_log.jsonl
+backend/data/mast_test_results*.json
+backend/data/otel_test_results.json
+backend/data/calibration_history.jsonl
+backend/data/calibration_report.json
+backend/data/baselines/
+backend/app/data/
 
 # Playwright
 frontend/tests/auth/storage-state.json

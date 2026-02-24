@@ -2804,96 +2804,46 @@ WORKFLOW_DETECTION_SAMPLES = [
 ]
 
 
+_ALL_SAMPLE_LISTS = [
+    LOOP_DETECTION_SAMPLES,
+    PERSONA_DETECTION_SAMPLES,
+    HALLUCINATION_DETECTION_SAMPLES,
+    INJECTION_DETECTION_SAMPLES,
+    OVERFLOW_DETECTION_SAMPLES,
+    CORRUPTION_DETECTION_SAMPLES,
+    COORDINATION_DETECTION_SAMPLES,
+    COMMUNICATION_DETECTION_SAMPLES,
+    CONTEXT_DETECTION_SAMPLES,
+    GROUNDING_DETECTION_SAMPLES,
+    RETRIEVAL_QUALITY_DETECTION_SAMPLES,
+    CONTEXT_DETECTION_SAMPLES_EXTRA,
+    COMMUNICATION_DETECTION_SAMPLES_EXTRA,
+    DERAILMENT_DETECTION_SAMPLES,
+    SPECIFICATION_DETECTION_SAMPLES,
+    DECOMPOSITION_DETECTION_SAMPLES,
+    WITHHOLDING_DETECTION_SAMPLES,
+    COMPLETION_DETECTION_SAMPLES,
+    LOOP_DETECTION_SAMPLES_EXTRA,
+    PERSONA_DETECTION_SAMPLES_EXTRA,
+    HALLUCINATION_DETECTION_SAMPLES_EXTRA,
+    COORDINATION_DETECTION_SAMPLES_EXTRA,
+    CORRUPTION_DETECTION_SAMPLES_EXTRA,
+    OVERFLOW_DETECTION_SAMPLES_EXTRA,
+    GROUNDING_DETECTION_SAMPLES_EXTRA,
+    RETRIEVAL_QUALITY_DETECTION_SAMPLES_EXTRA,
+    DERAILMENT_DETECTION_SAMPLES_EXTRA,
+    SPECIFICATION_DETECTION_SAMPLES_EXTRA,
+    WORKFLOW_DETECTION_SAMPLES,
+]
+
+
 def create_default_golden_dataset() -> GoldenDataset:
     """Create a golden dataset with default samples."""
     dataset = GoldenDataset()
-    
-    for sample in LOOP_DETECTION_SAMPLES:
-        dataset.add_entry(sample)
-    
-    for sample in PERSONA_DETECTION_SAMPLES:
-        dataset.add_entry(sample)
-    
-    for sample in HALLUCINATION_DETECTION_SAMPLES:
-        dataset.add_entry(sample)
-    
-    for sample in INJECTION_DETECTION_SAMPLES:
-        dataset.add_entry(sample)
-    
-    for sample in OVERFLOW_DETECTION_SAMPLES:
-        dataset.add_entry(sample)
-    
-    for sample in CORRUPTION_DETECTION_SAMPLES:
-        dataset.add_entry(sample)
-    
-    for sample in COORDINATION_DETECTION_SAMPLES:
-        dataset.add_entry(sample)
 
-    for sample in COMMUNICATION_DETECTION_SAMPLES:
-        dataset.add_entry(sample)
-
-    for sample in CONTEXT_DETECTION_SAMPLES:
-        dataset.add_entry(sample)
-
-    for sample in GROUNDING_DETECTION_SAMPLES:
-        dataset.add_entry(sample)
-
-    for sample in RETRIEVAL_QUALITY_DETECTION_SAMPLES:
-        dataset.add_entry(sample)
-
-    for sample in CONTEXT_DETECTION_SAMPLES_EXTRA:
-        dataset.add_entry(sample)
-
-    for sample in COMMUNICATION_DETECTION_SAMPLES_EXTRA:
-        dataset.add_entry(sample)
-
-    for sample in DERAILMENT_DETECTION_SAMPLES:
-        dataset.add_entry(sample)
-
-    for sample in SPECIFICATION_DETECTION_SAMPLES:
-        dataset.add_entry(sample)
-
-    for sample in DECOMPOSITION_DETECTION_SAMPLES:
-        dataset.add_entry(sample)
-
-    for sample in WITHHOLDING_DETECTION_SAMPLES:
-        dataset.add_entry(sample)
-
-    for sample in COMPLETION_DETECTION_SAMPLES:
-        dataset.add_entry(sample)
-
-    for sample in LOOP_DETECTION_SAMPLES_EXTRA:
-        dataset.add_entry(sample)
-
-    for sample in PERSONA_DETECTION_SAMPLES_EXTRA:
-        dataset.add_entry(sample)
-
-    for sample in HALLUCINATION_DETECTION_SAMPLES_EXTRA:
-        dataset.add_entry(sample)
-
-    for sample in COORDINATION_DETECTION_SAMPLES_EXTRA:
-        dataset.add_entry(sample)
-
-    for sample in CORRUPTION_DETECTION_SAMPLES_EXTRA:
-        dataset.add_entry(sample)
-
-    for sample in OVERFLOW_DETECTION_SAMPLES_EXTRA:
-        dataset.add_entry(sample)
-
-    for sample in GROUNDING_DETECTION_SAMPLES_EXTRA:
-        dataset.add_entry(sample)
-
-    for sample in RETRIEVAL_QUALITY_DETECTION_SAMPLES_EXTRA:
-        dataset.add_entry(sample)
-
-    for sample in DERAILMENT_DETECTION_SAMPLES_EXTRA:
-        dataset.add_entry(sample)
-
-    for sample in SPECIFICATION_DETECTION_SAMPLES_EXTRA:
-        dataset.add_entry(sample)
-
-    for sample in WORKFLOW_DETECTION_SAMPLES:
-        dataset.add_entry(sample)
+    for sample_list in _ALL_SAMPLE_LISTS:
+        for sample in sample_list:
+            dataset.add_entry(sample)
 
     # n8n structural detector entries (60 total: 10 per detector)
     from app.detection_enterprise.n8n_golden_entries import create_n8n_golden_entries
