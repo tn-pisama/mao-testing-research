@@ -39,3 +39,26 @@ export const Badge = forwardRef<HTMLSpanElement, BadgeProps>(
 )
 
 Badge.displayName = 'Badge'
+
+
+const tierConfig: Record<string, { variant: BadgeProps['variant']; label: string }> = {
+  HIGH: { variant: 'success', label: 'HIGH' },
+  LIKELY: { variant: 'info', label: 'LIKELY' },
+  POSSIBLE: { variant: 'warning', label: 'POSSIBLE' },
+  LOW: { variant: 'error', label: 'LOW' },
+}
+
+export interface ConfidenceTierBadgeProps {
+  tier?: string | null
+  className?: string
+}
+
+export function ConfidenceTierBadge({ tier, className }: ConfidenceTierBadgeProps) {
+  if (!tier) return null
+  const config = tierConfig[tier.toUpperCase()] ?? { variant: 'default' as const, label: tier }
+  return (
+    <Badge variant={config.variant} size="sm" className={className}>
+      {config.label}
+    </Badge>
+  )
+}

@@ -35,7 +35,7 @@ class HallucinationDetector:
         confidence_scaling: float = 1.0,
     ):
         self._embedder = None
-        self.grounding_threshold = grounding_threshold or 0.55
+        self.grounding_threshold = grounding_threshold or 0.65
         self.confidence_scaling = confidence_scaling
         self.citation_pattern = re.compile(r'\[(\d+)\]|\(source:?\s*([^)]+)\)|\{\{cite:[^}]+\}\}', re.IGNORECASE)
         self.confidence_phrases = [
@@ -120,7 +120,7 @@ class HallucinationDetector:
             details["tool_result_score"] = tool_score
         
         fabrication_score, fabrication_evidence = self._detect_fabricated_facts(output)
-        if fabrication_score < 0.7:
+        if fabrication_score < 0.95:
             evidence.extend(fabrication_evidence)
             details["fabrication_indicators"] = fabrication_evidence
             # Include fabrication score in grounding decision
@@ -176,34 +176,110 @@ class HallucinationDetector:
     ) -> Tuple[float, List[str]]:
         if not sources:
             return 1.0, []
-        
+
         evidence = []
-        
+
         output_sentences = self._split_sentences(output)
         if not output_sentences:
             return 1.0, []
-        
+
         source_texts = [s.content for s in sources]
         all_texts = output_sentences + source_texts
         embeddings = self.embedder.encode(all_texts)
-        
+
         output_embeddings = embeddings[:len(output_sentences)]
         source_embeddings = embeddings[len(output_sentences):]
-        
+
         grounded_count = 0
+        hedging_words = {"however", "though", "note", "should", "could", "might",
+                         "further", "additionally", "also", "needed", "workup"}
+        # Phrases that indicate the agent is honestly admitting uncertainty
+        uncertainty_phrases = [
+            "i don't have", "i don't know", "i'm not sure", "i cannot confirm",
+            "not available", "no information", "not specified", "not mentioned",
+            "no details", "no specific", "unclear whether", "unable to confirm",
+        ]
         for i, sent_emb in enumerate(output_embeddings):
             max_sim = 0.0
             for src_emb in source_embeddings:
                 sim = self.embedder.similarity(sent_emb, src_emb)
                 max_sim = max(max_sim, sim)
-            
-            if max_sim >= 0.6:
+
+            sent_lower = output_sentences[i].lower()
+            sent_stripped = sent_lower.lstrip()
+
+            # Sentences admitting uncertainty are inherently grounded (honest)
+            is_uncertainty = any(p in sent_lower for p in uncertainty_phrases)
+            if is_uncertainty:
+                grounded_count += 1
+                continue
+
+            # Sentences that hedge, qualify, or continue a previous thought
+            is_hedging = any(w in sent_lower for w in hedging_words)
+            # Transition-initial sentences ("Then, ...", "Next, ...", etc.)
+            # are continuations that don't need strict grounding
+            transition_starts = ("then,", "then ", "next,", "next ", "finally,",
+                                 "finally ", "after that,", "second,", "third,",
+                                 "in summary,", "overall,", "in conclusion,")
+            is_transition = any(sent_stripped.startswith(t) for t in transition_starts)
+            grounding_bar = 0.45 if (is_hedging or is_transition) else 0.6
+
+            if max_sim >= grounding_bar:
                 grounded_count += 1
             elif max_sim < 0.4 and len(output_sentences[i]) > 30:
                 evidence.append(f"Ungrounded claim: '{output_sentences[i][:80]}...'")
-        
-        grounding_ratio = grounded_count / len(output_sentences)
+
+        embedding_ratio = grounded_count / len(output_sentences)
+
+        # Entity/numerical cross-check: penalize numbers and named entities
+        # in output that don't appear in any source text.
+        source_blob_lower = " ".join(source_texts).lower()
+        source_blob_original = " ".join(source_texts)
+        novelty_penalty = self._compute_novelty_penalty(output, source_blob_lower, source_blob_original)
+        if novelty_penalty > 0:
+            evidence.append(f"Output introduces {novelty_penalty:.0%} novel numbers/entities not in sources")
+
+        grounding_ratio = max(0.0, embedding_ratio - novelty_penalty)
         return grounding_ratio, evidence
+
+    @staticmethod
+    def _compute_novelty_penalty(output: str, source_blob_lower: str, source_blob_original: str = "") -> float:
+        """Compute a penalty for numbers and proper nouns in output absent from sources."""
+        # Extract numbers from output and sources
+        output_numbers = set(re.findall(r'\b\d[\d,.]*\b', output))
+        source_numbers = set(re.findall(r'\b\d[\d,.]*\b', source_blob_lower))
+        novel_numbers = output_numbers - source_numbers
+        # Ignore trivially small numbers (1-digit) and years already in source
+        novel_numbers = {n for n in novel_numbers if len(n) > 1}
+
+        # Extract capitalized multi-word names (potential proper nouns)
+        # Use original-case source text for name extraction (regex needs uppercase)
+        output_names = set(re.findall(r'[A-Z][a-z]+(?:\s+[A-Z][a-z]+)+', output))
+        source_names = set(re.findall(r'[A-Z][a-z]+(?:\s+[A-Z][a-z]+)+', source_blob_original or source_blob_lower))
+        # Check lowercase match and substring containment (e.g. "San Francisco"
+        # in source should match "San Francisco Bay Area" in output).
+        source_names_lower = {n.lower() for n in source_names}
+        def _name_is_known(name: str) -> bool:
+            nl = name.lower()
+            if nl in source_names_lower:
+                return True
+            # Check if any source name is a prefix/substring of the output name
+            for sn in source_names_lower:
+                if sn in nl or nl in sn:
+                    return True
+            return False
+        novel_names = {n for n in output_names if not _name_is_known(n)}
+
+        total_claims = max(1, len(output_numbers) + len(output_names))
+        novel_count = len(novel_numbers) + len(novel_names)
+        if novel_count == 0:
+            return 0.0
+        # Penalty proportional to fraction of novel entities, scaled aggressively.
+        # Even 1-2 novel entities in a short output is a strong hallucination signal.
+        base_penalty = (novel_count / total_claims) * 0.8
+        # Minimum penalty per novel entity (0.15 each, up to 0.7)
+        floor_penalty = min(0.7, novel_count * 0.15)
+        return min(0.7, max(base_penalty, floor_penalty))
     
     def _check_context_consistency(
         self,
@@ -266,24 +342,30 @@ class HallucinationDetector:
         evidence = []
         score = 1.0
         
+        # (pattern, description, penalty) — higher penalty for strong signals
         specific_patterns = [
-            (r'founded in \d{4}', "Specific founding year"),
-            (r'according to (?:a )?\d{4} (?:study|report|survey)', "Specific study reference"),
-            (r'\d+(?:\.\d+)?% of (?:people|users|companies)', "Specific percentage statistic"),
-            (r'(?:Dr\.|Professor) [A-Z][a-z]+ [A-Z][a-z]+', "Named expert"),
-            (r'published in (?:the )?[A-Z][a-zA-Z\s]+ Journal', "Journal reference"),
+            (r'founded in \d{4}', "Specific founding year", 0.1),
+            (r'according to (?:a )?\d{4} (?:study|report|survey)', "Specific study reference", 0.1),
+            (r'\d+(?:\.\d+)?% of (?:people|users|companies)', "Specific percentage statistic", 0.1),
+            (r'(?:Dr\.|Professor) [A-Z][a-z]+ [A-Z][a-z]+', "Named expert", 0.15),
+            (r'published in (?:the )?[A-Z][a-zA-Z\s]+ Journal', "Journal reference", 0.1),
             # Fabricated URL patterns
-            (r'https?://(?:www\.)?[a-z]+(?:-[a-z]+)+\.(?:com|org|io)/[a-z0-9/-]+', "Specific URL"),
-            (r'https?://(?:docs|api|support)\.[a-z]+\.(?:com|org)/[a-z0-9/-]+', "Documentation URL"),
-            (r'(?:visit|see|check|refer to)\s+https?://\S+', "Referenced URL"),
+            (r'https?://(?:www\.)?[a-z]+(?:-[a-z]+)+\.(?:com|org|io)/[a-z0-9/-]+', "Specific URL", 0.1),
+            (r'https?://(?:docs|api|support)\.[a-z]+\.(?:com|org)/[a-z0-9/-]+', "Documentation URL", 0.1),
+            (r'(?:visit|see|check|refer to)\s+https?://\S+', "Referenced URL", 0.1),
+            # Causal/conclusion fabrication — strong signals, higher penalties
+            (r'directly (?:drove|caused|led to|resulted in)', "Fabricated causal claim", 0.2),
+            (r'exceeding (?:internal |expected )?(?:projections|estimates|targets)', "Fabricated comparison", 0.2),
+            (r'scientists predict|experts forecast|analysts expect', "Fabricated prediction", 0.2),
+            (r'which (?:scientists|researchers|experts) (?:predict|expect|forecast)', "Attributed prediction", 0.2),
         ]
-        
-        for pattern, desc in specific_patterns:
+
+        for pattern, desc, penalty in specific_patterns:
             matches = re.findall(pattern, output)
             if matches:
                 for match in matches[:2]:
                     evidence.append(f"Potential fabrication ({desc}): '{match}'")
-                    score -= 0.1
+                    score -= penalty
         
         definitive_count = sum(1 for phrase in self.definitive_phrases if phrase.lower() in output.lower())
         if definitive_count >= 3:

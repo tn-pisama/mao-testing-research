@@ -25,6 +25,17 @@ def detection_to_response(d: Detection) -> DetectionResponse:
         "confidence": d.confidence,
     })
 
+    # Map confidence (0-100 int) to tier
+    conf_pct = d.confidence / 100.0 if d.confidence else 0.0
+    if conf_pct >= 0.80:
+        tier = "HIGH"
+    elif conf_pct >= 0.60:
+        tier = "LIKELY"
+    elif conf_pct >= 0.40:
+        tier = "POSSIBLE"
+    else:
+        tier = "LOW"
+
     return DetectionResponse(
         id=d.id,
         trace_id=d.trace_id,
@@ -39,6 +50,8 @@ def detection_to_response(d: Detection) -> DetectionResponse:
         explanation=explanation_data.get("explanation"),
         business_impact=explanation_data.get("business_impact"),
         suggested_action=explanation_data.get("suggested_action"),
+        confidence_tier=tier,
+        detector_method=d.method,
     )
 
 

@@ -100,6 +100,9 @@ export interface Detection {
   explanation?: string
   business_impact?: string
   suggested_action?: string
+  // Detection transparency
+  confidence_tier?: 'HIGH' | 'LIKELY' | 'POSSIBLE' | 'LOW'
+  detector_method?: string
 }
 
 export interface LoopAnalytics {

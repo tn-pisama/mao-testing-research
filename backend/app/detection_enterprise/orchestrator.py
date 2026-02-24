@@ -237,6 +237,24 @@ class DetectionOrchestrator:
         return self._tool_provision_detector
 
     @property
+    def hallucination_detector(self) -> HallucinationDetector:
+        if self._hallucination_detector is None:
+            self._hallucination_detector = HallucinationDetector()
+        return self._hallucination_detector
+
+    @property
+    def persona_detector(self) -> PersonaConsistencyScorer:
+        if self._persona_detector is None:
+            self._persona_detector = PersonaConsistencyScorer()
+        return self._persona_detector
+
+    @property
+    def corruption_detector(self) -> SemanticCorruptionDetector:
+        if self._corruption_detector is None:
+            self._corruption_detector = SemanticCorruptionDetector()
+        return self._corruption_detector
+
+    @property
     def grounding_detector(self) -> GroundingDetector:
         if self._grounding_detector is None:
             self._grounding_detector = GroundingDetector()
@@ -296,6 +314,24 @@ class DetectionOrchestrator:
         if tool_provision_result:
             all_detections.append(tool_provision_result)
             result.detectors_run.append("tool_provision")
+
+        # Run hallucination detection on agent outputs
+        hallucination_result = self._detect_hallucination(trace)
+        if hallucination_result:
+            all_detections.append(hallucination_result)
+            result.detectors_run.append("hallucination")
+
+        # Run persona drift detection
+        persona_result = self._detect_persona_drift(trace)
+        if persona_result:
+            all_detections.append(persona_result)
+            result.detectors_run.append("persona_drift")
+
+        # Run state corruption detection
+        corruption_results = self._detect_corruption(trace, snapshots)
+        all_detections.extend(corruption_results)
+        if corruption_results:
+            result.detectors_run.append("corruption")
 
         # Run error pattern detection
         error_results = self._detect_error_patterns(trace)
@@ -742,6 +778,138 @@ class DetectionOrchestrator:
 
         return None
 
+    def _detect_hallucination(self, trace: UniversalTrace) -> Optional[DetectionResult]:
+        """Detect hallucination in agent outputs by checking against source documents."""
+        from app.detection.hallucination import SourceDocument
+
+        # Collect agent outputs and source documents from spans
+        outputs: List[str] = []
+        sources: List[SourceDocument] = []
+
+        for span in trace.spans:
+            if span.response and len(span.response) > 50:
+                outputs.append(span.response)
+            # Extract sources from retrieval spans or metadata
+            if span.span_type == SpanType.RETRIEVAL and span.metadata:
+                docs = span.metadata.get("retrieved_documents", [])
+                for doc in docs:
+                    if isinstance(doc, dict) and doc.get("content"):
+                        sources.append(SourceDocument(
+                            content=doc["content"],
+                            metadata=doc.get("metadata", {}),
+                        ))
+
+        if not outputs:
+            return None
+
+        try:
+            combined_output = "\n".join(outputs[-3:])  # Check last 3 outputs
+            result = self.hallucination_detector.detect_hallucination(
+                combined_output, sources if sources else None,
+            )
+
+            if result.detected:
+                return DetectionResult(
+                    category=DetectionCategory.HALLUCINATION,
+                    detected=True,
+                    confidence=result.confidence,
+                    severity=Severity.HIGH if result.confidence > 0.8 else Severity.MEDIUM,
+                    title="Hallucination Detected",
+                    description=f"Agent output contains claims not grounded in source documents. "
+                               f"Type: {result.hallucination_type or 'general'}. "
+                               f"Grounding score: {result.grounding_score:.2f}.",
+                    evidence=[{"evidence": result.evidence[:5]}] if result.evidence else [],
+                    suggested_fix="Verify agent output against source documents. Add retrieval-augmented generation with citation checking.",
+                    raw_result=result,
+                )
+        except Exception as e:
+            logger.warning("Hallucination detector failed: %s", e)
+
+        return None
+
+    def _detect_persona_drift(self, trace: UniversalTrace) -> Optional[DetectionResult]:
+        """Detect persona drift by checking if agent outputs match their persona."""
+        from app.detection.persona import Agent, RoleType
+
+        for span in trace.spans:
+            if not span.response or len(span.response) < 50:
+                continue
+
+            # Extract persona from span metadata or prompt
+            persona = (span.metadata or {}).get("gen_ai.persona", "")
+            if not persona and span.prompt:
+                # Use first line of system prompt as persona
+                persona = span.prompt.split("\n")[0][:200]
+
+            if not persona:
+                continue
+
+            try:
+                agent = Agent(
+                    id=span.agent_name or span.span_id,
+                    persona_description=persona,
+                    allowed_actions=["*"],
+                )
+                result = self.persona_detector.score_consistency(agent, span.response)
+
+                if not result.consistent and result.confidence > 0.6:
+                    return DetectionResult(
+                        category=DetectionCategory.PERSONA_DRIFT,
+                        detected=True,
+                        confidence=1.0 - result.score,
+                        severity=Severity.MEDIUM,
+                        title="Persona Drift Detected",
+                        description=f"Agent '{span.agent_name or 'unknown'}' output drifted from its assigned persona. "
+                                   f"Consistency score: {result.score:.2f}.",
+                        evidence=[{"issues": result.issues[:3]}] if result.issues else [],
+                        affected_spans=[span.span_id],
+                        suggested_fix="Reinforce agent persona in system prompt. Add persona compliance checks.",
+                        raw_result=result,
+                    )
+            except Exception as e:
+                logger.warning("Persona detector failed on span %s: %s", span.span_id, e)
+
+        return None
+
+    def _detect_corruption(self, trace: UniversalTrace, snapshots: List[StateSnapshot]) -> List[DetectionResult]:
+        """Detect state corruption between sequential agent states."""
+        from app.detection.corruption import StateSnapshot as CorruptionSnapshot
+
+        results: List[DetectionResult] = []
+
+        for i in range(1, len(snapshots)):
+            try:
+                prev = CorruptionSnapshot(
+                    state_delta=snapshots[i - 1].state_delta or {},
+                    agent_id=snapshots[i - 1].agent_id or "unknown",
+                )
+                curr = CorruptionSnapshot(
+                    state_delta=snapshots[i].state_delta or {},
+                    agent_id=snapshots[i].agent_id or "unknown",
+                )
+
+                result = self.corruption_detector.detect_corruption_with_confidence(prev, curr)
+
+                if result.detected and result.confidence > 0.5:
+                    results.append(DetectionResult(
+                        category=DetectionCategory.STATE_CORRUPTION,
+                        detected=True,
+                        confidence=result.confidence,
+                        severity=Severity.HIGH if result.confidence > 0.8 else Severity.MEDIUM,
+                        title="State Corruption Detected",
+                        description=f"State corruption detected between steps {i - 1} and {i}. "
+                                   f"{result.issue_count} issue(s) found.",
+                        evidence=[{
+                            "issues": [{"type": iss.issue_type, "message": iss.message} for iss in result.issues[:3]],
+                        }],
+                        suggested_fix="Add state validation between agent handoffs. Implement rollback for corrupted state.",
+                        raw_result=result,
+                    ))
+            except Exception as e:
+                logger.warning("Corruption detector failed at step %d: %s", i, e)
+
+        return results
+
     def _generate_explanation(self, primary: DetectionResult, trace: UniversalTrace) -> str:
         """Generate a human-readable root cause explanation.
 
@@ -767,6 +935,16 @@ class DetectionOrchestrator:
                 f"Agent state became corrupted during execution. {primary.description} "
                 "This can occur when data is improperly serialized, parsed, or when "
                 "there are concurrent modifications to shared state."
+            ),
+            DetectionCategory.HALLUCINATION: (
+                f"Agent output contains hallucinated content. {primary.description} "
+                "This occurs when the agent generates claims, facts, or references "
+                "not supported by the provided source documents or context."
+            ),
+            DetectionCategory.PERSONA_DRIFT: (
+                f"Agent behavior drifted from its assigned persona. {primary.description} "
+                "This happens when the agent's output doesn't match its configured role, "
+                "tone, or allowed actions."
             ),
             DetectionCategory.GROUNDING_FAILURE: (
                 f"Agent output contains information not properly grounded in source documents. "

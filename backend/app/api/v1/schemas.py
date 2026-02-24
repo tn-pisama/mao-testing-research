@@ -102,6 +102,9 @@ class DetectionResponse(BaseModel):
     explanation: Optional[str] = None  # Human-readable explanation
     business_impact: Optional[str] = None  # Impact on users/business
     suggested_action: Optional[str] = None  # What to do next
+    # Sprint 4: Detection transparency fields
+    confidence_tier: Optional[str] = None  # HIGH/LIKELY/POSSIBLE/LOW
+    detector_method: Optional[str] = None  # Detection method used
 
 
 class DetectionValidateRequest(BaseModel):

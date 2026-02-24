@@ -11,7 +11,7 @@ import {
   Loader2
 } from 'lucide-react'
 import { Card, CardContent } from '../ui/Card'
-import { Badge } from '../ui/Badge'
+import { Badge, ConfidenceTierBadge } from '../ui/Badge'
 import { Button } from '../ui/Button'
 import { TermTooltip, getPlainEnglishTitle } from '../ui/Tooltip'
 import { FixPreviewModal } from '../healing/FixPreviewModal'
@@ -124,6 +124,7 @@ export function FailureCard({
                 <Badge variant={severityStyle.variant} size="sm">
                   {severityStyle.label}
                 </Badge>
+                <ConfidenceTierBadge tier={detection.confidence_tier} />
                 <TermTooltip term="confidence">
                   <span className="text-xs text-slate-500">
                     {Math.round(detection.confidence)}% certain

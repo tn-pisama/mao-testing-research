@@ -472,6 +472,18 @@ async def analyze_trace(
 
     await db.commit()
 
+    # Add confidence_tier to each detection dict
+    for det in detections:
+        conf = det.get("confidence", 0)
+        if conf >= 0.80:
+            det["confidence_tier"] = "HIGH"
+        elif conf >= 0.60:
+            det["confidence_tier"] = "LIKELY"
+        elif conf >= 0.40:
+            det["confidence_tier"] = "POSSIBLE"
+        else:
+            det["confidence_tier"] = "LOW"
+
     return {
         "detections": detections,
         "analyzed_states": len(states),
