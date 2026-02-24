@@ -764,8 +764,10 @@ def calibrate_single(
 
         fold_best_thresholds = []
         fold_tp = fold_tn = fold_fp = fold_fn = 0
+        fold_eces: List[float] = []
+        fold_metrics: List[Dict[str, Any]] = []
 
-        for train_idx, test_idx in splits:
+        for fold_i, (train_idx, test_idx) in enumerate(splits):
             # Find best threshold on the training fold
             train_preds = [predictions[i] for i in train_idx]
             train_labels = [ground_truths[i] for i in train_idx]
@@ -793,6 +795,28 @@ def calibrate_single(
             fold_fp += fp
             fold_fn += fn
 
+            # v1.2: Per-fold ECE computation
+            fold_ece = _compute_ece(test_preds, test_labels, best_thr)
+            fold_eces.append(fold_ece)
+
+            # v1.2: Per-fold metrics logging
+            fold_prec, fold_rec, fold_f1 = _precision_recall_f1(tp, tn, fp, fn)
+            fold_metrics.append({
+                "fold": fold_i,
+                "threshold": best_thr,
+                "precision": round(fold_prec, 4),
+                "recall": round(fold_rec, 4),
+                "f1": round(fold_f1, 4),
+                "ece": fold_ece,
+                "train_size": len(train_idx),
+                "test_size": len(test_idx),
+            })
+            logger.debug(
+                "  Fold %d/%d for %s: thr=%.2f P=%.3f R=%.3f F1=%.3f ECE=%.4f",
+                fold_i + 1, n_folds, detection_type.value,
+                best_thr, fold_prec, fold_rec, fold_f1, fold_ece,
+            )
+
         # Average threshold across folds
         avg_threshold = round(sum(fold_best_thresholds) / len(fold_best_thresholds), 2)
         # Snap to nearest grid point
@@ -800,17 +824,22 @@ def calibrate_single(
 
         precision, recall, f1 = _precision_recall_f1(fold_tp, fold_tn, fold_fp, fold_fn)
 
-        # Compute ECE on full predictions using the averaged threshold
-        ece = _compute_ece(predictions, ground_truths, avg_threshold)
+        # v1.2: Average ECE across folds (more robust than single full-dataset ECE)
+        avg_fold_ece = round(sum(fold_eces) / len(fold_eces), 4) if fold_eces else 0.0
+        # Also compute full-dataset ECE for comparison
+        full_ece = _compute_ece(predictions, ground_truths, avg_threshold)
+        ece = avg_fold_ece  # Use fold-averaged ECE as primary
 
         logger.info(
-            "CV calibration for %s: threshold=%.2f  P=%.3f  R=%.3f  F1=%.3f  ECE=%.4f  (fold thresholds=%s)",
+            "CV calibration for %s: threshold=%.2f  P=%.3f  R=%.3f  F1=%.3f  "
+            "ECE=%.4f (fold-avg) / %.4f (full)  (fold thresholds=%s)",
             detection_type.value,
             avg_threshold,
             precision,
             recall,
             f1,
-            ece,
+            avg_fold_ece,
+            full_ece,
             fold_best_thresholds,
         )
 
@@ -818,7 +847,7 @@ def calibrate_single(
             predictions, ground_truths, avg_threshold,
         )
 
-        return CalibrationResult(
+        result = CalibrationResult(
             detection_type=detection_type.value,
             optimal_threshold=avg_threshold,
             precision=round(precision, 4),
@@ -833,6 +862,10 @@ def calibrate_single(
             f1_ci_lower=ci_lower,
             f1_ci_upper=ci_upper,
         )
+        # v1.2: Attach per-fold detail for transparency
+        result.fold_metrics = fold_metrics  # type: ignore[attr-defined]
+        result.fold_thresholds = fold_best_thresholds  # type: ignore[attr-defined]
+        return result
 
     # -----------------------------------------------------------------
     # Fallback: full-dataset grid search (< 8 samples)

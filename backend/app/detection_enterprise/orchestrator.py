@@ -60,6 +60,14 @@ class Severity(str, Enum):
     INFO = "info"
 
 
+class ConfidenceTier(str, Enum):
+    """Customer-facing confidence tiers for detection results."""
+    HIGH = "high"          # >= 0.80: Strong signal, high certainty
+    LIKELY = "likely"      # 0.60-0.80: Probable issue
+    POSSIBLE = "possible"  # 0.40-0.60: Worth investigating
+    LOW = "low"            # < 0.40: Weak signal
+
+
 @dataclass
 class DetectionResult:
     """Result from a single detector."""
@@ -74,11 +82,24 @@ class DetectionResult:
     suggested_fix: Optional[str] = None
     raw_result: Optional[Any] = None
 
+    @property
+    def confidence_tier(self) -> ConfidenceTier:
+        """Map raw confidence to customer-facing tier."""
+        if self.confidence >= 0.80:
+            return ConfidenceTier.HIGH
+        elif self.confidence >= 0.60:
+            return ConfidenceTier.LIKELY
+        elif self.confidence >= 0.40:
+            return ConfidenceTier.POSSIBLE
+        else:
+            return ConfidenceTier.LOW
+
     def to_dict(self) -> Dict[str, Any]:
         return {
             "category": self.category.value,
             "detected": self.detected,
             "confidence": self.confidence,
+            "confidence_tier": self.confidence_tier.value,
             "severity": self.severity.value,
             "title": self.title,
             "description": self.description,

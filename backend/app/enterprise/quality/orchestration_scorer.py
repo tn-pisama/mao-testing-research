@@ -607,6 +607,21 @@ class OrchestrationQualityScorer(LLMScorerMixin):
             suggestions.append("Add checkpoints or fan-out to reduce chain dependencies")
             ac_error_codes.append("QE-AC-001")
 
+        # v1.2: Circular dependency detection
+        cycles = self._detect_agent_cycles(connections, agent_names, workflow)
+        evidence["has_circular_dependencies"] = len(cycles) > 0
+        if cycles:
+            evidence["circular_chains"] = [" → ".join(c) for c in cycles[:5]]
+            penalty = min(len(cycles) * 0.15, 0.45)
+            score -= penalty
+            issues.append(
+                f"Circular agent dependency detected: {' → '.join(cycles[0])}"
+            )
+            suggestions.append(
+                "Break circular dependencies with conditional exit nodes or state flags"
+            )
+            ac_error_codes.append("QE-AC-003")
+
         if ac_error_codes:
             evidence["error_codes"] = ac_error_codes
 
@@ -664,6 +679,86 @@ class OrchestrationQualityScorer(LLMScorerMixin):
             dfs(start, 1)
 
         return max_chain
+
+    def _detect_agent_cycles(
+        self,
+        connections: Dict[str, Any],
+        agent_names: Set[str],
+        workflow: Dict[str, Any],
+    ) -> List[List[str]]:
+        """Detect circular dependencies among agent nodes (A → B → A).
+
+        Uses DFS with a recursion stack to find back-edges that indicate
+        cycles.  Cycles that pass through IF/Switch nodes with exit paths
+        are considered guarded and excluded.
+        """
+        if len(agent_names) < 2:
+            return []
+
+        # Build agent-only adjacency (same graph as _detect_agent_chain_length)
+        agent_adj: Dict[str, List[str]] = defaultdict(list)
+        for source_name, node_conns in connections.items():
+            if source_name not in agent_names:
+                continue
+            if isinstance(node_conns, dict):
+                for _output_type, targets in node_conns.items():
+                    if isinstance(targets, list):
+                        for target_list in targets:
+                            if isinstance(target_list, list):
+                                for target in target_list:
+                                    if isinstance(target, dict):
+                                        target_name = target.get("node", "")
+                                        if target_name in agent_names:
+                                            agent_adj[source_name].append(target_name)
+
+        # Identify guarded edges (connections that pass through IF/Switch)
+        conditional_nodes = set()
+        for node in workflow.get("nodes", []):
+            node_type = node.get("type", "")
+            if any(
+                t in node_type.lower()
+                for t in ["if", "switch", "condition", "filter"]
+            ):
+                conditional_nodes.add(node.get("name", ""))
+
+        # DFS cycle detection with recursion stack
+        visited: Set[str] = set()
+        rec_stack: Set[str] = set()
+        cycles_found: List[List[str]] = []
+
+        def dfs(node: str, path: List[str]) -> None:
+            visited.add(node)
+            rec_stack.add(node)
+            path.append(node)
+
+            for neighbor in agent_adj.get(node, []):
+                if neighbor == node:
+                    continue  # self-loop, already handled elsewhere
+                if neighbor not in visited:
+                    dfs(neighbor, path)
+                elif neighbor in rec_stack:
+                    # Back-edge → cycle found
+                    cycle_start = path.index(neighbor)
+                    cycle = path[cycle_start:] + [neighbor]
+                    cycles_found.append(cycle)
+
+            path.pop()
+            rec_stack.discard(node)
+
+        for start in agent_names:
+            if start not in visited:
+                dfs(start, [])
+
+        # Filter out guarded cycles (those where an intermediate node
+        # connects through a conditional node)
+        unguarded = []
+        for cycle in cycles_found:
+            cycle_nodes = set(cycle[:-1])  # exclude repeated last node
+            is_guarded = bool(cycle_nodes & conditional_nodes)
+            if not is_guarded:
+                unguarded.append(cycle)
+
+        return unguarded
 
     def _score_observability(self, workflow: Dict[str, Any]) -> DimensionScore:
         """

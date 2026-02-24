@@ -283,6 +283,7 @@ class QualityReport:
     generated_at: datetime = field(default_factory=lambda: datetime.now(UTC))
     dimension_reliability: Dict[str, str] = field(default_factory=dict)
     n8n_detection_findings: List[Dict[str, Any]] = field(default_factory=list)
+    detection_correlation: Dict[str, Dict[str, Any]] = field(default_factory=dict)
 
     @property
     def is_provisional(self) -> bool:
@@ -316,6 +317,8 @@ class QualityReport:
             "critical_issues_count": self.critical_issues_count,
             "generated_at": self.generated_at.isoformat(),
         }
+        if self.detection_correlation:
+            result["detection_correlation"] = self.detection_correlation
         if self.dimension_reliability:
             result["dimension_reliability"] = self.dimension_reliability
         if self.reasoning is not None:

@@ -218,11 +218,10 @@ class VerificationOrchestrator:
 
                     # If the workflow completed without error, the fix is working
                     if execution_status == "success" or finished:
-                        # Re-run detection on the execution data if detector available
-                        if loop_detector and detection_type == "infinite_loop":
-                            after = await self._redetect_loop(
-                                execution, loop_detector
-                            )
+                        # Re-run detection on the execution data
+                        redetect = self._get_redetector(detection_type, loop_detector)
+                        if redetect:
+                            after = await redetect(execution)
                         else:
                             # Workflow completed successfully = fix likely working
                             after = 0.0
@@ -277,6 +276,24 @@ class VerificationOrchestrator:
             verified_at=datetime.utcnow().isoformat(),
         )
 
+    def _get_redetector(self, detection_type: str, loop_detector=None):
+        """Return the appropriate re-detection coroutine for a detection type.
+
+        Returns a callable(execution) -> float, or None for unsupported types.
+        """
+        if detection_type == "infinite_loop" and loop_detector:
+            return lambda execution: self._redetect_loop(execution, loop_detector)
+        redetectors = {
+            "context_overflow": self._redetect_overflow,
+            "overflow": self._redetect_overflow,
+            "hallucination": self._redetect_hallucination,
+            "injection": self._redetect_injection,
+            "state_corruption": self._redetect_corruption,
+            "coordination_deadlock": self._redetect_coordination,
+            "coordination_failure": self._redetect_coordination,
+        }
+        return redetectors.get(detection_type)
+
     async def _redetect_loop(self, execution: Dict[str, Any], loop_detector) -> float:
         """Re-run loop detection on execution data and return new confidence."""
         from app.detection.loop import StateSnapshot
@@ -303,6 +320,139 @@ class VerificationOrchestrator:
             return 0.0  # Not enough data to detect a loop
 
         result = loop_detector.detect_loop(states)
+        return result.confidence if result.detected else 0.0
+
+
+    async def _redetect_overflow(self, execution: Dict[str, Any]) -> float:
+        """Re-run context overflow detection on execution data."""
+        from app.detection.overflow import ContextOverflowDetector
+
+        result_data = execution.get("data", {}).get("resultData", {})
+        run_data = result_data.get("runData", {})
+
+        total_tokens = 0
+        for _node_name, node_runs in run_data.items():
+            for run in node_runs:
+                data = run.get("data", {}).get("main", [[]])
+                for items in data:
+                    if isinstance(items, list):
+                        for item in items:
+                            if isinstance(item, dict):
+                                json_data = item.get("json", {})
+                                total_tokens += json_data.get("tokens_input", 0)
+                                total_tokens += json_data.get("tokens_output", 0)
+                                total_tokens += json_data.get("usage", {}).get("total_tokens", 0)
+
+        if total_tokens == 0:
+            return 0.0
+
+        detector = ContextOverflowDetector()
+        result = detector.detect(total_tokens=total_tokens)
+        return result.confidence if result.detected else 0.0
+
+    async def _redetect_hallucination(self, execution: Dict[str, Any]) -> float:
+        """Re-run hallucination detection on execution output."""
+        from app.detection.hallucination import HallucinationDetector
+
+        result_data = execution.get("data", {}).get("resultData", {})
+        run_data = result_data.get("runData", {})
+
+        outputs = []
+        for _node_name, node_runs in run_data.items():
+            for run in node_runs:
+                data = run.get("data", {}).get("main", [[]])
+                for items in data:
+                    if isinstance(items, list):
+                        for item in items:
+                            if isinstance(item, dict):
+                                json_data = item.get("json", {})
+                                output = json_data.get("output", json_data.get("text", ""))
+                                if output:
+                                    outputs.append(str(output))
+
+        if not outputs:
+            return 0.0
+
+        detector = HallucinationDetector()
+        combined = "\n".join(outputs)
+        result = detector.detect(agent_output=combined)
+        return result.confidence if result.detected else 0.0
+
+    async def _redetect_injection(self, execution: Dict[str, Any]) -> float:
+        """Re-run injection detection on execution prompts."""
+        from app.detection.injection import InjectionDetector
+
+        result_data = execution.get("data", {}).get("resultData", {})
+        run_data = result_data.get("runData", {})
+
+        prompts = []
+        for _node_name, node_runs in run_data.items():
+            for run in node_runs:
+                data = run.get("data", {}).get("main", [[]])
+                for items in data:
+                    if isinstance(items, list):
+                        for item in items:
+                            if isinstance(item, dict):
+                                json_data = item.get("json", {})
+                                prompt = json_data.get("prompt", json_data.get("input", ""))
+                                if prompt:
+                                    prompts.append(str(prompt))
+
+        if not prompts:
+            return 0.0
+
+        detector = InjectionDetector()
+        combined = "\n".join(prompts)
+        result = detector.detect(text=combined)
+        return result.confidence if result.detected else 0.0
+
+    async def _redetect_corruption(self, execution: Dict[str, Any]) -> float:
+        """Re-run state corruption detection on execution data."""
+        from app.detection.corruption import SemanticCorruptionDetector
+
+        result_data = execution.get("data", {}).get("resultData", {})
+        run_data = result_data.get("runData", {})
+
+        states = []
+        for node_name, node_runs in run_data.items():
+            for run in node_runs:
+                data = run.get("data", {}).get("main", [[]])
+                states.append({
+                    "agent_id": node_name,
+                    "state": data,
+                })
+
+        if len(states) < 2:
+            return 0.0
+
+        detector = SemanticCorruptionDetector()
+        result = detector.detect(states=states)
+        return result.confidence if result.detected else 0.0
+
+    async def _redetect_coordination(self, execution: Dict[str, Any]) -> float:
+        """Re-run coordination/deadlock detection on execution data."""
+        from app.detection.coordination import CoordinationAnalyzer
+
+        result_data = execution.get("data", {}).get("resultData", {})
+        run_data = result_data.get("runData", {})
+
+        messages = []
+        seq = 0
+        for node_name, node_runs in run_data.items():
+            for run in node_runs:
+                data = run.get("data", {}).get("main", [[]])
+                messages.append({
+                    "agent_id": node_name,
+                    "content": str(data),
+                    "sequence": seq,
+                })
+                seq += 1
+
+        if len(messages) < 2:
+            return 0.0
+
+        analyzer = CoordinationAnalyzer()
+        result = analyzer.detect(messages=messages)
         return result.confidence if result.detected else 0.0
 
 

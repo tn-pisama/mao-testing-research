@@ -234,7 +234,11 @@ class QualityAssessor:
         )
 
         # Calculate overall score (weighted average of agent and orchestration)
+        # v1.2: Auto-activate execution feedback when execution_history is
+        # provided, even if execution_weight was left at default 0.0.
         ew = self.execution_weight
+        if ew == 0.0 and execution_history:
+            ew = 0.2  # Default feedback weight when data is available
         execution_score_value = 0.0
         if ew > 0 and execution_history:
             if self._execution_scorer is None:
@@ -278,6 +282,13 @@ class QualityAssessor:
             dimension_reliability=dict(DIMENSION_RELIABILITY),
             n8n_detection_findings=n8n_findings,
         )
+
+        # Compute detection ↔ execution correlation
+        detection_correlation = self._compute_detection_correlation(
+            n8n_findings, execution_history or []
+        )
+        if detection_correlation:
+            report.detection_correlation = detection_correlation
 
         # Generate improvements
         improvements = self.improvement_suggester.suggest_improvements(
@@ -423,6 +434,77 @@ class QualityAssessor:
             pass  # n8n detectors not available
 
         return findings
+
+    def _compute_detection_correlation(
+        self,
+        n8n_findings: List[Dict[str, Any]],
+        execution_history: List[Dict[str, Any]],
+    ) -> Dict[str, Dict[str, Any]]:
+        """Compute correlation between detected failures and execution errors.
+
+        Maps each detected failure category to execution-level evidence:
+        count of detections, average confidence, and quality_delta (estimated
+        impact when execution errors match the detected failure pattern).
+        """
+        if not n8n_findings or not execution_history:
+            return {}
+
+        total_execs = len(execution_history)
+        error_execs = [e for e in execution_history if e.get("status") == "error"]
+        error_rate = len(error_execs) / total_execs if total_execs > 0 else 0.0
+
+        # Collect error messages from execution history
+        error_messages: List[str] = []
+        for e in error_execs:
+            for result in e.get("node_results", {}).values():
+                if result.get("status") == "error" and result.get("error"):
+                    error_messages.append(result["error"].lower())
+
+        # Map failure modes to indicative error keywords
+        category_patterns: Dict[str, List[str]] = {
+            "cycle": ["infinite", "loop", "timeout", "max iterations", "circular"],
+            "complexity": ["timeout", "memory", "resource", "too many"],
+            "schema": ["validation", "schema", "invalid", "missing field", "type error"],
+            "error_handling": ["unhandled", "exception", "crash", "fatal"],
+            "resource": ["rate limit", "quota", "memory", "oom", "throttle"],
+            "timeout": ["timeout", "timed out", "deadline", "too slow"],
+        }
+
+        correlation: Dict[str, Dict[str, Any]] = {}
+        for finding in n8n_findings:
+            category = finding.get("failure_mode", "unknown")
+            confidence = finding.get("confidence", 0.0)
+
+            patterns = category_patterns.get(category, [])
+            matching_errors = sum(
+                1 for msg in error_messages if any(p in msg for p in patterns)
+            )
+            execution_confirmed = matching_errors > 0
+            # Negative delta = quality loss attributable to this failure mode
+            quality_delta = -error_rate * confidence if execution_confirmed else 0.0
+
+            if category in correlation:
+                prev = correlation[category]
+                prev["count"] += 1
+                prev["avg_confidence"] = round(
+                    (prev["avg_confidence"] * (prev["count"] - 1) + confidence) / prev["count"], 3
+                )
+                prev["matching_execution_errors"] += matching_errors
+                if execution_confirmed:
+                    prev["execution_confirmed"] = True
+                    prev["quality_delta"] = round(
+                        min(prev["quality_delta"], quality_delta), 4
+                    )
+            else:
+                correlation[category] = {
+                    "count": 1,
+                    "avg_confidence": round(confidence, 3),
+                    "quality_delta": round(quality_delta, 4),
+                    "execution_confirmed": execution_confirmed,
+                    "matching_execution_errors": matching_errors,
+                }
+
+        return correlation
 
     def _generate_summary(self, report: QualityReport) -> str:
         """Generate a human-readable summary of the quality report."""
