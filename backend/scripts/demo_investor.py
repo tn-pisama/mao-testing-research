@@ -11,6 +11,7 @@ Usage:
     python scripts/demo_investor.py --all              # Run all demo workflows
     python scripts/demo_investor.py --find-worst 10    # Find & heal 10 worst workflows
     python scripts/demo_investor.py --multi-agent 5    # Find & heal 5 multi-agent workflows
+    python scripts/demo_investor.py --failure-modes     # Demo all 17 MAST failure modes
 """
 
 import json
@@ -97,6 +98,207 @@ def print_score_card(report, label: str = "Assessment") -> Dict[str, float]:
         print(f"    {d.dimension:25s} {bar(d.score, 15)} {d.score:.0%}")
 
     return {k: sum(v) / len(v) for k, v in dims.items()}
+
+
+# ---------------------------------------------------------------------------
+# MAST failure mode definitions (17 modes)
+# ---------------------------------------------------------------------------
+
+MAST_MODES = {
+    # FC1: Planning Failures
+    "F1": {"label": "Specification Mismatch", "category": "FC1", "golden_prefix": None,
+            "primary_dims": ["output_consistency", "role_clarity", "ai_architecture"],
+            "agent_roles": [("Content Generator", "Generate content"), ("Format Checker", "Check format"), ("Quality Reviewer", "Review quality")],
+            "weaknesses": {"vague_prompt", "no_output_format", "no_validation"}},
+    "F2": {"label": "Poor Task Decomposition", "category": "FC1", "golden_prefix": None,
+            "primary_dims": ["role_clarity", "complexity_management"],
+            "agent_roles": [("General Assistant", "Help the user"), ("Helper", "Assist with tasks"), ("Processor", "Process data")],
+            "weaknesses": {"overlapping_roles", "no_output_format"}},
+    "F3": {"label": "Resource Misallocation", "category": "FC1", "golden_prefix": "RESOURCE",
+            "primary_dims": ["config_appropriateness", "error_handling", "best_practices"],
+            "agent_roles": [], "weaknesses": set()},
+    "F4": {"label": "Inadequate Tool Provision", "category": "FC1", "golden_prefix": None,
+            "primary_dims": ["tool_usage", "ai_architecture"],
+            "agent_roles": [("Data Fetcher", "Fetch data from APIs"), ("Analyzer", "Analyze the data"), ("Reporter", "Generate reports")],
+            "weaknesses": {"no_tools", "vague_prompt"}},
+    "F5": {"label": "Flawed Workflow Design", "category": "FC1", "golden_prefix": "LOOP",
+            "primary_dims": ["agent_coupling", "role_clarity", "complexity_management"],
+            "agent_roles": [], "weaknesses": set()},
+    # FC2: Execution Failures
+    "F6": {"label": "Task Derailment", "category": "FC2", "golden_prefix": None,
+            "primary_dims": ["role_clarity", "config_appropriateness"],
+            "agent_roles": [("Task Planner", "Plan tasks"), ("Task Executor", "Execute the plan"), ("Progress Tracker", "Track progress")],
+            "weaknesses": {"weak_boundaries", "high_temperature"}},
+    "F7": {"label": "Context Neglect", "category": "FC2", "golden_prefix": "STATE",
+            "primary_dims": ["data_flow_clarity", "best_practices", "observability"],
+            "agent_roles": [], "weaknesses": set()},
+    "F8": {"label": "Information Withholding", "category": "FC2", "golden_prefix": None,
+            "primary_dims": ["output_consistency", "data_flow_clarity", "agent_coupling"],
+            "agent_roles": [("Data Collector", "Collect information"), ("Summarizer", "Summarize findings"), ("Decision Maker", "Make decisions")],
+            "weaknesses": {"no_output_format", "no_handoff"}},
+    "F9": {"label": "Role Usurpation", "category": "FC2", "golden_prefix": "PERSONA",
+            "primary_dims": ["role_clarity", "output_consistency", "config_appropriateness"],
+            "agent_roles": [], "weaknesses": set()},
+    "F10": {"label": "Communication Breakdown", "category": "FC2", "golden_prefix": "COORD",
+            "primary_dims": ["agent_coupling", "data_flow_clarity", "observability"],
+            "agent_roles": [], "weaknesses": set()},
+    "F11": {"label": "Coordination Failure", "category": "FC2", "golden_prefix": "COORD",
+            "primary_dims": ["agent_coupling", "data_flow_clarity", "best_practices"],
+            "agent_roles": [], "weaknesses": set()},
+    # FC3: Verification Failures
+    "F12": {"label": "Output Validation Failure", "category": "FC3", "golden_prefix": None,
+            "primary_dims": ["ai_architecture", "error_handling", "best_practices"],
+            "agent_roles": [("Generator", "Generate output"), ("Validator", "Validate results"), ("Publisher", "Publish approved content")],
+            "weaknesses": {"no_validation", "no_error_handling"}},
+    "F13": {"label": "Quality Gate Bypass", "category": "FC3", "golden_prefix": None,
+            "primary_dims": ["observability", "best_practices", "test_coverage"],
+            "agent_roles": [("Processor", "Process input"), ("Checker", "Check quality"), ("Dispatcher", "Send results")],
+            "weaknesses": {"no_checkpoints", "no_error_trigger", "no_pin_data"}},
+    "F14": {"label": "Completion Misjudgment", "category": "FC3", "golden_prefix": None,
+            "primary_dims": ["role_clarity", "error_handling", "observability"],
+            "agent_roles": [("Worker", "Do the work"), ("Evaluator", "Evaluate completion"), ("Finalizer", "Finalize output")],
+            "weaknesses": {"no_completion_criteria", "no_validation"}},
+    # Extended
+    "F15": {"label": "Termination Awareness", "category": "EXT", "golden_prefix": "LOOP",
+            "primary_dims": ["agent_coupling", "role_clarity", "error_handling"],
+            "agent_roles": [], "weaknesses": set()},
+    "F16": {"label": "Reasoning/Action Mismatch", "category": "EXT", "golden_prefix": None,
+            "primary_dims": ["output_consistency", "config_appropriateness", "role_clarity"],
+            "agent_roles": [("Reasoner", "Analyze and reason"), ("Actor", "Take action"), ("Verifier", "Verify alignment")],
+            "weaknesses": {"no_output_format", "high_temperature", "weak_boundaries"}},
+    "F17": {"label": "Clarification Request", "category": "EXT", "golden_prefix": None,
+            "primary_dims": ["role_clarity", "error_handling"],
+            "agent_roles": [("Interpreter", "Interpret requests"), ("Clarifier", "Ask for clarification"), ("Executor", "Execute clear requests")],
+            "weaknesses": {"no_clarification", "no_error_handling"}},
+}
+
+MAST_CATEGORIES = {
+    "FC1": "Planning Failures",
+    "FC2": "Execution Failures",
+    "FC3": "Verification Failures",
+    "EXT": "Extended Failure Modes",
+}
+
+
+def count_ai_agents(workflow: Dict[str, Any]) -> int:
+    """Count AI agent nodes in a workflow."""
+    return sum(
+        1 for n in workflow.get("nodes", [])
+        if "langchain" in n.get("type", "") or "openAi" in n.get("type", "")
+    )
+
+
+# ---------------------------------------------------------------------------
+# Synthetic MAST workflow generator
+# ---------------------------------------------------------------------------
+
+# Weakness -> system prompt fragments
+_PROMPT_FRAGMENTS = {
+    "vague_prompt": "Help the user with their request.",
+    "weak_boundaries": "You are an assistant. Try your best.",
+    "overlapping_roles": "You are a general-purpose AI assistant. Handle any task.",
+    "no_clarification": "Process the input and produce output.",
+    "no_completion_criteria": "Work on the task until done.",
+}
+
+
+def _make_agent_node(
+    index: int,
+    role_name: str,
+    role_prompt: str,
+    weaknesses: set,
+    position_x: int,
+) -> Dict[str, Any]:
+    """Create a single agent node with specific weaknesses injected."""
+    agent_id = f"agent-{index}"
+
+    # Build system message based on weaknesses
+    if weaknesses & {"vague_prompt", "weak_boundaries", "overlapping_roles",
+                      "no_clarification", "no_completion_criteria"}:
+        # Use the first matching weakness prompt
+        for w in ["overlapping_roles", "vague_prompt", "weak_boundaries",
+                   "no_clarification", "no_completion_criteria"]:
+            if w in weaknesses:
+                system_msg = _PROMPT_FRAGMENTS[w]
+                break
+    else:
+        system_msg = ""  # No prompt at all
+
+    params: Dict[str, Any] = {}
+    if system_msg:
+        params["systemMessage"] = system_msg
+
+    # Inject high temperature if specified
+    if "high_temperature" in weaknesses:
+        params.setdefault("options", {})["temperature"] = 1.0
+
+    return {
+        "id": agent_id,
+        "name": role_name,
+        "type": "@n8n/n8n-nodes-langchain.agent",
+        "parameters": params,
+        "position": [position_x, 0],
+    }
+
+
+def generate_mast_workflow(mode_id: str, agent_count: int) -> Dict[str, Any]:
+    """Generate a synthetic n8n workflow exhibiting a specific MAST failure mode."""
+    mode = MAST_MODES[mode_id]
+    weaknesses = mode["weaknesses"]
+    roles = mode["agent_roles"]
+    label = "Simple" if agent_count == 1 else "Multi"
+
+    # Build nodes
+    nodes: List[Dict[str, Any]] = [
+        {"id": "t1", "name": "Webhook Trigger", "type": "n8n-nodes-base.webhook",
+         "parameters": {"path": f"/{mode_id.lower()}"}, "position": [0, 0]},
+    ]
+
+    for i in range(agent_count):
+        role_name = roles[i % len(roles)][0] if roles else f"Agent {i + 1}"
+        role_prompt = roles[i % len(roles)][1] if roles else "Process input"
+        nodes.append(_make_agent_node(i, role_name, role_prompt, weaknesses, (i + 1) * 200))
+
+    nodes.append(
+        {"id": "out", "name": "Output", "type": "n8n-nodes-base.respondToWebhook",
+         "parameters": {}, "position": [(agent_count + 1) * 200, 0]},
+    )
+
+    # Chain connections: trigger -> agent0 -> agent1 -> ... -> output
+    connections: Dict[str, Any] = {}
+    for i in range(len(nodes) - 1):
+        src = nodes[i]["name"]
+        dst = nodes[i + 1]["name"]
+        connections[src] = {"main": [[{"node": dst, "type": "main", "index": 0}]]}
+
+    return {
+        "name": f"{mode_id} {label}: {mode['label']}",
+        "nodes": nodes,
+        "connections": connections,
+        "settings": {},
+    }
+
+
+def find_golden_dataset_for_mode(
+    entries: List[Dict[str, Any]], prefix: str
+) -> Dict[str, Dict[str, Any]]:
+    """Find smallest-team and largest-team workflows for a golden dataset prefix."""
+    seen: set = set()
+    candidates: List[Dict[str, Any]] = []
+    for e in entries:
+        name = e.get("input_data", {}).get("workflow_name", "")
+        if not name.startswith(prefix) or name in seen:
+            continue
+        seen.add(name)
+        wf = build_workflow(e)
+        agents = count_ai_agents(wf)
+        candidates.append({"workflow": wf, "agents": agents, "name": name})
+
+    if not candidates:
+        return {}
+
+    candidates.sort(key=lambda x: x["agents"])
+    return {"small": candidates[0], "large": candidates[-1]}
 
 
 # ---------------------------------------------------------------------------
@@ -227,6 +429,8 @@ def run_demo_on_workflow(
             "improvement": 0,
             "fixes": 0,
             "status": "healthy",
+            "before_dims": before_dims,
+            "after_dims": before_dims,
         }
 
     # Step 3: Heal
@@ -280,6 +484,8 @@ def run_demo_on_workflow(
         "improvement": improvement,
         "fixes": n_fixes,
         "status": result.status.value,
+        "before_dims": before_dims,
+        "after_dims": after_dims,
     }
 
 
@@ -311,6 +517,74 @@ def print_summary(results: List[Dict[str, Any]]) -> None:
         print(f"  {c('Best improvement:', 'bold')} {c(f'{best_imp:+.0%}', 'green')}")
 
 
+def print_failure_mode_summary(mode_results: Dict[str, List[Dict[str, Any]]]) -> None:
+    """Print failure-mode-organized summary with per-dimension improvements."""
+    print_header("MAST Failure Mode Healing Summary")
+
+    all_results: List[Dict[str, Any]] = []
+
+    # Group by MAST category
+    for cat_id, cat_label in MAST_CATEGORIES.items():
+        cat_modes = [m for m, cfg in MAST_MODES.items() if cfg["category"] == cat_id]
+        cat_has_results = any(m in mode_results for m in cat_modes)
+        if not cat_has_results:
+            continue
+
+        print(f"\n  {c(f'{cat_id}: {cat_label}', 'bold')}")
+        print(f"  {'Mode':<6s} {'Failure':<28s} {'Small':>14s} {'Large':>14s} {'Avg Delta':>10s}")
+        print(f"  {'─' * 6} {'─' * 28} {'─' * 14} {'─' * 14} {'─' * 10}")
+
+        for mode_id in cat_modes:
+            results = mode_results.get(mode_id, [])
+            if not results:
+                continue
+            all_results.extend(results)
+            label = MAST_MODES[mode_id]["label"][:28]
+
+            small_r = next((r for r in results if r.get("team_size") == "small"), None)
+            large_r = next((r for r in results if r.get("team_size") == "large"), None)
+
+            small_str = f"{small_r['before']:.0%}->{small_r['after']:.0%}" if small_r else "—"
+            large_str = f"{large_r['before']:.0%}->{large_r['after']:.0%}" if large_r else "—"
+
+            imps = [r["improvement"] for r in results if r["improvement"] > 0]
+            avg_imp = sum(imps) / len(imps) if imps else 0
+            dc = "green" if avg_imp > 0.15 else "yellow" if avg_imp > 0.05 else "dim"
+
+            print(f"  {c(mode_id, 'cyan'):<15s} {label:<28s} {small_str:>14s} {large_str:>14s} {c(f'{avg_imp:+.0%}', dc):>19s}")
+
+    # Per-mode primary dimension improvements
+    print(f"\n  {c('Key Dimension Improvements by Mode:', 'bold')}")
+    for mode_id in sorted(mode_results.keys(), key=lambda x: int(x[1:])):
+        results = mode_results[mode_id]
+        mode = MAST_MODES[mode_id]
+        dim_deltas = []
+        for dim in mode["primary_dims"]:
+            befores = [r["before_dims"].get(dim, 0) for r in results if "before_dims" in r]
+            afters = [r["after_dims"].get(dim, 0) for r in results if "after_dims" in r]
+            if befores and afters:
+                delta = (sum(afters) / len(afters)) - (sum(befores) / len(befores))
+                if abs(delta) > 0.01:
+                    dc = "green" if delta > 0 else "red"
+                    dim_deltas.append(f"{dim} {c(f'{delta:+.0%}', dc)}")
+        if dim_deltas:
+            print(f"    {c(mode_id, 'cyan')} {mode['label'][:25]:<25s}  {', '.join(dim_deltas)}")
+
+    # Overall stats
+    if all_results:
+        healed = [r for r in all_results if r["improvement"] > 0]
+        modes_covered = len(mode_results)
+        print(f"\n  {c(f'{modes_covered}/17 MAST failure modes covered', 'bold')}")
+        print(f"  {len(all_results)} workflows tested, {len(healed)} improved")
+        if healed:
+            avg_b = sum(r["before"] for r in healed) / len(healed)
+            avg_a = sum(r["after"] for r in healed) / len(healed)
+            avg_imp = sum(r["improvement"] for r in healed) / len(healed)
+            best_imp = max(r["improvement"] for r in healed)
+            print(f"  Average: {avg_b:.0%} -> {avg_a:.0%} ({c(f'{avg_imp:+.0%}', 'green')})")
+            print(f"  Best single improvement: {c(f'{best_imp:+.0%}', 'green')}")
+
+
 def main():
     import argparse
 
@@ -319,6 +593,7 @@ def main():
     parser.add_argument("--all", action="store_true", help="Run all 3 demo workflows")
     parser.add_argument("--find-worst", type=int, metavar="N", help="Find and heal N worst-scoring workflows")
     parser.add_argument("--multi-agent", type=int, metavar="N", help="Find and heal N multi-agent workflows (3+ agents)")
+    parser.add_argument("--failure-modes", action="store_true", help="Demo all 17 MAST failure modes with small/large teams")
     parser.add_argument("--max-fixes", type=int, default=50, help="Max fixes per workflow (default: 50)")
     args = parser.parse_args()
 
@@ -405,6 +680,75 @@ def main():
         scored.sort(key=lambda x: x[0])
         workflows_to_test = [wf for _, _, wf in scored[: args.multi_agent]]
         print(f"  Found {len(workflows_to_test)} multi-agent workflows below 60%")
+
+    elif args.failure_modes:
+        print(f"\n  {c('All 17 MAST Failure Modes', 'bold')} — single-agent & multi-agent healing")
+        print(f"  17 modes x 2 team sizes = 34 workflows\n")
+
+        mode_results: Dict[str, List[Dict[str, Any]]] = {}
+        seen_prefixes: set = set()
+
+        for mode_id in sorted(MAST_MODES.keys(), key=lambda x: int(x[1:])):
+            mode = MAST_MODES[mode_id]
+            cat = MAST_CATEGORIES[mode["category"]]
+            prefix = mode["golden_prefix"]
+
+            mode_label = mode["label"]
+            print(f"\n  {c(f'{mode_id}: {mode_label}', 'bold')} ({cat})")
+
+            mode_results[mode_id] = []
+
+            if prefix and prefix not in seen_prefixes:
+                # Use golden dataset workflows
+                seen_prefixes.add(prefix)
+                gd = find_golden_dataset_for_mode(entries, prefix)
+                if gd:
+                    # Small team
+                    small = gd["small"]
+                    n_small = small["agents"]
+                    print(f"  {c(f'Small team ({n_small} agents) — golden dataset', 'dim')}")
+                    result = run_demo_on_workflow(small["workflow"], assessor, engine)
+                    result["team_size"] = "small"
+                    result["agents"] = n_small
+                    mode_results[mode_id].append(result)
+
+                    # Large team
+                    large = gd["large"]
+                    n_large = large["agents"]
+                    print(f"  {c(f'Large team ({n_large} agents) — golden dataset', 'dim')}")
+                    result = run_demo_on_workflow(large["workflow"], assessor, engine)
+                    result["team_size"] = "large"
+                    result["agents"] = large["agents"]
+                    mode_results[mode_id].append(result)
+                else:
+                    print(c(f"  No golden dataset workflows for {prefix}", "yellow"))
+
+            elif prefix and prefix in seen_prefixes:
+                # This prefix was already used by another mode (e.g., COORD for F10 and F11)
+                # Generate synthetic instead to avoid duplicates
+                for agent_count, team_label in [(1, "small"), (3, "large")]:
+                    wf = generate_mast_workflow(mode_id, agent_count)
+                    suffix = "s" if agent_count > 1 else ""
+                    print(f"  {c(f'{team_label.title()} team ({agent_count} agent{suffix}) — synthetic', 'dim')}")
+                    result = run_demo_on_workflow(wf, assessor, engine)
+                    result["team_size"] = team_label
+                    result["agents"] = agent_count
+                    mode_results[mode_id].append(result)
+
+            else:
+                # Generate synthetic workflows
+                for agent_count, team_label in [(1, "small"), (3, "large")]:
+                    wf = generate_mast_workflow(mode_id, agent_count)
+                    suffix = "s" if agent_count > 1 else ""
+                    print(f"  {c(f'{team_label.title()} team ({agent_count} agent{suffix}) — synthetic', 'dim')}")
+                    result = run_demo_on_workflow(wf, assessor, engine)
+                    result["team_size"] = team_label
+                    result["agents"] = agent_count
+                    mode_results[mode_id].append(result)
+
+        print_failure_mode_summary(mode_results)
+        print()
+        return
 
     else:
         # Default: 1 single-agent + auto-selected multi-agent workflows
