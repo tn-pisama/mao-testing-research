@@ -43,14 +43,14 @@ logger = logging.getLogger(__name__)
 class SelfHealingEngine:
     """
     Orchestrates the complete self-healing pipeline:
-    
+
     1. Analyze detection → Identify failure signature
     2. Generate fixes → Create fix suggestions
     3. Apply fixes → Modify workflow configuration
     4. Validate → Test that fix works
     5. Report → Return healing result
     """
-    
+
     def __init__(
         self,
         auto_apply: bool = False,
@@ -85,6 +85,9 @@ class SelfHealingEngine:
         self.applicator = FixApplicator()
         self.validator = FixValidator()
 
+        # Per-workflow locks to prevent concurrent healing on the same workflow
+        self._workflow_locks: Dict[str, asyncio.Lock] = {}
+
         self.fix_generator = FixGenerator()
         self.fix_generator.register(LoopFixGenerator())
         self.fix_generator.register(CorruptionFixGenerator())
@@ -105,7 +108,13 @@ class SelfHealingEngine:
 
         self._healing_history: List[HealingResult] = []
         self._apply_results: List[ApplyResult] = []
-    
+
+    def _get_workflow_lock(self, workflow_id: str) -> asyncio.Lock:
+        """Get or create an asyncio.Lock for a workflow to prevent concurrent healing."""
+        if workflow_id not in self._workflow_locks:
+            self._workflow_locks[workflow_id] = asyncio.Lock()
+        return self._workflow_locks[workflow_id]
+
     async def heal(
         self,
         detection: Dict[str, Any],
@@ -331,6 +340,9 @@ class SelfHealingEngine:
         This is the main entry point for solo developers using n8n.
         It combines detection, fix generation, git backup, and auto-apply.
 
+        Acquires a per-workflow lock to prevent concurrent healing operations
+        on the same workflow, which could corrupt state.
+
         Args:
             detection: The detection result to heal
             workflow_id: n8n workflow ID
@@ -340,6 +352,35 @@ class SelfHealingEngine:
         Returns:
             HealingResult with status and applied fixes
         """
+        lock = self._get_workflow_lock(workflow_id)
+
+        if lock.locked():
+            # Another healing is already in progress for this workflow
+            return HealingResult(
+                id=f"heal_{secrets.token_hex(8)}",
+                detection_id=detection.get("id", ""),
+                status=HealingStatus.FAILED,
+                started_at=datetime.now(timezone.utc),
+                completed_at=datetime.now(timezone.utc),
+                failure_signature=None,
+                applied_fixes=[],
+                validation_results=[],
+                error=f"Concurrent healing blocked: another healing is in progress for workflow {workflow_id}",
+            )
+
+        async with lock:
+            return await self._heal_n8n_workflow_locked(
+                detection, workflow_id, n8n_client, trace,
+            )
+
+    async def _heal_n8n_workflow_locked(
+        self,
+        detection: Dict[str, Any],
+        workflow_id: str,
+        n8n_client: Any,
+        trace: Optional[Dict[str, Any]] = None,
+    ) -> HealingResult:
+        """Internal: heal workflow while holding the workflow lock."""
         result = HealingResult(
             id=f"heal_{secrets.token_hex(8)}",
             detection_id=detection.get("id", ""),

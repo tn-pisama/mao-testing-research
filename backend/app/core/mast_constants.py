@@ -62,3 +62,28 @@ FAILURE_MODE_NAMES = {
 # LLM judge tier assignments
 LOW_STAKES_FAILURE_MODES = {"F3", "F7", "F11", "F12"}
 HIGH_STAKES_FAILURE_MODES = {"F6", "F8", "F9", "F14"}
+
+# Supported vs unsupported failure modes for runtime detection.
+# Unsupported modes are honestly disabled until detection quality improves.
+SUPPORTED_FAILURE_MODES = {
+    "F1",   # Specification Mismatch (F1=0.230, improving)
+    "F3",   # Resource Misallocation (F1=0.451, best performer)
+    "F4",   # Inadequate Tool Provision (good logic, threshold fix needed)
+    "F5",   # Flawed Workflow Design (F1=0.075, needs recall improvement)
+    "F7",   # Context Neglect (F1=0.028, needs redesign)
+    "F11",  # Coordination Failure (F1=0.100, reducing benign whitelist)
+    "F12",  # Output Validation Failure (F1=0.301, reducing FP rate)
+    "F13",  # Quality Gate Bypass (F1=0.078, improving recall)
+    "F14",  # Completion Misjudgment (F1=0.333, reducing FP rate)
+}
+
+UNSUPPORTED_FAILURE_MODES = {
+    "F2":  "Insufficient training data (3 samples). Re-enable when 50+ samples collected.",
+    "F6":  "Zero true positives despite v1.5 detector. Re-enable after embedding tuning.",
+    "F8":  "Zero true positives despite v1.2 detector. Re-enable when internal state access solved.",
+    "F9":  "Insufficient training data (10 samples). Re-enable when 50+ samples collected.",
+    "F10": "No training data exists. Detector disabled in code. Re-enable when data available.",
+    "F15": "No MAST benchmark data available. Re-enable when OfficeQA benchmark integrated.",
+    "F16": "No MAST benchmark data available. Re-enable when OfficeQA benchmark integrated.",
+    "F17": "Not yet implemented. No detector code or training data.",
+}

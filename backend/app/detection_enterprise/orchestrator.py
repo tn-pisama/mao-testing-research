@@ -11,6 +11,8 @@ from enum import Enum
 from typing import Any, Dict, List, Optional, Tuple
 import json
 
+import logging
+
 from app.config import get_settings
 from app.ingestion.universal_trace import UniversalTrace, UniversalSpan, SpanType, SpanStatus
 from app.detection.loop import MultiLevelLoopDetector, StateSnapshot, LoopDetectionResult
@@ -26,6 +28,8 @@ from app.detection_enterprise.tool_provision import ToolProvisionDetector
 from app.detection_enterprise.grounding import GroundingDetector, GroundingSeverity
 from app.detection_enterprise.retrieval_quality import RetrievalQualityDetector, RetrievalSeverity
 
+
+logger = logging.getLogger(__name__)
 
 settings = get_settings()
 
@@ -116,6 +120,7 @@ class DiagnosisResult:
     # Metadata
     detection_time_ms: int = 0
     detectors_run: List[str] = field(default_factory=list)
+    detectors_disabled: Dict[str, str] = field(default_factory=dict)
 
     def to_dict(self) -> Dict[str, Any]:
         return {
@@ -134,6 +139,7 @@ class DiagnosisResult:
             "auto_fix_preview": self.auto_fix_preview,
             "detection_time_ms": self.detection_time_ms,
             "detectors_run": self.detectors_run,
+            "detectors_disabled": self.detectors_disabled,
         }
 
 
@@ -143,6 +149,29 @@ class DetectionOrchestrator:
     This orchestrator runs multiple detection algorithms in parallel and
     aggregates results into a unified diagnosis.
     """
+
+    # Detectors disabled due to zero detection accuracy.  Mapping from
+    # DetectionCategory to human-readable reason.  These detectors are
+    # skipped at runtime and their status is reported honestly in the
+    # DiagnosisResult.
+    DISABLED_DETECTORS: Dict[str, str] = {
+        DetectionCategory.INFORMATION_WITHHOLDING: (
+            "F8 Information Withholding: zero true positives in benchmark. "
+            "Re-enable when internal state access is solved."
+        ),
+        DetectionCategory.TASK_DERAILMENT: (
+            "F6 Task Derailment: zero true positives despite v1.5 detector. "
+            "Re-enable after embedding tuning."
+        ),
+        DetectionCategory.GROUNDING_FAILURE: (
+            "F15 Grounding Failure: no MAST benchmark data available. "
+            "Re-enable when OfficeQA benchmark is integrated."
+        ),
+        DetectionCategory.RETRIEVAL_QUALITY: (
+            "F16 Retrieval Quality: no MAST benchmark data available. "
+            "Re-enable when OfficeQA benchmark is integrated."
+        ),
+    }
 
     def __init__(
         self,
@@ -242,16 +271,21 @@ class DetectionOrchestrator:
             result.detectors_run.append("error_patterns")
 
         # Run grounding failure detection (F15: OfficeQA-inspired)
-        grounding_result = self._detect_grounding_failure(trace)
-        if grounding_result:
-            all_detections.append(grounding_result)
-            result.detectors_run.append("grounding")
+        if DetectionCategory.GROUNDING_FAILURE not in self.DISABLED_DETECTORS:
+            grounding_result = self._detect_grounding_failure(trace)
+            if grounding_result:
+                all_detections.append(grounding_result)
+                result.detectors_run.append("grounding")
 
         # Run retrieval quality detection (F16: OfficeQA-inspired)
-        retrieval_result = self._detect_retrieval_quality(trace)
-        if retrieval_result:
-            all_detections.append(retrieval_result)
-            result.detectors_run.append("retrieval_quality")
+        if DetectionCategory.RETRIEVAL_QUALITY not in self.DISABLED_DETECTORS:
+            retrieval_result = self._detect_retrieval_quality(trace)
+            if retrieval_result:
+                all_detections.append(retrieval_result)
+                result.detectors_run.append("retrieval_quality")
+
+        # Report disabled detectors for transparency
+        result.detectors_disabled = dict(self.DISABLED_DETECTORS)
 
         # Filter to only detected issues
         detected_issues = [d for d in all_detections if d.detected]
@@ -307,8 +341,7 @@ class DetectionOrchestrator:
                     raw_result=loop_result,
                 )
         except Exception as e:
-            # Log but don't fail the entire diagnosis
-            pass
+            logger.warning("Loop detector failed: %s", e)
 
         return None
 
@@ -527,7 +560,7 @@ class DetectionOrchestrator:
                     raw_result=result,
                 )
         except Exception as e:
-            pass
+            logger.warning("Grounding detector failed: %s", e)
 
         return None
 
@@ -594,7 +627,7 @@ class DetectionOrchestrator:
                     raw_result=result,
                 )
         except Exception as e:
-            pass
+            logger.warning("Retrieval quality detector failed: %s", e)
 
         return None
 

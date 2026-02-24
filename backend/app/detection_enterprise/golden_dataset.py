@@ -1,5 +1,6 @@
 """Golden dataset for detection validation and calibration."""
 
+import hashlib
 import json
 from dataclasses import dataclass, field, asdict
 from typing import List, Dict, Any, Optional
@@ -27,6 +28,7 @@ class GoldenDatasetEntry:
     augmentation_method: Optional[str] = None
     human_verified: bool = False
     difficulty: str = "easy"  # easy, medium, hard
+    split: str = "train"  # train, val, test
     
     def to_labeled_sample(self) -> LabeledSample:
         return LabeledSample(
@@ -63,12 +65,52 @@ class GoldenDataset:
     
     def get_entries_by_type(self, detection_type: DetectionType) -> List[GoldenDatasetEntry]:
         return [e for e in self.entries.values() if e.detection_type == detection_type]
-    
+
+    def get_entries_by_type_and_split(
+        self, detection_type: DetectionType, splits: List[str],
+    ) -> List[GoldenDatasetEntry]:
+        """Get entries filtered by both detection type and split(s)."""
+        return [
+            e for e in self.entries.values()
+            if e.detection_type == detection_type and e.split in splits
+        ]
+
     def get_entries_by_tag(self, tag: str) -> List[GoldenDatasetEntry]:
         return [e for e in self.entries.values() if tag in e.tags]
-    
+
     def to_labeled_samples(self) -> List[LabeledSample]:
         return [e.to_labeled_sample() for e in self.entries.values()]
+
+    def assign_splits(self, train: float = 0.70, val: float = 0.15, seed: int = 42) -> None:
+        """Assign train/val/test splits stratified by detection type and label.
+
+        Uses deterministic hashing so splits are reproducible across runs.
+        Stratifies within each (detection_type, expected_detected) group so
+        class balance is preserved per split.
+        """
+        # Group entries by (detection_type, expected_detected)
+        groups: Dict[str, List[GoldenDatasetEntry]] = {}
+        for entry in self.entries.values():
+            key = f"{entry.detection_type.value}_{entry.expected_detected}"
+            groups.setdefault(key, []).append(entry)
+
+        for group_entries in groups.values():
+            # Deterministic sort by entry ID hash for reproducibility
+            sorted_entries = sorted(
+                group_entries,
+                key=lambda e: hashlib.md5(f"{seed}_{e.id}".encode()).hexdigest(),
+            )
+            n = len(sorted_entries)
+            n_train = max(1, round(n * train))  # at least 1 in train
+            n_val = round(n * val)
+            # Remaining go to test
+            for i, entry in enumerate(sorted_entries):
+                if i < n_train:
+                    entry.split = "train"
+                elif i < n_train + n_val:
+                    entry.split = "val"
+                else:
+                    entry.split = "test"
     
     def save(self, path: Optional[Path] = None) -> None:
         save_path = path or self.dataset_path
@@ -125,12 +167,18 @@ class GoldenDataset:
             entries = self.get_entries_by_type(dt)
             if entries:
                 positive = sum(1 for e in entries if e.expected_detected)
+                splits = {}
+                for split_name in ("train", "val", "test"):
+                    split_entries = [e for e in entries if e.split == split_name]
+                    if split_entries:
+                        splits[split_name] = len(split_entries)
                 by_type[dt.value] = {
                     "total": len(entries),
                     "positive": positive,
                     "negative": len(entries) - positive,
+                    "splits": splits,
                 }
-        
+
         return {
             "total_entries": len(self.entries),
             "by_type": by_type,
@@ -2837,8 +2885,13 @@ _ALL_SAMPLE_LISTS = [
 ]
 
 
-def create_default_golden_dataset() -> GoldenDataset:
-    """Create a golden dataset with default samples."""
+def create_default_golden_dataset(assign_splits: bool = True) -> GoldenDataset:
+    """Create a golden dataset with default samples.
+
+    Args:
+        assign_splits: If True, assign deterministic train/val/test splits
+            (70/15/15) stratified by detection type and label.
+    """
     dataset = GoldenDataset()
 
     for sample_list in _ALL_SAMPLE_LISTS:
@@ -2849,6 +2902,9 @@ def create_default_golden_dataset() -> GoldenDataset:
     from app.detection_enterprise.n8n_golden_entries import create_n8n_golden_entries
     for sample in create_n8n_golden_entries():
         dataset.add_entry(sample)
+
+    if assign_splits:
+        dataset.assign_splits()
 
     return dataset
 

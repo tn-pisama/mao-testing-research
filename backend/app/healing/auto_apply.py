@@ -11,7 +11,7 @@ from datetime import datetime, timezone, timedelta
 from typing import Dict, Any, Optional, List
 from collections import defaultdict
 
-from .models import HealingResult, AppliedFix
+from .models import HealingResult, AppliedFix, FixRiskLevel, get_fix_risk_level
 
 logger = logging.getLogger(__name__)
 
@@ -25,6 +25,11 @@ class AutoApplyConfig:
     rollback_on_failure: bool = True
     cooldown_after_rollback_seconds: int = 300  # 5 min cooldown after rollback
     max_consecutive_failures: int = 3
+    # Healing loop detection: halt after this many healings in the time window
+    healing_loop_threshold: int = 5
+    healing_loop_window_minutes: int = 60
+    # Risk-based auto-apply control
+    auto_apply_max_risk: FixRiskLevel = FixRiskLevel.MEDIUM
 
 
 @dataclass
@@ -119,6 +124,8 @@ class AutoApplyService:
         self._failure_counts: Dict[str, int] = defaultdict(int)
         self._cooldowns: Dict[str, datetime] = {}
         self._apply_history: List[ApplyResult] = []
+        # Track healing attempts per workflow for loop detection
+        self._healing_timestamps: Dict[str, List[datetime]] = defaultdict(list)
 
     def check_rate_limit(self, workflow_id: str) -> bool:
         """Check if we can apply a fix to this workflow."""
@@ -138,8 +145,50 @@ class AutoApplyService:
             logger.warning(f"Workflow {workflow_id} has too many consecutive failures")
             return False
 
+        # Check healing loop
+        if self.detect_healing_loop(workflow_id):
+            logger.warning(
+                f"Healing loop detected for workflow {workflow_id}: "
+                f">{self.config.healing_loop_threshold} healings in "
+                f"{self.config.healing_loop_window_minutes} minutes. "
+                "Auto-apply halted — escalate to human."
+            )
+            return False
+
         # Check rate limit
         return self._rate_limiter.check(workflow_id)
+
+    def detect_healing_loop(self, workflow_id: str) -> bool:
+        """Detect if a workflow is being healed too frequently.
+
+        Returns True if the number of healing attempts in the configured
+        time window exceeds the threshold, indicating a healing loop.
+        """
+        now = datetime.now(timezone.utc)
+        cutoff = now - timedelta(minutes=self.config.healing_loop_window_minutes)
+
+        # Clean old timestamps
+        self._healing_timestamps[workflow_id] = [
+            ts for ts in self._healing_timestamps[workflow_id] if ts > cutoff
+        ]
+
+        return len(self._healing_timestamps[workflow_id]) >= self.config.healing_loop_threshold
+
+    def check_fix_risk(self, fix_type: str) -> Optional[str]:
+        """Check if a fix type is allowed under the current risk policy.
+
+        Returns None if allowed, or an error message if blocked.
+        """
+        risk = get_fix_risk_level(fix_type)
+        max_risk = self.config.auto_apply_max_risk
+
+        risk_order = {FixRiskLevel.SAFE: 0, FixRiskLevel.MEDIUM: 1, FixRiskLevel.DANGEROUS: 2}
+        if risk_order[risk] > risk_order[max_risk]:
+            return (
+                f"Fix type '{fix_type}' has risk level '{risk.value}' which exceeds "
+                f"auto-apply maximum '{max_risk.value}'. Manual approval required."
+            )
+        return None
 
     async def apply_fix(
         self,
@@ -174,11 +223,26 @@ class AutoApplyService:
             result.error = "Auto-apply is disabled"
             return result
 
-        # Check rate limit
+        # Check fix risk level
+        fix_type = fix.get("fix_type", fix.get("type", ""))
+        risk_error = self.check_fix_risk(fix_type)
+        if risk_error:
+            result.error = risk_error
+            logger.warning(f"Fix blocked by risk policy: {risk_error}")
+            return result
+
+        # Check rate limit (includes healing loop detection)
         if not self.check_rate_limit(workflow_id):
             remaining = self._rate_limiter.remaining(workflow_id)
             reset_time = self._rate_limiter.reset_time(workflow_id)
-            result.error = f"Rate limited. Remaining: {remaining}, Resets: {reset_time}"
+            if self.detect_healing_loop(workflow_id):
+                result.error = (
+                    f"Healing loop detected: >{self.config.healing_loop_threshold} "
+                    f"attempts in {self.config.healing_loop_window_minutes} minutes. "
+                    "Escalate to human."
+                )
+            else:
+                result.error = f"Rate limited. Remaining: {remaining}, Resets: {reset_time}"
             return result
 
         # Create Git backup if required
@@ -202,6 +266,7 @@ class AutoApplyService:
 
             # Record the action
             self._rate_limiter.record(workflow_id)
+            self._healing_timestamps[workflow_id].append(datetime.now(timezone.utc))
             self._failure_counts[workflow_id] = 0  # Reset failure count on success
 
             logger.info(f"Successfully applied fix {fix.get('id')} to workflow {workflow_id}")

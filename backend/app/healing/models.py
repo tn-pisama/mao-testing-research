@@ -18,6 +18,63 @@ class HealingStatus(Enum):
     ROLLBACK = "rollback"
 
 
+class FixRiskLevel(Enum):
+    """Risk classification for healing fixes.
+
+    SAFE: Config-only changes (iteration limits, timeouts). Auto-apply allowed.
+    MEDIUM: Adds checks/guards that change behavior. Auto-apply with verification.
+    DANGEROUS: Alters core logic (prompts, system messages). Requires approval.
+    """
+    SAFE = "safe"
+    MEDIUM = "medium"
+    DANGEROUS = "dangerous"
+
+
+# Maps fix types to their risk levels.
+FIX_RISK_MAP: Dict[str, "FixRiskLevel"] = {
+    # SAFE: config knobs that don't alter agent behavior
+    "retry_limit": FixRiskLevel.SAFE,
+    "circuit_breaker": FixRiskLevel.SAFE,
+    "execution_timeout": FixRiskLevel.SAFE,
+    "loop_breaker": FixRiskLevel.SAFE,
+    "timeout_adjustment": FixRiskLevel.SAFE,
+    "budget_limiter": FixRiskLevel.SAFE,
+    "cost_monitor": FixRiskLevel.SAFE,
+    "checkpoint_recovery": FixRiskLevel.SAFE,
+    "state_validation": FixRiskLevel.SAFE,
+    # MEDIUM: adds guardrails that may restrict behavior
+    "exponential_backoff": FixRiskLevel.MEDIUM,
+    "context_pruning": FixRiskLevel.MEDIUM,
+    "summarization": FixRiskLevel.MEDIUM,
+    "window_management": FixRiskLevel.MEDIUM,
+    "schema_enforcement": FixRiskLevel.MEDIUM,
+    "deadlock_prevention": FixRiskLevel.MEDIUM,
+    "task_decomposition": FixRiskLevel.MEDIUM,
+    "subtask_validator": FixRiskLevel.MEDIUM,
+    "token_optimizer": FixRiskLevel.MEDIUM,
+    "state_reset": FixRiskLevel.MEDIUM,
+    # DANGEROUS: alters core logic, prompts, or permissions
+    "prompt_reinforcement": FixRiskLevel.DANGEROUS,
+    "prompt_modification": FixRiskLevel.DANGEROUS,
+    "role_boundary": FixRiskLevel.DANGEROUS,
+    "input_filtering": FixRiskLevel.DANGEROUS,
+    "safety_boundary": FixRiskLevel.DANGEROUS,
+    "permission_gate": FixRiskLevel.DANGEROUS,
+    "fact_checking": FixRiskLevel.DANGEROUS,
+    "source_grounding": FixRiskLevel.DANGEROUS,
+    "confidence_calibration": FixRiskLevel.DANGEROUS,
+    "transparency_enforcer": FixRiskLevel.DANGEROUS,
+    "completeness_check": FixRiskLevel.DANGEROUS,
+    "task_anchoring": FixRiskLevel.DANGEROUS,
+    "goal_tracking": FixRiskLevel.DANGEROUS,
+}
+
+
+def get_fix_risk_level(fix_type: str) -> "FixRiskLevel":
+    """Get the risk level for a fix type. Defaults to MEDIUM if unknown."""
+    return FIX_RISK_MAP.get(fix_type, FixRiskLevel.MEDIUM)
+
+
 class FailureCategory(Enum):
     INFINITE_LOOP = "infinite_loop"
     STATE_CORRUPTION = "state_corruption"

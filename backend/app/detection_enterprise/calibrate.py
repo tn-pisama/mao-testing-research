@@ -880,12 +880,18 @@ def calibrate_single(
     )
 
 
-def calibrate_all(phoenix_tracer: Optional[Any] = None) -> Dict[str, Any]:
+def calibrate_all(
+    phoenix_tracer: Optional[Any] = None,
+    splits: Optional[List[str]] = None,
+) -> Dict[str, Any]:
     """Run calibration across all detector types using the golden dataset.
 
     Args:
         phoenix_tracer: Optional OTEL tracer for Phoenix observability.
             When provided, each detector calibration is exported as a span.
+        splits: If provided, only use entries from these splits (e.g.
+            ``["train", "val"]``).  When ``None``, uses all entries
+            (backward-compatible).
 
     Returns:
         A dict with the structure::
@@ -894,6 +900,7 @@ def calibrate_all(phoenix_tracer: Optional[Any] = None) -> Dict[str, Any]:
                 "calibrated_at": "<ISO timestamp>",
                 "detector_count": <int>,
                 "skipped": ["<type>", ...],
+                "splits_used": ["train", "val"] | null,
                 "results": {
                     "<detection_type>": {
                         "optimal_threshold": <float>,
@@ -950,7 +957,10 @@ def calibrate_all(phoenix_tracer: Optional[Any] = None) -> Dict[str, Any]:
             _parent_ctx = None
 
     for dt in target_types:
-        entries = dataset.get_entries_by_type(dt)
+        if splits:
+            entries = dataset.get_entries_by_type_and_split(dt, splits)
+        else:
+            entries = dataset.get_entries_by_type(dt)
 
         # Optional: child span per detector
         _child_ctx = None
@@ -1001,9 +1011,92 @@ def calibrate_all(phoenix_tracer: Optional[Any] = None) -> Dict[str, Any]:
         "calibrated_at": datetime.now(timezone.utc).isoformat(),
         "detector_count": len(results),
         "skipped": skipped,
+        "splits_used": splits,
         "results": results,
     }
     return report
+
+
+# ---------------------------------------------------------------------------
+# Holdout evaluation (uses test split only)
+# ---------------------------------------------------------------------------
+
+
+def evaluate_holdout(
+    calibration_report: Dict[str, Any],
+) -> Dict[str, Any]:
+    """Evaluate detectors on the held-out test split using calibrated thresholds.
+
+    This provides unbiased metrics on data never seen during calibration.
+
+    Args:
+        calibration_report: The dict returned by ``calibrate_all()``, which
+            contains ``results[dtype]["optimal_threshold"]`` per detector.
+
+    Returns:
+        A dict with per-detector metrics on the test set only::
+
+            {
+                "evaluated_at": "<ISO timestamp>",
+                "split": "test",
+                "results": { "<dtype>": { "f1": ..., "precision": ..., ... } }
+            }
+    """
+    dataset = create_default_golden_dataset()
+    cal_results = calibration_report.get("results", {})
+    eval_results: Dict[str, Any] = {}
+
+    for dtype_val, cal_metrics in cal_results.items():
+        try:
+            dt = DetectionType(dtype_val)
+        except ValueError:
+            continue
+
+        entries = dataset.get_entries_by_type_and_split(dt, ["test"])
+        if not entries:
+            continue
+
+        runner = DETECTOR_RUNNERS.get(dt)
+        if runner is None:
+            continue
+
+        threshold = cal_metrics.get("optimal_threshold", 0.5)
+
+        predictions: List[Tuple[bool, float]] = []
+        ground_truths: List[bool] = []
+
+        for entry in entries:
+            try:
+                detected, confidence = runner(entry)
+                predictions.append((detected, confidence))
+                ground_truths.append(entry.expected_detected)
+            except Exception:
+                predictions.append((False, 0.0))
+                ground_truths.append(entry.expected_detected)
+
+        tp, tn, fp, fn = _compute_metrics_at_threshold(
+            predictions, ground_truths, threshold,
+        )
+        precision, recall, f1 = _precision_recall_f1(tp, tn, fp, fn)
+
+        eval_results[dtype_val] = {
+            "optimal_threshold": threshold,
+            "precision": precision,
+            "recall": recall,
+            "f1": f1,
+            "sample_count": len(entries),
+            "true_positives": tp,
+            "true_negatives": tn,
+            "false_positives": fp,
+            "false_negatives": fn,
+        }
+
+    return {
+        "evaluated_at": datetime.now(timezone.utc).isoformat(),
+        "split": "test",
+        "detector_count": len(eval_results),
+        "results": eval_results,
+    }
 
 
 # ---------------------------------------------------------------------------
