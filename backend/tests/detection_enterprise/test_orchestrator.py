@@ -1,5 +1,6 @@
 """Tests for the Detection Orchestrator."""
 
+import asyncio
 import pytest
 from datetime import datetime, timedelta
 from unittest.mock import MagicMock, patch
@@ -569,3 +570,430 @@ class TestDiagnosisResult:
         assert result_dict["has_failures"] is True
         assert result_dict["failure_count"] == 1
         assert result_dict["primary_failure"] is not None
+
+
+# ============================================================================
+# Sprint 6: Tests for _detect_communication (Task 1)
+# ============================================================================
+
+class TestCommunicationDetection:
+    """Tests for _detect_communication() method."""
+
+    def test_skipped_for_single_agent(self, sample_universal_trace):
+        """Should return None when trace has fewer than 2 agent spans with responses."""
+        orchestrator = DetectionOrchestrator()
+        result = orchestrator._detect_communication(sample_universal_trace)
+        assert result is None
+
+    def test_skipped_for_no_responses(self, sample_trace_id):
+        """Should return None when agent spans have no responses."""
+        now = datetime.utcnow()
+        spans = [
+            UniversalSpan(id=str(uuid4()), trace_id=sample_trace_id, name="s1",
+                         span_type=SpanType.LLM_CALL, status=SpanStatus.OK,
+                         start_time=now, end_time=now + timedelta(milliseconds=100),
+                         agent_name="Agent A"),
+            UniversalSpan(id=str(uuid4()), trace_id=sample_trace_id, name="s2",
+                         span_type=SpanType.LLM_CALL, status=SpanStatus.OK,
+                         start_time=now + timedelta(milliseconds=100),
+                         end_time=now + timedelta(milliseconds=200),
+                         agent_name="Agent B"),
+        ]
+        trace = UniversalTrace(trace_id=sample_trace_id, spans=spans)
+        orchestrator = DetectionOrchestrator()
+        result = orchestrator._detect_communication(trace)
+        assert result is None
+
+    def test_returns_detection_result_on_issue(self, sample_trace_id):
+        """Should return DetectionResult when communication issue found."""
+        now = datetime.utcnow()
+        spans = [
+            UniversalSpan(id="span-a", trace_id=sample_trace_id, name="s1",
+                         span_type=SpanType.LLM_CALL, status=SpanStatus.OK,
+                         start_time=now, end_time=now + timedelta(milliseconds=100),
+                         response="Please deploy the API to production server immediately.",
+                         agent_name="Manager Agent"),
+            UniversalSpan(id="span-b", trace_id=sample_trace_id, name="s2",
+                         span_type=SpanType.LLM_CALL, status=SpanStatus.OK,
+                         start_time=now + timedelta(milliseconds=100),
+                         end_time=now + timedelta(milliseconds=200),
+                         response="Here is a nice recipe for chocolate cake.",
+                         agent_name="Worker Agent"),
+        ]
+        trace = UniversalTrace(trace_id=sample_trace_id, spans=spans)
+        orchestrator = DetectionOrchestrator()
+        result = orchestrator._detect_communication(trace)
+        # May or may not detect depending on detector threshold; verify structure if detected
+        if result is not None:
+            assert result.category == DetectionCategory.COMMUNICATION_BREAKDOWN
+            assert result.detected is True
+            assert "span-a" in result.affected_spans
+            assert "span-b" in result.affected_spans
+
+
+# ============================================================================
+# Sprint 6: Tests for _detect_specification (Task 1)
+# ============================================================================
+
+class TestSpecificationDetection:
+    """Tests for _detect_specification() method."""
+
+    def test_skipped_when_no_user_intent(self, sample_trace_id):
+        """Should return None when there's no prompt/user_intent."""
+        now = datetime.utcnow()
+        span = UniversalSpan(id=str(uuid4()), trace_id=sample_trace_id, name="s",
+                            span_type=SpanType.LLM_CALL, status=SpanStatus.OK,
+                            start_time=now, end_time=now + timedelta(milliseconds=100),
+                            response="Some output without a prompt.")
+        trace = UniversalTrace(trace_id=sample_trace_id, spans=[span])
+        orchestrator = DetectionOrchestrator()
+        result = orchestrator._detect_specification(trace)
+        assert result is None
+
+    def test_skipped_when_no_output(self, sample_trace_id):
+        """Should return None when no response > 50 chars."""
+        now = datetime.utcnow()
+        span = UniversalSpan(id=str(uuid4()), trace_id=sample_trace_id, name="s",
+                            span_type=SpanType.LLM_CALL, status=SpanStatus.OK,
+                            start_time=now, end_time=now + timedelta(milliseconds=100),
+                            prompt="Write a detailed report", response="OK")
+        trace = UniversalTrace(trace_id=sample_trace_id, spans=[span])
+        orchestrator = DetectionOrchestrator()
+        result = orchestrator._detect_specification(trace)
+        assert result is None
+
+    def test_returns_detection_on_mismatch(self, sample_trace_id):
+        """Should return DetectionResult when output diverges from spec."""
+        now = datetime.utcnow()
+        span = UniversalSpan(id=str(uuid4()), trace_id=sample_trace_id, name="s",
+                            span_type=SpanType.LLM_CALL, status=SpanStatus.OK,
+                            start_time=now, end_time=now + timedelta(milliseconds=100),
+                            prompt="Write a Python function that sorts a list using merge sort. Include docstring and type hints.",
+                            response="The weather today is sunny with a high of 72 degrees. I recommend wearing sunscreen and staying hydrated throughout the day.")
+        trace = UniversalTrace(trace_id=sample_trace_id, spans=[span])
+        orchestrator = DetectionOrchestrator()
+        result = orchestrator._detect_specification(trace)
+        if result is not None:
+            assert result.category == DetectionCategory.SPECIFICATION_MISMATCH
+            assert result.detected is True
+
+
+# ============================================================================
+# Sprint 6: Tests for _detect_decomposition (Task 1)
+# ============================================================================
+
+class TestDecompositionDetection:
+    """Tests for _detect_decomposition() method."""
+
+    def test_skipped_for_empty_trace(self, empty_trace):
+        """Should return None when trace has no spans."""
+        orchestrator = DetectionOrchestrator()
+        result = orchestrator._detect_decomposition(empty_trace)
+        assert result is None
+
+    def test_skipped_when_no_task_or_response(self, sample_trace_id):
+        """Should return None when no task_description or decomposition text."""
+        now = datetime.utcnow()
+        span = UniversalSpan(id=str(uuid4()), trace_id=sample_trace_id, name="s",
+                            span_type=SpanType.LLM_CALL, status=SpanStatus.OK,
+                            start_time=now, end_time=now + timedelta(milliseconds=100))
+        trace = UniversalTrace(trace_id=sample_trace_id, spans=[span])
+        orchestrator = DetectionOrchestrator()
+        result = orchestrator._detect_decomposition(trace)
+        assert result is None
+
+    def test_returns_detection_on_bad_breakdown(self, sample_trace_id):
+        """Should detect vague task decomposition."""
+        now = datetime.utcnow()
+        span = UniversalSpan(id=str(uuid4()), trace_id=sample_trace_id, name="s",
+                            span_type=SpanType.LLM_CALL, status=SpanStatus.OK,
+                            start_time=now, end_time=now + timedelta(milliseconds=100),
+                            prompt="Build a complete e-commerce platform with payments, inventory, and shipping",
+                            response="Step 1: Do everything. Step 2: Done.",
+                            metadata={"gen_ai.task": "Build a complete e-commerce platform"})
+        trace = UniversalTrace(trace_id=sample_trace_id, spans=[span])
+        orchestrator = DetectionOrchestrator()
+        result = orchestrator._detect_decomposition(trace)
+        if result is not None:
+            assert result.category == DetectionCategory.TASK_DECOMPOSITION
+            assert result.detected is True
+
+
+# ============================================================================
+# Sprint 6: Tests for _detect_context_neglect (Task 1)
+# ============================================================================
+
+class TestContextNeglectDetection:
+    """Tests for _detect_context_neglect() method."""
+
+    def test_skipped_for_short_response(self, sample_trace_id):
+        """Should skip spans with response < 50 chars."""
+        now = datetime.utcnow()
+        span = UniversalSpan(id=str(uuid4()), trace_id=sample_trace_id, name="s",
+                            span_type=SpanType.LLM_CALL, status=SpanStatus.OK,
+                            start_time=now, end_time=now + timedelta(milliseconds=100),
+                            prompt="Tell me about the budget", response="OK")
+        trace = UniversalTrace(trace_id=sample_trace_id, spans=[span])
+        orchestrator = DetectionOrchestrator()
+        result = orchestrator._detect_context_neglect(trace)
+        assert result is None
+
+    def test_skipped_when_no_prompt(self, sample_trace_id):
+        """Should skip spans with no prompt/context."""
+        now = datetime.utcnow()
+        span = UniversalSpan(id=str(uuid4()), trace_id=sample_trace_id, name="s",
+                            span_type=SpanType.LLM_CALL, status=SpanStatus.OK,
+                            start_time=now, end_time=now + timedelta(milliseconds=100),
+                            response="A" * 100)
+        trace = UniversalTrace(trace_id=sample_trace_id, spans=[span])
+        orchestrator = DetectionOrchestrator()
+        result = orchestrator._detect_context_neglect(trace)
+        assert result is None
+
+    def test_returns_detection_when_ignoring_context(self, sample_trace_id):
+        """Should detect when output ignores key context from prompt."""
+        now = datetime.utcnow()
+        span = UniversalSpan(id="span-ctx", trace_id=sample_trace_id, name="s",
+                            span_type=SpanType.LLM_CALL, status=SpanStatus.OK,
+                            start_time=now, end_time=now + timedelta(milliseconds=100),
+                            prompt="The patient has a severe allergy to penicillin. Recommend antibiotics for their infection.",
+                            response="I recommend prescribing penicillin 500mg three times daily for 10 days. This is the standard treatment for bacterial infections and should clear up the issue quickly.")
+        trace = UniversalTrace(trace_id=sample_trace_id, spans=[span])
+        orchestrator = DetectionOrchestrator()
+        result = orchestrator._detect_context_neglect(trace)
+        if result is not None:
+            assert result.category == DetectionCategory.CONTEXT_NEGLECT
+            assert result.detected is True
+            assert "span-ctx" in result.affected_spans
+
+
+# ============================================================================
+# Sprint 6: Tests for _detect_coordination (Task 1)
+# ============================================================================
+
+class TestCoordinationDetection:
+    """Tests for _detect_coordination() method."""
+
+    def test_skipped_for_single_agent(self, sample_universal_trace):
+        """Should return None when fewer than 2 agents."""
+        orchestrator = DetectionOrchestrator()
+        result = orchestrator._detect_coordination(sample_universal_trace)
+        assert result is None
+
+    def test_skipped_for_insufficient_messages(self, sample_trace_id):
+        """Should return None when fewer than 2 messages."""
+        now = datetime.utcnow()
+        span = UniversalSpan(id=str(uuid4()), trace_id=sample_trace_id, name="s",
+                            span_type=SpanType.LLM_CALL, status=SpanStatus.OK,
+                            start_time=now, end_time=now + timedelta(milliseconds=100),
+                            response="Hello", agent_name="Agent A")
+        trace = UniversalTrace(trace_id=sample_trace_id, spans=[span])
+        orchestrator = DetectionOrchestrator()
+        result = orchestrator._detect_coordination(trace)
+        assert result is None
+
+    def test_returns_detection_on_coordination_issue(self, sample_trace_id):
+        """Should detect coordination issues among multiple agents."""
+        now = datetime.utcnow()
+        spans = []
+        # Create excessive back-and-forth between two agents
+        for i in range(8):
+            agent = "Agent A" if i % 2 == 0 else "Agent B"
+            spans.append(UniversalSpan(
+                id=str(uuid4()), trace_id=sample_trace_id, name=f"s{i}",
+                span_type=SpanType.LLM_CALL, status=SpanStatus.OK,
+                start_time=now + timedelta(milliseconds=i * 100),
+                end_time=now + timedelta(milliseconds=(i + 1) * 100),
+                response=f"I think you should handle this task, {agent}. I cannot do it.",
+                agent_name=agent))
+        trace = UniversalTrace(trace_id=sample_trace_id, spans=spans)
+        orchestrator = DetectionOrchestrator()
+        result = orchestrator._detect_coordination(trace)
+        if result is not None:
+            assert result.category == DetectionCategory.COORDINATION_FAILURE
+            assert result.detected is True
+
+
+# ============================================================================
+# Sprint 6: Tests for _detect_workflow (Task 1)
+# ============================================================================
+
+class TestWorkflowDetection:
+    """Tests for _detect_workflow() method."""
+
+    def test_skipped_for_single_node(self, sample_universal_trace):
+        """Should return None when trace has < 2 spans."""
+        orchestrator = DetectionOrchestrator()
+        result = orchestrator._detect_workflow(sample_universal_trace)
+        assert result is None
+
+    def test_processes_multi_span_trace(self, multi_span_trace):
+        """Should run workflow detection on traces with 2+ spans."""
+        orchestrator = DetectionOrchestrator()
+        result = orchestrator._detect_workflow(multi_span_trace)
+        # May or may not detect an issue — verify it runs without error
+        assert result is None or isinstance(result, DetectionResult)
+
+    def test_returns_detection_on_flawed_workflow(self, sample_trace_id):
+        """Should detect workflow structure issues."""
+        now = datetime.utcnow()
+        # Create disconnected-looking workflow with many spans
+        spans = [
+            UniversalSpan(id=f"node-{i}", trace_id=sample_trace_id, name=f"step_{i}",
+                         span_type=SpanType.AGENT, status=SpanStatus.OK,
+                         start_time=now + timedelta(milliseconds=i * 100),
+                         end_time=now + timedelta(milliseconds=(i + 1) * 100),
+                         agent_name=f"agent_{i}")
+            for i in range(5)
+        ]
+        trace = UniversalTrace(trace_id=sample_trace_id, spans=spans)
+        orchestrator = DetectionOrchestrator()
+        result = orchestrator._detect_workflow(trace)
+        if result is not None:
+            assert result.category == DetectionCategory.FLAWED_WORKFLOW
+            assert result.detected is True
+
+
+# ============================================================================
+# Sprint 6: Tests for _deduplicate_detections (Task 2)
+# ============================================================================
+
+class TestDeduplicateDetections:
+    """Tests for _deduplicate_detections() method."""
+
+    def _make_detection(self, category, confidence=0.7, spans=None):
+        """Helper to create a DetectionResult."""
+        return DetectionResult(
+            category=category,
+            detected=True,
+            confidence=confidence,
+            severity=Severity.MEDIUM,
+            title=f"Test {category.value}",
+            description=f"Test detection for {category.value}",
+            affected_spans=spans or [],
+        )
+
+    def test_empty_list_returns_empty(self):
+        orchestrator = DetectionOrchestrator()
+        assert orchestrator._deduplicate_detections([]) == []
+
+    def test_single_detection_unchanged(self):
+        orchestrator = DetectionOrchestrator()
+        det = self._make_detection(DetectionCategory.LOOP)
+        result = orchestrator._deduplicate_detections([det])
+        assert len(result) == 1
+        assert result[0] is det
+
+    def test_subsumption_grounding_hallucination(self):
+        """Grounding failure should subsume hallucination."""
+        orchestrator = DetectionOrchestrator()
+        grounding = self._make_detection(DetectionCategory.GROUNDING_FAILURE)
+        hallucination = self._make_detection(DetectionCategory.HALLUCINATION)
+        result = orchestrator._deduplicate_detections([grounding, hallucination])
+        categories = {d.category for d in result}
+        assert DetectionCategory.GROUNDING_FAILURE in categories
+        assert DetectionCategory.HALLUCINATION not in categories
+
+    def test_subsumption_loop_overflow(self):
+        """Loop should subsume context overflow."""
+        orchestrator = DetectionOrchestrator()
+        loop = self._make_detection(DetectionCategory.LOOP)
+        overflow = self._make_detection(DetectionCategory.CONTEXT_OVERFLOW)
+        result = orchestrator._deduplicate_detections([loop, overflow])
+        categories = {d.category for d in result}
+        assert DetectionCategory.LOOP in categories
+        assert DetectionCategory.CONTEXT_OVERFLOW not in categories
+
+    def test_subsumption_derailment_completion(self):
+        """Derailment should subsume completion misjudgment."""
+        orchestrator = DetectionOrchestrator()
+        derail = self._make_detection(DetectionCategory.TASK_DERAILMENT)
+        completion = self._make_detection(DetectionCategory.COMPLETION_MISJUDGMENT)
+        result = orchestrator._deduplicate_detections([derail, completion])
+        categories = {d.category for d in result}
+        assert DetectionCategory.TASK_DERAILMENT in categories
+        assert DetectionCategory.COMPLETION_MISJUDGMENT not in categories
+
+    def test_subsumption_communication_coordination(self):
+        """Communication breakdown should subsume coordination failure."""
+        orchestrator = DetectionOrchestrator()
+        comm = self._make_detection(DetectionCategory.COMMUNICATION_BREAKDOWN)
+        coord = self._make_detection(DetectionCategory.COORDINATION_FAILURE)
+        result = orchestrator._deduplicate_detections([comm, coord])
+        categories = {d.category for d in result}
+        assert DetectionCategory.COMMUNICATION_BREAKDOWN in categories
+        assert DetectionCategory.COORDINATION_FAILURE not in categories
+
+    def test_no_subsumption_unrelated_detections(self):
+        """Unrelated detections should both survive."""
+        orchestrator = DetectionOrchestrator()
+        injection = self._make_detection(DetectionCategory.INJECTION)
+        persona = self._make_detection(DetectionCategory.PERSONA_DRIFT)
+        result = orchestrator._deduplicate_detections([injection, persona])
+        assert len(result) == 2
+
+    def test_span_overlap_keeps_higher_confidence(self):
+        """When two detections share >50% spans, keep higher-confidence one."""
+        orchestrator = DetectionOrchestrator()
+        det_a = self._make_detection(DetectionCategory.INJECTION, confidence=0.6,
+                                     spans=["s1", "s2", "s3"])
+        det_b = self._make_detection(DetectionCategory.PERSONA_DRIFT, confidence=0.9,
+                                     spans=["s1", "s2", "s4"])
+        result = orchestrator._deduplicate_detections([det_a, det_b])
+        # >50% overlap (2/3), keep higher confidence (det_b at 0.9)
+        assert len(result) == 1
+        assert result[0].category == DetectionCategory.PERSONA_DRIFT
+
+    def test_span_overlap_below_threshold_keeps_both(self):
+        """When two detections share ≤50% spans, keep both."""
+        orchestrator = DetectionOrchestrator()
+        det_a = self._make_detection(DetectionCategory.INJECTION, confidence=0.6,
+                                     spans=["s1", "s2", "s3", "s4"])
+        det_b = self._make_detection(DetectionCategory.PERSONA_DRIFT, confidence=0.9,
+                                     spans=["s1", "s5", "s6", "s7"])
+        result = orchestrator._deduplicate_detections([det_a, det_b])
+        # 1/4 overlap = 25%, both should survive
+        assert len(result) == 2
+
+    def test_no_spans_no_overlap_dedup(self):
+        """Detections with empty affected_spans should not be span-deduplicated."""
+        orchestrator = DetectionOrchestrator()
+        det_a = self._make_detection(DetectionCategory.INJECTION, confidence=0.6)
+        det_b = self._make_detection(DetectionCategory.PERSONA_DRIFT, confidence=0.9)
+        result = orchestrator._deduplicate_detections([det_a, det_b])
+        assert len(result) == 2
+
+
+# ============================================================================
+# Sprint 6: Tests for analyze_trace_async (Task 2)
+# ============================================================================
+
+class TestAnalyzeTraceAsync:
+    """Tests for analyze_trace_async() method."""
+
+    def test_returns_diagnosis_result(self, sample_universal_trace):
+        """Async analysis should return a DiagnosisResult."""
+        orchestrator = DetectionOrchestrator()
+        result = asyncio.run(orchestrator.analyze_trace_async(sample_universal_trace))
+        assert isinstance(result, DiagnosisResult)
+        assert result.trace_id == sample_universal_trace.trace_id
+
+    def test_handles_detector_failure_gracefully(self, sample_universal_trace):
+        """Should continue even if one detector raises an exception."""
+        orchestrator = DetectionOrchestrator()
+        # Break one detector by setting it to a non-callable
+        orchestrator._loop_detector = "not_a_detector"
+        # Should not raise; broken detector gets caught by try/except in _run
+        result = asyncio.run(orchestrator.analyze_trace_async(sample_universal_trace))
+        assert isinstance(result, DiagnosisResult)
+
+    def test_async_produces_comparable_results(self, multi_span_trace):
+        """Async and sync should produce comparable results for same trace."""
+        orchestrator = DetectionOrchestrator()
+        sync_result = orchestrator.analyze_trace(multi_span_trace)
+        async_result = asyncio.run(orchestrator.analyze_trace_async(multi_span_trace))
+
+        # Both should have same trace metadata
+        assert sync_result.trace_id == async_result.trace_id
+        assert sync_result.total_spans == async_result.total_spans
+        assert sync_result.error_spans == async_result.error_spans

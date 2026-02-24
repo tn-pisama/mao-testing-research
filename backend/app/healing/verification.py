@@ -5,7 +5,7 @@ from dataclasses import dataclass, field
 from datetime import datetime
 from typing import Dict, Any, List, Optional
 
-from .models import AppliedFix, FailureCategory, ValidationResult
+from .models import AppliedFix, FailureCategory, HealingConfig, ValidationResult
 from .validator import FixValidator
 
 logger = logging.getLogger(__name__)
@@ -93,9 +93,14 @@ class VerificationOrchestrator:
                           and re-runs detection to compare confidence.
     """
 
-    def __init__(self, verification_timeout: float = 60.0):
+    def __init__(
+        self,
+        verification_timeout: float = 60.0,
+        config: Optional[HealingConfig] = None,
+    ):
         self._validator = FixValidator()
-        self._verification_timeout = verification_timeout
+        self._config = config or HealingConfig()
+        self._verification_timeout = verification_timeout or self._config.verification_timeout
 
     async def verify_level1(
         self,
@@ -143,7 +148,7 @@ class VerificationOrchestrator:
 
         # Estimate post-fix confidence based on config checks
         # If protection mechanisms are present, confidence should drop significantly
-        after = 0.0 if all_passed else before * 0.5
+        after = 0.0 if all_passed else before * self._config.confidence_fail_factor
 
         return VerificationResult(
             passed=all_passed,
@@ -235,7 +240,7 @@ class VerificationOrchestrator:
                             after = 0.0
                             execution_result["controlled_termination"] = True
                         else:
-                            after = before * 0.7  # Partial improvement
+                            after = before * self._config.partial_improvement_factor
                 else:
                     execution_result = {"error": "No execution ID returned"}
 
@@ -261,7 +266,7 @@ class VerificationOrchestrator:
                 verified_at=datetime.utcnow().isoformat(),
             )
 
-        passed = level1.passed and after < before * 0.5
+        passed = level1.passed and after < before * self._config.improvement_threshold
         return VerificationResult(
             passed=passed,
             level=2,

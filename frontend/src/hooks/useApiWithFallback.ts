@@ -147,18 +147,30 @@ export function useApiWithFallback() {
 // STANDARD LIST HOOKS (use factory)
 // ============================================================================
 
-export function useDetections(params?: { page?: number; perPage?: number; type?: string }) {
+export function useDetections(params?: {
+  page?: number
+  perPage?: number
+  type?: string
+  confidenceMin?: number
+  confidenceMax?: number
+  dateFrom?: string
+  dateTo?: string
+}) {
   const page = params?.page
   const perPage = params?.perPage
   const type = params?.type
+  const confidenceMin = params?.confidenceMin
+  const confidenceMax = params?.confidenceMax
+  const dateFrom = params?.dateFrom
+  const dateTo = params?.dateTo
 
   const { data, isLoading, isDemoMode } = useApiResource<{ items: Detection[]; total: number; page: number; per_page: number }>(
-    (api) => api.getDetections({ page, perPage, type }),
+    (api) => api.getDetections({ page, perPage, type, confidenceMin, confidenceMax, dateFrom, dateTo }),
     () => {
       const all = demoDataStore.getDetections()
       return { items: all.slice(0, perPage || 20), total: all.length, page: page || 1, per_page: perPage || 20 }
     },
-    [page, perPage, type],
+    [page, perPage, type, confidenceMin, confidenceMax, dateFrom, dateTo],
   )
   return { detections: data?.items ?? [], total: data?.total ?? 0, isLoading, isDemoMode }
 }
@@ -245,6 +257,36 @@ export function useReplayBundles() {
     () => demoDataStore.getReplayBundles(),
   )
   return { bundles: data ?? [], isLoading, isDemoMode }
+}
+
+interface DetectorStatusData {
+  detectors: Array<{
+    name: string
+    readiness: 'production' | 'beta' | 'experimental' | 'failing' | 'untested'
+    description: string
+    enabled: boolean
+    f1_score: number | null
+    precision: number | null
+    recall: number | null
+    sample_count: number
+    optimal_threshold: number | null
+  }>
+  summary: Record<string, number>
+  calibrated_at: string
+  readiness_criteria: Record<string, any>
+}
+
+export function useDetectorStatus() {
+  const { data, isLoading, isDemoMode } = useApiResource<DetectorStatusData>(
+    (api) => api.getDetectorStatus(),
+    () => ({
+      detectors: [],
+      summary: {},
+      calibrated_at: new Date().toISOString(),
+      readiness_criteria: {},
+    }),
+  )
+  return { data, isLoading, isDemoMode }
 }
 
 // ============================================================================

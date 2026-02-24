@@ -49,6 +49,7 @@ const developerObserveItems: NavItem[] = [
   { label: 'Dashboard', href: '/dashboard', icon: LayoutDashboard },
   { label: 'Traces', href: '/traces', icon: Activity },
   { label: 'Detections', href: '/detections', icon: AlertTriangle },
+  { label: 'Detector Status', href: '/detector-status', icon: Shield },
 ]
 
 const developerImproveItems: NavItem[] = [

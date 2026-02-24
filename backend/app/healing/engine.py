@@ -7,6 +7,7 @@ from typing import Dict, Any, List, Optional, Callable
 import asyncio
 
 from .models import (
+    HealingConfig,
     HealingResult,
     HealingStatus,
     FailureCategory,
@@ -60,10 +61,12 @@ class SelfHealingEngine:
         git_backup_service: Optional[GitBackupService] = None,
         auto_apply_config: Optional[AutoApplyConfig] = None,
         git_backup_config: Optional[GitBackupConfig] = None,
+        healing_config: Optional[HealingConfig] = None,
     ):
+        self.healing_config = healing_config or HealingConfig()
         self.auto_apply = auto_apply
         self.max_fix_attempts = max_fix_attempts
-        self.validation_timeout = validation_timeout
+        self.validation_timeout = validation_timeout or self.healing_config.verification_timeout
 
         # Initialize auto-apply service (for n8n workflows)
         if auto_apply_service:
@@ -82,7 +85,7 @@ class SelfHealingEngine:
             self.git_backup_service = None
 
         self.analyzer = FailureAnalyzer()
-        self.applicator = FixApplicator()
+        self.applicator = FixApplicator(config=self.healing_config)
         self.validator = FixValidator()
 
         # Per-workflow locks to prevent concurrent healing on the same workflow
@@ -514,6 +517,7 @@ async def create_healing_engine(
     auto_apply: bool = False,
     git_backup_path: Optional[str] = None,
     auto_apply_config: Optional[AutoApplyConfig] = None,
+    healing_config: Optional[HealingConfig] = None,
     **kwargs,
 ) -> SelfHealingEngine:
     """Factory function to create a configured healing engine.
@@ -522,6 +526,7 @@ async def create_healing_engine(
         auto_apply: Enable automatic fix application
         git_backup_path: Path to git backup repository
         auto_apply_config: Configuration for auto-apply service
+        healing_config: Consolidated healing pipeline configuration
         **kwargs: Additional arguments for SelfHealingEngine
 
     Returns:
@@ -537,5 +542,6 @@ async def create_healing_engine(
         auto_apply=auto_apply,
         auto_apply_config=auto_apply_config,
         git_backup_service=git_backup_service,
+        healing_config=healing_config,
         **kwargs,
     )

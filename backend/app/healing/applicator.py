@@ -6,13 +6,16 @@ from typing import Dict, Any, List, Optional, Callable
 import copy
 import secrets
 
-from .models import AppliedFix, FailureCategory
+from typing import Optional
+
+from .models import AppliedFix, FailureCategory, HealingConfig
 
 
 class FixApplicator:
     """Applies fix suggestions to workflow configurations and code."""
-    
-    def __init__(self):
+
+    def __init__(self, config: Optional[HealingConfig] = None):
+        self._config = config or HealingConfig()
         self._strategies: Dict[FailureCategory, "ApplicatorStrategy"] = {}
         self._register_default_strategies()
     

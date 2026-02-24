@@ -187,3 +187,43 @@ class HealingResult:
     @property
     def all_validations_passed(self) -> bool:
         return all(v.success for v in self.validation_results)
+
+
+@dataclass
+class HealingConfig:
+    """Consolidated configuration for the healing pipeline.
+
+    Centralizes all tunable thresholds that were previously hardcoded
+    across verification.py, applicator.py, and auto_apply.py.
+    Default values match the original hardcoded ones for backward compatibility.
+    """
+
+    # --- Verification thresholds ---
+    verification_timeout: float = 60.0
+    # Level 1: confidence drops to 0 on pass, or before * this factor on fail
+    confidence_fail_factor: float = 0.5
+    # Level 2: partial improvement factor (error but controlled)
+    partial_improvement_factor: float = 0.7
+    # Level 2: pass if after_confidence < before * this
+    improvement_threshold: float = 0.5
+
+    # --- Applicator defaults ---
+    default_confidence_threshold: float = 0.7
+    min_confidence: float = 0.6
+    deviation_threshold: float = 0.3
+    quality_threshold: float = 0.8
+    min_quality_score: float = 0.7
+    min_context_coverage: float = 0.8
+    min_response_coverage: float = 0.8
+    max_output_length: int = 4096
+    # Context window ratios
+    context_warning_ratio: float = 0.6
+    context_critical_ratio: float = 0.5
+    context_overflow_ratio: float = 0.4
+
+    # --- Auto-apply (delegates to AutoApplyConfig for runtime use) ---
+    max_fixes_per_hour: int = 5
+    cooldown_after_rollback_seconds: int = 300
+    max_consecutive_failures: int = 3
+    healing_loop_threshold: int = 5
+    healing_loop_window_minutes: int = 60

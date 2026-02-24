@@ -113,23 +113,33 @@ export default function DetectionsPage() {
   const [severityFilter, setSeverityFilter] = useState<Severity>('all')
   const [searchQuery, setSearchQuery] = useState('')
   const [showValidated, setShowValidated] = useState(true)
+  const [currentPage, setCurrentPage] = useState(1)
   const { isN8nUser, showAdvancedFeatures } = useUserPreferences()
 
-  // Fetch real detections from API
-  const { detections, isLoading, isDemoMode } = useDetections({ perPage: 50 })
+  // Fetch detections with server-side filtering
+  const { detections, total, isLoading, isDemoMode } = useDetections({
+    page: currentPage,
+    perPage: 20,
+    type: typeFilter !== 'all' ? typeFilter : undefined,
+  })
+
+  // Reset to page 1 when filters change
+  useEffect(() => { setCurrentPage(1) }, [typeFilter, severityFilter])
 
   // n8n users see simplified view with friendly terminology
   const showSimplifiedView = isN8nUser && !showAdvancedFeatures
   const isLoaded = !isLoading
 
+  // Light client-side filtering for severity and validated (supplements server filtering)
   const filteredDetections = useMemo(() => {
     return detections.filter((d) => {
-      if (typeFilter !== 'all' && d.detection_type !== typeFilter) return false
       if (severityFilter !== 'all' && d.details?.severity !== severityFilter) return false
       if (!showValidated && d.validated) return false
       return true
     })
-  }, [detections, typeFilter, severityFilter, showValidated])
+  }, [detections, severityFilter, showValidated])
+
+  const totalPages = Math.ceil(total / 20)
 
   const stats = useMemo(() => ({
     total: detections.length,
@@ -471,6 +481,31 @@ export default function DetectionsPage() {
                   })
                 )}
               </div>
+
+              {/* Pagination */}
+              {totalPages > 1 && (
+                <div className="flex items-center justify-between mt-4 px-1">
+                  <span className="text-sm text-slate-400">
+                    Page {currentPage} of {totalPages} ({total} total)
+                  </span>
+                  <div className="flex gap-2">
+                    <button
+                      onClick={() => setCurrentPage(p => Math.max(1, p - 1))}
+                      disabled={currentPage <= 1}
+                      className="px-3 py-1.5 text-sm rounded-lg bg-slate-800 text-slate-300 hover:bg-slate-700 disabled:opacity-40 disabled:cursor-not-allowed"
+                    >
+                      Previous
+                    </button>
+                    <button
+                      onClick={() => setCurrentPage(p => Math.min(totalPages, p + 1))}
+                      disabled={currentPage >= totalPages}
+                      className="px-3 py-1.5 text-sm rounded-lg bg-slate-800 text-slate-300 hover:bg-slate-700 disabled:opacity-40 disabled:cursor-not-allowed"
+                    >
+                      Next
+                    </button>
+                  </div>
+                </div>
+              )}
             </div>
           </div>
         </div>

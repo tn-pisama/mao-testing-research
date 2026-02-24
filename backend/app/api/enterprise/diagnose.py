@@ -128,7 +128,7 @@ async def why_did_this_fail(
         orchestrator = DetectionOrchestrator(
             enable_llm_explanation=request.include_fixes,
         )
-        result = orchestrator.analyze_trace(trace)
+        result = await orchestrator.analyze_trace_async(trace)
 
         logger.info(
             f"Diagnosis complete: {result.failure_count} issues found in {result.detection_time_ms}ms"
