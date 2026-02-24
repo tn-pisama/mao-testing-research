@@ -274,7 +274,17 @@ class QualityHealingEngine:
             result.status = QualityHealingStatus.APPLYING
             result.metadata["original_workflow"] = workflow_config
             current_config = workflow_config
-            fixes_to_apply = fix_suggestions[:self.max_fix_attempts]
+
+            # Auto-scale fix budget for multi-agent workflows
+            n_agents = len(quality_report.agent_scores)
+            effective_max = max(self.max_fix_attempts, n_agents * 4 + 5)
+
+            # Round-robin spread fixes across agents and dimensions so every
+            # agent gets at least one fix per dimension before any agent gets
+            # a second.  Without this, a 5-agent workflow burns its entire
+            # budget on role_clarity before touching error_handling.
+            fix_suggestions = self._spread_fixes(fix_suggestions)
+            fixes_to_apply = fix_suggestions[:effective_max]
 
             # Enrich fixes with LLM context if available
             if self._llm_fix_generator:
@@ -650,6 +660,41 @@ class QualityHealingEngine:
             logger.info(f"Loaded {len(records)} healing records from DB, {len(self._healing_history)} total in history")
         except Exception as e:
             logger.warning(f"Failed to load healing history from DB: {e}")
+
+    @staticmethod
+    def _spread_fixes(
+        fixes: List[QualityFixSuggestion],
+    ) -> List[QualityFixSuggestion]:
+        """Round-robin spread fixes across (dimension, target_id) groups.
+
+        Input (sorted by expected_improvement):
+            [role_A1, role_A2, role_B1, role_B2, err_A1, err_B1, ...]
+        Output:
+            [role_A1, role_B1, err_A1, err_B1, role_A2, role_B2, ...]
+
+        This ensures every agent gets at least one fix for its worst
+        dimension before any agent gets a second fix for the same dimension.
+        """
+        from collections import OrderedDict
+
+        # Group fixes by (dimension, target_id) — preserving insertion order
+        groups: OrderedDict[str, List[QualityFixSuggestion]] = OrderedDict()
+        for fix in fixes:
+            key = f"{fix.dimension}:{fix.target_id}"
+            groups.setdefault(key, []).append(fix)
+
+        # Round-robin pick one fix from each group
+        spread: List[QualityFixSuggestion] = []
+        while groups:
+            exhausted = []
+            for key, group in groups.items():
+                spread.append(group.pop(0))
+                if not group:
+                    exhausted.append(key)
+            for key in exhausted:
+                del groups[key]
+
+        return spread
 
     @staticmethod
     def _find_target_node(fix, config: Dict[str, Any]) -> Dict[str, Any]:

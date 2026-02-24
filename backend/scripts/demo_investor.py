@@ -6,10 +6,11 @@ Demonstrates the full assess -> heal -> re-assess pipeline on real n8n workflows
 Workflows are sourced from the production golden dataset (7,606 real workflows).
 
 Usage:
-    python scripts/demo_investor.py                    # Default: 3 workflows
+    python scripts/demo_investor.py                    # Default: 3 workflows (1 single + 2 multi-agent)
     python scripts/demo_investor.py --workflow "SQL agent with memory"
     python scripts/demo_investor.py --all              # Run all demo workflows
     python scripts/demo_investor.py --find-worst 10    # Find & heal 10 worst workflows
+    python scripts/demo_investor.py --multi-agent 5    # Find & heal 5 multi-agent workflows
 """
 
 import json
@@ -317,7 +318,8 @@ def main():
     parser.add_argument("--workflow", type=str, help="Run on a specific workflow by name")
     parser.add_argument("--all", action="store_true", help="Run all 3 demo workflows")
     parser.add_argument("--find-worst", type=int, metavar="N", help="Find and heal N worst-scoring workflows")
-    parser.add_argument("--max-fixes", type=int, default=20, help="Max fixes per workflow (default: 20)")
+    parser.add_argument("--multi-agent", type=int, metavar="N", help="Find and heal N multi-agent workflows (3+ agents)")
+    parser.add_argument("--max-fixes", type=int, default=50, help="Max fixes per workflow (default: 50)")
     args = parser.parse_args()
 
     print(c("\n  ╔══════════════════════════════════════════════════════════╗", "blue"))
@@ -374,19 +376,83 @@ def main():
         workflows_to_test = [wf for _, wf in scored[: args.find_worst]]
         print(f"  Found {len(workflows_to_test)} workflows below 55%")
 
+    elif args.multi_agent:
+        print(f"\n  Finding {args.multi_agent} worst multi-agent workflows (3+ agents)...")
+        scored = []
+        seen = set()
+        for e in entries:
+            name = e.get("input_data", {}).get("workflow_name", "")
+            if name in seen or name.startswith("ext_") or name.startswith("neg_"):
+                continue
+            seen.add(name)
+            nodes = e.get("input_data", {}).get("nodes", [])
+            ai_count = sum(
+                1 for n in nodes
+                if "langchain" in n.get("type", "") or "openAi" in n.get("type", "")
+            )
+            if ai_count < 3 or len(nodes) < 6:
+                continue
+            wf = build_workflow(e)
+            try:
+                report = assessor.assess_workflow(wf)
+                if report.overall_score < 0.60:
+                    scored.append((report.overall_score, ai_count, wf))
+            except Exception:
+                pass
+            if len(scored) >= args.multi_agent * 3:
+                break
+
+        scored.sort(key=lambda x: x[0])
+        workflows_to_test = [wf for _, _, wf in scored[: args.multi_agent]]
+        print(f"  Found {len(workflows_to_test)} multi-agent workflows below 60%")
+
     else:
-        # Default: curated demo workflows
-        demo_names = [
-            "SQL agent with memory",
-            "Discord MCP Chat Agent",
-            "Personal Assistant MCP server",
-        ]
+        # Default: 1 single-agent + auto-selected multi-agent workflows
+        # Start with a known single-agent workflow
+        demo_names = ["SQL agent with memory"]
         for name in demo_names:
             entry = find_workflow_by_name(entries, name)
             if entry:
                 workflows_to_test.append(build_workflow(entry))
             else:
                 print(c(f"  Warning: '{name}' not found, skipping", "yellow"))
+
+        # Auto-find 2 multi-agent workflows from the dataset
+        print(f"  Auto-selecting multi-agent workflows...")
+        ma_scored = []
+        seen = {wf["name"] for wf in workflows_to_test}
+        for e in entries:
+            name = e.get("input_data", {}).get("workflow_name", "")
+            if name in seen or name.startswith("ext_") or name.startswith("neg_") or not name:
+                continue
+            seen.add(name)
+            nodes = e.get("input_data", {}).get("nodes", [])
+            ai_count = sum(
+                1 for n in nodes
+                if "langchain" in n.get("type", "") or "openAi" in n.get("type", "")
+            )
+            if ai_count < 2 or len(nodes) < 5:
+                continue
+            wf = build_workflow(e)
+            try:
+                report = assessor.assess_workflow(wf)
+                if report.overall_score < 0.60:
+                    ma_scored.append((report.overall_score, ai_count, wf))
+            except Exception:
+                pass
+            if len(ma_scored) >= 20:
+                break
+
+        ma_scored.sort(key=lambda x: x[0])
+        # Pick one with 2-3 agents and one with 4+ if available
+        small_ma = [s for s in ma_scored if s[1] <= 3]
+        large_ma = [s for s in ma_scored if s[1] >= 4]
+        if small_ma:
+            workflows_to_test.append(small_ma[0][2])
+        if large_ma:
+            workflows_to_test.append(large_ma[0][2])
+        elif len(small_ma) > 1:
+            workflows_to_test.append(small_ma[1][2])
 
     if not workflows_to_test:
         print(c("\n  No workflows to demo.", "red"))

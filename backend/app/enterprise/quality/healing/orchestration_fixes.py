@@ -1170,6 +1170,111 @@ class LayoutQualityFixGenerator(BaseQualityFixGenerator):
 
 
 # ---------------------------------------------------------------------------
+# 11. CoordinationFixGenerator — inter-agent handoff protocols
+# ---------------------------------------------------------------------------
+
+class CoordinationFixGenerator(BaseQualityFixGenerator):
+    """Generate inter-agent coordination fixes.
+
+    When multiple agents are connected in a chain, this generator adds
+    handoff protocol instructions to their system prompts so each agent
+    knows what format its upstream produces and what its downstream expects.
+    Also adds continueOnFail to intermediate agents to prevent silent
+    chain failures.
+
+    Triggered by low agent_coupling scores on multi-agent workflows.
+    """
+
+    def can_handle(self, dimension: str) -> bool:
+        return dimension == OrchestrationDimension.AGENT_COUPLING.value
+
+    def generate_fixes(
+        self,
+        dimension_score: DimensionScore,
+        context: Dict[str, Any],
+    ) -> List[QualityFixSuggestion]:
+        fixes: List[QualityFixSuggestion] = []
+        evidence = dimension_score.evidence
+        workflow_id = context.get("workflow_id", "unknown")
+
+        # Fix: Add handoff protocol instructions to connected agents
+        agent_pairs = evidence.get("connected_agent_pairs", [])
+        coupling_ratio = evidence.get("coupling_ratio", 0.0)
+
+        if coupling_ratio > 0.4 and len(agent_pairs) >= 1:
+            for pair in agent_pairs[:3]:  # Cap at 3 pairs
+                source = pair.get("source", "Agent A")
+                target = pair.get("target", "Agent B")
+                fixes.append(
+                    QualityFixSuggestion.create(
+                        dimension=OrchestrationDimension.AGENT_COUPLING.value,
+                        category=QualityFixCategory.AGENT_COUPLING,
+                        title=f"Add handoff protocol: {source} -> {target}",
+                        description=(
+                            f"Agent '{source}' connects to '{target}' without "
+                            "explicit handoff instructions. Add protocol text to "
+                            f"'{source}' system prompt describing what format "
+                            f"'{target}' expects, and to '{target}' describing "
+                            "what it will receive."
+                        ),
+                        confidence=0.7,
+                        expected_improvement=0.1,
+                        target_type="orchestration",
+                        target_id=workflow_id,
+                        changes={
+                            "action": "add_handoff_protocol",
+                            "source_agent": source,
+                            "target_agent": target,
+                        },
+                        effort="low",
+                        code_example=(
+                            f'// Add to {source} system prompt:\n'
+                            f'// "Your output will be consumed by {target}. '
+                            'Ensure your response is structured JSON."\n'
+                            f'// Add to {target} system prompt:\n'
+                            f'// "You will receive structured input from {source}."'
+                        ),
+                    )
+                )
+
+        # Fix: Add continueOnFail to intermediate agents in chains
+        agent_count = evidence.get("agent_count", 0)
+        max_chain = evidence.get("max_agent_chain", 0)
+        if max_chain >= 3 and agent_count >= 3:
+            fixes.append(
+                QualityFixSuggestion.create(
+                    dimension=OrchestrationDimension.AGENT_COUPLING.value,
+                    category=QualityFixCategory.AGENT_COUPLING,
+                    title="Add error resilience to agent chain",
+                    description=(
+                        f"Agent chain of length {max_chain} has no error "
+                        "resilience. If a middle agent fails, the entire chain "
+                        "fails silently. Add continueOnFail to intermediate "
+                        "agents so failures are handled gracefully."
+                    ),
+                    confidence=0.75,
+                    expected_improvement=0.1,
+                    target_type="orchestration",
+                    target_id=workflow_id,
+                    changes={
+                        "action": "set_continue_on_fail_chain",
+                        "target": "intermediate_agents",
+                    },
+                    effort="low",
+                    code_example=(
+                        '// Set on each intermediate agent in the chain\n'
+                        '{\n'
+                        '  "continueOnFail": true,\n'
+                        '  "alwaysOutputData": true\n'
+                        '}'
+                    ),
+                )
+            )
+
+        return fixes
+
+
+# ---------------------------------------------------------------------------
 # Convenience: registry of all orchestration fix generators
 # ---------------------------------------------------------------------------
 
@@ -1177,6 +1282,7 @@ ALL_ORCHESTRATION_FIX_GENERATORS: List[BaseQualityFixGenerator] = [
     DataFlowClarityFixGenerator(),
     ComplexityManagementFixGenerator(),
     AgentCouplingFixGenerator(),
+    CoordinationFixGenerator(),
     ObservabilityFixGenerator(),
     BestPracticesFixGenerator(),
     DocumentationQualityFixGenerator(),
