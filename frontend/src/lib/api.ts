@@ -1010,13 +1010,27 @@ export function createApiClient(token?: string | null, tenantId?: string | null)
       return fetchApi(`/tenants/{tenant_id}/traces/${traceId}/analyze`, { ...opts, method: 'POST' })
     },
 
-    async getDetections(params: { page?: number; perPage?: number; traceId?: string; type?: string }) {
+    async getDetections(params: {
+      page?: number;
+      perPage?: number;
+      traceId?: string;
+      type?: string;
+      confidenceMin?: number;
+      confidenceMax?: number;
+      dateFrom?: string;
+      dateTo?: string;
+    }) {
       const query = new URLSearchParams()
       if (params.page) query.set('page', String(params.page))
       if (params.perPage) query.set('per_page', String(params.perPage))
       if (params.type) query.set('detection_type', params.type)
+      if (params.traceId) query.set('trace_id', params.traceId)
+      if (params.confidenceMin !== undefined) query.set('confidence_min', String(params.confidenceMin))
+      if (params.confidenceMax !== undefined) query.set('confidence_max', String(params.confidenceMax))
+      if (params.dateFrom) query.set('date_from', params.dateFrom)
+      if (params.dateTo) query.set('date_to', params.dateTo)
 
-      return fetchApi<Detection[]>(`/tenants/{tenant_id}/detections?${query}`, opts)
+      return fetchApi<{ items: Detection[]; total: number; page: number; per_page: number }>(`/tenants/{tenant_id}/detections?${query}`, opts)
     },
 
     async getDetection(id: string) {
@@ -1828,6 +1842,26 @@ export function createApiClient(token?: string | null, tenantId?: string | null)
         `/tenants/{tenant_id}/workflow-groups/${groupId}/workflows`,
         opts
       )
+    },
+
+    // Diagnostics endpoints (not tenant-scoped)
+    async getDetectorStatus() {
+      return fetchApi<{
+        detectors: Array<{
+          name: string
+          readiness: 'production' | 'beta' | 'experimental' | 'failing' | 'untested'
+          description: string
+          enabled: boolean
+          f1_score: number | null
+          precision: number | null
+          recall: number | null
+          sample_count: number
+          optimal_threshold: number | null
+        }>
+        summary: Record<string, number>
+        calibrated_at: string
+        readiness_criteria: Record<string, any>
+      }>(`/diagnostics/detector-status`, opts)
     },
   }
 }

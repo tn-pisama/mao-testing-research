@@ -1,14 +1,14 @@
 from fastapi import APIRouter, Depends, HTTPException, Query
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy import select, func
-from typing import List
+from typing import List, Optional
 from uuid import UUID
 from datetime import datetime
 
 from app.storage.database import get_db, set_tenant_context
 from app.storage.models import Detection
 from app.core.auth import get_current_tenant
-from app.api.v1.schemas import DetectionResponse, DetectionValidateRequest, FixSuggestionsListResponse, ApplyFixResponse
+from app.api.v1.schemas import DetectionResponse, PaginatedDetectionResponse, DetectionValidateRequest, FixSuggestionsListResponse, ApplyFixResponse
 from app.fixes import FixGenerator, LoopFixGenerator, CorruptionFixGenerator, PersonaFixGenerator, DeadlockFixGenerator
 from app.detection.explainer import explain_detection
 
@@ -55,31 +55,56 @@ def detection_to_response(d: Detection) -> DetectionResponse:
     )
 
 
-@router.get("", response_model=List[DetectionResponse])
+@router.get("", response_model=PaginatedDetectionResponse)
 async def list_detections(
     page: int = Query(1, ge=1),
     per_page: int = Query(20, ge=1, le=100),
-    detection_type: str = Query(None),
-    validated: bool = Query(None),
+    detection_type: Optional[str] = Query(None),
+    validated: Optional[bool] = Query(None),
+    confidence_min: Optional[int] = Query(None, ge=0, le=100),
+    confidence_max: Optional[int] = Query(None, ge=0, le=100),
+    trace_id: Optional[UUID] = Query(None),
+    date_from: Optional[datetime] = Query(None),
+    date_to: Optional[datetime] = Query(None),
     tenant_id: str = Depends(get_current_tenant),
     db: AsyncSession = Depends(get_db),
 ):
     await set_tenant_context(db, tenant_id)
-    
-    query = select(Detection).where(Detection.tenant_id == UUID(tenant_id))
-    
+
+    base_query = select(Detection).where(Detection.tenant_id == UUID(tenant_id))
+
     if detection_type:
-        query = query.where(Detection.detection_type == detection_type)
+        base_query = base_query.where(Detection.detection_type == detection_type)
     if validated is not None:
-        query = query.where(Detection.validated == validated)
-    
-    query = query.order_by(Detection.created_at.desc())
+        base_query = base_query.where(Detection.validated == validated)
+    if confidence_min is not None:
+        base_query = base_query.where(Detection.confidence >= confidence_min)
+    if confidence_max is not None:
+        base_query = base_query.where(Detection.confidence <= confidence_max)
+    if trace_id:
+        base_query = base_query.where(Detection.trace_id == trace_id)
+    if date_from:
+        base_query = base_query.where(Detection.created_at >= date_from)
+    if date_to:
+        base_query = base_query.where(Detection.created_at <= date_to)
+
+    # Get total count
+    count_result = await db.execute(select(func.count()).select_from(base_query.subquery()))
+    total = count_result.scalar()
+
+    # Get paginated results
+    query = base_query.order_by(Detection.created_at.desc())
     query = query.offset((page - 1) * per_page).limit(per_page)
-    
+
     result = await db.execute(query)
     detections = result.scalars().all()
 
-    return [detection_to_response(d) for d in detections]
+    return PaginatedDetectionResponse(
+        items=[detection_to_response(d) for d in detections],
+        total=total,
+        page=page,
+        per_page=per_page,
+    )
 
 
 @router.get("/{detection_id}", response_model=DetectionResponse)

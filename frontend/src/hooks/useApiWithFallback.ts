@@ -76,7 +76,7 @@ export function useApiWithFallback() {
 
       const hasAnyData = !!(
         loops || cost ||
-        (dets && dets.length > 0) ||
+        (dets && dets.items && dets.items.length > 0) ||
         (trc && trc.traces && trc.traces.length > 0) ||
         (qualityRes && qualityRes.assessments && qualityRes.assessments.length > 0)
       )
@@ -88,7 +88,7 @@ export function useApiWithFallback() {
 
       setLoopAnalytics(loops || undefined)
       setCostAnalytics(cost || undefined)
-      setDetections(dets || [])
+      setDetections(dets?.items || [])
       setTraces(trc?.traces || [])
       setQualityAssessments(qualityRes?.assessments || [])
       setIsDemoMode(false)
@@ -152,12 +152,15 @@ export function useDetections(params?: { page?: number; perPage?: number; type?:
   const perPage = params?.perPage
   const type = params?.type
 
-  const { data, isLoading, isDemoMode } = useApiResource<Detection[]>(
+  const { data, isLoading, isDemoMode } = useApiResource<{ items: Detection[]; total: number; page: number; per_page: number }>(
     (api) => api.getDetections({ page, perPage, type }),
-    () => demoDataStore.getDetections().slice(0, perPage || 20),
+    () => {
+      const all = demoDataStore.getDetections()
+      return { items: all.slice(0, perPage || 20), total: all.length, page: page || 1, per_page: perPage || 20 }
+    },
     [page, perPage, type],
   )
-  return { detections: data ?? [], isLoading, isDemoMode }
+  return { detections: data?.items ?? [], total: data?.total ?? 0, isLoading, isDemoMode }
 }
 
 export function useTraces(params?: { page?: number; perPage?: number; status?: string }) {
@@ -436,14 +439,14 @@ export function useTraceDetail(traceId: string) {
       try {
         const token = await getToken()
         const api = createApiClient(token, tenantId)
-        const [traceData, statesData, detectionsData] = await Promise.all([
+        const [traceData, statesData, detectionsResponse] = await Promise.all([
           api.getTrace(traceId),
           api.getTraceStates(traceId),
           api.getDetections({ traceId }),
         ])
         setTrace(traceData)
         setStates(statesData)
-        setDetections(detectionsData)
+        setDetections(detectionsResponse.items)
         setIsDemoMode(false)
       } catch {
         const demoTrace = demoDataStore.getTrace(traceId)

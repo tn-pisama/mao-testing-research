@@ -30,26 +30,41 @@ import type { Detection } from '@/lib/api'
 import { useUserPreferences } from '@/lib/user-preferences'
 import { useDetections } from '@/hooks/useApiWithFallback'
 
-type DetectionType = 'all' | 'infinite_loop' | 'state_corruption' | 'persona_drift' | 'coordination_deadlock' | 'task_derailment' | 'context_neglect' | 'communication_breakdown' | 'specification_mismatch' | 'poor_decomposition' | 'flawed_workflow' | 'hallucination' | 'injection' | 'overflow' | 'withholding' | 'completion' | 'cost'
+type DetectionType = 'all' | 'loop' | 'state_corruption' | 'persona_drift' | 'coordination' | 'task_derailment' | 'context' | 'communication' | 'specification' | 'decomposition' | 'workflow' | 'hallucination' | 'injection' | 'context_overflow' | 'information_withholding' | 'completion_misjudgment' | 'tool_provision' | 'grounding_failure' | 'retrieval_quality' | 'cost'
 type Severity = 'all' | 'low' | 'medium' | 'high' | 'critical'
 
 const detectionTypeConfig: Record<string, { label: string; color: string; icon: typeof AlertTriangle; category: string }> = {
-  infinite_loop: { label: 'Infinite Loop', color: 'text-red-400', icon: RefreshCw, category: 'Inter-Agent' },
+  // Backend-aligned detection type keys
+  loop: { label: 'Infinite Loop', color: 'text-red-400', icon: RefreshCw, category: 'Inter-Agent' },
   state_corruption: { label: 'State Corruption', color: 'text-orange-400', icon: AlertTriangle, category: 'System' },
   persona_drift: { label: 'Persona Drift', color: 'text-purple-400', icon: Activity, category: 'Inter-Agent' },
-  coordination_deadlock: { label: 'Coordination Deadlock', color: 'text-amber-400', icon: Zap, category: 'Inter-Agent' },
+  coordination: { label: 'Coordination Failure', color: 'text-amber-400', icon: Zap, category: 'Inter-Agent' },
   task_derailment: { label: 'Task Derailment', color: 'text-pink-400', icon: TrendingUp, category: 'Inter-Agent' },
+  context: { label: 'Context Neglect', color: 'text-cyan-400', icon: Eye, category: 'Inter-Agent' },
+  communication: { label: 'Communication Breakdown', color: 'text-rose-400', icon: AlertTriangle, category: 'Inter-Agent' },
+  specification: { label: 'Spec Mismatch', color: 'text-blue-400', icon: Shield, category: 'System' },
+  decomposition: { label: 'Poor Decomposition', color: 'text-indigo-400', icon: Activity, category: 'System' },
+  workflow: { label: 'Flawed Workflow', color: 'text-violet-400', icon: Zap, category: 'System' },
+  hallucination: { label: 'Hallucination', color: 'text-yellow-400', icon: AlertCircle, category: 'System' },
+  injection: { label: 'Prompt Injection', color: 'text-red-500', icon: Shield, category: 'System' },
+  context_overflow: { label: 'Context Overflow', color: 'text-orange-500', icon: AlertTriangle, category: 'System' },
+  information_withholding: { label: 'Info Withholding', color: 'text-teal-400', icon: Eye, category: 'Inter-Agent' },
+  completion_misjudgment: { label: 'Completion Issue', color: 'text-lime-400', icon: CheckCircle, category: 'System' },
+  tool_provision: { label: 'Tool Provision', color: 'text-sky-400', icon: Zap, category: 'System' },
+  grounding_failure: { label: 'Grounding Failure', color: 'text-amber-500', icon: AlertCircle, category: 'System' },
+  retrieval_quality: { label: 'Retrieval Quality', color: 'text-fuchsia-400', icon: Eye, category: 'System' },
+  cost: { label: 'Cost Overrun', color: 'text-emerald-400', icon: TrendingUp, category: 'System' },
+  // Legacy aliases for backwards compatibility with existing DB data
+  infinite_loop: { label: 'Infinite Loop', color: 'text-red-400', icon: RefreshCw, category: 'Inter-Agent' },
+  overflow: { label: 'Context Overflow', color: 'text-orange-500', icon: AlertTriangle, category: 'System' },
+  withholding: { label: 'Info Withholding', color: 'text-teal-400', icon: Eye, category: 'Inter-Agent' },
+  completion: { label: 'Completion Issue', color: 'text-lime-400', icon: CheckCircle, category: 'System' },
+  coordination_deadlock: { label: 'Coordination Failure', color: 'text-amber-400', icon: Zap, category: 'Inter-Agent' },
   context_neglect: { label: 'Context Neglect', color: 'text-cyan-400', icon: Eye, category: 'Inter-Agent' },
   communication_breakdown: { label: 'Communication Breakdown', color: 'text-rose-400', icon: AlertTriangle, category: 'Inter-Agent' },
   specification_mismatch: { label: 'Spec Mismatch', color: 'text-blue-400', icon: Shield, category: 'System' },
   poor_decomposition: { label: 'Poor Decomposition', color: 'text-indigo-400', icon: Activity, category: 'System' },
   flawed_workflow: { label: 'Flawed Workflow', color: 'text-violet-400', icon: Zap, category: 'System' },
-  hallucination: { label: 'Hallucination', color: 'text-yellow-400', icon: AlertCircle, category: 'System' },
-  injection: { label: 'Prompt Injection', color: 'text-red-500', icon: Shield, category: 'System' },
-  overflow: { label: 'Context Overflow', color: 'text-orange-500', icon: AlertTriangle, category: 'System' },
-  withholding: { label: 'Info Withholding', color: 'text-teal-400', icon: Eye, category: 'Inter-Agent' },
-  completion: { label: 'Completion Issue', color: 'text-lime-400', icon: CheckCircle, category: 'System' },
-  cost: { label: 'Cost Overrun', color: 'text-emerald-400', icon: TrendingUp, category: 'System' },
 }
 
 const severityConfig: Record<string, { label: string; color: string; bg: string }> = {
@@ -59,24 +74,38 @@ const severityConfig: Record<string, { label: string; color: string; bg: string 
   critical: { label: 'Critical', color: 'text-red-400', bg: 'bg-red-500/20' },
 }
 
-// Plain-English labels for n8n users
+// Plain-English labels for n8n users (backend-aligned keys + legacy aliases)
 const plainEnglishLabels: Record<string, string> = {
-  infinite_loop: 'Stuck in a loop',
+  loop: 'Stuck in a loop',
   state_corruption: 'Data got corrupted',
   persona_drift: 'Unexpected behavior',
-  coordination_deadlock: 'System stuck',
+  coordination: 'System stuck',
   task_derailment: 'Got off track',
+  context: 'Lost context',
+  communication: 'Communication issue',
+  specification: 'Wrong output format',
+  decomposition: 'Bad task split',
+  workflow: 'Workflow problem',
+  hallucination: 'Made up facts',
+  injection: 'Security threat detected',
+  context_overflow: 'Too much data for AI',
+  information_withholding: 'Missing information',
+  completion_misjudgment: 'Finished too early',
+  tool_provision: 'Wrong tools provided',
+  grounding_failure: 'Not backed by sources',
+  retrieval_quality: 'Wrong documents retrieved',
+  cost: 'Over budget',
+  // Legacy aliases
+  infinite_loop: 'Stuck in a loop',
+  overflow: 'Too much data for AI',
+  withholding: 'Missing information',
+  completion: 'Finished too early',
+  coordination_deadlock: 'System stuck',
   context_neglect: 'Lost context',
   communication_breakdown: 'Communication issue',
   specification_mismatch: 'Wrong output format',
   poor_decomposition: 'Bad task split',
   flawed_workflow: 'Workflow problem',
-  hallucination: 'Made up facts',
-  injection: 'Security threat detected',
-  overflow: 'Too much data for AI',
-  withholding: 'Missing information',
-  completion: 'Finished too early',
-  cost: 'Over budget',
 }
 
 export default function DetectionsPage() {

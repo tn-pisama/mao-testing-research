@@ -36,8 +36,8 @@ export default function ReviewPage() {
     try {
       const token = await getToken()
       const api = createApiClient(token, tenantId)
-      const data = await api.getDetections({ perPage: 50, page: 1, type: filter === 'all' ? undefined : filter })
-      setDetections(data.map((d: ApiDetection) => ({
+      const response = await api.getDetections({ perPage: 50, page: 1, type: filter === 'all' ? undefined : filter })
+      setDetections(response.items.map((d: ApiDetection) => ({
         id: d.id,
         type: d.detection_type,
         traceId: d.trace_id,

@@ -107,6 +107,14 @@ class DetectionResponse(BaseModel):
     detector_method: Optional[str] = None  # Detection method used
 
 
+class PaginatedDetectionResponse(BaseModel):
+    """Paginated detection list response with total count."""
+    items: List[DetectionResponse]
+    total: int
+    page: int
+    per_page: int
+
+
 class DetectionValidateRequest(BaseModel):
     false_positive: bool
     notes: Optional[str] = None

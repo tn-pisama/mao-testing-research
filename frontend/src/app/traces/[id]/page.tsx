@@ -34,11 +34,12 @@ export default function TraceDetailPage() {
     enabled: !!id,
   })
 
-  const { data: detections } = useQuery({
+  const { data: detectionsResponse } = useQuery({
     queryKey: ['detections', 'trace', id],
     queryFn: () => api.getDetections({ traceId: id }),
     enabled: !!id,
   })
+  const detections = detectionsResponse?.items
 
   if (traceLoading) {
     return (

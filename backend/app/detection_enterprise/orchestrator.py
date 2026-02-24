@@ -24,6 +24,12 @@ from app.detection.injection import InjectionDetector
 from app.detection.withholding import InformationWithholdingDetector
 from app.detection.derailment import TaskDerailmentDetector
 from app.detection.completion import CompletionMisjudgmentDetector
+from app.detection.communication import CommunicationBreakdownDetector
+from app.detection.specification import SpecificationMismatchDetector
+from app.detection.decomposition import TaskDecompositionDetector
+from app.detection.context import ContextNeglectDetector
+from app.detection.coordination import CoordinationAnalyzer
+from app.detection.workflow import FlawedWorkflowDetector
 from app.detection_enterprise.tool_provision import ToolProvisionDetector
 from app.detection_enterprise.grounding import GroundingDetector, GroundingSeverity
 from app.detection_enterprise.retrieval_quality import RetrievalQualityDetector, RetrievalSeverity
@@ -48,6 +54,12 @@ class DetectionCategory(str, Enum):
     TOOL_PROVISION = "tool_provision"
     GROUNDING_FAILURE = "grounding_failure"  # F15: OfficeQA-inspired
     RETRIEVAL_QUALITY = "retrieval_quality"  # F16: OfficeQA-inspired
+    COMMUNICATION_BREAKDOWN = "communication"
+    SPECIFICATION_MISMATCH = "specification"
+    TASK_DECOMPOSITION = "decomposition"
+    CONTEXT_NEGLECT = "context"
+    COORDINATION_FAILURE = "coordination"
+    FLAWED_WORKFLOW = "workflow"
     UNKNOWN = "unknown"
 
 
@@ -171,28 +183,16 @@ class DetectionOrchestrator:
     aggregates results into a unified diagnosis.
     """
 
-    # Detectors disabled due to zero detection accuracy.  Mapping from
+    # Detectors disabled due to calibration F1 < 0.30.  Mapping from
     # DetectionCategory to human-readable reason.  These detectors are
     # skipped at runtime and their status is reported honestly in the
     # DiagnosisResult.
-    DISABLED_DETECTORS: Dict[str, str] = {
-        DetectionCategory.INFORMATION_WITHHOLDING: (
-            "F8 Information Withholding: zero true positives in benchmark. "
-            "Re-enable when internal state access is solved."
-        ),
-        DetectionCategory.TASK_DERAILMENT: (
-            "F6 Task Derailment: zero true positives despite v1.5 detector. "
-            "Re-enable after embedding tuning."
-        ),
-        DetectionCategory.GROUNDING_FAILURE: (
-            "F15 Grounding Failure: no MAST benchmark data available. "
-            "Re-enable when OfficeQA benchmark is integrated."
-        ),
-        DetectionCategory.RETRIEVAL_QUALITY: (
-            "F16 Retrieval Quality: no MAST benchmark data available. "
-            "Re-enable when OfficeQA benchmark is integrated."
-        ),
-    }
+    #
+    # Sprint 5: Cleared all 4 previously-disabled detectors. Calibration
+    # data now shows: withholding F1=0.75, derailment F1=0.833,
+    # grounding F1=0.667, retrieval_quality F1=0.833.  The original
+    # disable reasons were stale from before Sprint 3/4 improvements.
+    DISABLED_DETECTORS: Dict[str, str] = {}
 
     def __init__(
         self,
@@ -217,6 +217,12 @@ class DetectionOrchestrator:
         self._tool_provision_detector: Optional[ToolProvisionDetector] = None
         self._grounding_detector: Optional[GroundingDetector] = None
         self._retrieval_quality_detector: Optional[RetrievalQualityDetector] = None
+        self._communication_detector: Optional[CommunicationBreakdownDetector] = None
+        self._specification_detector: Optional[SpecificationMismatchDetector] = None
+        self._decomposition_detector: Optional[TaskDecompositionDetector] = None
+        self._context_detector: Optional[ContextNeglectDetector] = None
+        self._coordination_detector: Optional[CoordinationAnalyzer] = None
+        self._workflow_detector: Optional[FlawedWorkflowDetector] = None
 
     @property
     def loop_detector(self) -> MultiLevelLoopDetector:
@@ -265,6 +271,54 @@ class DetectionOrchestrator:
         if self._retrieval_quality_detector is None:
             self._retrieval_quality_detector = RetrievalQualityDetector()
         return self._retrieval_quality_detector
+
+    @property
+    def withholding_detector(self) -> InformationWithholdingDetector:
+        if self._withholding_detector is None:
+            self._withholding_detector = InformationWithholdingDetector()
+        return self._withholding_detector
+
+    @property
+    def derailment_detector(self) -> TaskDerailmentDetector:
+        if self._derailment_detector is None:
+            self._derailment_detector = TaskDerailmentDetector()
+        return self._derailment_detector
+
+    @property
+    def communication_detector(self) -> CommunicationBreakdownDetector:
+        if self._communication_detector is None:
+            self._communication_detector = CommunicationBreakdownDetector()
+        return self._communication_detector
+
+    @property
+    def specification_detector(self) -> SpecificationMismatchDetector:
+        if self._specification_detector is None:
+            self._specification_detector = SpecificationMismatchDetector()
+        return self._specification_detector
+
+    @property
+    def decomposition_detector(self) -> TaskDecompositionDetector:
+        if self._decomposition_detector is None:
+            self._decomposition_detector = TaskDecompositionDetector()
+        return self._decomposition_detector
+
+    @property
+    def context_detector(self) -> ContextNeglectDetector:
+        if self._context_detector is None:
+            self._context_detector = ContextNeglectDetector()
+        return self._context_detector
+
+    @property
+    def coordination_analyzer(self) -> CoordinationAnalyzer:
+        if self._coordination_detector is None:
+            self._coordination_detector = CoordinationAnalyzer()
+        return self._coordination_detector
+
+    @property
+    def workflow_detector(self) -> FlawedWorkflowDetector:
+        if self._workflow_detector is None:
+            self._workflow_detector = FlawedWorkflowDetector()
+        return self._workflow_detector
 
     def analyze_trace(self, trace: UniversalTrace) -> DiagnosisResult:
         """Run comprehensive detection on a trace.
@@ -339,6 +393,56 @@ class DetectionOrchestrator:
         if error_results:
             result.detectors_run.append("error_patterns")
 
+        # Run information withholding detection (re-enabled Sprint 5)
+        if DetectionCategory.INFORMATION_WITHHOLDING not in self.DISABLED_DETECTORS:
+            withholding_result = self._detect_withholding(trace)
+            if withholding_result:
+                all_detections.append(withholding_result)
+                result.detectors_run.append("withholding")
+
+        # Run task derailment detection (re-enabled Sprint 5)
+        if DetectionCategory.TASK_DERAILMENT not in self.DISABLED_DETECTORS:
+            derailment_result = self._detect_derailment(trace)
+            if derailment_result:
+                all_detections.append(derailment_result)
+                result.detectors_run.append("derailment")
+
+        # Run communication breakdown detection
+        communication_result = self._detect_communication(trace)
+        if communication_result:
+            all_detections.append(communication_result)
+            result.detectors_run.append("communication")
+
+        # Run specification mismatch detection
+        specification_result = self._detect_specification(trace)
+        if specification_result:
+            all_detections.append(specification_result)
+            result.detectors_run.append("specification")
+
+        # Run task decomposition detection
+        decomposition_result = self._detect_decomposition(trace)
+        if decomposition_result:
+            all_detections.append(decomposition_result)
+            result.detectors_run.append("decomposition")
+
+        # Run context neglect detection
+        context_result = self._detect_context_neglect(trace)
+        if context_result:
+            all_detections.append(context_result)
+            result.detectors_run.append("context")
+
+        # Run coordination failure detection
+        coordination_result = self._detect_coordination(trace)
+        if coordination_result:
+            all_detections.append(coordination_result)
+            result.detectors_run.append("coordination")
+
+        # Run flawed workflow detection
+        workflow_result = self._detect_workflow(trace)
+        if workflow_result:
+            all_detections.append(workflow_result)
+            result.detectors_run.append("workflow")
+
         # Run grounding failure detection (F15: OfficeQA-inspired)
         if DetectionCategory.GROUNDING_FAILURE not in self.DISABLED_DETECTORS:
             grounding_result = self._detect_grounding_failure(trace)
@@ -358,6 +462,9 @@ class DetectionOrchestrator:
 
         # Filter to only detected issues
         detected_issues = [d for d in all_detections if d.detected]
+
+        # Deduplicate correlated detections
+        detected_issues = self._deduplicate_detections(detected_issues)
 
         # Sort by severity and confidence
         severity_order = {Severity.CRITICAL: 0, Severity.HIGH: 1, Severity.MEDIUM: 2, Severity.LOW: 3, Severity.INFO: 4}
@@ -383,6 +490,170 @@ class DetectionOrchestrator:
                 }
 
         # Calculate detection time
+        end_time = datetime.utcnow()
+        result.detection_time_ms = int((end_time - start_time).total_seconds() * 1000)
+
+        return result
+
+    # Subsumption rules: when both detectors in a pair fire, keep the root
+    # cause and suppress the symptom.  Format: (root_cause, symptom).
+    SUBSUMPTION_RULES: List[Tuple[DetectionCategory, DetectionCategory]] = [
+        # Grounding failure subsumes hallucination (grounding is the root cause)
+        (DetectionCategory.GROUNDING_FAILURE, DetectionCategory.HALLUCINATION),
+        # Loop subsumes context overflow (loops cause context exhaustion)
+        (DetectionCategory.LOOP, DetectionCategory.CONTEXT_OVERFLOW),
+        # Derailment subsumes completion misjudgment (off-track → bad completion)
+        (DetectionCategory.TASK_DERAILMENT, DetectionCategory.COMPLETION_MISJUDGMENT),
+        # Communication breakdown subsumes coordination failure (symptom of it)
+        (DetectionCategory.COMMUNICATION_BREAKDOWN, DetectionCategory.COORDINATION_FAILURE),
+    ]
+
+    def _deduplicate_detections(self, detections: List[DetectionResult]) -> List[DetectionResult]:
+        """Remove correlated detections where one subsumes another.
+
+        Two deduplication strategies:
+        1. Subsumption rules: known root-cause/symptom pairs
+        2. Span overlap: if two detections share >50% affected spans, keep higher-confidence
+        """
+        if len(detections) <= 1:
+            return detections
+
+        categories_present = {d.category for d in detections}
+        suppressed_categories = set()
+
+        # Apply subsumption rules
+        for root_cause, symptom in self.SUBSUMPTION_RULES:
+            if root_cause in categories_present and symptom in categories_present:
+                suppressed_categories.add(symptom)
+
+        # Filter by subsumption
+        remaining = [d for d in detections if d.category not in suppressed_categories]
+
+        # Apply span overlap deduplication
+        if len(remaining) > 1:
+            final = []
+            skip_indices = set()
+            for i, det_a in enumerate(remaining):
+                if i in skip_indices:
+                    continue
+                for j in range(i + 1, len(remaining)):
+                    if j in skip_indices:
+                        continue
+                    det_b = remaining[j]
+                    # Check span overlap
+                    if det_a.affected_spans and det_b.affected_spans:
+                        set_a = set(det_a.affected_spans)
+                        set_b = set(det_b.affected_spans)
+                        overlap = len(set_a & set_b)
+                        min_size = min(len(set_a), len(set_b))
+                        if min_size > 0 and overlap / min_size > 0.5:
+                            # Keep the one with higher confidence
+                            if det_b.confidence > det_a.confidence:
+                                skip_indices.add(i)
+                                break
+                            else:
+                                skip_indices.add(j)
+                if i not in skip_indices:
+                    final.append(remaining[i])
+            remaining = final
+
+        return remaining
+
+    async def analyze_trace_async(self, trace: UniversalTrace) -> DiagnosisResult:
+        """Run comprehensive detection on a trace with parallel execution.
+
+        Uses asyncio.gather with a semaphore to run detectors in parallel,
+        bounded by max_parallel_detectors.
+        """
+        import asyncio
+
+        start_time = datetime.utcnow()
+        result = DiagnosisResult(
+            trace_id=trace.trace_id,
+            total_spans=len(trace.spans),
+            error_spans=len([s for s in trace.spans if s.has_error]),
+            total_tokens=trace.total_tokens,
+            duration_ms=trace.total_duration_ms,
+        )
+
+        snapshots = trace.to_state_snapshots()
+        sem = asyncio.Semaphore(self.max_parallel_detectors)
+        loop = asyncio.get_event_loop()
+
+        async def _run(name: str, fn, *args):
+            async with sem:
+                try:
+                    return name, await loop.run_in_executor(None, fn, *args)
+                except Exception as e:
+                    logger.warning("Detector %s failed: %s", name, e)
+                    return name, None
+
+        # Build detector tasks — each returns (name, result_or_None)
+        tasks = [
+            _run("loop", self._detect_loops, snapshots),
+            _run("overflow", self._detect_overflow, trace),
+            _run("tool_issues", self._detect_tool_issues, trace),
+            _run("tool_provision", self._detect_tool_provision, trace),
+            _run("hallucination", self._detect_hallucination, trace),
+            _run("persona_drift", self._detect_persona_drift, trace),
+            _run("corruption", self._detect_corruption, trace, snapshots),
+            _run("error_patterns", self._detect_error_patterns, trace),
+            _run("communication", self._detect_communication, trace),
+            _run("specification", self._detect_specification, trace),
+            _run("decomposition", self._detect_decomposition, trace),
+            _run("context", self._detect_context_neglect, trace),
+            _run("coordination", self._detect_coordination, trace),
+            _run("workflow", self._detect_workflow, trace),
+        ]
+
+        # Add gated detectors only if not disabled
+        if DetectionCategory.INFORMATION_WITHHOLDING not in self.DISABLED_DETECTORS:
+            tasks.append(_run("withholding", self._detect_withholding, trace))
+        if DetectionCategory.TASK_DERAILMENT not in self.DISABLED_DETECTORS:
+            tasks.append(_run("derailment", self._detect_derailment, trace))
+        if DetectionCategory.GROUNDING_FAILURE not in self.DISABLED_DETECTORS:
+            tasks.append(_run("grounding", self._detect_grounding_failure, trace))
+        if DetectionCategory.RETRIEVAL_QUALITY not in self.DISABLED_DETECTORS:
+            tasks.append(_run("retrieval_quality", self._detect_retrieval_quality, trace))
+
+        completed = await asyncio.gather(*tasks)
+
+        # Aggregate results
+        all_detections: List[DetectionResult] = []
+        for name, det_result in completed:
+            if det_result is None:
+                continue
+            if isinstance(det_result, list):
+                all_detections.extend(det_result)
+                if det_result:
+                    result.detectors_run.append(name)
+            elif isinstance(det_result, DetectionResult):
+                all_detections.append(det_result)
+                result.detectors_run.append(name)
+
+        result.detectors_disabled = dict(self.DISABLED_DETECTORS)
+
+        # Filter to only detected issues
+        detected_issues = [d for d in all_detections if d.detected]
+        detected_issues = self._deduplicate_detections(detected_issues)
+        severity_order = {Severity.CRITICAL: 0, Severity.HIGH: 1, Severity.MEDIUM: 2, Severity.LOW: 3, Severity.INFO: 4}
+        detected_issues.sort(key=lambda d: (severity_order[d.severity], -d.confidence))
+
+        result.all_detections = detected_issues
+        result.has_failures = len(detected_issues) > 0
+        result.failure_count = len(detected_issues)
+
+        if detected_issues:
+            result.primary_failure = detected_issues[0]
+            result.root_cause_explanation = self._generate_explanation(result.primary_failure, trace)
+            if result.primary_failure.suggested_fix:
+                result.self_healing_available = True
+                result.auto_fix_preview = {
+                    "description": f"Apply fix for {result.primary_failure.category.value}",
+                    "confidence": result.primary_failure.confidence,
+                    "action": result.primary_failure.suggested_fix,
+                }
+
         end_time = datetime.utcnow()
         result.detection_time_ms = int((end_time - start_time).total_seconds() * 1000)
 
@@ -846,7 +1117,7 @@ class DetectionOrchestrator:
 
             try:
                 agent = Agent(
-                    id=span.agent_name or span.span_id,
+                    id=span.agent_name or span.id,
                     persona_description=persona,
                     allowed_actions=["*"],
                 )
@@ -862,12 +1133,12 @@ class DetectionOrchestrator:
                         description=f"Agent '{span.agent_name or 'unknown'}' output drifted from its assigned persona. "
                                    f"Consistency score: {result.score:.2f}.",
                         evidence=[{"issues": result.issues[:3]}] if result.issues else [],
-                        affected_spans=[span.span_id],
+                        affected_spans=[span.id],
                         suggested_fix="Reinforce agent persona in system prompt. Add persona compliance checks.",
                         raw_result=result,
                     )
             except Exception as e:
-                logger.warning("Persona detector failed on span %s: %s", span.span_id, e)
+                logger.warning("Persona detector failed on span %s: %s", span.id, e)
 
         return None
 
@@ -909,6 +1180,378 @@ class DetectionOrchestrator:
                 logger.warning("Corruption detector failed at step %d: %s", i, e)
 
         return results
+
+    def _detect_withholding(self, trace: UniversalTrace) -> Optional[DetectionResult]:
+        """Detect information withholding — agent has relevant info but omits it."""
+        for span in trace.spans:
+            if not span.response or len(span.response) < 50:
+                continue
+
+            # Build context from available info (prompt + tool results)
+            internal_state = ""
+            if span.prompt:
+                internal_state += span.prompt + "\n"
+            for s in trace.spans:
+                if s.span_type == SpanType.TOOL_CALL and s.tool_result:
+                    internal_state += str(s.tool_result) + "\n"
+
+            if not internal_state:
+                continue
+
+            try:
+                result = self.withholding_detector.detect(
+                    internal_state=internal_state,
+                    agent_output=span.response,
+                )
+
+                if result.detected and result.confidence > 0.5:
+                    return DetectionResult(
+                        category=DetectionCategory.INFORMATION_WITHHOLDING,
+                        detected=True,
+                        confidence=result.confidence,
+                        severity=Severity.MEDIUM,
+                        title="Information Withholding Detected",
+                        description=result.explanation,
+                        evidence=[{
+                        "issues": [{"type": iss.issue_type.value, "info": iss.withheld_info, "description": iss.description} for iss in result.issues[:3]],
+                        "retention_ratio": result.information_retention_ratio,
+                    }] if result.issues else [],
+                        affected_spans=[span.id],
+                        suggested_fix=result.suggested_fix,
+                        raw_result=result,
+                    )
+            except Exception as e:
+                logger.warning("Withholding detector failed: %s", e)
+
+        return None
+
+    def _detect_derailment(self, trace: UniversalTrace) -> Optional[DetectionResult]:
+        """Detect task derailment — agent strays from the assigned task."""
+        # Extract task from first prompt or metadata
+        task = ""
+        agent_outputs: List[str] = []
+
+        for span in trace.spans:
+            if not task:
+                task = (span.metadata or {}).get("gen_ai.task", "")
+                if not task and span.prompt:
+                    task = span.prompt[:500]
+            if span.response and len(span.response) > 50:
+                agent_outputs.append(span.response)
+
+        if not task or not agent_outputs:
+            return None
+
+        try:
+            result = self.derailment_detector.detect(
+                task=task,
+                output="\n".join(agent_outputs[-3:]),
+            )
+
+            if result.detected and result.confidence > 0.5:
+                return DetectionResult(
+                    category=DetectionCategory.TASK_DERAILMENT,
+                    detected=True,
+                    confidence=result.confidence,
+                    severity=Severity.MEDIUM if result.confidence < 0.8 else Severity.HIGH,
+                    title="Task Derailment Detected",
+                    description=result.explanation,
+                    evidence=[{"topic_drift_score": result.topic_drift_score, "task_coverage": result.task_coverage}],
+                    suggested_fix=result.suggested_fix,
+                    raw_result=result,
+                )
+        except Exception as e:
+            logger.warning("Derailment detector failed: %s", e)
+
+        return None
+
+    def _detect_communication(self, trace: UniversalTrace) -> Optional[DetectionResult]:
+        """Detect communication breakdown between agents."""
+        # Need at least 2 spans with different agents communicating
+        agent_spans = [(s.agent_name or s.id, s) for s in trace.spans if s.response]
+        if len(agent_spans) < 2:
+            return None
+
+        # Look for sequential agent-to-agent communication
+        for i in range(1, len(agent_spans)):
+            sender_name, sender_span = agent_spans[i - 1]
+            receiver_name, receiver_span = agent_spans[i]
+
+            if not sender_span.response or not receiver_span.response:
+                continue
+
+            try:
+                result = self.communication_detector.detect(
+                    sender_message=sender_span.response,
+                    receiver_response=receiver_span.response,
+                    sender_name=sender_name,
+                    receiver_name=receiver_name,
+                )
+
+                if result.detected and result.confidence > 0.5:
+                    return DetectionResult(
+                        category=DetectionCategory.COMMUNICATION_BREAKDOWN,
+                        detected=True,
+                        confidence=result.confidence,
+                        severity=Severity.MEDIUM if result.confidence < 0.8 else Severity.HIGH,
+                        title="Communication Breakdown Detected",
+                        description=result.explanation,
+                        evidence=[{
+                            "breakdown_type": result.breakdown_type.value if result.breakdown_type else None,
+                            "intent_alignment": result.intent_alignment,
+                        }],
+                        affected_spans=[sender_span.id, receiver_span.id],
+                        suggested_fix=result.suggested_fix,
+                        raw_result=result,
+                    )
+            except Exception as e:
+                logger.warning("Communication detector failed: %s", e)
+
+        return None
+
+    def _detect_specification(self, trace: UniversalTrace) -> Optional[DetectionResult]:
+        """Detect specification mismatch — output doesn't match requirements."""
+        # Extract user intent and task specification from trace
+        user_intent = ""
+        task_specification = ""
+
+        for span in trace.spans:
+            if not user_intent and span.prompt:
+                user_intent = span.prompt[:1000]
+            if not task_specification:
+                task_specification = (span.metadata or {}).get("gen_ai.task_spec", "")
+                if not task_specification and span.prompt:
+                    task_specification = span.prompt[:1000]
+
+        # Need last output to compare against spec
+        last_output = ""
+        for span in reversed(trace.spans):
+            if span.response and len(span.response) > 50:
+                last_output = span.response
+                break
+
+        if not user_intent or not last_output:
+            return None
+
+        try:
+            result = self.specification_detector.detect(
+                user_intent=user_intent,
+                task_specification=task_specification or user_intent,
+                original_request=user_intent,
+            )
+
+            if result.detected and result.confidence > 0.5:
+                return DetectionResult(
+                    category=DetectionCategory.SPECIFICATION_MISMATCH,
+                    detected=True,
+                    confidence=result.confidence,
+                    severity=Severity.MEDIUM if result.confidence < 0.8 else Severity.HIGH,
+                    title="Specification Mismatch Detected",
+                    description=result.explanation,
+                    evidence=[{
+                        "mismatch_type": result.mismatch_type.value if result.mismatch_type else None,
+                        "requirement_coverage": result.requirement_coverage,
+                        "missing_requirements": result.missing_requirements[:3],
+                    }],
+                    suggested_fix=result.suggested_fix,
+                    raw_result=result,
+                )
+        except Exception as e:
+            logger.warning("Specification detector failed: %s", e)
+
+        return None
+
+    def _detect_decomposition(self, trace: UniversalTrace) -> Optional[DetectionResult]:
+        """Detect task decomposition issues — poor subtask breakdown."""
+        # Extract task description and decomposition from trace
+        task_description = ""
+        decomposition = ""
+
+        for span in trace.spans:
+            if not task_description:
+                task_description = (span.metadata or {}).get("gen_ai.task", "")
+                if not task_description and span.prompt:
+                    task_description = span.prompt[:500]
+
+            # Look for decomposition in metadata or early responses
+            if not decomposition and span.response:
+                decomposition = span.response[:2000]
+
+        if not task_description or not decomposition:
+            return None
+
+        try:
+            result = self.decomposition_detector.detect(
+                task_description=task_description,
+                decomposition=decomposition,
+            )
+
+            if result.detected and result.confidence > 0.5:
+                return DetectionResult(
+                    category=DetectionCategory.TASK_DECOMPOSITION,
+                    detected=True,
+                    confidence=result.confidence,
+                    severity=Severity.MEDIUM if result.confidence < 0.8 else Severity.HIGH,
+                    title="Task Decomposition Issue Detected",
+                    description=result.explanation,
+                    evidence=[{
+                        "subtask_count": result.subtask_count,
+                        "problematic_subtasks": result.problematic_subtasks[:3],
+                        "vague_count": result.vague_count,
+                        "complex_count": result.complex_count,
+                    }],
+                    suggested_fix=result.suggested_fix,
+                    raw_result=result,
+                )
+        except Exception as e:
+            logger.warning("Decomposition detector failed: %s", e)
+
+        return None
+
+    def _detect_context_neglect(self, trace: UniversalTrace) -> Optional[DetectionResult]:
+        """Detect context neglect — agent ignores relevant context information."""
+        for span in trace.spans:
+            if not span.response or len(span.response) < 50:
+                continue
+
+            # Context comes from prompt + any retrieval/tool data
+            context = span.prompt or ""
+            if not context:
+                continue
+
+            try:
+                result = self.context_detector.detect(
+                    context=context,
+                    output=span.response,
+                    task=(span.metadata or {}).get("gen_ai.task", None),
+                    agent_name=span.agent_name,
+                )
+
+                if result.detected and result.confidence > 0.5:
+                    return DetectionResult(
+                        category=DetectionCategory.CONTEXT_NEGLECT,
+                        detected=True,
+                        confidence=result.confidence,
+                        severity=Severity.MEDIUM if result.confidence < 0.8 else Severity.HIGH,
+                        title="Context Neglect Detected",
+                        description=result.explanation,
+                        evidence=[{
+                            "context_utilization": result.context_utilization,
+                            "missing_elements": result.missing_elements[:3],
+                        }],
+                        affected_spans=[span.id],
+                        suggested_fix=result.suggested_fix,
+                        raw_result=result,
+                    )
+            except Exception as e:
+                logger.warning("Context neglect detector failed: %s", e)
+
+        return None
+
+    def _detect_coordination(self, trace: UniversalTrace) -> Optional[DetectionResult]:
+        """Detect coordination failures in multi-agent traces."""
+        from app.detection.coordination import Message
+
+        # Build message list from trace spans
+        messages: List[Message] = []
+        agent_ids: List[str] = []
+        seen_agents = set()
+
+        for i, span in enumerate(trace.spans):
+            agent_id = span.agent_name or span.id
+            if agent_id not in seen_agents:
+                agent_ids.append(agent_id)
+                seen_agents.add(agent_id)
+
+            if span.response:
+                # Determine receiver (next different agent in trace)
+                next_agent = agent_id
+                for future_span in trace.spans[i + 1:]:
+                    next_name = future_span.agent_name or future_span.id
+                    if next_name != agent_id:
+                        next_agent = next_name
+                        break
+
+                messages.append(Message(
+                    from_agent=agent_id,
+                    to_agent=next_agent,
+                    content=span.response,
+                    timestamp=float(i),
+                ))
+
+        if len(agent_ids) < 2 or len(messages) < 2:
+            return None
+
+        try:
+            result = self.coordination_analyzer.analyze_coordination_with_confidence(
+                messages=messages,
+                agent_ids=agent_ids,
+            )
+
+            if result.detected and result.confidence > 0.5:
+                return DetectionResult(
+                    category=DetectionCategory.COORDINATION_FAILURE,
+                    detected=True,
+                    confidence=result.confidence,
+                    severity=Severity.MEDIUM if result.confidence < 0.8 else Severity.HIGH,
+                    title="Coordination Failure Detected",
+                    description=f"{result.issue_count} coordination issue(s) detected among {len(agent_ids)} agents.",
+                    evidence=[{
+                        "issues": [{"type": iss.issue_type, "message": iss.message, "agents": iss.agents_involved} for iss in result.issues[:3]],
+                        "metrics": result.metrics,
+                    }],
+                    suggested_fix="Improve agent handoff protocols and add coordination checkpoints.",
+                    raw_result=result,
+                )
+        except Exception as e:
+            logger.warning("Coordination detector failed: %s", e)
+
+        return None
+
+    def _detect_workflow(self, trace: UniversalTrace) -> Optional[DetectionResult]:
+        """Detect flawed workflow structure."""
+        from app.detection.workflow import WorkflowNode
+
+        # Build workflow nodes from trace spans
+        nodes: List[WorkflowNode] = []
+        for i, span in enumerate(trace.spans):
+            outgoing = [trace.spans[i + 1].id] if i + 1 < len(trace.spans) else []
+            incoming = [trace.spans[i - 1].id] if i > 0 else []
+            nodes.append(WorkflowNode(
+                id=span.id,
+                name=span.agent_name or span.tool_name or f"step_{i}",
+                node_type=span.span_type.value if span.span_type else "unknown",
+                incoming=incoming,
+                outgoing=outgoing,
+            ))
+
+        if len(nodes) < 2:
+            return None
+
+        try:
+            result = self.workflow_detector.detect(nodes=nodes)
+
+            if result.detected and result.confidence > 0.5:
+                return DetectionResult(
+                    category=DetectionCategory.FLAWED_WORKFLOW,
+                    detected=True,
+                    confidence=result.confidence,
+                    severity=Severity.MEDIUM if result.confidence < 0.8 else Severity.HIGH,
+                    title="Flawed Workflow Detected",
+                    description=result.explanation,
+                    evidence=[{
+                        "node_count": result.node_count,
+                        "edge_count": result.edge_count,
+                        "problematic_nodes": result.problematic_nodes[:3],
+                        "issues": [iss.value for iss in result.issues[:5]],
+                    }],
+                    suggested_fix=result.suggested_fix,
+                    raw_result=result,
+                )
+        except Exception as e:
+            logger.warning("Workflow detector failed: %s", e)
+
+        return None
 
     def _generate_explanation(self, primary: DetectionResult, trace: UniversalTrace) -> str:
         """Generate a human-readable root cause explanation.
@@ -957,6 +1600,46 @@ class DetectionOrchestrator:
                 f"{primary.description} Poor retrieval quality is often the bottleneck in RAG systems, "
                 "leading to incomplete or incorrect reasoning when relevant documents are missed "
                 "or irrelevant documents dilute the context."
+            ),
+            DetectionCategory.INFORMATION_WITHHOLDING: (
+                f"Agent withheld relevant information from its output. {primary.description} "
+                "This occurs when the agent has access to pertinent data but fails to include it "
+                "in its response, potentially due to overly conservative filtering or context loss."
+            ),
+            DetectionCategory.TASK_DERAILMENT: (
+                f"Agent strayed from its assigned task. {primary.description} "
+                "This happens when the agent loses focus on the original objective and "
+                "pursues tangential topics or performs unrelated actions."
+            ),
+            DetectionCategory.COMMUNICATION_BREAKDOWN: (
+                f"Communication between agents broke down. {primary.description} "
+                "This occurs when one agent's message is misinterpreted, ignored, or "
+                "insufficiently acted upon by the receiving agent."
+            ),
+            DetectionCategory.SPECIFICATION_MISMATCH: (
+                f"Agent output does not match the task specification. {primary.description} "
+                "This happens when the agent produces output that misses required elements "
+                "or deviates from the specified format, constraints, or requirements."
+            ),
+            DetectionCategory.TASK_DECOMPOSITION: (
+                f"Task decomposition has issues. {primary.description} "
+                "This occurs when a complex task is broken into subtasks that are too vague, "
+                "overlapping, missing dependencies, or not properly scoped."
+            ),
+            DetectionCategory.CONTEXT_NEGLECT: (
+                f"Agent neglected relevant context information. {primary.description} "
+                "This happens when important context (previous messages, tool results, "
+                "or instructions) is available but not reflected in the agent's response."
+            ),
+            DetectionCategory.COORDINATION_FAILURE: (
+                f"Coordination failure detected among agents. {primary.description} "
+                "This occurs when multiple agents fail to properly hand off work, "
+                "duplicate effort, or miss necessary synchronization points."
+            ),
+            DetectionCategory.FLAWED_WORKFLOW: (
+                f"Workflow structure has issues. {primary.description} "
+                "This indicates problems in the overall execution flow such as "
+                "disconnected nodes, missing error handling, or inefficient routing."
             ),
         }
 
