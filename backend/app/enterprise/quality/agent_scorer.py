@@ -12,6 +12,7 @@ from .error_codes import get_error_code
 
 
 from app.core.n8n_constants import AI_NODE_TYPES, LM_CONFIG_NODE_TYPES
+from app.core.n8n_utils import is_agent_node
 
 # Role definition keywords
 ROLE_KEYWORDS = [
@@ -1043,14 +1044,5 @@ class AgentQualityScorer:
         return 1.0
 
 
-def is_agent_node(node: Dict[str, Any]) -> bool:
-    """Check if a node is an AI/agent node that should be scored.
 
-    Returns True for agent nodes that have prompts.
-    Returns False for LM config nodes (model configuration only).
-    """
-    node_type = node.get("type", "")
-    # Exclude LM config nodes - they're just model settings
-    if node_type in LM_CONFIG_NODE_TYPES:
-        return False
-    return node_type in AI_NODE_TYPES
+# is_agent_node imported from app.core.n8n_utils (canonical location)

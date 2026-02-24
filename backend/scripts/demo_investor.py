@@ -28,6 +28,7 @@ sys.path.insert(0, str(Path(__file__).resolve().parent.parent))
 
 from app.enterprise.quality import QualityAssessor
 from app.enterprise.quality.healing import QualityHealingEngine
+from app.core.n8n_utils import count_ai_agents
 
 
 # ---------------------------------------------------------------------------
@@ -180,12 +181,8 @@ MAST_CATEGORIES = {
 }
 
 
-def count_ai_agents(workflow: Dict[str, Any]) -> int:
-    """Count AI agent nodes in a workflow."""
-    return sum(
-        1 for n in workflow.get("nodes", [])
-        if "langchain" in n.get("type", "") or "openAi" in n.get("type", "")
-    )
+
+# count_ai_agents imported from app.core.n8n_utils
 
 
 # ---------------------------------------------------------------------------

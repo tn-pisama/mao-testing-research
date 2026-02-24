@@ -23,6 +23,7 @@ from app.detection.turn_aware._base import (
     TurnAwareDetectionResult,
     TurnAwareSeverity,
 )
+from app.core.n8n_utils import is_ai_node_type, build_connection_map
 
 logger = logging.getLogger(__name__)
 
@@ -368,9 +369,7 @@ class N8NResourceDetector(TurnAwareDetector):
 
     # ---- Workflow JSON analysis (static / pre-execution) ----
 
-    # Canonical AI node types — see app.core.n8n_constants
-    from app.core.n8n_constants import ALL_AI_NODE_TYPES as _AI_NODE_TYPES
-    from app.core.n8n_constants import AI_TYPE_KEYWORDS as _AI_TYPE_KEYWORDS
+    # AI node type checks: use is_ai_node_type() from app.core.n8n_utils
 
     # Loop / batch node types
     _LOOP_NODE_TYPES = {
@@ -384,29 +383,7 @@ class N8NResourceDetector(TurnAwareDetector):
         "n8n-nodes-base.http",
     }
 
-    def _is_ai_node_type(self, node_type: str) -> bool:
-        """Return True if *node_type* represents an AI / LLM node."""
-        if node_type in self._AI_NODE_TYPES:
-            return True
-        lower = node_type.lower()
-        return any(kw in lower for kw in self._AI_TYPE_KEYWORDS)
-
-    def _build_connection_map(
-        self, workflow_json: Dict[str, Any]
-    ) -> Dict[str, List[str]]:
-        """Map source-node name -> list of target-node names."""
-        connections: Dict[str, List[str]] = {}
-        raw = workflow_json.get("connections", {})
-        for source_name, outputs in raw.items():
-            targets: List[str] = []
-            for _output_type, output_groups in outputs.items():
-                for group in output_groups:
-                    if isinstance(group, list):
-                        for link in group:
-                            if isinstance(link, dict) and "node" in link:
-                                targets.append(link["node"])
-            connections[source_name] = targets
-        return connections
+    # _is_ai_node_type and _build_connection_map moved to app.core.n8n_utils
 
     def detect_workflow(
         self, workflow_json: Dict[str, Any]
@@ -432,7 +409,7 @@ class N8NResourceDetector(TurnAwareDetector):
                 detector_name=self.name,
             )
 
-        connection_map = self._build_connection_map(workflow_json)
+        connection_map = build_connection_map(workflow_json)
         node_by_name: Dict[str, Dict[str, Any]] = {
             n.get("name", ""): n for n in nodes
         }
@@ -443,7 +420,7 @@ class N8NResourceDetector(TurnAwareDetector):
         unbounded_ai: List[Dict[str, Any]] = []
         for node in nodes:
             node_type = node.get("type", "")
-            if not self._is_ai_node_type(node_type):
+            if not is_ai_node_type(node_type):
                 continue
             params = node.get("parameters", {}) or {}
             # maxTokens can be at top-level params or nested under options/additionalOptions
@@ -553,7 +530,7 @@ class N8NResourceDetector(TurnAwareDetector):
                 if target_name in visited:
                     continue
                 target_node = node_by_name.get(target_name)
-                if target_node and self._is_ai_node_type(target_node.get("type", "")):
+                if target_node and is_ai_node_type(target_node.get("type", "")):
                     chain.extend(_walk_ai_chain(target_name, visited))
                     break  # follow one path
             return chain
@@ -564,7 +541,7 @@ class N8NResourceDetector(TurnAwareDetector):
             node_type = node.get("type", "")
             if node_name in visited_global:
                 continue
-            if not self._is_ai_node_type(node_type):
+            if not is_ai_node_type(node_type):
                 continue
             chain = _walk_ai_chain(node_name, visited_global)
             if len(chain) >= 2:

@@ -97,7 +97,8 @@ from .models import (
     QualityImprovement,
     QualityReport,
 )
-from .agent_scorer import AgentQualityScorer, is_agent_node
+from .agent_scorer import AgentQualityScorer
+from app.core.n8n_utils import is_agent_node
 from .orchestration_scorer import OrchestrationQualityScorer
 from .improvement_suggester import (
     ImprovementSuggester,
