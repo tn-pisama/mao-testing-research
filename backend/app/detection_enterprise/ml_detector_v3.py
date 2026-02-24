@@ -103,14 +103,10 @@ def _create_focal_loss(alpha: float = 0.25, gamma: float = 2.0, smoothing: float
 
     return FocalLoss(alpha, gamma, smoothing)
 
-FAILURE_MODES = ["F1", "F3", "F4", "F5", "F6", "F7", "F8", "F9", "F11", "F12", "F13", "F14"]
-# Skip F2 and F10 - too few samples
+from app.core.mast_constants import ANNOTATION_MAP, FAILURE_MODES_F14
 
-ANNOTATION_MAP = {
-    "1.1": "F1", "1.2": "F2", "1.3": "F3", "1.4": "F4", "1.5": "F5",
-    "2.1": "F6", "2.2": "F7", "2.3": "F8", "2.4": "F9", "2.5": "F10", "2.6": "F11",
-    "3.1": "F12", "3.2": "F13", "3.3": "F14",
-}
+# Skip F2 and F10 - too few training samples
+FAILURE_MODES = [m for m in FAILURE_MODES_F14 if m not in ("F2", "F10")]
 
 
 def _create_attention_network(input_dim: int, hidden_dims: List[int], output_dim: int,

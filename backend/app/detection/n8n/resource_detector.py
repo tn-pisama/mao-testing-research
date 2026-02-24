@@ -368,17 +368,9 @@ class N8NResourceDetector(TurnAwareDetector):
 
     # ---- Workflow JSON analysis (static / pre-execution) ----
 
-    # Known AI node types (case-sensitive, as they appear in n8n exports)
-    _AI_NODE_TYPES = {
-        "@n8n/n8n-nodes-langchain.agent",
-        "@n8n/n8n-nodes-langchain.chainLlm",
-        "n8n-nodes-base.openAi",
-        "@n8n/n8n-nodes-langchain.lmChatOpenAi",
-        "@n8n/n8n-nodes-langchain.lmChatAnthropic",
-    }
-
-    # Broader check for any AI-adjacent node
-    _AI_TYPE_KEYWORDS = {"langchain", "openai", "anthropic", "llm", "chat"}
+    # Canonical AI node types — see app.core.n8n_constants
+    from app.core.n8n_constants import ALL_AI_NODE_TYPES as _AI_NODE_TYPES
+    from app.core.n8n_constants import AI_TYPE_KEYWORDS as _AI_TYPE_KEYWORDS
 
     # Loop / batch node types
     _LOOP_NODE_TYPES = {

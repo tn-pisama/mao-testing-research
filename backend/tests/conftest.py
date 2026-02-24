@@ -444,6 +444,58 @@ def minimal_workflow():
     }
 
 
+def make_low_quality_workflow():
+    """Factory: deliberately low-quality 3-node n8n workflow.
+
+    Has: trigger + bare AI agent + output (with connections).
+    Missing: system prompt, error handling, pinData, error trigger.
+    Shared across healing test suites — do not modify without running
+    test_quality_healing_*.py tests.
+    """
+    return {
+        "id": "low-quality-shared",
+        "name": "Low Quality Workflow",
+        "nodes": [
+            {
+                "id": "trigger-1",
+                "name": "Webhook Trigger",
+                "type": "n8n-nodes-base.webhook",
+                "parameters": {"path": "/test"},
+                "position": [0, 0],
+            },
+            {
+                "id": "agent-1",
+                "name": "AI Agent",
+                "type": "@n8n/n8n-nodes-langchain.agent",
+                "parameters": {},
+                "position": [200, 0],
+            },
+            {
+                "id": "output-1",
+                "name": "Output",
+                "type": "n8n-nodes-base.respondToWebhook",
+                "parameters": {},
+                "position": [400, 0],
+            },
+        ],
+        "connections": {
+            "Webhook Trigger": {
+                "main": [[{"node": "AI Agent", "type": "main", "index": 0}]]
+            },
+            "AI Agent": {
+                "main": [[{"node": "Output", "type": "main", "index": 0}]]
+            },
+        },
+        "settings": {},
+    }
+
+
+@pytest.fixture
+def low_quality_workflow():
+    """Fixture wrapper around make_low_quality_workflow()."""
+    return make_low_quality_workflow()
+
+
 @pytest.fixture
 def well_configured_workflow():
     """Well-configured workflow for testing high-quality scenarios."""

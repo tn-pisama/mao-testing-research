@@ -12,49 +12,11 @@ from typing import Any, Dict, Iterator, List, Optional
 logger = logging.getLogger(__name__)
 
 
-# MAST annotation code to failure mode mapping (from mast.py)
-ANNOTATION_MAP = {
-    # Planning failures (Category 1)
-    "1.1": "F1",   # Specification Mismatch
-    "1.2": "F2",   # Poor Task Decomposition
-    "1.3": "F3",   # Resource Misallocation
-    "1.4": "F4",   # Inadequate Tool Provision
-    "1.5": "F5",   # Flawed Workflow Design
-    # Execution failures (Category 2)
-    "2.1": "F6",   # Task Derailment
-    "2.2": "F7",   # Context Neglect
-    "2.3": "F8",   # Information Withholding
-    "2.4": "F9",   # Role Usurpation
-    "2.5": "F10",  # Communication Breakdown
-    "2.6": "F11",  # Coordination Failure
-    # Verification failures (Category 3)
-    "3.1": "F12",  # Output Validation Failure
-    "3.2": "F13",  # Quality Gate Bypass
-    "3.3": "F14",  # Completion Misjudgment
-}
-
-# All failure modes including F15/F16 for RAG
-ALL_FAILURE_MODES = [f"F{i}" for i in range(1, 17)]
-
-# Failure mode names
-FAILURE_MODE_NAMES = {
-    "F1": "Specification Mismatch",
-    "F2": "Poor Task Decomposition",
-    "F3": "Resource Misallocation",
-    "F4": "Inadequate Tool Provision",
-    "F5": "Flawed Workflow Design",
-    "F6": "Task Derailment",
-    "F7": "Context Neglect",
-    "F8": "Information Withholding",
-    "F9": "Role Usurpation",
-    "F10": "Communication Breakdown",
-    "F11": "Coordination Failure",
-    "F12": "Output Validation Failure",
-    "F13": "Quality Gate Bypass",
-    "F14": "Completion Misjudgment",
-    "F15": "Grounding Failure",
-    "F16": "Retrieval Quality Failure",
-}
+from app.core.mast_constants import (
+    ALL_FAILURE_MODES,
+    ANNOTATION_MAP,
+    FAILURE_MODE_NAMES,
+)
 
 
 @dataclass

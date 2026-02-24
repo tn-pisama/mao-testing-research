@@ -19,6 +19,7 @@ import json
 import re
 from typing import Dict, List, Optional, Iterator, Any
 
+from app.core.mast_constants import ANNOTATION_MAP as _ANNOTATION_MAP
 from app.ingestion.importers.conversation import ConversationImporter
 from app.ingestion.conversation_trace import ConversationTrace, ConversationTurnData
 
@@ -26,26 +27,7 @@ from app.ingestion.conversation_trace import ConversationTrace, ConversationTurn
 class MASTImporter(ConversationImporter):
     """Import UC Berkeley MAST-Data traces with framework-specific parsing."""
 
-    # MAST annotation code to failure mode mapping
-    ANNOTATION_MAP = {
-        # Planning failures (Category 1)
-        "1.1": "F1",   # Specification Mismatch
-        "1.2": "F2",   # Poor Task Decomposition
-        "1.3": "F3",   # Resource Misallocation
-        "1.4": "F4",   # Inadequate Tool Provision
-        "1.5": "F5",   # Flawed Workflow Design
-        # Execution failures (Category 2)
-        "2.1": "F6",   # Task Derailment
-        "2.2": "F7",   # Context Neglect
-        "2.3": "F8",   # Information Withholding
-        "2.4": "F9",   # Role Usurpation
-        "2.5": "F10",  # Communication Breakdown
-        "2.6": "F11",  # Coordination Failure
-        # Verification failures (Category 3)
-        "3.1": "F12",  # Output Validation Failure
-        "3.2": "F13",  # Quality Gate Bypass
-        "3.3": "F14",  # Completion Misjudgment
-    }
+    ANNOTATION_MAP = _ANNOTATION_MAP
 
     # Reverse mapping for lookup
     FAILURE_MODE_TO_ANNOTATION = {v: k for k, v in ANNOTATION_MAP.items()}

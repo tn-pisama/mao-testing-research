@@ -54,7 +54,7 @@ class BenchmarkResponse(BaseModel):
 
 
 # Benchmark data from DETECTION_REPORT.md
-FAILURE_MODES = [
+BENCHMARK_FAILURE_MODES = [
     # Tier 1: High Detection (>95%)
     FailureMode(code="F1", name="Specification Mismatch", category="content", tier=1, detection_rate=98.0, detected=49, total=50, description="Output doesn't match what was requested", improvement_before=0, improvement_after=98),
     FailureMode(code="F2", name="Poor Task Decomposition", category="structural", tier=1, detection_rate=100.0, detected=50, total=50, description="Tasks broken down incorrectly", improvement_before=10, improvement_after=100),
@@ -100,16 +100,16 @@ async def get_benchmarks():
     including methodology transparency and improvement history.
     """
     # Calculate summary stats
-    f1_f14 = [m for m in FAILURE_MODES if m.tier in (1, 2)]
+    f1_f14 = [m for m in BENCHMARK_FAILURE_MODES if m.tier in (1, 2)]
     total_detected = sum(m.detected for m in f1_f14)
     total_traces = sum(m.total for m in f1_f14)
-    high_confidence = len([m for m in FAILURE_MODES if m.detection_rate and m.detection_rate >= 95])
+    high_confidence = len([m for m in BENCHMARK_FAILURE_MODES if m.detection_rate and m.detection_rate >= 95])
 
     summary = BenchmarkSummary(
         overall_detection_rate=82.4,
         total_traces=total_traces,
         detected_traces=total_detected,
-        failure_modes_count=len(FAILURE_MODES),
+        failure_modes_count=len(BENCHMARK_FAILURE_MODES),
         high_confidence_modes=high_confidence,
         improvement_from_baseline=13.7,
         baseline_rate=68.7,
@@ -118,7 +118,7 @@ async def get_benchmarks():
 
     return BenchmarkResponse(
         summary=summary,
-        failure_modes=FAILURE_MODES,
+        failure_modes=BENCHMARK_FAILURE_MODES,
         methodology=METHODOLOGY,
     )
 
@@ -126,16 +126,16 @@ async def get_benchmarks():
 @router.get("/summary", response_model=BenchmarkSummary)
 async def get_benchmark_summary():
     """Get benchmark summary only (lighter endpoint)."""
-    f1_f14 = [m for m in FAILURE_MODES if m.tier in (1, 2)]
+    f1_f14 = [m for m in BENCHMARK_FAILURE_MODES if m.tier in (1, 2)]
     total_detected = sum(m.detected for m in f1_f14)
     total_traces = sum(m.total for m in f1_f14)
-    high_confidence = len([m for m in FAILURE_MODES if m.detection_rate and m.detection_rate >= 95])
+    high_confidence = len([m for m in BENCHMARK_FAILURE_MODES if m.detection_rate and m.detection_rate >= 95])
 
     return BenchmarkSummary(
         overall_detection_rate=82.4,
         total_traces=total_traces,
         detected_traces=total_detected,
-        failure_modes_count=len(FAILURE_MODES),
+        failure_modes_count=len(BENCHMARK_FAILURE_MODES),
         high_confidence_modes=high_confidence,
         improvement_from_baseline=13.7,
         baseline_rate=68.7,
@@ -149,7 +149,7 @@ async def get_failure_modes(
     category: Optional[str] = None,
 ):
     """Get failure modes, optionally filtered by tier or category."""
-    modes = FAILURE_MODES
+    modes = BENCHMARK_FAILURE_MODES
 
     if tier is not None:
         modes = [m for m in modes if m.tier == tier]

@@ -25,25 +25,10 @@ from app.enterprise.quality.healing.models import (
 from app.enterprise.quality import QualityAssessor
 
 
-# ---------------------------------------------------------------------------
-# Test workflow fixtures
-# ---------------------------------------------------------------------------
+# Shared workflow fixtures — see conftest.py
+from tests.conftest import make_low_quality_workflow
 
-LOW_QUALITY_WORKFLOW = {
-    "id": "low-quality-api",
-    "name": "Low Quality API Workflow",
-    "nodes": [
-        {
-            "id": "agent-1",
-            "name": "Code",
-            "type": "@n8n/n8n-nodes-langchain.agent",
-            "parameters": {},
-            "position": [0, 0],
-        },
-    ],
-    "connections": {},
-    "settings": {},
-}
+LOW_QUALITY_WORKFLOW = make_low_quality_workflow()
 
 GOOD_QUALITY_WORKFLOW = {
     "id": "good-api",

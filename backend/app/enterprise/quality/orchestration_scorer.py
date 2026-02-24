@@ -9,7 +9,7 @@ from .models import (
     ComplexityMetrics,
     OrchestrationDimension,
 )
-from .agent_scorer import AI_NODE_TYPES, LM_CONFIG_NODE_TYPES
+from app.core.n8n_constants import AI_NODE_TYPES, LM_CONFIG_NODE_TYPES
 from .error_codes import get_error_code
 
 

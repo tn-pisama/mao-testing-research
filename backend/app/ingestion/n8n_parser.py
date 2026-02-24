@@ -44,6 +44,9 @@ class ParsedN8nState:
 
 
 class N8nParser(BaseProviderParser):
+    # Substring patterns for identifying AI-relevant nodes during ingestion.
+    # Uses `in` matching (not exact lookup) — includes partial type names.
+    # For exact-match sets, see app.core.n8n_constants.
     AI_NODE_TYPES = [
         "n8n-nodes-base.openAi",
         "n8n-nodes-base.anthropic",

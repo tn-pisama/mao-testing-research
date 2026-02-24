@@ -24,48 +24,8 @@ from app.enterprise.quality.healing.engine import QualityHealingEngine
 # Fixtures: workflow builders
 # ---------------------------------------------------------------------------
 
-def _make_low_quality_workflow():
-    """Build a deliberately low-quality 3-node n8n workflow.
-
-    Has: trigger + AI agent + output
-    Missing: system prompt, error handling, pinData, error trigger
-    """
-    return {
-        "id": "low-quality-convergence",
-        "name": "Low Quality Workflow",
-        "nodes": [
-            {
-                "id": "trigger-1",
-                "name": "Webhook Trigger",
-                "type": "n8n-nodes-base.webhook",
-                "parameters": {"path": "/test"},
-                "position": [0, 0],
-            },
-            {
-                "id": "agent-1",
-                "name": "AI Agent",
-                "type": "@n8n/n8n-nodes-langchain.agent",
-                "parameters": {},  # No system prompt at all
-                "position": [200, 0],
-            },
-            {
-                "id": "output-1",
-                "name": "Output",
-                "type": "n8n-nodes-base.respondToWebhook",
-                "parameters": {},
-                "position": [400, 0],
-            },
-        ],
-        "connections": {
-            "Webhook Trigger": {
-                "main": [[{"node": "AI Agent", "type": "main", "index": 0}]]
-            },
-            "AI Agent": {
-                "main": [[{"node": "Output", "type": "main", "index": 0}]]
-            },
-        },
-        "settings": {},
-    }
+# Shared workflow fixtures — see conftest.py
+from tests.conftest import make_low_quality_workflow as _make_low_quality_workflow
 
 
 def _make_high_quality_workflow():

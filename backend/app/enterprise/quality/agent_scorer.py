@@ -11,27 +11,7 @@ from .models import (
 from .error_codes import get_error_code
 
 
-# Node types that represent AI/LLM agents (nodes that have prompts)
-AI_NODE_TYPES = {
-    "@n8n/n8n-nodes-langchain.agent",
-    "@n8n/n8n-nodes-langchain.chainLlm",
-    "@n8n/n8n-nodes-langchain.chainSummarization",
-    "@n8n/n8n-nodes-langchain.chainRetrievalQa",
-    "n8n-nodes-base.openAi",
-    "n8n-nodes-base.anthropic",
-}
-
-# LM nodes are just model configuration - they connect to agents
-# These don't need system prompts, so we exclude them from scoring
-LM_CONFIG_NODE_TYPES = {
-    "@n8n/n8n-nodes-langchain.lmChatOpenAi",
-    "@n8n/n8n-nodes-langchain.lmChatAnthropic",
-    "@n8n/n8n-nodes-langchain.lmChatGoogleGemini",
-    "@n8n/n8n-nodes-langchain.lmChatAzureOpenAi",
-    "@n8n/n8n-nodes-langchain.lmChatOllama",
-    "@n8n/n8n-nodes-langchain.lmChatMistral",
-    "@n8n/n8n-nodes-langchain.lmChatGroq",
-}
+from app.core.n8n_constants import AI_NODE_TYPES, LM_CONFIG_NODE_TYPES
 
 # Role definition keywords
 ROLE_KEYWORDS = [

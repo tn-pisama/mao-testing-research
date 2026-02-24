@@ -248,13 +248,7 @@ DEFAULT_COST_OPTIMIZED = "o3"  # 33% cheaper alternative
 # Tier 3: High-stakes - sonnet-4-thinking for complex reasoning
 HIGH_STAKES_MODEL_KEY = "sonnet-4-thinking"
 
-# Low-stakes modes - high pattern accuracy, simple behavioral checks
-# Based on benchmark: 100% accuracy with pattern-based detection
-LOW_STAKES_FAILURE_MODES = {"F3", "F7", "F11", "F12"}
-
-# High-stakes modes - complex semantic analysis required
-# Based on benchmark results: these modes have higher complexity and ambiguity
-HIGH_STAKES_FAILURE_MODES = {"F6", "F8", "F9", "F14"}
+from app.core.mast_constants import HIGH_STAKES_FAILURE_MODES, LOW_STAKES_FAILURE_MODES
 
 # Default tier (sonnet-4): F1, F2, F4, F5, F10, F13 - moderate complexity
 

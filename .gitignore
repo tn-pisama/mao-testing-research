@@ -39,6 +39,10 @@ env/
 htmlcov/
 .tox/
 .nox/
+backend/backend/
+
+# Generated test results (timestamped)
+detector_test_results_*.json
 
 # Playwright
 frontend/tests/auth/storage-state.json

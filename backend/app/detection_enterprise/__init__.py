@@ -18,16 +18,12 @@ from app.core.feature_gate import is_feature_enabled
 __all__ = []
 
 if is_feature_enabled("ml_detection"):
-    from .ml_detector import MLFailureDetector
-    from .ml_detector_v2 import AdvancedMLDetector
     from .ml_detector_v3 import MultiTaskDetector
     from .ml_detector_v4 import MultiTaskDetectorV4, load_pretrained as load_pretrained_v4
     from .tiered import TieredDetector, create_all_tiered_detectors
     from .orchestrator import DetectionOrchestrator
     from .golden_dataset import GoldenDataset, create_default_golden_dataset
     __all__.extend([
-        "MLFailureDetector",
-        "AdvancedMLDetector",
         "MultiTaskDetector",
         "MultiTaskDetectorV4",
         "load_pretrained_v4",

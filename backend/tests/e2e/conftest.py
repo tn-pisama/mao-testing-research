@@ -145,31 +145,9 @@ def quality_healing_engine_manual():
 
 @pytest.fixture
 def low_quality_workflow():
-    """Workflow with poor quality scores (bare agents, no error handling)."""
-    return {
-        "id": "wf-low-quality",
-        "name": "Low Quality Test Workflow",
-        "nodes": [
-            {
-                "id": "agent1",
-                "name": "AI Agent",
-                "type": "@n8n/n8n-nodes-langchain.agent",
-                "parameters": {},
-                "typeVersion": 1,
-                "position": [100, 100],
-            },
-            {
-                "id": "agent2",
-                "name": "AI Agent 1",
-                "type": "@n8n/n8n-nodes-langchain.agent",
-                "parameters": {},
-                "typeVersion": 1,
-                "position": [100, 100],
-            },
-        ],
-        "connections": {},
-        "settings": {},
-    }
+    """Workflow with poor quality scores — delegates to conftest.make_low_quality_workflow()."""
+    from tests.conftest import make_low_quality_workflow
+    return make_low_quality_workflow()
 
 
 @pytest.fixture

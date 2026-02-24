@@ -17,27 +17,8 @@ from app.enterprise.quality import QualityAssessor
 from app.enterprise.quality.models import QualityReport
 
 
-# ---------------------------------------------------------------------------
-# Test workflow fixtures
-# ---------------------------------------------------------------------------
-
-def make_low_quality_workflow():
-    """Workflow with poor agent config (no system prompt, no retry, no timeout) -- will score low on multiple dimensions."""
-    return {
-        "id": "low-quality-wf",
-        "name": "Low Quality Workflow",
-        "nodes": [
-            {
-                "id": "agent-1",
-                "name": "Code",  # Generic name
-                "type": "@n8n/n8n-nodes-langchain.agent",
-                "parameters": {},  # No system prompt
-                "position": [0, 0],
-            },
-        ],
-        "connections": {},
-        "settings": {},
-    }
+# Shared workflow fixtures — see conftest.py
+from tests.conftest import make_low_quality_workflow
 
 
 def make_good_workflow():
