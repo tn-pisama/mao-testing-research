@@ -145,3 +145,38 @@ def test_no_significant_f1_regression():
         f"Significant F1 regressions (>0.10 drop) vs previous experiment:\n"
         + "\n".join(f"  {r}" for r in regressions)
     )
+
+
+# -----------------------------------------------------------------------
+# Per-detector targets (Sprint 7)
+# -----------------------------------------------------------------------
+# These four detectors were fixed in Sprint 7 and must not regress below 0.55.
+CRITICAL_DETECTOR_TARGETS = {
+    "workflow": 0.55,
+    "corruption": 0.55,
+    "completion": 0.55,
+    "specification": 0.55,
+}
+
+
+@pytest.mark.slow
+def test_critical_detectors_above_target():
+    """Sprint 7 critical detectors must stay above their per-detector F1 targets."""
+    report = calibrate_all()
+    results = report["results"]
+
+    failures = []
+    for detector_name, min_f1 in CRITICAL_DETECTOR_TARGETS.items():
+        if detector_name not in results:
+            failures.append(f"{detector_name}: NOT FOUND in calibration results")
+            continue
+        actual_f1 = results[detector_name]["f1"]
+        if actual_f1 < min_f1:
+            failures.append(
+                f"{detector_name}: F1={actual_f1:.4f} < target {min_f1:.4f}"
+            )
+
+    assert not failures, (
+        f"Critical detectors below per-detector targets:\n"
+        + "\n".join(f"  {f}" for f in failures)
+    )

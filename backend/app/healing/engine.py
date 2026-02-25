@@ -74,7 +74,7 @@ class SelfHealingEngine:
         elif auto_apply_config:
             self.auto_apply_service = AutoApplyService(auto_apply_config)
         else:
-            self.auto_apply_service = AutoApplyService() if auto_apply else None
+            self.auto_apply_service = AutoApplyService(self.healing_config.to_auto_apply_config()) if auto_apply else None
 
         # Initialize git backup service
         if git_backup_service:

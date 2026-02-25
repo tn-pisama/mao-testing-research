@@ -227,3 +227,15 @@ class HealingConfig:
     max_consecutive_failures: int = 3
     healing_loop_threshold: int = 5
     healing_loop_window_minutes: int = 60
+
+    def to_auto_apply_config(self) -> "AutoApplyConfig":
+        """Create an AutoApplyConfig from this HealingConfig's auto-apply fields."""
+        from .auto_apply import AutoApplyConfig
+
+        return AutoApplyConfig(
+            max_fixes_per_hour=self.max_fixes_per_hour,
+            cooldown_after_rollback_seconds=self.cooldown_after_rollback_seconds,
+            max_consecutive_failures=self.max_consecutive_failures,
+            healing_loop_threshold=self.healing_loop_threshold,
+            healing_loop_window_minutes=self.healing_loop_window_minutes,
+        )

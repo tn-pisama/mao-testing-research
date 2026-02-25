@@ -224,18 +224,24 @@ class SpecificationMismatchDetector:
             r'has\s+to\s+([^.!?]+)',
             r'ensure\s+(?:that\s+)?([^.!?]+)',
         ]
-        
+
         for pattern in must_patterns:
             matches = re.findall(pattern, text.lower())
             requirements.extend(matches)
-        
+
         action_patterns = [
             r'(?:create|build|make|generate)\s+(?:a\s+)?([^.!?,]+)',
             r'(?:find|search|get|fetch)\s+([^.!?,]+)',
             r'(?:analyze|evaluate|assess)\s+([^.!?,]+)',
             r'(?:send|deliver|transmit)\s+([^.!?,]+)',
+            # v1.5: broader action patterns
+            r'(?:implement|set\s+up|configure|deploy|add)\s+(?:a\s+)?([^.!?,]+)',
+            r'(?:monitor|track|log|alert)\s+([^.!?,]+)',
+            r'(?:help\s+me|i\s+want\s+to|i\s+want\s+a)\s+([^.!?,]+)',
+            r'(?:i\s+need)\s+(?:a\s+)?([^.!?,]+)',
+            r'(?:migrate|convert|transform|clean\s+up)\s+([^.!?,]+)',
         ]
-        
+
         for pattern in action_patterns:
             matches = re.findall(pattern, text.lower())
             requirements.extend(matches)
@@ -440,6 +446,43 @@ class SpecificationMismatchDetector:
         
         return ambiguities
 
+    # Synonym groups for requirement verb matching.
+    # Each key maps to a set of semantically equivalent words.
+    _SYNONYMS: dict[str, set[str]] = {
+        "implement": {"build", "create", "develop", "make", "write", "code", "construct"},
+        "build": {"implement", "create", "develop", "make", "write", "code", "construct"},
+        "create": {"implement", "build", "develop", "make", "write", "generate"},
+        "validate": {"verify", "check", "ensure", "confirm", "test", "assert"},
+        "verify": {"validate", "check", "ensure", "confirm", "test"},
+        "return": {"provide", "output", "give", "produce", "yield", "emit"},
+        "provide": {"return", "output", "give", "produce", "supply"},
+        "list": {"enumerate", "show", "display", "present", "outline"},
+        "display": {"show", "render", "present", "list", "output"},
+        "analyze": {"evaluate", "assess", "examine", "review", "inspect"},
+        "update": {"modify", "change", "edit", "revise", "patch", "alter"},
+        "delete": {"remove", "drop", "destroy", "clear", "purge", "erase"},
+        "send": {"deliver", "transmit", "dispatch", "emit", "push"},
+        "fetch": {"get", "retrieve", "load", "pull", "obtain", "query"},
+        "store": {"save", "persist", "write", "record", "keep"},
+        "parse": {"extract", "read", "decode", "interpret", "process"},
+        "filter": {"select", "exclude", "narrow", "restrict", "screen"},
+        "sort": {"order", "rank", "arrange", "organize"},
+        "format": {"render", "transform", "convert", "style"},
+        "handle": {"manage", "process", "deal", "address", "resolve"},
+        "configure": {"setup", "config", "set", "initialize", "init"},
+        "deploy": {"release", "publish", "ship", "launch", "rollout"},
+        "test": {"verify", "validate", "check", "assert", "evaluate"},
+        "log": {"record", "track", "audit", "trace", "monitor"},
+        "notify": {"alert", "inform", "email", "message", "warn"},
+        "authenticate": {"login", "auth", "verify", "authorize"},
+        "register": {"signup", "enroll", "subscribe", "onboard"},
+    }
+
+    def _expand_with_synonyms(self, word: str) -> set[str]:
+        """Return the word plus any known synonyms."""
+        synonyms = self._SYNONYMS.get(word, set())
+        return {word} | synonyms
+
     def _compute_coverage(
         self,
         intent_requirements: list[str],
@@ -447,27 +490,33 @@ class SpecificationMismatchDetector:
     ) -> tuple[float, list[str]]:
         if not intent_requirements:
             return 1.0, []
-        
+
         spec_lower = spec_text.lower()
         covered = 0
         missing = []
-        
+
         for req in intent_requirements:
             req_words = set(req.lower().split())
             req_words = {w for w in req_words if len(w) > 3}
-            
+
             if not req_words:
                 covered += 1
                 continue
-            
-            overlap = sum(1 for w in req_words if w in spec_lower)
+
+            # Check each requirement word against spec, allowing synonyms
+            overlap = 0
+            for w in req_words:
+                expanded = self._expand_with_synonyms(w)
+                if any(syn in spec_lower for syn in expanded):
+                    overlap += 1
+
             coverage_ratio = overlap / len(req_words)
-            
+
             if coverage_ratio >= 0.5:
                 covered += 1
             else:
                 missing.append(req)
-        
+
         return covered / len(intent_requirements), missing
 
     def detect(

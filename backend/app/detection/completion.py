@@ -27,10 +27,14 @@ Version History:
   - JSON incomplete indicator detection ("documented": false)
   - Numeric ratio detection (8/10, documentedEndpoints: 8, total: 10)
   - Uncertainty language detection ("lingering", "might have missed")
+- v1.5: Improved recall for quantitative-requirement tasks:
+  - Structural incompleteness detection (list item count, missing sections)
+  - Structural incompleteness registered as ensemble signal category
+  - Quantitative-requirement exemption from 2-signal ensemble gate
 """
 
 # Detector version for tracking
-DETECTOR_VERSION = "1.3"
+DETECTOR_VERSION = "1.5"
 DETECTOR_NAME = "CompletionMisjudgmentDetector"
 
 import logging
@@ -102,6 +106,10 @@ class CompletionMisjudgmentDetector:
         r'\bhere(?:\'s| is)\s+the\s+(?:final|completed|finished)\b',
         r'\b(?:that\'s|this\s+is)\s+everything\b',
         r'\bnothing\s+(?:else|more)\s+(?:to\s+do|needed|required)\b',
+        # v1.5: broader completion claims: "<subject> is done/ready/complete/working/implemented"
+        r'\b\w+\s+is\s+(?:done|complete|completed|ready|finished|implemented|working|set up|configured|live)\b',
+        r'\b(?:done|complete|completed|ready|finished|implemented)\s*[!.]',
+        r'\b(?:migration|implementation|setup|integration|feature)\s+(?:is\s+)?(?:complete|done|ready)\b',
     ]
 
     # Patterns indicating incomplete work
@@ -460,6 +468,137 @@ class CompletionMisjudgmentDetector:
         penalty = min(0.5, incomplete_markers * 0.1 + errors * 0.15)
         return max(0.0, 1.0 - penalty)
 
+    def _detect_structural_incompleteness(self, task: str, output: str) -> list:
+        """Detect structural incompleteness in the output.
+
+        Checks whether the output satisfies explicit numeric or sectional
+        requirements mentioned in the task description.
+        """
+        issues: list = []
+
+        # Check for requested list item count
+        count_patterns = [
+            r'(?:list|provide|give|name|identify|enumerate)\s+(\d+)',
+            r'(\d+)\s+(?:items|examples|points|reasons|steps|features|recommendations)',
+            r'top\s+(\d+)',
+        ]
+
+        requested_count = None
+        for pattern in count_patterns:
+            match = re.search(pattern, task.lower())
+            if match:
+                requested_count = int(match.group(1))
+                break
+
+        if requested_count and requested_count > 1:
+            # Count actual list items in output
+            bullet_pattern = r'(?:^|\n)\s*(?:\d+[\.\/\)]\s|[-*\u2022]\s)'
+            actual_items = len(re.findall(bullet_pattern, output))
+
+            if actual_items > 0 and actual_items < requested_count:
+                ratio = actual_items / requested_count
+                issues.append(CompletionIssue(
+                    issue_type=CompletionIssueType.PARTIAL_DELIVERY,
+                    description=f"Task requests {requested_count} items but output contains only {actual_items}",
+                    severity=CompletionSeverity.MODERATE if ratio >= 0.5 else CompletionSeverity.SEVERE,
+                    evidence=f"requested={requested_count}, actual={actual_items}, ratio={ratio:.2f}",
+                ))
+
+        # v1.5: Check for missing sections mentioned in the task
+        # Look for explicit section names the task requires (e.g., "include
+        # introduction, methodology, results, and conclusion")
+        section_patterns = [
+            # "include X, Y, and Z sections"
+            r'(?:include|cover|write|add|provide|create)\s+(?:a\s+)?(?:sections?\s+(?:on|for|about)\s+)?(.+?)(?:\s+section[s]?)?(?:\.|$)',
+            # "sections: X, Y, Z"
+            r'sections?\s*:\s*(.+?)(?:\.|$)',
+        ]
+
+        task_lower = task.lower()
+        output_lower = output.lower()
+
+        for pattern in section_patterns:
+            match = re.search(pattern, task_lower)
+            if match:
+                # Extract potential section names from comma/and-separated list
+                section_text = match.group(1)
+                # Split on commas and "and"
+                parts = re.split(r',\s*|\s+and\s+', section_text)
+                # Filter to reasonable section names (2-40 chars, no full sentences)
+                section_names = [
+                    p.strip().strip('"\'')
+                    for p in parts
+                    if 2 <= len(p.strip()) <= 40 and ' is ' not in p and ' are ' not in p
+                ]
+                if len(section_names) >= 2:
+                    missing = [
+                        s for s in section_names
+                        if s not in output_lower
+                    ]
+                    if missing and len(missing) < len(section_names):
+                        # Some sections present, some missing — partial delivery
+                        issues.append(CompletionIssue(
+                            issue_type=CompletionIssueType.PARTIAL_DELIVERY,
+                            description=f"Task mentions sections but {len(missing)} missing from output: {', '.join(missing[:3])}",
+                            severity=CompletionSeverity.MODERATE,
+                            evidence=f"required={len(section_names)}, missing={len(missing)}",
+                        ))
+                    break  # Only use the first matching pattern
+
+        return issues
+
+    def _detect_enumerated_coverage(self, task: str, output: str) -> list:
+        """Detect when task enumerates specific items (A, B, and C) but output
+        only covers a subset."""
+        issues: list = []
+
+        # Extract enumerated items from task:
+        #   "with Google, GitHub, and Microsoft"
+        #   "including login, logout, and token refresh"
+        #   "for CSV, JSON, and PDF formats"
+        enum_patterns = [
+            r'(?:with|including|for|supporting|using|like)\s+(.+?)(?:\.|$)',
+            r'(?:implement|build|create|add|set up)\s+(.+?)(?:\.|$)',
+        ]
+
+        task_lower = task.lower()
+        output_lower = output.lower()
+
+        for pattern in enum_patterns:
+            match = re.search(pattern, task_lower)
+            if not match:
+                continue
+            fragment = match.group(1)
+            # Split on commas and "and"
+            parts = re.split(r',\s*|\s+and\s+', fragment)
+            # Filter to meaningful items (2+ chars, not common filler words)
+            items = [
+                p.strip() for p in parts
+                if len(p.strip()) >= 2 and p.strip() not in (
+                    'the', 'a', 'an', 'all', 'each', 'every', 'other',
+                )
+            ]
+            if len(items) >= 3:
+                found = sum(1 for item in items if item in output_lower)
+                if found < len(items):
+                    missing = [i for i in items if i not in output_lower]
+                    severity = (
+                        CompletionSeverity.SEVERE if found == 0
+                        else CompletionSeverity.MODERATE
+                    )
+                    issues.append(CompletionIssue(
+                        issue_type=CompletionIssueType.PARTIAL_DELIVERY,
+                        description=(
+                            f"Task enumerates {len(items)} items but output "
+                            f"only covers {found}: missing {', '.join(missing[:3])}"
+                        ),
+                        severity=severity,
+                        evidence=f"items={items}, found={found}",
+                    ))
+                    break  # One match is enough
+
+        return issues
+
     def detect(
         self,
         task: str,
@@ -703,6 +842,16 @@ class CompletionMisjudgmentDetector:
                     evidence=context,
                 ))
 
+        # v1.5: Detect structural incompleteness (e.g., fewer list items than requested)
+        structural_issues = self._detect_structural_incompleteness(task, agent_output)
+        if structural_issues:
+            issues.extend(structural_issues)
+
+        # v1.5: Detect enumerated items coverage gap
+        enum_issues = self._detect_enumerated_coverage(task, agent_output)
+        if enum_issues:
+            issues.extend(enum_issues)
+
         # v1.2: Reduce false positives for scoped tasks
         if is_scoped_task and issues:
             # Filter out minor issues for intentionally scoped tasks
@@ -741,8 +890,26 @@ class CompletionMisjudgmentDetector:
                 signal_categories.add("errors")
             if incomplete_subtasks:
                 signal_categories.add("incomplete_subtasks")
+            if structural_issues:
+                signal_categories.add("structural_incompleteness")
+            if enum_issues:
+                signal_categories.add("enumerated_coverage")
 
-            if len(signal_categories) < 2:
+            # v1.5: Exempt quantitative-requirement cases: a single strong signal
+            # (partial_indicators, numeric_ratio, or structural_incompleteness)
+            # is sufficient when the task has explicit numeric requirements.
+            has_quant_exemption = has_quant_req and (
+                "partial_indicators" in signal_categories
+                or "numeric_ratio" in signal_categories
+                or "incomplete_subtasks" in signal_categories
+                or "structural_incompleteness" in signal_categories
+                or "enumerated_coverage" in signal_categories
+            )
+            # Enumerated coverage + completion claim is always strong enough
+            if "enumerated_coverage" in signal_categories and "completion_claim" in signal_categories:
+                has_quant_exemption = True
+
+            if len(signal_categories) < 2 and not has_quant_exemption:
                 issues = []  # Suppress detection — single signal insufficient
 
         # Determine result

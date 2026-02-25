@@ -162,7 +162,6 @@ class FlawedWorkflowDetector:
             if node.id not in risky:
                 if find_cycles(node.id, set()):
                     risky.append(node.id)
-                    break
         
         return list(set(risky))
 
@@ -207,14 +206,27 @@ class FlawedWorkflowDetector:
         forward: dict,
         backward: dict,
     ) -> list[str]:
-        """Detect nodes with no incoming AND no outgoing connections (disconnected)."""
+        """Detect orphan nodes — disconnected from the main flow.
+
+        An orphan is a non-start node with no incoming connections, indicating
+        it can never be reached during normal workflow execution.
+        """
         if len(nodes) <= 1:
             return []
+        # Find the start node(s)
+        start_ids = {n.id for n in nodes if n.node_type == "start" or not backward.get(n.id)}
+        # A node is orphan if it has no incoming but is not the primary start
+        primary_start = nodes[0].id if nodes else None
         orphans = []
         for node in nodes:
+            if node.id == primary_start:
+                continue
             has_incoming = bool(backward.get(node.id))
             has_outgoing = bool(forward.get(node.id))
             if not has_incoming and not has_outgoing:
+                orphans.append(node.id)
+            elif not has_incoming and node.node_type not in ("start",):
+                # Non-start node with no incoming = unreachable
                 orphans.append(node.id)
         return orphans
 
@@ -318,12 +330,17 @@ class FlawedWorkflowDetector:
 
         # v1.1: Check for excessive sequential depth
         max_depth = self._detect_excessive_depth(nodes, forward, backward)
-        if max_depth > 8:
+        if max_depth > 5:
             issues.append(WorkflowIssue.EXCESSIVE_DEPTH)
 
         if self.require_error_handling:
             missing_handlers = self._detect_missing_error_handling(nodes)
-            if len(missing_handlers) > len(nodes) / 2:
+            # Count non-trivial nodes (exclude start/end/condition)
+            non_trivial = [n for n in nodes if n.node_type not in ("start", "end", "condition")]
+            if missing_handlers and (
+                len(missing_handlers) >= len(non_trivial)  # all non-trivial lack handlers
+                or len(missing_handlers) >= 3  # 3+ nodes without handlers
+            ):
                 issues.append(WorkflowIssue.MISSING_ERROR_HANDLING)
                 problematic.extend(missing_handlers[:5])
         
@@ -349,7 +366,7 @@ class FlawedWorkflowDetector:
         else:
             severity = WorkflowSeverity.MINOR
 
-        confidence = min(len(issues) * 0.25, 0.95)
+        confidence = min(0.5 + len(issues) * 0.15, 0.95)
 
         issue_names = [i.value for i in issues]
         unique_problematic = list(set(problematic))[:5]

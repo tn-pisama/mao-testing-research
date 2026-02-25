@@ -93,6 +93,27 @@ class SemanticCorruptionDetector:
         'file': ['permission', 'path', 'encoding', 'backup', 'cleanup'],
         'error': ['logging', 'handling', 'recovery', 'notification', 'retry'],
         'test': ['coverage', 'assertion', 'mock', 'fixture', 'edge case'],
+        'deployment': ['rollback', 'release', 'staging', 'production', 'ci/cd', 'pipeline', 'version'],
+        'networking': ['dns', 'firewall', 'load balancer', 'proxy', 'ssl', 'certificate', 'port'],
+        'monitoring': ['alert', 'metric', 'logging', 'dashboard', 'threshold', 'uptime'],
+        'security': ['encryption', 'vulnerability', 'audit', 'compliance', 'access control', 'firewall'],
+        'config': ['environment variable', 'secret', 'setting', 'parameter', 'flag', 'option'],
+        'configuration': ['environment variable', 'secret', 'setting', 'parameter', 'flag', 'option'],
+        'migration': ['schema', 'rollback', 'version', 'data transfer', 'compatibility', 'backup'],
+        'notification': ['email', 'webhook', 'alert', 'push', 'sms', 'template'],
+        'search': ['index', 'query', 'relevance', 'filter', 'ranking', 'pagination'],
+        'queue': ['consumer', 'producer', 'dead letter', 'retry', 'ordering', 'backpressure'],
+        'messaging': ['consumer', 'producer', 'dead letter', 'retry', 'ordering', 'backpressure'],
+        'storage': ['bucket', 'upload', 'download', 'permission', 'lifecycle', 'backup'],
+        'logging': ['level', 'format', 'rotation', 'aggregation', 'filter', 'structured'],
+        'session': ['cookie', 'token', 'expiration', 'renewal', 'invalidation', 'storage'],
+        'scheduling': ['cron', 'interval', 'retry', 'timeout', 'concurrency', 'queue'],
+        'backup': ['restore', 'snapshot', 'retention', 'encryption', 'verification', 'schedule'],
+        'encryption': ['key', 'certificate', 'hash', 'salt', 'algorithm', 'rotation'],
+        'permission': ['role', 'access', 'grant', 'deny', 'scope', 'policy'],
+        'integration': ['webhook', 'api', 'sync', 'mapping', 'transform', 'retry'],
+        'webhook': ['endpoint', 'payload', 'signature', 'retry', 'timeout', 'validation'],
+        'email': ['template', 'delivery', 'bounce', 'spam', 'attachment', 'queue'],
     }
 
     # v1.1: Patterns indicating narrow focus (potential context ignorance)
@@ -241,6 +262,7 @@ class SemanticCorruptionDetector:
         issues.extend(self._detect_hallucinated_references(prev_state, current_state))
         issues.extend(self._detect_value_copying(current_state))
         issues.extend(self._detect_suspicious_rapid_changes(prev_state, current_state))
+        issues.extend(self._detect_anomalous_value_changes(prev_state, current_state))
 
         filtered_issues = self._apply_velocity_filtering(issues, current_state)
 
@@ -419,6 +441,102 @@ class SemanticCorruptionDetector:
         
         return issues
     
+    def _detect_anomalous_value_changes(
+        self,
+        prev: StateSnapshot,
+        current: StateSnapshot,
+    ) -> List[CorruptionIssue]:
+        """Detect anomalous value changes: sign flips, extreme magnitude shifts,
+        logical impossibilities (e.g. negative balance, out-of-range scores)."""
+        issues: List[CorruptionIssue] = []
+
+        for key in set(prev.state_delta.keys()) & set(current.state_delta.keys()):
+            prev_val = prev.state_delta[key]
+            curr_val = current.state_delta[key]
+
+            if prev_val == curr_val:
+                continue
+
+            # Numeric anomalies
+            if isinstance(prev_val, (int, float)) and isinstance(curr_val, (int, float)):
+                # Sign flip
+                if prev_val > 0 and curr_val < 0:
+                    issues.append(CorruptionIssue(
+                        issue_type="sign_flip",
+                        field=key,
+                        message=f"Value flipped sign: {prev_val} → {curr_val}",
+                        severity="high",
+                    ))
+                # Extreme magnitude change (>5x or >90% drop)
+                elif prev_val != 0:
+                    ratio = abs(curr_val / prev_val)
+                    if ratio > 5.0 or ratio < 0.1:
+                        issues.append(CorruptionIssue(
+                            issue_type="extreme_magnitude_change",
+                            field=key,
+                            message=f"Value changed by {ratio:.1f}x: {prev_val} → {curr_val}",
+                            severity="medium",
+                        ))
+
+            # String anomalies: drastic content change
+            elif isinstance(prev_val, str) and isinstance(curr_val, str):
+                if len(prev_val) > 5 and len(curr_val) > 5:
+                    # Check if content was replaced with something completely different
+                    prev_words = set(prev_val.lower().split())
+                    curr_words = set(curr_val.lower().split())
+                    if prev_words and curr_words:
+                        overlap = len(prev_words & curr_words)
+                        total = len(prev_words | curr_words)
+                        if total > 3 and overlap / total < 0.1:
+                            issues.append(CorruptionIssue(
+                                issue_type="content_replacement",
+                                field=key,
+                                message=f"Content completely replaced (<10% word overlap)",
+                                severity="medium",
+                            ))
+
+            # List anomalies: items lost
+            elif isinstance(prev_val, list) and isinstance(curr_val, list):
+                if len(prev_val) > 0 and len(curr_val) == 0:
+                    issues.append(CorruptionIssue(
+                        issue_type="data_loss",
+                        field=key,
+                        message=f"List emptied: {len(prev_val)} items → 0",
+                        severity="high",
+                    ))
+                elif len(prev_val) > 0 and len(curr_val) < len(prev_val) * 0.5:
+                    issues.append(CorruptionIssue(
+                        issue_type="data_loss",
+                        field=key,
+                        message=f"List shrunk significantly: {len(prev_val)} → {len(curr_val)}",
+                        severity="medium",
+                    ))
+
+            # Dict anomalies: keys lost
+            elif isinstance(prev_val, dict) and isinstance(curr_val, dict):
+                lost_keys = set(prev_val.keys()) - set(curr_val.keys())
+                if lost_keys and len(lost_keys) > len(prev_val) * 0.5:
+                    issues.append(CorruptionIssue(
+                        issue_type="data_loss",
+                        field=key,
+                        message=f"Dict lost {len(lost_keys)} keys: {list(lost_keys)[:3]}",
+                        severity="medium",
+                    ))
+
+        # Check for fields that disappeared entirely
+        lost_fields = set(prev.state_delta.keys()) - set(current.state_delta.keys())
+        if lost_fields:
+            for field_name in lost_fields:
+                if not self._is_high_velocity_field(field_name):
+                    issues.append(CorruptionIssue(
+                        issue_type="field_disappeared",
+                        field=field_name,
+                        message=f"Field '{field_name}' present in previous state but missing in current",
+                        severity="medium",
+                    ))
+
+        return issues
+
     def _validate_schema(self, state: StateSnapshot, schema: Schema) -> List[CorruptionIssue]:
         issues = []
         data = state.state_delta
@@ -593,6 +711,13 @@ class SemanticCorruptionDetector:
 
         return False
 
+    def _stem(self, word: str) -> str:
+        """Simple suffix stripping for topic matching."""
+        for suffix in ('ment', 'tion', 'sion', 'ing', 'ed', 'er', 'ly', 'es', 's'):
+            if word.endswith(suffix) and len(word) - len(suffix) >= 3:
+                return word[:-len(suffix)]
+        return word
+
     def _check_related_topics_addressed(
         self,
         output: str,
@@ -604,11 +729,16 @@ class SemanticCorruptionDetector:
         missing = []
 
         for topic in expected_related:
-            # Check if topic or its variants are mentioned
+            # Check if topic or its stemmed variants are mentioned
             if topic in output_lower:
                 addressed.append(topic)
             else:
-                missing.append(topic)
+                # Also try stemmed form of the topic
+                stemmed = self._stem(topic)
+                if stemmed != topic and stemmed in output_lower:
+                    addressed.append(topic)
+                else:
+                    missing.append(topic)
 
         return addressed, missing
 
@@ -671,12 +801,22 @@ class SemanticCorruptionDetector:
 
         # Also flag if significant related topics missing without explicit narrow focus
         # (but only if many related topics are expected and most are missing)
-        if len(missing) >= 3 and len(missing) > len(addressed) and not is_comprehensive:
+        if len(missing) >= 2 and len(missing) > len(addressed) and not is_comprehensive:
             issues.append(CorruptionIssue(
                 issue_type="incomplete_context",
                 field=",".join(missing[:3]),
                 message=f"Related topics not addressed: {missing[:3]}",
                 severity="low",
+            ))
+
+        # NEW: If zero related topics are addressed and 2+ are missing,
+        # the output completely ignored the context domain
+        if not addressed and len(missing) >= 2 and not is_comprehensive:
+            issues.append(CorruptionIssue(
+                issue_type="context_completely_ignored",
+                field=",".join(task_topics),
+                message=f"Output addresses none of the related topics for {task_topics}: missing {missing[:3]}",
+                severity="medium",
             ))
 
         # Check context parameter if provided

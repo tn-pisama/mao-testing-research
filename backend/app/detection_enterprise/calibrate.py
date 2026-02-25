@@ -370,7 +370,7 @@ def _build_detector_runners() -> Dict[DetectionType, Any]:
     try:
         from app.detection.workflow import FlawedWorkflowDetector, WorkflowNode
 
-        _workflow_detector = FlawedWorkflowDetector(require_error_handling=False)
+        _workflow_detector = FlawedWorkflowDetector(require_error_handling=True)
 
         def _run_workflow(entry: GoldenDatasetEntry) -> Tuple[bool, float]:
             workflow_def = entry.input_data.get("workflow_definition", {})

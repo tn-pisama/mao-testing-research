@@ -2,7 +2,8 @@
 
 import pytest
 import asyncio
-from datetime import datetime, timezone
+from datetime import datetime, timezone, timedelta
+from unittest.mock import AsyncMock, MagicMock, patch
 
 from app.healing import (
     SelfHealingEngine,
@@ -14,7 +15,8 @@ from app.healing import (
     AppliedFix,
     ValidationResult,
 )
-from app.healing.models import FailureCategory, FailureSignature
+from app.healing.models import FailureCategory, FailureSignature, HealingConfig, FixRiskLevel
+from app.healing.auto_apply import AutoApplyService, AutoApplyConfig, ApplyResult
 
 
 class TestFailureAnalyzer:
@@ -1283,6 +1285,235 @@ class TestEdgeCases:
         
         with pytest.raises(ValueError, match="not pending"):
             engine.approve_and_apply(result.id, ["fix_1"])
+
+
+class TestAdversarialHealing:
+    """Adversarial tests for healing safety and edge cases."""
+
+    # 1. Healing loop detection: 6 heals in window → 6th blocked
+    def test_healing_loop_detection(self):
+        config = AutoApplyConfig(
+            healing_loop_threshold=5,
+            healing_loop_window_minutes=60,
+        )
+        service = AutoApplyService(config)
+        workflow_id = "wf_loop_test"
+
+        # Record 5 healing timestamps (under threshold)
+        for _ in range(5):
+            service._healing_timestamps[workflow_id].append(
+                datetime.now(timezone.utc)
+            )
+
+        # 5th attempt: at threshold → loop detected
+        assert service.detect_healing_loop(workflow_id) is True
+        # Rate limit should block
+        assert service.check_rate_limit(workflow_id) is False
+
+    # 2. Cascading rollback: fix applied but fails → rollback + cooldown
+    @pytest.mark.asyncio
+    async def test_cascading_rollback(self):
+        config = AutoApplyConfig(
+            rollback_on_failure=True,
+            cooldown_after_rollback_seconds=300,
+        )
+        service = AutoApplyService(config)
+
+        mock_client = AsyncMock()
+        mock_client.get_workflow.return_value = {"nodes": [], "settings": {}}
+        # Apply raises to simulate failure after backup
+        mock_client.update_workflow.side_effect = RuntimeError("n8n API error")
+        mock_client.clear_execution_data = AsyncMock()
+
+        mock_backup = AsyncMock()
+        mock_backup.backup_workflow.return_value = "abc123sha"
+        mock_backup.rollback_to = AsyncMock()
+
+        fix = {"id": "fix_1", "fix_type": "loop_breaker", "parameters": {"max_iterations": 5}}
+        result = await service.apply_fix(
+            fix=fix,
+            workflow_id="wf_cascade",
+            healing_id="heal_1",
+            n8n_client=mock_client,
+            git_backup=mock_backup,
+        )
+
+        assert result.success is False
+        assert result.rolled_back is True
+        assert result.backup_commit_sha == "abc123sha"
+        mock_backup.rollback_to.assert_called_once()
+        # Cooldown should be set
+        assert "wf_cascade" in service._cooldowns
+        assert service.check_rate_limit("wf_cascade") is False
+
+    # 3. Concurrent healing race: lock prevents double-heal
+    @pytest.mark.asyncio
+    async def test_concurrent_healing_race(self):
+        engine = SelfHealingEngine(auto_apply=False)
+        mock_client = AsyncMock()
+        mock_client.get_workflow.return_value = {"nodes": [], "settings": {}}
+
+        detection = {
+            "id": "det_race",
+            "detection_type": "infinite_loop",
+            "confidence": 0.9,
+            "details": {"loop_length": 5},
+        }
+
+        # Manually acquire the lock before calling heal_n8n_workflow
+        lock = engine._get_workflow_lock("wf_race")
+        await lock.acquire()
+
+        # Second call should see the lock is held and return FAILED
+        result = await engine.heal_n8n_workflow(
+            detection, "wf_race", mock_client
+        )
+
+        assert result.status == HealingStatus.FAILED
+        assert "Concurrent healing blocked" in result.error
+        lock.release()
+
+    # 4. Fix creates new failure: workflow_runner returns new detection post-fix
+    @pytest.mark.asyncio
+    async def test_fix_creates_new_failure(self):
+        engine = SelfHealingEngine(auto_apply=True, max_fix_attempts=1)
+
+        detection = {
+            "id": "det_new_fail",
+            "detection_type": "infinite_loop",
+            "confidence": 0.9,
+            "details": {"loop_length": 5, "affected_agents": ["agent_a"]},
+        }
+        workflow = {
+            "name": "test",
+            "nodes": [{"id": "n1", "name": "Node", "type": "llm"}],
+            "connections": {},
+            "settings": {},
+        }
+
+        # workflow_runner that returns a new detection (simulates fix causing new issue)
+        async def bad_runner(config, test_input):
+            return {
+                "success": False,
+                "new_detection": {"detection_type": "state_corruption"},
+            }
+
+        result = await engine.heal(
+            detection, workflow, workflow_runner=bad_runner, test_input={}
+        )
+
+        # Should still complete (validation might fail but engine shouldn't crash)
+        assert result.status in (
+            HealingStatus.SUCCESS,
+            HealingStatus.PARTIAL_SUCCESS,
+            HealingStatus.FAILED,
+        )
+        assert result.completed_at is not None
+
+    # 5. Dangerous fix blocked by risk policy
+    def test_dangerous_fix_blocked(self):
+        config = AutoApplyConfig(auto_apply_max_risk=FixRiskLevel.SAFE)
+        service = AutoApplyService(config)
+
+        error = service.check_fix_risk("prompt_modification")
+        assert error is not None
+        assert "dangerous" in error
+        assert "safe" in error
+
+        # SAFE fix should pass
+        assert service.check_fix_risk("retry_limit") is None
+
+    # 6. Max consecutive failures halt
+    def test_max_consecutive_failures_halt(self):
+        config = AutoApplyConfig(max_consecutive_failures=2)
+        service = AutoApplyService(config)
+        workflow_id = "wf_fail"
+
+        # Simulate 2 consecutive failures
+        service._failure_counts[workflow_id] = 2
+
+        assert service.check_rate_limit(workflow_id) is False
+
+    # 7. HealingConfig propagates to AutoApplyConfig
+    def test_healing_config_propagation(self):
+        hc = HealingConfig(
+            max_fixes_per_hour=2,
+            cooldown_after_rollback_seconds=600,
+            max_consecutive_failures=1,
+            healing_loop_threshold=3,
+            healing_loop_window_minutes=30,
+        )
+        engine = SelfHealingEngine(auto_apply=True, healing_config=hc)
+
+        assert engine.auto_apply_service is not None
+        aac = engine.auto_apply_service.config
+        assert aac.max_fixes_per_hour == 2
+        assert aac.cooldown_after_rollback_seconds == 600
+        assert aac.max_consecutive_failures == 1
+        assert aac.healing_loop_threshold == 3
+        assert aac.healing_loop_window_minutes == 30
+
+    # 8. Rollback without backup
+    @pytest.mark.asyncio
+    async def test_rollback_without_backup(self):
+        service = AutoApplyService()
+        apply_result = ApplyResult(
+            success=True,
+            healing_id="heal_no_backup",
+            workflow_id="wf_no_backup",
+            backup_commit_sha=None,  # No backup
+        )
+
+        mock_backup = AsyncMock()
+        mock_client = AsyncMock()
+        success = await service.rollback(apply_result, mock_backup, mock_client)
+
+        assert success is False
+        mock_backup.rollback_to.assert_not_called()
+
+    # 9. Empty fix suggestions
+    @pytest.mark.asyncio
+    async def test_empty_fix_suggestions(self):
+        engine = SelfHealingEngine(auto_apply=True)
+
+        # Use a detection type that won't generate fixes
+        detection = {
+            "id": "det_empty",
+            "detection_type": "rate_limit",
+            "confidence": 0.5,
+            "details": {},
+        }
+        workflow = {"nodes": [], "connections": {}, "settings": {}}
+
+        result = await engine.heal(detection, workflow)
+
+        assert result.status == HealingStatus.FAILED
+        assert "No fix suggestions" in (result.error or "")
+
+    # 10. Heal with invalid/empty workflow config doesn't crash
+    @pytest.mark.asyncio
+    async def test_heal_with_invalid_workflow(self):
+        engine = SelfHealingEngine(auto_apply=True)
+
+        detection = {
+            "id": "det_invalid",
+            "detection_type": "infinite_loop",
+            "confidence": 0.9,
+            "details": {"loop_length": 5},
+        }
+
+        # Empty workflow
+        result = await engine.heal(detection, {})
+        assert result.completed_at is not None
+        assert result.status in (
+            HealingStatus.SUCCESS,
+            HealingStatus.PARTIAL_SUCCESS,
+            HealingStatus.FAILED,
+        )
+
+        # None-valued fields
+        result2 = await engine.heal(detection, {"nodes": None, "settings": None})
+        assert result2.completed_at is not None
 
 
 if __name__ == "__main__":

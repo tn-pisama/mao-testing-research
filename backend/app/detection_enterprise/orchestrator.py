@@ -1311,17 +1311,27 @@ class DetectionOrchestrator:
 
     def _detect_specification(self, trace: UniversalTrace) -> Optional[DetectionResult]:
         """Detect specification mismatch — output doesn't match requirements."""
-        # Extract user intent and task specification from trace
-        user_intent = ""
+        # Extract user intent from ALL spans (multi-turn aggregation).
+        # Later turns may refine the specification, so we collect prompts
+        # across spans up to a char budget, prioritising later refinements.
+        user_prompts: list[str] = []
         task_specification = ""
+        char_budget = 3000
 
         for span in trace.spans:
-            if not user_intent and span.prompt:
-                user_intent = span.prompt[:1000]
+            if span.prompt:
+                user_prompts.append(span.prompt)
             if not task_specification:
                 task_specification = (span.metadata or {}).get("gen_ai.task_spec", "")
-                if not task_specification and span.prompt:
-                    task_specification = span.prompt[:1000]
+
+        # Build aggregated intent: join all prompts (truncate to budget)
+        user_intent = ""
+        if user_prompts:
+            combined = "\n".join(user_prompts)
+            user_intent = combined[:char_budget]
+
+        if not task_specification and user_intent:
+            task_specification = user_intent[:1000]
 
         # Need last output to compare against spec
         last_output = ""
@@ -1512,11 +1522,27 @@ class DetectionOrchestrator:
         """Detect flawed workflow structure."""
         from app.detection.workflow import WorkflowNode
 
-        # Build workflow nodes from trace spans
+        # Build workflow nodes from trace spans using actual topology
+        span_index = {span.id: i for i, span in enumerate(trace.spans)}
         nodes: List[WorkflowNode] = []
+
         for i, span in enumerate(trace.spans):
-            outgoing = [trace.spans[i + 1].id] if i + 1 < len(trace.spans) else []
-            incoming = [trace.spans[i - 1].id] if i > 0 else []
+            incoming = []
+            outgoing = []
+
+            # Use parent_id for actual topology
+            if span.parent_id and span.parent_id in span_index:
+                parent_idx = span_index[span.parent_id]
+                incoming.append(trace.spans[parent_idx].id)
+            elif i > 0:
+                incoming = [trace.spans[i - 1].id]  # fallback: linear
+
+            # Add outgoing for children (will be filled by other spans' incoming)
+            if i + 1 < len(trace.spans):
+                next_span = trace.spans[i + 1]
+                if not next_span.parent_id or next_span.parent_id not in span_index:
+                    outgoing = [next_span.id]
+
             nodes.append(WorkflowNode(
                 id=span.id,
                 name=span.agent_name or span.tool_name or f"step_{i}",
@@ -1524,6 +1550,19 @@ class DetectionOrchestrator:
                 incoming=incoming,
                 outgoing=outgoing,
             ))
+
+        # Agent name repetition detection: add edges between same-agent spans
+        agent_positions: Dict[str, int] = {}
+        for i, span in enumerate(trace.spans):
+            agent = span.agent_name or span.tool_name
+            if agent:
+                if agent in agent_positions:
+                    # Same agent appeared before - add edge from previous to current
+                    prev_idx = agent_positions[agent]
+                    # Add outgoing edge from prev node to current node
+                    nodes[prev_idx].outgoing.append(nodes[i].id)
+                    nodes[i].incoming.append(nodes[prev_idx].id)
+                agent_positions[agent] = i
 
         if len(nodes) < 2:
             return None
