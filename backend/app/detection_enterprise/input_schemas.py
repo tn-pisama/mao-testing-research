@@ -142,6 +142,61 @@ INPUT_SCHEMAS: Dict[str, Dict[str, Any]] = {
     "n8n_timeout": {
         "required": ["workflow_json"],
     },
+    # OpenClaw structural detectors
+    "openclaw_session_loop": {
+        "required": ["session"],
+        "nested": {
+            "session": {
+                "is_list": False,
+                "item_keys": ["session_id", "events"],
+            }
+        },
+    },
+    "openclaw_tool_abuse": {
+        "required": ["session"],
+        "nested": {
+            "session": {
+                "is_list": False,
+                "item_keys": ["session_id", "events"],
+            }
+        },
+    },
+    "openclaw_elevated_risk": {
+        "required": ["session"],
+        "nested": {
+            "session": {
+                "is_list": False,
+                "item_keys": ["session_id", "events", "elevated_mode"],
+            }
+        },
+    },
+    "openclaw_spawn_chain": {
+        "required": ["session"],
+        "nested": {
+            "session": {
+                "is_list": False,
+                "item_keys": ["session_id", "events", "spawned_sessions"],
+            }
+        },
+    },
+    "openclaw_channel_mismatch": {
+        "required": ["session"],
+        "nested": {
+            "session": {
+                "is_list": False,
+                "item_keys": ["session_id", "events", "channel"],
+            }
+        },
+    },
+    "openclaw_sandbox_escape": {
+        "required": ["session"],
+        "nested": {
+            "session": {
+                "is_list": False,
+                "item_keys": ["session_id", "events", "sandbox_enabled"],
+            }
+        },
+    },
 }
 
 

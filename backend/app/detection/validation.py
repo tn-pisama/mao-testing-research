@@ -32,6 +32,13 @@ class DetectionType(Enum):
     N8N_ERROR = "n8n_error"  # Missing error handling, unprotected AI nodes
     N8N_RESOURCE = "n8n_resource"  # Missing maxTokens, unbounded loops, no timeout on HTTP
     N8N_TIMEOUT = "n8n_timeout"  # Missing workflow timeout, webhook timeout, AI node timeout
+    # OpenClaw structural detectors
+    OPENCLAW_SESSION_LOOP = "openclaw_session_loop"  # Agent turn loops within sessions
+    OPENCLAW_TOOL_ABUSE = "openclaw_tool_abuse"  # Excessive/inappropriate tool calls
+    OPENCLAW_ELEVATED_RISK = "openclaw_elevated_risk"  # Elevated mode misuse
+    OPENCLAW_SPAWN_CHAIN = "openclaw_spawn_chain"  # Recursive session spawning
+    OPENCLAW_CHANNEL_MISMATCH = "openclaw_channel_mismatch"  # Response inappropriate for channel
+    OPENCLAW_SANDBOX_ESCAPE = "openclaw_sandbox_escape"  # Sandbox boundary violations
 
 
 @dataclass
