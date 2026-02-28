@@ -17,6 +17,7 @@ from .models import (
 from .analyzer import FailureAnalyzer
 from .applicator import FixApplicator
 from .validator import FixValidator
+from .verification import VerificationOrchestrator
 from .auto_apply import AutoApplyService, AutoApplyConfig, ApplyResult
 from .git_backup import GitBackupService, GitBackupConfig
 
@@ -87,6 +88,10 @@ class SelfHealingEngine:
         self.analyzer = FailureAnalyzer()
         self.applicator = FixApplicator(config=self.healing_config)
         self.validator = FixValidator()
+        self.verification_orchestrator = VerificationOrchestrator(
+            verification_timeout=self.validation_timeout,
+            config=self.healing_config,
+        )
 
         # Per-workflow locks to prevent concurrent healing on the same workflow
         self._workflow_locks: Dict[str, asyncio.Lock] = {}
@@ -337,12 +342,14 @@ class SelfHealingEngine:
         workflow_id: str,
         n8n_client: Any,
         trace: Optional[Dict[str, Any]] = None,
+        skip_verification: bool = False,
     ) -> HealingResult:
         """
-        Heal an n8n workflow with auto-apply and git backup.
+        Heal an n8n workflow with auto-apply, verification, and git backup.
 
         This is the main entry point for solo developers using n8n.
-        It combines detection, fix generation, git backup, and auto-apply.
+        It combines detection, fix generation, git backup, auto-apply,
+        and Level 2 execution-based verification.
 
         Acquires a per-workflow lock to prevent concurrent healing operations
         on the same workflow, which could corrupt state.
@@ -352,6 +359,7 @@ class SelfHealingEngine:
             workflow_id: n8n workflow ID
             n8n_client: n8n API client
             trace: Optional trace data for analysis
+            skip_verification: If True, skip post-apply verification
 
         Returns:
             HealingResult with status and applied fixes
@@ -374,7 +382,7 @@ class SelfHealingEngine:
 
         async with lock:
             return await self._heal_n8n_workflow_locked(
-                detection, workflow_id, n8n_client, trace,
+                detection, workflow_id, n8n_client, trace, skip_verification,
             )
 
     async def _heal_n8n_workflow_locked(
@@ -383,6 +391,7 @@ class SelfHealingEngine:
         workflow_id: str,
         n8n_client: Any,
         trace: Optional[Dict[str, Any]] = None,
+        skip_verification: bool = False,
     ) -> HealingResult:
         """Internal: heal workflow while holding the workflow lock."""
         result = HealingResult(
@@ -465,20 +474,72 @@ class SelfHealingEngine:
                         fix_id=suggestion.id,
                         fix_type=suggestion.fix_type.value,
                         applied_at=apply_result.applied_at or datetime.now(timezone.utc),
-                        target_component=suggestion.target_component,
+                        target_component=getattr(suggestion, "target_component", workflow_id),
                         original_state=workflow_config,
                         modified_state=fix_dict.get("modified_state", {}),
                         rollback_available=apply_result.backup_commit_sha is not None,
                     )
                     result.applied_fixes.append(applied_fix)
-
-                    result.status = HealingStatus.SUCCESS
                     result.metadata["backup_commit_sha"] = apply_result.backup_commit_sha
-                    result.completed_at = datetime.now(timezone.utc)
-                    self._healing_history.append(result)
 
-                    logger.info(f"Successfully healed workflow {workflow_id}")
-                    return result
+                    # --- Post-apply verification ---
+                    if skip_verification:
+                        result.status = HealingStatus.SUCCESS
+                        result.metadata["verification_skipped"] = True
+                        result.completed_at = datetime.now(timezone.utc)
+                        self._healing_history.append(result)
+                        logger.info(f"Healed workflow {workflow_id} (verification skipped)")
+                        return result
+
+                    result.status = HealingStatus.VALIDATING
+                    try:
+                        verification = await asyncio.wait_for(
+                            self.verification_orchestrator.verify_level2(
+                                detection_type=detection.get("detection_type", "unknown"),
+                                original_confidence=detection.get("confidence", 0),
+                                original_state=workflow_config,
+                                applied_fixes={
+                                    "fix_applied": fix_dict,
+                                    "workflow_id": workflow_id,
+                                },
+                                n8n_client=n8n_client,
+                                workflow_id=workflow_id,
+                            ),
+                            timeout=self.validation_timeout + 15,
+                        )
+
+                        result.metadata["verification"] = verification.to_dict()
+
+                        if verification.passed:
+                            result.status = HealingStatus.SUCCESS
+                            result.completed_at = datetime.now(timezone.utc)
+                            self._healing_history.append(result)
+                            logger.info(
+                                f"Verified healing for workflow {workflow_id}: "
+                                f"confidence {verification.before_confidence:.2f} → {verification.after_confidence:.2f}"
+                            )
+                            return result
+                        else:
+                            # Verification failed — try next fix suggestion
+                            logger.warning(
+                                f"Verification failed for fix {suggestion.id} on {workflow_id}: "
+                                f"confidence {verification.before_confidence:.2f} → {verification.after_confidence:.2f}"
+                            )
+                            continue
+
+                    except asyncio.TimeoutError:
+                        logger.warning(f"Verification timed out for workflow {workflow_id}")
+                        result.metadata["verification_timeout"] = True
+                        result.status = HealingStatus.PARTIAL_SUCCESS
+                        result.completed_at = datetime.now(timezone.utc)
+                        self._healing_history.append(result)
+                        return result
+
+                    except Exception as e:
+                        logger.warning(f"Verification error for workflow {workflow_id}: {e}")
+                        result.metadata["verification_error"] = str(e)
+                        # Fall through to try next fix
+                        continue
 
                 elif apply_result.rolled_back:
                     logger.warning(f"Fix rolled back for workflow {workflow_id}")
@@ -488,9 +549,13 @@ class SelfHealingEngine:
                     logger.warning(f"Fix failed for workflow {workflow_id}: {apply_result.error}")
                     continue
 
-            # All fixes failed
-            result.status = HealingStatus.FAILED
-            result.error = "All fix attempts failed"
+            # All fixes failed or failed verification
+            if result.applied_fixes:
+                result.status = HealingStatus.PARTIAL_SUCCESS
+                result.error = "Fixes applied but none passed verification"
+            else:
+                result.status = HealingStatus.FAILED
+                result.error = "All fix attempts failed"
 
         except Exception as e:
             result.status = HealingStatus.FAILED

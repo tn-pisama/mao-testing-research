@@ -1,6 +1,6 @@
 import time
 import logging
-from typing import Optional
+from typing import Dict, Optional
 from fastapi import HTTPException, Request, status
 
 try:
@@ -26,6 +26,7 @@ class RateLimiter:
     def __init__(self, redis_url: str = None):
         self.redis_url = redis_url or settings.redis_url
         self._redis: Optional[aioredis.Redis] = None
+        self._memory_store: Dict[str, list] = {}
     
     async def connect(self):
         if not _REDIS_AVAILABLE:
@@ -37,12 +38,41 @@ class RateLimiter:
         if self._redis:
             await self._redis.close()
     
+
+    def _check_memory_limit(self, key: str, limit: int, window: int) -> bool:
+        """In-memory fallback rate limiter when Redis is unavailable.
+        
+        Fails closed: returns False (deny) when limit is exceeded.
+        """
+        now = time.time()
+        cutoff = now - window
+
+        # Safety valve: clear entire store if it grows too large
+        if len(self._memory_store) > 10000:
+            self._memory_store.clear()
+
+        # Get or create the timestamp list for this key
+        timestamps = self._memory_store.get(key, [])
+
+        # Remove expired entries
+        timestamps = [t for t in timestamps if t > cutoff]
+
+        # Check if limit is already reached (fail closed)
+        if len(timestamps) >= limit:
+            self._memory_store[key] = timestamps
+            return False
+
+        # Record the new request
+        timestamps.append(now)
+        self._memory_store[key] = timestamps
+        return True
+
     async def check_rate_limit(self, key: str, limit: int = None, window: int = None) -> bool:
         try:
             await self.connect()
         except RedisError as e:
-            logger.warning(f"Redis connection failed, failing open: {e}")
-            return True
+            logger.warning(f"Redis connection failed, using in-memory fallback: {e}")
+            return self._check_memory_limit(key, limit or settings.rate_limit_requests, window or settings.rate_limit_window_seconds)
         
         limit = limit or settings.rate_limit_requests
         window = window or settings.rate_limit_window_seconds
@@ -62,8 +92,8 @@ class RateLimiter:
             
             return request_count <= limit
         except RedisError as e:
-            logger.warning(f"Redis operation failed, failing open: {e}")
-            return True
+            logger.warning(f"Redis operation failed, using in-memory fallback: {e}")
+            return self._check_memory_limit(key, limit, window)
     
     async def get_remaining(self, key: str, limit: int = None) -> int:
         await self.connect()

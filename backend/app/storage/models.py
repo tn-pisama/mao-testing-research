@@ -248,9 +248,52 @@ class GoldenTrace(Base):
     created_at = Column(DateTime(timezone=True), server_default=func.now())
 
 
+class GoldenDatasetEntryModel(Base):
+    """Standalone golden dataset entries for detection calibration and training.
+
+    Unlike GoldenTrace (which annotates real traces), these are synthetic
+    calibration samples with ground-truth labels. tenant_id=NULL means global.
+    """
+    __tablename__ = "golden_dataset_entries"
+
+    id = Column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
+    tenant_id = Column(UUID(as_uuid=True), ForeignKey("tenants.id"), nullable=True)
+    entry_key = Column(String(255), nullable=False, unique=True)
+    detection_type = Column(String(64), nullable=False)
+    input_data = Column(JSONB, nullable=False)
+    expected_detected = Column(Boolean, nullable=False)
+    expected_confidence_min = Column(Float, default=0.0)
+    expected_confidence_max = Column(Float, default=1.0)
+    description = Column(Text, server_default="")
+    source = Column(String(64), server_default="manual")
+    tags = Column(JSONB, server_default="[]")
+    difficulty = Column(String(16), server_default="easy")
+    split = Column(String(16), server_default="train")
+    source_trace_id = Column(String(255), nullable=True)
+    source_workflow_id = Column(String(255), nullable=True)
+    augmentation_method = Column(String(128), nullable=True)
+    human_verified = Column(Boolean, server_default="false")
+    entry_metadata = Column(JSONB, server_default="{}")
+    created_at = Column(DateTime(timezone=True), server_default=func.now())
+    updated_at = Column(DateTime(timezone=True), server_default=func.now(), onupdate=func.now())
+
+    __table_args__ = (
+        Index("idx_gde_tenant", "tenant_id"),
+        Index("idx_gde_detection_type", "detection_type"),
+        Index("idx_gde_split", "split"),
+        Index("idx_gde_source", "source"),
+        Index("idx_gde_difficulty", "difficulty"),
+        Index("idx_gde_type_split", "detection_type", "split"),
+        Index("idx_gde_type_detected", "detection_type", "expected_detected"),
+        Index("idx_gde_tenant_type", "tenant_id", "detection_type"),
+        Index("idx_gde_tags", "tags", postgresql_using="gin"),
+        Index("idx_gde_created", "created_at"),
+    )
+
+
 class ImportJob(Base):
     __tablename__ = "import_jobs"
-    
+
     id = Column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
     tenant_id = Column(UUID(as_uuid=True), ForeignKey("tenants.id"), nullable=False)
     status = Column(String(20), nullable=False, default="pending")

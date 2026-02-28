@@ -218,7 +218,7 @@ class LLMJudge:
 
     def __init__(
         self,
-        model: JudgeModel = JudgeModel.GPT4O_MINI,
+        model: JudgeModel = JudgeModel.CLAUDE_SONNET,
         api_key: Optional[str] = None,
     ):
         self.model = model

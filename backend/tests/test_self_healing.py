@@ -1516,5 +1516,182 @@ class TestAdversarialHealing:
         assert result2.completed_at is not None
 
 
+class TestVerifiedHealing:
+    """Tests for Level 2 verification wired into heal_n8n_workflow()."""
+
+    @pytest.fixture
+    def mock_n8n_client(self):
+        client = AsyncMock()
+        client.get_workflow.return_value = {
+            "id": "wf_test",
+            "name": "Test Workflow",
+            "nodes": [
+                {"name": "Start", "type": "n8n-nodes-base.start", "parameters": {}},
+                {"name": "Loop", "type": "n8n-nodes-base.loopOver", "parameters": {}},
+            ],
+            "connections": {},
+            "settings": {},
+        }
+        client.update_workflow.return_value = {"id": "wf_test"}
+        client.activate_workflow.return_value = {"active": True}
+        client.deactivate_workflow.return_value = {"active": False}
+        client.run_workflow.return_value = {"executionId": "exec_001"}
+        client.wait_for_execution.return_value = {
+            "id": "exec_001",
+            "status": "success",
+            "finished": True,
+            "data": {"resultData": {"runData": {}}},
+        }
+        return client
+
+    @pytest.fixture
+    def auto_apply_engine(self):
+        config = AutoApplyConfig(
+            require_git_backup=False,
+            max_fixes_per_hour=10,
+        )
+        return SelfHealingEngine(
+            auto_apply=True,
+            max_fix_attempts=3,
+            validation_timeout=30.0,
+            auto_apply_config=config,
+        )
+
+    @pytest.fixture
+    def loop_detection(self):
+        return {
+            "id": "det_verify_loop",
+            "detection_type": "infinite_loop",
+            "confidence": 0.9,
+            "details": {"loop_length": 5, "affected_agents": ["Loop"]},
+        }
+
+    @pytest.mark.asyncio
+    async def test_heal_n8n_verification_success(
+        self, auto_apply_engine, mock_n8n_client, loop_detection
+    ):
+        """After apply, verification runs and passes → SUCCESS."""
+        result = await auto_apply_engine.heal_n8n_workflow(
+            loop_detection, "wf_test", mock_n8n_client
+        )
+
+        assert result.status == HealingStatus.SUCCESS
+        assert len(result.applied_fixes) >= 1
+        # Verification result should be in metadata
+        assert "verification" in result.metadata
+        verification = result.metadata["verification"]
+        assert verification["passed"] is True
+        assert verification["level"] == 2
+        # n8n client should have been activated/deactivated for verification
+        mock_n8n_client.activate_workflow.assert_called()
+        mock_n8n_client.deactivate_workflow.assert_called()
+
+    @pytest.mark.asyncio
+    async def test_heal_n8n_verification_fails_tries_next(
+        self, auto_apply_engine, mock_n8n_client, loop_detection
+    ):
+        """First fix fails verification (execution errors), engine tries next fix."""
+        call_count = 0
+
+        async def varying_execution(*args, **kwargs):
+            nonlocal call_count
+            call_count += 1
+            if call_count <= 1:
+                # First execution: errors (fix didn't work)
+                return {
+                    "id": f"exec_{call_count}",
+                    "status": "error",
+                    "finished": True,
+                    "data": {
+                        "resultData": {
+                            "error": {"message": "Workflow stuck in loop again"},
+                            "runData": {},
+                        }
+                    },
+                }
+            # Second execution: succeeds (fix worked)
+            return {
+                "id": f"exec_{call_count}",
+                "status": "success",
+                "finished": True,
+                "data": {"resultData": {"runData": {}}},
+            }
+
+        mock_n8n_client.wait_for_execution.side_effect = varying_execution
+
+        result = await auto_apply_engine.heal_n8n_workflow(
+            loop_detection, "wf_test", mock_n8n_client
+        )
+
+        # Should eventually succeed (second or later fix)
+        assert result.status in (HealingStatus.SUCCESS, HealingStatus.PARTIAL_SUCCESS)
+        assert len(result.applied_fixes) >= 1
+
+    @pytest.mark.asyncio
+    async def test_heal_n8n_verification_timeout_partial(
+        self, auto_apply_engine, mock_n8n_client, loop_detection
+    ):
+        """Verification times out → PARTIAL_SUCCESS (fix applied, unverified)."""
+        # Make verification hang forever
+        async def hang(*args, **kwargs):
+            await asyncio.sleep(999)
+
+        mock_n8n_client.wait_for_execution.side_effect = hang
+
+        # Use very short timeout
+        auto_apply_engine.validation_timeout = 0.1
+
+        result = await auto_apply_engine.heal_n8n_workflow(
+            loop_detection, "wf_test", mock_n8n_client
+        )
+
+        assert result.status == HealingStatus.PARTIAL_SUCCESS
+        assert len(result.applied_fixes) >= 1
+        assert result.metadata.get("verification_timeout") is True
+
+    @pytest.mark.asyncio
+    async def test_heal_n8n_skip_verification(
+        self, auto_apply_engine, mock_n8n_client, loop_detection
+    ):
+        """skip_verification=True bypasses Level 2 entirely."""
+        result = await auto_apply_engine.heal_n8n_workflow(
+            loop_detection, "wf_test", mock_n8n_client,
+            skip_verification=True,
+        )
+
+        assert result.status == HealingStatus.SUCCESS
+        assert result.metadata.get("verification_skipped") is True
+        # Should NOT have called activate/run (no verification)
+        mock_n8n_client.activate_workflow.assert_not_called()
+        mock_n8n_client.run_workflow.assert_not_called()
+
+    @pytest.mark.asyncio
+    async def test_heal_n8n_all_fail_verification(
+        self, auto_apply_engine, mock_n8n_client, loop_detection
+    ):
+        """All fixes fail verification → PARTIAL_SUCCESS with applied_fixes."""
+        # Every execution returns error with finished=False (fix didn't work)
+        mock_n8n_client.wait_for_execution.return_value = {
+            "id": "exec_fail",
+            "status": "error",
+            "finished": False,
+            "data": {
+                "resultData": {
+                    "error": {"message": "Still looping forever"},
+                    "runData": {},
+                }
+            },
+        }
+
+        result = await auto_apply_engine.heal_n8n_workflow(
+            loop_detection, "wf_test", mock_n8n_client
+        )
+
+        # Fixes were applied but none passed verification
+        assert result.status == HealingStatus.PARTIAL_SUCCESS
+        assert len(result.applied_fixes) >= 1
+        assert "none passed verification" in (result.error or "")
+
+
 if __name__ == "__main__":
     pytest.main([__file__, "-v"])

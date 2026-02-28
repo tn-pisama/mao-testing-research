@@ -1,5 +1,5 @@
 """
-Background scheduler for periodic n8n sync.
+Background scheduler for periodic n8n sync and healing re-checks.
 
 Uses APScheduler with Redis-based distributed locking to ensure only one
 instance runs the sync job at a time across multiple Fly.io machines.
@@ -8,14 +8,14 @@ instance runs the sync job at a time across multiple Fly.io machines.
 import asyncio
 import logging
 import os
-from datetime import datetime
+from datetime import datetime, timedelta, timezone
 from typing import Optional
 from uuid import UUID
 
 from apscheduler.schedulers.asyncio import AsyncIOScheduler
 from apscheduler.triggers.interval import IntervalTrigger
 from redis import asyncio as aioredis
-from sqlalchemy import select
+from sqlalchemy import select, and_
 
 from app.config import get_settings
 
@@ -209,6 +209,130 @@ async def sync_all_tenants():
             await redis.close()
 
 
+async def recheck_stale_healings():
+    """
+    Re-check healing records that were applied but never verified.
+
+    Finds HealingRecords where deployment_stage is 'staged' or 'promoted',
+    validation_status is NULL, and created_at > 1 hour ago. Runs Level 1
+    verification (Level 2 if n8n connection is available).
+
+    Uses Redis distributed lock to prevent overlapping runs.
+    """
+    from app.storage.database import async_session_maker
+    from app.storage.models import HealingRecord
+    from app.healing.verification import VerificationOrchestrator
+    from app.integrations.n8n_client import N8nApiClient
+
+    settings = get_settings()
+    lock_key = "mao:healing:recheck_lock"
+    recheck_max_age_hours = int(os.getenv("HEALING_RECHECK_MAX_AGE_HOURS", "24"))
+
+    redis = None
+    try:
+        redis = await aioredis.from_url(settings.redis_url)
+
+        if not await get_sync_lock(redis, lock_key, ttl=600):
+            logger.debug("Another instance is running healing recheck, skipping")
+            return
+
+        logger.info("Starting stale healing recheck")
+
+        cutoff_recent = datetime.now(timezone.utc) - timedelta(hours=1)
+        cutoff_old = datetime.now(timezone.utc) - timedelta(hours=recheck_max_age_hours)
+
+        async with async_session_maker() as db:
+            result = await db.execute(
+                select(HealingRecord).where(
+                    and_(
+                        HealingRecord.deployment_stage.in_(["staged", "promoted"]),
+                        HealingRecord.validation_status.is_(None),
+                        HealingRecord.created_at < cutoff_recent,
+                        HealingRecord.created_at > cutoff_old,
+                    )
+                )
+            )
+            stale_records = result.scalars().all()
+
+        if not stale_records:
+            logger.debug("No stale healings to recheck")
+            return
+
+        logger.info(f"Found {len(stale_records)} stale healing records to recheck")
+
+        orchestrator = VerificationOrchestrator()
+        verified = 0
+        errors = 0
+
+        for record in stale_records:
+            try:
+                applied_fixes = record.applied_fixes or {}
+                original_state = record.original_state or {}
+                detection_type = applied_fixes.get("detection_type", "unknown")
+                original_confidence = applied_fixes.get("original_confidence", 0.5)
+
+                # Try Level 2 if n8n connection is available
+                verification = None
+                if record.workflow_id and record.n8n_connection_id:
+                    n8n_host = os.getenv("N8N_HOST")
+                    n8n_api_key = os.getenv("N8N_API_KEY")
+                    if n8n_host and n8n_api_key:
+                        try:
+                            async with N8nApiClient(n8n_host, n8n_api_key) as client:
+                                verification = await asyncio.wait_for(
+                                    orchestrator.verify_level2(
+                                        detection_type=detection_type,
+                                        original_confidence=original_confidence,
+                                        original_state=original_state,
+                                        applied_fixes=applied_fixes,
+                                        n8n_client=client,
+                                        workflow_id=record.workflow_id,
+                                    ),
+                                    timeout=75,
+                                )
+                        except (asyncio.TimeoutError, Exception) as e:
+                            logger.warning(
+                                f"Level 2 recheck failed for {record.id}, "
+                                f"falling back to Level 1: {e}"
+                            )
+
+                # Fall back to Level 1
+                if verification is None:
+                    verification = await orchestrator.verify_level1(
+                        detection_type=detection_type,
+                        original_confidence=original_confidence,
+                        original_state=original_state,
+                        applied_fixes=applied_fixes,
+                    )
+
+                # Update the record
+                async with async_session_maker() as db:
+                    healing = await db.get(HealingRecord, record.id)
+                    if healing:
+                        healing.validation_status = "passed" if verification.passed else "failed"
+                        existing_results = healing.validation_results or {}
+                        existing_results["auto_recheck"] = verification.to_dict()
+                        healing.validation_results = existing_results
+                        await db.commit()
+
+                verified += 1
+
+            except Exception as e:
+                logger.warning(f"Recheck failed for healing {record.id}: {e}")
+                errors += 1
+
+        logger.info(
+            f"Healing recheck completed: {verified} verified, {errors} errors"
+        )
+
+    except Exception as e:
+        logger.error(f"Healing recheck job failed: {e}")
+    finally:
+        if redis:
+            await release_sync_lock(redis, lock_key)
+            await redis.close()
+
+
 def create_scheduler() -> AsyncIOScheduler:
     """Create and configure the APScheduler instance."""
     global scheduler
@@ -228,7 +352,21 @@ def create_scheduler() -> AsyncIOScheduler:
         max_instances=1,  # Prevent overlapping runs
     )
 
-    logger.info(f"Scheduler configured: n8n sync every {sync_interval_minutes} minutes")
+    # Add the healing recheck job
+    recheck_interval_minutes = int(os.getenv("HEALING_RECHECK_INTERVAL_MINUTES", "30"))
+    scheduler.add_job(
+        recheck_stale_healings,
+        trigger=IntervalTrigger(minutes=recheck_interval_minutes),
+        id="healing_recheck",
+        name="Healing Recheck",
+        replace_existing=True,
+        max_instances=1,
+    )
+
+    logger.info(
+        f"Scheduler configured: n8n sync every {sync_interval_minutes} minutes, "
+        f"healing recheck every {recheck_interval_minutes} minutes"
+    )
 
     return scheduler
 

@@ -111,6 +111,7 @@ Multi-Agent Orchestration Testing Platform - Failure detection for LLM agent sys
 
 ## Development Guidelines
 
+- **Never use OpenAI. Claude/Anthropic models only for all LLM calls.** No GPT-4o, no OpenAI fallbacks.
 - No mock or simulated data
 - Always choose the simplest implementation
 - Prefer editing existing files over creating new ones

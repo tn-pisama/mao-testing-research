@@ -14,7 +14,33 @@ from typing import Dict, List, Any, Optional, Tuple
 from datetime import datetime, timezone
 
 from app.detection.validation import DetectionType
-from app.detection_enterprise.golden_dataset import create_default_golden_dataset, GoldenDatasetEntry
+from app.detection_enterprise.golden_dataset import (
+    create_default_golden_dataset,
+    GoldenDatasetEntry,
+)
+
+# Lazy import for DB-backed dataset (avoids circular imports at module level)
+_db_golden_dataset_factory = None
+
+def _get_golden_dataset(db_session=None, tenant_id=None):
+    """Get the golden dataset, preferring DB when a session is available."""
+    if db_session is not None:
+        import asyncio
+        from app.detection_enterprise.golden_dataset import create_default_golden_dataset_from_db
+        try:
+            loop = asyncio.get_running_loop()
+            # Already in async context — create a task
+            import concurrent.futures
+            with concurrent.futures.ThreadPoolExecutor() as pool:
+                dataset = loop.run_in_executor(
+                    pool,
+                    lambda: asyncio.run(create_default_golden_dataset_from_db(db_session, tenant_id)),
+                )
+                return asyncio.get_event_loop().run_until_complete(dataset)
+        except RuntimeError:
+            # No running loop — safe to use asyncio.run
+            return asyncio.run(create_default_golden_dataset_from_db(db_session, tenant_id))
+    return create_default_golden_dataset()
 
 logger = logging.getLogger(__name__)
 
@@ -916,6 +942,7 @@ def calibrate_single(
 def calibrate_all(
     phoenix_tracer: Optional[Any] = None,
     splits: Optional[List[str]] = None,
+    db_session=None,
 ) -> Dict[str, Any]:
     """Run calibration across all detector types using the golden dataset.
 
@@ -950,7 +977,7 @@ def calibrate_all(
                 },
             }
     """
-    dataset = create_default_golden_dataset()
+    dataset = _get_golden_dataset(db_session)
     results: Dict[str, Any] = {}
     skipped: List[str] = []
 
@@ -1057,6 +1084,7 @@ def calibrate_all(
 
 def evaluate_holdout(
     calibration_report: Dict[str, Any],
+    db_session=None,
 ) -> Dict[str, Any]:
     """Evaluate detectors on the held-out test split using calibrated thresholds.
 
@@ -1075,7 +1103,7 @@ def evaluate_holdout(
                 "results": { "<dtype>": { "f1": ..., "precision": ..., ... } }
             }
     """
-    dataset = create_default_golden_dataset()
+    dataset = _get_golden_dataset(db_session)
     cal_results = calibration_report.get("results", {})
     eval_results: Dict[str, Any] = {}
 
@@ -1323,6 +1351,10 @@ if __name__ == "__main__":
         "--tiered", action="store_true",
         help="Use tiered detectors (with LLM escalation) instead of raw heuristic detectors",
     )
+    parser.add_argument(
+        "--from-db", action="store_true",
+        help="Load golden dataset from PostgreSQL instead of in-memory samples",
+    )
     args = parser.parse_args()
 
     logging.basicConfig(
@@ -1405,7 +1437,26 @@ if __name__ == "__main__":
     if args.tiered:
         _apply_tiered_runners()
 
-    report = calibrate_all(phoenix_tracer=phoenix_tracer)
+    db_session = None
+    if args.from_db:
+        import asyncio as _aio
+        from app.storage.database import async_session_maker
+        db_session = _aio.run(async_session_maker().__aenter__())
+        print("  Loading golden dataset from PostgreSQL...")
+
+    report = calibrate_all(phoenix_tracer=phoenix_tracer, db_session=db_session)
+
+    if db_session:
+        import asyncio as _aio
+
+        async def _close():
+            await db_session.close()
+            await db_session.get_bind().dispose()
+
+        try:
+            _aio.run(_close())
+        except Exception:
+            pass  # Best-effort cleanup
 
     # Pretty-print summary to stdout.
     print("\n" + "=" * 72)

@@ -106,6 +106,42 @@ INPUT_SCHEMAS: Dict[str, Dict[str, Any]] = {
             }
         },
     },
+    "n8n_schema": {
+        "required": ["workflow_json"],
+        "nested": {
+            "workflow_json": {
+                "is_list": False,
+                "item_keys": ["nodes", "connections"],
+            }
+        },
+    },
+    "n8n_cycle": {
+        "required": ["workflow_json"],
+        "nested": {
+            "workflow_json": {
+                "is_list": False,
+                "item_keys": ["nodes", "connections"],
+            }
+        },
+    },
+    "n8n_complexity": {
+        "required": ["workflow_json"],
+        "nested": {
+            "workflow_json": {
+                "is_list": False,
+                "item_keys": ["nodes"],
+            }
+        },
+    },
+    "n8n_error": {
+        "required": ["workflow_json"],
+    },
+    "n8n_resource": {
+        "required": ["workflow_json"],
+    },
+    "n8n_timeout": {
+        "required": ["workflow_json"],
+    },
 }
 
 

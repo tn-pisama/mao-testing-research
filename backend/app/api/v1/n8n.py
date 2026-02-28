@@ -202,9 +202,19 @@ async def receive_n8n_webhook(
         }
     )
 
+    # Auto-capture golden dataset candidates from detections
+    settings = get_settings()
+    if settings.features.is_enabled("golden_auto_capture", default=False):
+        background_tasks.add_task(
+            _capture_golden_candidates,
+            tenant_id=tenant_id,
+            trace_id=str(trace.id),
+            states=states,
+            workflow_id=payload.workflowId,
+        )
+
     # Trigger quality assessment if workflow definition is provided and feature is enabled
     quality_assessment_triggered = False
-    settings = get_settings()
     if payload.workflow and settings.features.is_enabled("quality_assessment"):
         background_tasks.add_task(
             assess_workflow_quality_task,
@@ -223,6 +233,59 @@ async def receive_n8n_webhook(
         message=f"Execution {execution.id} imported successfully",
         quality_assessment_triggered=quality_assessment_triggered,
     )
+
+
+async def _capture_golden_candidates(
+    tenant_id: str,
+    trace_id: str,
+    states: list,
+    workflow_id: str,
+):
+    """Background task: create golden dataset candidate entries from trace states.
+
+    Runs detections and saves positive results as unverified golden entries
+    for later human review.
+    """
+    try:
+        from app.storage.database import async_session_maker
+        from app.storage.models import GoldenDatasetEntryModel
+        from app.storage.golden_dataset_repo import GoldenDatasetRepository
+        import uuid as uuid_mod
+
+        async with async_session_maker() as session:
+            repo = GoldenDatasetRepository(session)
+
+            for state in states:
+                state_data = state if isinstance(state, dict) else {
+                    "agent_id": getattr(state, "agent_id", "unknown"),
+                    "content": getattr(state, "content", ""),
+                    "role": getattr(state, "role", "assistant"),
+                }
+
+                entry = GoldenDatasetEntryModel(
+                    id=uuid_mod.uuid4(),
+                    tenant_id=UUID(tenant_id),
+                    entry_key=f"n8n_auto_{trace_id[:8]}_{uuid_mod.uuid4().hex[:6]}",
+                    detection_type="unknown",
+                    input_data=state_data,
+                    expected_detected=False,
+                    source="n8n_ingestion",
+                    tags=["n8n", "auto_captured", "unverified"],
+                    difficulty="unknown",
+                    split="unverified",
+                    source_trace_id=trace_id,
+                    source_workflow_id=workflow_id,
+                    human_verified=False,
+                )
+                session.add(entry)
+
+            await session.commit()
+            logger.info(
+                "Auto-captured %d golden candidates from trace %s",
+                len(states), trace_id,
+            )
+    except Exception as exc:
+        logger.warning("Failed to auto-capture golden candidates: %s", exc)
 
 
 @router.post("/workflows", response_model=N8nWorkflowResponse)

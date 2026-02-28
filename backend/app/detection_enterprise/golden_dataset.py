@@ -8628,3 +8628,76 @@ def create_default_golden_dataset(assign_splits: bool = True) -> GoldenDataset:
 def get_golden_dataset_path() -> Path:
     """Get the default path for the golden dataset."""
     return Path(__file__).parent.parent.parent / "data" / "golden_dataset.json"
+
+
+# ---------------------------------------------------------------------------
+# Database-backed golden dataset
+# ---------------------------------------------------------------------------
+
+class GoldenDatasetDB(GoldenDataset):
+    """Database-backed golden dataset that eagerly loads entries into memory.
+
+    This subclass IS-A GoldenDataset, so all existing synchronous consumers
+    (calibrate.py, test harness, train pipeline) work unchanged. The dataset
+    is small enough (~2300 entries) to fit comfortably in memory.
+
+    Usage::
+
+        async with get_db() as session:
+            dataset = await GoldenDatasetDB.from_db(session)
+            # Use exactly like a regular GoldenDataset
+            entries = dataset.get_entries_by_type(DetectionType.LOOP)
+    """
+
+    @classmethod
+    async def from_db(
+        cls,
+        session,
+        tenant_id=None,
+    ) -> "GoldenDatasetDB":
+        """Factory: load all entries from DB into memory.
+
+        Args:
+            session: An AsyncSession instance.
+            tenant_id: Optional tenant UUID. If provided, includes both
+                global (tenant_id=NULL) and tenant-specific entries.
+        """
+        from app.storage.golden_dataset_repo import (
+            GoldenDatasetRepository,
+            model_to_dataclass,
+        )
+
+        repo = GoldenDatasetRepository(session)
+        models = await repo.get_all(tenant_id)
+        instance = cls()
+        for m in models:
+            entry = model_to_dataclass(m)
+            instance.entries[entry.id] = entry
+        return instance
+
+
+async def create_default_golden_dataset_from_db(
+    session,
+    tenant_id=None,
+    assign_splits: bool = True,
+) -> GoldenDataset:
+    """Load the golden dataset from the database.
+
+    Falls back to in-memory creation if the database table is empty,
+    ensuring backward compatibility during migration.
+
+    Args:
+        session: An AsyncSession instance.
+        tenant_id: Optional tenant UUID for scoped queries.
+        assign_splits: If True and falling back to in-memory, assign splits.
+    """
+    from app.storage.golden_dataset_repo import GoldenDatasetRepository
+
+    repo = GoldenDatasetRepository(session)
+    count = await repo.count_total()
+
+    if count > 0:
+        return await GoldenDatasetDB.from_db(session, tenant_id)
+
+    # Fallback: DB is empty, use in-memory default
+    return create_default_golden_dataset(assign_splits)

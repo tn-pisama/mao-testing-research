@@ -134,8 +134,8 @@ class TieredDetector(Generic[T]):
             try:
                 from app.enterprise.evals.llm_judge import LLMJudge, JudgeModel
                 self._llm_judge = {
-                    "cheap": LLMJudge(model=JudgeModel.GPT4O_MINI),
-                    "expensive": LLMJudge(model=JudgeModel.GPT4O),
+                    "cheap": LLMJudge(model=JudgeModel.CLAUDE_HAIKU),
+                    "expensive": LLMJudge(model=JudgeModel.CLAUDE_SONNET),
                 }
             except ImportError:
                 logger.warning("LLM Judge not available, AI tiers disabled")

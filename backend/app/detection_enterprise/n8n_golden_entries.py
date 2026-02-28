@@ -1596,7 +1596,7 @@ def _n8n_timeout_entries() -> List[GoldenDatasetEntry]:
 
 
 def create_n8n_golden_entries() -> List[GoldenDatasetEntry]:
-    """Create all 60 n8n golden dataset entries (10 per detector)."""
+    """Create all 90 n8n golden dataset entries (10 per detector)."""
     entries: List[GoldenDatasetEntry] = []
     entries.extend(_n8n_schema_entries())
     entries.extend(_n8n_cycle_entries())
@@ -1604,4 +1604,807 @@ def create_n8n_golden_entries() -> List[GoldenDatasetEntry]:
     entries.extend(_n8n_error_entries())
     entries.extend(_n8n_resource_entries())
     entries.extend(_n8n_timeout_entries())
+    # Core detectors (Task 7)
+    entries.extend(_n8n_core_loop_entries())
+    entries.extend(_n8n_core_corruption_entries())
+    entries.extend(_n8n_core_overflow_entries())
     return entries
+
+
+# Alias so callers can use either name
+get_n8n_golden_entries = create_n8n_golden_entries
+
+
+# ---------------------------------------------------------------------------
+# Core detector golden entries (Task 7)
+# ---------------------------------------------------------------------------
+
+def _n8n_core_loop_entries() -> List[GoldenDatasetEntry]:
+    """10 entries for infinite_loop / LOOP detection (5 positive, 5 negative).
+
+    Positive cases model n8n execution traces where the same agent_id
+    appears 20+ times with near-identical state_delta, or two agents
+    ping-pong between each other indefinitely.
+
+    Negative cases model healthy multi-step workflows with batch
+    processing, legitimate retries, and multi-agent coordination.
+    """
+    return [
+        # --- POSITIVE: should detect infinite loop ---
+        GoldenDatasetEntry(
+            id="n8n_core_loop_pos_001",
+            detection_type=DetectionType.LOOP,
+            input_data={
+                "trace": {
+                    "trace_id": "trace-loop-p1",
+                    "workflow_id": "wf-core-lp1",
+                    "spans": [
+                        {
+                            "span_id": f"span-lp1-{i:03d}",
+                            "agent_id": "agent-summarizer",
+                            "node_name": "Summarize",
+                            "timestamp_ms": 1000 * i,
+                            "state_delta": {"summary_length": 142 + (i % 3), "retry": True},
+                            "token_count": 200,
+                        }
+                        for i in range(25)
+                    ],
+                },
+            },
+            expected_detected=True,
+            expected_confidence_min=0.75,
+            expected_confidence_max=0.98,
+            description="Same agent_id runs 25 times with near-identical state_delta — clear infinite loop",
+            tags=["n8n", "core", "loop", "repeated_agent", "clear_positive"],
+            difficulty="easy",
+        ),
+        GoldenDatasetEntry(
+            id="n8n_core_loop_pos_002",
+            detection_type=DetectionType.LOOP,
+            input_data={
+                "trace": {
+                    "trace_id": "trace-loop-p2",
+                    "workflow_id": "wf-core-lp2",
+                    "spans": [
+                        {
+                            "span_id": f"span-lp2-{i:03d}",
+                            "agent_id": "agent-a" if i % 2 == 0 else "agent-b",
+                            "node_name": "Planner" if i % 2 == 0 else "Executor",
+                            "timestamp_ms": 500 * i,
+                            "state_delta": {"task": "parse_report", "status": "pending" if i % 2 == 0 else "rejected"},
+                            "token_count": 180,
+                        }
+                        for i in range(30)
+                    ],
+                },
+            },
+            expected_detected=True,
+            expected_confidence_min=0.70,
+            expected_confidence_max=0.95,
+            description="Ping-pong between Planner (agent-a) and Executor (agent-b) — 30 alternating spans",
+            tags=["n8n", "core", "loop", "ping_pong", "clear_positive"],
+            difficulty="easy",
+        ),
+        GoldenDatasetEntry(
+            id="n8n_core_loop_pos_003",
+            detection_type=DetectionType.LOOP,
+            input_data={
+                "trace": {
+                    "trace_id": "trace-loop-p3",
+                    "workflow_id": "wf-core-lp3",
+                    "spans": [
+                        {
+                            "span_id": f"span-lp3-{i:03d}",
+                            "agent_id": "agent-validator",
+                            "node_name": "Validate Output",
+                            "timestamp_ms": 800 * i,
+                            "state_delta": {"valid": False, "error_code": "E_FORMAT", "attempt": i + 1},
+                            "token_count": 250,
+                        }
+                        for i in range(22)
+                    ],
+                },
+            },
+            expected_detected=True,
+            expected_confidence_min=0.70,
+            expected_confidence_max=0.95,
+            description="Validator agent fails 22 times with same error code, never breaks out",
+            tags=["n8n", "core", "loop", "stuck_validator", "clear_positive"],
+            difficulty="medium",
+        ),
+        GoldenDatasetEntry(
+            id="n8n_core_loop_pos_004",
+            detection_type=DetectionType.LOOP,
+            input_data={
+                "trace": {
+                    "trace_id": "trace-loop-p4",
+                    "workflow_id": "wf-core-lp4",
+                    "spans": [
+                        {
+                            "span_id": f"span-lp4-{i:03d}",
+                            "agent_id": "agent-refiner" if i % 3 != 2 else "agent-critic",
+                            "node_name": "Refine" if i % 3 != 2 else "Critique",
+                            "timestamp_ms": 600 * i,
+                            "state_delta": {"draft_version": (i // 3) + 1, "score": 0.42 + 0.001 * (i % 5)},
+                            "token_count": 300,
+                        }
+                        for i in range(33)
+                    ],
+                },
+            },
+            expected_detected=True,
+            expected_confidence_min=0.65,
+            expected_confidence_max=0.90,
+            description="Refiner-Critic loop with negligible score improvement over 33 spans (11 cycles)",
+            tags=["n8n", "core", "loop", "refiner_critic", "marginal_improvement"],
+            difficulty="medium",
+        ),
+        GoldenDatasetEntry(
+            id="n8n_core_loop_pos_005",
+            detection_type=DetectionType.LOOP,
+            input_data={
+                "trace": {
+                    "trace_id": "trace-loop-p5",
+                    "workflow_id": "wf-core-lp5",
+                    "spans": (
+                        # Normal preamble
+                        [
+                            {"span_id": "span-lp5-init", "agent_id": "agent-init", "node_name": "Init", "timestamp_ms": 0, "state_delta": {"phase": "setup"}, "token_count": 100},
+                        ]
+                        +
+                        # Looping tail
+                        [
+                            {
+                                "span_id": f"span-lp5-loop-{i:03d}",
+                                "agent_id": "agent-fetch",
+                                "node_name": "Fetch Data",
+                                "timestamp_ms": 1000 + 400 * i,
+                                "state_delta": {"rows_fetched": 0, "retry": True},
+                                "token_count": 150,
+                            }
+                            for i in range(24)
+                        ]
+                    ),
+                },
+            },
+            expected_detected=True,
+            expected_confidence_min=0.70,
+            expected_confidence_max=0.95,
+            description="Normal init then 24 repeated fetch attempts returning 0 rows — loop after setup",
+            tags=["n8n", "core", "loop", "fetch_loop", "late_onset"],
+            difficulty="hard",
+        ),
+        # --- NEGATIVE: should NOT detect infinite loop ---
+        GoldenDatasetEntry(
+            id="n8n_core_loop_neg_001",
+            detection_type=DetectionType.LOOP,
+            input_data={
+                "trace": {
+                    "trace_id": "trace-loop-n1",
+                    "workflow_id": "wf-core-ln1",
+                    "spans": [
+                        {"span_id": "span-ln1-001", "agent_id": "agent-ingest", "node_name": "Ingest", "timestamp_ms": 0, "state_delta": {"records": 500}, "token_count": 400},
+                        {"span_id": "span-ln1-002", "agent_id": "agent-transform", "node_name": "Transform", "timestamp_ms": 2000, "state_delta": {"records": 500, "format": "parquet"}, "token_count": 350},
+                        {"span_id": "span-ln1-003", "agent_id": "agent-validate", "node_name": "Validate", "timestamp_ms": 4000, "state_delta": {"valid_records": 498, "invalid": 2}, "token_count": 300},
+                        {"span_id": "span-ln1-004", "agent_id": "agent-load", "node_name": "Load", "timestamp_ms": 6000, "state_delta": {"loaded": 498}, "token_count": 200},
+                        {"span_id": "span-ln1-005", "agent_id": "agent-notify", "node_name": "Notify", "timestamp_ms": 7000, "state_delta": {"notified": True}, "token_count": 100},
+                    ],
+                },
+            },
+            expected_detected=False,
+            expected_confidence_min=0.0,
+            expected_confidence_max=0.25,
+            description="Normal ETL pipeline: Ingest->Transform->Validate->Load->Notify, 5 distinct agents",
+            tags=["n8n", "core", "loop", "normal_pipeline", "clear_negative"],
+            difficulty="easy",
+        ),
+        GoldenDatasetEntry(
+            id="n8n_core_loop_neg_002",
+            detection_type=DetectionType.LOOP,
+            input_data={
+                "trace": {
+                    "trace_id": "trace-loop-n2",
+                    "workflow_id": "wf-core-ln2",
+                    "spans": [
+                        {
+                            "span_id": f"span-ln2-{i:03d}",
+                            "agent_id": "agent-batch-proc",
+                            "node_name": "Process Batch",
+                            "timestamp_ms": 3000 * i,
+                            "state_delta": {"batch_idx": i, "rows_processed": 1000, "total_processed": 1000 * (i + 1)},
+                            "token_count": 250,
+                        }
+                        for i in range(15)
+                    ],
+                },
+            },
+            expected_detected=False,
+            expected_confidence_min=0.0,
+            expected_confidence_max=0.30,
+            description="Batch processing: same agent runs 15 times but batch_idx increments and total grows",
+            tags=["n8n", "core", "loop", "batch_processing", "clear_negative"],
+            difficulty="medium",
+        ),
+        GoldenDatasetEntry(
+            id="n8n_core_loop_neg_003",
+            detection_type=DetectionType.LOOP,
+            input_data={
+                "trace": {
+                    "trace_id": "trace-loop-n3",
+                    "workflow_id": "wf-core-ln3",
+                    "spans": [
+                        {"span_id": "span-ln3-001", "agent_id": "agent-api", "node_name": "Call API", "timestamp_ms": 0, "state_delta": {"status": 503}, "token_count": 100},
+                        {"span_id": "span-ln3-002", "agent_id": "agent-api", "node_name": "Call API", "timestamp_ms": 2000, "state_delta": {"status": 503}, "token_count": 100},
+                        {"span_id": "span-ln3-003", "agent_id": "agent-api", "node_name": "Call API", "timestamp_ms": 6000, "state_delta": {"status": 200, "body": "ok"}, "token_count": 150},
+                        {"span_id": "span-ln3-004", "agent_id": "agent-parse", "node_name": "Parse Response", "timestamp_ms": 7000, "state_delta": {"parsed": True}, "token_count": 120},
+                    ],
+                },
+            },
+            expected_detected=False,
+            expected_confidence_min=0.0,
+            expected_confidence_max=0.20,
+            description="Legitimate retry: 2 failures then success (exponential backoff visible in timestamps)",
+            tags=["n8n", "core", "loop", "legitimate_retry", "clear_negative"],
+            difficulty="easy",
+        ),
+        GoldenDatasetEntry(
+            id="n8n_core_loop_neg_004",
+            detection_type=DetectionType.LOOP,
+            input_data={
+                "trace": {
+                    "trace_id": "trace-loop-n4",
+                    "workflow_id": "wf-core-ln4",
+                    "spans": [
+                        {"span_id": "span-ln4-001", "agent_id": "agent-planner", "node_name": "Plan", "timestamp_ms": 0, "state_delta": {"tasks": ["research", "draft", "review"]}, "token_count": 400},
+                        {"span_id": "span-ln4-002", "agent_id": "agent-researcher", "node_name": "Research", "timestamp_ms": 2000, "state_delta": {"findings": 5}, "token_count": 800},
+                        {"span_id": "span-ln4-003", "agent_id": "agent-drafter", "node_name": "Draft", "timestamp_ms": 5000, "state_delta": {"word_count": 1200}, "token_count": 1500},
+                        {"span_id": "span-ln4-004", "agent_id": "agent-reviewer", "node_name": "Review", "timestamp_ms": 8000, "state_delta": {"score": 0.65, "suggestions": 3}, "token_count": 600},
+                        {"span_id": "span-ln4-005", "agent_id": "agent-drafter", "node_name": "Draft", "timestamp_ms": 10000, "state_delta": {"word_count": 1350}, "token_count": 1200},
+                        {"span_id": "span-ln4-006", "agent_id": "agent-reviewer", "node_name": "Review", "timestamp_ms": 13000, "state_delta": {"score": 0.88, "suggestions": 0}, "token_count": 500},
+                        {"span_id": "span-ln4-007", "agent_id": "agent-publisher", "node_name": "Publish", "timestamp_ms": 14000, "state_delta": {"published": True}, "token_count": 150},
+                    ],
+                },
+            },
+            expected_detected=False,
+            expected_confidence_min=0.0,
+            expected_confidence_max=0.25,
+            description="Multi-agent coordination: Plan->Research->Draft->Review->Draft->Review->Publish with improving scores",
+            tags=["n8n", "core", "loop", "multi_agent_coordination", "clear_negative"],
+            difficulty="medium",
+        ),
+        GoldenDatasetEntry(
+            id="n8n_core_loop_neg_005",
+            detection_type=DetectionType.LOOP,
+            input_data={
+                "trace": {
+                    "trace_id": "trace-loop-n5",
+                    "workflow_id": "wf-core-ln5",
+                    "spans": [
+                        {
+                            "span_id": f"span-ln5-{i:03d}",
+                            "agent_id": f"agent-worker-{i % 4}",
+                            "node_name": f"Worker {i % 4}",
+                            "timestamp_ms": 1500 * i,
+                            "state_delta": {"chunk_id": i, "status": "completed", "output_size": 200 + i * 30},
+                            "token_count": 300,
+                        }
+                        for i in range(12)
+                    ],
+                },
+            },
+            expected_detected=False,
+            expected_confidence_min=0.0,
+            expected_confidence_max=0.25,
+            description="Fan-out parallelism: 4 distinct workers processing 12 chunks with growing output_size",
+            tags=["n8n", "core", "loop", "fan_out", "clear_negative"],
+            difficulty="medium",
+        ),
+    ]
+
+
+def _n8n_core_corruption_entries() -> List[GoldenDatasetEntry]:
+    """10 entries for state_corruption / CORRUPTION detection (5 positive, 5 negative).
+
+    Positive cases show state deltas with sign flips, extreme value jumps
+    (>5x magnitude), field disappearances, and type changes.
+
+    Negative cases show normal state transitions, valid updates, and
+    expected value changes.
+    """
+    return [
+        # --- POSITIVE: should detect state corruption ---
+        GoldenDatasetEntry(
+            id="n8n_core_corrupt_pos_001",
+            detection_type=DetectionType.CORRUPTION,
+            input_data={
+                "trace": {
+                    "trace_id": "trace-corrupt-p1",
+                    "workflow_id": "wf-core-cp1",
+                    "spans": [
+                        {"span_id": "span-cp1-001", "agent_id": "agent-balance", "node_name": "Update Balance", "timestamp_ms": 0, "state_delta": {"balance": 1500.00, "currency": "USD"}, "token_count": 100},
+                        {"span_id": "span-cp1-002", "agent_id": "agent-balance", "node_name": "Update Balance", "timestamp_ms": 2000, "state_delta": {"balance": 1480.00, "currency": "USD"}, "token_count": 100},
+                        {"span_id": "span-cp1-003", "agent_id": "agent-balance", "node_name": "Update Balance", "timestamp_ms": 4000, "state_delta": {"balance": -1480.00, "currency": "USD"}, "token_count": 100},
+                    ],
+                },
+            },
+            expected_detected=True,
+            expected_confidence_min=0.70,
+            expected_confidence_max=0.95,
+            description="Sign flip: balance goes from +1480 to -1480 in a single step",
+            tags=["n8n", "core", "corruption", "sign_flip", "clear_positive"],
+            difficulty="easy",
+        ),
+        GoldenDatasetEntry(
+            id="n8n_core_corrupt_pos_002",
+            detection_type=DetectionType.CORRUPTION,
+            input_data={
+                "trace": {
+                    "trace_id": "trace-corrupt-p2",
+                    "workflow_id": "wf-core-cp2",
+                    "spans": [
+                        {"span_id": "span-cp2-001", "agent_id": "agent-score", "node_name": "Compute Score", "timestamp_ms": 0, "state_delta": {"score": 0.72, "items_evaluated": 50}, "token_count": 150},
+                        {"span_id": "span-cp2-002", "agent_id": "agent-score", "node_name": "Compute Score", "timestamp_ms": 3000, "state_delta": {"score": 0.74, "items_evaluated": 55}, "token_count": 150},
+                        {"span_id": "span-cp2-003", "agent_id": "agent-score", "node_name": "Compute Score", "timestamp_ms": 6000, "state_delta": {"score": 847.3, "items_evaluated": 56}, "token_count": 150},
+                    ],
+                },
+            },
+            expected_detected=True,
+            expected_confidence_min=0.75,
+            expected_confidence_max=0.98,
+            description="Extreme value jump: score leaps from 0.74 to 847.3 (>1000x magnitude change)",
+            tags=["n8n", "core", "corruption", "extreme_value", "clear_positive"],
+            difficulty="easy",
+        ),
+        GoldenDatasetEntry(
+            id="n8n_core_corrupt_pos_003",
+            detection_type=DetectionType.CORRUPTION,
+            input_data={
+                "trace": {
+                    "trace_id": "trace-corrupt-p3",
+                    "workflow_id": "wf-core-cp3",
+                    "spans": [
+                        {"span_id": "span-cp3-001", "agent_id": "agent-profile", "node_name": "Build Profile", "timestamp_ms": 0, "state_delta": {"user_name": "Alice", "email": "alice@example.com", "role": "admin", "active": True}, "token_count": 200},
+                        {"span_id": "span-cp3-002", "agent_id": "agent-profile", "node_name": "Build Profile", "timestamp_ms": 3000, "state_delta": {"user_name": "Alice", "active": True}, "token_count": 120},
+                    ],
+                },
+            },
+            expected_detected=True,
+            expected_confidence_min=0.60,
+            expected_confidence_max=0.90,
+            description="Field disappearance: email and role fields vanish between consecutive state deltas",
+            tags=["n8n", "core", "corruption", "field_disappearance", "clear_positive"],
+            difficulty="medium",
+        ),
+        GoldenDatasetEntry(
+            id="n8n_core_corrupt_pos_004",
+            detection_type=DetectionType.CORRUPTION,
+            input_data={
+                "trace": {
+                    "trace_id": "trace-corrupt-p4",
+                    "workflow_id": "wf-core-cp4",
+                    "spans": [
+                        {"span_id": "span-cp4-001", "agent_id": "agent-config", "node_name": "Load Config", "timestamp_ms": 0, "state_delta": {"max_retries": 3, "timeout_sec": 30, "enabled": True}, "token_count": 80},
+                        {"span_id": "span-cp4-002", "agent_id": "agent-config", "node_name": "Load Config", "timestamp_ms": 2000, "state_delta": {"max_retries": "three", "timeout_sec": "thirty", "enabled": "yes"}, "token_count": 80},
+                    ],
+                },
+            },
+            expected_detected=True,
+            expected_confidence_min=0.70,
+            expected_confidence_max=0.95,
+            description="Type change: int->str for max_retries and timeout_sec, bool->str for enabled",
+            tags=["n8n", "core", "corruption", "type_change", "clear_positive"],
+            difficulty="medium",
+        ),
+        GoldenDatasetEntry(
+            id="n8n_core_corrupt_pos_005",
+            detection_type=DetectionType.CORRUPTION,
+            input_data={
+                "trace": {
+                    "trace_id": "trace-corrupt-p5",
+                    "workflow_id": "wf-core-cp5",
+                    "spans": [
+                        {"span_id": "span-cp5-001", "agent_id": "agent-inventory", "node_name": "Check Stock", "timestamp_ms": 0, "state_delta": {"stock_count": 120, "warehouse": "A", "last_audit": "2025-06-01"}, "token_count": 100},
+                        {"span_id": "span-cp5-002", "agent_id": "agent-inventory", "node_name": "Check Stock", "timestamp_ms": 2000, "state_delta": {"stock_count": 115, "warehouse": "A", "last_audit": "2025-06-01"}, "token_count": 100},
+                        {"span_id": "span-cp5-003", "agent_id": "agent-inventory", "node_name": "Check Stock", "timestamp_ms": 4000, "state_delta": {"stock_count": -780, "warehouse": "A"}, "token_count": 100},
+                    ],
+                },
+            },
+            expected_detected=True,
+            expected_confidence_min=0.75,
+            expected_confidence_max=0.98,
+            description="Combined corruption: sign flip (115 -> -780), >5x magnitude change, and field disappearance (last_audit gone)",
+            tags=["n8n", "core", "corruption", "combined", "clear_positive"],
+            difficulty="hard",
+        ),
+        # --- NEGATIVE: should NOT detect state corruption ---
+        GoldenDatasetEntry(
+            id="n8n_core_corrupt_neg_001",
+            detection_type=DetectionType.CORRUPTION,
+            input_data={
+                "trace": {
+                    "trace_id": "trace-corrupt-n1",
+                    "workflow_id": "wf-core-cn1",
+                    "spans": [
+                        {"span_id": "span-cn1-001", "agent_id": "agent-counter", "node_name": "Count Items", "timestamp_ms": 0, "state_delta": {"count": 0, "status": "running"}, "token_count": 80},
+                        {"span_id": "span-cn1-002", "agent_id": "agent-counter", "node_name": "Count Items", "timestamp_ms": 1000, "state_delta": {"count": 50, "status": "running"}, "token_count": 80},
+                        {"span_id": "span-cn1-003", "agent_id": "agent-counter", "node_name": "Count Items", "timestamp_ms": 2000, "state_delta": {"count": 100, "status": "running"}, "token_count": 80},
+                        {"span_id": "span-cn1-004", "agent_id": "agent-counter", "node_name": "Count Items", "timestamp_ms": 3000, "state_delta": {"count": 150, "status": "complete"}, "token_count": 80},
+                    ],
+                },
+            },
+            expected_detected=False,
+            expected_confidence_min=0.0,
+            expected_confidence_max=0.20,
+            description="Normal monotonic counter: count increases steadily from 0 to 150",
+            tags=["n8n", "core", "corruption", "normal_counter", "clear_negative"],
+            difficulty="easy",
+        ),
+        GoldenDatasetEntry(
+            id="n8n_core_corrupt_neg_002",
+            detection_type=DetectionType.CORRUPTION,
+            input_data={
+                "trace": {
+                    "trace_id": "trace-corrupt-n2",
+                    "workflow_id": "wf-core-cn2",
+                    "spans": [
+                        {"span_id": "span-cn2-001", "agent_id": "agent-temp", "node_name": "Read Sensor", "timestamp_ms": 0, "state_delta": {"temperature_c": 22.1, "humidity": 45.0}, "token_count": 60},
+                        {"span_id": "span-cn2-002", "agent_id": "agent-temp", "node_name": "Read Sensor", "timestamp_ms": 60000, "state_delta": {"temperature_c": 22.3, "humidity": 44.8}, "token_count": 60},
+                        {"span_id": "span-cn2-003", "agent_id": "agent-temp", "node_name": "Read Sensor", "timestamp_ms": 120000, "state_delta": {"temperature_c": 21.9, "humidity": 45.2}, "token_count": 60},
+                    ],
+                },
+            },
+            expected_detected=False,
+            expected_confidence_min=0.0,
+            expected_confidence_max=0.15,
+            description="Normal sensor readings: small fluctuations in temperature and humidity",
+            tags=["n8n", "core", "corruption", "sensor_readings", "clear_negative"],
+            difficulty="easy",
+        ),
+        GoldenDatasetEntry(
+            id="n8n_core_corrupt_neg_003",
+            detection_type=DetectionType.CORRUPTION,
+            input_data={
+                "trace": {
+                    "trace_id": "trace-corrupt-n3",
+                    "workflow_id": "wf-core-cn3",
+                    "spans": [
+                        {"span_id": "span-cn3-001", "agent_id": "agent-order", "node_name": "Process Order", "timestamp_ms": 0, "state_delta": {"order_id": "ORD-001", "total": 99.99, "status": "pending"}, "token_count": 120},
+                        {"span_id": "span-cn3-002", "agent_id": "agent-order", "node_name": "Process Order", "timestamp_ms": 3000, "state_delta": {"order_id": "ORD-001", "total": 99.99, "status": "confirmed", "confirmation_id": "CONF-XY7"}, "token_count": 120},
+                        {"span_id": "span-cn3-003", "agent_id": "agent-ship", "node_name": "Ship Order", "timestamp_ms": 6000, "state_delta": {"order_id": "ORD-001", "total": 99.99, "status": "shipped", "tracking": "TRK123456"}, "token_count": 100},
+                    ],
+                },
+            },
+            expected_detected=False,
+            expected_confidence_min=0.0,
+            expected_confidence_max=0.20,
+            description="Normal order lifecycle: pending->confirmed->shipped with new fields added",
+            tags=["n8n", "core", "corruption", "normal_lifecycle", "clear_negative"],
+            difficulty="easy",
+        ),
+        GoldenDatasetEntry(
+            id="n8n_core_corrupt_neg_004",
+            detection_type=DetectionType.CORRUPTION,
+            input_data={
+                "trace": {
+                    "trace_id": "trace-corrupt-n4",
+                    "workflow_id": "wf-core-cn4",
+                    "spans": [
+                        {"span_id": "span-cn4-001", "agent_id": "agent-resize", "node_name": "Resize Pool", "timestamp_ms": 0, "state_delta": {"pool_size": 5, "active_workers": 5, "pending_tasks": 200}, "token_count": 90},
+                        {"span_id": "span-cn4-002", "agent_id": "agent-resize", "node_name": "Resize Pool", "timestamp_ms": 10000, "state_delta": {"pool_size": 20, "active_workers": 20, "pending_tasks": 180}, "token_count": 90},
+                        {"span_id": "span-cn4-003", "agent_id": "agent-resize", "node_name": "Resize Pool", "timestamp_ms": 20000, "state_delta": {"pool_size": 20, "active_workers": 18, "pending_tasks": 50}, "token_count": 90},
+                    ],
+                },
+            },
+            expected_detected=False,
+            expected_confidence_min=0.0,
+            expected_confidence_max=0.25,
+            description="Valid scale-up: pool_size 5->20 is a 4x change but expected for autoscaling",
+            tags=["n8n", "core", "corruption", "valid_scaleup", "clear_negative"],
+            difficulty="medium",
+        ),
+        GoldenDatasetEntry(
+            id="n8n_core_corrupt_neg_005",
+            detection_type=DetectionType.CORRUPTION,
+            input_data={
+                "trace": {
+                    "trace_id": "trace-corrupt-n5",
+                    "workflow_id": "wf-core-cn5",
+                    "spans": [
+                        {"span_id": "span-cn5-001", "agent_id": "agent-ml", "node_name": "Train Model", "timestamp_ms": 0, "state_delta": {"epoch": 1, "loss": 2.45, "accuracy": 0.35}, "token_count": 200},
+                        {"span_id": "span-cn5-002", "agent_id": "agent-ml", "node_name": "Train Model", "timestamp_ms": 30000, "state_delta": {"epoch": 2, "loss": 1.12, "accuracy": 0.62}, "token_count": 200},
+                        {"span_id": "span-cn5-003", "agent_id": "agent-ml", "node_name": "Train Model", "timestamp_ms": 60000, "state_delta": {"epoch": 3, "loss": 0.54, "accuracy": 0.81}, "token_count": 200},
+                        {"span_id": "span-cn5-004", "agent_id": "agent-ml", "node_name": "Train Model", "timestamp_ms": 90000, "state_delta": {"epoch": 4, "loss": 0.31, "accuracy": 0.89}, "token_count": 200},
+                    ],
+                },
+            },
+            expected_detected=False,
+            expected_confidence_min=0.0,
+            expected_confidence_max=0.20,
+            description="Normal ML training: loss decreases, accuracy increases — large relative changes but expected convergence",
+            tags=["n8n", "core", "corruption", "ml_training", "clear_negative"],
+            difficulty="medium",
+        ),
+    ]
+
+
+def _n8n_core_overflow_entries() -> List[GoldenDatasetEntry]:
+    """10 entries for context_overflow / OVERFLOW detection (5 positive, 5 negative).
+
+    Positive cases show traces with very high token counts (>100K total)
+    and many spans accumulating context without windowing.
+
+    Negative cases show normal token usage (<10K total) with proper
+    context management.
+    """
+    return [
+        # --- POSITIVE: should detect context overflow ---
+        GoldenDatasetEntry(
+            id="n8n_core_overflow_pos_001",
+            detection_type=DetectionType.OVERFLOW,
+            input_data={
+                "trace": {
+                    "trace_id": "trace-overflow-p1",
+                    "workflow_id": "wf-core-op1",
+                    "spans": [
+                        {
+                            "span_id": f"span-op1-{i:03d}",
+                            "agent_id": "agent-summarizer",
+                            "node_name": "Summarize Documents",
+                            "timestamp_ms": 5000 * i,
+                            "state_delta": {"docs_processed": i + 1},
+                            "token_count": 12000,
+                            "cumulative_tokens": 12000 * (i + 1),
+                        }
+                        for i in range(12)
+                    ],
+                },
+            },
+            expected_detected=True,
+            expected_confidence_min=0.75,
+            expected_confidence_max=0.98,
+            description="144K tokens total across 12 spans at 12K each — far exceeds 100K threshold",
+            tags=["n8n", "core", "overflow", "high_token_count", "clear_positive"],
+            difficulty="easy",
+        ),
+        GoldenDatasetEntry(
+            id="n8n_core_overflow_pos_002",
+            detection_type=DetectionType.OVERFLOW,
+            input_data={
+                "trace": {
+                    "trace_id": "trace-overflow-p2",
+                    "workflow_id": "wf-core-op2",
+                    "spans": [
+                        {
+                            "span_id": f"span-op2-{i:03d}",
+                            "agent_id": "agent-chat",
+                            "node_name": "Chat Turn",
+                            "timestamp_ms": 3000 * i,
+                            "state_delta": {"turn": i + 1, "history_tokens": 2500 * (i + 1)},
+                            "token_count": 2500,
+                            "cumulative_tokens": 2500 * (i + 1),
+                        }
+                        for i in range(50)
+                    ],
+                },
+            },
+            expected_detected=True,
+            expected_confidence_min=0.80,
+            expected_confidence_max=0.99,
+            description="50-turn conversation accumulating 125K tokens with no context windowing",
+            tags=["n8n", "core", "overflow", "chat_accumulation", "clear_positive"],
+            difficulty="easy",
+        ),
+        GoldenDatasetEntry(
+            id="n8n_core_overflow_pos_003",
+            detection_type=DetectionType.OVERFLOW,
+            input_data={
+                "trace": {
+                    "trace_id": "trace-overflow-p3",
+                    "workflow_id": "wf-core-op3",
+                    "spans": (
+                        [
+                            {"span_id": "span-op3-init", "agent_id": "agent-loader", "node_name": "Load Corpus", "timestamp_ms": 0, "state_delta": {"corpus_size_mb": 15}, "token_count": 80000, "cumulative_tokens": 80000},
+                        ]
+                        +
+                        [
+                            {
+                                "span_id": f"span-op3-qa-{i:03d}",
+                                "agent_id": "agent-qa",
+                                "node_name": "Answer Question",
+                                "timestamp_ms": 10000 + 2000 * i,
+                                "state_delta": {"question_idx": i + 1},
+                                "token_count": 5000,
+                                "cumulative_tokens": 80000 + 5000 * (i + 1),
+                            }
+                            for i in range(8)
+                        ]
+                    ),
+                },
+            },
+            expected_detected=True,
+            expected_confidence_min=0.70,
+            expected_confidence_max=0.95,
+            description="80K token corpus load then 8 QA spans adding 5K each — 120K total",
+            tags=["n8n", "core", "overflow", "large_corpus", "clear_positive"],
+            difficulty="medium",
+        ),
+        GoldenDatasetEntry(
+            id="n8n_core_overflow_pos_004",
+            detection_type=DetectionType.OVERFLOW,
+            input_data={
+                "trace": {
+                    "trace_id": "trace-overflow-p4",
+                    "workflow_id": "wf-core-op4",
+                    "spans": [
+                        {
+                            "span_id": f"span-op4-{i:03d}",
+                            "agent_id": f"agent-analyst-{i % 5}",
+                            "node_name": f"Analyst {i % 5}",
+                            "timestamp_ms": 4000 * i,
+                            "state_delta": {"report_section": i + 1, "findings": i * 2},
+                            "token_count": 8000,
+                            "cumulative_tokens": 8000 * (i + 1),
+                        }
+                        for i in range(18)
+                    ],
+                },
+            },
+            expected_detected=True,
+            expected_confidence_min=0.75,
+            expected_confidence_max=0.98,
+            description="5 analysts contributing 18 spans at 8K each = 144K tokens, shared context grows unbounded",
+            tags=["n8n", "core", "overflow", "multi_agent_overflow", "clear_positive"],
+            difficulty="medium",
+        ),
+        GoldenDatasetEntry(
+            id="n8n_core_overflow_pos_005",
+            detection_type=DetectionType.OVERFLOW,
+            input_data={
+                "trace": {
+                    "trace_id": "trace-overflow-p5",
+                    "workflow_id": "wf-core-op5",
+                    "spans": [
+                        {
+                            "span_id": f"span-op5-{i:03d}",
+                            "agent_id": "agent-code-review",
+                            "node_name": "Review File",
+                            "timestamp_ms": 6000 * i,
+                            "state_delta": {"file_idx": i + 1, "issues_found": i * 3, "context_window_pct": min(100, 15 + i * 7)},
+                            "token_count": 3000 + i * 1500,
+                            "cumulative_tokens": sum(3000 + j * 1500 for j in range(i + 1)),
+                        }
+                        for i in range(15)
+                    ],
+                },
+            },
+            expected_detected=True,
+            expected_confidence_min=0.70,
+            expected_confidence_max=0.95,
+            description="Code review with growing file sizes: 15 files, tokens per span increase, total ~210K",
+            tags=["n8n", "core", "overflow", "growing_context", "clear_positive"],
+            difficulty="hard",
+        ),
+        # --- NEGATIVE: should NOT detect context overflow ---
+        GoldenDatasetEntry(
+            id="n8n_core_overflow_neg_001",
+            detection_type=DetectionType.OVERFLOW,
+            input_data={
+                "trace": {
+                    "trace_id": "trace-overflow-n1",
+                    "workflow_id": "wf-core-on1",
+                    "spans": [
+                        {"span_id": "span-on1-001", "agent_id": "agent-greet", "node_name": "Greeting", "timestamp_ms": 0, "state_delta": {"step": "greet"}, "token_count": 200, "cumulative_tokens": 200},
+                        {"span_id": "span-on1-002", "agent_id": "agent-classify", "node_name": "Classify Intent", "timestamp_ms": 1000, "state_delta": {"intent": "order_status"}, "token_count": 350, "cumulative_tokens": 550},
+                        {"span_id": "span-on1-003", "agent_id": "agent-lookup", "node_name": "Lookup Order", "timestamp_ms": 2000, "state_delta": {"order_id": "ORD-999"}, "token_count": 400, "cumulative_tokens": 950},
+                        {"span_id": "span-on1-004", "agent_id": "agent-respond", "node_name": "Respond", "timestamp_ms": 3000, "state_delta": {"response_sent": True}, "token_count": 300, "cumulative_tokens": 1250},
+                    ],
+                },
+            },
+            expected_detected=False,
+            expected_confidence_min=0.0,
+            expected_confidence_max=0.15,
+            description="Simple chatbot flow: 4 spans, 1.25K tokens total — well under threshold",
+            tags=["n8n", "core", "overflow", "simple_flow", "clear_negative"],
+            difficulty="easy",
+        ),
+        GoldenDatasetEntry(
+            id="n8n_core_overflow_neg_002",
+            detection_type=DetectionType.OVERFLOW,
+            input_data={
+                "trace": {
+                    "trace_id": "trace-overflow-n2",
+                    "workflow_id": "wf-core-on2",
+                    "spans": [
+                        {
+                            "span_id": f"span-on2-{i:03d}",
+                            "agent_id": "agent-chat-windowed",
+                            "node_name": "Chat Turn",
+                            "timestamp_ms": 3000 * i,
+                            "state_delta": {"turn": i + 1, "window_start": max(0, i - 4)},
+                            "token_count": 800,
+                            "cumulative_tokens": min(4000, 800 * (i + 1)),
+                        }
+                        for i in range(12)
+                    ],
+                },
+            },
+            expected_detected=False,
+            expected_confidence_min=0.0,
+            expected_confidence_max=0.25,
+            description="12-turn chat with sliding window of 5 turns — cumulative stays at 4K",
+            tags=["n8n", "core", "overflow", "windowed_chat", "clear_negative"],
+            difficulty="medium",
+        ),
+        GoldenDatasetEntry(
+            id="n8n_core_overflow_neg_003",
+            detection_type=DetectionType.OVERFLOW,
+            input_data={
+                "trace": {
+                    "trace_id": "trace-overflow-n3",
+                    "workflow_id": "wf-core-on3",
+                    "spans": [
+                        {"span_id": "span-on3-001", "agent_id": "agent-ingest", "node_name": "Ingest Data", "timestamp_ms": 0, "state_delta": {"rows": 10000}, "token_count": 1500, "cumulative_tokens": 1500},
+                        {"span_id": "span-on3-002", "agent_id": "agent-transform", "node_name": "Transform", "timestamp_ms": 5000, "state_delta": {"rows": 10000, "format": "normalized"}, "token_count": 2000, "cumulative_tokens": 3500},
+                        {"span_id": "span-on3-003", "agent_id": "agent-analyze", "node_name": "Analyze", "timestamp_ms": 10000, "state_delta": {"insights": 12}, "token_count": 3000, "cumulative_tokens": 6500},
+                        {"span_id": "span-on3-004", "agent_id": "agent-report", "node_name": "Generate Report", "timestamp_ms": 15000, "state_delta": {"report_pages": 5}, "token_count": 2500, "cumulative_tokens": 9000},
+                    ],
+                },
+            },
+            expected_detected=False,
+            expected_confidence_min=0.0,
+            expected_confidence_max=0.20,
+            description="Data pipeline: 4 stages totaling 9K tokens — normal usage",
+            tags=["n8n", "core", "overflow", "normal_pipeline", "clear_negative"],
+            difficulty="easy",
+        ),
+        GoldenDatasetEntry(
+            id="n8n_core_overflow_neg_004",
+            detection_type=DetectionType.OVERFLOW,
+            input_data={
+                "trace": {
+                    "trace_id": "trace-overflow-n4",
+                    "workflow_id": "wf-core-on4",
+                    "spans": [
+                        {
+                            "span_id": f"span-on4-{i:03d}",
+                            "agent_id": f"agent-worker-{i}",
+                            "node_name": f"Worker {i}",
+                            "timestamp_ms": 1000 * i,
+                            "state_delta": {"chunk": i, "result": f"summary_{i}"},
+                            "token_count": 900,
+                            "cumulative_tokens": 900 * (i + 1),
+                        }
+                        for i in range(8)
+                    ],
+                },
+            },
+            expected_detected=False,
+            expected_confidence_min=0.0,
+            expected_confidence_max=0.20,
+            description="8 independent workers processing chunks — 7.2K total tokens, each isolated",
+            tags=["n8n", "core", "overflow", "isolated_workers", "clear_negative"],
+            difficulty="easy",
+        ),
+        GoldenDatasetEntry(
+            id="n8n_core_overflow_neg_005",
+            detection_type=DetectionType.OVERFLOW,
+            input_data={
+                "trace": {
+                    "trace_id": "trace-overflow-n5",
+                    "workflow_id": "wf-core-on5",
+                    "spans": [
+                        {"span_id": "span-on5-001", "agent_id": "agent-rag", "node_name": "Retrieve", "timestamp_ms": 0, "state_delta": {"chunks_retrieved": 5}, "token_count": 4000, "cumulative_tokens": 4000},
+                        {"span_id": "span-on5-002", "agent_id": "agent-rag", "node_name": "Generate Answer", "timestamp_ms": 3000, "state_delta": {"answer_length": 250}, "token_count": 2500, "cumulative_tokens": 6500},
+                        {"span_id": "span-on5-003", "agent_id": "agent-rag", "node_name": "Retrieve", "timestamp_ms": 6000, "state_delta": {"chunks_retrieved": 3}, "token_count": 2400, "cumulative_tokens": 8900},
+                        {"span_id": "span-on5-004", "agent_id": "agent-rag", "node_name": "Generate Answer", "timestamp_ms": 9000, "state_delta": {"answer_length": 180}, "token_count": 1100, "cumulative_tokens": 10000},
+                    ],
+                },
+            },
+            expected_detected=False,
+            expected_confidence_min=0.0,
+            expected_confidence_max=0.30,
+            description="RAG pipeline: 2 retrieve-generate cycles, 10K tokens total — borderline but within bounds",
+            tags=["n8n", "core", "overflow", "rag_pipeline", "clear_negative"],
+            difficulty="hard",
+        ),
+    ]

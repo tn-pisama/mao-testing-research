@@ -375,6 +375,7 @@ def train_from_golden(
     use_contrastive: bool = True,
     augment_multiplier: int = 5,
     augment_target_min: int = 200,
+    db_session=None,
 ) -> Dict[str, Any]:
     """Train ML Detector v4 from the golden dataset (augmented).
 
@@ -402,7 +403,12 @@ def train_from_golden(
     output_dir = Path(output_dir)
 
     logger.info("Loading golden dataset")
-    dataset = create_default_golden_dataset()
+    if db_session is not None:
+        import asyncio
+        from app.detection_enterprise.golden_dataset import create_default_golden_dataset_from_db
+        dataset = asyncio.run(create_default_golden_dataset_from_db(db_session))
+    else:
+        dataset = create_default_golden_dataset()
     entries = list(dataset.entries.values())
     logger.info("Golden dataset: %d entries", len(entries))
 

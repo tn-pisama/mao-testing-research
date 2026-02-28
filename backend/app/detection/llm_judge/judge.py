@@ -89,7 +89,7 @@ class MASTLLMJudge:
         rag_enabled: bool = True,
         rag_examples_per_mode: int = 3,
         db_session=None,
-        use_openai_fallback: bool = True,
+        use_openai_fallback: bool = False,
         model_key: str = DEFAULT_MODEL_KEY,
     ):
         # Model configuration - try multi-provider first, fallback to Claude-only

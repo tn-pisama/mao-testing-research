@@ -291,6 +291,47 @@ class N8nApiClient:
             f"Execution {execution_id} did not complete within {timeout}s"
         )
 
+    async def clear_execution_data(
+        self,
+        workflow_id: str,
+        status: Optional[str] = None,
+    ) -> int:
+        """
+        Delete execution records for a workflow.
+
+        Fetches executions matching the given workflow and optional status,
+        then deletes each one individually. Partial failures are logged
+        as warnings and do not stop the loop.
+
+        Args:
+            workflow_id: The n8n workflow ID whose executions to clear
+            status: Optional status filter (success, error, waiting)
+
+        Returns:
+            Number of executions successfully deleted
+        """
+        logger.info(
+            f"Clearing execution data for workflow {workflow_id}"
+            + (f" with status={status}" if status else "")
+        )
+        executions = await self.get_executions(
+            workflow_id=workflow_id, status=status, limit=100
+        )
+        deleted = 0
+        for execution in executions:
+            exec_id = execution.get("id")
+            if not exec_id:
+                continue
+            try:
+                await self._request("DELETE", f"/executions/{exec_id}")
+                deleted += 1
+            except N8nApiError as e:
+                logger.warning(
+                    f"Failed to delete execution {exec_id}: {e}"
+                )
+        logger.info(f"Deleted {deleted}/{len(executions)} executions")
+        return deleted
+
     async def test_connection(self) -> bool:
         """
         Test the connection to the n8n instance.

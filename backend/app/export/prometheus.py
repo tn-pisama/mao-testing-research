@@ -160,6 +160,32 @@ class MAOMetrics:
             "Expected Calibration Error per detector",
             ["detector_type"],
         )
+
+        # --- Healing metrics ---
+        self.healing_applied_total = Counter(
+            "mao_healing_applied_total",
+            "Total number of healing fixes applied",
+            ["tenant_id", "detection_type", "fix_type"],
+        )
+
+        self.healing_verified_total = Counter(
+            "mao_healing_verified_total",
+            "Total number of healing verifications",
+            ["tenant_id", "level", "passed"],
+        )
+
+        self.healing_verification_latency = Histogram(
+            "mao_healing_verification_latency_seconds",
+            "Latency of healing verification",
+            ["level"],
+            buckets=[0.5, 1, 2.5, 5, 10, 15, 30, 60],
+        )
+
+        self.healing_rollback_total = Counter(
+            "mao_healing_rollback_total",
+            "Total number of healing rollbacks",
+            ["tenant_id"],
+        )
     
     def record_trace(self, tenant_id: str, framework: str, status: str):
         self.traces_total.inc(tenant_id=tenant_id, framework=framework, status=status)
@@ -192,6 +218,18 @@ class MAOMetrics:
             if "ece" in metrics:
                 self.detector_ece.set(metrics["ece"], detector_type=dtype)
 
+    def record_healing_applied(self, tenant_id: str, detection_type: str, fix_type: str):
+        self.healing_applied_total.inc(tenant_id=tenant_id, detection_type=detection_type, fix_type=fix_type)
+
+    def record_healing_verified(self, tenant_id: str, level: str, passed: bool):
+        self.healing_verified_total.inc(tenant_id=tenant_id, level=level, passed=str(passed))
+
+    def record_healing_verification_latency(self, level: str, latency_seconds: float):
+        self.healing_verification_latency.observe(latency_seconds, level=level)
+
+    def record_healing_rollback(self, tenant_id: str):
+        self.healing_rollback_total.inc(tenant_id=tenant_id)
+
 
 class PrometheusExporter:
     def __init__(self, metrics: MAOMetrics):
@@ -212,6 +250,10 @@ class PrometheusExporter:
         lines.extend(self._export_gauge(self.metrics.detector_f1))
         lines.extend(self._export_gauge(self.metrics.detector_threshold))
         lines.extend(self._export_gauge(self.metrics.detector_ece))
+        lines.extend(self._export_counter(self.metrics.healing_applied_total))
+        lines.extend(self._export_counter(self.metrics.healing_verified_total))
+        lines.extend(self._export_histogram(self.metrics.healing_verification_latency))
+        lines.extend(self._export_counter(self.metrics.healing_rollback_total))
 
         return "\n".join(lines)
     
