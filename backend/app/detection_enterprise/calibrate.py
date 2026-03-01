@@ -72,6 +72,59 @@ class CalibrationResult:
     f1_ci_upper: float = 0.0
 
 
+@dataclass
+class SamplePrediction:
+    """Per-sample prediction from a calibration run for error analysis."""
+    entry_id: str
+    detection_type: str
+    expected: bool
+    predicted: bool          # after threshold application
+    raw_detected: bool       # raw detector output (before threshold)
+    confidence: float
+    threshold_used: float
+    classification: str      # "TP" | "TN" | "FP" | "FN"
+    description: str
+    tags: List[str]
+    difficulty: str
+    input_data_summary: str  # truncated to 500 chars
+
+
+def _build_sample_predictions(
+    entries: List[GoldenDatasetEntry],
+    predictions: List[Tuple[bool, float]],
+    ground_truths: List[bool],
+    detection_type: DetectionType,
+    threshold: float,
+) -> List[SamplePrediction]:
+    """Classify every sample as TP/TN/FP/FN at the given threshold."""
+    result = []
+    for idx, entry in enumerate(entries):
+        detected, confidence = predictions[idx]
+        predicted_pos = detected and confidence >= threshold
+        expected = ground_truths[idx]
+        cls = (
+            "TP" if expected and predicted_pos else
+            "FN" if expected and not predicted_pos else
+            "FP" if not expected and predicted_pos else
+            "TN"
+        )
+        result.append(SamplePrediction(
+            entry_id=entry.id,
+            detection_type=detection_type.value,
+            expected=expected,
+            predicted=predicted_pos,
+            raw_detected=detected,
+            confidence=confidence,
+            threshold_used=threshold,
+            classification=cls,
+            description=entry.description,
+            tags=entry.tags,
+            difficulty=entry.difficulty,
+            input_data_summary=str(entry.input_data)[:500],
+        ))
+    return result
+
+
 # ---------------------------------------------------------------------------
 # Detector adapter functions
 #
@@ -292,16 +345,26 @@ def _build_detector_runners() -> Dict[DetectionType, Any]:
 
             # Convert subtask names to dict format expected by the detector.
             # Golden data stores subtasks as plain strings (names); the detector
-            # expects List[Dict] with 'name' and 'status' keys.  Without
-            # explicit status info we mark them as "pending" so the detector can
-            # compare the subtask list against evidence in the agent output.
+            # expects List[Dict] with 'name' and 'status' keys.
+            # v1.3: Infer subtask status from agent_output instead of
+            # hardcoding "pending" (which caused 100% FP rate on negatives).
             raw_subtasks = entry.input_data.get("subtasks", None)
             subtasks = None
             if raw_subtasks:
-                subtasks = [
-                    {"name": s, "status": "pending"} if isinstance(s, str) else s
-                    for s in raw_subtasks
-                ]
+                output_lower = agent_output.lower()
+                subtasks = []
+                for s in raw_subtasks:
+                    if isinstance(s, dict):
+                        subtasks.append(s)
+                        continue
+                    # Infer completion: check if key words from subtask name
+                    # appear in agent_output near completion language.
+                    name_lower = s.lower()
+                    name_words = {w for w in name_lower.split() if len(w) > 3}
+                    overlap = sum(1 for w in name_words if w in output_lower)
+                    ratio = overlap / max(len(name_words), 1)
+                    status = "completed" if ratio >= 0.5 else "pending"
+                    subtasks.append({"name": s, "status": status})
 
             success_criteria = entry.input_data.get("success_criteria", None)
 
@@ -1075,6 +1138,10 @@ def calibrate_single(
         # v1.2: Attach per-fold detail for transparency
         result.fold_metrics = fold_metrics  # type: ignore[attr-defined]
         result.fold_thresholds = fold_best_thresholds  # type: ignore[attr-defined]
+        # v1.3: Per-sample error analysis
+        result.sample_predictions = _build_sample_predictions(  # type: ignore[attr-defined]
+            entries, predictions, ground_truths, detection_type, avg_threshold,
+        )
         return result
 
     # -----------------------------------------------------------------
@@ -1106,7 +1173,7 @@ def calibrate_single(
         predictions, ground_truths, best_threshold,
     )
 
-    return CalibrationResult(
+    result = CalibrationResult(
         detection_type=detection_type.value,
         optimal_threshold=best_threshold,
         precision=round(precision, 4),
@@ -1121,6 +1188,11 @@ def calibrate_single(
         f1_ci_lower=ci_lower,
         f1_ci_upper=ci_upper,
     )
+    # v1.3: Per-sample error analysis
+    result.sample_predictions = _build_sample_predictions(  # type: ignore[attr-defined]
+        entries, predictions, ground_truths, detection_type, best_threshold,
+    )
+    return result
 
 
 def calibrate_all(
@@ -1164,6 +1236,7 @@ def calibrate_all(
     dataset = _get_golden_dataset(db_session)
     results: Dict[str, Any] = {}
     skipped: List[str] = []
+    all_sample_predictions: List[SamplePrediction] = []
 
     target_types = [
         DetectionType.LOOP,
@@ -1227,6 +1300,9 @@ def calibrate_all(
             skipped.append(dt.value)
         else:
             results[cal.detection_type] = asdict(cal)
+            all_sample_predictions.extend(
+                getattr(cal, "sample_predictions", [])
+            )
             # Set span attributes with results
             if _child_ctx and phoenix_tracer:
                 try:
@@ -1257,6 +1333,7 @@ def calibrate_all(
         "skipped": skipped,
         "splits_used": splits,
         "results": results,
+        "sample_predictions": [asdict(sp) for sp in all_sample_predictions],
     }
     return report
 
@@ -1290,6 +1367,7 @@ def evaluate_holdout(
     dataset = _get_golden_dataset(db_session)
     cal_results = calibration_report.get("results", {})
     eval_results: Dict[str, Any] = {}
+    all_sample_predictions: List[SamplePrediction] = []
 
     for dtype_val, cal_metrics in cal_results.items():
         try:
@@ -1336,11 +1414,17 @@ def evaluate_holdout(
             "false_negatives": fn,
         }
 
+        # v1.3: Per-sample error analysis for holdout
+        all_sample_predictions.extend(
+            _build_sample_predictions(entries, predictions, ground_truths, dt, threshold)
+        )
+
     return {
         "evaluated_at": datetime.now(timezone.utc).isoformat(),
         "split": "test",
         "detector_count": len(eval_results),
         "results": eval_results,
+        "sample_predictions": [asdict(sp) for sp in all_sample_predictions],
     }
 
 
@@ -1484,6 +1568,104 @@ def save_calibration_report(results: Dict[str, Any], path: Path) -> None:
     logger.info("Calibration report saved to %s", path)
 
 
+def generate_error_report(
+    report: Dict[str, Any],
+    output_path: Optional[Path] = None,
+) -> Dict[str, Any]:
+    """Generate per-sample error analysis from calibration predictions.
+
+    Groups predictions by detector type, sorts FPs by confidence descending
+    (highest-confidence FPs are most actionable) and FNs by confidence
+    ascending (near-miss FNs show threshold sensitivity).
+
+    Args:
+        report: The dict returned by ``calibrate_all()`` (must include
+            ``sample_predictions``).
+        output_path: Where to write the JSON report.  Defaults to
+            ``backend/data/error_analysis_<timestamp>.json``.
+
+    Returns:
+        The analysis dict keyed by detector type.
+    """
+    output_path = output_path or (
+        Path(__file__).parent.parent.parent / "data"
+        / f"error_analysis_{datetime.now(timezone.utc).strftime('%Y%m%d_%H%M%S')}.json"
+    )
+
+    predictions = report.get("sample_predictions", [])
+    if not predictions:
+        logger.warning("No sample predictions in report — cannot generate error analysis.")
+        return {}
+
+    analysis: Dict[str, Any] = {}
+
+    # Group by detector type
+    by_dtype: Dict[str, list] = {}
+    for p in predictions:
+        by_dtype.setdefault(p["detection_type"], []).append(p)
+
+    for dtype in sorted(by_dtype):
+        preds = by_dtype[dtype]
+        fps = sorted(
+            [p for p in preds if p["classification"] == "FP"],
+            key=lambda p: -p["confidence"],
+        )
+        fns = sorted(
+            [p for p in preds if p["classification"] == "FN"],
+            key=lambda p: p["confidence"],
+        )
+        tps = [p for p in preds if p["classification"] == "TP"]
+        tns = [p for p in preds if p["classification"] == "TN"]
+
+        analysis[dtype] = {
+            "summary": {
+                "total": len(preds),
+                "TP": len(tps),
+                "TN": len(tns),
+                "FP": len(fps),
+                "FN": len(fns),
+                "threshold": preds[0]["threshold_used"] if preds else None,
+            },
+            "false_positives": fps,
+            "false_negatives": fns,
+        }
+
+    output_path.parent.mkdir(parents=True, exist_ok=True)
+    # Write analysis without the bulky sample_predictions from the main report
+    with open(output_path, "w") as f:
+        json.dump(analysis, f, indent=2, default=str)
+    logger.info("Error analysis written to %s", output_path)
+
+    # Print human-readable summary
+    print("\n" + "=" * 72)
+    print("  ERROR ANALYSIS SUMMARY")
+    print("=" * 72)
+    for dtype, data in sorted(analysis.items()):
+        s = data["summary"]
+        if s["FP"] == 0 and s["FN"] == 0:
+            continue
+        print(f"\n  [{dtype.upper()}]  (threshold={s['threshold']:.2f})")
+        print(f"    TP={s['TP']}  TN={s['TN']}  FP={s['FP']}  FN={s['FN']}")
+        if data["false_positives"]:
+            print(f"    --- False Positives (highest confidence first) ---")
+            for fp in data["false_positives"][:5]:
+                print(f"      {fp['entry_id']:30s}  conf={fp['confidence']:.3f}  "
+                      f"diff={fp['difficulty']:6s}  {fp['description'][:60]}")
+            if len(data["false_positives"]) > 5:
+                print(f"      ... and {len(data['false_positives']) - 5} more")
+        if data["false_negatives"]:
+            print(f"    --- False Negatives (near-misses first) ---")
+            for fn in data["false_negatives"][:5]:
+                print(f"      {fn['entry_id']:30s}  conf={fn['confidence']:.3f}  "
+                      f"diff={fn['difficulty']:6s}  {fn['description'][:60]}")
+            if len(data["false_negatives"]) > 5:
+                print(f"      ... and {len(data['false_negatives']) - 5} more")
+    print("\n" + "=" * 72)
+    print(f"  Report saved to: {output_path}")
+
+    return analysis
+
+
 # ---------------------------------------------------------------------------
 # CLI entry point
 # ---------------------------------------------------------------------------
@@ -1538,6 +1720,10 @@ if __name__ == "__main__":
     parser.add_argument(
         "--from-db", action="store_true",
         help="Load golden dataset from PostgreSQL instead of in-memory samples",
+    )
+    parser.add_argument(
+        "--error-analysis", action="store_true",
+        help="Generate per-sample error analysis report (FPs/FNs per detector)",
     )
     args = parser.parse_args()
 
@@ -1641,6 +1827,10 @@ if __name__ == "__main__":
             _aio.run(_close())
         except Exception:
             pass  # Best-effort cleanup
+
+    # v1.3: Error analysis report
+    if args.error_analysis:
+        generate_error_report(report)
 
     # Pretty-print summary to stdout.
     print("\n" + "=" * 72)

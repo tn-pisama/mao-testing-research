@@ -34,7 +34,7 @@ Version History:
 """
 
 # Detector version for tracking
-DETECTOR_VERSION = "1.5"
+DETECTOR_VERSION = "1.6"
 DETECTOR_NAME = "CompletionMisjudgmentDetector"
 
 import logging
@@ -189,10 +189,13 @@ class CompletionMisjudgmentDetector:
     ]
 
     # v1.2: Patterns indicating planned/future work (not actually complete)
+    # v1.6: Expanded verb list + contraction handling + deferred_work patterns
     PLANNED_WORK_PATTERNS = [
         (r'\b(?:coverage|tests?|testing)\s+planned\b', "planned_tests"),
-        (r'\bwill\s+(?:be\s+)?(?:added|implemented|included|covered)\b', "future_work"),
-        (r'\b(?:next|later|future)\s+(?:phase|step|iteration)\b', "deferred_work"),
+        (r'\bwill\s+(?:be\s+)?(?:added|implemented|included|covered|optimized?|fixed|handled|addressed|resolved|completed|deployed|integrated|tested|updated|refactored)\b', "future_work"),
+        (r"\b(?:i'll|we'll|i\s+will|we\s+will)\s+(?:add|implement|include|cover|optimize|fix|handle|address|resolve|complete|deploy|integrate|test|update|refactor)\b", "future_work"),
+        (r'\b(?:next|later|future)\s+(?:phase|step|iteration|sprint|release|version)\b', "deferred_work"),
+        (r'\b(?:backlog|follow[- ]up|roadmap|post[- ]launch|post[- ]release)\b', "deferred_work"),
         (r'\b(?:to\s+be|tbd|coming\s+soon)\b', "pending_work"),
         (r'\b(?:placeholder|stub|mock)\s+(?:test|coverage|implementation)?\b', "stub_work"),
     ]
@@ -263,8 +266,27 @@ class CompletionMisjudgmentDetector:
 
         return markers
 
+    # v1.6: Context phrases that neutralize error/failure matches
+    _ERROR_NEUTRALIZERS = re.compile(
+        r'\b(?:fixed|resolved|addressed|handled|corrected|recovered|cleared|eliminated)\b',
+        re.IGNORECASE,
+    )
+    # v1.6: Compound terms where "error"/"failure" is a domain concept, not an actual error
+    _ERROR_COMPOUND_SKIP = re.compile(
+        r'\berror\s+(?:codes?|handling|messages?|types?|classes?|logging|recovery|pages?|boundaries?|rates?)\b'
+        r'|\bfailure\s+(?:modes?|types?|handling|recovery|rates?|conditions?)\b'
+        r'|\bsuccess\s*/\s*failure\b'
+        r'|\bfail(?:ed)?\s+(?:gracefully|safely|over)\b',
+        re.IGNORECASE,
+    )
+
     def _detect_errors(self, text: str) -> List[str]:
-        """Detect error/failure mentions in output."""
+        """Detect error/failure mentions in output.
+
+        v1.6: Context-aware — skips domain terms ('error codes', 'failure modes',
+        'success/failure') and matches neutralized by resolution language
+        ('fixed all errors', 'resolved the failure').
+        """
         errors = []
 
         for pattern in self.ERROR_PATTERNS:
@@ -273,6 +295,17 @@ class CompletionMisjudgmentDetector:
                 start = max(0, match.start() - 40)
                 end = min(len(text), match.end() + 40)
                 context = text[start:end].strip()
+                # v1.6: Skip domain compound terms
+                local_start = max(0, match.start() - 10)
+                local_end = min(len(text), match.end() + 20)
+                local_ctx = text[local_start:local_end]
+                if self._ERROR_COMPOUND_SKIP.search(local_ctx):
+                    continue
+                # v1.6: Skip if preceded by resolution language
+                prefix_start = max(0, match.start() - 50)
+                prefix = text[prefix_start:match.start()]
+                if self._ERROR_NEUTRALIZERS.search(prefix):
+                    continue
                 errors.append(context)
 
         return errors

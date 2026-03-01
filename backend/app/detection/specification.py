@@ -456,9 +456,10 @@ class SpecificationMismatchDetector:
         
         return ambiguities
 
-    # Synonym groups for requirement verb matching.
+    # Synonym groups for requirement matching.
     # Each key maps to a set of semantically equivalent words.
     _SYNONYMS: dict[str, set[str]] = {
+        # --- Verb synonyms ---
         "implement": {"build", "create", "develop", "make", "write", "code", "construct"},
         "build": {"implement", "create", "develop", "make", "write", "code", "construct"},
         "create": {"implement", "build", "develop", "make", "write", "generate"},
@@ -486,12 +487,63 @@ class SpecificationMismatchDetector:
         "notify": {"alert", "inform", "email", "message", "warn"},
         "authenticate": {"login", "auth", "verify", "authorize"},
         "register": {"signup", "enroll", "subscribe", "onboard"},
+        "support": {"accept", "handle", "allow", "enable"},  # v1.3
+        "resize": {"scale", "crop", "transform"},  # v1.3
+        # --- Noun synonyms (v1.3: from error analysis) ---
+        "purchase": {"order", "buy", "transaction", "checkout"},
+        "order": {"purchase", "buy", "transaction"},
+        "pipeline": {"workflow", "process", "flow", "chain"},
+        "workflow": {"pipeline", "process", "flow"},
+        "catalog": {"inventory", "collection", "listing", "directory"},
+        "microservices": {"services", "microservice"},
+        "services": {"microservices", "service"},
+        "endpoint": {"route", "path", "url", "api"},
+        "feature": {"functionality", "capability", "module"},
+        "management": {"managing", "administration", "admin"},
+        "processing": {"pipeline", "handling", "workflow"},
+        "invoice": {"bill", "receipt"},
+        "customer": {"user", "client"},
+        "user": {"customer", "client", "account"},
     }
 
+    # v1.3: Acronym expansion table
+    _ACRONYMS: dict[str, set[str]] = {
+        "crud": {"create", "read", "update", "delete"},
+        "ci": {"continuous", "integration", "pipeline", "workflow", "actions"},
+        "cd": {"continuous", "deployment", "delivery"},
+        "api": {"endpoint", "route", "interface", "rest"},
+        "sso": {"single", "sign", "login", "oauth", "authentication"},
+        "auth": {"authentication", "authorization", "login"},
+        "ui": {"interface", "frontend", "view", "page"},
+        "db": {"database", "storage", "postgres", "mysql", "sql"},
+        "etl": {"extract", "transform", "load"},
+    }
+
+    @staticmethod
+    def _stem(word: str) -> str:
+        """Minimal suffix-stripping stemmer for coverage matching."""
+        if len(word) <= 4:
+            return word
+        for suffix in ("ation", "ting", "ing", "ies", "ment", "ness",
+                        "able", "ible", "ive", "ous", "ful",
+                        "ed", "er", "es", "ly", "al", "s"):
+            if word.endswith(suffix) and len(word) - len(suffix) >= 3:
+                return word[:-len(suffix)]
+        return word
+
     def _expand_with_synonyms(self, word: str) -> set[str]:
-        """Return the word plus any known synonyms."""
-        synonyms = self._SYNONYMS.get(word, set())
-        return {word} | synonyms
+        """Return the word plus any known synonyms, stems, and acronym expansions."""
+        result = {word}
+        # Direct synonyms
+        result |= self._SYNONYMS.get(word, set())
+        # Acronym expansion
+        result |= self._ACRONYMS.get(word, set())
+        # Stem-based matching: add the stem so it can match stemmed spec words
+        stem = self._stem(word)
+        if stem != word:
+            result.add(stem)
+            result |= self._SYNONYMS.get(stem, set())
+        return result
 
     def _compute_coverage(
         self,
@@ -502,6 +554,9 @@ class SpecificationMismatchDetector:
             return 1.0, []
 
         spec_lower = spec_text.lower()
+        # v1.3: Pre-compute stemmed spec words for stem-based matching
+        spec_words = set(re.findall(r'[a-z]+', spec_lower))
+        spec_stems = {self._stem(w) for w in spec_words if len(w) > 3}
         covered = 0
         missing = []
 
@@ -517,7 +572,10 @@ class SpecificationMismatchDetector:
             overlap = 0
             for w in req_words:
                 expanded = self._expand_with_synonyms(w)
+                # Check via substring (original) or stem match (v1.3)
                 if any(syn in spec_lower for syn in expanded):
+                    overlap += 1
+                elif self._stem(w) in spec_stems:
                     overlap += 1
 
             coverage_ratio = overlap / len(req_words)

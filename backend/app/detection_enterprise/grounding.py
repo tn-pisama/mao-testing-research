@@ -141,8 +141,9 @@ class GroundingDetector:
         """Extract factual claims from text."""
         claims = []
 
-        # Split into sentences
-        sentences = re.split(r'[.!?]+', text)
+        # v1.3: Split into sentences without breaking on decimal points
+        # (e.g. "$42.5M" or "99.9%" should stay intact)
+        sentences = re.split(r'(?<!\d)[.!?]+(?!\d)', text)
 
         for sentence in sentences:
             sentence = sentence.strip()
@@ -156,6 +157,7 @@ class GroundingDetector:
                 r'\bwere\b',
                 r'\breached\b',
                 r'\bshows\b',
+                r'\bshowed\b',         # v1.3: past tense
                 r'\bdemonstrates\b',
                 r'\bstates\b',
                 r'\breports\b',
@@ -164,6 +166,21 @@ class GroundingDetector:
                 r'\bresearch\b',
                 r'\bstudy\b',
                 r'\bfound\b',
+                r'\bannounced\b',      # v1.3: from error analysis
+                r'\bguarantees\b',     # v1.3
+                r'\brequires\b',       # v1.3
+                r'\bimproved\b',       # v1.3
+                r'\bdecreased\b',      # v1.3
+                r'\bincreased\b',      # v1.3
+                r'\breaching\b',       # v1.3
+                r'\breached\b',        # v1.3
+                r'\battributes\b',     # v1.3
+                r'\bhandles\b',        # v1.3
+                r'\bplans\b',          # v1.3
+                r'\bexpanded\b',       # v1.3
+                r'\bgrew\b',           # v1.3
+                r'\bcurrently\b',      # v1.3
+                r'\bhas\b',            # v1.3: common factual verb
             ]
 
             for indicator in claim_indicators:
@@ -249,6 +266,11 @@ class GroundingDetector:
 
         return False, None, None
 
+    @staticmethod
+    def _strip_punct(word: str) -> str:
+        """Strip leading/trailing punctuation from a word token."""
+        return word.strip('.,;:!?"\'-()[]{}/')
+
     def _verify_claim_in_sources_word_overlap(
         self,
         claim: str,
@@ -256,7 +278,8 @@ class GroundingDetector:
     ) -> tuple[bool, float, Optional[str]]:
         """Fallback: Check claim grounding using word overlap."""
         claim_lower = claim.lower()
-        claim_words = set(claim_lower.split())
+        # v1.3: Strip punctuation before comparing (fixes "budget:" != "budget")
+        claim_words = {self._strip_punct(w) for w in claim_lower.split()}
         claim_words = {w for w in claim_words if len(w) > 4}
 
         best_match_score = 0.0
@@ -264,7 +287,8 @@ class GroundingDetector:
 
         for source in sources:
             source_lower = source.lower()
-            source_words = set(source_lower.split())
+            # v1.3: Strip punctuation from source words too
+            source_words = {self._strip_punct(w) for w in source_lower.split()}
             if not claim_words:
                 continue
             overlap = len(claim_words & source_words) / len(claim_words)

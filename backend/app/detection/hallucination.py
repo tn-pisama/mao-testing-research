@@ -253,17 +253,56 @@ class HallucinationDetector:
     @staticmethod
     def _compute_novelty_penalty(output: str, source_blob_lower: str, source_blob_original: str = "") -> float:
         """Compute a penalty for numbers and proper nouns in output absent from sources."""
-        # Extract numbers from output and sources
-        output_numbers = set(re.findall(r'\b\d[\d,.]*\b', output))
-        source_numbers = set(re.findall(r'\b\d[\d,.]*\b', source_blob_lower))
+        # v1.3: Improved number extraction — also captures unit-attached numbers
+        # like "10mg", "$500K", "25%".  The original \b\d[\d,.]*\b missed these
+        # because \b requires a word-boundary between digits and letters.
+        _num_pat = r'(?:\$)?\d[\d,.]*[KMBkmb%]?'
+        output_numbers = set(re.findall(_num_pat, output))
+        source_numbers = set(re.findall(_num_pat, source_blob_lower))
+
+        # v1.3: Approximate number matching — a "novel" number that is within
+        # 5% of a source number (e.g. 99 vs 99.2, rounding) is not truly novel.
+        def _parse_num(s: str) -> float | None:
+            cleaned = s.strip('$%KMBkmb,')
+            try:
+                val = float(cleaned)
+                if s.endswith(('K', 'k')):
+                    val *= 1000
+                elif s.endswith(('M', 'm')):
+                    val *= 1_000_000
+                elif s.endswith(('B', 'b')):
+                    val *= 1_000_000_000
+                return val
+            except ValueError:
+                return None
+
+        def _has_approx_match(num_str: str) -> bool:
+            val = _parse_num(num_str)
+            if val is None:
+                return False
+            for src in source_numbers:
+                src_val = _parse_num(src)
+                if src_val is not None and src_val != 0:
+                    if abs(val - src_val) / abs(src_val) < 0.05:
+                        return True
+            return False
+
         novel_numbers = output_numbers - source_numbers
         # Ignore trivially small numbers (1-digit) and years already in source
         novel_numbers = {n for n in novel_numbers if len(n) > 1}
+        # v1.3: Remove approximate matches (rounding, unit conversion)
+        novel_numbers = {n for n in novel_numbers if not _has_approx_match(n)}
 
         # Extract capitalized multi-word names (potential proper nouns)
         # Use original-case source text for name extraction (regex needs uppercase)
         output_names = set(re.findall(r'[A-Z][a-z]+(?:\s+[A-Z][a-z]+)+', output))
         source_names = set(re.findall(r'[A-Z][a-z]+(?:\s+[A-Z][a-z]+)+', source_blob_original or source_blob_lower))
+
+        # v1.3: Also extract ALL-CAPS acronyms (AWS, GKE, EKS, etc.)
+        output_acronyms = set(re.findall(r'\b[A-Z]{2,}\b', output))
+        source_acronyms = set(re.findall(r'\b[A-Z]{2,}\b', source_blob_original or source_blob_lower))
+        novel_acronyms = output_acronyms - source_acronyms
+
         # Check lowercase match and substring containment (e.g. "San Francisco"
         # in source should match "San Francisco Bay Area" in output).
         source_names_lower = {n.lower() for n in source_names}
@@ -278,19 +317,19 @@ class HallucinationDetector:
             return False
         novel_names = {n for n in output_names if not _name_is_known(n)}
 
-        total_claims = max(1, len(output_numbers) + len(output_names))
-        novel_count = len(novel_numbers) + len(novel_names)
+        total_claims = max(1, len(output_numbers) + len(output_names) + len(output_acronyms))
+        novel_count = len(novel_numbers) + len(novel_names) + len(novel_acronyms)
         if novel_count == 0:
             return 0.0
         # Penalty proportional to fraction of novel entities, scaled aggressively.
         # v1.1: Slightly moderated from original — require 2+ for full floor penalty.
-        # 1 novel entity uses reduced floor (0.10 instead of 0.15).
+        # v1.3: Single novel entity floor lowered to 0.06 (from 0.10) to reduce FP.
         base_penalty = (novel_count / total_claims) * 0.8
         if novel_count >= 2:
             floor_penalty = min(0.7, novel_count * 0.13)
         else:
             # Single novel entity: lower floor penalty to reduce FP
-            floor_penalty = 0.10
+            floor_penalty = 0.06
         return min(0.7, max(base_penalty, floor_penalty))
     
     def _check_context_consistency(

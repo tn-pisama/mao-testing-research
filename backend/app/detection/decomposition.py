@@ -31,7 +31,7 @@ import re
 logger = logging.getLogger(__name__)
 
 # Detector version for tracking
-DETECTOR_VERSION = "1.2"
+DETECTOR_VERSION = "1.7"
 DETECTOR_NAME = "TaskDecompositionDetector"
 
 # v1.1: Words that indicate vague/non-actionable steps
@@ -90,6 +90,9 @@ class DecompositionIssue(str, Enum):
     MISSING_SUBTASK = "missing_subtask"
     VAGUE_SUBTASK = "vague_subtask"  # v1.1: Non-actionable steps
     OVERLY_COMPLEX = "overly_complex"  # v1.1: Steps too large/broad
+    IRRELEVANT_STEP = "irrelevant_step"  # v1.7: Steps unrelated to the task
+    WRONG_ORDER = "wrong_order"  # v1.7: Logical dependency violated
+    MISSING_REQUIREMENT = "missing_requirement"  # v1.7: Task requirement not covered
 
 
 class DecompositionSeverity(str, Enum):
@@ -134,7 +137,7 @@ class TaskDecompositionDetector:
     def __init__(
         self,
         min_subtasks: int = 2,
-        max_subtasks: int = 20,
+        max_subtasks: int = 15,  # v1.7: Lowered from 20 to catch over-decomposition
         check_dependencies: bool = True,
     ):
         self.min_subtasks = min_subtasks
@@ -144,25 +147,42 @@ class TaskDecompositionDetector:
     def _parse_subtasks(self, decomposition: str) -> list[Subtask]:
         subtasks = []
 
-        # v1.1: Enhanced patterns to handle more decomposition formats
+        # v1.3: Enhanced patterns to handle both newline-separated and
+        # single-line formats (e.g. "Step 1: ... Step 2: ... Step 3: ...").
+        # Uses lookahead to stop each capture at the next marker instead of
+        # greedy [^\n]+ which swallows the entire line.
         patterns = [
             # Standard numbered lists: "1. xxx" or "1) xxx"
-            r'(?:^|\n)\s*\d+[.)]\s*([^\n]+)',
+            (r'\d+[.)]\s*', r'\d+[.)]'),
             # Bullet points: "- xxx" or "* xxx" or "• xxx"
-            r'(?:^|\n)\s*[-•*]\s*([^\n]+)',
+            (r'[-•*]\s+', r'[-•*]\s'),
             # Explicit step/task labels: "Step 1: xxx" or "Task: xxx"
-            r'(?:^|\n)\s*(?:step|task|subtask)\s*\d*[:.]\s*([^\n]+)',
+            (r'(?:step|task|subtask)\s*\d*[:.]\s*', r'(?:step|task|subtask)\s*\d*[:.]'),
             # Phase labels: "Phase 1: xxx" or "Phase A: xxx"
-            r'(?:^|\n)\s*(?:phase|part|stage)\s*[\dA-Za-z]*[:.]\s*([^\n]+)',
+            (r'(?:phase|part|stage)\s*[\dA-Za-z]*[:.]\s*', r'(?:phase|part|stage)\s*[\dA-Za-z]*[:.]'),
             # Prose phases: "first, xxx" or "then, xxx" or "finally, xxx"
-            r'(?:^|\n)\s*(?:first|second|third|then|next|finally|lastly)[,:]?\s*([^\n]+)',
+            (r'(?:first|second|third|then|next|finally|lastly)[,:]?\s+',
+             r'(?:first|second|third|then|next|finally|lastly)[,:]?\s'),
         ]
 
         items = []
-        for pattern in patterns:
-            matches = re.findall(pattern, decomposition, re.IGNORECASE)
-            if matches:
-                items = matches
+        for prefix_pat, lookahead_pat in patterns:
+            # Try newline-separated first (most common)
+            nl_matches = re.findall(
+                r'(?:^|\n)\s*' + prefix_pat + r'([^\n]+)',
+                decomposition, re.IGNORECASE,
+            )
+            if len(nl_matches) >= 2:
+                items = nl_matches
+                break
+            # Fallback: single-line with lookahead splitting
+            sl_matches = re.findall(
+                prefix_pat + r'(.*?)(?=\s*' + lookahead_pat + r'|$)',
+                decomposition, re.IGNORECASE,
+            )
+            sl_matches = [m.strip() for m in sl_matches if m.strip()]
+            if len(sl_matches) >= 2:
+                items = sl_matches
                 break
 
         # v1.1: Fallback - try to find colon-separated phrases that look like phases
@@ -285,6 +305,13 @@ class TaskDecompositionDetector:
                 "display", "show", "render", "format", "parse",  # v1.1: UI/data actions
                 "fetch", "load", "save", "store", "delete",  # v1.1: data operations
                 "call", "invoke", "execute", "run", "process",  # v1.1: execution actions
+                "handle", "index", "containerize", "evaluate",  # v1.3: from error analysis
+                "filter", "send", "register", "check", "apply",
+                "generate", "schedule", "compress", "upload",
+                "scan", "trigger", "track", "calculate", "archive",
+                "stream", "provide", "return", "verify", "migrate",
+                "optimize", "monitor", "extract", "transform",
+                "publish", "subscribe", "query", "export", "import",
             ]
             has_action = any(verb in desc_lower for verb in action_verbs)
 
@@ -339,6 +366,149 @@ class TaskDecompositionDetector:
         if self._is_complex_task(task_description):
             return 4  # Complex tasks need at least 4 steps
         return self.min_subtasks  # Default minimum
+
+    # v1.7: Common ordering dependency pairs — (prerequisite_keywords, dependent_keywords).
+    # If a step matching dependent appears BEFORE a step matching prerequisite, it's wrong order.
+    _ORDERING_DEPS = [
+        ({"create", "set up", "setup", "initialize", "init", "install", "configure"},
+         {"use", "deploy", "send", "process", "transform", "query", "run"}),
+        ({"build", "compile", "package"},
+         {"deploy", "release", "ship", "publish"}),
+        ({"validate", "verify", "check", "lint", "test"},
+         {"deploy", "release", "ship", "publish", "merge"}),
+        ({"create account", "register", "sign up", "create user"},
+         {"send email", "send verification", "verification email", "welcome email"}),
+        ({"fetch", "retrieve", "load", "get data", "read"},
+         {"transform", "process", "analyze", "aggregate", "compute"}),
+        ({"test", "run tests", "unit test", "integration test"},
+         {"deploy", "release", "ship", "publish"}),
+        ({"design", "plan", "architect", "define schema"},
+         {"implement", "build", "code", "develop"}),
+    ]
+
+    # v1.7: Words/phrases universally relevant to any software task
+    _GENERIC_DEV_WORDS = {
+        # Verbs
+        "create", "setup", "configure", "deploy", "test", "build", "implement",
+        "update", "migrate", "integrate", "monitor", "validate", "write", "design",
+        "plan", "review", "define", "handle", "process", "refactor", "optimize",
+        "document", "install", "check", "verify", "authenticate", "authorize",
+        "debug", "fix", "add", "remove", "parse", "send", "receive", "fetch",
+        "store", "query", "run", "execute", "package", "lint", "compile",
+        # Nouns (common across software tasks)
+        "tests", "testing", "schema", "database", "endpoint", "endpoints",
+        "form", "input", "validation", "security", "logging", "error",
+        "documentation", "middleware", "server", "client", "model", "models",
+        "controller", "service", "module", "config", "configuration",
+        "pipeline", "workflow", "api", "data", "table", "tables",
+    }
+
+    def _detect_irrelevant_steps(
+        self, subtasks: list[Subtask], task_description: str,
+    ) -> list[str]:
+        """v1.7: Detect steps whose content is unrelated to the task description.
+
+        Only flags steps that belong to a clearly different domain (e.g. "pick a font"
+        for a JWT migration task). Requires >=2 irrelevant steps making up >=40% of
+        all steps to avoid flagging legitimate auxiliary steps.
+        """
+        task_words = set(
+            w for w in re.findall(r'[a-z]+', task_description.lower()) if len(w) > 3
+        )
+        if not task_words:
+            return []
+
+        # Also include 2-word phrases from task
+        task_lower = task_description.lower()
+        task_bigrams = set()
+        twords = task_lower.split()
+        for i in range(len(twords) - 1):
+            task_bigrams.add(f"{twords[i]} {twords[i+1]}")
+
+        candidates = []
+        for subtask in subtasks:
+            desc_lower = subtask.description.lower()
+            step_words = set(
+                w for w in re.findall(r'[a-z]+', desc_lower) if len(w) > 3
+            )
+            if not step_words:
+                continue
+            # Word overlap between step and task
+            overlap = len(task_words & step_words)
+            ratio = overlap / min(len(task_words), len(step_words))
+
+            # Also check bigram overlap (handles "JWT tokens", "email verification")
+            bigram_hit = any(bg in desc_lower for bg in task_bigrams)
+
+            # Generic dev words that are universally relevant
+            has_generic = bool(step_words & self._GENERIC_DEV_WORDS)
+
+            if ratio < 0.15 and not bigram_hit and not has_generic:
+                candidates.append(subtask.id)
+
+        # Only flag if irrelevant steps are a significant fraction
+        if len(candidates) >= 2 and len(candidates) / len(subtasks) >= 0.4:
+            return candidates
+        return []
+
+    def _detect_ordering_issues(self, subtasks: list[Subtask]) -> list[str]:
+        """v1.7: Detect steps in wrong logical order based on common dependency pairs."""
+        if len(subtasks) < 2:
+            return []
+
+        violations = []
+        for dep_keywords, post_keywords in self._ORDERING_DEPS:
+            # Find the earliest step matching the prerequisite
+            prereq_idx = None
+            for i, st in enumerate(subtasks):
+                desc = st.description.lower()
+                if any(kw in desc for kw in dep_keywords):
+                    prereq_idx = i
+                    break
+
+            # Find the earliest step matching the dependent
+            dependent_idx = None
+            for i, st in enumerate(subtasks):
+                desc = st.description.lower()
+                if any(kw in desc for kw in post_keywords):
+                    dependent_idx = i
+                    break
+
+            # Violation if dependent appears before prerequisite
+            if prereq_idx is not None and dependent_idx is not None:
+                if dependent_idx < prereq_idx:
+                    violations.append(subtasks[dependent_idx].id)
+
+        return list(set(violations))
+
+    def _detect_missing_requirements(
+        self, subtasks: list[Subtask], task_description: str,
+    ) -> list[str]:
+        """v1.7: Detect key task requirements that no step addresses."""
+        # Extract noun phrases / key concepts from the task
+        task_lower = task_description.lower()
+        # Split on common separators: "with", "and", commas
+        requirement_chunks = re.split(r'\b(?:with|and|,)\b', task_lower)
+
+        # Extract significant multi-word phrases from each chunk
+        all_step_text = " ".join(st.description.lower() for st in subtasks)
+
+        missing = []
+        for chunk in requirement_chunks:
+            chunk = chunk.strip()
+            if len(chunk) < 5:
+                continue
+            # Extract significant words (>4 chars) from this requirement
+            chunk_words = set(w for w in re.findall(r'[a-z]+', chunk) if len(w) > 4)
+            if not chunk_words:
+                continue
+            # Check how many of these words appear anywhere in steps
+            found = sum(1 for w in chunk_words if w in all_step_text)
+            coverage = found / len(chunk_words)
+            if coverage < 0.3 and len(chunk_words) >= 2:
+                missing.append(chunk.strip()[:60])
+
+        return missing
 
     def detect(
         self,
@@ -462,6 +632,24 @@ class TaskDecompositionDetector:
             problematic.extend(complex_subtasks)
             complex_count = len(complex_subtasks)
 
+        # v1.7: Detect steps unrelated to the task
+        irrelevant = self._detect_irrelevant_steps(subtasks, task_description)
+        if irrelevant:
+            issues.append(DecompositionIssue.IRRELEVANT_STEP)
+            problematic.extend(irrelevant)
+
+        # v1.7: Detect steps in wrong logical order
+        wrong_order = self._detect_ordering_issues(subtasks)
+        if wrong_order:
+            issues.append(DecompositionIssue.WRONG_ORDER)
+            problematic.extend(wrong_order)
+
+        # v1.7: Detect task requirements not addressed by any step
+        missing_reqs = self._detect_missing_requirements(subtasks, task_description)
+        if missing_reqs:
+            issues.append(DecompositionIssue.MISSING_REQUIREMENT)
+            problematic.extend(missing_reqs)
+
         if not issues:
             return DecompositionResult(
                 detected=False,
@@ -489,9 +677,12 @@ class TaskDecompositionDetector:
         _issue_weights = {
             DecompositionIssue.CIRCULAR_DEPENDENCY: 0.50,
             DecompositionIssue.IMPOSSIBLE_SUBTASK: 0.40,
+            DecompositionIssue.IRRELEVANT_STEP: 0.35,  # v1.7
+            DecompositionIssue.WRONG_ORDER: 0.30,  # v1.7
             DecompositionIssue.OVERLY_COMPLEX: 0.25,
             DecompositionIssue.MISSING_DEPENDENCY: 0.25,
             DecompositionIssue.DUPLICATE_WORK: 0.25,
+            DecompositionIssue.MISSING_REQUIREMENT: 0.25,  # v1.7
             DecompositionIssue.WRONG_GRANULARITY: 0.15,
             DecompositionIssue.MISSING_SUBTASK: 0.15,
             DecompositionIssue.VAGUE_SUBTASK: 0.10,
@@ -522,6 +713,13 @@ class TaskDecompositionDetector:
             fixes.append("Break down overly complex steps into smaller subtasks")
         if DecompositionIssue.WRONG_GRANULARITY in issues and "too_few_subtasks" in problematic:
             fixes.append(f"Add more subtasks (minimum {min_required} recommended for this task)")
+        # v1.7: Fixes for new issue types
+        if DecompositionIssue.IRRELEVANT_STEP in issues:
+            fixes.append("Remove steps unrelated to the task and replace with relevant ones")
+        if DecompositionIssue.WRONG_ORDER in issues:
+            fixes.append("Reorder steps so prerequisites come before dependent steps")
+        if DecompositionIssue.MISSING_REQUIREMENT in issues:
+            fixes.append("Add steps covering all stated task requirements")
 
         return DecompositionResult(
             detected=True,
