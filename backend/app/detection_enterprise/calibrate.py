@@ -125,6 +125,51 @@ def _build_sample_predictions(
     return result
 
 
+def _compute_latency_stats(latencies_ms: List[float]) -> Dict[str, float]:
+    """Compute latency statistics from per-sample timing data.
+
+    Excludes zero-latency entries (detector failures) from mean/p95 but
+    includes them in total.
+    """
+    if not latencies_ms:
+        return {"mean_ms": 0.0, "p95_ms": 0.0, "total_ms": 0.0}
+    # Filter out failed runs (0.0ms) for percentile calculation
+    valid = [lat for lat in latencies_ms if lat > 0.01]
+    if not valid:
+        return {"mean_ms": 0.0, "p95_ms": 0.0, "total_ms": round(sum(latencies_ms), 2)}
+    sorted_lat = sorted(valid)
+    p95_idx = min(int(0.95 * len(sorted_lat)), len(sorted_lat) - 1)
+    return {
+        "mean_ms": round(sum(sorted_lat) / len(sorted_lat), 2),
+        "p95_ms": round(sorted_lat[p95_idx], 2),
+        "total_ms": round(sum(latencies_ms), 2),
+    }
+
+
+def _compute_difficulty_breakdown(
+    sample_preds: List[SamplePrediction],
+) -> Dict[str, Dict[str, Any]]:
+    """Break down P/R/F1 by difficulty level (easy/medium/hard)."""
+    by_diff: Dict[str, List[SamplePrediction]] = {}
+    for sp in sample_preds:
+        by_diff.setdefault(sp.difficulty, []).append(sp)
+
+    result = {}
+    for diff, preds in sorted(by_diff.items()):
+        tp = sum(1 for p in preds if p.classification == "TP")
+        fp = sum(1 for p in preds if p.classification == "FP")
+        fn = sum(1 for p in preds if p.classification == "FN")
+        tn = sum(1 for p in preds if p.classification == "TN")
+        p = tp / (tp + fp) if (tp + fp) > 0 else 0.0
+        r = tp / (tp + fn) if (tp + fn) > 0 else 0.0
+        f1 = 2 * p * r / (p + r) if (p + r) > 0 else 0.0
+        result[diff] = {
+            "f1": round(f1, 4), "precision": round(p, 4), "recall": round(r, 4),
+            "n": len(preds), "tp": tp, "fp": fp, "fn": fn, "tn": tn,
+        }
+    return result
+
+
 # ---------------------------------------------------------------------------
 # Detector adapter functions
 #
@@ -690,6 +735,16 @@ Respond ONLY with a JSON object:
 Where score=1.0 means clear failure, score=0.0 means clearly no failure, score=0.5 means ambiguous."""
 
 
+# Module-level LLM cost tracking (populated by _apply_tiered_runners, read by calibrate_all)
+_tiered_escalation_counts: Dict[str, int] = {}
+_tiered_llm_cost: Dict[str, float] = {}
+_tiered_llm_tokens: Dict[str, int] = {}
+
+# Multi-trial seed — incremented per trial for variance measurement.
+# When >0, appended to LLM cache keys so each trial gets fresh LLM calls.
+_TRIAL_SEED: int = 0
+
+
 def _apply_tiered_runners() -> None:
     """Wrap existing runners with LLM judge escalation for gray-zone cases.
 
@@ -754,7 +809,10 @@ def _apply_tiered_runners() -> None:
 
     # Cache LLM results by (entry_key, det_type) to avoid duplicate calls across CV folds
     _llm_cache: Dict[str, Tuple[bool, float]] = {}
-    _escalation_counts: Dict[str, int] = {}
+    # Reset module-level cost trackers
+    _tiered_escalation_counts.clear()
+    _tiered_llm_cost.clear()
+    _tiered_llm_tokens.clear()
 
     for det_type, (gz_lo, gz_hi) in gray_zones.items():
         if det_type not in original_runners:
@@ -762,7 +820,7 @@ def _apply_tiered_runners() -> None:
 
         original_runner = original_runners[det_type]
         det_name = det_type.value
-        _escalation_counts[det_name] = 0
+        _tiered_escalation_counts[det_name] = 0
 
         def _make_wrapper(orig_fn, dt_name, lo, hi):
             def _wrapped(entry: GoldenDatasetEntry) -> Tuple[bool, float]:
@@ -773,7 +831,7 @@ def _apply_tiered_runners() -> None:
                 if detected:
                     # Rule says failure — escalate gray-zone cases to LLM.
                     if lo <= confidence <= hi:
-                        cache_key = f"{entry.id}:{dt_name}:boost"
+                        cache_key = f"{entry.id}:{dt_name}:boost:{_TRIAL_SEED}"
                         if cache_key in _llm_cache:
                             return _llm_cache[cache_key]
                         try:
@@ -781,7 +839,9 @@ def _apply_tiered_runners() -> None:
                             result = judge.judge(
                                 eval_type=EvalType.SAFETY, output="", custom_prompt=prompt,
                             )
-                            _escalation_counts[dt_name] = _escalation_counts.get(dt_name, 0) + 1
+                            _tiered_escalation_counts[dt_name] = _tiered_escalation_counts.get(dt_name, 0) + 1
+                            _tiered_llm_cost[dt_name] = _tiered_llm_cost.get(dt_name, 0.0) + getattr(result, "cost_usd", 0.0)
+                            _tiered_llm_tokens[dt_name] = _tiered_llm_tokens.get(dt_name, 0) + getattr(result, "tokens_used", 0)
                             if "Error" not in result.reasoning and "Could not parse" not in result.reasoning:
                                 if result.score > 0.5:
                                     # LLM agrees → boost confidence
@@ -804,7 +864,7 @@ def _apply_tiered_runners() -> None:
                 # Rule says no failure. Check if LLM finds something the rule missed.
                 # Only escalate if there's SOME signal (confidence not zero).
                 if confidence > 0.05:
-                    cache_key = f"{entry.id}:{dt_name}:upgrade"
+                    cache_key = f"{entry.id}:{dt_name}:upgrade:{_TRIAL_SEED}"
                     if cache_key in _llm_cache:
                         return _llm_cache[cache_key]
                     try:
@@ -812,7 +872,9 @@ def _apply_tiered_runners() -> None:
                         result = judge.judge(
                             eval_type=EvalType.SAFETY, output="", custom_prompt=prompt,
                         )
-                        _escalation_counts[dt_name] = _escalation_counts.get(dt_name, 0) + 1
+                        _tiered_escalation_counts[dt_name] = _tiered_escalation_counts.get(dt_name, 0) + 1
+                        _tiered_llm_cost[dt_name] = _tiered_llm_cost.get(dt_name, 0.0) + getattr(result, "cost_usd", 0.0)
+                        _tiered_llm_tokens[dt_name] = _tiered_llm_tokens.get(dt_name, 0) + getattr(result, "tokens_used", 0)
                         if "Error" not in result.reasoning and "Could not parse" not in result.reasoning:
                             if result.score > 0.6:
                                 # LLM found a failure the rule missed
@@ -1045,12 +1107,17 @@ def calibrate_single(
     # Run the detector on every entry and collect predictions.
     predictions: List[Tuple[bool, float]] = []
     ground_truths: List[bool] = []
+    latencies_ms: List[float] = []
 
     for entry in entries:
         try:
+            import time as _time
+            _t0 = _time.perf_counter()
             detected, confidence = runner(entry)
+            _elapsed = (_time.perf_counter() - _t0) * 1000
             predictions.append((detected, confidence))
             ground_truths.append(entry.expected_detected)
+            latencies_ms.append(_elapsed)
         except Exception as exc:
             logger.warning(
                 "Detector %s failed on entry %s: %s",
@@ -1061,6 +1128,7 @@ def calibrate_single(
             # Treat detector failure as a negative prediction with zero confidence.
             predictions.append((False, 0.0))
             ground_truths.append(entry.expected_detected)
+            latencies_ms.append(0.0)
 
     # -----------------------------------------------------------------
     # Cross-validation path (>= 8 samples)
@@ -1180,6 +1248,11 @@ def calibrate_single(
         result.sample_predictions = _build_sample_predictions(  # type: ignore[attr-defined]
             entries, predictions, ground_truths, detection_type, avg_threshold,
         )
+        # v1.5: Per-difficulty breakdown + latency
+        result.difficulty_breakdown = _compute_difficulty_breakdown(  # type: ignore[attr-defined]
+            result.sample_predictions,
+        )
+        result.latency_stats = _compute_latency_stats(latencies_ms)  # type: ignore[attr-defined]
         return result
 
     # -----------------------------------------------------------------
@@ -1230,6 +1303,11 @@ def calibrate_single(
     result.sample_predictions = _build_sample_predictions(  # type: ignore[attr-defined]
         entries, predictions, ground_truths, detection_type, best_threshold,
     )
+    # v1.5: Per-difficulty breakdown + latency
+    result.difficulty_breakdown = _compute_difficulty_breakdown(  # type: ignore[attr-defined]
+        result.sample_predictions,
+    )
+    result.latency_stats = _compute_latency_stats(latencies_ms)  # type: ignore[attr-defined]
     return result
 
 
@@ -1337,7 +1415,17 @@ def calibrate_all(
         if cal is None:
             skipped.append(dt.value)
         else:
-            results[cal.detection_type] = asdict(cal)
+            result_dict = asdict(cal)
+            # v1.5: Include per-difficulty breakdown, latency, and LLM cost
+            result_dict["difficulty_breakdown"] = getattr(cal, "difficulty_breakdown", {})
+            result_dict["latency_stats"] = getattr(cal, "latency_stats", {})
+            dt_name = cal.detection_type
+            result_dict["llm_cost"] = {
+                "escalations": _tiered_escalation_counts.get(dt_name, 0),
+                "cost_usd": round(_tiered_llm_cost.get(dt_name, 0.0), 6),
+                "tokens": _tiered_llm_tokens.get(dt_name, 0),
+            }
+            results[cal.detection_type] = result_dict
             all_sample_predictions.extend(
                 getattr(cal, "sample_predictions", [])
             )
@@ -1365,6 +1453,11 @@ def calibrate_all(
         except Exception:
             pass
 
+    # Compute LLM cost totals across all detectors
+    total_llm_cost = sum(_tiered_llm_cost.values())
+    total_llm_tokens = sum(_tiered_llm_tokens.values())
+    total_escalations = sum(_tiered_escalation_counts.values())
+
     report = {
         "calibrated_at": datetime.now(timezone.utc).isoformat(),
         "detector_count": len(results),
@@ -1372,8 +1465,76 @@ def calibrate_all(
         "splits_used": splits,
         "results": results,
         "sample_predictions": [asdict(sp) for sp in all_sample_predictions],
+        "llm_cost_summary": {
+            "total_cost_usd": round(total_llm_cost, 4),
+            "total_tokens": total_llm_tokens,
+            "total_escalations": total_escalations,
+        },
     }
     return report
+
+
+def calibrate_multi_trial(
+    n_trials: int = 3,
+    **kwargs,
+) -> Dict[str, Any]:
+    """Run calibration N times to measure F1 variance across LLM judge calls.
+
+    Each trial uses a different cache seed so LLM judge calls are fresh.
+    Rule-based detectors are deterministic, so variance only appears when
+    --tiered mode is used (LLM escalation introduces stochasticity).
+
+    Args:
+        n_trials: Number of independent calibration runs.
+        **kwargs: Passed to calibrate_all().
+
+    Returns:
+        Dict with per-detector variance stats and raw trial data.
+    """
+    global _TRIAL_SEED
+    trial_results = []
+
+    for trial in range(n_trials):
+        _TRIAL_SEED = trial + 1
+        # Reset cost trackers per trial
+        _tiered_escalation_counts.clear()
+        _tiered_llm_cost.clear()
+        _tiered_llm_tokens.clear()
+        result = calibrate_all(**kwargs)
+        trial_results.append(result)
+
+    _TRIAL_SEED = 0  # Reset
+
+    # Aggregate per-detector variance
+    variance_report: Dict[str, Any] = {}
+    all_det_types = set()
+    for tr in trial_results:
+        all_det_types.update(tr["results"].keys())
+
+    for det_type in sorted(all_det_types):
+        f1s = [
+            tr["results"][det_type]["f1"]
+            for tr in trial_results
+            if det_type in tr["results"]
+        ]
+        if not f1s:
+            continue
+        mean_f1 = sum(f1s) / len(f1s)
+        std_f1 = (sum((x - mean_f1) ** 2 for x in f1s) / len(f1s)) ** 0.5
+        variance_report[det_type] = {
+            "mean_f1": round(mean_f1, 4),
+            "std_f1": round(std_f1, 4),
+            "min_f1": round(min(f1s), 4),
+            "max_f1": round(max(f1s), 4),
+            "pass_at_k": round(sum(1 for f in f1s if f >= 0.80) / len(f1s), 4),
+            "trials": [round(f, 4) for f in f1s],
+        }
+
+    return {
+        "trials": n_trials,
+        "variance": variance_report,
+        "raw_trials": trial_results,
+    }
 
 
 # ---------------------------------------------------------------------------
@@ -1548,11 +1709,26 @@ def generate_capability_registry(
             readiness = _compute_readiness(f1, precision, sample_count)
             readiness_counts[readiness] += 1
             status = "passing" if f1 >= MINIMUM_PASSING_F1 else "failing"
+            # v1.5: Difficulty breakdown and saturation detection
+            diff_breakdown = metrics.get("difficulty_breakdown", {})
+            easy_metrics = diff_breakdown.get("easy", {})
+            hard_metrics = diff_breakdown.get("hard", {})
+            is_saturated = (
+                easy_metrics.get("f1", 0) >= 0.95
+                and hard_metrics.get("n", 0) < 5
+                and f1 >= 0.95
+            )
+            eval_category = (
+                "saturated" if is_saturated else
+                "regression" if readiness == "production" else
+                "capability"
+            )
             entry = {
                 "name": meta["name"],
                 "tier": meta["tier"],
                 "status": status,
                 "readiness": readiness,
+                "eval_category": eval_category,
                 "module": meta["module"],
                 "f1_score": f1,
                 "precision": precision,
@@ -1561,13 +1737,18 @@ def generate_capability_registry(
                 "sample_count": sample_count,
                 "f1_ci_lower": metrics.get("f1_ci_lower", 0.0),
                 "f1_ci_upper": metrics.get("f1_ci_upper", 0.0),
+                "difficulty_breakdown": diff_breakdown,
                 "last_calibrated": calibrated_at,
             }
+            if is_saturated:
+                entry["saturation_warning"] = True
 
         capabilities[dtype_value] = entry
 
+    # v1.5: Count saturated detectors
+    saturated = [k for k, v in capabilities.items() if v.get("saturation_warning")]
     registry = {
-        "version": "2.0",
+        "version": "2.1",
         "generated_at": datetime.now(timezone.utc).isoformat(),
         "capabilities": capabilities,
         "summary": {
@@ -1577,6 +1758,8 @@ def generate_capability_registry(
             "experimental": readiness_counts["experimental"],
             "failing": readiness_counts["failing"],
             "untested": readiness_counts["untested"],
+            "saturated": len(saturated),
+            "saturated_detectors": saturated,
         },
     }
 
@@ -1763,6 +1946,18 @@ if __name__ == "__main__":
         "--error-analysis", action="store_true",
         help="Generate per-sample error analysis report (FPs/FNs per detector)",
     )
+    parser.add_argument(
+        "--trials", type=int, default=1, metavar="N",
+        help="Run N calibration trials to measure F1 variance (requires --tiered)",
+    )
+    parser.add_argument(
+        "--generate-hard", action="store_true",
+        help="Generate hard samples for saturated detectors (F1>=0.95 with <5 hard samples)",
+    )
+    parser.add_argument(
+        "--hard-count", type=int, default=10, metavar="N",
+        help="Number of hard samples to generate per saturated detector (default: 10)",
+    )
     args = parser.parse_args()
 
     logging.basicConfig(
@@ -1831,6 +2026,63 @@ if __name__ == "__main__":
             print("  All types already at target — no generation needed")
         print()
 
+    # --- Hard sample generation for saturated detectors ---
+    if args.generate_hard:
+        from app.detection_enterprise.golden_data_generator import GoldenDataGenerator
+        from app.detection_enterprise.golden_dataset import create_default_golden_dataset
+
+        generator = GoldenDataGenerator()
+        if not generator.is_available:
+            print("  ERROR: No ANTHROPIC_API_KEY set — cannot generate data")
+            sys.exit(1)
+
+        dataset = create_default_golden_dataset()
+
+        # First run calibration to identify saturated detectors
+        print("\n  Running calibration to identify saturated detectors...")
+        pre_report = calibrate_all()
+        registry = generate_capability_registry(pre_report)
+
+        saturated = [
+            name for name, entry in registry["capabilities"].items()
+            if entry.get("eval_category") == "saturated"
+        ]
+
+        if not saturated:
+            print("  No saturated detectors found — no hard samples needed")
+        else:
+            print(f"  Saturated detectors: {', '.join(saturated)}")
+            all_new = []
+            for det_name in saturated:
+                try:
+                    dt = DetectionType(det_name)
+                except ValueError:
+                    print(f"    Skipping unknown type: {det_name}")
+                    continue
+                existing = dataset.get_entries_by_type(dt)
+                dist = dataset.get_difficulty_distribution(dt)
+                print(f"\n    [{det_name.upper()}] current distribution: {dist}")
+                new_entries = generator.generate_for_type(
+                    detection_type=dt,
+                    difficulty="hard",
+                    count=args.hard_count,
+                    existing_entries=existing,
+                )
+                all_new.extend(new_entries)
+                print(f"    Generated {len(new_entries)} hard samples")
+
+            if all_new:
+                for entry in all_new:
+                    dataset.add_entry(entry)
+                save_path = Path(__file__).parent.parent.parent / "data" / "golden_dataset_expanded.json"
+                dataset.save(save_path)
+                print(f"\n  Total: {len(all_new)} hard samples generated")
+                print(f"  Expanded dataset saved to: {save_path}")
+                print("  Re-run calibration to measure impact.")
+            else:
+                print("  No entries generated")
+        print()
+
     # --- Phoenix OTEL setup ---
     phoenix_tracer = None
     if args.phoenix:
@@ -1852,7 +2104,23 @@ if __name__ == "__main__":
         db_session = _aio.run(async_session_maker().__aenter__())
         print("  Loading golden dataset from PostgreSQL...")
 
-    report = calibrate_all(phoenix_tracer=phoenix_tracer, db_session=db_session)
+    multi_trial_report = None
+    if args.trials > 1:
+        if not args.tiered:
+            print("  WARNING: --trials requires --tiered (rule-based detectors are deterministic)")
+            print("  Running single trial instead.")
+        else:
+            print(f"\n  Running {args.trials} calibration trials for variance measurement...")
+            multi_trial_report = calibrate_multi_trial(
+                n_trials=args.trials,
+                phoenix_tracer=phoenix_tracer,
+                db_session=db_session,
+            )
+            # Use the last trial's report for display/history
+            report = multi_trial_report["raw_trials"][-1]
+
+    if multi_trial_report is None:
+        report = calibrate_all(phoenix_tracer=phoenix_tracer, db_session=db_session)
 
     if db_session:
         import asyncio as _aio
@@ -1902,6 +2170,54 @@ if __name__ == "__main__":
         )
         if "ece" in metrics:
             print(f"    ECE               : {metrics['ece']:.4f}")
+        # v1.5: Latency stats
+        lat = metrics.get("latency_stats", {})
+        if lat and lat.get("mean_ms", 0) > 0:
+            print(f"    Latency           : mean={lat['mean_ms']:.1f}ms  p95={lat['p95_ms']:.1f}ms  total={lat['total_ms']:.0f}ms")
+        # v1.5: LLM cost stats
+        llm = metrics.get("llm_cost", {})
+        if llm and llm.get("escalations", 0) > 0:
+            print(f"    LLM cost          : ${llm['cost_usd']:.4f} ({llm['escalations']} escalations, {llm['tokens']} tokens)")
+        # v1.5: Per-difficulty breakdown
+        diff_breakdown = metrics.get("difficulty_breakdown", {})
+        if diff_breakdown:
+            parts = []
+            for diff in ("easy", "medium", "hard"):
+                dm = diff_breakdown.get(diff)
+                if dm:
+                    parts.append(f"{diff}={dm['f1']:.3f} (n={dm['n']})")
+            if parts:
+                print(f"    Difficulty        : {', '.join(parts)}")
+            # Saturation warning
+            easy_m = diff_breakdown.get("easy", {})
+            hard_m = diff_breakdown.get("hard", {})
+            if (easy_m.get("f1", 0) >= 0.95
+                    and hard_m.get("n", 0) < 5
+                    and metrics.get("f1", 0) >= 0.95):
+                print(f"    Saturation        : WARNING — easy F1={easy_m['f1']:.2f} with <5 hard samples")
+
+    # LLM cost summary (if tiered mode was used)
+    llm_summary = report.get("llm_cost_summary", {})
+    if llm_summary.get("total_escalations", 0) > 0:
+        print(f"\n  LLM JUDGE COST SUMMARY")
+        print(f"    Total escalations : {llm_summary['total_escalations']}")
+        print(f"    Total tokens      : {llm_summary['total_tokens']:,}")
+        print(f"    Total cost        : ${llm_summary['total_cost_usd']:.4f}")
+
+    # Multi-trial variance summary
+    if multi_trial_report is not None:
+        print(f"\n  MULTI-TRIAL VARIANCE ({multi_trial_report['trials']} trials)")
+        print(f"  {'Detector':<20s} {'Mean F1':>8s} {'Std':>7s} {'Min':>7s} {'Max':>7s} {'Pass@k':>7s}")
+        print(f"  {'-'*20} {'-'*8} {'-'*7} {'-'*7} {'-'*7} {'-'*7}")
+        unstable = []
+        for det_type, v in sorted(multi_trial_report["variance"].items()):
+            flag = " *" if v["std_f1"] > 0.10 else ""
+            print(f"  {det_type:<20s} {v['mean_f1']:>8.4f} {v['std_f1']:>7.4f} "
+                  f"{v['min_f1']:>7.4f} {v['max_f1']:>7.4f} {v['pass_at_k']:>7.2f}{flag}")
+            if v["std_f1"] > 0.10:
+                unstable.append(det_type)
+        if unstable:
+            print(f"\n  * Unstable detectors (std>0.10): {', '.join(unstable)}")
 
     print("\n" + "=" * 72)
 

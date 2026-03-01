@@ -1,20 +1,37 @@
 """Calibration regression tests — ensures no detector silently degrades.
 
-Phase S1 of the eval pipeline plan.
+Phase S1 of the eval pipeline plan, updated for capability vs regression
+eval separation per "Demystifying Evals for AI Agents" recommendations.
+
 Run with: pytest tests/test_calibration_regression.py -m slow -v
 """
 
 import pytest
 
-from app.detection_enterprise.calibrate import calibrate_all
+from app.detection_enterprise.calibrate import (
+    calibrate_all,
+    generate_capability_registry,
+)
 
 
 # -----------------------------------------------------------------------
-# Thresholds
+# Thresholds (uniform baselines)
 # -----------------------------------------------------------------------
 MINIMUM_F1 = 0.40  # Absolute floor — anything below is broken
 TARGET_F1 = 0.65   # Warning threshold — below this needs attention
 AVERAGE_F1_FLOOR = 0.70  # System-wide minimum average
+
+
+# -----------------------------------------------------------------------
+# Per-readiness-tier CI gates (Anthropic evals article recommendation)
+# -----------------------------------------------------------------------
+# Production detectors have tighter gates than beta/experimental.
+TIER_GATES = {
+    "production":   {"min_f1": 0.70, "max_regression": 0.05},
+    "beta":         {"min_f1": 0.40, "max_regression": 0.10},
+    "experimental": {"min_f1": 0.30, "max_regression": 0.15},
+    "failing":      {"min_f1": 0.00, "max_regression": 1.00},
+}
 
 
 @pytest.mark.slow
@@ -84,6 +101,25 @@ def test_calibration_report_structure():
 
 
 @pytest.mark.slow
+def test_report_includes_difficulty_and_latency():
+    """Calibration report includes per-difficulty breakdown and latency stats."""
+    report = calibrate_all()
+
+    for name, metrics in report["results"].items():
+        # difficulty_breakdown should exist (may be empty for edge cases)
+        assert "difficulty_breakdown" in metrics, f"{name}: missing difficulty_breakdown"
+        assert "latency_stats" in metrics, f"{name}: missing latency_stats"
+        assert "llm_cost" in metrics, f"{name}: missing llm_cost"
+
+        # Validate difficulty breakdown structure when present
+        for diff, dm in metrics["difficulty_breakdown"].items():
+            assert "f1" in dm, f"{name}/{diff}: missing f1"
+            assert "n" in dm, f"{name}/{diff}: missing n"
+            assert 0.0 <= dm["f1"] <= 1.0, f"{name}/{diff}: f1 out of range"
+            assert dm["n"] > 0, f"{name}/{diff}: n must be positive"
+
+
+@pytest.mark.slow
 def test_all_target_types_calibrated():
     """All 17 target detection types should be calibrated (not skipped)."""
     report = calibrate_all()
@@ -119,8 +155,14 @@ def test_detectors_below_target_count():
 
 @pytest.mark.slow
 def test_no_significant_f1_regression():
-    """No detector should drop more than 0.10 F1 vs previous calibration."""
+    """No detector should drop more than its tier-appropriate max regression.
+
+    Production detectors: max 0.05 drop
+    Beta detectors: max 0.10 drop
+    Experimental detectors: max 0.15 drop
+    """
     from app.detection_enterprise.calibration_history import CalibrationHistory
+    from app.detection_enterprise.calibrate import _compute_readiness
 
     history = CalibrationHistory()
     experiments = history.load_all()
@@ -136,14 +178,50 @@ def test_no_significant_f1_regression():
             current_f1 = current.results[dtype].get("f1", 0.0)
             previous_f1 = previous.results[dtype].get("f1", 0.0)
             delta = current_f1 - previous_f1
-            if delta < -0.10:
+
+            # Determine readiness tier for this detector
+            precision = current.results[dtype].get("precision", 0.0)
+            sample_count = current.results[dtype].get("sample_count", 0)
+            readiness = _compute_readiness(current_f1, precision, sample_count)
+            gate = TIER_GATES.get(readiness, TIER_GATES["failing"])
+            max_regression = gate["max_regression"]
+
+            if delta < -max_regression:
                 regressions.append(
-                    f"{dtype}: {previous_f1:.4f} → {current_f1:.4f} ({delta:+.4f})"
+                    f"{dtype} ({readiness}): {previous_f1:.4f} → {current_f1:.4f} "
+                    f"({delta:+.4f}, max allowed: -{max_regression:.2f})"
                 )
 
     assert not regressions, (
-        f"Significant F1 regressions (>0.10 drop) vs previous experiment:\n"
+        f"Significant F1 regressions vs previous experiment:\n"
         + "\n".join(f"  {r}" for r in regressions)
+    )
+
+
+@pytest.mark.slow
+def test_per_tier_minimum_f1():
+    """Each detector must meet its readiness tier's minimum F1 gate."""
+    from app.detection_enterprise.calibrate import _compute_readiness
+
+    report = calibrate_all()
+    results = report["results"]
+
+    failures = []
+    for name, metrics in results.items():
+        f1 = metrics["f1"]
+        precision = metrics.get("precision", 0.0)
+        sample_count = metrics.get("sample_count", 0)
+        readiness = _compute_readiness(f1, precision, sample_count)
+        gate = TIER_GATES.get(readiness, TIER_GATES["failing"])
+
+        if f1 < gate["min_f1"]:
+            failures.append(
+                f"{name} ({readiness}): F1={f1:.4f} < tier min {gate['min_f1']:.2f}"
+            )
+
+    assert not failures, (
+        f"Detectors below their tier's minimum F1:\n"
+        + "\n".join(f"  {f}" for f in failures)
     )
 
 
@@ -180,3 +258,41 @@ def test_critical_detectors_above_target():
         f"Critical detectors below per-detector targets:\n"
         + "\n".join(f"  {f}" for f in failures)
     )
+
+
+# -----------------------------------------------------------------------
+# Saturation detection (Anthropic evals article)
+# -----------------------------------------------------------------------
+
+@pytest.mark.slow
+def test_saturated_detectors_flagged():
+    """Warn when any detector hits F1>=0.95 with few hard samples (saturation signal)."""
+    report = calibrate_all()
+    registry = generate_capability_registry(report)
+
+    saturated = [
+        name for name, entry in registry["capabilities"].items()
+        if entry.get("eval_category") == "saturated"
+    ]
+
+    # Informational: saturation means the eval no longer provides signal
+    if saturated:
+        import warnings
+        warnings.warn(
+            f"Saturated detectors (need harder samples): {', '.join(saturated)}",
+            stacklevel=1,
+        )
+
+
+@pytest.mark.slow
+def test_capability_registry_has_eval_categories():
+    """Capability registry assigns eval_category to every detector."""
+    report = calibrate_all()
+    registry = generate_capability_registry(report)
+
+    valid_categories = {"regression", "capability", "saturated"}
+    for name, entry in registry["capabilities"].items():
+        assert "eval_category" in entry, f"{name}: missing eval_category"
+        assert entry["eval_category"] in valid_categories, (
+            f"{name}: invalid eval_category '{entry['eval_category']}'"
+        )

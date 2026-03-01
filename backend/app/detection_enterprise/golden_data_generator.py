@@ -606,6 +606,36 @@ class GoldenDataGenerator:
         logger.info("Generated %d total entries across all types", len(all_generated))
         return all_generated
 
+    def generate_for_type(
+        self,
+        detection_type: DetectionType,
+        difficulty: str = "hard",
+        count: int = 10,
+        existing_entries: Optional[List[GoldenDatasetEntry]] = None,
+    ) -> List[GoldenDatasetEntry]:
+        """Generate entries for a specific type at a specific difficulty.
+
+        Designed for targeted generation to address eval saturation — when a
+        detector scores F1>=0.95 with few hard samples, this generates harder
+        cases to restore meaningful signal.
+
+        Args:
+            detection_type: The detection type to generate for.
+            difficulty: Difficulty level (easy/medium/hard).
+            count: Number of entries to generate.
+            existing_entries: Existing entries for few-shot context.
+
+        Returns:
+            List of newly generated entries.
+        """
+        return self.generate(
+            detection_type=detection_type,
+            count=count,
+            positive_ratio=0.5,
+            existing_entries=existing_entries,
+            difficulty=difficulty,
+        )
+
     # ------------------------------------------------------------------
     # Internal helpers
     # ------------------------------------------------------------------

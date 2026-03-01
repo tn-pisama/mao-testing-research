@@ -78,6 +78,14 @@ class GoldenDataset:
     def get_entries_by_tag(self, tag: str) -> List[GoldenDatasetEntry]:
         return [e for e in self.entries.values() if tag in e.tags]
 
+    def get_difficulty_distribution(self, detection_type: DetectionType) -> Dict[str, int]:
+        """Get count of entries per difficulty level for a detection type."""
+        entries = self.get_entries_by_type(detection_type)
+        dist: Dict[str, int] = {}
+        for e in entries:
+            dist[e.difficulty] = dist.get(e.difficulty, 0) + 1
+        return dist
+
     def to_labeled_samples(self) -> List[LabeledSample]:
         return [e.to_labeled_sample() for e in self.entries.values()]
 

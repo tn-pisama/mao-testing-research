@@ -106,6 +106,7 @@ def create_experiment_from_report(report: Dict[str, Any]) -> CalibrationExperime
             "git_commit": _get_git_commit(),
             "python_version": f"{sys.version_info.major}.{sys.version_info.minor}.{sys.version_info.micro}",
             "skipped": report.get("skipped", []),
+            "llm_cost_summary": report.get("llm_cost_summary", {}),
         },
     )
 
@@ -185,6 +186,9 @@ class CalibrationHistory:
             lines.append(f"    dataset_size={exp.golden_dataset_size}, hash={exp.golden_dataset_hash}")
             if exp.metadata.get("git_commit"):
                 lines.append(f"    git_commit={exp.metadata['git_commit']}")
+            llm_cost = exp.metadata.get("llm_cost_summary", {})
+            if llm_cost.get("total_escalations", 0) > 0:
+                lines.append(f"    llm_cost=${llm_cost['total_cost_usd']:.4f} ({llm_cost['total_escalations']} escalations)")
 
         if len(experiments) >= 2:
             current = experiments[-1]
