@@ -35,6 +35,7 @@ from app.api.v1 import (
     billing,
     workflow_groups,
     diagnostics,
+    diagnose as icp_diagnose,
 )
 
 settings = get_settings()
@@ -154,6 +155,11 @@ app.include_router(billing.router, prefix="/api/v1")  # Stripe billing
 app.include_router(workflow_groups.router, prefix="/api/v1/tenants/{tenant_id}")  # Workflow grouping
 app.include_router(diagnostics.router, prefix="/api/v1")  # Detector diagnostics
 
+# ICP Agent Forensics — always available (no enterprise features needed)
+# Only mount if enterprise diagnose is NOT taking the /diagnose prefix
+if not (enterprise_routers_loaded and settings.features.is_enabled("ml_detection")):
+    app.include_router(icp_diagnose.router, prefix="/api/v1")  # Agent Forensics (ICP)
+
 # Enterprise routers - conditionally included based on feature flags
 if enterprise_routers_loaded:
     if settings.features.is_enabled("advanced_evals"):
@@ -166,7 +172,7 @@ if enterprise_routers_loaded:
     if settings.features.is_enabled("trace_replay"):
         app.include_router(replay.router, prefix="/api/v1/tenants/{tenant_id}", tags=["enterprise"])
     if settings.features.is_enabled("ml_detection"):
-        app.include_router(diagnose.router, prefix="/api/v1", tags=["enterprise"])  # Agent Forensics
+        app.include_router(diagnose.router, prefix="/api/v1", tags=["enterprise"])  # Agent Forensics (Enterprise)
     if settings.features.is_enabled("quality_assessment"):
         app.include_router(quality.router, prefix="/api/v1", tags=["enterprise"])  # Quality Assessment
         app.include_router(quality_healing.router, prefix="/api/v1", tags=["enterprise"])  # Quality Healing
