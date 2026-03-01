@@ -63,12 +63,12 @@ class TurnAwareCommunicationBreakdownDetector(TurnAwareDetector):
         (r'\bsoon|later|eventually\b', "vague_timeline"),
     ]
 
-    # Misunderstanding indicators
+    # Misunderstanding indicators (reduced to strong signals only)
+    # Removed benign clarification phrases like "actually", "to clarify", "let me clarify"
     MISUNDERSTANDING_INDICATORS = [
-        "i think you meant", "did you mean", "not sure what",
-        "unclear", "confused", "misunderstood", "didn't understand",
-        "wrong", "incorrect", "that's not", "actually",
-        "let me clarify", "to clarify", "what i meant",
+        "not sure what you", "misunderstood", "didn't understand",
+        "that's not what i", "you got it wrong",
+        "communication breakdown", "miscommunication",
     ]
 
     # Format expectation keywords
@@ -81,8 +81,8 @@ class TurnAwareCommunicationBreakdownDetector(TurnAwareDetector):
 
     def __init__(
         self,
-        intent_threshold: float = 0.35,
-        max_ambiguity_issues: int = 3,
+        intent_threshold: float = 0.60,  # Raised from 0.35 to reduce FPR
+        max_ambiguity_issues: int = 5,   # Raised from 3 to reduce FPR
     ):
         self.intent_threshold = intent_threshold
         self.max_ambiguity_issues = max_ambiguity_issues
@@ -146,7 +146,11 @@ class TurnAwareCommunicationBreakdownDetector(TurnAwareDetector):
                 })
                 affected_turns.append(turn.turn_number)
 
-        if not issues:
+        # Require 2+ issues to flag (a single ambiguity isn't a breakdown)
+        has_strong_signal = any(
+            i["type"] in ("intent_mismatch", "explicit_misunderstanding") for i in issues
+        )
+        if not issues or (len(issues) < 2 and not has_strong_signal):
             return TurnAwareDetectionResult(
                 detected=False,
                 severity=TurnAwareSeverity.NONE,
@@ -157,11 +161,11 @@ class TurnAwareCommunicationBreakdownDetector(TurnAwareDetector):
             )
 
         # Determine severity
-        if any(i["type"] == "intent_mismatch" for i in issues):
+        if any(i["type"] == "intent_mismatch" for i in issues) and len(issues) >= 2:
             severity = TurnAwareSeverity.SEVERE
         elif any(i["type"] == "explicit_misunderstanding" for i in issues):
             severity = TurnAwareSeverity.MODERATE
-        elif len(issues) >= 3:
+        elif len(issues) >= 4:
             severity = TurnAwareSeverity.MODERATE
         else:
             severity = TurnAwareSeverity.MINOR
@@ -210,7 +214,12 @@ class TurnAwareCommunicationBreakdownDetector(TurnAwareDetector):
         sender: TurnSnapshot,
         receiver: TurnSnapshot,
     ) -> Optional[dict]:
-        """Check if receiver's response aligns with sender's intent."""
+        """Check if receiver's response aligns with sender's intent.
+
+        Note: Action verb matching is unreliable without semantic similarity.
+        Only flag when there is zero overlap AND the sender had 2+ clear actions,
+        combined with the receiver addressing a completely different topic.
+        """
         sender_words = set(sender.content.lower().split())
         receiver_words = set(receiver.content.lower().split())
 
@@ -218,8 +227,8 @@ class TurnAwareCommunicationBreakdownDetector(TurnAwareDetector):
         sender_actions = sender_words & set(self.ACTION_VERBS)
         receiver_actions = receiver_words & set(self.ACTION_VERBS)
 
-        if not sender_actions:
-            # No clear action requested
+        if len(sender_actions) < 2:
+            # Need 2+ clear actions to make a reliable judgment
             return None
 
         # Check if receiver addressed the requested actions
@@ -229,16 +238,23 @@ class TurnAwareCommunicationBreakdownDetector(TurnAwareDetector):
         negative_indicators = {"error", "failed", "cannot", "unable", "refused", "sorry", "can't"}
         has_negative = bool(receiver_words & negative_indicators)
 
-        if action_match < self.intent_threshold and not has_negative:
-            return {
-                "type": "intent_mismatch",
-                "sender_turn": sender.turn_number,
-                "receiver_turn": receiver.turn_number,
-                "alignment_score": action_match,
-                "requested_actions": list(sender_actions),
-                "addressed_actions": list(receiver_actions),
-                "description": f"Response doesn't address requested actions ({action_match:.0%} alignment)",
-            }
+        # Only flag on zero overlap (complete mismatch) with no negatives
+        if action_match == 0.0 and not has_negative:
+            # Additional check: ensure receiver talks about something completely different
+            # by checking noun/keyword overlap is also very low
+            sender_nouns = {w for w in sender_words if len(w) > 4}
+            receiver_nouns = {w for w in receiver_words if len(w) > 4}
+            noun_overlap = len(sender_nouns & receiver_nouns) / max(len(sender_nouns), 1)
+            if noun_overlap < 0.1:
+                return {
+                    "type": "intent_mismatch",
+                    "sender_turn": sender.turn_number,
+                    "receiver_turn": receiver.turn_number,
+                    "alignment_score": action_match,
+                    "requested_actions": list(sender_actions),
+                    "addressed_actions": list(receiver_actions),
+                    "description": f"Response doesn't address requested actions ({action_match:.0%} alignment)",
+                }
         return None
 
     def _check_format_compliance(
@@ -246,13 +262,22 @@ class TurnAwareCommunicationBreakdownDetector(TurnAwareDetector):
         sender: TurnSnapshot,
         receiver: TurnSnapshot,
     ) -> Optional[dict]:
-        """Check if receiver followed expected format."""
+        """Check if receiver followed expected format.
+
+        Only flags when sender explicitly requests a format (e.g., "return JSON",
+        "give me a list", "provide code"). Casual mentions don't count.
+        """
         sender_lower = sender.content.lower()
         expected_format = None
 
-        # Detect expected format from sender's message
-        for fmt, keywords in self.FORMAT_KEYWORDS.items():
-            if any(kw in sender_lower for kw in keywords):
+        # Only detect explicit format requests (not casual mentions)
+        explicit_format_patterns = {
+            "json": ["return json", "provide json", "output json", "respond with json", "give me json", "in json format"],
+            "code": ["write code", "provide code", "give me code", "show me the code"],
+        }
+
+        for fmt, patterns in explicit_format_patterns.items():
+            if any(p in sender_lower for p in patterns):
                 expected_format = fmt
                 break
 

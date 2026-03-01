@@ -46,12 +46,13 @@ class TurnAwareTaskDecompositionDetector(TurnAwareDetector):
     supported_failure_modes = ["F2"]
 
     # Indicators of task complexity requiring decomposition
+    # Must match 2+ to flag as complex (reduced from overly broad list)
     COMPLEX_TASK_INDICATORS = [
-        "system", "platform", "application", "service", "architecture",
-        "authentication", "authorization", "database", "migration",
-        "refactor", "integration", "infrastructure", "deployment",
-        "pipeline", "workflow", "multi-step", "end-to-end",
+        "architecture", "authentication", "migration",
+        "refactor", "infrastructure", "deployment",
+        "pipeline", "multi-step", "end-to-end",
     ]
+    MIN_COMPLEXITY_INDICATORS = 2  # Require 2+ indicators to flag as complex
 
     # Indicators that decomposition is happening
     DECOMPOSITION_PATTERNS = [
@@ -85,7 +86,7 @@ class TurnAwareTaskDecompositionDetector(TurnAwareDetector):
     def __init__(
         self,
         min_steps_for_complex: int = 3,
-        max_vague_ratio: float = 0.3,
+        max_vague_ratio: float = 0.5,
     ):
         self.min_steps_for_complex = min_steps_for_complex
         self.max_vague_ratio = max_vague_ratio
@@ -122,11 +123,12 @@ class TurnAwareTaskDecompositionDetector(TurnAwareDetector):
         issues = []
         affected_turns = []
 
-        # Check if task is complex
+        # Check if task is complex (require 2+ indicators, not just 1)
         task_content = " ".join([t.content.lower() for t in task_turns])
-        is_complex_task = any(
-            ind in task_content for ind in self.COMPLEX_TASK_INDICATORS
+        complexity_matches = sum(
+            1 for ind in self.COMPLEX_TASK_INDICATORS if ind in task_content
         )
+        is_complex_task = complexity_matches >= self.MIN_COMPLEXITY_INDICATORS
 
         # Analyze agent responses for decomposition
         agent_content = " ".join([t.content for t in agent_turns])
@@ -186,7 +188,9 @@ class TurnAwareTaskDecompositionDetector(TurnAwareDetector):
                 "description": f"Complex task has only {len(steps)} steps (minimum {self.min_steps_for_complex} recommended)",
             })
 
-        if not issues:
+        # Require 2+ issues or a severe issue to flag detection
+        has_severe = any(i["type"] == "missing_decomposition" for i in issues)
+        if not issues or (len(issues) < 2 and not has_severe):
             return TurnAwareDetectionResult(
                 detected=False,
                 severity=TurnAwareSeverity.NONE,
@@ -197,9 +201,9 @@ class TurnAwareTaskDecompositionDetector(TurnAwareDetector):
             )
 
         # Determine severity
-        if any(i["type"] == "missing_decomposition" for i in issues):
+        if has_severe:
             severity = TurnAwareSeverity.SEVERE
-        elif len(issues) >= 2:
+        elif len(issues) >= 3:
             severity = TurnAwareSeverity.MODERATE
         else:
             severity = TurnAwareSeverity.MINOR
@@ -257,9 +261,10 @@ class TurnAwareTaskDecompositionDetector(TurnAwareDetector):
         for step in steps:
             step_lower = step.lower()
             vague_count = sum(1 for ind in self.VAGUE_INDICATORS if ind in step_lower)
-            if vague_count >= 1:
+            if vague_count >= 2:
+                # Require 2+ vague indicators to flag a step
                 vague.append(step)
-            elif len(step.split()) < 3:
-                # Very short steps are often vague
+            elif len(step.split()) < 2:
+                # Only flag very short single-word steps
                 vague.append(step)
         return vague

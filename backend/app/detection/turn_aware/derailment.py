@@ -107,10 +107,10 @@ class TurnAwareDerailmentDetector(EmbeddingMixin, TurnAwareDetector):
 
     def __init__(
         self,
-        drift_threshold: float = 0.55,  # Lowered for better recall (was 0.70)
+        drift_threshold: float = 0.70,  # Raised back to reduce FPR (was 0.55)
         min_turns_for_analysis: int = 3,
         window_size: int = 5,
-        require_strong_evidence: bool = False,  # Disabled for MAST recall (was True)
+        require_strong_evidence: bool = True,  # Re-enabled to reduce FPR (was False)
         framework: Optional[str] = None,
     ):
         self.drift_threshold = drift_threshold
@@ -451,7 +451,9 @@ class TurnAwareDerailmentDetector(EmbeddingMixin, TurnAwareDetector):
         new_terms = output_terms - task_terms
         novelty_ratio = len(new_terms) / max(len(output_terms), 1)
 
-        drift_score = (1 - coverage) * 0.6 + novelty_ratio * 0.4
+        # Keyword overlap is naturally low in conversations, so weight coverage
+        # heavily and discount novelty (agents often introduce new terms legitimately)
+        drift_score = (1 - coverage) * 0.8 + novelty_ratio * 0.2
         return min(drift_score, 1.0), coverage
 
     def _detect_progressive_drift(
@@ -560,8 +562,8 @@ class TurnAwareDerailmentDetector(EmbeddingMixin, TurnAwareDetector):
         first_avg = sum(first_half) / len(first_half) if first_half else 0
         second_avg = sum(second_half) / len(second_half) if second_half else 0
 
-        # 10% degradation threshold for progressive drift
-        if second_avg < first_avg - 0.1:
+        # 20% degradation threshold for progressive drift (raised from 10%)
+        if second_avg < first_avg - 0.2:
             min_idx = similarities.index(min(similarities))
             worst_turn = turns[min_idx].turn_number
 

@@ -76,7 +76,7 @@ from app.detection.hybrid_pipeline import (
 )
 from app.detection.task_extractors import ConversationTurn, extract_task, detect_framework
 from app.detection.agent_graph import GraphBasedCoordinationDetector, GraphBasedUsurpationDetector
-from app.detection.mast_llm_judge import (
+from app.detection.llm_judge import (
     get_cost_tracker,
     reset_cost_tracker,
     FullLLMDetector,
@@ -190,6 +190,7 @@ class EvaluationResult:
 def load_mast_data(
     data_dir: Path,
     limit: Optional[int] = None,
+    data_file: Optional[Path] = None,
 ) -> List[Dict[str, Any]]:
     """Load MAST data from files.
 
@@ -198,40 +199,56 @@ def load_mast_data(
     Args:
         data_dir: Directory containing MAST data
         limit: Optional limit on number of records
+        data_file: Optional specific file to load (overrides data_dir search)
 
     Returns:
         List of MAST record dictionaries
     """
     records = []
 
-    # Try common file patterns
-    patterns = [
-        "MAD_full_dataset.json",
-        "mast_data.json",
-        "*.jsonl",
-        "mast/*.json",
-    ]
+    if data_file:
+        # Load from specific file
+        if data_file.suffix == ".json":
+            with open(data_file) as f:
+                data = json.load(f)
+                if isinstance(data, list):
+                    records.extend(data)
+                else:
+                    records.append(data)
+        elif data_file.suffix == ".jsonl":
+            with open(data_file) as f:
+                for line in f:
+                    if line.strip():
+                        records.append(json.loads(line))
+    else:
+        # Try common file patterns
+        patterns = [
+            "MAD_full_dataset.json",
+            "mast_data.json",
+            "*.jsonl",
+            "mast/*.json",
+        ]
 
-    for pattern in patterns:
-        for file_path in data_dir.glob(pattern):
-            if file_path.suffix == ".json":
-                with open(file_path) as f:
-                    data = json.load(f)
-                    if isinstance(data, list):
-                        records.extend(data)
-                    else:
-                        records.append(data)
-            elif file_path.suffix == ".jsonl":
-                with open(file_path) as f:
-                    for line in f:
-                        if line.strip():
-                            records.append(json.loads(line))
+        for pattern in patterns:
+            for file_path in data_dir.glob(pattern):
+                if file_path.suffix == ".json":
+                    with open(file_path) as f:
+                        data = json.load(f)
+                        if isinstance(data, list):
+                            records.extend(data)
+                        else:
+                            records.append(data)
+                elif file_path.suffix == ".jsonl":
+                    with open(file_path) as f:
+                        for line in f:
+                            if line.strip():
+                                records.append(json.loads(line))
+
+                if limit and len(records) >= limit:
+                    break
 
             if limit and len(records) >= limit:
                 break
-
-        if limit and len(records) >= limit:
-            break
 
     if limit:
         records = records[:limit]
@@ -1035,6 +1052,7 @@ def evaluate_mast_dataset(
     use_hybrid: bool = False,
     llm_enabled: bool = True,
     use_full_llm: bool = False,
+    data_file: Optional[Path] = None,
 ) -> EvaluationResult:
     """Run full MAST evaluation with conversation trace support.
 
@@ -1061,6 +1079,9 @@ def evaluate_mast_dataset(
     if use_sample_data:
         records = generate_sample_mast_data()
         print(f"Using {len(records)} sample traces")
+    elif data_file:
+        records = load_mast_data(data_dir or Path("."), limit, data_file=data_file)
+        print(f"Loaded {len(records)} traces from {data_file}")
     elif data_dir:
         records = load_mast_data(data_dir, limit)
         print(f"Loaded {len(records)} traces from {data_dir}")
@@ -1473,6 +1494,17 @@ def main():
         action="store_true",
         help="Disable LLM verification in hybrid mode (pattern-only with graph)"
     )
+    parser.add_argument(
+        "--data-file",
+        type=Path,
+        default=None,
+        help="Specific data file to load (overrides --data-dir search)"
+    )
+    parser.add_argument(
+        "--test-set",
+        action="store_true",
+        help="Evaluate on held-out test set (data/mast_test_373.json)"
+    )
 
     args = parser.parse_args()
 
@@ -1481,8 +1513,17 @@ def main():
         print("Error: --hybrid and --full-llm are mutually exclusive. Choose one.")
         return 1
 
+    # Handle --test-set convenience flag
+    data_file = args.data_file
+    if args.test_set:
+        data_file = Path("data/mast_test_373.json")
+        if not data_file.exists():
+            print(f"Test set not found: {data_file}")
+            return 1
+        print(f"Using held-out test set: {data_file}")
+
     # Check for MAST data
-    if not args.use_sample_data and not args.data_dir.exists():
+    if not args.use_sample_data and not data_file and not args.data_dir.exists():
         print(f"Data directory not found: {args.data_dir}")
         print("Using sample data instead. Download MAST data from:")
         print("  https://github.com/KevinHuuu/MAST")
@@ -1501,6 +1542,7 @@ def main():
         use_hybrid=args.hybrid,
         llm_enabled=llm_enabled,
         use_full_llm=args.full_llm,
+        data_file=data_file,
     )
 
     # Print results
