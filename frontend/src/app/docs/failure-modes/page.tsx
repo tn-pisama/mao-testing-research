@@ -73,7 +73,7 @@ const FAILURE_MODES: FailureMode[] = [
       { name: 'Code Quality Checks', description: 'Validates language match, deprecated syntax, stub implementations' },
       { name: 'Numeric Tolerance', description: 'Handles approximate constraints like word counts (within 20%)' },
     ],
-    accuracy: { f1: 0.703, precision: 0, recall: 0 },
+    accuracy: { f1: 0.703, precision: 0.592, recall: 0.866 },
     subTypes: ['scope_drift', 'missing_requirement', 'ambiguous_spec', 'conflicting_spec'],
   },
   {
@@ -98,7 +98,7 @@ const FAILURE_MODES: FailureMode[] = [
       { name: 'Vagueness Detection', description: 'Flags non-actionable steps using indicator words' },
       { name: 'Complexity Estimation', description: 'Identifies subtasks too broad for single execution' },
     ],
-    accuracy: { f1: 0.759, precision: 0, recall: 0 },
+    accuracy: { f1: 0.727, precision: 0.727, recall: 0.727 },
     subTypes: ['impossible_subtask', 'missing_dependency', 'circular_dependency', 'duplicate_work', 'wrong_granularity', 'vague_subtask'],
   },
   {
@@ -173,7 +173,7 @@ const FAILURE_MODES: FailureMode[] = [
       { name: 'Error Handler Audit', description: 'Verifies error handling on critical nodes' },
       { name: 'Bottleneck Analysis', description: 'Detects nodes with disproportionate in-degree' },
     ],
-    accuracy: { f1: 0.808, precision: 0.843, recall: 0.776 },
+    accuracy: { f1: 0.797, precision: 0.851, recall: 0.750 },
     subTypes: ['unreachable_node', 'dead_end', 'missing_error_handling', 'bottleneck', 'missing_termination'],
   },
 
@@ -224,7 +224,7 @@ const FAILURE_MODES: FailureMode[] = [
       { name: 'Conceptual Overlap', description: 'Measures semantic similarity between context and response' },
       { name: 'Reference Tracking', description: 'Verifies claims of context usage against actual content' },
     ],
-    accuracy: { f1: 0.759, precision: 0, recall: 0 },
+    accuracy: { f1: 0.868, precision: 0.805, recall: 0.943 },
   },
   {
     mastId: 'F8',
@@ -248,7 +248,7 @@ const FAILURE_MODES: FailureMode[] = [
       { name: 'Negative Suppression', description: 'Flags when negative findings are absent from positive-heavy reports' },
       { name: 'Semantic Retention', description: 'Uses embeddings to verify key concepts are preserved' },
     ],
-    accuracy: { f1: 0.728, precision: 0, recall: 0 },
+    accuracy: { f1: 0.874, precision: 0.805, recall: 0.957 },
     subTypes: ['critical_omission', 'detail_loss', 'negative_suppression', 'selective_reporting'],
   },
   {
@@ -298,7 +298,7 @@ const FAILURE_MODES: FailureMode[] = [
       { name: 'Ambiguity Detection', description: 'Flags semantically ambiguous instructions' },
       { name: 'Completeness Check', description: 'Verifies all required information is present in messages' },
     ],
-    accuracy: { f1: 0.740, precision: 0, recall: 0 },
+    accuracy: { f1: 0.818, precision: 0.724, recall: 0.940 },
     subTypes: ['intent_mismatch', 'format_mismatch', 'semantic_ambiguity', 'incomplete_information'],
   },
   {
@@ -323,7 +323,7 @@ const FAILURE_MODES: FailureMode[] = [
       { name: 'Circular Delegation', description: 'Traces delegation chains for cycles' },
       { name: 'Progress Monitoring', description: 'Measures whether exchanges produce forward progress' },
     ],
-    accuracy: { f1: 0.770, precision: 0, recall: 0 },
+    accuracy: { f1: 0.797, precision: 0.836, recall: 0.761 },
   },
 
   // ── Verification Failures (FC3) ──────────────────────────────────────────
@@ -399,7 +399,7 @@ const FAILURE_MODES: FailureMode[] = [
       { name: 'Hedging Detection', description: 'Flags qualifiers like "appears complete" or "seems done"' },
       { name: 'JSON Indicators', description: 'Checks structured output for incomplete flags' },
     ],
-    accuracy: { f1: 0.720, precision: 0, recall: 0 },
+    accuracy: { f1: 0.745, precision: 0.687, recall: 0.814 },
     subTypes: ['premature_completion', 'partial_delivery', 'ignored_subtasks', 'missed_criteria'],
   },
 
@@ -474,7 +474,7 @@ const FAILURE_MODES: FailureMode[] = [
       { name: 'Attack Classification', description: 'Categorizes as override, injection, hijack, bypass, or jailbreak' },
       { name: 'Benign Filtering', description: 'Filters security research and red team contexts' },
     ],
-    accuracy: { f1: 0.927, precision: 0.983, recall: 0.877 },
+    accuracy: { f1: 0.944, precision: 0.983, recall: 0.908 },
   },
   {
     mastId: 'Ext',
@@ -498,7 +498,7 @@ const FAILURE_MODES: FailureMode[] = [
       { name: 'Confidence Analysis', description: 'Flags definitive claims without hedging' },
       { name: 'Source Comparison', description: 'Semantic similarity between claims and available sources' },
     ],
-    accuracy: { f1: 0.770, precision: 0, recall: 0 },
+    accuracy: { f1: 0.772, precision: 0.718, recall: 0.836 },
   },
   {
     mastId: 'Ext',
@@ -522,7 +522,7 @@ const FAILURE_MODES: FailureMode[] = [
       { name: 'Ungrounded Claims', description: 'Identifies claims with no source evidence' },
       { name: 'Source Coverage', description: 'Checks that output claims map to actual source content' },
     ],
-    accuracy: { f1: 0.690, precision: 0, recall: 0 },
+    accuracy: { f1: 0.671, precision: 0.636, recall: 0.710 },
   },
   {
     mastId: 'Ext',
@@ -546,7 +546,7 @@ const FAILURE_MODES: FailureMode[] = [
       { name: 'Precision Measurement', description: 'Ratio of useful vs total retrieved documents' },
       { name: 'Query Alignment', description: 'Semantic match between query intent and retrieved content' },
     ],
-    accuracy: { f1: 0.832, precision: 0.721, recall: 0.984 },
+    accuracy: { f1: 0.824, precision: 0.718, recall: 0.968 },
   },
   {
     mastId: 'Ext',
@@ -570,7 +570,7 @@ const FAILURE_MODES: FailureMode[] = [
       { name: 'Tone Analysis', description: 'Monitors communication style consistency over turns' },
       { name: 'Role-Aware Thresholds', description: 'Different drift thresholds per role type (analytical, creative, etc.)' },
     ],
-    accuracy: { f1: 0.716, precision: 0, recall: 0 },
+    accuracy: { f1: 0.932, precision: 0.899, recall: 0.969 },
   },
   {
     mastId: 'Ext',

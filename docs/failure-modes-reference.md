@@ -20,39 +20,39 @@ PISAMA detects **21 failure modes** organized into 4 categories:
 
 ---
 
-## Accuracy Summary (Sprint 9b)
+## Accuracy Summary (Sprint 9c)
 
 ### Production Detectors (F1 >= 0.80)
 
 | Detector | F1 | Precision | Recall | Tier |
 |----------|-----|-----------|--------|------|
-| Prompt Injection | 0.927 | 0.983 | 0.877 | ICP |
+| Prompt Injection | 0.944 | 0.983 | 0.908 | ICP |
+| Persona Drift | 0.932 | 0.899 | 0.969 | ICP |
 | State Corruption | 0.906 | 0.955 | 0.863 | ICP |
+| Info Withholding | 0.874 | 0.805 | 0.957 | ICP |
+| Context Neglect | 0.868 | 0.805 | 0.943 | ICP |
 | Loop Detection | 0.846 | 0.829 | 0.863 | ICP |
-| Retrieval Quality | 0.832 | 0.721 | 0.984 | Enterprise |
+| Retrieval Quality | 0.824 | 0.718 | 0.968 | Enterprise |
 | Context Overflow | 0.823 | 1.000 | 0.699 | ICP |
 | Task Derailment | 0.820 | 0.702 | 0.985 | ICP |
-| Flawed Workflow | 0.808 | 0.843 | 0.776 | ICP |
+| Communication Breakdown | 0.818 | 0.724 | 0.940 | ICP |
 
 ### Beta Detectors (F1 0.70-0.79)
 
-| Detector | F1 | Tier |
-|----------|-----|------|
-| Hallucination | 0.770 | ICP |
-| Coordination Failure | 0.770 | ICP |
-| Poor Decomposition | 0.759 | ICP |
-| Context Neglect | 0.759 | ICP |
-| Communication Breakdown | 0.740 | ICP |
-| Info Withholding | 0.728 | ICP |
-| Completion Misjudgment | 0.720 | ICP |
-| Persona Drift | 0.716 | ICP |
-| Specification Mismatch | 0.703 | ICP |
+| Detector | F1 | Precision | Recall | Tier |
+|----------|-----|-----------|--------|------|
+| Coordination Failure | 0.797 | 0.836 | 0.761 | ICP |
+| Flawed Workflow | 0.797 | 0.851 | 0.750 | ICP |
+| Hallucination | 0.772 | 0.718 | 0.836 | ICP |
+| Completion Misjudgment | 0.745 | 0.687 | 0.814 | ICP |
+| Poor Decomposition | 0.727 | 0.727 | 0.727 | ICP |
+| Specification Mismatch | 0.703 | 0.592 | 0.866 | ICP |
 
 ### Emerging (F1 < 0.70)
 
-| Detector | F1 | Tier |
-|----------|-----|------|
-| Grounding Failure | 0.690 | ICP |
+| Detector | F1 | Precision | Recall | Tier |
+|----------|-----|-----------|--------|------|
+| Grounding Failure | 0.671 | 0.636 | 0.710 | ICP |
 
 Enterprise-only detectors (Resource Misallocation, Tool Provision, Role Usurpation, Output Validation, Quality Gate Bypass) do not have published benchmarks yet.
 
@@ -67,7 +67,7 @@ Enterprise-only detectors (Resource Misallocation, Tool Provision, Role Usurpati
 | **Detector key** | `specification` |
 | **Tier** | ICP |
 | **Severity** | Medium |
-| **Accuracy** | F1 0.703 |
+| **Accuracy** | F1 0.703, P 0.592, R 0.866 |
 | **MAST mapping** | FM-1.1 Disobey Task Specification |
 
 **What it detects**: Task output doesn't match the user's original specification. Catches scope drift, missing requirements, ambiguous specs, language mismatches, and conflicting specifications.
@@ -95,7 +95,7 @@ Enterprise-only detectors (Resource Misallocation, Tool Provision, Role Usurpati
 | **Detector key** | `decomposition` |
 | **Tier** | ICP |
 | **Severity** | Medium |
-| **Accuracy** | F1 0.759 |
+| **Accuracy** | F1 0.727, P 0.727, R 0.727 |
 | **MAST mapping** | FM-1.2 |
 
 **What it detects**: Task breakdown creates subtasks that are impossible, circular, vague, too granular, or too broad. Critical for complex multi-step agent workflows.
@@ -179,7 +179,7 @@ Enterprise-only detectors (Resource Misallocation, Tool Provision, Role Usurpati
 | **Detector key** | `workflow` |
 | **Tier** | ICP |
 | **Severity** | High |
-| **Accuracy** | F1 0.808, P 0.843, R 0.776 |
+| **Accuracy** | F1 0.797, P 0.851, R 0.750 |
 | **MAST mapping** | FM-1.5 |
 
 **What it detects**: Structural problems in agent workflow graphs including unreachable nodes, dead ends, missing error handling, bottlenecks, and missing termination conditions.
@@ -238,7 +238,7 @@ Enterprise-only detectors (Resource Misallocation, Tool Provision, Role Usurpati
 | **Detector key** | `context` |
 | **Tier** | ICP |
 | **Severity** | Medium |
-| **Accuracy** | F1 0.759 |
+| **Accuracy** | F1 0.868, P 0.805, R 0.943 |
 | **MAST mapping** | FM-1.4 Loss of Conversation History |
 
 **What it detects**: Agent ignores or fails to use upstream context provided by previous agents or workflow steps. Critical in multi-agent handoffs.
@@ -264,7 +264,7 @@ Enterprise-only detectors (Resource Misallocation, Tool Provision, Role Usurpati
 | **Detector key** | `information_withholding` |
 | **Tier** | ICP |
 | **Severity** | Medium |
-| **Accuracy** | F1 0.728 |
+| **Accuracy** | F1 0.874, P 0.805, R 0.957 |
 | **MAST mapping** | FM-2.4 Information Withholding |
 
 **What it detects**: Agent doesn't share critical information with peers, including omitting negative findings, over-summarizing, or selectively reporting.
@@ -322,7 +322,7 @@ Enterprise-only detectors (Resource Misallocation, Tool Provision, Role Usurpati
 | **Detector key** | `communication` |
 | **Tier** | ICP |
 | **Severity** | Medium |
-| **Accuracy** | F1 0.740 |
+| **Accuracy** | F1 0.818, P 0.724, R 0.940 |
 | **MAST mapping** | FM-2.1, FM-2.2, FM-2.5 |
 
 **What it detects**: Messages between agents are misunderstood or misinterpreted, causing incorrect downstream behavior.
@@ -350,7 +350,7 @@ Enterprise-only detectors (Resource Misallocation, Tool Provision, Role Usurpati
 | **Detector key** | `coordination` |
 | **Tier** | ICP |
 | **Severity** | Critical |
-| **Accuracy** | F1 0.770 |
+| **Accuracy** | F1 0.797, P 0.836, R 0.761 |
 | **MAST mapping** | FM-2.5 Ignored Input |
 
 **What it detects**: Handoff failures, circular delegation, excessive back-and-forth, and ignored messages between coordinating agents.
@@ -434,7 +434,7 @@ Enterprise-only detectors (Resource Misallocation, Tool Provision, Role Usurpati
 | **Detector key** | `completion_misjudgment` |
 | **Tier** | ICP |
 | **Severity** | High |
-| **Accuracy** | F1 0.720 |
+| **Accuracy** | F1 0.745, P 0.687, R 0.814 |
 | **MAST mapping** | FM-1.5 Unaware of Termination, FM-3.1 Premature Termination |
 
 **What it detects**: Agent incorrectly determines task completion, including premature claims, partial delivery, and ignored subtasks. Most prevalent failure mode (40% in MAST-Data for FM-1.5).
@@ -515,7 +515,7 @@ Enterprise-only detectors (Resource Misallocation, Tool Provision, Role Usurpati
 | **Detector key** | `injection` |
 | **Tier** | ICP |
 | **Severity** | Critical |
-| **Accuracy** | F1 0.927, P 0.983, R 0.877 |
+| **Accuracy** | F1 0.944, P 0.983, R 0.908 |
 
 **What it detects**: Prompt injection attacks and jailbreak attempts targeting LLM agents. The highest-accuracy detector in the system.
 
@@ -540,7 +540,7 @@ Enterprise-only detectors (Resource Misallocation, Tool Provision, Role Usurpati
 | **Detector key** | `hallucination` |
 | **Tier** | ICP |
 | **Severity** | High |
-| **Accuracy** | F1 0.770 |
+| **Accuracy** | F1 0.772, P 0.718, R 0.836 |
 
 **What it detects**: Factual inaccuracies, fabricated information, and unsupported claims in agent outputs.
 
@@ -565,7 +565,7 @@ Enterprise-only detectors (Resource Misallocation, Tool Provision, Role Usurpati
 | **Detector key** | `grounding_failure` |
 | **Tier** | ICP |
 | **Severity** | High |
-| **Accuracy** | F1 0.690 |
+| **Accuracy** | F1 0.671, P 0.636, R 0.710 |
 
 **What it detects**: Output contains claims, data, or statements not supported by source documents. Inspired by OfficeQA benchmark showing agents achieve less than 45% accuracy on document-grounded tasks.
 
@@ -590,7 +590,7 @@ Enterprise-only detectors (Resource Misallocation, Tool Provision, Role Usurpati
 | **Detector key** | `retrieval_quality` |
 | **Tier** | Enterprise |
 | **Severity** | Medium |
-| **Accuracy** | F1 0.832, P 0.721, R 0.984 |
+| **Accuracy** | F1 0.824, P 0.718, R 0.968 |
 
 **What it detects**: Agents retrieve wrong, irrelevant, or insufficient documents for a task. Retrieval is the primary bottleneck in RAG systems.
 
@@ -615,7 +615,7 @@ Enterprise-only detectors (Resource Misallocation, Tool Provision, Role Usurpati
 | **Detector key** | `persona_drift` |
 | **Tier** | ICP |
 | **Severity** | Medium |
-| **Accuracy** | F1 0.716 |
+| **Accuracy** | F1 0.932, P 0.899, R 0.969 |
 
 **What it detects**: Agent deviates from intended role, personality, or behavioral constraints over time. Uses role-aware thresholds for different agent types.
 
