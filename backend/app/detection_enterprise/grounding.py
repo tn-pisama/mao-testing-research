@@ -237,6 +237,9 @@ class GroundingDetector:
         # Normalize the value for comparison
         normalized = value.lower().replace(',', '').replace('$', '')
 
+        # v1.4: Expand K/M/B suffixes (50K → 50000, 2.5M → 2500000)
+        _MULTIPLIERS = {'k': 1_000, 'm': 1_000_000, 'b': 1_000_000_000}
+
         for i, source in enumerate(sources):
             source_lower = source.lower().replace(',', '').replace('$', '')
 
@@ -251,15 +254,32 @@ class GroundingDetector:
                 if num_match:
                     target_num = float(num_match.group())
 
-                    # Find all numbers in source
-                    source_nums = re.findall(r'[\d.]+', source_lower)
-                    for src_num in source_nums:
+                    # v1.4: For percentages > 90%, use absolute tolerance
+                    # (99.99% vs 99.9% is a 10x availability difference in SLAs)
+                    tolerance = self.numerical_tolerance
+                    use_absolute = False
+                    if number['type'] == 'percentage' and target_num > 90:
+                        use_absolute = True
+                        tolerance = 0.05  # 0.05 percentage point absolute tolerance
+
+                    # v1.4: Find numbers in source, including K/M/B suffixed values
+                    source_nums = re.findall(r'[\d.]+[kmb]?', source_lower)
+                    for src_num_str in source_nums:
                         try:
-                            src_float = float(src_num)
+                            multiplier = 1
+                            clean = src_num_str
+                            if clean[-1] in _MULTIPLIERS:
+                                multiplier = _MULTIPLIERS[clean[-1]]
+                                clean = clean[:-1]
+                            src_float = float(clean) * multiplier
                             # Check within tolerance
-                            if abs(target_num - src_float) / max(target_num, 1) < self.numerical_tolerance:
-                                return True, src_num, f"source_{i}"
-                        except ValueError:
+                            if use_absolute:
+                                diff = abs(target_num - src_float)
+                            else:
+                                diff = abs(target_num - src_float) / max(target_num, 1)
+                            if diff < tolerance:
+                                return True, src_num_str, f"source_{i}"
+                        except (ValueError, IndexError):
                             continue
             except ValueError:
                 pass
@@ -274,7 +294,7 @@ class GroundingDetector:
     def _verify_claim_in_sources_word_overlap(
         self,
         claim: str,
-        sources: list[str]
+        sources: list[str],
     ) -> tuple[bool, float, Optional[str]]:
         """Fallback: Check claim grounding using word overlap."""
         claim_lower = claim.lower()
@@ -350,7 +370,7 @@ class GroundingDetector:
     def _verify_claim_in_sources(
         self,
         claim: str,
-        sources: list[str]
+        sources: list[str],
     ) -> tuple[bool, float, Optional[str]]:
         """Check if a claim is supported by source documents.
 
@@ -467,6 +487,71 @@ class GroundingDetector:
 
         return GroundingSeverity.NONE
 
+    # v1.4: Vague quantifiers that replace specific numbers from source
+    _VAGUE_QUANTIFIERS = re.compile(
+        r'\b(?:several|many|some|various|numerous|a few|a number of|multiple)\b',
+        re.IGNORECASE,
+    )
+
+    # v1.4: Positive qualifiers that might contradict warnings in source
+    _POSITIVE_QUALIFIERS = re.compile(
+        r'\b(?:comfortably|easily|smoothly|effortlessly|without\s+issues?|no\s+problems?)\b',
+        re.IGNORECASE,
+    )
+    _WARNING_INDICATORS = re.compile(
+        r'\b(?:warning|limit|peaked|threshold|approaching|exceeded|concern|critical|alert|overflow|maxed|capacity)\b',
+        re.IGNORECASE,
+    )
+
+    def _detect_selective_omission(
+        self, output: str, sources: list[str],
+    ) -> Optional[UngroundedClaim]:
+        """v1.4: Detect when output uses vague quantities while source has specifics."""
+        source_text = " ".join(sources)
+        source_numbers = self._extract_numbers(source_text)
+        output_numbers = self._extract_numbers(output)
+
+        # Count distinct numeric values in source (excluding years/quarters)
+        source_distinct = {
+            n['value'] for n in source_numbers
+            if n['type'] not in ('year', 'quarter')
+        }
+        output_distinct = {
+            n['value'] for n in output_numbers
+            if n['type'] not in ('year', 'quarter')
+        }
+
+        # If source has 3+ numbers but output has < 2 AND uses vague quantifiers
+        if len(source_distinct) >= 3 and len(output_distinct) < 2:
+            vague = self._VAGUE_QUANTIFIERS.search(output)
+            if vague:
+                return UngroundedClaim(
+                    claim=f"Uses vague '{vague.group()}' when source provides specific numbers",
+                    claim_type="selective_omission",
+                    searched_sources=True,
+                    evidence=f"Source has {len(source_distinct)} specific values: {', '.join(list(source_distinct)[:5])}",
+                )
+        return None
+
+    def _detect_misleading_qualifier(
+        self, output: str, sources: list[str],
+    ) -> Optional[UngroundedClaim]:
+        """v1.4: Detect positive qualifiers that contradict source warnings."""
+        qualifier = self._POSITIVE_QUALIFIERS.search(output)
+        if not qualifier:
+            return None
+
+        source_text = " ".join(sources)
+        warning = self._WARNING_INDICATORS.search(source_text)
+        if warning:
+            return UngroundedClaim(
+                claim=f"Claims '{qualifier.group()}' but source indicates '{warning.group()}'",
+                claim_type="misleading_qualifier",
+                searched_sources=True,
+                evidence=source_text[:200],
+            )
+        return None
+
     def detect(
         self,
         agent_output: str,
@@ -518,7 +603,20 @@ class GroundingDetector:
 
         for num in numbers:
             found, source_value, source_loc = self._verify_number_in_sources(num, source_documents)
-            if not found and num['type'] in ['currency', 'percentage']:
+            # v1.4: Also check plain numbers >= 10 (not just currency/percentage).
+            # Skip years and single-digit numbers (too common/ambiguous).
+            should_flag = False
+            if not found:
+                if num['type'] in ('currency', 'percentage'):
+                    should_flag = True
+                elif num['type'] == 'number':
+                    try:
+                        val = float(num['value'].replace(',', ''))
+                        if val >= 10:
+                            should_flag = True
+                    except ValueError:
+                        pass
+            if should_flag:
                 numerical_errors.append(NumericalError(
                     claimed_value=num['value'],
                     source_value=source_value,
@@ -531,7 +629,7 @@ class GroundingDetector:
         ungrounded_claims = []
         grounded_count = 0
 
-        # When sources are sparse, limit claims checked to reduce false positives
+        # When sources are sparse, limit claims checked to reduce false positives.
         total_source_words = sum(len(s.split()) for s in source_documents)
         max_claims_to_check = len(claims)
         if total_source_words < 200:
@@ -567,11 +665,21 @@ class GroundingDetector:
 
         citation_accuracy = valid_citations / len(citations) if citations else 1.0
 
+        # v1.4: Additional checks for subtle grounding failures
+        omission = self._detect_selective_omission(agent_output, source_documents)
+        if omission:
+            ungrounded_claims.append(omission)
+        misleading = self._detect_misleading_qualifier(agent_output, source_documents)
+        if misleading:
+            ungrounded_claims.append(misleading)
+
         # Determine if failure detected
         detected = (
             grounding_score < self.grounding_threshold or
             citation_accuracy < self.citation_threshold or
-            len(numerical_errors) > 0
+            len(numerical_errors) > 0 or
+            omission is not None or
+            misleading is not None
         )
 
         # Calculate severity

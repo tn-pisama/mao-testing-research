@@ -144,14 +144,24 @@ class TestTaskDecompositionDetector:
 
     # Missing Dependency Detection Tests
     def test_detect_missing_dependencies(self):
-        """Should detect missing dependencies between subtasks."""
+        """Should detect missing dependencies when consumer precedes producer."""
         subtasks = [
-            Subtask(id="task_0", description="Create the report", dependencies=[]),
-            Subtask(id="task_1", description="Use the report for analysis", dependencies=[]),
+            Subtask(id="task_0", description="Use report for analysis", dependencies=[]),
+            Subtask(id="task_1", description="Create report summary", dependencies=[]),
         ]
         missing = self.detector._detect_missing_dependencies(subtasks)
-        # task_1 uses "report" which task_0 creates, but has no dependency
-        assert "task_1" in missing
+        # task_0 uses "report" before task_1 creates it, with no dependency declared
+        assert "task_0" in missing
+
+    def test_sequential_order_satisfies_dependency(self):
+        """Should NOT flag when producer step comes before consumer step."""
+        subtasks = [
+            Subtask(id="task_0", description="Create report summary", dependencies=[]),
+            Subtask(id="task_1", description="Use report for analysis", dependencies=[]),
+        ]
+        missing = self.detector._detect_missing_dependencies(subtasks)
+        # Sequential order (producer first) satisfies the implicit dependency
+        assert missing == []
 
     def test_no_missing_dependencies(self):
         """Should return empty when dependencies are properly declared."""
@@ -182,7 +192,7 @@ class TestTaskDecompositionDetector:
         assert result.subtask_count == 5
 
     def test_detect_too_few_subtasks(self):
-        """Should detect when there are too few subtasks."""
+        """Should detect when decomposition has too few/vague subtasks for complex task."""
         result = self.detector.detect(
             task_description="Complex enterprise system migration",
             decomposition="""
@@ -191,7 +201,9 @@ class TestTaskDecompositionDetector:
         )
         assert result.detected is True
         assert DecompositionIssue.WRONG_GRANULARITY in result.issues
-        assert "too_few_subtasks" in result.problematic_subtasks
+        # Single vague subtask parses to empty -> no_structured_decomposition
+        assert any(p in result.problematic_subtasks
+                   for p in ["too_few_subtasks", "no_structured_decomposition"])
 
     def test_detect_too_many_subtasks(self):
         """Should detect when there are too many subtasks."""

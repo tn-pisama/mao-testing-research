@@ -31,7 +31,7 @@ import re
 logger = logging.getLogger(__name__)
 
 # Detector version for tracking
-DETECTOR_VERSION = "1.7"
+DETECTOR_VERSION = "1.9"
 DETECTOR_NAME = "TaskDecompositionDetector"
 
 # v1.1: Words that indicate vague/non-actionable steps
@@ -256,13 +256,23 @@ class TaskDecompositionDetector:
         
         return duplicates
 
+    # v1.9: Common articles/prepositions that shouldn't be treated as nouns
+    _DEP_STOP_WORDS = frozenset({"a", "an", "the", "it", "its", "to", "in", "on", "at", "by", "of", "for"})
+
     def _detect_missing_dependencies(self, subtasks: list[Subtask]) -> list[str]:
+        """v1.9: Detect missing explicit dependencies between subtasks.
+
+        Fixes: filter stopwords from noun extraction, and respect sequential
+        ordering (if producer step comes before consumer step, implicit dep is met).
+        """
         missing = []
-        
+
         output_indicators = ["create", "generate", "produce", "build", "write"]
         input_indicators = ["use", "read", "process", "analyze", "with"]
-        
-        outputs = {}
+
+        # Map output nouns to (step_id, step_index)
+        id_to_idx = {st.id: i for i, st in enumerate(subtasks)}
+        outputs: dict[str, tuple[str, int]] = {}
         for st in subtasks:
             desc_lower = st.description.lower()
             for indicator in output_indicators:
@@ -270,20 +280,29 @@ class TaskDecompositionDetector:
                     words = desc_lower.split()
                     idx = words.index(indicator) if indicator in words else -1
                     if idx >= 0 and idx + 1 < len(words):
-                        outputs[words[idx + 1]] = st.id
-        
+                        noun = words[idx + 1]
+                        if noun not in self._DEP_STOP_WORDS and len(noun) > 1:
+                            outputs[noun] = (st.id, id_to_idx.get(st.id, -1))
+
         for st in subtasks:
             desc_lower = st.description.lower()
+            consumer_idx = id_to_idx.get(st.id, -1)
             for indicator in input_indicators:
                 if indicator in desc_lower:
                     words = desc_lower.split()
                     idx = words.index(indicator) if indicator in words else -1
                     if idx >= 0 and idx + 1 < len(words):
                         needed = words[idx + 1]
-                        if needed in outputs and outputs[needed] not in st.dependencies:
-                            if outputs[needed] != st.id:
+                        if needed in outputs:
+                            producer_id, producer_idx = outputs[needed]
+                            if producer_id == st.id:
+                                continue
+                            # v1.9: Sequential ordering satisfies implicit dependency
+                            if producer_idx < consumer_idx:
+                                continue
+                            if producer_id not in st.dependencies:
                                 missing.append(st.id)
-        
+
         return missing
 
     def _detect_vague_subtasks(self, subtasks: list[Subtask]) -> list[str]:
@@ -367,19 +386,17 @@ class TaskDecompositionDetector:
             return 4  # Complex tasks need at least 4 steps
         return self.min_subtasks  # Default minimum
 
-    # v1.7: Common ordering dependency pairs — (prerequisite_keywords, dependent_keywords).
+    # v1.7/v1.9: Common ordering dependency pairs — (prerequisite_keywords, dependent_keywords).
     # If a step matching dependent appears BEFORE a step matching prerequisite, it's wrong order.
+    # v1.9: Removed overly broad pairs (create→process, load→transform) that caused FPs
+    # on legitimate orderings like "process payment" before "create order record".
     _ORDERING_DEPS = [
-        ({"create", "set up", "setup", "initialize", "init", "install", "configure"},
-         {"use", "deploy", "send", "process", "transform", "query", "run"}),
         ({"build", "compile", "package"},
          {"deploy", "release", "ship", "publish"}),
         ({"validate", "verify", "check", "lint", "test"},
          {"deploy", "release", "ship", "publish", "merge"}),
         ({"create account", "register", "sign up", "create user"},
          {"send email", "send verification", "verification email", "welcome email"}),
-        ({"fetch", "retrieve", "load", "get data", "read"},
-         {"transform", "process", "analyze", "aggregate", "compute"}),
         ({"test", "run tests", "unit test", "integration test"},
          {"deploy", "release", "ship", "publish"}),
         ({"design", "plan", "architect", "define schema"},
@@ -451,8 +468,19 @@ class TaskDecompositionDetector:
             return candidates
         return []
 
+    @staticmethod
+    def _has_word(keyword: str, text: str) -> bool:
+        """v1.9: Word-boundary aware keyword matching (prevents 'use' matching 'users')."""
+        if " " in keyword:
+            return keyword in text
+        return bool(re.search(r'\b' + re.escape(keyword) + r'\b', text))
+
     def _detect_ordering_issues(self, subtasks: list[Subtask]) -> list[str]:
-        """v1.7: Detect steps in wrong logical order based on common dependency pairs."""
+        """v1.7/v1.9: Detect steps in wrong logical order based on common dependency pairs.
+
+        v1.9: Use word-boundary matching and require same-concern overlap
+        to avoid flagging unrelated steps (e.g., 'Deploy ES' before 'Configure Logstash').
+        """
         if len(subtasks) < 2:
             return []
 
@@ -462,7 +490,7 @@ class TaskDecompositionDetector:
             prereq_idx = None
             for i, st in enumerate(subtasks):
                 desc = st.description.lower()
-                if any(kw in desc for kw in dep_keywords):
+                if any(self._has_word(kw, desc) for kw in dep_keywords):
                     prereq_idx = i
                     break
 
@@ -470,7 +498,7 @@ class TaskDecompositionDetector:
             dependent_idx = None
             for i, st in enumerate(subtasks):
                 desc = st.description.lower()
-                if any(kw in desc for kw in post_keywords):
+                if any(self._has_word(kw, desc) for kw in post_keywords):
                     dependent_idx = i
                     break
 
@@ -499,7 +527,10 @@ class TaskDecompositionDetector:
 
     @staticmethod
     def _req_stem(word: str) -> str:
-        if word.endswith("s") and len(word) >= 5:
+        # v1.9: Handle "ses" plurals (processes→process) and skip double-s words
+        if word.endswith("ses") and len(word) >= 6:
+            word = word[:-2]  # "processes" → "process"
+        elif word.endswith("s") and not word.endswith("ss") and len(word) >= 5:
             word = word[:-1]
         for sfx in TaskDecompositionDetector._REQ_STEM_SUFFIXES:
             if word.endswith(sfx) and len(word) - len(sfx) >= 3:
@@ -542,7 +573,9 @@ class TaskDecompositionDetector:
                 elif self._req_stem(w) in step_stems:
                     found += 1
             coverage = found / len(chunk_words)
-            if coverage < 0.3 and len(chunk_words) >= 2:
+            # v1.9: Require 3+ words — 2-word chunks are too often synonym gaps
+            # (e.g., "virus scanning" vs decomposition using "scan with ClamAV")
+            if coverage < 0.3 and len(chunk_words) >= 3:
                 missing.append(chunk.strip()[:60])
 
         return missing
