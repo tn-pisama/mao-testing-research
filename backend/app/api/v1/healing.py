@@ -1,6 +1,8 @@
 """Healing API endpoints for self-healing fix management."""
 
+import asyncio
 import logging
+import os
 from fastapi import APIRouter, Depends, HTTPException, Query
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy import select
@@ -24,6 +26,7 @@ from app.fixes import (
 )
 from app.integrations.n8n_client import N8nApiClient, N8nApiError, N8nWorkflowDiff
 from app.healing.verification import VerificationOrchestrator
+from app.notifications import create_notification_router
 
 logger = logging.getLogger(__name__)
 
@@ -134,6 +137,55 @@ class HealingListResponse(BaseModel):
     per_page: int
 
 
+def _get_notification_router():
+    """Create a notification router from environment variables.
+
+    Returns None if no notification channels are configured.
+    """
+    webhook_url = os.getenv("HEALING_WEBHOOK_URL")
+    discord_webhook = os.getenv("HEALING_DISCORD_WEBHOOK")
+    ui_base_url = os.getenv("UI_BASE_URL", "")
+
+    if not webhook_url and not discord_webhook:
+        return None
+
+    return create_notification_router(
+        webhook_url=webhook_url,
+        discord_webhook=discord_webhook,
+        ui_base_url=ui_base_url,
+    )
+
+
+async def _notify_approval_required_background(
+    healing_id: str,
+    detection_id: str,
+    fix_type: str,
+    fix_title: str,
+    fix_description: str,
+    risk_level: str,
+    tenant_id: str,
+):
+    """Fire-and-forget notification for approval-required fixes."""
+    try:
+        router = _get_notification_router()
+        if not router:
+            return
+
+        payload = router.build_approval_payload(
+            healing_id=healing_id,
+            detection_id=detection_id,
+            fix_type=fix_type,
+            fix_title=fix_title,
+            fix_description=fix_description,
+            risk_level=risk_level,
+            tenant_id=tenant_id,
+        )
+        await router.notify_approval_required(payload)
+        await router.close()
+    except Exception as e:
+        logger.warning(f"Approval notification failed (non-critical): {e}")
+
+
 def get_fix_generator() -> FixGenerator:
     """Create and configure the fix generator."""
     generator = FixGenerator()
@@ -233,6 +285,20 @@ async def trigger_healing(
     db.add(healing)
     await db.commit()
     await db.refresh(healing)
+
+    # Fire-and-forget notification when approval is required
+    if request.approval_required:
+        asyncio.create_task(
+            _notify_approval_required_background(
+                healing_id=str(healing.id),
+                detection_id=str(detection_id),
+                fix_type=selected_fix.fix_type.value,
+                fix_title=selected_fix.title,
+                fix_description=selected_fix.description,
+                risk_level=getattr(selected_fix, "risk_level", "MEDIUM"),
+                tenant_id=tenant_id,
+            )
+        )
 
     return TriggerHealingResponse(
         healing_id=str(healing.id),

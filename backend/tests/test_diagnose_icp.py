@@ -16,6 +16,9 @@ from app.api.v1.diagnose import (
     _build_error_detections,
     _pick_primary,
     _generate_root_cause,
+    _generate_fix_preview,
+    _annotate_symptom_detections,
+    _CATEGORY_TO_DETECTION_TYPE,
 )
 
 
@@ -320,3 +323,262 @@ class TestDiagnosePipeline:
         content = "\n".join(lines)
         trace = import_trace(content, "raw")
         assert len(trace.spans) == 2
+
+
+# ---------------------------------------------------------------------------
+# Diagnose → Fix Generation bridge tests
+# ---------------------------------------------------------------------------
+
+class TestFixGenerationBridge:
+    """Test the stateless fix generation bridge from diagnose detections."""
+
+    def test_loop_detection_generates_fix(self):
+        """Loop detection should produce a fix preview."""
+        primary = {
+            "category": "loop",
+            "detected": True,
+            "confidence": 0.85,
+            "severity": "severe",
+            "title": "Infinite Loop Detected",
+            "description": "Agent repeats the same search 8 times",
+            "evidence": [{"type": "loop"}],
+            "affected_spans": ["s1", "s2"],
+            "suggested_fix": "Add exit condition",
+        }
+        available, preview = _generate_fix_preview(primary, [primary])
+        assert available is True
+        assert preview is not None
+        assert preview.confidence > 0
+        assert len(preview.description) > 0
+        assert len(preview.action) > 0
+
+    def test_failure_mode_f7_generates_fix(self):
+        """F7 (Context Neglect) should produce a fix preview."""
+        primary = {
+            "category": "F7",
+            "detected": True,
+            "confidence": 0.72,
+            "severity": "moderate",
+            "title": "Context Neglect",
+            "description": "Agent ignored relevant context",
+            "evidence": [],
+            "affected_spans": ["s3"],
+            "suggested_fix": "Ensure context is passed to agent",
+        }
+        available, preview = _generate_fix_preview(primary, [primary])
+        assert available is True
+        assert preview is not None
+
+    def test_no_fix_for_none_primary(self):
+        """No primary detection should return no fix."""
+        available, preview = _generate_fix_preview(None, [])
+        assert available is False
+        assert preview is None
+
+    def test_category_mapping_covers_all_failure_modes(self):
+        """All F1-F17 failure modes should have a detection_type mapping."""
+        for i in range(1, 18):
+            key = f"F{i}"
+            assert key in _CATEGORY_TO_DETECTION_TYPE, f"Missing mapping for {key}"
+
+    def test_category_mapping_covers_span_categories(self):
+        """Common span-based categories should have mappings."""
+        for cat in ["loop", "corruption", "hallucination", "injection", "overflow"]:
+            assert cat in _CATEGORY_TO_DETECTION_TYPE, f"Missing mapping for {cat}"
+
+    def test_fix_preview_confidence_values(self):
+        """Fix preview confidence should be a valid float between 0 and 1."""
+        primary = {
+            "category": "F5",
+            "detected": True,
+            "confidence": 0.8,
+            "severity": "moderate",
+            "title": "Flawed Workflow",
+            "description": "Workflow has design issues",
+            "evidence": [],
+            "affected_spans": [],
+            "suggested_fix": None,
+        }
+        available, preview = _generate_fix_preview(primary, [primary])
+        if available and preview:
+            assert 0.0 < preview.confidence <= 1.0
+
+    def test_unknown_category_does_not_crash(self):
+        """Unknown detection category should not raise — just return no fix."""
+        primary = {
+            "category": "completely_unknown_xyz",
+            "detected": True,
+            "confidence": 0.6,
+            "severity": "minor",
+            "title": "Unknown Issue",
+            "description": "Something weird",
+            "evidence": [],
+            "affected_spans": [],
+            "suggested_fix": None,
+        }
+        available, preview = _generate_fix_preview(primary, [primary])
+        # Should not crash; may or may not generate a fix
+        assert isinstance(available, bool)
+
+
+# ---------------------------------------------------------------------------
+# Compound-aware healing tests
+# ---------------------------------------------------------------------------
+
+class TestCompoundAwareHealing:
+    """Test compound-aware fix generation and symptom annotation."""
+
+    def _make_compound_result(self):
+        """Create a mock compound analysis with a causal chain: F5 → F7 → F14."""
+        from app.api.v1.schemas import (
+            DiagnoseCompoundAnalysis,
+            DiagnoseCausalChain,
+            DiagnoseFailureCluster,
+        )
+        return DiagnoseCompoundAnalysis(
+            clusters=[
+                DiagnoseFailureCluster(
+                    cluster_id=0,
+                    label="Cascade from Flawed Workflow",
+                    root_cause_mode="F5",
+                    member_modes=["F5", "F7", "F14"],
+                    relationship="causal_chain",
+                    confidence_boost=0.10,
+                )
+            ],
+            causal_chains=[
+                DiagnoseCausalChain(
+                    chain=["F5", "F7", "F14"],
+                    chain_labels=["Flawed Workflow", "Context Neglect", "Completion Misjudgment"],
+                    explanation="Flawed Workflow cascaded through Context Neglect to produce Completion Misjudgment",
+                )
+            ],
+            co_occurrence_notes=[],
+            root_cause_mode="F5",
+            root_cause_explanation="Root cause: Flawed Workflow.",
+        )
+
+    def test_fix_preview_notes_downstream_symptoms(self):
+        """Fix preview description should mention downstream symptoms when compound."""
+        compound = self._make_compound_result()
+        primary = {
+            "category": "F5",
+            "detected": True,
+            "confidence": 0.8,
+            "severity": "moderate",
+            "title": "Flawed Workflow",
+            "description": "Workflow design flaw detected",
+            "evidence": [],
+            "affected_spans": [],
+            "suggested_fix": None,
+        }
+        available, preview = _generate_fix_preview(
+            primary, [primary], compound_result=compound
+        )
+        assert available is True
+        assert preview is not None
+        assert "root cause fix" in preview.description
+        assert "2 downstream" in preview.description
+
+    def test_fix_preview_without_compound(self):
+        """Fix preview without compound should not mention downstream."""
+        primary = {
+            "category": "F5",
+            "detected": True,
+            "confidence": 0.8,
+            "severity": "moderate",
+            "title": "Flawed Workflow",
+            "description": "Workflow design flaw detected",
+            "evidence": [],
+            "affected_spans": [],
+            "suggested_fix": None,
+        }
+        available, preview = _generate_fix_preview(primary, [primary])
+        if available and preview:
+            assert "downstream" not in preview.description
+
+    def test_annotate_symptom_detections(self):
+        """Symptom detections should be annotated with root cause info."""
+        compound = self._make_compound_result()
+        detections = [
+            {
+                "category": "F5",
+                "detected": True,
+                "confidence": 0.8,
+                "severity": "moderate",
+                "title": "Flawed Workflow",
+                "description": "Design flaw",
+                "evidence": [],
+                "affected_spans": [],
+                "suggested_fix": "Redesign workflow",
+            },
+            {
+                "category": "F7",
+                "detected": True,
+                "confidence": 0.6,
+                "severity": "moderate",
+                "title": "Context Neglect",
+                "description": "Context ignored",
+                "evidence": [],
+                "affected_spans": [],
+                "suggested_fix": "Pass context",
+            },
+            {
+                "category": "F14",
+                "detected": True,
+                "confidence": 0.5,
+                "severity": "minor",
+                "title": "Completion Misjudgment",
+                "description": "Premature completion",
+                "evidence": [],
+                "affected_spans": [],
+                "suggested_fix": None,
+            },
+        ]
+        annotated = _annotate_symptom_detections(detections, compound)
+
+        # Root cause (F5) should keep its original fix
+        assert "Redesign workflow" in annotated[0]["suggested_fix"]
+
+        # Symptoms (F7, F14) should be annotated
+        assert "Likely symptom" in annotated[1]["suggested_fix"]
+        assert "Flawed Workflow" in annotated[1]["suggested_fix"]
+        assert "Likely symptom" in annotated[2]["suggested_fix"]
+
+    def test_annotate_preserves_original_fix(self):
+        """Annotation should preserve the original suggested_fix text."""
+        compound = self._make_compound_result()
+        detections = [
+            {
+                "category": "F7",
+                "detected": True,
+                "confidence": 0.6,
+                "severity": "moderate",
+                "title": "Context Neglect",
+                "description": "Context ignored",
+                "evidence": [],
+                "affected_spans": [],
+                "suggested_fix": "Pass context to agent",
+            },
+        ]
+        _annotate_symptom_detections(detections, compound)
+        assert "Pass context to agent" in detections[0]["suggested_fix"]
+
+    def test_annotate_no_compound_is_noop(self):
+        """Without compound analysis, annotation should not modify detections."""
+        detections = [
+            {
+                "category": "F7",
+                "detected": True,
+                "confidence": 0.6,
+                "severity": "moderate",
+                "title": "Context Neglect",
+                "description": "Context ignored",
+                "evidence": [],
+                "affected_spans": [],
+                "suggested_fix": "Pass context",
+            },
+        ]
+        original_fix = detections[0]["suggested_fix"]
+        _annotate_symptom_detections(detections, None)
+        assert detections[0]["suggested_fix"] == original_fix

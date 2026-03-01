@@ -19,12 +19,35 @@ from .withholding_fixes import WithholdingFixGenerator
 from .completion_fixes import CompletionFixGenerator
 from .cost_fixes import CostFixGenerator
 
+def create_fix_generator() -> FixGenerator:
+    """Create a FixGenerator with all detection-specific generators registered."""
+    gen = FixGenerator()
+    gen.register(LoopFixGenerator())
+    gen.register(CorruptionFixGenerator())
+    gen.register(PersonaFixGenerator())
+    gen.register(DeadlockFixGenerator())
+    gen.register(HallucinationFixGenerator())
+    gen.register(InjectionFixGenerator())
+    gen.register(OverflowFixGenerator())
+    gen.register(DerailmentFixGenerator())
+    gen.register(ContextNeglectFixGenerator())
+    gen.register(CommunicationFixGenerator())
+    gen.register(SpecificationFixGenerator())
+    gen.register(DecompositionFixGenerator())
+    gen.register(WorkflowFixGenerator())
+    gen.register(WithholdingFixGenerator())
+    gen.register(CompletionFixGenerator())
+    gen.register(CostFixGenerator())
+    return gen
+
+
 __all__ = [
     "FixSuggestion",
     "FixType",
     "CodeChange",
     "FixConfidence",
     "FixGenerator",
+    "create_fix_generator",
     "LoopFixGenerator",
     "CorruptionFixGenerator",
     "PersonaFixGenerator",

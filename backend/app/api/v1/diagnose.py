@@ -23,6 +23,7 @@ from app.api.v1.schemas import (
     DiagnoseCompoundAnalysis,
     DiagnoseFailureCluster,
     DiagnoseCausalChain,
+    DiagnoseAutoFixPreview,
 )
 from app.ingestion.importers import import_trace, detect_format
 from app.ingestion.universal_trace import UniversalTrace, SpanType
@@ -197,6 +198,170 @@ def _build_error_detections(trace: UniversalTrace) -> list:
     return results
 
 
+# --------------------------------------------------------------------------- #
+#  Diagnose → Fix Generation bridge
+# --------------------------------------------------------------------------- #
+
+# Maps diagnose detection categories to detection_type strings that fix
+# generators recognise via substring matching in their can_handle() methods.
+_CATEGORY_TO_DETECTION_TYPE = {
+    # Span-based detections
+    "loop": "infinite_loop",
+    "corruption": "state_corruption",
+    "error": "workflow_error",
+    # Turn-aware failure modes (F1-F17)
+    "F1": "specification_mismatch",
+    "F2": "task_decomposition",
+    "F3": "cost_budget_overflow",
+    "F4": "workflow_tool_provision",
+    "F5": "workflow_design_flaw",
+    "F6": "task_derailment",
+    "F7": "context_neglect",
+    "F8": "information_withholding",
+    "F9": "persona_drift_usurpation",
+    "F10": "communication_breakdown",
+    "F11": "coordination_deadlock",
+    "F12": "specification_validation",
+    "F13": "completion_quality_gate",
+    "F14": "completion_misjudgment",
+    "F15": "completion_termination",
+    "F16": "derailment_reasoning",
+    "F17": "communication_clarification",
+    # Direct category names (from span-based detectors)
+    "hallucination": "hallucination",
+    "injection": "injection",
+    "overflow": "context_overflow",
+    "derailment": "task_derailment",
+    "context": "context_neglect",
+    "communication": "communication_breakdown",
+    "specification": "specification_mismatch",
+    "decomposition": "task_decomposition",
+    "workflow": "workflow_design_flaw",
+    "withholding": "information_withholding",
+    "completion": "completion_misjudgment",
+    "cost": "cost_budget_overflow",
+    "persona": "persona_drift",
+    "coordination": "coordination_deadlock",
+    "deadlock": "coordination_deadlock",
+}
+
+_CONFIDENCE_TO_FLOAT = {"high": 0.9, "medium": 0.7, "low": 0.4}
+
+
+def _generate_fix_preview(
+    primary: Optional[dict],
+    all_detections: list,
+    compound_result=None,
+) -> tuple:
+    """Generate a fix preview from detection results using stateless fix generators.
+
+    When compound analysis identifies a causal chain, generates fix only for the
+    root cause and notes that symptom detections are expected to resolve.
+
+    Returns (self_healing_available, auto_fix_preview).
+    No DB, no tenant, no persistence — purely generative.
+    """
+    if not primary:
+        return False, None
+
+    try:
+        from app.fixes import create_fix_generator, FixConfidence
+
+        generator = create_fix_generator()
+
+        detection_type = _CATEGORY_TO_DETECTION_TYPE.get(
+            primary["category"], primary["category"]
+        )
+
+        detection_dict = {
+            "id": f"diag_{primary['category']}",
+            "detection_type": detection_type,
+            "details": {
+                "evidence": primary.get("evidence", []),
+                "severity": primary.get("severity"),
+            },
+            "method": "diagnose",
+        }
+
+        fixes = generator.generate_fixes(detection_dict)
+
+        if fixes:
+            best = fixes[0]  # Already sorted by confidence
+            description = best.title
+            action = best.description
+
+            # Compound-aware: note how many symptoms should resolve
+            if compound_result and compound_result.causal_chains:
+                symptom_count = _count_downstream_symptoms(
+                    primary["category"], compound_result
+                )
+                if symptom_count > 0:
+                    description = (
+                        f"{best.title} (root cause fix — "
+                        f"{symptom_count} downstream issue{'s' if symptom_count != 1 else ''} "
+                        f"expected to resolve)"
+                    )
+
+            return True, DiagnoseAutoFixPreview(
+                description=description,
+                confidence=_CONFIDENCE_TO_FLOAT.get(
+                    best.confidence.value, 0.7
+                ),
+                action=action,
+            )
+    except Exception as e:
+        logger.warning(f"Fix generation failed: {e}")
+
+    return False, None
+
+
+def _count_downstream_symptoms(root_mode: str, compound_result) -> int:
+    """Count how many downstream symptoms a root cause mode has in the causal chains."""
+    count = 0
+    for chain in compound_result.causal_chains:
+        if chain.chain and chain.chain[0] == root_mode:
+            count += len(chain.chain) - 1  # Exclude the root itself
+    return count
+
+
+def _annotate_symptom_detections(
+    detections: list,
+    compound_result,
+) -> list:
+    """Mark symptom detections with a note that they're expected to resolve.
+
+    When a causal chain is present, symptom detections (non-root members)
+    get their suggested_fix updated to note they should resolve when the
+    root cause is fixed.
+    """
+    if not compound_result or not compound_result.causal_chains:
+        return detections
+
+    # Collect all symptom modes and their root cause labels
+    symptom_to_root: dict = {}
+    for chain in compound_result.causal_chains:
+        if len(chain.chain) < 2:
+            continue
+        root = chain.chain[0]
+        root_label = _FAILURE_MODE_TITLES.get(root, root)
+        for symptom in chain.chain[1:]:
+            symptom_to_root[symptom] = root_label
+
+    # Annotate symptom detections
+    for det in detections:
+        cat = det["category"]
+        if cat in symptom_to_root:
+            root_label = symptom_to_root[cat]
+            original_fix = det.get("suggested_fix") or ""
+            det["suggested_fix"] = (
+                f"Likely symptom of {root_label} — expected to resolve "
+                f"when root cause is fixed."
+                + (f" Original suggestion: {original_fix}" if original_fix else "")
+            )
+
+    return detections
+
+
 def _pick_primary(detections: list) -> Optional[dict]:
     """Select the primary (most important) detection result."""
     if not detections:
@@ -348,7 +513,21 @@ async def why_did_this_fail(request: DiagnoseRequest) -> DiagnoseResponse:
             else _generate_root_cause(primary, all_detections)
         )
 
-        # 7. Build response
+        # 7. Annotate symptom detections (compound-aware)
+        if compound_result:
+            _annotate_symptom_detections(all_detections, compound_result)
+
+        # 8. Generate fix preview (stateless, compound-aware)
+        healing_available = False
+        fix_preview = None
+        if request.include_fixes and all_detections:
+            healing_available, fix_preview = _generate_fix_preview(
+                primary, all_detections, compound_result
+            )
+            if healing_available:
+                detectors_run.append("fix_generator")
+
+        # 9. Build response
         elapsed_ms = int((time.monotonic() - start_ms) * 1000)
 
         primary_result = None
@@ -393,8 +572,8 @@ async def why_did_this_fail(request: DiagnoseRequest) -> DiagnoseResponse:
             total_tokens=trace.total_tokens,
             duration_ms=trace.total_duration_ms,
             root_cause_explanation=root_cause,
-            self_healing_available=False,
-            auto_fix_preview=None,
+            self_healing_available=healing_available,
+            auto_fix_preview=fix_preview,
             detection_time_ms=elapsed_ms,
             detectors_run=detectors_run,
         )
