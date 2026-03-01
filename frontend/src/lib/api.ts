@@ -284,6 +284,56 @@ export interface DiagnoseQuickCheckResult {
   message: string
 }
 
+// Calibration monitor types
+export interface CalibrationDetectorStats {
+  total_observations: number
+  detected_count: number
+  detection_rate: number
+  avg_confidence: number
+  confidence_distribution: {
+    high: number
+    likely: number
+    possible: number
+    low: number
+  }
+  severity_distribution: Record<string, number>
+  avg_detection_time_ms: number
+  alerts: CalibrationAlert[]
+}
+
+export interface CalibrationAlert {
+  type: 'high_detection_rate' | 'low_avg_confidence'
+  message: string
+  severity: string
+  detector?: string
+}
+
+export interface CalibrationMonitorData {
+  summary: {
+    total_detectors_observed: number
+    total_observations: number
+    total_diagnose_runs: number
+    detectors_with_alerts: number
+    monitoring_since: string
+    alert_count: number
+  }
+  detectors: Record<string, CalibrationDetectorStats>
+  alerts: CalibrationAlert[]
+}
+
+export interface ICPDetectorInventory {
+  tier: string
+  total_detectors: number
+  failure_modes_covered: number
+  detectors: Array<{
+    name: string
+    module: string
+    failure_mode: string | null
+    failure_mode_title: string | null
+    tier: string
+  }>
+}
+
 // Testing additional types
 export interface AssertionResult {
   assertion_type: string
@@ -1862,6 +1912,21 @@ export function createApiClient(token?: string | null, tenantId?: string | null)
         calibrated_at: string
         readiness_criteria: Record<string, any>
       }>(`/diagnostics/detector-status`, opts)
+    },
+
+    async getCalibrationMonitor() {
+      return fetchApi<CalibrationMonitorData>(`/diagnostics/monitor`, opts)
+    },
+
+    async getCalibrationAlerts() {
+      return fetchApi<{
+        alert_count: number
+        alerts: CalibrationAlert[]
+      }>(`/diagnostics/monitor/alerts`, opts)
+    },
+
+    async getICPDetectors() {
+      return fetchApi<ICPDetectorInventory>(`/diagnostics/icp-detectors`, opts)
     },
   }
 }
