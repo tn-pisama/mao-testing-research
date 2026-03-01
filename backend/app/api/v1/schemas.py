@@ -250,6 +250,32 @@ class DiagnoseAutoFixPreview(BaseModel):
     action: str
 
 
+class DiagnoseFailureCluster(BaseModel):
+    """A group of related failures sharing a root cause or pattern."""
+    cluster_id: int
+    label: str
+    root_cause_mode: Optional[str] = None
+    member_modes: List[str]
+    relationship: str  # "causal_chain", "co_occurrence", "standalone"
+    confidence_boost: float = 0.0
+
+
+class DiagnoseCausalChain(BaseModel):
+    """Ordered sequence of failures from root cause to terminal symptom."""
+    chain: List[str]
+    chain_labels: List[str]
+    explanation: str
+
+
+class DiagnoseCompoundAnalysis(BaseModel):
+    """Analysis of compound failure interactions when multiple failures co-occur."""
+    clusters: List[DiagnoseFailureCluster] = []
+    causal_chains: List[DiagnoseCausalChain] = []
+    co_occurrence_notes: List[str] = []
+    root_cause_mode: Optional[str] = None
+    root_cause_explanation: Optional[str] = None
+
+
 class DiagnoseResponse(BaseModel):
     """Response from trace diagnosis endpoint."""
     trace_id: str
@@ -264,6 +290,9 @@ class DiagnoseResponse(BaseModel):
 
     # All issues
     all_detections: List[DiagnoseDetectionResult] = []
+
+    # Compound analysis (populated when 2+ failures detected)
+    compound_analysis: Optional[DiagnoseCompoundAnalysis] = None
 
     # Trace stats
     total_spans: int

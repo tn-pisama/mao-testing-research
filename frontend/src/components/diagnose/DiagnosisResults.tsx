@@ -12,13 +12,15 @@ import {
   Zap,
   Activity,
   Loader2,
+  ArrowRight,
+  GitBranch,
   type LucideIcon
 } from 'lucide-react'
 import { Card, CardHeader, CardTitle, CardContent } from '../ui/Card'
 import { Badge } from '../ui/Badge'
 import { Button } from '../ui/Button'
 import { TermTooltip, getPlainEnglishTitle } from '../ui/Tooltip'
-import type { DiagnoseResult, DiagnoseDetection } from '@/lib/api'
+import type { DiagnoseResult, DiagnoseDetection, DiagnoseCompoundAnalysis } from '@/lib/api'
 
 interface DiagnosisResultsProps {
   result: DiagnoseResult
@@ -153,6 +155,107 @@ function DetectionItem({ detection }: { detection: DiagnoseDetection }) {
   )
 }
 
+const relationshipLabels: Record<string, { label: string; variant: 'error' | 'warning' | 'info' | 'default' }> = {
+  causal_chain: { label: 'Cascade', variant: 'error' },
+  co_occurrence: { label: 'Known Pattern', variant: 'warning' },
+  standalone: { label: 'Independent', variant: 'default' },
+}
+
+function CompoundAnalysisCard({ analysis }: { analysis: DiagnoseCompoundAnalysis }) {
+  return (
+    <Card className="border-purple-500/30">
+      <CardHeader>
+        <div className="flex items-center gap-2">
+          <div className="p-2 bg-purple-500/20 rounded-lg">
+            <GitBranch size={20} className="text-purple-400" />
+          </div>
+          <div>
+            <CardTitle className="text-purple-400">Failure Relationships</CardTitle>
+            <p className="text-xs text-slate-500 mt-0.5">
+              {analysis.clusters.length} cluster{analysis.clusters.length !== 1 ? 's' : ''} detected
+              {analysis.causal_chains.length > 0 && ` \u00b7 ${analysis.causal_chains.length} causal chain${analysis.causal_chains.length !== 1 ? 's' : ''}`}
+            </p>
+          </div>
+        </div>
+      </CardHeader>
+      <CardContent>
+        <div className="space-y-4">
+          {/* Causal Chains */}
+          {analysis.causal_chains.map((chain, idx) => (
+            <div key={idx} className="bg-slate-800/50 border border-slate-700 rounded-lg p-3">
+              <p className="text-xs text-slate-500 mb-2">Failure Cascade</p>
+              <div className="flex items-center gap-1 flex-wrap mb-2">
+                {chain.chain_labels.map((label, i) => (
+                  <span key={i} className="flex items-center gap-1">
+                    <span className={`text-sm font-mono px-2 py-0.5 rounded ${
+                      i === 0
+                        ? 'bg-red-500/20 text-red-300 border border-red-500/30'
+                        : 'bg-slate-700 text-slate-300'
+                    }`}>
+                      {chain.chain[i]}
+                    </span>
+                    <span className="text-xs text-slate-500">{label}</span>
+                    {i < chain.chain_labels.length - 1 && (
+                      <ArrowRight size={14} className="text-slate-600 mx-1" />
+                    )}
+                  </span>
+                ))}
+              </div>
+              <p className="text-sm text-slate-400">{chain.explanation}</p>
+            </div>
+          ))}
+
+          {/* Clusters */}
+          {analysis.clusters.filter(c => c.relationship !== 'standalone').map((cluster) => (
+            <div key={cluster.cluster_id} className="bg-slate-800/50 border border-slate-700 rounded-lg p-3">
+              <div className="flex items-center justify-between mb-2">
+                <span className="text-sm font-medium text-white">{cluster.label}</span>
+                <Badge
+                  variant={relationshipLabels[cluster.relationship]?.variant || 'default'}
+                  size="sm"
+                >
+                  {relationshipLabels[cluster.relationship]?.label || cluster.relationship}
+                </Badge>
+              </div>
+              <div className="flex gap-1 flex-wrap">
+                {cluster.member_modes.map((mode) => (
+                  <span
+                    key={mode}
+                    className={`text-xs font-mono px-2 py-0.5 rounded ${
+                      mode === cluster.root_cause_mode
+                        ? 'bg-red-500/20 text-red-300 border border-red-500/30'
+                        : 'bg-slate-700 text-slate-400'
+                    }`}
+                  >
+                    {mode}{mode === cluster.root_cause_mode ? ' (root)' : ''}
+                  </span>
+                ))}
+              </div>
+              {cluster.confidence_boost > 0 && (
+                <p className="text-xs text-green-400 mt-1">
+                  +{Math.round(cluster.confidence_boost * 100)}% confidence (known pattern)
+                </p>
+              )}
+            </div>
+          ))}
+
+          {/* Co-occurrence Notes */}
+          {analysis.co_occurrence_notes.length > 0 && (
+            <div className="space-y-1">
+              {analysis.co_occurrence_notes.map((note, idx) => (
+                <p key={idx} className="text-xs text-amber-400/80 flex items-start gap-2">
+                  <AlertTriangle size={12} className="mt-0.5 shrink-0" />
+                  {note}
+                </p>
+              ))}
+            </div>
+          )}
+        </div>
+      </CardContent>
+    </Card>
+  )
+}
+
 export function DiagnosisResults({ result, onApplyAutoFix }: DiagnosisResultsProps) {
   const [isApplying, setIsApplying] = useState(false)
 
@@ -240,6 +343,11 @@ export function DiagnosisResults({ result, onApplyAutoFix }: DiagnosisResultsPro
             </div>
           </CardContent>
         </Card>
+      )}
+
+      {/* Compound Failure Analysis - Failure relationships */}
+      {result.compound_analysis && result.compound_analysis.clusters.length > 0 && (
+        <CompoundAnalysisCard analysis={result.compound_analysis} />
       )}
 
       {/* Auto-Fix Preview - We can fix this for you */}

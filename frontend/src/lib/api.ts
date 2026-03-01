@@ -258,6 +258,29 @@ export interface DiagnoseAutoFix {
   action: string
 }
 
+export interface DiagnoseFailureCluster {
+  cluster_id: number
+  label: string
+  root_cause_mode?: string
+  member_modes: string[]
+  relationship: 'causal_chain' | 'co_occurrence' | 'standalone'
+  confidence_boost: number
+}
+
+export interface DiagnoseCausalChain {
+  chain: string[]
+  chain_labels: string[]
+  explanation: string
+}
+
+export interface DiagnoseCompoundAnalysis {
+  clusters: DiagnoseFailureCluster[]
+  causal_chains: DiagnoseCausalChain[]
+  co_occurrence_notes: string[]
+  root_cause_mode?: string
+  root_cause_explanation?: string
+}
+
 export interface DiagnoseResult {
   trace_id: string
   analyzed_at: string
@@ -265,6 +288,7 @@ export interface DiagnoseResult {
   failure_count: number
   primary_failure?: DiagnoseDetection
   all_detections: DiagnoseDetection[]
+  compound_analysis?: DiagnoseCompoundAnalysis
   total_spans: number
   error_spans: number
   total_tokens: number

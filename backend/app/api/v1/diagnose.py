@@ -20,6 +20,9 @@ from app.api.v1.schemas import (
     DiagnoseResponse,
     DiagnoseDetectionResult,
     DiagnoseQuickCheckResponse,
+    DiagnoseCompoundAnalysis,
+    DiagnoseFailureCluster,
+    DiagnoseCausalChain,
 )
 from app.ingestion.importers import import_trace, detect_format
 from app.ingestion.universal_trace import UniversalTrace, SpanType
@@ -305,11 +308,47 @@ async def why_did_this_fail(request: DiagnoseRequest) -> DiagnoseResponse:
         except Exception:
             pass  # Monitoring is best-effort
 
-        # 5. Select primary failure and generate explanation
-        primary = _pick_primary(all_detections)
-        root_cause = _generate_root_cause(primary, all_detections)
+        # 5. Compound failure analysis (when 2+ detections)
+        compound_result = None
+        try:
+            from app.detection.compound_failures import analyze_compound
+            compound = analyze_compound(all_detections)
+            if compound:
+                compound_result = DiagnoseCompoundAnalysis(
+                    clusters=[
+                        DiagnoseFailureCluster(**c.to_dict())
+                        for c in compound.clusters
+                    ],
+                    causal_chains=[
+                        DiagnoseCausalChain(**c.to_dict())
+                        for c in compound.causal_chains
+                    ],
+                    co_occurrence_notes=compound.co_occurrence_notes,
+                    root_cause_mode=compound.root_cause_mode,
+                    root_cause_explanation=compound.root_cause_explanation,
+                )
+                detectors_run.append("compound_failure_analyzer")
+        except Exception as e:
+            logger.debug(f"Compound analysis skipped: {e}")
 
-        # 6. Build response
+        # 6. Select primary failure and generate explanation
+        #    If compound analysis found a causal root, prefer that over severity-only pick
+        primary = _pick_primary(all_detections)
+        if compound_result and compound_result.root_cause_mode:
+            causal_primary = next(
+                (d for d in all_detections if d["category"] == compound_result.root_cause_mode),
+                None,
+            )
+            if causal_primary:
+                primary = causal_primary
+
+        root_cause = (
+            compound_result.root_cause_explanation
+            if compound_result and compound_result.root_cause_explanation
+            else _generate_root_cause(primary, all_detections)
+        )
+
+        # 7. Build response
         elapsed_ms = int((time.monotonic() - start_ms) * 1000)
 
         primary_result = None
@@ -348,6 +387,7 @@ async def why_did_this_fail(request: DiagnoseRequest) -> DiagnoseResponse:
             failure_count=len(all_detections),
             primary_failure=primary_result,
             all_detections=detection_models,
+            compound_analysis=compound_result,
             total_spans=len(trace.spans),
             error_spans=trace.error_count,
             total_tokens=trace.total_tokens,
