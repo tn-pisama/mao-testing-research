@@ -24,10 +24,15 @@ Version History:
   - Semantic coverage using embeddings (reduces keyword false positives)
   - Reformulation detection (task restatement vs violation)
   - Stricter thresholds (coverage 0.80→0.65, ambiguity 3→4)
+- v2.1: Keyword coverage improvements:
+  - Sentence-level embedding comparison (not whole-text)
+  - max(keyword, semantic) floor — embeddings only improve, never regress
+  - Stem matching includes 3-char words (was >3, missed "run"↔"runs")
+  - Added domain synonyms (catalog↔category)
 """
 
 # Detector version for tracking
-DETECTOR_VERSION = "1.4"
+DETECTOR_VERSION = "2.1"
 DETECTOR_NAME = "SpecificationMismatchDetector"
 
 import logging
@@ -231,7 +236,7 @@ class SpecificationMismatchDetector:
             requirements.extend(matches)
 
         action_patterns = [
-            r'(?:create|build|make|generate)\s+(?:a\s+)?([^.!?,]+)',
+            r'(?:create|build|make|generate|design)\s+(?:a\s+)?([^.!?,]+)',
             r'(?:find|search|get|fetch)\s+([^.!?,]+)',
             r'(?:analyze|evaluate|assess)\s+([^.!?,]+)',
             r'(?:send|deliver|transmit)\s+([^.!?,]+)',
@@ -241,6 +246,11 @@ class SpecificationMismatchDetector:
             r'(?:help\s+me|i\s+want\s+to|i\s+want\s+a)\s+([^.!?,]+)',
             r'(?:i\s+need)\s+(?:a\s+)?([^.!?,]+)',
             r'(?:migrate|convert|transform|clean\s+up)\s+([^.!?,]+)',
+            # v2.1: additional verbs from error analysis
+            r'(?:write|develop|plan|prepare|draft|outline)\s+(?:a\s+)?([^.!?,]+)',
+            r'(?:process|handle|manage|run|execute)\s+([^.!?,]+)',
+            r'(?:connect|integrate|link|sync(?:hronize)?)\s+([^.!?,]+)',
+            r'(?:automate|schedule|optimize|improve)\s+([^.!?,]+)',
         ]
 
         for pattern in action_patterns:
@@ -314,51 +324,176 @@ class SpecificationMismatchDetector:
                 return True
         return False
 
+    # v2.1: Words excluded from key phrase extraction — generic/vague terms
+    # that don't carry specific meaning
+    _PHRASE_STOP_WORDS = frozenset({
+        # Standard stop words
+        "the", "a", "an", "and", "or", "but", "in", "on", "at", "to", "for",
+        "of", "with", "by", "from", "is", "are", "was", "were", "be", "been",
+        "has", "have", "had", "do", "does", "did", "will", "would", "could",
+        "should", "may", "might", "can", "that", "this", "it", "its", "my",
+        "our", "your", "their", "all", "each", "every", "any", "some", "no",
+        "not", "so", "as", "if", "when", "than", "then", "also", "just",
+        "about", "up", "out", "into", "over", "after", "before", "between",
+        # Request-style verbs (user phrasing, not domain concepts)
+        "need", "want", "help", "like", "wish", "make", "please",
+        # Generic quality modifiers
+        "simple", "basic", "good", "best", "easy", "quick", "fast",
+        "better", "complete", "full", "proper", "right", "nice",
+        # Generic tech nouns (too common to be specific)
+        "feature", "system", "tool", "service", "application", "platform",
+        "thing", "stuff", "part", "function", "ability", "capability",
+        "supports", "feature", "functionality", "ability",
+    })
+
+    def _extract_key_phrases(self, text: str) -> list[str]:
+        """
+        v2.1: Extract important bigram phrases from text.
+
+        Consecutive content words (both >3 chars, not in stop/generic set)
+        form key phrases. These capture specific concepts like "email verification",
+        "schema validation", "human agents" that individual word matching misses.
+        """
+        words = re.findall(r'[a-z][a-z\'-]+', text.lower())
+        content_words = [
+            (i, w) for i, w in enumerate(words)
+            if len(w) > 3 and w not in self._PHRASE_STOP_WORDS
+        ]
+
+        phrases = []
+        for j in range(len(content_words) - 1):
+            idx1, w1 = content_words[j]
+            idx2, w2 = content_words[j + 1]
+            # Consecutive or separated by at most 1 stop word
+            if idx2 - idx1 <= 2:
+                phrases.append(f"{w1} {w2}")
+
+        return phrases
+
+    def _detect_missing_key_phrases(
+        self,
+        user_intent: str,
+        spec_text: str,
+    ) -> tuple[bool, list[str], float]:
+        """
+        v2.1: Detect when specific multi-word concepts from intent are absent
+        from the spec, even when individual keyword overlap is high.
+
+        Only flags phrases where BOTH words are absent from the spec — having
+        one word present means the concept is at least partially covered.
+
+        Returns (has_missing, missing_phrases, fraction_missing).
+        """
+        intent_phrases = self._extract_key_phrases(user_intent)
+        if not intent_phrases:
+            return False, [], 0.0
+
+        spec_lower = spec_text.lower()
+        spec_words = set(re.findall(r'[a-z]+', spec_lower))
+        spec_stems = {self._stem(w) for w in spec_words if len(w) >= 3}
+
+        missing = []
+        for phrase in intent_phrases:
+            w1, w2 = phrase.split()
+            # v2.1: Both words must be absent for the phrase to be "missing"
+            w1_found = (
+                w1 in spec_lower or
+                self._stem(w1) in spec_stems or
+                any(syn in spec_lower for syn in self._expand_with_synonyms(w1))
+            )
+            w2_found = (
+                w2 in spec_lower or
+                self._stem(w2) in spec_stems or
+                any(syn in spec_lower for syn in self._expand_with_synonyms(w2))
+            )
+            if not w1_found and not w2_found:
+                missing.append(phrase)
+
+        if not missing:
+            return False, [], 0.0
+
+        fraction = len(missing) / len(intent_phrases)
+        # Flag if any key phrase has both words completely absent from spec
+        has_missing = len(missing) >= 1
+        return has_missing, missing, fraction
+
     def _semantic_coverage(
         self,
         requirements: list[str],
         spec_text: str,
-        threshold: float = 0.75,
+        threshold: float = 0.65,
     ) -> tuple[float, list[str]]:
         """
-        v1.3: Compute semantic coverage using embeddings.
+        v1.3/v2.1: Compute semantic coverage using embeddings.
 
         This improves on keyword matching by detecting semantic equivalence,
         e.g., "implement login" matches "build authentication system".
+
+        v1.9: Split spec into sentences and compare each requirement against
+        the best-matching sentence (max similarity) rather than the whole spec.
+        v2.1: Keyword coverage as floor — max(semantic, keyword). Embeddings
+        can only improve over keywords, never regress. This prevents the
+        broken-embedding case (whole-text dilution giving 0.0) from overriding
+        good keyword matches. TPs with high keyword overlap but semantic
+        opposition (e.g., "escalates to human" vs "handles autonomously") are
+        beyond deterministic detection and handled by the LLM judge tier.
 
         Falls back to keyword matching if embeddings unavailable.
         """
         if not requirements:
             return 1.0, []
 
+        # v2.1: Always compute keyword coverage as baseline floor
+        kw_coverage, kw_missing = self._compute_coverage(requirements, spec_text)
+
         try:
             from app.core.embeddings import get_embedder
 
             embedder = get_embedder()
             if not embedder:
-                return self._compute_coverage(requirements, spec_text)
+                return kw_coverage, kw_missing
 
-            # Embed the specification text as passage
-            spec_embedding = embedder.encode(spec_text[:8000], is_query=False)
+            # v1.9: Split spec into sentences for fine-grained comparison.
+            # Comparing a short requirement against a long passage dilutes
+            # the embedding and systematically underestimates similarity.
+            spec_sentences = re.split(r'(?<!\d)[.!?]+\s+|\n+|(?:,\s*\(\d+\))', spec_text)
+            spec_sentences = [s.strip() for s in spec_sentences if len(s.strip()) > 10]
+            if not spec_sentences:
+                spec_sentences = [spec_text[:8000]]
+
+            # Embed all spec sentences
+            sentence_embeddings = [
+                embedder.encode(sent[:2000], is_query=False)
+                for sent in spec_sentences
+            ]
 
             covered = 0
             missing = []
 
             for req in requirements:
-                # Embed requirement as query
                 req_embedding = embedder.encode(req, is_query=True)
-                similarity = embedder.similarity(req_embedding, spec_embedding)
-
-                if similarity >= threshold:
+                # v1.9: Max similarity across all spec sentences
+                best_sim = max(
+                    embedder.similarity(req_embedding, se)
+                    for se in sentence_embeddings
+                )
+                if best_sim >= threshold:
                     covered += 1
                 else:
                     missing.append(req)
 
-            return covered / len(requirements), missing
+            sem_coverage = covered / len(requirements)
+
+            # v2.1: Take max of semantic and keyword coverage — embeddings
+            # should only improve over keywords, never regress from them.
+            if sem_coverage >= kw_coverage:
+                return sem_coverage, missing
+            else:
+                return kw_coverage, kw_missing
 
         except Exception as e:
             logger.debug(f"Semantic coverage fallback to keywords: {e}")
-            return self._compute_coverage(requirements, spec_text)
+            return kw_coverage, kw_missing
 
     def _detect_requested_language(self, intent: str) -> Optional[str]:
         """v1.1: Detect which programming language was requested."""
@@ -494,7 +629,8 @@ class SpecificationMismatchDetector:
         "order": {"purchase", "buy", "transaction"},
         "pipeline": {"workflow", "process", "flow", "chain"},
         "workflow": {"pipeline", "process", "flow"},
-        "catalog": {"inventory", "collection", "listing", "directory"},
+        "catalog": {"inventory", "collection", "listing", "directory", "category"},
+        "category": {"catalog", "type", "classification"},
         "microservices": {"services", "microservice"},
         "services": {"microservices", "service"},
         "endpoint": {"route", "path", "url", "api"},
@@ -522,7 +658,8 @@ class SpecificationMismatchDetector:
     @staticmethod
     def _stem(word: str) -> str:
         """Minimal suffix-stripping stemmer for coverage matching."""
-        if len(word) <= 4:
+        # v2.1: Lowered guard from <=4 to <=3 so 4-char words like "runs"→"run"
+        if len(word) <= 3:
             return word
         for suffix in ("ation", "ting", "ing", "ies", "ment", "ness",
                         "able", "ible", "ive", "ous", "ful",
@@ -554,9 +691,10 @@ class SpecificationMismatchDetector:
             return 1.0, []
 
         spec_lower = spec_text.lower()
-        # v1.3: Pre-compute stemmed spec words for stem-based matching
+        # v1.3/v2.1: Pre-compute stemmed spec words for stem-based matching.
+        # v2.1: Include 3-char words (was >3) so stems like "run"→"run" match
         spec_words = set(re.findall(r'[a-z]+', spec_lower))
-        spec_stems = {self._stem(w) for w in spec_words if len(w) > 3}
+        spec_stems = {self._stem(w) for w in spec_words if len(w) >= 3}
         covered = 0
         missing = []
 
@@ -683,6 +821,21 @@ class SpecificationMismatchDetector:
                 detected = True
                 mismatch_type = MismatchType.SCOPE_DRIFT
                 missing.extend(orig_missing)
+
+        # v2.1: Key phrase check — catches cases where individual keywords
+        # overlap but specific multi-word concepts are absent from the spec.
+        # Example: "email verification" absent even though both "email" and
+        # "verification" appear elsewhere in the spec.
+        if not detected:
+            has_missing_phrases, missing_phrases, phrase_fraction = (
+                self._detect_missing_key_phrases(user_intent, task_specification)
+            )
+            if has_missing_phrases:
+                detected = True
+                mismatch_type = MismatchType.MISSING_REQUIREMENT
+                missing.extend(f"key phrase: {p}" for p in missing_phrases[:3])
+                # Set coverage to reflect the key phrase gap
+                coverage = min(coverage, 1.0 - phrase_fraction)
 
         if not detected:
             return SpecificationMismatchResult(
