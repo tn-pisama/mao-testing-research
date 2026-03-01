@@ -1,0 +1,163 @@
+{
+  "timestamp": "2026-03-01T15:56:20.804177",
+  "total_traces": 305,
+  "parsed_traces": 305,
+  "extraction_rate": 1.0,
+  "avg_turns_per_trace": 5.845901639344262,
+  "overall_f1": 0.08529510823378716,
+  "overall_accuracy": 0.5904161412358133,
+  "framework_breakdown": {
+    "AG2": 179,
+    "MetaGPT": 64,
+    "HyperAgent": 6,
+    "Magentic": 37,
+    "AppWorld": 7,
+    "OpenManus": 12
+  },
+  "metrics_by_mode": {
+    "F6": {
+      "precision": 0.059907834101382486,
+      "recall": 0.6842105263157895,
+      "f1": 0.11016949152542374,
+      "fpr": 0.7132867132867133,
+      "true_positives": 13,
+      "false_positives": 204,
+      "true_negatives": 82,
+      "false_negatives": 6,
+      "total_samples": 305
+    },
+    "F14": {
+      "precision": 0.0,
+      "recall": 0.0,
+      "f1": 0.0,
+      "fpr": 0.0,
+      "true_positives": 0,
+      "false_positives": 0,
+      "true_negatives": 223,
+      "false_negatives": 82,
+      "total_samples": 305
+    },
+    "F12": {
+      "precision": 0.25,
+      "recall": 0.03508771929824561,
+      "f1": 0.061538461538461535,
+      "fpr": 0.024193548387096774,
+      "true_positives": 2,
+      "false_positives": 6,
+      "true_negatives": 242,
+      "false_negatives": 55,
+      "total_samples": 305
+    },
+    "F9": {
+      "precision": 0.05555555555555555,
+      "recall": 0.07142857142857142,
+      "f1": 0.0625,
+      "fpr": 0.058419243986254296,
+      "true_positives": 1,
+      "false_positives": 17,
+      "true_negatives": 274,
+      "false_negatives": 13,
+      "total_samples": 305
+    },
+    "F13": {
+      "precision": 0.3333333333333333,
+      "recall": 0.017543859649122806,
+      "f1": 0.03333333333333333,
+      "fpr": 0.008064516129032258,
+      "true_positives": 1,
+      "false_positives": 2,
+      "true_negatives": 246,
+      "false_negatives": 56,
+      "total_samples": 305
+    },
+    "F5": {
+      "precision": 0.23404255319148937,
+      "recall": 0.2682926829268293,
+      "f1": 0.25,
+      "fpr": 0.32286995515695066,
+      "true_positives": 22,
+      "false_positives": 72,
+      "true_negatives": 151,
+      "false_negatives": 60,
+      "total_samples": 305
+    },
+    "F2": {
+      "precision": 0.01953125,
+      "recall": 1.0,
+      "f1": 0.038314176245210725,
+      "fpr": 0.8366666666666667,
+      "true_positives": 5,
+      "false_positives": 251,
+      "true_negatives": 49,
+      "false_negatives": 0,
+      "total_samples": 305
+    },
+    "F11": {
+      "precision": 0.2,
+      "recall": 0.008064516129032258,
+      "f1": 0.015503875968992248,
+      "fpr": 0.022099447513812154,
+      "true_positives": 1,
+      "false_positives": 4,
+      "true_negatives": 177,
+      "false_negatives": 123,
+      "total_samples": 305
+    },
+    "F8": {
+      "precision": 0.16666666666666666,
+      "recall": 0.015873015873015872,
+      "f1": 0.028985507246376812,
+      "fpr": 0.02066115702479339,
+      "true_positives": 1,
+      "false_positives": 5,
+      "true_negatives": 237,
+      "false_negatives": 62,
+      "total_samples": 305
+    },
+    "F1": {
+      "precision": 0.2867132867132867,
+      "recall": 0.43617021276595747,
+      "f1": 0.3459915611814346,
+      "fpr": 0.4834123222748815,
+      "true_positives": 41,
+      "false_positives": 102,
+      "true_negatives": 109,
+      "false_negatives": 53,
+      "total_samples": 305
+    },
+    "F7": {
+      "precision": 0.0,
+      "recall": 0.0,
+      "f1": 0.0,
+      "fpr": 0.04824561403508772,
+      "true_positives": 0,
+      "false_positives": 11,
+      "true_negatives": 217,
+      "false_negatives": 77,
+      "total_samples": 305
+    },
+    "F3": {
+      "precision": 0.3611111111111111,
+      "recall": 0.10483870967741936,
+      "f1": 0.1625,
+      "fpr": 0.1270718232044199,
+      "true_positives": 13,
+      "false_positives": 23,
+      "true_negatives": 158,
+      "false_negatives": 111,
+      "total_samples": 305
+    },
+    "F10": {
+      "precision": 0.0,
+      "recall": 0.0,
+      "f1": 0.0,
+      "fpr": 0.7508196721311475,
+      "true_positives": 0,
+      "false_positives": 229,
+      "true_negatives": 76,
+      "false_negatives": 0,
+      "total_samples": 305
+    }
+  },
+  "errors": []
+}
