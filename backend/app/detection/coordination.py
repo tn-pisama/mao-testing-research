@@ -152,22 +152,27 @@ class CoordinationAnalyzer:
             "high": 0.8,
             "critical": 0.95,
         }.get(max_severity, 0.5)
-        
+
         issue_types = set(i.issue_type for i in issues)
         diversity_factor = min(1.0, len(issue_types) / 4)
-        
+
         issue_factor = min(0.25, len(issues) * 0.05)
-        
+
         ack_rate = metrics.get("acknowledgment_rate", 1.0)
         health_factor = (1.0 - ack_rate) * 0.15
-        
+
+        # v1.1: Boosted weights — many true positives were getting low confidence
+        # causing them to fall below the optimized threshold.
         base_confidence = (
-            severity_weight * 0.35 +
+            severity_weight * 0.40 +
             raw_score * 0.35 +
-            diversity_factor * 0.15 +
+            diversity_factor * 0.10 +
             issue_factor +
             health_factor
         )
+        # v1.1: Floor by severity — clear failures should never have very low confidence
+        severity_floor = {"low": 0.25, "medium": 0.35, "high": 0.55, "critical": 0.70}
+        base_confidence = max(base_confidence, severity_floor.get(max_severity, 0.25))
         
         calibrated = min(0.99, base_confidence * self.confidence_scaling)
         
@@ -187,7 +192,7 @@ class CoordinationAnalyzer:
     
     def _detect_ignored_messages(self, messages: List[Message]) -> List[CoordinationIssue]:
         issues = []
-        
+
         for msg in messages:
             if not msg.acknowledged:
                 later_messages = [
@@ -201,7 +206,40 @@ class CoordinationAnalyzer:
                         message=f"Message from {msg.from_agent} to {msg.to_agent} was not acknowledged",
                         severity="medium",
                     ))
-        
+
+        # v1.1: Detect content-based ignored messages — receiver asks for the
+        # same information that was already sent to them (message was lost/ignored
+        # despite being "acknowledged").
+        for i, msg in enumerate(messages):
+            later_from_recipient = [
+                m for m in messages
+                if m.timestamp > msg.timestamp and m.from_agent == msg.to_agent
+            ]
+            for reply in later_from_recipient:
+                reply_lower = reply.content.lower()
+                msg_lower = msg.content.lower()
+                # If reply asks for what was already provided, it's a lost message
+                request_phrases = ["please provide", "requesting", "still waiting",
+                                   "no .* received", "where is", "send me",
+                                   "need the", "waiting for"]
+                import re as _re
+                is_repeat_request = any(_re.search(p, reply_lower) for p in request_phrases)
+                # Check content overlap — is the reply asking about the same topic?
+                msg_words = set(w for w in msg_lower.split() if len(w) > 4)
+                reply_words = set(w for w in reply_lower.split() if len(w) > 4)
+                if msg_words and reply_words:
+                    overlap = len(msg_words & reply_words) / min(len(msg_words), len(reply_words))
+                else:
+                    overlap = 0
+                if is_repeat_request and overlap > 0.2:
+                    issues.append(CoordinationIssue(
+                        issue_type="message_lost",
+                        agents_involved=[msg.from_agent, msg.to_agent],
+                        message=f"Message from {msg.from_agent} appears lost — {msg.to_agent} re-requests same info",
+                        severity="high",
+                    ))
+                    break  # One detection per message pair
+
         return issues
     
     def _detect_information_withholding(
@@ -252,9 +290,28 @@ class CoordinationAnalyzer:
     def _detect_circular_delegation(self, messages: List[Message]) -> List[CoordinationIssue]:
         issues = []
         
+        import re as _re
         delegation_graph: Dict[str, List[str]] = defaultdict(list)
         for msg in messages:
-            if "delegate" in msg.content.lower() or "pass to" in msg.content.lower():
+            content_lower = msg.content.lower()
+            # v1.1: Use both exact substring and regex for delegation detection.
+            # Regex handles cases like "pass this to" or "hand it off to".
+            delegation_phrases = [
+                "delegate", "hand off", "handoff", "take over",
+                "your turn", "assign to", "forward to", "escalate to",
+                "handle this", "proceed with", "can you handle",
+                "please take", "transfer to", "route to",
+            ]
+            delegation_regexes = [
+                r"pass\s+\w+\s+to\b",    # "pass this to", "pass it to"
+                r"hand\s+\w+\s+off\b",    # "hand it off"
+                r"delegat\w*\s+(?:this|it|to)\b",  # "delegating to", "delegated this"
+            ]
+            has_delegation = (
+                any(phrase in content_lower for phrase in delegation_phrases) or
+                any(_re.search(pat, content_lower) for pat in delegation_regexes)
+            )
+            if has_delegation:
                 delegation_graph[msg.from_agent].append(msg.to_agent)
         
         for start_agent in delegation_graph:

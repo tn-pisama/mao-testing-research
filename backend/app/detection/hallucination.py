@@ -100,31 +100,35 @@ class HallucinationDetector:
         
         grounding_score = 1.0
         hallucination_type = None
-        
+
         if sources:
             source_score, source_evidence = self._check_source_grounding(output, sources)
             grounding_score = min(grounding_score, source_score)
             evidence.extend(source_evidence)
             details["source_grounding_score"] = source_score
-        
+
         if context:
             context_score, context_evidence = self._check_context_consistency(output, context)
             grounding_score = min(grounding_score, context_score)
             evidence.extend(context_evidence)
             details["context_consistency_score"] = context_score
-        
+
         if tool_results:
             tool_score, tool_evidence = self._check_tool_result_consistency(output, tool_results)
             grounding_score = min(grounding_score, tool_score)
             evidence.extend(tool_evidence)
             details["tool_result_score"] = tool_score
-        
+
         fabrication_score, fabrication_evidence = self._detect_fabricated_facts(output)
         if fabrication_score < 0.95:
             evidence.extend(fabrication_evidence)
             details["fabrication_indicators"] = fabrication_evidence
-            # Include fabrication score in grounding decision
-            grounding_score = min(grounding_score, fabrication_score)
+            # Only let fabrication drag down grounding when multiple patterns
+            # matched (score < 0.7).  A single pattern match (score ~0.8-0.9)
+            # is too noisy — legitimate text often contains one founding year
+            # or percentage statistic.
+            if fabrication_score < 0.7:
+                grounding_score = min(grounding_score, fabrication_score)
 
         citation_score, citation_evidence = self._check_citation_validity(output, sources)
         if citation_score < 0.8:
@@ -192,12 +196,16 @@ class HallucinationDetector:
 
         grounded_count = 0
         hedging_words = {"however", "though", "note", "should", "could", "might",
-                         "further", "additionally", "also", "needed", "workup"}
+                         "further", "additionally", "also", "needed", "workup",
+                         "suggest", "recommend", "consider", "possible", "likely",
+                         "typically", "generally", "often", "usually", "may"}
         # Phrases that indicate the agent is honestly admitting uncertainty
         uncertainty_phrases = [
             "i don't have", "i don't know", "i'm not sure", "i cannot confirm",
             "not available", "no information", "not specified", "not mentioned",
             "no details", "no specific", "unclear whether", "unable to confirm",
+            "based on the available", "from what i can see", "it appears that",
+            "it seems", "this suggests",
         ]
         for i, sent_emb in enumerate(output_embeddings):
             max_sim = 0.0
@@ -275,10 +283,14 @@ class HallucinationDetector:
         if novel_count == 0:
             return 0.0
         # Penalty proportional to fraction of novel entities, scaled aggressively.
-        # Even 1-2 novel entities in a short output is a strong hallucination signal.
+        # v1.1: Slightly moderated from original — require 2+ for full floor penalty.
+        # 1 novel entity uses reduced floor (0.10 instead of 0.15).
         base_penalty = (novel_count / total_claims) * 0.8
-        # Minimum penalty per novel entity (0.15 each, up to 0.7)
-        floor_penalty = min(0.7, novel_count * 0.15)
+        if novel_count >= 2:
+            floor_penalty = min(0.7, novel_count * 0.13)
+        else:
+            # Single novel entity: lower floor penalty to reduce FP
+            floor_penalty = 0.10
         return min(0.7, max(base_penalty, floor_penalty))
     
     def _check_context_consistency(

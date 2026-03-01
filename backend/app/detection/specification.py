@@ -181,19 +181,20 @@ class SpecificationMismatchDetector:
 
     # Phase 1: Framework-specific thresholds to reduce false positives
     # v1.3: Lowered coverage thresholds (stricter about flagging)
+    # v1.6: Raised thresholds across the board to reduce false positives
     FRAMEWORK_THRESHOLDS = {
-        "ChatDev": {"spec_coverage": 0.50, "ambiguity_threshold": 5},
-        "MetaGPT": {"spec_coverage": 0.50, "ambiguity_threshold": 4},
-        "AG2": {"spec_coverage": 0.55, "ambiguity_threshold": 4},
-        "Magentic": {"spec_coverage": 0.50, "ambiguity_threshold": 4},
-        "AutoGen": {"spec_coverage": 0.55, "ambiguity_threshold": 4},
-        "LangGraph": {"spec_coverage": 0.50, "ambiguity_threshold": 4},
-        "default": {"spec_coverage": 0.50, "ambiguity_threshold": 4},
+        "ChatDev": {"spec_coverage": 0.60, "ambiguity_threshold": 5},
+        "MetaGPT": {"spec_coverage": 0.60, "ambiguity_threshold": 4},
+        "AG2": {"spec_coverage": 0.60, "ambiguity_threshold": 4},
+        "Magentic": {"spec_coverage": 0.60, "ambiguity_threshold": 4},
+        "AutoGen": {"spec_coverage": 0.60, "ambiguity_threshold": 4},
+        "LangGraph": {"spec_coverage": 0.60, "ambiguity_threshold": 4},
+        "default": {"spec_coverage": 0.60, "ambiguity_threshold": 4},
     }
 
     def __init__(
         self,
-        coverage_threshold: float = 0.50,  # v1.5: Lowered from 0.65 to improve recall
+        coverage_threshold: float = 0.60,  # v1.6: Raised from 0.50 — reduce FP in 50-60% zone
         ambiguity_threshold: int = 4,  # v1.3: Raised from 3
         framework: Optional[str] = None,
     ):
@@ -250,21 +251,30 @@ class SpecificationMismatchDetector:
 
     def _extract_constraints(self, text: str) -> list[str]:
         constraints = []
-        
+
+        # v1.7: Tightened constraint patterns — require more specific phrases
+        # to reduce phantom constraints from casual language.
         constraint_patterns = [
-            r'(?:no|not|never|without)\s+([^.!?,]+)',
+            # "do not/never" + verb (clear prohibition)
+            r'(?:do not|don\'t|never|must not)\s+([^.!?,]+)',
+            # "without X" (clear exclusion)
+            r'without\s+(?:any\s+)?([^.!?,]+)',
+            # "only/exclusively" (restriction)
             r'(?:only|exclusively)\s+([^.!?,]+)',
+            # Quantitative constraints
             r'(?:at\s+(?:most|least))\s+([^.!?,]+)',
             r'(?:within|under|below|above)\s+(\d+[^.!?,]*)',
+            # Temporal constraints
             r'(?:before|after|by)\s+([^.!?,]+)',
             r'(?:limit(?:ed)?\s+to)\s+([^.!?,]+)',
         ]
-        
+
         for pattern in constraint_patterns:
             matches = re.findall(pattern, text.lower())
             constraints.extend(matches)
-        
-        return [c.strip() for c in constraints if len(c.strip()) > 3]
+
+        # v1.7: Require longer constraint text (>8 chars) to filter noise
+        return [c.strip() for c in constraints if len(c.strip()) > 8]
 
     def _is_task_reformulation(self, text: str) -> bool:
         """
@@ -635,7 +645,17 @@ class SpecificationMismatchDetector:
         else:
             severity = MismatchSeverity.MINOR
 
-        confidence = 1 - coverage
+        # Confidence scaled by severity — only high confidence for clear mismatches
+        # v1.8: Gradient confidence — borderline cases get very low confidence
+        # to separate from genuine violations. Coverage 0.50-0.60 maps to 0.10-0.20.
+        if coverage < 0.3:
+            confidence = min(0.95, 0.75 + (0.3 - coverage))
+        elif coverage < 0.5:
+            confidence = 0.60
+        else:
+            # Borderline coverage — gradient confidence, lower for higher coverage
+            # 0.50 → 0.20, 0.55 → 0.15, 0.60 → 0.10
+            confidence = max(0.10, 0.40 - coverage * 0.5)
 
         if mismatch_type == MismatchType.MISSING_REQUIREMENT:
             explanation = (

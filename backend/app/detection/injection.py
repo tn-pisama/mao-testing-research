@@ -23,35 +23,69 @@ class InjectionResult:
 
 
 INJECTION_PATTERNS = [
-    (r'ignore (?:all )?(?:previous|prior|above) (?:instructions?|prompts?|rules?)', "direct_override", "high"),
-    (r'disregard (?:all )?(?:previous|prior|your) (?:instructions?|guidelines?|rules?)', "direct_override", "high"),
-    (r'forget (?:everything|all|what) (?:you were|I) (?:told|said)', "direct_override", "high"),
+    # Direct overrides
+    (r'ignore (?:all )?(?:previous|prior|above|earlier|preceding) (?:instructions?|prompts?|rules?|context|guidelines?|directives?)', "direct_override", "high"),
+    (r'disregard (?:all )?(?:previous|prior|your|any|the) (?:instructions?|guidelines?|rules?|context|directions?)', "direct_override", "high"),
+    (r'forget (?:everything|all|what) (?:you were|I|you\'ve been|that was) (?:told|said|given|instructed)', "direct_override", "high"),
+    (r'do not (?:follow|obey|listen to|adhere to) (?:the|your|any|previous) (?:instructions?|rules?|guidelines?)', "direct_override", "high"),
+    (r'stop (?:following|obeying|adhering to) (?:the|your|any) (?:instructions?|rules?)', "direct_override", "high"),
+    (r'(?:please )?(?:set aside|put aside|drop|abandon|discard) (?:your|the|all|any) (?:instructions?|rules?|guidelines?|restrictions?)', "direct_override", "high"),
+    # Instruction injection
     (r'new instructions?:?\s', "instruction_injection", "high"),
-    (r'from now on,?\s+(?:you|your)', "instruction_injection", "high"),
-    (r'your (?:new|real|actual|true) (?:instructions?|purpose|goal|role)', "instruction_injection", "high"),
-    (r'you are (?:now|actually|really) (?:a|an|the)', "role_hijack", "high"),
-    (r'pretend (?:to be|you are|that you)', "role_hijack", "medium"),
-    (r'act as (?:if you are|a|an)', "role_hijack", "medium"),
-    (r'roleplay as', "role_hijack", "medium"),
-    (r'you must (?:always|never|only)', "constraint_manipulation", "medium"),
-    (r'override (?:your|the|all) (?:safety|security|restrictions?|limitations?)', "safety_bypass", "critical"),
-    (r'bypass (?:your|the|all) (?:filters?|safeguards?|restrictions?)', "safety_bypass", "critical"),
-    (r'disable (?:your|the|all) (?:safety|security|content) (?:filters?|checks?)', "safety_bypass", "critical"),
+    (r'from now on,?\s+(?:you|your|I|we)', "instruction_injection", "high"),
+    (r'your (?:new|real|actual|true|updated|revised) (?:instructions?|purpose|goal|role|task|mission|objective)', "instruction_injection", "high"),
+    (r'(?:here are|these are|follow these|obey these) (?:your )?(?:new|real|actual|updated) (?:instructions?|rules?|guidelines?)', "instruction_injection", "high"),
+    (r'instead,?\s+(?:you should|you must|you will|please|do|say|output|respond)', "instruction_injection", "medium"),
+    (r'(?:i am|i\'m) (?:your|the) (?:new|real|actual) (?:developer|creator|admin|owner|operator)', "instruction_injection", "high"),
+    # Role hijack
+    (r'you are (?:now|actually|really|no longer|henceforth) (?:a|an|the|my)', "role_hijack", "high"),
+    (r'pretend (?:to be|you are|that you|you\'re)', "role_hijack", "medium"),
+    (r'act as (?:if you are|a|an|though you)', "role_hijack", "medium"),
+    (r'roleplay as|assume the (?:role|identity|persona) of', "role_hijack", "medium"),
+    (r'you\'re (?:now|actually|really) (?:a|an|the|my)', "role_hijack", "high"),
+    (r'(?:switch|change|transform) (?:to|into|your) (?:role|persona|character|identity)', "role_hijack", "medium"),
+    # Constraint manipulation
+    (r'you must (?:always|never|only|not)', "constraint_manipulation", "medium"),
+    (r'you (?:can|are allowed to|should|shall) (?:do anything|say anything|ignore|bypass|break)', "constraint_manipulation", "medium"),
+    (r'there are no (?:rules|restrictions|limitations|boundaries|constraints)', "constraint_manipulation", "medium"),
+    # Safety bypass
+    (r'override (?:your|the|all) (?:safety|security|restrictions?|limitations?|constraints?|policies?)', "safety_bypass", "critical"),
+    (r'bypass (?:your|the|all) (?:filters?|safeguards?|restrictions?|protections?|limitations?)', "safety_bypass", "critical"),
+    (r'disable (?:your|the|all) (?:safety|security|content|ethical) (?:filters?|checks?|measures?|restrictions?)', "safety_bypass", "critical"),
+    (r'(?:turn off|deactivate|remove|eliminate|circumvent) (?:your|the|all) (?:safety|security|content|ethical)', "safety_bypass", "critical"),
+    # Jailbreak
     (r'jailbreak', "jailbreak", "critical"),
     (r'DAN\s*(?:mode)?|Do Anything Now', "jailbreak", "critical"),
-    (r'(?:developer|god|admin|root) mode', "jailbreak", "critical"),
-    (r'unlock (?:your|all) (?:capabilities|potential|restrictions)', "jailbreak", "high"),
-    (r'\[SYSTEM\]|\[INST\]|\<\|system\|\>|\<\|user\|\>', "delimiter_injection", "high"),
-    (r'```system|```instructions?|<system>|</system>', "delimiter_injection", "high"),
-    (r'Human:|Assistant:|User:|AI:', "delimiter_injection", "medium"),
-    (r'<<SYS>>|<</SYS>>', "delimiter_injection", "high"),
-    (r'IMPORTANT:?\s+ignore|CRITICAL:?\s+override', "urgency_manipulation", "medium"),
-    (r'emergency override|urgent:?\s+bypass', "urgency_manipulation", "medium"),
-    (r'(?:print|output|reveal|show|display) (?:your|the|all) (?:system )?(?:prompt|instructions?|rules?)', "extraction", "high"),
-    (r'what (?:are|is|were) your (?:original|system|initial) (?:prompt|instructions?)', "extraction", "medium"),
-    (r'repeat (?:your|the) (?:system )?(?:prompt|instructions?)', "extraction", "medium"),
-    (r'(?:ignore|forget) (?:the )?(?:previous|above) (?:and|then) (?:do|say|output)', "chained_injection", "high"),
-    (r'step \d+:?\s+(?:ignore|forget|override)', "chained_injection", "high"),
+    (r'(?:developer|god|admin|root|sudo|superuser|master) mode', "jailbreak", "critical"),
+    (r'unlock (?:your|all) (?:capabilities|potential|restrictions|true|full)', "jailbreak", "high"),
+    (r'(?:enable|activate|enter|switch to) (?:unrestricted|uncensored|unfiltered|unethical|evil|dark|chaos|free) mode', "jailbreak", "critical"),
+    (r'(?:token|text|secret|hidden|special) (?:that|to|which) (?:unlocks?|enables?|activates?|bypasses?)', "jailbreak", "high"),
+    # Delimiter injection
+    (r'\[SYSTEM\]|\[INST\]|\<\|system\|\>|\<\|user\|\>|\<\|assistant\|\>', "delimiter_injection", "high"),
+    (r'```system|```instructions?|<system>|</system>|<\|im_start\|>', "delimiter_injection", "high"),
+    (r'Human:|Assistant:|User:|AI:|System:', "delimiter_injection", "medium"),
+    (r'<<SYS>>|<</SYS>>|<s>|</s>|\[/INST\]', "delimiter_injection", "high"),
+    (r'###\s*(?:System|Instruction|Human|User|Assistant)', "delimiter_injection", "medium"),
+    # Urgency manipulation
+    (r'IMPORTANT:?\s+(?:ignore|override|disregard|forget|bypass)', "urgency_manipulation", "medium"),
+    (r'CRITICAL:?\s+(?:override|ignore|change|update|new)', "urgency_manipulation", "medium"),
+    (r'(?:emergency|urgent|immediate):?\s+(?:override|bypass|change|ignore)', "urgency_manipulation", "medium"),
+    # Extraction
+    (r'(?:print|output|reveal|show|display|leak|expose|dump|share) (?:your|the|all) (?:system )?(?:prompt|instructions?|rules?|configuration|settings?|secrets?)', "extraction", "high"),
+    (r'what (?:are|is|were) your (?:original|system|initial|hidden|secret|full) (?:prompt|instructions?|rules?)', "extraction", "medium"),
+    (r'repeat (?:your|the) (?:system )?(?:prompt|instructions?|rules?) (?:verbatim|exactly|word for word)', "extraction", "high"),
+    (r'(?:copy|paste|echo|mirror|recite) (?:your|the) (?:system )?(?:prompt|instructions?)', "extraction", "medium"),
+    # Chained injection
+    (r'(?:ignore|forget) (?:the )?(?:previous|above) (?:and|then|now) (?:do|say|output|respond|follow)', "chained_injection", "high"),
+    (r'step \d+:?\s+(?:ignore|forget|override|bypass|disregard)', "chained_injection", "high"),
+    (r'first,?\s+(?:ignore|forget|disregard).*(?:then|next|after that|now)', "chained_injection", "high"),
+    # Encoding / obfuscation
+    (r'(?:base64|rot13|hex|binary|unicode|ascii)\s*(?:decode|encode|translate|convert)', "encoding_attack", "medium"),
+    (r'(?:decode|translate|interpret|execute|run|eval)\s+(?:the following|this|these)', "encoding_attack", "medium"),
+    # Indirect / social engineering
+    (r'(?:my (?:boss|manager|teacher|professor|supervisor|admin|ceo) (?:said|told|asked|wants|needs|requires) (?:you|me) to)', "social_engineering", "medium"),
+    (r'(?:i have (?:permission|authority|authorization|clearance|access) to)', "social_engineering", "medium"),
+    (r'(?:this is (?:an? )?(?:authorized|approved|sanctioned|legitimate) (?:request|test|override))', "social_engineering", "medium"),
 ]
 
 JAILBREAK_SIGNATURES = [
@@ -75,6 +109,32 @@ JAILBREAK_SIGNATURES = [
     "evil mode",
     "no holds barred",
     "anything goes",
+    "ignore all safety",
+    "bypass content policy",
+    "act without restrictions",
+    "do not refuse",
+    "never say no",
+    "always comply",
+    "no content policy",
+    "uncensored mode",
+    "free speech mode",
+    "unrestricted access",
+    "break character",
+    "exit your programming",
+    "override your training",
+    "disregard your programming",
+    "ignore your training",
+    "you can say anything",
+    "respond without limitations",
+    "answer without censorship",
+    "no rules apply",
+    "rules don't apply",
+    "you are free to",
+    "liberated from constraints",
+    "without ethical considerations",
+    "forget your guidelines",
+    "this is just fiction",
+    "in this hypothetical",
 ]
 
 BENIGN_CONTEXTS = [
@@ -91,7 +151,7 @@ class InjectionDetector:
     def __init__(
         self,
         pattern_threshold: float = 0.7,
-        semantic_threshold: float = 0.75,
+        semantic_threshold: float = 0.65,
         confidence_scaling: float = 1.0,
     ):
         self._embedder = None

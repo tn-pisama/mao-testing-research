@@ -366,7 +366,29 @@ class FlawedWorkflowDetector:
         else:
             severity = WorkflowSeverity.MINOR
 
-        confidence = min(0.5 + len(issues) * 0.15, 0.95)
+        # v1.1: Confidence based on severity and issue count.
+        # Severe issues (loops, missing termination) get high confidence.
+        # Minor issues (single dead-end, bottleneck) get lower confidence.
+        if severity == WorkflowSeverity.SEVERE:
+            confidence = min(0.75 + len(issues) * 0.05, 0.95)
+        elif len(issues) >= 3:
+            confidence = min(0.6 + len(issues) * 0.05, 0.90)
+        elif len(issues) >= 2:
+            confidence = 0.55
+        else:
+            # Single issue: discriminate by issue type.
+            # Structural issues (dead ends, unreachable) are more concerning
+            # than advisory issues (bottleneck, orphan, missing error handling).
+            single_issue = issues[0]
+            if single_issue in (WorkflowIssue.DEAD_END, WorkflowIssue.UNREACHABLE_NODE):
+                confidence = 0.42
+            elif single_issue == WorkflowIssue.EXCESSIVE_DEPTH:
+                confidence = 0.32
+            elif single_issue in (WorkflowIssue.ORPHAN_NODE, WorkflowIssue.BOTTLENECK,
+                                  WorkflowIssue.MISSING_ERROR_HANDLING):
+                confidence = 0.22
+            else:
+                confidence = 0.35
 
         issue_names = [i.value for i in issues]
         unique_problematic = list(set(problematic))[:5]

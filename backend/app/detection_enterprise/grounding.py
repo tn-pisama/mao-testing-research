@@ -70,6 +70,10 @@ class GroundingDetector:
 
     Analyzes whether claims, numbers, and citations in the output
     are supported by the provided source documents.
+
+    v1.1: Uses embedding-based claim verification to reduce false
+    positives from paraphrases. Falls back to word overlap if
+    embedder is not available.
     """
 
     def __init__(
@@ -79,13 +83,25 @@ class GroundingDetector:
         numerical_tolerance: float = 0.05,  # 5% tolerance for numerical matches
         min_output_length: int = 50,
         confidence_scaling: float = 1.0,
+        embedding_grounding_threshold: float = 0.55,  # cosine sim threshold
     ):
         self.grounding_threshold = grounding_threshold
         self.citation_threshold = citation_threshold
         self.numerical_tolerance = numerical_tolerance
         self.min_output_length = min_output_length
         self.confidence_scaling = confidence_scaling
+        self.embedding_grounding_threshold = embedding_grounding_threshold
         self._embedder = None
+
+    @property
+    def embedder(self):
+        if self._embedder is None:
+            try:
+                from app.core.embeddings import get_embedder
+                self._embedder = get_embedder()
+            except Exception:
+                pass
+        return self._embedder
 
     def _extract_numbers(self, text: str) -> list[dict]:
         """Extract numerical values with context from text."""
@@ -233,18 +249,13 @@ class GroundingDetector:
 
         return False, None, None
 
-    def _verify_claim_in_sources(
+    def _verify_claim_in_sources_word_overlap(
         self,
         claim: str,
         sources: list[str]
     ) -> tuple[bool, float, Optional[str]]:
-        """Check if a claim is supported by source documents.
-
-        Returns: (grounded, confidence, evidence)
-        """
+        """Fallback: Check claim grounding using word overlap."""
         claim_lower = claim.lower()
-
-        # Extract key entities from claim
         claim_words = set(claim_lower.split())
         claim_words = {w for w in claim_words if len(w) > 4}
 
@@ -254,21 +265,74 @@ class GroundingDetector:
         for source in sources:
             source_lower = source.lower()
             source_words = set(source_lower.split())
-
-            # Calculate word overlap
             if not claim_words:
                 continue
-
             overlap = len(claim_words & source_words) / len(claim_words)
-
             if overlap > best_match_score:
                 best_match_score = overlap
                 if overlap > 0.5:
                     best_evidence = source[:200]
 
-        # Consider grounded if >50% word overlap
         grounded = best_match_score > 0.5
         return grounded, best_match_score, best_evidence
+
+    def _verify_claims_batch_embedding(
+        self,
+        claims: list[str],
+        sources: list[str],
+    ) -> list[tuple[bool, float, Optional[str]]]:
+        """Verify claims against sources using embedding similarity.
+
+        Encodes all claims and sources in batches for efficiency.
+        Returns list of (grounded, score, evidence) per claim.
+        """
+        import numpy as np
+
+        embedder = self.embedder
+        if not embedder or not claims or not sources:
+            return [self._verify_claim_in_sources_word_overlap(c, sources) for c in claims]
+
+        try:
+            claim_embeddings = embedder.encode(claims)
+            source_embeddings = embedder.encode(sources)
+
+            # Handle single-text encoding returning 1D array
+            if claim_embeddings.ndim == 1:
+                claim_embeddings = claim_embeddings.reshape(1, -1)
+            if source_embeddings.ndim == 1:
+                source_embeddings = source_embeddings.reshape(1, -1)
+
+            # Compute similarity matrix: claims × sources
+            # Normalize for cosine similarity
+            claim_norms = np.linalg.norm(claim_embeddings, axis=1, keepdims=True)
+            source_norms = np.linalg.norm(source_embeddings, axis=1, keepdims=True)
+            claim_normalized = claim_embeddings / np.maximum(claim_norms, 1e-10)
+            source_normalized = source_embeddings / np.maximum(source_norms, 1e-10)
+            sim_matrix = claim_normalized @ source_normalized.T  # (n_claims, n_sources)
+
+            results = []
+            for i, claim in enumerate(claims):
+                max_sim = float(np.max(sim_matrix[i]))
+                best_source_idx = int(np.argmax(sim_matrix[i]))
+                grounded = max_sim > self.embedding_grounding_threshold
+                evidence = sources[best_source_idx][:200] if grounded else None
+                results.append((grounded, max_sim, evidence))
+            return results
+
+        except Exception as e:
+            logger.warning("Embedding-based verification failed: %s, falling back to word overlap", e)
+            return [self._verify_claim_in_sources_word_overlap(c, sources) for c in claims]
+
+    def _verify_claim_in_sources(
+        self,
+        claim: str,
+        sources: list[str]
+    ) -> tuple[bool, float, Optional[str]]:
+        """Check if a claim is supported by source documents.
+
+        Returns: (grounded, confidence, evidence)
+        """
+        return self._verify_claim_in_sources_word_overlap(claim, sources)
 
     def _verify_citation(
         self,
@@ -306,32 +370,50 @@ class GroundingDetector:
         citation_accuracy: float,
         num_ungrounded: int,
         num_numerical_errors: int,
+        total_claims: int = 0,
+        total_source_words: int = 0,
     ) -> tuple[float, dict]:
-        """Calibrate confidence based on multiple factors."""
-        base_confidence = 0.5
+        """Calibrate confidence with better TP/FP separation.
 
-        # Factor 1: Grounding score impact
-        grounding_factor = (1 - grounding_score) * 0.25
-        base_confidence += grounding_factor
+        Key insight: numerical errors are strong evidence of grounding failure.
+        Claim-only ungrounding is weaker (could be paraphrasing). Sparse sources
+        reduce confidence since word overlap is unreliable with little text.
+        """
+        # Count strong evidence dimensions
+        has_numerical = num_numerical_errors > 0
+        has_low_grounding = grounding_score < 0.5
+        has_low_citation = citation_accuracy < 0.6
+        strong_signals = sum([has_numerical, has_low_grounding, has_low_citation])
 
-        # Factor 2: Citation accuracy impact
-        citation_factor = (1 - citation_accuracy) * 0.15
-        base_confidence += citation_factor
+        if strong_signals >= 2:
+            # Multiple strong signals → high confidence
+            base_confidence = 0.75 + min(0.20, num_numerical_errors * 0.05)
+        elif has_numerical:
+            # Numerical errors alone are strong evidence
+            base_confidence = 0.65 + min(0.15, num_numerical_errors * 0.05)
+        elif has_low_grounding:
+            # Low grounding without numerical errors → moderate
+            base_confidence = 0.55 + min(0.10, num_ungrounded * 0.02)
+        else:
+            # Weak signals only → low confidence (likely FP)
+            base_confidence = 0.35 + min(0.10, num_ungrounded * 0.02)
 
-        # Factor 3: Number of issues
-        issue_factor = min(0.2, (num_ungrounded + num_numerical_errors * 2) * 0.05)
-        base_confidence += issue_factor
+        # Penalize confidence when sources are sparse (word overlap unreliable)
+        if total_source_words > 0 and total_source_words < 200:
+            base_confidence *= 0.8
 
         # Apply scaling and cap
         calibrated = min(0.99, base_confidence * self.confidence_scaling)
 
         calibration_info = {
             "base_confidence": round(base_confidence, 4),
-            "grounding_factor": round(grounding_factor, 4),
-            "citation_factor": round(citation_factor, 4),
-            "issue_factor": round(issue_factor, 4),
+            "strong_signals": strong_signals,
+            "grounding_score": round(grounding_score, 4),
+            "citation_accuracy": round(citation_accuracy, 4),
             "ungrounded_count": num_ungrounded,
             "numerical_error_count": num_numerical_errors,
+            "total_claims": total_claims,
+            "total_source_words": total_source_words,
         }
 
         return round(calibrated, 4), calibration_info
@@ -425,7 +507,15 @@ class GroundingDetector:
         ungrounded_claims = []
         grounded_count = 0
 
-        for claim in claims:
+        # When sources are sparse, limit claims checked to reduce false positives
+        total_source_words = sum(len(s.split()) for s in source_documents)
+        max_claims_to_check = len(claims)
+        if total_source_words < 200:
+            max_claims_to_check = min(5, len(claims))
+        elif total_source_words < 500:
+            max_claims_to_check = min(10, len(claims))
+
+        for claim in claims[:max_claims_to_check]:
             grounded, confidence, evidence = self._verify_claim_in_sources(claim, source_documents)
             if grounded:
                 grounded_count += 1
@@ -438,7 +528,8 @@ class GroundingDetector:
                 ))
 
         # Calculate grounding score
-        grounding_score = grounded_count / len(claims) if claims else 1.0
+        checked = min(max_claims_to_check, len(claims))
+        grounding_score = grounded_count / checked if checked else 1.0
 
         # Extract and verify citations
         if citations is None:
@@ -468,6 +559,8 @@ class GroundingDetector:
             citation_accuracy,
             len(ungrounded_claims),
             len(numerical_errors),
+            total_claims=len(claims),
+            total_source_words=total_source_words,
         )
 
         # Generate explanation

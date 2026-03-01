@@ -38,9 +38,8 @@ except ImportError:
 class JudgeModel(str, Enum):
     GPT4O_MINI = "gpt-4o-mini"
     GPT4O = "gpt-4o"
-    CLAUDE_SONNET = "claude-sonnet-4-20250514"
-    # Legacy aliases kept for backward compatibility
-    CLAUDE_HAIKU = "claude-3-5-haiku-20241022"
+    CLAUDE_SONNET = "claude-sonnet-4-6"
+    CLAUDE_HAIKU = "claude-haiku-4-5-20251001"
 
 
 # ---------------------------------------------------------------------------
@@ -49,8 +48,8 @@ class JudgeModel(str, Enum):
 MODEL_COSTS: Dict[str, tuple] = {
     "gpt-4o-mini": (0.00015, 0.0006),
     "gpt-4o": (0.0025, 0.01),
-    "claude-sonnet-4-20250514": (0.003, 0.015),
-    "claude-3-5-haiku-20241022": (0.001, 0.005),
+    "claude-sonnet-4-6": (0.003, 0.015),
+    "claude-haiku-4-5-20251001": (0.001, 0.005),
 }
 
 

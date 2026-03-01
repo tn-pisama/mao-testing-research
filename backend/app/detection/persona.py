@@ -104,7 +104,16 @@ class PersonaConsistencyScorer:
         output_length: int,
         drift_detected: bool = False,
     ) -> float:
-        """Calibrate confidence based on evidence quality."""
+        """Calibrate confidence based on evidence quality.
+
+        Returns high confidence for consistent personas (so drift confidence
+        is low when inverted), and lower confidence when drift is detected
+        (so drift confidence is higher when inverted).
+
+        v1.1: Better separation between strong drift (low similarity) and
+        borderline drift (moderate similarity). Strong drift gets lower scores
+        (higher drift confidence); borderline cases get moderate scores.
+        """
         length_factor = min(1.0, output_length / 500)
         signal_count = sum([
             semantic_sim > 0.5,
@@ -112,12 +121,23 @@ class PersonaConsistencyScorer:
             tone_score > 0.6,
         ])
         signal_factor = signal_count / 3
-        
-        base_confidence = 0.6 + (semantic_sim * 0.2) + (length_factor * 0.1) + (signal_factor * 0.1)
-        
+
         if drift_detected:
-            base_confidence *= 0.85
-        
+            # Drift detected → return LOW score so 1-score gives HIGH drift confidence
+            # v1.1: Scale by how far below threshold — strong drift gets lower score
+            if semantic_sim < 0.3:
+                # Strong drift — high confidence
+                base_confidence = 0.15 + (signal_factor * 0.05)
+            elif semantic_sim < 0.5:
+                # Clear drift — moderate-high confidence
+                base_confidence = 0.25 + (signal_factor * 0.08)
+            else:
+                # Borderline drift — moderate confidence
+                base_confidence = 0.35 + (signal_factor * 0.10)
+        else:
+            # Consistent → return HIGH score so 1-score gives LOW drift confidence
+            base_confidence = 0.7 + (semantic_sim * 0.15) + (length_factor * 0.05) + (signal_factor * 0.1)
+
         calibrated = min(0.99, base_confidence * self.confidence_scaling)
         return round(calibrated, 4)
     

@@ -58,7 +58,7 @@ class CommunicationBreakdownDetector:
     
     def __init__(
         self,
-        intent_threshold: float = 0.55,  # Raised for better accuracy (was 0.4)
+        intent_threshold: float = 0.60,  # v1.1: Raised from 0.55 for precision
         check_format: bool = True,
         check_ambiguity: bool = True,
     ):
@@ -201,7 +201,7 @@ class CommunicationBreakdownDetector:
         elif intent_alignment < self.intent_threshold:
             detected = True
             breakdown_type = BreakdownType.INTENT_MISMATCH
-        elif len(ambiguities) >= 3:
+        elif len(ambiguities) >= 4:
             detected = True
             breakdown_type = BreakdownType.SEMANTIC_AMBIGUITY
 
@@ -227,6 +227,24 @@ class CommunicationBreakdownDetector:
             else:
                 severity = BreakdownSeverity.MODERATE
             confidence = 1 - intent_alignment
+            # Moderate confidence when keywords overlap despite verb mismatch.
+            # High keyword overlap means topics match — likely NOT a real breakdown.
+            request_words = set(sender_message.lower().split())
+            response_words = set(receiver_response.lower().split())
+            # Filter stop words for more meaningful overlap
+            _stop = {"the", "a", "an", "is", "are", "was", "were", "be", "been",
+                      "to", "of", "in", "for", "on", "with", "at", "by", "from",
+                      "and", "or", "but", "not", "no", "if", "it", "i", "you",
+                      "we", "they", "he", "she", "this", "that", "will", "can",
+                      "do", "does", "did", "has", "have", "had", "would", "could",
+                      "should", "may", "might", "shall", "must", "need"}
+            req_content = request_words - _stop
+            resp_content = response_words - _stop
+            if req_content:
+                content_overlap = len(req_content & resp_content) / len(req_content)
+                if content_overlap > 0.3:
+                    # Topics overlap despite verb mismatch → reduce confidence
+                    confidence *= max(0.4, 1.0 - content_overlap)
             explanation = (
                 f"Response does not align with request intent. "
                 f"Alignment score: {intent_alignment:.1%}"

@@ -39,6 +39,20 @@ class DetectionType(Enum):
     OPENCLAW_SPAWN_CHAIN = "openclaw_spawn_chain"  # Recursive session spawning
     OPENCLAW_CHANNEL_MISMATCH = "openclaw_channel_mismatch"  # Response inappropriate for channel
     OPENCLAW_SANDBOX_ESCAPE = "openclaw_sandbox_escape"  # Sandbox boundary violations
+    # Dify structural detectors
+    DIFY_RAG_POISONING = "dify_rag_poisoning"  # Knowledge retrieval poisoning
+    DIFY_ITERATION_ESCAPE = "dify_iteration_escape"  # Iteration/loop node escape
+    DIFY_MODEL_FALLBACK = "dify_model_fallback"  # Silent model fallback
+    DIFY_VARIABLE_LEAK = "dify_variable_leak"  # Sensitive variable leakage
+    DIFY_CLASSIFIER_DRIFT = "dify_classifier_drift"  # Question classifier degradation
+    DIFY_TOOL_SCHEMA_MISMATCH = "dify_tool_schema_mismatch"  # Tool input schema mismatch
+    # LangGraph structural detectors
+    LANGGRAPH_RECURSION = "langgraph_recursion"  # Graph recursion / infinite loops
+    LANGGRAPH_STATE_CORRUPTION = "langgraph_state_corruption"  # Invalid state mutations
+    LANGGRAPH_EDGE_MISROUTE = "langgraph_edge_misroute"  # Conditional edge misrouting
+    LANGGRAPH_TOOL_FAILURE = "langgraph_tool_failure"  # Uncaught tool errors
+    LANGGRAPH_PARALLEL_SYNC = "langgraph_parallel_sync"  # Parallel branch sync issues
+    LANGGRAPH_CHECKPOINT_CORRUPTION = "langgraph_checkpoint_corruption"  # Checkpoint/resume corruption
 
 
 @dataclass

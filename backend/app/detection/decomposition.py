@@ -482,7 +482,22 @@ class TaskDecompositionDetector:
         else:
             severity = DecompositionSeverity.MINOR
 
-        confidence = min(len(issues) * 0.3, 0.95)
+        # Weighted confidence: serious structural issues get higher confidence
+        # than common/minor issues like vague subtask names.
+        # v1.3: Lowered weights for weak signals (vague subtask, wrong granularity)
+        # to better separate true structural failures from stylistic issues.
+        _issue_weights = {
+            DecompositionIssue.CIRCULAR_DEPENDENCY: 0.50,
+            DecompositionIssue.IMPOSSIBLE_SUBTASK: 0.40,
+            DecompositionIssue.OVERLY_COMPLEX: 0.25,
+            DecompositionIssue.MISSING_DEPENDENCY: 0.25,
+            DecompositionIssue.DUPLICATE_WORK: 0.25,
+            DecompositionIssue.WRONG_GRANULARITY: 0.15,
+            DecompositionIssue.MISSING_SUBTASK: 0.15,
+            DecompositionIssue.VAGUE_SUBTASK: 0.10,
+        }
+        weighted_sum = sum(_issue_weights.get(i, 0.15) for i in issues)
+        confidence = min(0.95, 0.15 + weighted_sum)
 
         issue_names = [i.value for i in issues]
         unique_problematic = list(set(problematic))[:5]

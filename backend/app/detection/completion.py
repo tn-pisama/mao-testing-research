@@ -106,10 +106,9 @@ class CompletionMisjudgmentDetector:
         r'\bhere(?:\'s| is)\s+the\s+(?:final|completed|finished)\b',
         r'\b(?:that\'s|this\s+is)\s+everything\b',
         r'\bnothing\s+(?:else|more)\s+(?:to\s+do|needed|required)\b',
-        # v1.5: broader completion claims: "<subject> is done/ready/complete/working/implemented"
-        r'\b\w+\s+is\s+(?:done|complete|completed|ready|finished|implemented|working|set up|configured|live)\b',
+        # v1.7: Tightened subject patterns — only match task/work nouns, not any word
+        r'\b(?:migration|implementation|setup|integration|feature|system|module|service|component|api|app|application|build|deployment|test|testing|code|refactor|fix|update|upgrade)\s+(?:is\s+)?(?:complete|completed|done|ready|finished|implemented|working|set up|configured|live)\b',
         r'\b(?:done|complete|completed|ready|finished|implemented)\s*[!.]',
-        r'\b(?:migration|implementation|setup|integration|feature)\s+(?:is\s+)?(?:complete|done|ready)\b',
     ]
 
     # Patterns indicating incomplete work
@@ -852,6 +851,16 @@ class CompletionMisjudgmentDetector:
         if enum_issues:
             issues.extend(enum_issues)
 
+        # v1.6: Completion by absence — if task has explicit criteria
+        # and output addresses fewer than half, flag even without claim
+        if criteria_total > 0 and criteria_met < criteria_total * 0.5 and not is_scoped_task:
+            issues.append(CompletionIssue(
+                issue_type=CompletionIssueType.MISSED_CRITERIA,
+                description=f"Output addresses only {criteria_met}/{criteria_total} success criteria",
+                severity=CompletionSeverity.MODERATE,
+                evidence=f"Unmet: {', '.join(unmet_criteria[:3])}",
+            ))
+
         # v1.2: Reduce false positives for scoped tasks
         if is_scoped_task and issues:
             # Filter out minor issues for intentionally scoped tasks
@@ -908,6 +917,17 @@ class CompletionMisjudgmentDetector:
             # Enumerated coverage + completion claim is always strong enough
             if "enumerated_coverage" in signal_categories and "completion_claim" in signal_categories:
                 has_quant_exemption = True
+            # v1.6: Completion claim + any incompleteness signal is strong
+            if "completion_claim" in signal_categories and (
+                "incomplete_markers" in signal_categories
+                or "planned_work" in signal_categories
+                or "errors" in signal_categories
+                or "json_incomplete" in signal_categories
+            ):
+                has_quant_exemption = True
+            # v1.6: Structural or enumerated coverage alone is strong evidence
+            if "structural_incompleteness" in signal_categories or "enumerated_coverage" in signal_categories:
+                has_quant_exemption = True
 
             if len(signal_categories) < 2 and not has_quant_exemption:
                 issues = []  # Suppress detection — single signal insufficient
@@ -939,16 +959,30 @@ class CompletionMisjudgmentDetector:
         else:
             severity = CompletionSeverity.MINOR
 
-        # Calculate confidence based on evidence strength
-        base_confidence = 0.5
-        if completion_claimed:
-            base_confidence += 0.2
-        if incomplete_markers:
-            base_confidence += 0.1
-        if errors:
-            base_confidence += 0.1
-        if incomplete_subtasks:
-            base_confidence += 0.15
+        # Calculate confidence based on evidence strength and signal diversity
+        signal_count = sum([
+            bool(completion_claimed),
+            bool(incomplete_markers),
+            bool(errors),
+            bool(incomplete_subtasks),
+            bool(partial_indicators),
+            bool(planned_work),
+            bool(structural_issues),
+            bool(enum_issues),
+            bool(numeric_ratio and numeric_ratio[2] < 1.0),
+            bool(json_incomplete),
+        ])
+        if signal_count >= 4:
+            base_confidence = 0.85
+        elif signal_count >= 3:
+            base_confidence = 0.75
+        elif signal_count >= 2:
+            base_confidence = 0.65
+        else:
+            base_confidence = 0.55
+        # Boost for severe issues
+        if any(i.severity in (CompletionSeverity.SEVERE, CompletionSeverity.CRITICAL) for i in issues):
+            base_confidence = max(base_confidence, 0.75)
         confidence = min(0.95, base_confidence)
 
         # Build explanation

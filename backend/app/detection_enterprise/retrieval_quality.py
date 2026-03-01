@@ -265,34 +265,36 @@ class RetrievalQualityDetector:
         num_irrelevant: int,
         num_gaps: int,
     ) -> tuple[float, dict]:
-        """Calibrate confidence based on multiple factors."""
-        base_confidence = 0.5
+        """Calibrate confidence based on multiple factors.
 
-        # Factor 1: Relevance score impact
-        relevance_factor = (1 - relevance_score) * 0.2
-        base_confidence += relevance_factor
+        Uses wider spread to better separate true positives from negatives.
+        """
+        # Count how many quality dimensions are below threshold
+        failing_dims = sum([
+            relevance_score < self.relevance_threshold,
+            precision < self.precision_threshold,
+            coverage_score < self.coverage_threshold,
+        ])
 
-        # Factor 2: Coverage impact
-        coverage_factor = (1 - coverage_score) * 0.2
-        base_confidence += coverage_factor
-
-        # Factor 3: Precision impact
-        precision_factor = (1 - precision) * 0.15
-        base_confidence += precision_factor
-
-        # Factor 4: Issue count
-        issue_factor = min(0.15, (num_irrelevant + num_gaps) * 0.03)
-        base_confidence += issue_factor
+        if failing_dims >= 2:
+            # Multiple quality dimensions failing → high confidence
+            base_confidence = 0.70 + min(0.25, num_irrelevant * 0.03 + num_gaps * 0.03)
+        elif failing_dims == 1:
+            # Single dimension failing → moderate confidence
+            base_confidence = 0.50 + min(0.15, (num_irrelevant + num_gaps) * 0.03)
+        else:
+            # No dimensions clearly failing → low confidence
+            base_confidence = 0.25 + min(0.15, num_gaps * 0.03)
 
         # Apply scaling and cap
         calibrated = min(0.99, base_confidence * self.confidence_scaling)
 
         calibration_info = {
             "base_confidence": round(base_confidence, 4),
-            "relevance_factor": round(relevance_factor, 4),
-            "coverage_factor": round(coverage_factor, 4),
-            "precision_factor": round(precision_factor, 4),
-            "issue_factor": round(issue_factor, 4),
+            "failing_dims": failing_dims,
+            "relevance_score": round(relevance_score, 4),
+            "coverage_score": round(coverage_score, 4),
+            "precision": round(precision, 4),
             "irrelevant_count": num_irrelevant,
             "gap_count": num_gaps,
         }
@@ -416,11 +418,14 @@ class RetrievalQualityDetector:
         query_doc_alignment = self._compute_query_alignment(query, retrieved_documents)
 
         # Determine if failure detected
+        # v1.1: Require multiple gaps OR high-severity gap (not just any gap)
+        high_severity_gaps = [g for g in coverage_gaps if g.severity == "high"]
+        has_significant_gaps = len(coverage_gaps) >= 2 or len(high_severity_gaps) > 0
         detected = (
             relevance_score < self.relevance_threshold or
             precision < self.precision_threshold or
             coverage_score < self.coverage_threshold or
-            len(coverage_gaps) > 0
+            has_significant_gaps
         )
 
         # Calculate severity

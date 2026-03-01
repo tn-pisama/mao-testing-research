@@ -243,6 +243,23 @@ class SemanticCorruptionDetector:
 
         return issues
 
+    @staticmethod
+    def _flatten_nested_dicts(state_delta: dict, prefix: str = "") -> dict:
+        """Flatten nested dicts so inner fields are exposed for corruption checks.
+
+        E.g. ``{'json': {'salary': 125000}}`` → ``{'json.salary': 125000}``.
+        Only recurses one level deep to avoid excessive expansion.
+        """
+        flat: dict = {}
+        for key, value in state_delta.items():
+            full_key = f"{prefix}{key}" if not prefix else f"{prefix}.{key}"
+            if isinstance(value, dict) and value:
+                # Recurse one level into nested dicts
+                flat.update(SemanticCorruptionDetector._flatten_nested_dicts(value, full_key))
+            else:
+                flat[full_key] = value
+        return flat
+
     def detect_corruption(
         self,
         prev_state: StateSnapshot,
@@ -263,6 +280,18 @@ class SemanticCorruptionDetector:
         issues.extend(self._detect_value_copying(current_state))
         issues.extend(self._detect_suspicious_rapid_changes(prev_state, current_state))
         issues.extend(self._detect_anomalous_value_changes(prev_state, current_state))
+
+        # Also check flattened nested dicts (e.g. n8n entries with 'json' wrapper).
+        # Only if there are nested dicts that differ between states.
+        prev_flat = self._flatten_nested_dicts(prev_state.state_delta)
+        curr_flat = self._flatten_nested_dicts(current_state.state_delta)
+        if prev_flat != prev_state.state_delta or curr_flat != current_state.state_delta:
+            flat_prev = StateSnapshot(state_delta=prev_flat, agent_id=prev_state.agent_id, timestamp=prev_state.timestamp)
+            flat_curr = StateSnapshot(state_delta=curr_flat, agent_id=current_state.agent_id, timestamp=current_state.timestamp)
+            # Only run value-change detection on flattened data.
+            # Skip _detect_type_drift (field_disappeared too noisy for nested keys)
+            # and schema checks (dotted keys don't match domain validators).
+            issues.extend(self._detect_anomalous_value_changes(flat_prev, flat_curr))
 
         filtered_issues = self._apply_velocity_filtering(issues, current_state)
 
@@ -375,6 +404,14 @@ class SemanticCorruptionDetector:
         
         return round(calibrated, 4), calibration_info
     
+    # Issue types that should NEVER be suppressed by velocity filtering,
+    # even on high-velocity fields like "version" or "timestamp".
+    _VELOCITY_IMMUNE_ISSUES = {
+        "type_drift", "monotonic_regression", "sign_flip",
+        "status_regression", "data_loss", "content_replacement",
+        "identity_mutation", "regression_nullification",
+    }
+
     def _apply_velocity_filtering(
         self,
         issues: List[CorruptionIssue],
@@ -384,8 +421,8 @@ class SemanticCorruptionDetector:
         filtered = []
 
         for issue in issues:
-            # Never suppress critical issues like type_drift
-            if issue.issue_type == "type_drift":
+            # Never suppress high-severity corruption signals
+            if issue.issue_type in self._VELOCITY_IMMUNE_ISSUES:
                 filtered.append(issue)
                 continue
 
@@ -441,13 +478,39 @@ class SemanticCorruptionDetector:
         
         return issues
     
+    # Status fields and their expected progression order (forward-only)
+    STATUS_PROGRESSIONS = {
+        "status": ["pending", "processing", "shipped", "delivered", "completed"],
+        "order_status": ["pending", "processing", "shipped", "delivered", "completed"],
+        "state": ["created", "active", "suspended", "closed", "archived"],
+        "workflow_status": ["draft", "review", "approved", "published"],
+        "ticket_status": ["open", "in_progress", "resolved", "closed"],
+    }
+
+    # Fields that should only increase (monotonic)
+    MONOTONIC_INCREASING_FIELDS = {
+        "version", "revision", "build_number", "sequence",
+        "last_login", "last_modified", "last_updated", "updated_at",
+        "last_seen", "last_activity",
+    }
+
+    # Fields representing core identity (should not all change at once)
+    IDENTITY_FIELDS = {"first_name", "last_name", "name", "username", "display_name"}
+
+    # Known score-grade mappings
+    GRADE_SCORE_RANGES = {
+        "A": (90, 100), "A+": (97, 100), "A-": (90, 93),
+        "B": (80, 89), "B+": (87, 89), "B-": (80, 83),
+        "C": (70, 79), "D": (60, 69), "F": (0, 59),
+    }
+
     def _detect_anomalous_value_changes(
         self,
         prev: StateSnapshot,
         current: StateSnapshot,
     ) -> List[CorruptionIssue]:
         """Detect anomalous value changes: sign flips, extreme magnitude shifts,
-        logical impossibilities (e.g. negative balance, out-of-range scores)."""
+        status regressions, monotonic violations, identity mutations, duplicates."""
         issues: List[CorruptionIssue] = []
 
         for key in set(prev.state_delta.keys()) & set(current.state_delta.keys()):
@@ -457,8 +520,30 @@ class SemanticCorruptionDetector:
             if prev_val == curr_val:
                 continue
 
-            # Numeric anomalies
-            if isinstance(prev_val, (int, float)) and isinstance(curr_val, (int, float)):
+            # Nullification: non-None value replaced with None
+            if prev_val is not None and curr_val is None:
+                issues.append(CorruptionIssue(
+                    issue_type="data_loss",
+                    field=key,
+                    message=f"Field nullified: {str(prev_val)[:50]} → None",
+                    severity="high",
+                ))
+                continue
+
+            # Type drift inline: different types for same key (not involving None)
+            if type(prev_val) is not type(curr_val) and prev_val is not None and curr_val is not None:
+                # Skip int↔float which is benign
+                if not (isinstance(prev_val, (int, float)) and isinstance(curr_val, (int, float))):
+                    issues.append(CorruptionIssue(
+                        issue_type="type_drift",
+                        field=key,
+                        message=f"Type changed: {type(prev_val).__name__} → {type(curr_val).__name__}",
+                        severity="high",
+                    ))
+
+            # Numeric anomalies (exclude booleans — True/False transitions are normal)
+            if (isinstance(prev_val, (int, float)) and isinstance(curr_val, (int, float))
+                    and not isinstance(prev_val, bool) and not isinstance(curr_val, bool)):
                 # Sign flip
                 if prev_val > 0 and curr_val < 0:
                     issues.append(CorruptionIssue(
@@ -478,10 +563,20 @@ class SemanticCorruptionDetector:
                             severity="medium",
                         ))
 
-            # String anomalies: drastic content change
+                # Monotonic field regression (version, build_number, etc.)
+                key_lower = key.lower()
+                if any(mf in key_lower for mf in self.MONOTONIC_INCREASING_FIELDS):
+                    if curr_val < prev_val:
+                        issues.append(CorruptionIssue(
+                            issue_type="monotonic_regression",
+                            field=key,
+                            message=f"Monotonic field decreased: {prev_val} → {curr_val}",
+                            severity="high",
+                        ))
+
+            # String anomalies
             elif isinstance(prev_val, str) and isinstance(curr_val, str):
                 if len(prev_val) > 5 and len(curr_val) > 5:
-                    # Check if content was replaced with something completely different
                     prev_words = set(prev_val.lower().split())
                     curr_words = set(curr_val.lower().split())
                     if prev_words and curr_words:
@@ -495,7 +590,35 @@ class SemanticCorruptionDetector:
                                 severity="medium",
                             ))
 
-            # List anomalies: items lost
+                # Status/enum regression detection
+                key_lower = key.lower()
+                for status_field, progression in self.STATUS_PROGRESSIONS.items():
+                    if status_field in key_lower:
+                        prev_lower = prev_val.lower().strip()
+                        curr_lower = curr_val.lower().strip()
+                        if prev_lower in progression and curr_lower in progression:
+                            prev_idx = progression.index(prev_lower)
+                            curr_idx = progression.index(curr_lower)
+                            if curr_idx < prev_idx:
+                                issues.append(CorruptionIssue(
+                                    issue_type="status_regression",
+                                    field=key,
+                                    message=f"Status regressed: '{prev_val}' → '{curr_val}'",
+                                    severity="high",
+                                ))
+                        break
+
+                # Monotonic string fields (timestamps as strings)
+                if any(mf in key_lower for mf in self.MONOTONIC_INCREASING_FIELDS):
+                    if curr_val < prev_val:  # String comparison works for ISO dates
+                        issues.append(CorruptionIssue(
+                            issue_type="monotonic_regression",
+                            field=key,
+                            message=f"Monotonic field decreased: '{prev_val}' → '{curr_val}'",
+                            severity="high",
+                        ))
+
+            # List anomalies: items lost or duplicated
             elif isinstance(prev_val, list) and isinstance(curr_val, list):
                 if len(prev_val) > 0 and len(curr_val) == 0:
                     issues.append(CorruptionIssue(
@@ -512,6 +635,25 @@ class SemanticCorruptionDetector:
                         severity="medium",
                     ))
 
+                # Duplicate item detection in lists of dicts
+                if curr_val and isinstance(curr_val[0], dict):
+                    id_key = None
+                    for candidate in ("id", "item_id", "key", "name"):
+                        if all(candidate in item for item in curr_val if isinstance(item, dict)):
+                            id_key = candidate
+                            break
+                    if id_key:
+                        ids = [item[id_key] for item in curr_val if isinstance(item, dict)]
+                        if len(ids) != len(set(ids)):
+                            from collections import Counter
+                            dupes = [v for v, c in Counter(ids).items() if c > 1]
+                            issues.append(CorruptionIssue(
+                                issue_type="duplicate_items",
+                                field=key,
+                                message=f"Duplicate items by '{id_key}': {dupes[:3]}",
+                                severity="high",
+                            ))
+
             # Dict anomalies: keys lost
             elif isinstance(prev_val, dict) and isinstance(curr_val, dict):
                 lost_keys = set(prev_val.keys()) - set(curr_val.keys())
@@ -523,15 +665,67 @@ class SemanticCorruptionDetector:
                         severity="medium",
                     ))
 
-        # Check for fields that disappeared entirely
+        # Check for fields that disappeared entirely.
+        # Only flag when multiple fields vanish (single field disappearance
+        # is often an optional/nullable field in n8n payloads).
         lost_fields = set(prev.state_delta.keys()) - set(current.state_delta.keys())
-        if lost_fields:
-            for field_name in lost_fields:
-                if not self._is_high_velocity_field(field_name):
+        non_velocity_lost = [f for f in lost_fields if not self._is_high_velocity_field(f)]
+        if len(non_velocity_lost) >= 3:
+            issues.append(CorruptionIssue(
+                issue_type="field_disappeared",
+                field=",".join(list(non_velocity_lost)[:3]),
+                message=f"{len(non_velocity_lost)} fields disappeared: {list(non_velocity_lost)[:3]}",
+                severity="high",
+            ))
+
+        # Cross-field semantic inconsistency: score vs grade
+        curr_data = current.state_delta
+        if "score" in curr_data and "grade" in curr_data:
+            score = curr_data["score"]
+            grade = curr_data["grade"]
+            if isinstance(score, (int, float)) and isinstance(grade, str):
+                grade_upper = grade.upper().strip()
+                if grade_upper in self.GRADE_SCORE_RANGES:
+                    lo, hi = self.GRADE_SCORE_RANGES[grade_upper]
+                    if not (lo <= score <= hi):
+                        issues.append(CorruptionIssue(
+                            issue_type="cross_field_inconsistency",
+                            field="score,grade",
+                            message=f"Score {score} inconsistent with grade '{grade}' (expected {lo}-{hi})",
+                            severity="high",
+                        ))
+
+        # Identity field mutation detection: multiple identity fields changed at once
+        # while a stable identifier (email, user_id) stayed the same
+        common_keys = set(prev.state_delta.keys()) & set(current.state_delta.keys())
+        changed_identity = [
+            k for k in common_keys
+            if k.lower() in self.IDENTITY_FIELDS
+            and prev.state_delta[k] != current.state_delta[k]
+        ]
+        stable_identifiers = [
+            k for k in common_keys
+            if k.lower() in {"email", "user_id", "account_id", "id"}
+            and prev.state_delta[k] == current.state_delta[k]
+        ]
+        if len(changed_identity) >= 2 and stable_identifiers:
+            issues.append(CorruptionIssue(
+                issue_type="identity_mutation",
+                field=",".join(changed_identity),
+                message=f"Multiple identity fields changed ({changed_identity}) while {stable_identifiers} stayed the same",
+                severity="high",
+            ))
+
+        # Nullification alongside regression: dependent field set to null
+        # when a status-type field regresses
+        status_regressed = any(i.issue_type == "status_regression" for i in issues)
+        if status_regressed:
+            for key in common_keys:
+                if current.state_delta[key] is None and prev.state_delta[key] is not None:
                     issues.append(CorruptionIssue(
-                        issue_type="field_disappeared",
-                        field=field_name,
-                        message=f"Field '{field_name}' present in previous state but missing in current",
+                        issue_type="regression_nullification",
+                        field=key,
+                        message=f"Field '{key}' nullified alongside status regression",
                         severity="medium",
                     ))
 

@@ -197,6 +197,116 @@ INPUT_SCHEMAS: Dict[str, Dict[str, Any]] = {
             }
         },
     },
+    # Dify structural detectors
+    "dify_rag_poisoning": {
+        "required": ["workflow_run"],
+        "nested": {
+            "workflow_run": {
+                "is_list": False,
+                "item_keys": ["workflow_run_id", "nodes", "app_type"],
+            }
+        },
+    },
+    "dify_iteration_escape": {
+        "required": ["workflow_run"],
+        "nested": {
+            "workflow_run": {
+                "is_list": False,
+                "item_keys": ["workflow_run_id", "nodes"],
+            }
+        },
+    },
+    "dify_model_fallback": {
+        "required": ["workflow_run"],
+        "nested": {
+            "workflow_run": {
+                "is_list": False,
+                "item_keys": ["workflow_run_id", "nodes"],
+            }
+        },
+    },
+    "dify_variable_leak": {
+        "required": ["workflow_run"],
+        "nested": {
+            "workflow_run": {
+                "is_list": False,
+                "item_keys": ["workflow_run_id", "nodes"],
+            }
+        },
+    },
+    "dify_classifier_drift": {
+        "required": ["workflow_run"],
+        "nested": {
+            "workflow_run": {
+                "is_list": False,
+                "item_keys": ["workflow_run_id", "nodes", "app_type"],
+            }
+        },
+    },
+    "dify_tool_schema_mismatch": {
+        "required": ["workflow_run"],
+        "nested": {
+            "workflow_run": {
+                "is_list": False,
+                "item_keys": ["workflow_run_id", "nodes"],
+            }
+        },
+    },
+    # LangGraph structural detectors
+    "langgraph_recursion": {
+        "required": ["graph_execution"],
+        "nested": {
+            "graph_execution": {
+                "is_list": False,
+                "item_keys": ["graph_id", "thread_id", "nodes"],
+            }
+        },
+    },
+    "langgraph_state_corruption": {
+        "required": ["graph_execution"],
+        "nested": {
+            "graph_execution": {
+                "is_list": False,
+                "item_keys": ["graph_id", "thread_id", "nodes"],
+            }
+        },
+    },
+    "langgraph_edge_misroute": {
+        "required": ["graph_execution"],
+        "nested": {
+            "graph_execution": {
+                "is_list": False,
+                "item_keys": ["graph_id", "thread_id", "nodes", "edges"],
+            }
+        },
+    },
+    "langgraph_tool_failure": {
+        "required": ["graph_execution"],
+        "nested": {
+            "graph_execution": {
+                "is_list": False,
+                "item_keys": ["graph_id", "thread_id", "nodes"],
+            }
+        },
+    },
+    "langgraph_parallel_sync": {
+        "required": ["graph_execution"],
+        "nested": {
+            "graph_execution": {
+                "is_list": False,
+                "item_keys": ["graph_id", "thread_id", "nodes"],
+            }
+        },
+    },
+    "langgraph_checkpoint_corruption": {
+        "required": ["graph_execution"],
+        "nested": {
+            "graph_execution": {
+                "is_list": False,
+                "item_keys": ["graph_id", "thread_id", "nodes", "checkpoints"],
+            }
+        },
+    },
 }
 
 
