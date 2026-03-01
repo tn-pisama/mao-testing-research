@@ -20,6 +20,13 @@ export default function DetectionsPage() {
         </p>
       </div>
 
+      <div className="mb-8 p-4 rounded-xl bg-primary-600/10 border border-primary-500/30">
+        <p className="text-sm text-slate-300">
+          For a complete reference of all 21 failure mode detectors including examples, detection methods, and accuracy metrics, see the{' '}
+          <a href="/docs/failure-modes" className="text-primary-400 hover:underline font-medium">Failure Modes Reference</a>.
+        </p>
+      </div>
+
       <section className="mb-10">
         <h2 className="text-xl font-bold text-white mb-4">Detection Types</h2>
         <p className="text-slate-300 mb-6">
