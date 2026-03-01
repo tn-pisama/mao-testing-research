@@ -387,19 +387,32 @@ def _parse_json(text: str) -> Any:
         return json.loads(text)
     except json.JSONDecodeError:
         pass
-    # Try extracting from markdown code block
-    match = re.search(r"```(?:json)?\s*\n?(.*?)\n?```", text, re.DOTALL)
-    if match:
+
+    # Strip markdown code fences (fast string ops, no regex on large text)
+    stripped = text.strip()
+    if stripped.startswith("```"):
+        # Remove opening fence line
+        first_newline = stripped.find("\n")
+        if first_newline > 0:
+            stripped = stripped[first_newline + 1:]
+        # Remove closing fence
+        if stripped.rstrip().endswith("```"):
+            stripped = stripped.rstrip()
+            stripped = stripped[: stripped.rfind("```")].rstrip()
         try:
-            return json.loads(match.group(1))
+            return json.loads(stripped)
         except json.JSONDecodeError:
             pass
-    # Try finding array or object
-    for pattern in [r'\[.*\]', r'\{.*\}']:
-        match = re.search(pattern, text, re.DOTALL)
-        if match:
+
+    # Find first [ or { and parse from there
+    for start_char, end_char in [("[", "]"), ("{", "}")]:
+        start = text.find(start_char)
+        if start < 0:
+            continue
+        end = text.rfind(end_char)
+        if end > start:
             try:
-                return json.loads(match.group(0))
+                return json.loads(text[start : end + 1])
             except json.JSONDecodeError:
                 pass
     return None

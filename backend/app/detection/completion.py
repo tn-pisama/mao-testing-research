@@ -34,7 +34,7 @@ Version History:
 """
 
 # Detector version for tracking
-DETECTOR_VERSION = "1.6"
+DETECTOR_VERSION = "1.7"
 DETECTOR_NAME = "CompletionMisjudgmentDetector"
 
 import logging
@@ -144,7 +144,7 @@ class CompletionMisjudgmentDetector:
         (r'\b(?:most|majority|mainly|primarily|largely)\b', "partial_scope"),
         (r'\b(?:core|main|primary|key|essential)\s+(?:functionality|features?|parts?)\b', "core_only"),
         (r'\b(?:basic|minimal|initial|preliminary)\b', "minimal_scope"),
-        (r'\b\d{1,2}%', "percentage_incomplete"),  # v1.3: Fixed - removed trailing \b (% is not word char)
+        (r'(?<!\.)\b\d{1,2}%', "percentage_incomplete"),  # v1.3/v1.7: skip decimal parts like "99.2%"
         (r'\b(?:some|several|few|certain)\s+(?:of|aspects?|parts?|areas?)\b', "partial_coverage"),
         (r'\b(?:focus(?:ed|ing)?|priorit(?:ized?|izing))\s+on\b', "selective_focus"),
         (r'\b(?:for now|at this point|currently|at the moment)\b', "temporal_limitation"),
@@ -223,9 +223,11 @@ class CompletionMisjudgmentDetector:
     ]
 
     # v1.3: Numeric ratio patterns (e.g., "8/10", "documented: 8, total: 10")
+    # v1.7: Added (?<!,) lookbehind to prevent matching inside comma-separated
+    # numbers like "15,000 of 15,000" (was matched as "000 of 15" → 0/15).
     NUMERIC_RATIO_PATTERNS = [
-        (r'(\d+)\s*/\s*(\d+)', "explicit_ratio"),  # 8/10
-        (r'(\d+)\s+(?:of|out of)\s+(\d+)', "explicit_count"),  # 8 of 10
+        (r'(?<!,)(\d+)\s*/\s*(?<!,)(\d+)', "explicit_ratio"),  # 8/10
+        (r'(?<!,)(\d+)\s+(?:of|out of)\s+(?<!,)(\d+)', "explicit_count"),  # 8 of 10
         (r'"(?:documented|completed|done|tested)(?:Endpoints?|Items?|Tasks?)?"\s*:\s*(\d+).*?"(?:total)(?:Endpoints?|Items?|Tasks?)?"\s*:\s*(\d+)', "json_ratio"),
     ]
 
@@ -253,12 +255,24 @@ class CompletionMisjudgmentDetector:
         return False
 
     def _detect_incomplete_markers(self, text: str) -> List[tuple]:
-        """Detect markers indicating incomplete work."""
+        """Detect markers indicating incomplete work.
+
+        v1.7: Skip 'etc.' when inside parentheses — typically abbreviating
+        an example list (e.g., 'standardized state abbreviations (CA, NY, etc.)')
+        rather than indicating incomplete work.
+        """
         markers = []
 
         for pattern, marker_type in self.INCOMPLETE_PATTERNS:
             matches = re.finditer(pattern, text, re.IGNORECASE)
             for match in matches:
+                # v1.7: Skip "etc." inside parenthetical examples
+                if marker_type == "ellipsis" and "etc" in match.group().lower():
+                    # Check if preceded by an opening paren or comma+items
+                    before = text[max(0, match.start() - 60):match.start()]
+                    if "(" in before and ")" not in before[before.rfind("("):]:
+                        continue  # Inside parentheses — skip
+
                 start = max(0, match.start() - 30)
                 end = min(len(text), match.end() + 30)
                 context = text[start:end].strip()
@@ -267,8 +281,13 @@ class CompletionMisjudgmentDetector:
         return markers
 
     # v1.6: Context phrases that neutralize error/failure matches
+    # v1.7: Added "flagged", "reported", "logged" as post-match neutralizers
     _ERROR_NEUTRALIZERS = re.compile(
         r'\b(?:fixed|resolved|addressed|handled|corrected|recovered|cleared|eliminated)\b',
+        re.IGNORECASE,
+    )
+    _ERROR_SUFFIX_NEUTRALIZERS = re.compile(
+        r'\b(?:flagged|reported|logged|noted|documented|skipped|excluded)\b',
         re.IGNORECASE,
     )
     # v1.6: Compound terms where "error"/"failure" is a domain concept, not an actual error
@@ -305,6 +324,11 @@ class CompletionMisjudgmentDetector:
                 prefix_start = max(0, match.start() - 50)
                 prefix = text[prefix_start:match.start()]
                 if self._ERROR_NEUTRALIZERS.search(prefix):
+                    continue
+                # v1.7: Skip if followed by exception-handling language
+                suffix_end = min(len(text), match.end() + 60)
+                suffix = text[match.end():suffix_end]
+                if self._ERROR_SUFFIX_NEUTRALIZERS.search(suffix):
                     continue
                 errors.append(context)
 
@@ -429,30 +453,60 @@ class CompletionMisjudgmentDetector:
 
         return criteria
 
+    # v1.7: Suffix list for criteria stemming (shared with _stem)
+    _CRITERIA_STEM_SUFFIXES = (
+        "ation", "tion", "sion", "ment", "ness", "ity", "ance", "ence",
+        "ing", "ed", "er", "es", "ly", "al", "ous", "ive", "ful",
+        "ize", "ise", "able", "ible",
+    )
+
+    @staticmethod
+    def _criteria_stem(word: str) -> str:
+        """Minimal suffix strip for criteria keyword matching."""
+        if word.endswith("s") and len(word) >= 4:
+            word = word[:-1]
+        for sfx in CompletionMisjudgmentDetector._CRITERIA_STEM_SUFFIXES:
+            if word.endswith(sfx) and len(word) - len(sfx) >= 3:
+                return word[:-len(sfx)]
+        return word
+
     def _check_criteria_met(
         self,
         criteria: List[str],
         output: str,
     ) -> tuple[int, int, List[str]]:
-        """Check how many success criteria appear to be met."""
+        """Check how many success criteria appear to be met.
+
+        v1.7: Uses stem matching so 'paginated' matches 'pagination',
+        'functional' matches 'filters', etc.
+        """
         met = 0
         unmet = []
 
         output_lower = output.lower()
+        # Pre-compute output stems for faster matching
+        output_words = set(re.findall(r'[a-z]{3,}', output_lower))
+        output_stems = {self._criteria_stem(w) for w in output_words}
 
         for criterion in criteria:
             # Extract key terms from criterion
-            words = re.findall(r'\b\w{4,}\b', criterion.lower())
+            words = re.findall(r'\b\w{3,}\b', criterion.lower())
             key_words = [w for w in words if w not in {
                 'should', 'must', 'need', 'required', 'that', 'this',
-                'will', 'have', 'been', 'with', 'from', 'into'
+                'will', 'have', 'been', 'with', 'from', 'into',
+                'the', 'and', 'for', 'are', 'all', 'not', 'can',
             }]
 
             if not key_words:
                 continue
 
-            # Check if key words appear in output
-            matches = sum(1 for w in key_words if w in output_lower)
+            # Check if key words appear in output via substring OR stem match
+            matches = 0
+            for w in key_words:
+                if w in output_lower:
+                    matches += 1
+                elif self._criteria_stem(w) in output_stems:
+                    matches += 1
             if matches >= len(key_words) * 0.5:  # At least 50% of key words
                 met += 1
             else:
@@ -682,7 +736,11 @@ class CompletionMisjudgmentDetector:
         errors = self._detect_errors(agent_output)
 
         # v1.1: Detect partial completion hedges and qualifiers
+        # v1.7: Also check criteria text for quantitative requirements
         has_quant_req = self._has_quantitative_requirement(task)
+        if not has_quant_req and success_criteria:
+            criteria_text = " ".join(success_criteria)
+            has_quant_req = self._has_quantitative_requirement(criteria_text)
         partial_indicators = self._detect_partial_completion(agent_output)
         qualifiers = self._detect_qualifiers(agent_output)
 
@@ -874,6 +932,29 @@ class CompletionMisjudgmentDetector:
                     evidence=context,
                 ))
 
+        # v1.7: Detect deferred/incomplete work without explicit completion claim
+        # Agents that say "X is on the backlog" or "not yet configured" are
+        # delivering partial work — create MODERATE issues so the ensemble gate
+        # can consider them alongside other signals.
+        if not completion_claimed and not is_scoped_task:
+            if planned_work and any(p[1] == "deferred_work" for p in planned_work):
+                deferred = [p for p in planned_work if p[1] == "deferred_work"]
+                for indicator, _, context in deferred[:2]:
+                    issues.append(CompletionIssue(
+                        issue_type=CompletionIssueType.PARTIAL_DELIVERY,
+                        description=f"Work explicitly deferred: '{indicator}'",
+                        severity=CompletionSeverity.MODERATE,
+                        evidence=context,
+                    ))
+            if incomplete_markers and (partial_indicators or planned_work):
+                for marker, marker_type, context in incomplete_markers[:2]:
+                    issues.append(CompletionIssue(
+                        issue_type=CompletionIssueType.INCOMPLETE_VERIFICATION,
+                        description=f"Incomplete marker without completion claim: '{marker}'",
+                        severity=CompletionSeverity.MINOR,
+                        evidence=context,
+                    ))
+
         # v1.5: Detect structural incompleteness (e.g., fewer list items than requested)
         structural_issues = self._detect_structural_incompleteness(task, agent_output)
         if structural_issues:
@@ -960,6 +1041,9 @@ class CompletionMisjudgmentDetector:
                 has_quant_exemption = True
             # v1.6: Structural or enumerated coverage alone is strong evidence
             if "structural_incompleteness" in signal_categories or "enumerated_coverage" in signal_categories:
+                has_quant_exemption = True
+            # v1.7: Deferred work (backlog, next sprint) alone is strong evidence
+            if planned_work and any(p[1] == "deferred_work" for p in planned_work):
                 has_quant_exemption = True
 
             if len(signal_categories) < 2 and not has_quant_exemption:

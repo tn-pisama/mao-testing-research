@@ -643,14 +643,22 @@ class LangGraphGoldenDataGenerator(GoldenDataGenerator):
     @staticmethod
     def _salvage_truncated_json(text: str) -> str:
         """Attempt to close a truncated JSON array so we can parse partial entries."""
-        import re
-        stripped = text.rstrip()
-        stripped = re.sub(r'^```(?:json)?\s*\n?', '', stripped)
-        stripped = re.sub(r'\n?```\s*$', '', stripped)
+        stripped = text.strip()
+        # Strip opening code fence line
+        if stripped.startswith("```"):
+            first_newline = stripped.find("\n")
+            if first_newline > 0:
+                stripped = stripped[first_newline + 1:]
+        # Strip closing code fence (if present on non-truncated)
+        if stripped.rstrip().endswith("```"):
+            stripped = stripped[: stripped.rfind("```")]
         stripped = stripped.strip()
 
-        if not stripped.startswith("["):
+        # Find the start of the JSON array
+        arr_start = stripped.find("[")
+        if arr_start < 0:
             return text
+        stripped = stripped[arr_start:]
 
         last_brace = stripped.rfind("}")
         if last_brace > 0:

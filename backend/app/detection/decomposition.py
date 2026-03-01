@@ -481,29 +481,66 @@ class TaskDecompositionDetector:
 
         return list(set(violations))
 
+    # v1.8: Stop words for missing requirement detection — generic task verbs
+    # and nouns that don't represent domain-specific requirements.
+    _REQ_STOP_WORDS = frozenset({
+        "build", "create", "implement", "setup", "develop", "design",
+        "write", "deploy", "configure", "install", "update", "upgrade",
+        "using", "existing", "based", "between", "across", "current",
+        "system", "application", "feature", "service", "module", "component",
+        "project", "platform", "solution", "architecture", "infrastructure",
+        "should", "would", "could", "about", "their", "which", "where",
+    })
+
+    _REQ_STEM_SUFFIXES = (
+        "tion", "sion", "ment", "ness", "ity", "ing", "ed", "er",
+        "es", "ly", "al", "ous", "ive", "able", "ible",
+    )
+
+    @staticmethod
+    def _req_stem(word: str) -> str:
+        if word.endswith("s") and len(word) >= 5:
+            word = word[:-1]
+        for sfx in TaskDecompositionDetector._REQ_STEM_SUFFIXES:
+            if word.endswith(sfx) and len(word) - len(sfx) >= 3:
+                return word[:-len(sfx)]
+        return word
+
     def _detect_missing_requirements(
         self, subtasks: list[Subtask], task_description: str,
     ) -> list[str]:
-        """v1.7: Detect key task requirements that no step addresses."""
-        # Extract noun phrases / key concepts from the task
+        """v1.7/v1.8: Detect key task requirements that no step addresses.
+
+        v1.8: Added stop word filtering for generic task verbs/nouns
+        and stem matching for better word coverage.
+        """
         task_lower = task_description.lower()
-        # Split on common separators: "with", "and", commas
         requirement_chunks = re.split(r'\b(?:with|and|,)\b', task_lower)
 
-        # Extract significant multi-word phrases from each chunk
         all_step_text = " ".join(st.description.lower() for st in subtasks)
+        # Pre-compute step word stems for matching
+        step_words = set(re.findall(r'[a-z]{3,}', all_step_text))
+        step_stems = {self._req_stem(w) for w in step_words}
 
         missing = []
         for chunk in requirement_chunks:
             chunk = chunk.strip()
             if len(chunk) < 5:
                 continue
-            # Extract significant words (>4 chars) from this requirement
-            chunk_words = set(w for w in re.findall(r'[a-z]+', chunk) if len(w) > 4)
+            # Extract significant words, filtering stop words
+            chunk_words = set(
+                w for w in re.findall(r'[a-z]+', chunk)
+                if len(w) > 4 and w not in self._REQ_STOP_WORDS
+            )
             if not chunk_words:
                 continue
-            # Check how many of these words appear anywhere in steps
-            found = sum(1 for w in chunk_words if w in all_step_text)
+            # Check via substring OR stem matching
+            found = 0
+            for w in chunk_words:
+                if w in all_step_text:
+                    found += 1
+                elif self._req_stem(w) in step_stems:
+                    found += 1
             coverage = found / len(chunk_words)
             if coverage < 0.3 and len(chunk_words) >= 2:
                 missing.append(chunk.strip()[:60])

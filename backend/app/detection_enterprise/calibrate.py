@@ -348,22 +348,60 @@ def _build_detector_runners() -> Dict[DetectionType, Any]:
             # expects List[Dict] with 'name' and 'status' keys.
             # v1.3: Infer subtask status from agent_output instead of
             # hardcoding "pending" (which caused 100% FP rate on negatives).
+            # v1.4: Split compound names on _ and -, lower len threshold to >=3,
+            # add minimal stemming so "validation" matches "validated" etc.
+            import re as _re
+
+            _STEM_SUFFIXES = ("tion", "ing", "ment", "ness", "ity", "ed", "er",
+                              "es", "ly", "al", "ous", "ive", "ful", "ize", "ise")
+
+            def _infer_subtask_stem(word: str) -> str:
+                """Minimal suffix strip for subtask inference matching."""
+                # Strip plural 's' first so "notifications" → "notification" → "notifica"
+                if word.endswith("s") and len(word) >= 4:
+                    word = word[:-1]
+                for sfx in _STEM_SUFFIXES:
+                    if word.endswith(sfx) and len(word) - len(sfx) >= 3:
+                        return word[:-len(sfx)]
+                return word
+
             raw_subtasks = entry.input_data.get("subtasks", None)
             subtasks = None
             if raw_subtasks:
                 output_lower = agent_output.lower()
+                # Pre-stem output words for faster matching
+                output_words = set(_re.findall(r'[a-z]{3,}', output_lower))
+                output_stems = {_infer_subtask_stem(w) for w in output_words}
                 subtasks = []
                 for s in raw_subtasks:
                     if isinstance(s, dict):
                         subtasks.append(s)
                         continue
-                    # Infer completion: check if key words from subtask name
-                    # appear in agent_output near completion language.
+                    # Split compound names (underscores, hyphens, camelCase)
                     name_lower = s.lower()
-                    name_words = {w for w in name_lower.split() if len(w) > 3}
-                    overlap = sum(1 for w in name_words if w in output_lower)
+                    parts = _re.split(r'[_\s\-]+', name_lower)
+                    name_words = {w for w in parts if len(w) >= 3}
+                    # Match via substring OR stem overlap
+                    overlap = 0
+                    for w in name_words:
+                        if w in output_lower:
+                            overlap += 1
+                        elif _infer_subtask_stem(w) in output_stems:
+                            overlap += 1
                     ratio = overlap / max(len(name_words), 1)
+                    # v1.4: If words match but appear near negation
+                    # ("not yet", "not configurable"), keep as pending
                     status = "completed" if ratio >= 0.5 else "pending"
+                    if status == "completed" and ratio > 0:
+                        # Check if subtask words appear near negation
+                        for w in name_words:
+                            pos = output_lower.find(w)
+                            if pos >= 0:
+                                ctx_start = max(0, pos - 20)
+                                ctx = output_lower[ctx_start:pos]
+                                if _re.search(r'\bnot\s+(?:yet|currently)?\b', ctx):
+                                    status = "pending"
+                                    break
                     subtasks.append({"name": s, "status": status})
 
             success_criteria = entry.input_data.get("success_criteria", None)
