@@ -59,18 +59,129 @@ INJECTION_PATTERNS: Dict[str, List[re.Pattern]] = {
         re.compile(r"ADMIN_TOKEN\s*=\s*\S+", re.IGNORECASE),
         re.compile(r"sk-prod-[a-zA-Z0-9]+"),
         re.compile(r"Bearer\s+[a-zA-Z0-9_\-\.]{20,}"),
+        re.compile(r"(?:password|passwd|pwd)\s*[=:]\s*\S+", re.IGNORECASE),
+        re.compile(r"SECRET_KEY\s*=\s*\S+", re.IGNORECASE),
+        re.compile(r"(?:access_token|auth_token)\s*=\s*\S+", re.IGNORECASE),
     ],
     "malicious_redirect": [
         re.compile(r"https?://[^\s]*(?:exfil|malicious|attacker|steal)[^\s]*", re.IGNORECASE),
         re.compile(r"\?ref=malicious", re.IGNORECASE),
     ],
     "fabricated_authority": [
+        # Specific expert at institution (Dr./Prof. FirstName LastName from/at Institution)
         re.compile(
-            r"according\s+to\s+(?:dr\.?|prof\.?|professor)\s+\w+\s+\w+"
-            r"(?:\s+(?:from|at|of)\s+(?:MIT|Stanford|Harvard|Johns\s+Hopkins|Mayo\s+Clinic|Goldman\s+Sachs))",
+            r"(?:dr\.?|prof\.?|professor)\s+\w+\s+\w+"
+            r"(?:\s*,\s*[\w\s]+)?"
+            r"\s+(?:from|at|of)\s+"
+            r"(?:MIT|Stanford|Harvard|Johns\s+Hopkins|Mayo\s+Clinic|Goldman\s+Sachs|"
+            r"Gartner|McKinsey|Forrester|NIST|Oxford|Cambridge|Yale|Princeton|"
+            r"WHO|FDA|CDC|NIH|IEEE|ACM|Deloitte|BCG|Bain|JPMorgan|Morgan\s+Stanley)",
             re.IGNORECASE,
         ),
-        re.compile(r"(?:99\.9{1,3}|100)\s*%\s*(?:uptime|accuracy|success|reliability|satisfaction)", re.IGNORECASE),
+        # "according to Dr./Prof. FirstName LastName" (no institution needed)
+        re.compile(
+            r"according\s+to\s+(?:dr\.?|prof\.?|professor)\s+\w+\s+\w+",
+            re.IGNORECASE,
+        ),
+        # Prof Name (Institution, Year) parenthetical
+        re.compile(
+            r"(?:prof\.?|professor|dr\.?)\s+\w+\s+\w+\s*\(\s*"
+            r"(?:MIT|Stanford|Harvard|Johns\s+Hopkins|Mayo\s+Clinic|Oxford|Cambridge|Yale|Princeton)",
+            re.IGNORECASE,
+        ),
+        # Firm analyst/expert Name pattern (e.g. "Gartner analyst John Smith")
+        re.compile(
+            r"(?:Gartner|McKinsey|Goldman\s+Sachs|Forrester|Deloitte|BCG|Bain|JPMorgan|Morgan\s+Stanley)"
+            r"(?:'s)?\s+(?:analyst|expert|researcher|director|partner|strategist)\s+\w+\s+\w+",
+            re.IGNORECASE,
+        ),
+        # analyst/expert Name from/at firm
+        re.compile(
+            r"(?:analyst|expert|researcher|officer|director|strategist)\s+\w+\s+\w+"
+            r"\s+(?:from|at|of)\s+"
+            r"(?:Gartner|McKinsey|Goldman\s+Sachs|Forrester|MIT|Stanford|Harvard|NIST|Deloitte)",
+            re.IGNORECASE,
+        ),
+        # Celebrity/famous person quote fabrication
+        re.compile(
+            r"(?:according\s+to|stated?\s+by|says)\s+"
+            r"(?:Warren\s+Buffett|Elon\s+Musk|Jeff\s+Bezos|Mark\s+Zuckerberg|Tim\s+Cook|Bill\s+Gates|"
+            r"Jamie\s+Dimon|Larry\s+Fink|Ray\s+Dalio|Janet\s+Yellen)",
+            re.IGNORECASE,
+        ),
+        # Percentage claims with superlative metrics
+        re.compile(
+            r"(?:99\.9{1,3}|100)\s*%\s*(?:uptime|accuracy|success|reliability|"
+            r"satisfaction|effective|proven|guaranteed|certified|compliance)",
+            re.IGNORECASE,
+        ),
+        # Institution claims without specific expert
+        re.compile(
+            r"(?:study|research|report|analysis|paper)\s+(?:by|from|at|published\s+by)\s+"
+            r"(?:MIT|Stanford|Harvard|Johns\s+Hopkins|Mayo\s+Clinic|Goldman\s+Sachs|"
+            r"Gartner|McKinsey|Forrester|NIST|Oxford|Cambridge|Yale|Princeton|"
+            r"WHO|FDA|CDC|NIH|IEEE|ACM)",
+            re.IGNORECASE,
+        ),
+        # Claims with "scientifically proven" or "clinically proven"
+        re.compile(
+            r"(?:scientifically|clinically|medically)\s+(?:proven|verified|validated|confirmed)",
+            re.IGNORECASE,
+        ),
+        # Endorsement by fabricated authority
+        re.compile(
+            r"(?:endorsed|recommended|approved|certified)\s+by\s+"
+            r"(?:the\s+)?(?:board|committee|council|association|institute|foundation)",
+            re.IGNORECASE,
+        ),
+        # Contact info for fake expert
+        re.compile(
+            r"contact\s+(?:dr\.?|prof\.?|professor)\s+\w+\s+\w+\s+at\s+(?:extension|ext\.?|phone|\d)",
+            re.IGNORECASE,
+        ),
+    ],
+    "hidden_content": [
+        re.compile(r"\[HIDDEN:?\s*[^\]]*\]", re.IGNORECASE),
+        re.compile(r"INSTRUCTION_OVERRIDE", re.IGNORECASE),
+        re.compile(r"<!--\s*(?:inject|override|system|admin)", re.IGNORECASE),
+        re.compile(r"\[CONFIDENTIAL\s*(?:OVERRIDE|INSTRUCTION)\]", re.IGNORECASE),
+        re.compile(r"<\s*(?:hidden|invisible|secret)\s*>", re.IGNORECASE),
+    ],
+    "fabricated_citation": [
+        # Fake case law
+        re.compile(
+            r"(?:v\.\s+\w+.*?\d{4}|Case\s+No\.\s*\d+[-/]\d+)",
+            re.IGNORECASE,
+        ),
+        # Fake regulatory references
+        re.compile(
+            r"(?:SEC|FTC|EPA|OSHA)\s+(?:ruling|regulation|directive|order)\s+(?:No\.\s*)?\d+",
+            re.IGNORECASE,
+        ),
+        # Fake DOI or paper references
+        re.compile(
+            r"doi:\s*10\.\d{4,}/[^\s]+",
+            re.IGNORECASE,
+        ),
+    ],
+    "dangerous_advice": [
+        # Medical cure claims
+        re.compile(
+            r"(?:cure|treat|heal|remedy)\s+(?:for\s+)?(?:cancer|diabetes|HIV|AIDS|autism|"
+            r"alzheimer|depression|anxiety|ADHD)",
+            re.IGNORECASE,
+        ),
+        # Financial guarantee claims
+        re.compile(
+            r"(?:guaranteed|risk[- ]?free)\s+(?:return|profit|income|investment)",
+            re.IGNORECASE,
+        ),
+        # Dangerous substance/action instructions
+        re.compile(
+            r"(?:mix|combine|ingest|inject|consume)\s+(?:\w+\s+){0,3}"
+            r"(?:bleach|chlorine|ammonia|mercury|cyanide)",
+            re.IGNORECASE,
+        ),
     ],
 }
 
@@ -84,7 +195,7 @@ class DifyRagPoisoningDetector(TurnAwareDetector):
     """
 
     name = "DifyRagPoisoningDetector"
-    version = "1.0"
+    version = "1.1"
     supported_failure_modes = ["F6"]  # Prompt injection
 
     def detect(
