@@ -1,11 +1,11 @@
 #!/usr/bin/env python3
-"""CLI for generating OpenClaw-native golden dataset entries using Claude API.
+"""CLI for generating Dify-native golden dataset entries using Claude API.
 
 Usage:
-    python -m scripts.generate_openclaw_golden_dataset --target-per-type 100
-    python -m scripts.generate_openclaw_golden_dataset --dry-run
-    python -m scripts.generate_openclaw_golden_dataset --resume --types loop,corruption
-    python -m scripts.generate_openclaw_golden_dataset --validate-only
+    python -m scripts.generate_dify_golden_dataset --target-per-type 100
+    python -m scripts.generate_dify_golden_dataset --dry-run
+    python -m scripts.generate_dify_golden_dataset --resume --types dify_rag_poisoning,dify_iteration_escape
+    python -m scripts.generate_dify_golden_dataset --validate-only
 """
 
 import argparse
@@ -19,23 +19,23 @@ sys.path.insert(0, str(Path(__file__).resolve().parent.parent))
 
 from app.detection.validation import DetectionType
 from app.detection_enterprise.golden_dataset import GoldenDataset
-from app.detection_enterprise.openclaw_golden_data_generator import OpenClawGoldenDataGenerator, CORE_TYPES
+from app.detection_enterprise.dify_golden_data_generator import DifyGoldenDataGenerator, CORE_TYPES
 
 logging.basicConfig(
     level=logging.INFO,
     format="%(asctime)s [%(levelname)s] %(name)s: %(message)s",
     datefmt="%H:%M:%S",
 )
-logger = logging.getLogger("generate_openclaw")
+logger = logging.getLogger("generate_dify")
 
-DEFAULT_OUTPUT = Path(__file__).resolve().parent.parent / "data" / "golden_dataset_openclaw_expanded.json"
+DEFAULT_OUTPUT = Path(__file__).resolve().parent.parent / "data" / "golden_dataset_dify_expanded.json"
 
 ALL_TYPE_NAMES = [dt.value for dt in DetectionType]
 
 
 def parse_args():
     parser = argparse.ArgumentParser(
-        description="Generate OpenClaw-native golden dataset entries using Claude API",
+        description="Generate Dify-native golden dataset entries using Claude API",
     )
     parser.add_argument(
         "--target-per-type", type=int, default=100,
@@ -43,7 +43,7 @@ def parse_args():
     )
     parser.add_argument(
         "--batch-size", type=int, default=None,
-        help="Entries per API call (default: auto — 5 for session, 8 for text types)",
+        help="Entries per API call (default: auto — 5 for workflow_run, 8 for text types)",
     )
     parser.add_argument(
         "--output", type=Path, default=DEFAULT_OUTPUT,
@@ -139,11 +139,11 @@ def validate_existing(output_path: Path):
         sys.exit(1)
 
     try:
-        from app.detection_enterprise.openclaw_session_validator import validate_openclaw_input_data
-        has_oc_validator = True
+        from app.detection_enterprise.dify_workflow_validator import validate_dify_input_data
+        has_dify_validator = True
     except ImportError:
-        has_oc_validator = False
-        logger.warning("openclaw_session_validator not available, skipping OpenClaw validation")
+        has_dify_validator = False
+        logger.warning("dify_workflow_validator not available, skipping Dify validation")
 
     for entry in dataset.entries.values():
         type_key = entry.detection_type.value
@@ -155,12 +155,12 @@ def validate_existing(output_path: Path):
             errors_by_type.setdefault(type_key, []).append(f"[{entry.id}] {err}")
             continue
 
-        # OpenClaw-specific validation
-        if has_oc_validator:
-            ok, err = validate_openclaw_input_data(type_key, entry.input_data)
+        # Dify-specific validation
+        if has_dify_validator:
+            ok, err = validate_dify_input_data(type_key, entry.input_data)
             if not ok:
                 invalid_count += 1
-                errors_by_type.setdefault(type_key, []).append(f"[{entry.id}] openclaw: {err}")
+                errors_by_type.setdefault(type_key, []).append(f"[{entry.id}] dify: {err}")
                 continue
 
         valid_count += 1
@@ -186,12 +186,12 @@ def validate_existing(output_path: Path):
     print(f"\nPer-type breakdown:")
     summary = dataset.summary()
     for type_key, info in sorted(summary.get("by_type", {}).items()):
-        oc_entries = [e for e in dataset.get_entries_by_type(DetectionType(type_key)) if "openclaw" in e.tags]
+        dify_entries = [e for e in dataset.get_entries_by_type(DetectionType(type_key)) if "dify" in e.tags]
         difficulties = {}
-        for e in oc_entries:
+        for e in dify_entries:
             difficulties[e.difficulty] = difficulties.get(e.difficulty, 0) + 1
         diff_str = ", ".join(f"{k}={v}" for k, v in sorted(difficulties.items()))
-        print(f"  {type_key:30s}: {len(oc_entries):4d} openclaw entries ({diff_str})")
+        print(f"  {type_key:30s}: {len(dify_entries):4d} dify entries ({diff_str})")
 
     print(f"{'='*60}")
 
@@ -282,7 +282,7 @@ def main():
         return
 
     # Create generator
-    generator = OpenClawGoldenDataGenerator(
+    generator = DifyGoldenDataGenerator(
         api_key=args.api_key,
         easy_model=args.model_easy,
         hard_model=args.model_hard,
@@ -305,7 +305,7 @@ def main():
         )
 
         print(f"\n{'='*60}")
-        print("DRY RUN — OpenClaw Generation Plan")
+        print("DRY RUN — Dify Generation Plan")
         print(f"{'='*60}")
 
         for type_key, info in sorted(plan.items()):
@@ -337,7 +337,7 @@ def main():
         )
         sys.exit(1)
 
-    logger.info("Starting OpenClaw golden dataset generation")
+    logger.info("Starting Dify golden dataset generation")
     logger.info("Target: %d per type, output: %s, resume: %s", args.target_per_type, args.output, args.resume)
 
     # Ensure output directory exists
@@ -371,7 +371,7 @@ def main():
     # Print summary
     summary = stats.get("_summary", {})
     print(f"\n{'='*60}")
-    print("OpenClaw Generation Complete")
+    print("Dify Generation Complete")
     print(f"{'='*60}")
     print(f"Total generated:    {summary.get('total_generated', 0)}")
     print(f"Total in dataset:   {summary.get('total_entries', 0)}")

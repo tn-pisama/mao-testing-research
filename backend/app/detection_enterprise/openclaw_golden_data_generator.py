@@ -36,6 +36,18 @@ except ImportError:
 
 
 # ---------------------------------------------------------------------------
+# Core detection types (universal across all platforms)
+# ---------------------------------------------------------------------------
+
+CORE_TYPES = [
+    "loop", "corruption", "persona_drift", "hallucination", "injection",
+    "overflow", "coordination", "communication", "derailment", "context",
+    "specification", "decomposition", "withholding", "completion",
+    "grounding", "retrieval_quality", "workflow",
+]
+
+
+# ---------------------------------------------------------------------------
 # OpenClaw system message (cached across all API calls)
 # ---------------------------------------------------------------------------
 
