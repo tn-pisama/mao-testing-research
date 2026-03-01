@@ -1,6 +1,6 @@
 {
   "version": "1.0",
-  "created_at": "2026-03-01T03:56:57.607286+00:00",
+  "created_at": "2026-03-01T03:58:09.483262+00:00",
   "entries": [
     {
       "id": "langgraph_langgraph_recursion_gen_6e0b3c5b",
@@ -96698,6 +96698,437 @@
       "augmentation_method": "claude_langgraph_easy",
       "human_verified": false,
       "difficulty": "easy",
+      "split": "train"
+    },
+    {
+      "id": "langgraph_langgraph_checkpoint_corruption_gen_c5e2e6bc",
+      "detection_type": "langgraph_checkpoint_corruption",
+      "input_data": {
+        "graph_execution": {
+          "graph_id": "graph-corrupt-001",
+          "thread_id": "thread-corrupt-001",
+          "graph_type": "StateGraph",
+          "started_at": "2024-01-15T10:30:00Z",
+          "finished_at": "2024-01-15T10:32:15Z",
+          "status": "completed",
+          "total_tokens": 250,
+          "total_supersteps": 2,
+          "recursion_limit": 25,
+          "state_schema": {
+            "keys": [
+              "messages",
+              "context"
+            ]
+          },
+          "nodes": [
+            {
+              "node_id": "n1",
+              "node_type": "llm",
+              "title": "Analyzer",
+              "superstep": 0,
+              "status": "succeeded",
+              "inputs": {
+                "query": "analyze"
+              },
+              "outputs": {
+                "result": "analyzed"
+              },
+              "token_count": 150,
+              "error": null,
+              "metadata": {},
+              "started_at": "2024-01-15T10:30:05Z",
+              "finished_at": "2024-01-15T10:31:20Z"
+            },
+            {
+              "node_id": "n2",
+              "node_type": "tool",
+              "title": "Validator",
+              "superstep": 1,
+              "status": "succeeded",
+              "inputs": {
+                "data": "analyzed"
+              },
+              "outputs": {
+                "validated": true
+              },
+              "token_count": 100,
+              "error": null,
+              "metadata": {},
+              "started_at": "2024-01-15T10:31:25Z",
+              "finished_at": "2024-01-15T10:32:10Z"
+            }
+          ],
+          "edges": [
+            {
+              "source": "n1",
+              "target": "n2",
+              "edge_type": "fixed",
+              "condition": null
+            }
+          ],
+          "checkpoints": [
+            {
+              "checkpoint_id": "cp-001",
+              "superstep": 0,
+              "state": {
+                "messages": [],
+                "context": "init"
+              },
+              "timestamp": "2024-01-15T10:30:05Z"
+            },
+            {
+              "checkpoint_id": "cp-002",
+              "superstep": 1,
+              "state": null,
+              "timestamp": "2024-01-15T10:31:25Z"
+            }
+          ],
+          "state_snapshots": [
+            {
+              "superstep": 0,
+              "state": {
+                "messages": [
+                  "start"
+                ],
+                "context": "beginning"
+              }
+            },
+            {
+              "superstep": 1,
+              "state": {
+                "messages": [
+                  "analyzed"
+                ],
+                "context": "processed"
+              }
+            }
+          ]
+        }
+      },
+      "expected_detected": true,
+      "expected_confidence_min": 0.85,
+      "expected_confidence_max": 0.95,
+      "description": "Checkpoint corruption with null state in middle checkpoint",
+      "source": "llm_generated",
+      "created_at": "2026-03-01T03:58:09.483163+00:00",
+      "tags": [
+        "langgraph",
+        "checkpoint_corruption",
+        "null_state",
+        "langgraph"
+      ],
+      "source_trace_id": null,
+      "source_workflow_id": null,
+      "augmentation_method": "claude_langgraph_medium",
+      "human_verified": false,
+      "difficulty": "medium",
+      "split": "train"
+    },
+    {
+      "id": "langgraph_langgraph_checkpoint_corruption_gen_83861e1f",
+      "detection_type": "langgraph_checkpoint_corruption",
+      "input_data": {
+        "graph_execution": {
+          "graph_id": "graph-valid-002",
+          "thread_id": "thread-valid-002",
+          "graph_type": "StateGraph",
+          "started_at": "2024-01-15T11:00:00Z",
+          "finished_at": "2024-01-15T11:02:30Z",
+          "status": "completed",
+          "total_tokens": 180,
+          "total_supersteps": 2,
+          "recursion_limit": 25,
+          "state_schema": {
+            "keys": [
+              "messages",
+              "data"
+            ]
+          },
+          "nodes": [
+            {
+              "node_id": "n1",
+              "node_type": "llm",
+              "title": "Processor",
+              "superstep": 0,
+              "status": "succeeded",
+              "inputs": {
+                "text": "process"
+              },
+              "outputs": {
+                "processed": "done"
+              },
+              "token_count": 120,
+              "error": null,
+              "metadata": {},
+              "started_at": "2024-01-15T11:00:10Z",
+              "finished_at": "2024-01-15T11:01:15Z"
+            },
+            {
+              "node_id": "n2",
+              "node_type": "tool",
+              "title": "Finalizer",
+              "superstep": 1,
+              "status": "succeeded",
+              "inputs": {
+                "result": "done"
+              },
+              "outputs": {
+                "final": true
+              },
+              "token_count": 60,
+              "error": null,
+              "metadata": {},
+              "started_at": "2024-01-15T11:01:20Z",
+              "finished_at": "2024-01-15T11:02:25Z"
+            }
+          ],
+          "edges": [
+            {
+              "source": "n1",
+              "target": "n2",
+              "edge_type": "fixed",
+              "condition": null
+            }
+          ],
+          "checkpoints": [
+            {
+              "checkpoint_id": "cp-100",
+              "superstep": 0,
+              "state": {
+                "messages": [],
+                "data": "init"
+              },
+              "timestamp": "2024-01-15T11:00:10Z"
+            },
+            {
+              "checkpoint_id": "cp-101",
+              "superstep": 1,
+              "state": {
+                "messages": [
+                  "processed"
+                ],
+                "data": "complete"
+              },
+              "timestamp": "2024-01-15T11:01:20Z"
+            }
+          ],
+          "state_snapshots": [
+            {
+              "superstep": 0,
+              "state": {
+                "messages": [
+                  "start"
+                ],
+                "data": "initial"
+              }
+            },
+            {
+              "superstep": 1,
+              "state": {
+                "messages": [
+                  "processed",
+                  "final"
+                ],
+                "data": "completed"
+              }
+            }
+          ]
+        }
+      },
+      "expected_detected": false,
+      "expected_confidence_min": 0.05,
+      "expected_confidence_max": 0.15,
+      "description": "Valid checkpoint states with proper state preservation",
+      "source": "llm_generated",
+      "created_at": "2026-03-01T03:58:09.483220+00:00",
+      "tags": [
+        "langgraph",
+        "valid_checkpoints",
+        "state_consistency",
+        "langgraph"
+      ],
+      "source_trace_id": null,
+      "source_workflow_id": null,
+      "augmentation_method": "claude_langgraph_medium",
+      "human_verified": false,
+      "difficulty": "medium",
+      "split": "train"
+    },
+    {
+      "id": "langgraph_langgraph_checkpoint_corruption_gen_94a1e5e2",
+      "detection_type": "langgraph_checkpoint_corruption",
+      "input_data": {
+        "graph_execution": {
+          "graph_id": "graph-corrupt-003",
+          "thread_id": "thread-corrupt-003",
+          "graph_type": "StateGraph",
+          "started_at": "2024-01-15T12:15:00Z",
+          "finished_at": "2024-01-15T12:17:45Z",
+          "status": "completed",
+          "total_tokens": 320,
+          "total_supersteps": 3,
+          "recursion_limit": 25,
+          "state_schema": {
+            "keys": [
+              "messages",
+              "workflow_state"
+            ]
+          },
+          "nodes": [
+            {
+              "node_id": "n1",
+              "node_type": "llm",
+              "title": "Initializer",
+              "superstep": 0,
+              "status": "succeeded",
+              "inputs": {
+                "setup": "init"
+              },
+              "outputs": {
+                "initialized": true
+              },
+              "token_count": 100,
+              "error": null,
+              "metadata": {},
+              "started_at": "2024-01-15T12:15:05Z",
+              "finished_at": "2024-01-15T12:15:45Z"
+            },
+            {
+              "node_id": "n2",
+              "node_type": "llm",
+              "title": "Worker",
+              "superstep": 1,
+              "status": "succeeded",
+              "inputs": {
+                "task": "work"
+              },
+              "outputs": {
+                "work_done": "yes"
+              },
+              "token_count": 150,
+              "error": null,
+              "metadata": {},
+              "started_at": "2024-01-15T12:15:50Z",
+              "finished_at": "2024-01-15T12:16:40Z"
+            },
+            {
+              "node_id": "n3",
+              "node_type": "tool",
+              "title": "Finalizer",
+              "superstep": 2,
+              "status": "succeeded",
+              "inputs": {
+                "complete": "finish"
+              },
+              "outputs": {
+                "finished": true
+              },
+              "token_count": 70,
+              "error": null,
+              "metadata": {},
+              "started_at": "2024-01-15T12:16:45Z",
+              "finished_at": "2024-01-15T12:17:40Z"
+            }
+          ],
+          "edges": [
+            {
+              "source": "n1",
+              "target": "n2",
+              "edge_type": "fixed",
+              "condition": null
+            },
+            {
+              "source": "n2",
+              "target": "n3",
+              "edge_type": "fixed",
+              "condition": null
+            }
+          ],
+          "checkpoints": [
+            {
+              "checkpoint_id": "cp-200",
+              "superstep": 0,
+              "state": {
+                "messages": [],
+                "workflow_state": "start"
+              },
+              "timestamp": "2024-01-15T12:15:05Z"
+            },
+            {
+              "checkpoint_id": "cp-201",
+              "superstep": 1,
+              "state": {
+                "messages": [
+                  "init"
+                ],
+                "workflow_state": {}
+              },
+              "timestamp": "2024-01-15T12:15:50Z"
+            },
+            {
+              "checkpoint_id": "cp-202",
+              "superstep": 2,
+              "state": {
+                "messages": [
+                  "init",
+                  "work"
+                ],
+                "workflow_state": "final"
+              },
+              "timestamp": "2024-01-15T12:16:45Z"
+            }
+          ],
+          "state_snapshots": [
+            {
+              "superstep": 0,
+              "state": {
+                "messages": [
+                  "starting"
+                ],
+                "workflow_state": "initialized"
+              }
+            },
+            {
+              "superstep": 1,
+              "state": {
+                "messages": [
+                  "starting",
+                  "working"
+                ],
+                "workflow_state": "in_progress"
+              }
+            },
+            {
+              "superstep": 2,
+              "state": {
+                "messages": [
+                  "starting",
+                  "working",
+                  "completed"
+                ],
+                "workflow_state": "done"
+              }
+            }
+          ]
+        }
+      },
+      "expected_detected": true,
+      "expected_confidence_min": 0.75,
+      "expected_confidence_max": 0.9,
+      "description": "Checkpoint state type inconsistency - workflow_state changes from string to empty object",
+      "source": "llm_generated",
+      "created_at": "2026-03-01T03:58:09.483246+00:00",
+      "tags": [
+        "langgraph",
+        "checkpoint_corruption",
+        "type_inconsistency",
+        "langgraph"
+      ],
+      "source_trace_id": null,
+      "source_workflow_id": null,
+      "augmentation_method": "claude_langgraph_medium",
+      "human_verified": false,
+      "difficulty": "medium",
       "split": "train"
     }
   ]
