@@ -113,6 +113,13 @@ class SelfHealingEngine:
         self.fix_generator.register(WithholdingFixGenerator())
         self.fix_generator.register(CompletionFixGenerator())
         self.fix_generator.register(CostFixGenerator())
+        # Framework-specific fix generators
+        from app.fixes.framework_fixes import (
+            OpenClawFixGenerator, DifyFixGenerator, LangGraphFixGenerator,
+        )
+        self.fix_generator.register(OpenClawFixGenerator())
+        self.fix_generator.register(DifyFixGenerator())
+        self.fix_generator.register(LangGraphFixGenerator())
 
         self._healing_history: List[HealingResult] = []
         self._apply_results: List[ApplyResult] = []

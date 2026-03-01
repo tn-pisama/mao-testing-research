@@ -10,7 +10,7 @@ class SpecificationFixGenerator(BaseFixGenerator):
     """Generates fixes for specification mismatch detections."""
 
     def can_handle(self, detection_type: str) -> bool:
-        return detection_type in ("specification_mismatch", "specification")
+        return "specification" in detection_type or "mismatch" in detection_type
 
     def generate_fixes(
         self,

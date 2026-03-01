@@ -10,7 +10,7 @@ class ContextNeglectFixGenerator(BaseFixGenerator):
     """Generates fixes for context neglect detections."""
 
     def can_handle(self, detection_type: str) -> bool:
-        return detection_type in ("context_neglect", "context")
+        return "context" in detection_type and "overflow" not in detection_type
 
     def generate_fixes(
         self,

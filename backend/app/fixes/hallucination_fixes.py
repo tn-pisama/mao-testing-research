@@ -10,7 +10,7 @@ class HallucinationFixGenerator(BaseFixGenerator):
     """Generates fixes for hallucination detections."""
 
     def can_handle(self, detection_type: str) -> bool:
-        return detection_type in ("hallucination",)
+        return "hallucination" in detection_type
 
     def generate_fixes(
         self,

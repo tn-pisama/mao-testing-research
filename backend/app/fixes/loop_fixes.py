@@ -10,7 +10,7 @@ class LoopFixGenerator(BaseFixGenerator):
     """Generates fixes for infinite loop detections."""
     
     def can_handle(self, detection_type: str) -> bool:
-        return detection_type == "infinite_loop"
+        return "loop" in detection_type or "infinite" in detection_type or "recursion" in detection_type
     
     def generate_fixes(
         self,

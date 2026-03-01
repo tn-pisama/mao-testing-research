@@ -13,7 +13,7 @@ class PersonaFixGenerator(BaseFixGenerator):
     """Generates fixes for persona drift detections."""
     
     def can_handle(self, detection_type: str) -> bool:
-        return detection_type == "persona_drift"
+        return "drift" in detection_type or "persona" in detection_type
     
     def _determine_reinforcement_level(
         self,

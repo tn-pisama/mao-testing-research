@@ -10,7 +10,7 @@ class WorkflowFixGenerator(BaseFixGenerator):
     """Generates fixes for flawed workflow detections."""
 
     def can_handle(self, detection_type: str) -> bool:
-        return detection_type in ("flawed_workflow", "workflow")
+        return "workflow" in detection_type or "iteration_escape" in detection_type or "model_fallback" in detection_type
 
     def generate_fixes(
         self,

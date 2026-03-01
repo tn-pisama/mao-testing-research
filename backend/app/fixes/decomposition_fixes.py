@@ -10,7 +10,7 @@ class DecompositionFixGenerator(BaseFixGenerator):
     """Generates fixes for poor task decomposition detections."""
 
     def can_handle(self, detection_type: str) -> bool:
-        return detection_type in ("poor_decomposition", "decomposition")
+        return "decomposition" in detection_type
 
     def generate_fixes(
         self,

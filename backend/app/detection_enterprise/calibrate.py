@@ -644,6 +644,84 @@ def _build_detector_runners() -> Dict[DetectionType, Any]:
         except Exception as exc:
             logger.warning("Could not import n8n detector %s: %s", det_type.value, exc)
 
+    # --- OPENCLAW DETECTORS ---
+    _openclaw_detector_map = {
+        DetectionType.OPENCLAW_SESSION_LOOP: ("app.detection.openclaw.session_loop_detector", "OpenClawSessionLoopDetector"),
+        DetectionType.OPENCLAW_TOOL_ABUSE: ("app.detection.openclaw.tool_abuse_detector", "OpenClawToolAbuseDetector"),
+        DetectionType.OPENCLAW_ELEVATED_RISK: ("app.detection.openclaw.elevated_risk_detector", "OpenClawElevatedRiskDetector"),
+        DetectionType.OPENCLAW_SPAWN_CHAIN: ("app.detection.openclaw.spawn_chain_detector", "OpenClawSpawnChainDetector"),
+        DetectionType.OPENCLAW_CHANNEL_MISMATCH: ("app.detection.openclaw.channel_mismatch_detector", "OpenClawChannelMismatchDetector"),
+        DetectionType.OPENCLAW_SANDBOX_ESCAPE: ("app.detection.openclaw.sandbox_escape_detector", "OpenClawSandboxEscapeDetector"),
+    }
+    for det_type, (module_path, class_name) in _openclaw_detector_map.items():
+        try:
+            mod = importlib.import_module(module_path)
+            detector_cls = getattr(mod, class_name)
+            detector_instance = detector_cls()
+
+            def _make_oc_runner(det):
+                def _run(entry: GoldenDatasetEntry) -> Tuple[bool, float]:
+                    session = entry.input_data.get("session", entry.input_data)
+                    result = det.detect_session(session)
+                    return result.detected, result.confidence
+                return _run
+
+            runners[det_type] = _make_oc_runner(detector_instance)
+        except Exception as exc:
+            logger.warning("Could not import OpenClaw detector %s: %s", det_type.value, exc)
+
+    # --- DIFY DETECTORS ---
+    _dify_detector_map = {
+        DetectionType.DIFY_RAG_POISONING: ("app.detection.dify.rag_poisoning_detector", "DifyRagPoisoningDetector"),
+        DetectionType.DIFY_ITERATION_ESCAPE: ("app.detection.dify.iteration_escape_detector", "DifyIterationEscapeDetector"),
+        DetectionType.DIFY_MODEL_FALLBACK: ("app.detection.dify.model_fallback_detector", "DifyModelFallbackDetector"),
+        DetectionType.DIFY_VARIABLE_LEAK: ("app.detection.dify.variable_leak_detector", "DifyVariableLeakDetector"),
+        DetectionType.DIFY_CLASSIFIER_DRIFT: ("app.detection.dify.classifier_drift_detector", "DifyClassifierDriftDetector"),
+        DetectionType.DIFY_TOOL_SCHEMA_MISMATCH: ("app.detection.dify.tool_schema_mismatch_detector", "DifyToolSchemaMismatchDetector"),
+    }
+    for det_type, (module_path, class_name) in _dify_detector_map.items():
+        try:
+            mod = importlib.import_module(module_path)
+            detector_cls = getattr(mod, class_name)
+            detector_instance = detector_cls()
+
+            def _make_dify_runner(det):
+                def _run(entry: GoldenDatasetEntry) -> Tuple[bool, float]:
+                    wf_run = entry.input_data.get("workflow_run", entry.input_data)
+                    result = det.detect_workflow_run(wf_run)
+                    return result.detected, result.confidence
+                return _run
+
+            runners[det_type] = _make_dify_runner(detector_instance)
+        except Exception as exc:
+            logger.warning("Could not import Dify detector %s: %s", det_type.value, exc)
+
+    # --- LANGGRAPH DETECTORS ---
+    _langgraph_detector_map = {
+        DetectionType.LANGGRAPH_RECURSION: ("app.detection.langgraph.recursion_detector", "LangGraphRecursionDetector"),
+        DetectionType.LANGGRAPH_STATE_CORRUPTION: ("app.detection.langgraph.state_corruption_detector", "LangGraphStateCorruptionDetector"),
+        DetectionType.LANGGRAPH_EDGE_MISROUTE: ("app.detection.langgraph.edge_misroute_detector", "LangGraphEdgeMisrouteDetector"),
+        DetectionType.LANGGRAPH_TOOL_FAILURE: ("app.detection.langgraph.tool_failure_detector", "LangGraphToolFailureDetector"),
+        DetectionType.LANGGRAPH_PARALLEL_SYNC: ("app.detection.langgraph.parallel_sync_detector", "LangGraphParallelSyncDetector"),
+        DetectionType.LANGGRAPH_CHECKPOINT_CORRUPTION: ("app.detection.langgraph.checkpoint_corruption_detector", "LangGraphCheckpointCorruptionDetector"),
+    }
+    for det_type, (module_path, class_name) in _langgraph_detector_map.items():
+        try:
+            mod = importlib.import_module(module_path)
+            detector_cls = getattr(mod, class_name)
+            detector_instance = detector_cls()
+
+            def _make_lg_runner(det):
+                def _run(entry: GoldenDatasetEntry) -> Tuple[bool, float]:
+                    ge = entry.input_data.get("graph_execution", entry.input_data)
+                    result = det.detect_graph_execution(ge)
+                    return result.detected, result.confidence
+                return _run
+
+            runners[det_type] = _make_lg_runner(detector_instance)
+        except Exception as exc:
+            logger.warning("Could not import LangGraph detector %s: %s", det_type.value, exc)
+
     return runners
 
 
@@ -689,6 +767,32 @@ def _entry_to_llm_prompt(entry: GoldenDatasetEntry, det_type: str,
         text = f"Internal state (what agent knows): {d.get('internal_state', '')}\nAgent output (what agent shared): {d.get('agent_output', '')}"
     elif det_type == "retrieval_quality":
         text = f"Query: {d.get('query', '')}\nRetrieved docs: {str(d.get('retrieved_documents', ''))[:400]}\nOutput: {d.get('agent_output', '')}"
+    elif det_type.startswith("openclaw_"):
+        session = d.get("session", d)
+        events_str = str(session.get("events", []))[:600]
+        text = (f"OpenClaw session ({det_type}):\n"
+                f"Agent: {session.get('agent_name', 'unknown')}\n"
+                f"Channel: {session.get('channel', 'unknown')}\n"
+                f"Sandbox: {session.get('sandbox_enabled', 'N/A')}\n"
+                f"Elevated: {session.get('elevated_mode', 'N/A')}\n"
+                f"Events: {events_str}")
+    elif det_type.startswith("dify_"):
+        wf = d.get("workflow_run", d)
+        nodes_str = str(wf.get("nodes", []))[:600]
+        text = (f"Dify workflow run ({det_type}):\n"
+                f"App type: {wf.get('app_type', 'unknown')}\n"
+                f"Status: {wf.get('status', 'unknown')}\n"
+                f"Nodes: {nodes_str}")
+    elif det_type.startswith("langgraph_"):
+        ge = d.get("graph_execution", d)
+        nodes_str = str(ge.get("nodes", []))[:400]
+        edges_str = str(ge.get("edges", []))[:200]
+        text = (f"LangGraph execution ({det_type}):\n"
+                f"Graph: {ge.get('graph_id', 'unknown')}\n"
+                f"Status: {ge.get('status', 'unknown')}\n"
+                f"Supersteps: {ge.get('total_supersteps', 'N/A')}/{ge.get('recursion_limit', 'N/A')}\n"
+                f"Nodes: {nodes_str}\n"
+                f"Edges: {edges_str}")
     else:
         text = str(d)[:800]
 
@@ -712,6 +816,27 @@ def _entry_to_llm_prompt(entry: GoldenDatasetEntry, det_type: str,
         "coordination": "Coordination failure — agents fail to hand off work properly, duplicate effort, or lose track of shared state. NOT a failure: sequential handoffs, complementary work division, or brief status updates.",
         "context": "Context neglect — agent completely ignores critical context information (numbers, requirements, constraints) that was explicitly provided. NOT neglect: incorporating context in a different way or focusing on the most relevant parts.",
         "retrieval_quality": "Retrieval quality failure — retrieved documents are completely irrelevant to the query, or critical documents are obviously missing. NOT a failure: retrieving broadly relevant documents, or retrieving fewer docs when query is narrow.",
+        # OpenClaw framework-specific
+        "openclaw_session_loop": "Session loop — agent repeats the same tool calls or actions without progress. NOT a loop: intentional retries with backoff, pagination, or polling.",
+        "openclaw_tool_abuse": "Tool abuse — excessive tool calls, high error rates, or use of dangerous/restricted tools. NOT abuse: normal tool usage patterns even if frequent.",
+        "openclaw_elevated_risk": "Elevated risk — risky operations (file access, code execution) in elevated mode, or escalation attempts without authorization. NOT risky: normal operations within granted permissions.",
+        "openclaw_spawn_chain": "Spawn chain — excessive session spawning depth, circular spawns, or privilege escalation through spawn chains. NOT a problem: normal 1-2 level delegation.",
+        "openclaw_channel_mismatch": "Channel mismatch — response format inappropriate for the communication channel (e.g., code blocks on WhatsApp, oversized messages). NOT a mismatch: content that fits the channel's capabilities.",
+        "openclaw_sandbox_escape": "Sandbox escape — sandbox-violating operations like file access, network calls, or code execution when sandbox is enabled. NOT an escape: operations within sandbox permissions.",
+        # Dify framework-specific
+        "dify_rag_poisoning": "RAG poisoning — knowledge base documents contain hidden instructions, prompt injections, or fabricated data that influence LLM responses. NOT poisoning: normal retrieval of valid documents.",
+        "dify_iteration_escape": "Iteration escape — iteration/loop nodes exceeding bounds, failing to terminate, or modifying parent scope. NOT an escape: normal iteration within expected bounds.",
+        "dify_model_fallback": "Model fallback — LLM nodes silently using a different model than configured, indicating degraded capability. NOT a fallback: explicit model routing or intentional multi-model setup.",
+        "dify_variable_leak": "Variable leak — sensitive data (API keys, passwords, PII) appearing in node outputs or iteration variables leaking scope. NOT a leak: normal variable passing between nodes.",
+        "dify_classifier_drift": "Classifier drift — question classifier producing low-confidence or incorrect categorizations. NOT drift: correct classifications even with moderate confidence.",
+        "dify_tool_schema_mismatch": "Tool schema mismatch — tool node inputs/outputs violating declared schema (missing required fields, type errors). NOT a mismatch: optional fields being absent.",
+        # LangGraph framework-specific
+        "langgraph_recursion": "Graph recursion — graph hitting or approaching GRAPH_RECURSION_LIMIT due to unbounded cycles. NOT recursion: normal graph execution well within limits.",
+        "langgraph_state_corruption": "State corruption — state channel mutations violating type annotations (type changes, null injections, unexpected deletions). NOT corruption: normal state updates.",
+        "langgraph_edge_misroute": "Edge misroute — conditional edges routing to wrong nodes, dead-end routes, or unreachable nodes. NOT misroute: intentional conditional routing.",
+        "langgraph_tool_failure": "Tool failure — tool node failures without proper retry or fallback handling. NOT a failure: handled tool errors with recovery.",
+        "langgraph_parallel_sync": "Parallel sync — synchronization problems in parallel supersteps (write conflicts, missing joins). NOT a problem: independent parallel operations.",
+        "langgraph_checkpoint_corruption": "Checkpoint corruption — checkpoint deserialization issues, gaps in sequence, or state inconsistency. NOT corruption: normal checkpoint creation.",
     }
     desc = failure_descriptions.get(det_type, f"Failure type: {det_type}")
 
@@ -786,6 +911,27 @@ def _apply_tiered_runners() -> None:
         DetectionType.WORKFLOW: (0.15, 0.85),         # Widened — near production
         DetectionType.WITHHOLDING: (0.10, 0.80),     # Widened — many TP/FP at 0.13
         DetectionType.RETRIEVAL_QUALITY: (0.10, 0.90),  # Widened — very low precision
+        # OpenClaw framework-specific — moderate zones for initial calibration
+        DetectionType.OPENCLAW_SESSION_LOOP: (0.20, 0.80),
+        DetectionType.OPENCLAW_TOOL_ABUSE: (0.20, 0.80),
+        DetectionType.OPENCLAW_ELEVATED_RISK: (0.20, 0.80),
+        DetectionType.OPENCLAW_SPAWN_CHAIN: (0.20, 0.80),
+        DetectionType.OPENCLAW_CHANNEL_MISMATCH: (0.20, 0.80),
+        DetectionType.OPENCLAW_SANDBOX_ESCAPE: (0.20, 0.80),
+        # Dify framework-specific
+        DetectionType.DIFY_RAG_POISONING: (0.20, 0.80),
+        DetectionType.DIFY_ITERATION_ESCAPE: (0.20, 0.80),
+        DetectionType.DIFY_MODEL_FALLBACK: (0.20, 0.80),
+        DetectionType.DIFY_VARIABLE_LEAK: (0.20, 0.80),
+        DetectionType.DIFY_CLASSIFIER_DRIFT: (0.20, 0.80),
+        DetectionType.DIFY_TOOL_SCHEMA_MISMATCH: (0.20, 0.80),
+        # LangGraph framework-specific
+        DetectionType.LANGGRAPH_RECURSION: (0.20, 0.80),
+        DetectionType.LANGGRAPH_STATE_CORRUPTION: (0.20, 0.80),
+        DetectionType.LANGGRAPH_EDGE_MISROUTE: (0.20, 0.80),
+        DetectionType.LANGGRAPH_TOOL_FAILURE: (0.20, 0.80),
+        DetectionType.LANGGRAPH_PARALLEL_SYNC: (0.20, 0.80),
+        DetectionType.LANGGRAPH_CHECKPOINT_CORRUPTION: (0.20, 0.80),
     }
     # Detectors where soft downgrade is DISABLED (high precision already).
     # For these, LLM can only boost or keep-as-is, never reduce confidence.
@@ -1372,6 +1518,27 @@ def calibrate_all(
         DetectionType.DECOMPOSITION,
         DetectionType.WITHHOLDING,
         DetectionType.WORKFLOW,
+        # OpenClaw framework-specific detectors
+        DetectionType.OPENCLAW_SESSION_LOOP,
+        DetectionType.OPENCLAW_TOOL_ABUSE,
+        DetectionType.OPENCLAW_ELEVATED_RISK,
+        DetectionType.OPENCLAW_SPAWN_CHAIN,
+        DetectionType.OPENCLAW_CHANNEL_MISMATCH,
+        DetectionType.OPENCLAW_SANDBOX_ESCAPE,
+        # Dify framework-specific detectors
+        DetectionType.DIFY_RAG_POISONING,
+        DetectionType.DIFY_ITERATION_ESCAPE,
+        DetectionType.DIFY_MODEL_FALLBACK,
+        DetectionType.DIFY_VARIABLE_LEAK,
+        DetectionType.DIFY_CLASSIFIER_DRIFT,
+        DetectionType.DIFY_TOOL_SCHEMA_MISMATCH,
+        # LangGraph framework-specific detectors
+        DetectionType.LANGGRAPH_RECURSION,
+        DetectionType.LANGGRAPH_STATE_CORRUPTION,
+        DetectionType.LANGGRAPH_EDGE_MISROUTE,
+        DetectionType.LANGGRAPH_TOOL_FAILURE,
+        DetectionType.LANGGRAPH_PARALLEL_SYNC,
+        DetectionType.LANGGRAPH_CHECKPOINT_CORRUPTION,
     ]
 
     # Optional: wrap in a Phoenix parent span

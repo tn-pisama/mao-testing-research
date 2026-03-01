@@ -10,7 +10,7 @@ class OverflowFixGenerator(BaseFixGenerator):
     """Generates fixes for context overflow detections."""
 
     def can_handle(self, detection_type: str) -> bool:
-        return detection_type in ("overflow", "context_overflow")
+        return "overflow" in detection_type
 
     def generate_fixes(
         self,

@@ -10,7 +10,7 @@ class CommunicationFixGenerator(BaseFixGenerator):
     """Generates fixes for communication breakdown detections."""
 
     def can_handle(self, detection_type: str) -> bool:
-        return detection_type in ("communication_breakdown", "communication")
+        return "communication" in detection_type or "channel" in detection_type
 
     def generate_fixes(
         self,

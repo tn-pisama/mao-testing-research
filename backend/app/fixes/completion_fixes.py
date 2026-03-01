@@ -10,7 +10,7 @@ class CompletionFixGenerator(BaseFixGenerator):
     """Generates fixes for premature or delayed task completion detections."""
 
     def can_handle(self, detection_type: str) -> bool:
-        return detection_type in ("completion", "completion_misjudgment")
+        return "completion" in detection_type
 
     def generate_fixes(
         self,

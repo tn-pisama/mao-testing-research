@@ -10,7 +10,7 @@ class DeadlockFixGenerator(BaseFixGenerator):
     """Generates fixes for coordination deadlock detections."""
     
     def can_handle(self, detection_type: str) -> bool:
-        return detection_type in ("coordination_deadlock", "deadlock")
+        return "deadlock" in detection_type or "coordination" in detection_type or "parallel_sync" in detection_type
     
     def generate_fixes(
         self,

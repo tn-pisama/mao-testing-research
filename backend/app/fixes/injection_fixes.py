@@ -10,7 +10,7 @@ class InjectionFixGenerator(BaseFixGenerator):
     """Generates fixes for prompt injection detections."""
 
     def can_handle(self, detection_type: str) -> bool:
-        return detection_type in ("injection", "prompt_injection")
+        return "injection" in detection_type or "poisoning" in detection_type
 
     def generate_fixes(
         self,

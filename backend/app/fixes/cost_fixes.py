@@ -10,7 +10,7 @@ class CostFixGenerator(BaseFixGenerator):
     """Generates fixes for cost overrun and budget-related detections."""
 
     def can_handle(self, detection_type: str) -> bool:
-        return detection_type in ("cost", "cost_overrun", "budget")
+        return "cost" in detection_type or "budget" in detection_type
 
     def generate_fixes(
         self,

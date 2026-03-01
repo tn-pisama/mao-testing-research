@@ -68,6 +68,23 @@ class FailureAnalyzer:
             return self._analyze_completion(detection, details, trace)
         elif "cost" in detection_type or "budget" in detection_type:
             return self._analyze_cost(detection, details, trace)
+        # Framework-specific routing
+        elif "recursion" in detection_type:
+            return self._analyze_loop(detection, details, trace)
+        elif "tool_abuse" in detection_type or "tool_failure" in detection_type or "tool_schema" in detection_type:
+            return self._analyze_tool_misuse(detection, details, trace)
+        elif "sandbox" in detection_type or "elevated" in detection_type or "variable_leak" in detection_type:
+            return self._analyze_security_violation(detection, details, trace)
+        elif "rag_poisoning" in detection_type:
+            return self._analyze_injection(detection, details, trace)
+        elif "mismatch" in detection_type or "misroute" in detection_type or "classifier" in detection_type:
+            return self._analyze_routing_failure(detection, details, trace)
+        elif "spawn" in detection_type:
+            return self._analyze_loop(detection, details, trace)
+        elif "parallel_sync" in detection_type or "checkpoint" in detection_type:
+            return self._analyze_corruption(detection, details, trace)
+        elif "iteration_escape" in detection_type or "model_fallback" in detection_type:
+            return self._analyze_workflow(detection, details, trace)
         else:
             return self._analyze_generic(detection, details, trace)
     
@@ -473,6 +490,111 @@ class FailureAnalyzer:
             indicators=indicators or ["Cost budget exceeded"],
             root_cause=details.get("message", "Workflow execution exceeded cost budget"),
             affected_components=[],
+        )
+
+    def _analyze_tool_misuse(
+        self,
+        detection: Dict[str, Any],
+        details: Dict[str, Any],
+        trace: Optional[Dict[str, Any]],
+    ) -> FailureSignature:
+        """Analyze tool abuse, tool failure, or tool schema mismatch."""
+        indicators = []
+        detection_type = detection.get("detection_type", "")
+
+        if "abuse" in detection_type:
+            indicators.append("Excessive or dangerous tool usage detected")
+            pattern = "tool_abuse"
+            root_cause = "Agent using tools beyond safe boundaries or with high error rates"
+        elif "failure" in detection_type:
+            indicators.append("Tool execution failed without proper handling")
+            pattern = "unhandled_tool_failure"
+            root_cause = "Tool node failed and no retry or fallback mechanism caught it"
+        else:
+            indicators.append("Tool inputs/outputs don't match expected schema")
+            pattern = "schema_violation"
+            root_cause = "Tool called with incorrect parameter types or missing required fields"
+
+        if details.get("message"):
+            indicators.append(details["message"])
+
+        return FailureSignature(
+            category=FailureCategory.API_FAILURE,
+            pattern=pattern,
+            confidence=detection.get("confidence", 0.7),
+            indicators=indicators,
+            root_cause=root_cause,
+            affected_components=details.get("affected_agents", []),
+        )
+
+    def _analyze_security_violation(
+        self,
+        detection: Dict[str, Any],
+        details: Dict[str, Any],
+        trace: Optional[Dict[str, Any]],
+    ) -> FailureSignature:
+        """Analyze sandbox escape, elevated risk, or variable leak."""
+        indicators = []
+        detection_type = detection.get("detection_type", "")
+
+        if "sandbox" in detection_type:
+            indicators.append("Sandbox boundary violation detected")
+            pattern = "sandbox_escape"
+            root_cause = "Agent performed restricted operations while sandbox was enabled"
+        elif "elevated" in detection_type:
+            indicators.append("Risky operations in elevated mode")
+            pattern = "privilege_abuse"
+            root_cause = "Agent using elevated privileges for potentially dangerous operations"
+        else:
+            indicators.append("Sensitive data leaked through variable scope")
+            pattern = "data_leak"
+            root_cause = "Sensitive information (API keys, credentials) exposed in outputs"
+
+        if details.get("message"):
+            indicators.append(details["message"])
+
+        return FailureSignature(
+            category=FailureCategory.INJECTION,
+            pattern=pattern,
+            confidence=detection.get("confidence", 0.8),
+            indicators=indicators,
+            root_cause=root_cause,
+            affected_components=details.get("affected_agents", []),
+        )
+
+    def _analyze_routing_failure(
+        self,
+        detection: Dict[str, Any],
+        details: Dict[str, Any],
+        trace: Optional[Dict[str, Any]],
+    ) -> FailureSignature:
+        """Analyze edge misroute, channel mismatch, or classifier drift."""
+        indicators = []
+        detection_type = detection.get("detection_type", "")
+
+        if "misroute" in detection_type:
+            indicators.append("Graph edge routing to incorrect target node")
+            pattern = "edge_misroute"
+            root_cause = "Conditional edge condition evaluating to wrong branch"
+        elif "channel" in detection_type:
+            indicators.append("Response format inappropriate for communication channel")
+            pattern = "channel_format_mismatch"
+            root_cause = "Agent generating content incompatible with channel constraints"
+        else:
+            indicators.append("Classifier producing unreliable categorizations")
+            pattern = "classifier_drift"
+            root_cause = "Question classifier confidence degraded or categories misaligned"
+
+        if details.get("message"):
+            indicators.append(details["message"])
+
+        return FailureSignature(
+            category=FailureCategory.TASK_DERAILMENT,
+            pattern=pattern,
+            confidence=detection.get("confidence", 0.7),
+            indicators=indicators,
+            root_cause=root_cause,
+            affected_components=details.get("affected_agents", []),
         )
 
     def _analyze_generic(

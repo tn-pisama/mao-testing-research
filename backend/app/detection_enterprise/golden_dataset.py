@@ -2,10 +2,13 @@
 
 import hashlib
 import json
+import logging
 from dataclasses import dataclass, field, asdict
 from typing import List, Dict, Any, Optional
 from pathlib import Path
 from datetime import datetime, timezone
+
+logger = logging.getLogger(__name__)
 
 from app.detection.validation import DetectionType, LabeledSample, DetectionPrediction
 
@@ -8626,6 +8629,18 @@ def create_default_golden_dataset(assign_splits: bool = True) -> GoldenDataset:
     from app.detection_enterprise.n8n_golden_entries import create_n8n_golden_entries
     for sample in create_n8n_golden_entries():
         dataset.add_entry(sample)
+
+    # Framework-specific expanded golden datasets (OpenClaw, Dify, LangGraph)
+    data_dir = Path(__file__).parent.parent.parent / "data"
+    for filename in [
+        "golden_dataset_openclaw_expanded.json",
+        "golden_dataset_dify_expanded.json",
+        "golden_dataset_langgraph_expanded.json",
+    ]:
+        filepath = data_dir / filename
+        if filepath.exists():
+            dataset.load_json(filepath)
+            logger.info("Loaded framework golden dataset: %s", filename)
 
     if assign_splits:
         dataset.assign_splits()

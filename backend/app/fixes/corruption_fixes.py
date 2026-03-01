@@ -10,7 +10,7 @@ class CorruptionFixGenerator(BaseFixGenerator):
     """Generates fixes for state corruption detections."""
     
     def can_handle(self, detection_type: str) -> bool:
-        return detection_type == "state_corruption"
+        return "corruption" in detection_type or "state" in detection_type
     
     def generate_fixes(
         self,

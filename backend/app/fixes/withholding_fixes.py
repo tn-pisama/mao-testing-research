@@ -10,7 +10,7 @@ class WithholdingFixGenerator(BaseFixGenerator):
     """Generates fixes for information withholding detections."""
 
     def can_handle(self, detection_type: str) -> bool:
-        return detection_type in ("withholding", "information_withholding")
+        return "withholding" in detection_type or "variable_leak" in detection_type
 
     def generate_fixes(
         self,
