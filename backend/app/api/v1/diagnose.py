@@ -291,11 +291,25 @@ async def why_did_this_fail(request: DiagnoseRequest) -> DiagnoseResponse:
         all_detections.extend(turn_results)
         detectors_run.append("turn_aware_detector")
 
-        # 4. Select primary failure and generate explanation
+        # 4. Record metrics for calibration monitoring
+        try:
+            from app.api.v1.diagnostics import calibration_monitor
+            for d in all_detections:
+                calibration_monitor.record(
+                    failure_mode=d["category"],
+                    detected=d["detected"],
+                    confidence=d["confidence"],
+                    severity=d["severity"],
+                )
+            calibration_monitor.record_run()
+        except Exception:
+            pass  # Monitoring is best-effort
+
+        # 5. Select primary failure and generate explanation
         primary = _pick_primary(all_detections)
         root_cause = _generate_root_cause(primary, all_detections)
 
-        # 5. Build response
+        # 6. Build response
         elapsed_ms = int((time.monotonic() - start_ms) * 1000)
 
         primary_result = None
