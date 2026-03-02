@@ -963,6 +963,101 @@ class TestDeduplicateDetections:
         result = orchestrator._deduplicate_detections([det_a, det_b])
         assert len(result) == 2
 
+    # ---- Multi-failure compound subsumption tests ----
+
+    def test_subsumption_pair_plus_unrelated_survives(self):
+        """Subsumption removes symptom but unrelated detection survives."""
+        orchestrator = DetectionOrchestrator()
+        grounding = self._make_detection(DetectionCategory.GROUNDING_FAILURE)
+        hallucination = self._make_detection(DetectionCategory.HALLUCINATION)
+        injection = self._make_detection(DetectionCategory.INJECTION)
+        result = orchestrator._deduplicate_detections([grounding, hallucination, injection])
+        categories = {d.category for d in result}
+        assert len(result) == 2
+        assert DetectionCategory.GROUNDING_FAILURE in categories
+        assert DetectionCategory.INJECTION in categories
+        assert DetectionCategory.HALLUCINATION not in categories
+
+    def test_two_subsumption_pairs_simultaneously(self):
+        """Two independent subsumption pairs fire — both symptoms suppressed."""
+        orchestrator = DetectionOrchestrator()
+        grounding = self._make_detection(DetectionCategory.GROUNDING_FAILURE)
+        hallucination = self._make_detection(DetectionCategory.HALLUCINATION)
+        loop = self._make_detection(DetectionCategory.LOOP)
+        overflow = self._make_detection(DetectionCategory.CONTEXT_OVERFLOW)
+        result = orchestrator._deduplicate_detections(
+            [grounding, hallucination, loop, overflow]
+        )
+        categories = {d.category for d in result}
+        assert len(result) == 2
+        assert categories == {DetectionCategory.GROUNDING_FAILURE, DetectionCategory.LOOP}
+
+    def test_all_four_subsumption_pairs_fire(self):
+        """All 4 subsumption pairs fire — 4 root causes survive, 4 symptoms suppressed."""
+        orchestrator = DetectionOrchestrator()
+        detections = [
+            self._make_detection(DetectionCategory.GROUNDING_FAILURE),
+            self._make_detection(DetectionCategory.HALLUCINATION),
+            self._make_detection(DetectionCategory.LOOP),
+            self._make_detection(DetectionCategory.CONTEXT_OVERFLOW),
+            self._make_detection(DetectionCategory.TASK_DERAILMENT),
+            self._make_detection(DetectionCategory.COMPLETION_MISJUDGMENT),
+            self._make_detection(DetectionCategory.COMMUNICATION_BREAKDOWN),
+            self._make_detection(DetectionCategory.COORDINATION_FAILURE),
+        ]
+        result = orchestrator._deduplicate_detections(detections)
+        categories = {d.category for d in result}
+        assert len(result) == 4
+        assert categories == {
+            DetectionCategory.GROUNDING_FAILURE,
+            DetectionCategory.LOOP,
+            DetectionCategory.TASK_DERAILMENT,
+            DetectionCategory.COMMUNICATION_BREAKDOWN,
+        }
+
+    def test_symptom_only_without_root_cause_survives(self):
+        """Symptom present without its root cause should survive."""
+        orchestrator = DetectionOrchestrator()
+        hallucination = self._make_detection(DetectionCategory.HALLUCINATION)
+        result = orchestrator._deduplicate_detections([hallucination])
+        assert len(result) == 1
+        assert result[0].category == DetectionCategory.HALLUCINATION
+
+    def test_subsumption_then_span_overlap_combined(self):
+        """Subsumption removes symptom, then span overlap removes lower-confidence."""
+        orchestrator = DetectionOrchestrator()
+        grounding = self._make_detection(
+            DetectionCategory.GROUNDING_FAILURE, confidence=0.9,
+            spans=["s1", "s2", "s3"],
+        )
+        hallucination = self._make_detection(DetectionCategory.HALLUCINATION)
+        injection = self._make_detection(
+            DetectionCategory.INJECTION, confidence=0.5,
+            spans=["s1", "s2", "s4"],  # >50% overlap with grounding
+        )
+        result = orchestrator._deduplicate_detections([grounding, hallucination, injection])
+        categories = {d.category for d in result}
+        # hallucination subsumed by grounding, injection removed by span overlap
+        assert len(result) == 1
+        assert categories == {DetectionCategory.GROUNDING_FAILURE}
+
+    def test_subsumption_and_no_span_overlap_keeps_both(self):
+        """Subsumption removes symptom but disjoint-span detection survives."""
+        orchestrator = DetectionOrchestrator()
+        grounding = self._make_detection(
+            DetectionCategory.GROUNDING_FAILURE, confidence=0.9,
+            spans=["s1", "s2"],
+        )
+        hallucination = self._make_detection(DetectionCategory.HALLUCINATION)
+        injection = self._make_detection(
+            DetectionCategory.INJECTION, confidence=0.8,
+            spans=["s5", "s6"],  # no overlap with grounding
+        )
+        result = orchestrator._deduplicate_detections([grounding, hallucination, injection])
+        categories = {d.category for d in result}
+        assert len(result) == 2
+        assert categories == {DetectionCategory.GROUNDING_FAILURE, DetectionCategory.INJECTION}
+
 
 # ============================================================================
 # Sprint 6: Tests for analyze_trace_async (Task 2)
@@ -997,3 +1092,230 @@ class TestAnalyzeTraceAsync:
         assert sync_result.trace_id == async_result.trace_id
         assert sync_result.total_spans == async_result.total_spans
         assert sync_result.error_spans == async_result.error_spans
+
+
+# ============================================================================
+# Tests for agents with multiple simultaneous failure modes
+# ============================================================================
+
+class TestMultipleSimultaneousFailures:
+    """Tests for traces that trigger several failure modes at once.
+
+    Uses patching on individual _detect_* methods to control which
+    detectors fire, avoiding fragile trace construction.
+    """
+
+    @staticmethod
+    def _make_detection(category, confidence=0.7, severity=Severity.MEDIUM, spans=None):
+        return DetectionResult(
+            category=category,
+            detected=True,
+            confidence=confidence,
+            severity=severity,
+            title=f"Test {category.value}",
+            description=f"Test detection for {category.value}",
+            affected_spans=spans or [],
+            suggested_fix=f"Fix {category.value}",
+        )
+
+    def test_three_unrelated_detectors_all_survive(self, sample_universal_trace):
+        """Three unrelated failure modes should all appear in results."""
+        orchestrator = DetectionOrchestrator()
+        injection = self._make_detection(
+            DetectionCategory.INJECTION, spans=["s1"],
+        )
+        persona = self._make_detection(
+            DetectionCategory.PERSONA_DRIFT, spans=["s2"],
+        )
+        context = self._make_detection(
+            DetectionCategory.CONTEXT_NEGLECT, spans=["s3"],
+        )
+        with patch.object(orchestrator, '_detect_loops', return_value=None), \
+             patch.object(orchestrator, '_detect_overflow', return_value=None), \
+             patch.object(orchestrator, '_detect_tool_issues', return_value=[]), \
+             patch.object(orchestrator, '_detect_tool_provision', return_value=None), \
+             patch.object(orchestrator, '_detect_hallucination', return_value=injection), \
+             patch.object(orchestrator, '_detect_persona_drift', return_value=persona), \
+             patch.object(orchestrator, '_detect_corruption', return_value=[]), \
+             patch.object(orchestrator, '_detect_error_patterns', return_value=[]), \
+             patch.object(orchestrator, '_detect_withholding', return_value=None), \
+             patch.object(orchestrator, '_detect_derailment', return_value=None), \
+             patch.object(orchestrator, '_detect_communication', return_value=None), \
+             patch.object(orchestrator, '_detect_specification', return_value=None), \
+             patch.object(orchestrator, '_detect_decomposition', return_value=None), \
+             patch.object(orchestrator, '_detect_context_neglect', return_value=context), \
+             patch.object(orchestrator, '_detect_coordination', return_value=None), \
+             patch.object(orchestrator, '_detect_workflow', return_value=None), \
+             patch.object(orchestrator, '_detect_grounding_failure', return_value=None), \
+             patch.object(orchestrator, '_detect_retrieval_quality', return_value=None):
+            result = orchestrator.analyze_trace(sample_universal_trace)
+
+        assert result.failure_count == 3
+        categories = {d.category for d in result.all_detections}
+        assert categories == {
+            DetectionCategory.INJECTION,
+            DetectionCategory.PERSONA_DRIFT,
+            DetectionCategory.CONTEXT_NEGLECT,
+        }
+
+    def test_primary_failure_is_highest_severity(self, sample_universal_trace):
+        """Primary failure should be the one with highest severity."""
+        orchestrator = DetectionOrchestrator()
+        critical = self._make_detection(
+            DetectionCategory.INJECTION, confidence=0.9,
+            severity=Severity.CRITICAL, spans=["s1"],
+        )
+        high = self._make_detection(
+            DetectionCategory.PERSONA_DRIFT, confidence=0.8,
+            severity=Severity.HIGH, spans=["s2"],
+        )
+        medium = self._make_detection(
+            DetectionCategory.CONTEXT_NEGLECT, confidence=0.7,
+            severity=Severity.MEDIUM, spans=["s3"],
+        )
+        with patch.object(orchestrator, '_detect_loops', return_value=None), \
+             patch.object(orchestrator, '_detect_overflow', return_value=None), \
+             patch.object(orchestrator, '_detect_tool_issues', return_value=[]), \
+             patch.object(orchestrator, '_detect_tool_provision', return_value=None), \
+             patch.object(orchestrator, '_detect_hallucination', return_value=critical), \
+             patch.object(orchestrator, '_detect_persona_drift', return_value=high), \
+             patch.object(orchestrator, '_detect_corruption', return_value=[]), \
+             patch.object(orchestrator, '_detect_error_patterns', return_value=[]), \
+             patch.object(orchestrator, '_detect_withholding', return_value=None), \
+             patch.object(orchestrator, '_detect_derailment', return_value=None), \
+             patch.object(orchestrator, '_detect_communication', return_value=None), \
+             patch.object(orchestrator, '_detect_specification', return_value=None), \
+             patch.object(orchestrator, '_detect_decomposition', return_value=None), \
+             patch.object(orchestrator, '_detect_context_neglect', return_value=medium), \
+             patch.object(orchestrator, '_detect_coordination', return_value=None), \
+             patch.object(orchestrator, '_detect_workflow', return_value=None), \
+             patch.object(orchestrator, '_detect_grounding_failure', return_value=None), \
+             patch.object(orchestrator, '_detect_retrieval_quality', return_value=None):
+            result = orchestrator.analyze_trace(sample_universal_trace)
+
+        assert result.failure_count == 3
+        assert result.primary_failure.category == DetectionCategory.INJECTION
+        assert result.primary_failure.severity == Severity.CRITICAL
+
+    def test_primary_failure_tiebreaks_by_confidence(self, sample_universal_trace):
+        """Same severity — primary should be the higher confidence one."""
+        orchestrator = DetectionOrchestrator()
+        high_conf = self._make_detection(
+            DetectionCategory.PERSONA_DRIFT, confidence=0.95,
+            severity=Severity.HIGH, spans=["s1"],
+        )
+        low_conf = self._make_detection(
+            DetectionCategory.INJECTION, confidence=0.65,
+            severity=Severity.HIGH, spans=["s2"],
+        )
+        with patch.object(orchestrator, '_detect_loops', return_value=None), \
+             patch.object(orchestrator, '_detect_overflow', return_value=None), \
+             patch.object(orchestrator, '_detect_tool_issues', return_value=[]), \
+             patch.object(orchestrator, '_detect_tool_provision', return_value=None), \
+             patch.object(orchestrator, '_detect_hallucination', return_value=low_conf), \
+             patch.object(orchestrator, '_detect_persona_drift', return_value=high_conf), \
+             patch.object(orchestrator, '_detect_corruption', return_value=[]), \
+             patch.object(orchestrator, '_detect_error_patterns', return_value=[]), \
+             patch.object(orchestrator, '_detect_withholding', return_value=None), \
+             patch.object(orchestrator, '_detect_derailment', return_value=None), \
+             patch.object(orchestrator, '_detect_communication', return_value=None), \
+             patch.object(orchestrator, '_detect_specification', return_value=None), \
+             patch.object(orchestrator, '_detect_decomposition', return_value=None), \
+             patch.object(orchestrator, '_detect_context_neglect', return_value=None), \
+             patch.object(orchestrator, '_detect_coordination', return_value=None), \
+             patch.object(orchestrator, '_detect_workflow', return_value=None), \
+             patch.object(orchestrator, '_detect_grounding_failure', return_value=None), \
+             patch.object(orchestrator, '_detect_retrieval_quality', return_value=None):
+            result = orchestrator.analyze_trace(sample_universal_trace)
+
+        assert result.failure_count == 2
+        assert result.primary_failure.category == DetectionCategory.PERSONA_DRIFT
+        assert result.primary_failure.confidence == 0.95
+
+    @pytest.mark.parametrize("pair_name,categories", [
+        ("injection_and_persona", [DetectionCategory.INJECTION, DetectionCategory.PERSONA_DRIFT]),
+        ("loop_and_corruption", [DetectionCategory.LOOP, DetectionCategory.STATE_CORRUPTION]),
+        ("context_and_decomposition", [DetectionCategory.CONTEXT_NEGLECT, DetectionCategory.TASK_DECOMPOSITION]),
+        ("withholding_and_workflow", [DetectionCategory.INFORMATION_WITHHOLDING, DetectionCategory.FLAWED_WORKFLOW]),
+        ("specification_and_overflow", [DetectionCategory.SPECIFICATION_MISMATCH, DetectionCategory.CONTEXT_OVERFLOW]),
+    ])
+    def test_compound_scenario_pairs(self, sample_universal_trace, pair_name, categories):
+        """Parametrized: two non-subsuming categories should both survive."""
+        orchestrator = DetectionOrchestrator()
+        det_a = self._make_detection(categories[0], spans=["s1"])
+        det_b = self._make_detection(categories[1], spans=["s2"])
+
+        # Build a full patch dict — all detectors return None/[]
+        null_patches = {
+            '_detect_loops': None,
+            '_detect_overflow': None,
+            '_detect_tool_issues': [],
+            '_detect_tool_provision': None,
+            '_detect_hallucination': None,
+            '_detect_persona_drift': None,
+            '_detect_corruption': [],
+            '_detect_error_patterns': [],
+            '_detect_withholding': None,
+            '_detect_derailment': None,
+            '_detect_communication': None,
+            '_detect_specification': None,
+            '_detect_decomposition': None,
+            '_detect_context_neglect': None,
+            '_detect_coordination': None,
+            '_detect_workflow': None,
+            '_detect_grounding_failure': None,
+            '_detect_retrieval_quality': None,
+        }
+
+        # Map categories to detector method names
+        cat_to_detector = {
+            DetectionCategory.INJECTION: '_detect_hallucination',  # reuse slot
+            DetectionCategory.PERSONA_DRIFT: '_detect_persona_drift',
+            DetectionCategory.LOOP: '_detect_loops',
+            DetectionCategory.STATE_CORRUPTION: '_detect_corruption',
+            DetectionCategory.CONTEXT_NEGLECT: '_detect_context_neglect',
+            DetectionCategory.TASK_DECOMPOSITION: '_detect_decomposition',
+            DetectionCategory.INFORMATION_WITHHOLDING: '_detect_withholding',
+            DetectionCategory.FLAWED_WORKFLOW: '_detect_workflow',
+            DetectionCategory.SPECIFICATION_MISMATCH: '_detect_specification',
+            DetectionCategory.CONTEXT_OVERFLOW: '_detect_overflow',
+        }
+
+        # Inject the two detections into their respective detector slots
+        for cat, det in [(categories[0], det_a), (categories[1], det_b)]:
+            method = cat_to_detector[cat]
+            if method in ('_detect_corruption', '_detect_error_patterns', '_detect_tool_issues'):
+                null_patches[method] = [det]
+            else:
+                null_patches[method] = det
+
+        import contextlib
+        with contextlib.ExitStack() as stack:
+            for method_name, return_val in null_patches.items():
+                stack.enter_context(
+                    patch.object(orchestrator, method_name, return_value=return_val)
+                )
+            result = orchestrator.analyze_trace(sample_universal_trace)
+
+        found = {d.category for d in result.all_detections}
+        assert categories[0] in found, f"Expected {categories[0].value} in {found}"
+        assert categories[1] in found, f"Expected {categories[1].value} in {found}"
+
+    def test_diagnosis_result_to_dict_with_multiple_detections(self):
+        """to_dict() should serialize all detections, not just primary."""
+        result = DiagnosisResult(trace_id="test-123")
+        dets = [
+            self._make_detection(DetectionCategory.INJECTION, confidence=0.9, severity=Severity.CRITICAL),
+            self._make_detection(DetectionCategory.PERSONA_DRIFT, confidence=0.8, severity=Severity.HIGH),
+            self._make_detection(DetectionCategory.CONTEXT_NEGLECT, confidence=0.6, severity=Severity.MEDIUM),
+        ]
+        result.all_detections = dets
+        result.failure_count = 3
+        result.has_failures = True
+        result.primary_failure = dets[0]
+
+        d = result.to_dict()
+        assert d["failure_count"] == 3
+        assert len(d["all_detections"]) == 3
+        categories_in_dict = {det["category"] for det in d["all_detections"]}
+        assert categories_in_dict == {"injection", "persona_drift", "context"}

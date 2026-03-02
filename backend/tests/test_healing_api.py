@@ -219,3 +219,92 @@ class TestHealingListEndpoint:
         assert "total" in data
         assert data["page"] == 1
         assert data["per_page"] == 10
+
+
+# ============================================================================
+# Tests for heal_batch with multiple detections
+# ============================================================================
+
+class TestHealBatchMultiDetection:
+    """Tests for SelfHealingEngine.heal_batch() with several failure modes."""
+
+    @pytest.mark.asyncio
+    async def test_heal_batch_processes_all_detections(self):
+        """heal_batch should return one HealingResult per detection."""
+        from app.healing.engine import SelfHealingEngine
+        engine = SelfHealingEngine(auto_apply=False)
+
+        detections = [
+            {"id": "d1", "type": "loop", "workflow_id": "wf1"},
+            {"id": "d2", "type": "corruption", "workflow_id": "wf2"},
+            {"id": "d3", "type": "persona_drift", "workflow_id": "wf3"},
+        ]
+        configs = {
+            "wf1": {"framework": "n8n"},
+            "wf2": {"framework": "n8n"},
+            "wf3": {"framework": "n8n"},
+        }
+
+        results = await engine.heal_batch(detections, configs)
+        assert len(results) == 3
+        # All should be PENDING since auto_apply=False
+        from app.healing.models import HealingStatus
+        for r in results:
+            assert r.status in (HealingStatus.PENDING, HealingStatus.FAILED)
+
+    @pytest.mark.asyncio
+    async def test_heal_batch_preserves_input_order(self):
+        """Results should correspond to input detection order."""
+        from app.healing.engine import SelfHealingEngine
+        engine = SelfHealingEngine(auto_apply=False)
+
+        detections = [
+            {"id": "d-first", "type": "loop", "workflow_id": "wf1"},
+            {"id": "d-second", "type": "corruption", "workflow_id": "wf2"},
+        ]
+        configs = {"wf1": {}, "wf2": {}}
+
+        results = await engine.heal_batch(detections, configs)
+        assert len(results) == 2
+        assert results[0].detection_id == "d-first"
+        assert results[1].detection_id == "d-second"
+
+    @pytest.mark.asyncio
+    async def test_heal_batch_empty_input(self):
+        """Empty detection list should return empty results."""
+        from app.healing.engine import SelfHealingEngine
+        engine = SelfHealingEngine(auto_apply=False)
+
+        results = await engine.heal_batch([], {})
+        assert results == []
+
+    @pytest.mark.asyncio
+    async def test_heal_batch_individual_failure_propagates(self):
+        """If heal() raises on one detection, the error propagates (current behavior)."""
+        from app.healing.engine import SelfHealingEngine
+        engine = SelfHealingEngine(auto_apply=False)
+
+        detections = [
+            {"id": "d1", "type": "loop", "workflow_id": "wf1"},
+            {"id": "d2", "type": "corruption", "workflow_id": "wf2"},
+        ]
+        configs = {"wf1": {}, "wf2": {}}
+
+        # The first detection should succeed (PENDING or FAILED).
+        # Patch heal to raise on the second call.
+        call_count = [0]
+        original_heal = engine.heal
+
+        async def heal_with_error(detection, config, **kw):
+            call_count[0] += 1
+            if call_count[0] == 2:
+                raise RuntimeError("Simulated heal failure")
+            return await original_heal(detection, config, **kw)
+
+        engine.heal = heal_with_error
+
+        with pytest.raises(RuntimeError, match="Simulated heal failure"):
+            await engine.heal_batch(detections, configs)
+
+        # First detection was processed before the error
+        assert call_count[0] == 2
