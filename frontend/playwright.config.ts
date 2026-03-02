@@ -51,7 +51,7 @@ export default defineConfig({
     // Authenticated tests (requires auth setup first)
     {
       name: 'authenticated',
-      testMatch: /.*\/(authenticated|navigation|pages)\/.*\.spec\.ts/,
+      testMatch: /.*\/(authenticated|navigation|pages|docs)\/.*\.spec\.ts/,
       use: {
         ...devices['Desktop Chrome'],
         extraHTTPHeaders: {
