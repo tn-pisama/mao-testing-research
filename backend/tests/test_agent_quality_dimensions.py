@@ -218,10 +218,10 @@ class TestErrorHandlingDimension:
         score = scorer.score_agent(node)
         error_dim = next(d for d in score.dimensions if d.dimension == QualityDimension.ERROR_HANDLING.value)
 
-        # Anti-gaming guard: nodes without a system prompt get capped at 0.5
+        # Anti-gaming guard: nodes without a system prompt get capped at 0.35
         # for error_handling, even with full config. This prevents gaming the
         # quality score by adding error handling flags without a real prompt.
-        assert error_dim.score == 0.5
+        assert error_dim.score == 0.35
         assert error_dim.evidence.get("no_prompt_penalty") is True
         assert error_dim.evidence.get("continue_on_fail") is True
         assert error_dim.evidence.get("retry_on_fail") is True

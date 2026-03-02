@@ -342,7 +342,7 @@ class CoordinationAnalyzer:
                 "please take", "transfer to", "route to",
             ]
             delegation_regexes = [
-                r"pass\s+\w+\s+to\b",    # "pass this to", "pass it to"
+                r"pass\s+(?:\w+\s+)?to\b",  # "pass to", "pass this to", "pass it to"
                 r"hand\s+\w+\s+off\b",    # "hand it off"
                 r"delegat\w*\s+(?:this|it|to)\b",  # "delegating to", "delegated this"
             ]

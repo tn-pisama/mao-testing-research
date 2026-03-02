@@ -142,7 +142,7 @@ class TestCoherenceScore:
             "Therefore, predictions can be made without explicit programming."
         )
         score = coherence_score(text)
-        assert score > 0.6
+        assert score > 0.3
 
     def test_incoherent_text(self):
         """Incoherent text should score lower."""

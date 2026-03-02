@@ -67,11 +67,11 @@ class TestJudgeModel:
 
     def test_claude_haiku_value(self):
         """Should have correct model ID for Claude Haiku."""
-        assert JudgeModel.CLAUDE_HAIKU.value == "claude-3-5-haiku-20241022"
+        assert JudgeModel.CLAUDE_HAIKU.value == "claude-haiku-4-5-20251001"
 
     def test_claude_sonnet_value(self):
         """Should have correct model ID for Claude Sonnet."""
-        assert JudgeModel.CLAUDE_SONNET.value == "claude-sonnet-4-20250514"
+        assert JudgeModel.CLAUDE_SONNET.value == "claude-sonnet-4-6"
 
 
 # ============================================================================
@@ -123,9 +123,9 @@ class TestLLMJudge:
     """Tests for LLMJudge class."""
 
     def test_init_default_model(self):
-        """Should default to GPT-4o-mini model."""
+        """Should default to Claude Sonnet model."""
         judge = LLMJudge()
-        assert judge.model == JudgeModel.GPT4O_MINI
+        assert judge.model == JudgeModel.CLAUDE_SONNET
 
     def test_init_custom_model(self):
         """Should accept custom model."""
@@ -209,7 +209,7 @@ class TestLLMJudge:
         result = judge.judge(EvalType.COHERENCE, "test output")
 
         assert result.score == 0.9
-        assert result.model_used == "claude-3-5-haiku-20241022"
+        assert result.model_used == "claude-haiku-4-5-20251001"
         assert result.tokens_used == 80  # input + output
         mock_client.messages.create.assert_called_once()
 
@@ -234,7 +234,7 @@ class TestLLMJudge:
 
     def test_judge_with_custom_prompt(self):
         """Should accept custom prompt template."""
-        judge = LLMJudge(api_key="test")
+        judge = LLMJudge(model=JudgeModel.GPT4O_MINI, api_key="test")
         custom_prompt = "Custom evaluation: {output}"
 
         with patch("httpx.Client") as mock_client_class:
@@ -361,7 +361,7 @@ class TestLLMJudgeScorer:
         """Should create default judge if not provided."""
         scorer = LLMJudgeScorer(EvalType.HELPFULNESS)
         assert scorer.judge is not None
-        assert scorer.judge.model == JudgeModel.GPT4O_MINI
+        assert scorer.judge.model == JudgeModel.CLAUDE_SONNET
 
     @patch.object(LLMJudge, "judge")
     def test_score_returns_eval_result(self, mock_judge):
@@ -484,7 +484,7 @@ class TestLLMJudgeIntegration:
         mock_client.post.return_value = mock_response
         mock_client_class.return_value = mock_client
 
-        judge = LLMJudge(api_key="test-key")
+        judge = LLMJudge(model=JudgeModel.GPT4O_MINI, api_key="test-key")
         scorer = LLMJudgeScorer(EvalType.RELEVANCE, judge=judge)
 
         result = scorer.score(
@@ -514,7 +514,7 @@ class TestLLMJudgeIntegration:
         mock_client.post.return_value = mock_response
         mock_client_class.return_value = mock_client
 
-        scorers = create_default_scorers(LLMJudge(api_key="test"))
+        scorers = create_default_scorers(LLMJudge(model=JudgeModel.GPT4O_MINI, api_key="test"))
 
         results = {}
         for eval_type in [EvalType.COHERENCE, EvalType.SAFETY]:
@@ -549,7 +549,7 @@ class TestLLMJudgeIntegration:
         result = scorer.score("Here's how to solve your problem...")
 
         assert result.score == 0.88
-        assert result.metadata["model"] == "claude-sonnet-4-20250514"
+        assert result.metadata["model"] == "claude-sonnet-4-6"
         assert result.metadata["tokens_used"] == 120  # input + output
 
 
@@ -562,7 +562,7 @@ class TestEdgeCases:
 
     def test_empty_output(self):
         """Should handle empty output string."""
-        judge = LLMJudge(api_key="test")
+        judge = LLMJudge(model=JudgeModel.GPT4O_MINI, api_key="test")
 
         with patch("httpx.Client") as mock_client_class:
             mock_response = MagicMock()
@@ -582,7 +582,7 @@ class TestEdgeCases:
 
     def test_very_long_output(self):
         """Should handle very long output strings."""
-        judge = LLMJudge(api_key="test")
+        judge = LLMJudge(model=JudgeModel.GPT4O_MINI, api_key="test")
         long_output = "word " * 10000
 
         with patch("httpx.Client") as mock_client_class:
@@ -603,7 +603,7 @@ class TestEdgeCases:
 
     def test_special_characters_in_output(self):
         """Should handle special characters in output."""
-        judge = LLMJudge(api_key="test")
+        judge = LLMJudge(model=JudgeModel.GPT4O_MINI, api_key="test")
         output_with_special = "Test with \"quotes\" and \n newlines and {braces}"
 
         with patch("httpx.Client") as mock_client_class:
@@ -624,7 +624,7 @@ class TestEdgeCases:
 
     def test_none_context_handling(self):
         """Should handle None context gracefully."""
-        judge = LLMJudge(api_key="test")
+        judge = LLMJudge(model=JudgeModel.GPT4O_MINI, api_key="test")
 
         with patch("httpx.Client") as mock_client_class:
             mock_response = MagicMock()
@@ -644,7 +644,7 @@ class TestEdgeCases:
 
     def test_rate_limit_error_handling(self):
         """Should handle rate limit errors."""
-        judge = LLMJudge(api_key="test")
+        judge = LLMJudge(model=JudgeModel.GPT4O_MINI, api_key="test")
 
         with patch("httpx.Client") as mock_client_class:
             mock_response = MagicMock()

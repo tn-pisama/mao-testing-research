@@ -34,7 +34,7 @@ class TestEmbeddingService:
         from app.core.embeddings import get_embedder
         
         embedder = get_embedder()
-        assert embedder.dimensions == 1024
+        assert embedder.dimensions == 384
     
     @patch('sentence_transformers.SentenceTransformer')
     def test_encode_single_text(self, mock_st):

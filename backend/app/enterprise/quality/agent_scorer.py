@@ -491,14 +491,14 @@ class AgentQualityScorer(LLMScorerMixin):
 
         # Anti-gaming: error handling flags without a meaningful system prompt are less meaningful
         system_prompt = self._extract_system_prompt(node)
-        if not system_prompt and score > 0.5:
+        if not system_prompt and score > 0.35:
             evidence["no_prompt_penalty"] = True
             issues.append("Error handling configured but agent has no system prompt — recovery behavior is undefined")
-            score = min(score, 0.5)
-        elif system_prompt and self._detect_keyword_stuffing(system_prompt) and score > 0.5:
+            score = min(score, 0.35)
+        elif system_prompt and self._detect_keyword_stuffing(system_prompt) and score > 0.35:
             evidence["stuffed_prompt_penalty"] = True
             issues.append("Error handling configured but system prompt is keyword-stuffed — recovery context is unreliable")
-            score = min(score, 0.5)
+            score = min(score, 0.35)
 
         if score < 0.5:
             issues.append("Limited error handling configuration")
