@@ -423,6 +423,335 @@ class AutoApplyService:
                 result[key] = value
         return result
 
+    async def apply_fix_generic(
+        self,
+        fix: Dict[str, Any],
+        entity_id: str,
+        healing_id: str,
+        framework: str,
+        client: Any,
+        git_backup: Optional[Any] = None,
+    ) -> ApplyResult:
+        """
+        Apply a fix to any supported framework.
+
+        Args:
+            fix: The fix suggestion to apply
+            entity_id: Framework entity ID (assistant_id, app_id, agent_id)
+            healing_id: ID of the healing operation
+            framework: Framework name (langgraph, dify, openclaw)
+            client: Framework API client
+            git_backup: Optional GitBackupService for backup
+        """
+        result = ApplyResult(
+            success=False,
+            healing_id=healing_id,
+            workflow_id=entity_id,
+            fix_id=fix.get("id"),
+        )
+
+        if not self.config.enabled:
+            result.error = "Auto-apply is disabled"
+            return result
+
+        fix_type = fix.get("fix_type", fix.get("type", ""))
+        risk_error = self.check_fix_risk(fix_type)
+        if risk_error:
+            result.error = risk_error
+            return result
+
+        if not self.check_rate_limit(entity_id):
+            remaining = self._rate_limiter.remaining(entity_id)
+            reset_time = self._rate_limiter.reset_time(entity_id)
+            if self.detect_healing_loop(entity_id):
+                result.error = (
+                    f"Healing loop detected: >{self.config.healing_loop_threshold} "
+                    f"attempts in {self.config.healing_loop_window_minutes} minutes. "
+                    "Escalate to human."
+                )
+            else:
+                result.error = f"Rate limited. Remaining: {remaining}, Resets: {reset_time}"
+            return result
+
+        backup_sha = None
+        if self.config.require_git_backup and git_backup:
+            try:
+                backup_sha = await git_backup.backup_entity(entity_id, framework, client)
+                result.backup_commit_sha = backup_sha
+            except Exception as e:
+                result.error = f"Failed to create backup: {e}"
+                return result
+
+        try:
+            dispatch = {
+                "langgraph": self._apply_fix_to_langgraph,
+                "dify": self._apply_fix_to_dify,
+                "openclaw": self._apply_fix_to_openclaw,
+            }
+            applicator = dispatch.get(framework)
+            if not applicator:
+                result.error = f"Unsupported framework: {framework}"
+                return result
+
+            await applicator(fix, entity_id, client)
+
+            result.success = True
+            result.applied_at = datetime.now(timezone.utc)
+            self._rate_limiter.record(entity_id)
+            self._healing_timestamps[entity_id].append(datetime.now(timezone.utc))
+            self._failure_counts[entity_id] = 0
+
+        except Exception as e:
+            result.error = str(e)
+            self._failure_counts[entity_id] += 1
+
+            if self.config.rollback_on_failure and backup_sha and git_backup:
+                try:
+                    await git_backup.rollback_entity(backup_sha, entity_id, framework, client)
+                    result.rolled_back = True
+                except Exception as rollback_error:
+                    logger.error(f"Rollback failed for {framework}/{entity_id}: {rollback_error}")
+
+                self._cooldowns[entity_id] = (
+                    datetime.now(timezone.utc) +
+                    timedelta(seconds=self.config.cooldown_after_rollback_seconds)
+                )
+
+        self._apply_history.append(result)
+        return result
+
+    # ── LangGraph fix applicators ───────────────────────────────────
+
+    async def _apply_fix_to_langgraph(
+        self,
+        fix: Dict[str, Any],
+        assistant_id: str,
+        client: Any,
+    ) -> None:
+        """Apply a fix to a LangGraph assistant."""
+        fix_type = fix.get("fix_type", fix.get("type"))
+
+        if fix_type in ("circuit_breaker", "recursion_guard"):
+            await self._apply_langgraph_recursion_guard(fix, assistant_id, client)
+        elif fix_type == "state_validation":
+            await self._apply_langgraph_state_validation(fix, assistant_id, client)
+        elif fix_type in ("step_validator", "edge_fix"):
+            await self._apply_langgraph_edge_fix(fix, assistant_id, client)
+        else:
+            await self._apply_langgraph_generic_fix(fix, assistant_id, client)
+
+    async def _apply_langgraph_recursion_guard(
+        self, fix: Dict[str, Any], assistant_id: str, client: Any,
+    ) -> None:
+        """Add recursion limit to graph config."""
+        assistant = await client.get_assistant(assistant_id)
+        config = assistant.get("config", {})
+        configurable = config.get("configurable", {})
+        configurable["recursion_limit"] = fix.get("parameters", {}).get("recursion_limit", 25)
+        config["configurable"] = configurable
+        await client.update_assistant(assistant_id, {"config": config})
+
+    async def _apply_langgraph_state_validation(
+        self, fix: Dict[str, Any], assistant_id: str, client: Any,
+    ) -> None:
+        """Add state validation metadata to graph config."""
+        assistant = await client.get_assistant(assistant_id)
+        metadata = assistant.get("metadata", {})
+        metadata["state_validation"] = {
+            "enabled": True,
+            "strict_types": fix.get("parameters", {}).get("strict_types", True),
+            "immutable_keys": fix.get("parameters", {}).get("immutable_keys", []),
+        }
+        await client.update_assistant(assistant_id, {"metadata": metadata})
+
+    async def _apply_langgraph_edge_fix(
+        self, fix: Dict[str, Any], assistant_id: str, client: Any,
+    ) -> None:
+        """Fix conditional edge routing in graph config."""
+        assistant = await client.get_assistant(assistant_id)
+        metadata = assistant.get("metadata", {})
+        metadata["edge_validation"] = {
+            "enabled": True,
+            "dead_end_detection": True,
+        }
+        await client.update_assistant(assistant_id, {"metadata": metadata})
+
+    async def _apply_langgraph_generic_fix(
+        self, fix: Dict[str, Any], assistant_id: str, client: Any,
+    ) -> None:
+        """Apply a generic fix by updating assistant config."""
+        assistant = await client.get_assistant(assistant_id)
+        modified_state = fix.get("modified_state", {})
+        if modified_state:
+            merged = self._deep_merge(assistant, modified_state)
+            await client.update_assistant(assistant_id, merged)
+
+    # ── Dify fix applicators ────────────────────────────────────────
+
+    async def _apply_fix_to_dify(
+        self,
+        fix: Dict[str, Any],
+        app_id: str,
+        client: Any,
+    ) -> None:
+        """Apply a fix to a Dify app."""
+        fix_type = fix.get("fix_type", fix.get("type"))
+
+        if fix_type == "circuit_breaker":
+            await self._apply_dify_iteration_limit(fix, app_id, client)
+        elif fix_type == "input_filtering":
+            await self._apply_dify_input_filter(fix, app_id, client)
+        elif fix_type in ("input_sanitization", "schema_enforcement"):
+            await self._apply_dify_node_config(fix, app_id, client)
+        else:
+            await self._apply_dify_generic_fix(fix, app_id, client)
+
+    async def _apply_dify_iteration_limit(
+        self, fix: Dict[str, Any], app_id: str, client: Any,
+    ) -> None:
+        """Set iteration bounds on Dify workflow."""
+        config = await client.get_app_config(app_id)
+        nodes = config.get("nodes", config.get("graph", {}).get("nodes", []))
+        max_iterations = fix.get("parameters", {}).get("max_iterations", 10)
+
+        for node in nodes:
+            node_type = node.get("data", {}).get("type", "")
+            if node_type in ("iteration", "loop"):
+                node.setdefault("data", {})["max_iterations"] = max_iterations
+
+        await client.update_app_config(app_id, config)
+
+    async def _apply_dify_input_filter(
+        self, fix: Dict[str, Any], app_id: str, client: Any,
+    ) -> None:
+        """Add input sanitization to Dify RAG nodes."""
+        config = await client.get_app_config(app_id)
+        nodes = config.get("nodes", config.get("graph", {}).get("nodes", []))
+
+        for node in nodes:
+            node_type = node.get("data", {}).get("type", "")
+            if node_type in ("knowledge-retrieval", "retrieval"):
+                node.setdefault("data", {})["input_filter"] = {
+                    "enabled": True,
+                    "block_injection_patterns": True,
+                }
+
+        await client.update_app_config(app_id, config)
+
+    async def _apply_dify_node_config(
+        self, fix: Dict[str, Any], app_id: str, client: Any,
+    ) -> None:
+        """Update specific node configuration in Dify workflow."""
+        config = await client.get_app_config(app_id)
+        target_node = fix.get("target_component")
+        params = fix.get("parameters", {})
+        nodes = config.get("nodes", config.get("graph", {}).get("nodes", []))
+
+        for node in nodes:
+            node_id = node.get("id", node.get("data", {}).get("title", ""))
+            if node_id == target_node:
+                node.setdefault("data", {}).update(params)
+
+        await client.update_app_config(app_id, config)
+
+    async def _apply_dify_generic_fix(
+        self, fix: Dict[str, Any], app_id: str, client: Any,
+    ) -> None:
+        """Apply a generic fix by updating Dify app config."""
+        config = await client.get_app_config(app_id)
+        modified_state = fix.get("modified_state", {})
+        if modified_state:
+            merged = self._deep_merge(config, modified_state)
+            await client.update_app_config(app_id, merged)
+
+    # ── OpenClaw fix applicators ────────────────────────────────────
+
+    async def _apply_fix_to_openclaw(
+        self,
+        fix: Dict[str, Any],
+        agent_id: str,
+        client: Any,
+    ) -> None:
+        """Apply a fix to an OpenClaw agent."""
+        fix_type = fix.get("fix_type", fix.get("type"))
+
+        if fix_type == "circuit_breaker":
+            await self._apply_openclaw_loop_guard(fix, agent_id, client)
+        elif fix_type in ("retry_limit", "permission_gate"):
+            await self._apply_openclaw_tool_limits(fix, agent_id, client)
+        elif fix_type == "safety_boundary":
+            await self._apply_openclaw_sandbox_enforcement(fix, agent_id, client)
+        elif fix_type == "output_constraint":
+            await self._apply_openclaw_channel_config(fix, agent_id, client)
+        else:
+            await self._apply_openclaw_generic_fix(fix, agent_id, client)
+
+    async def _apply_openclaw_loop_guard(
+        self, fix: Dict[str, Any], agent_id: str, client: Any,
+    ) -> None:
+        """Add loop/spawn chain limits to agent config."""
+        agent = await client.get_agent(agent_id)
+        limits = agent.get("limits", {})
+        limits["max_iterations"] = fix.get("parameters", {}).get("max_iterations", 50)
+        limits["max_spawn_depth"] = fix.get("parameters", {}).get("max_spawn_depth", 3)
+        agent["limits"] = limits
+        await client.update_agent(agent_id, agent)
+
+    async def _apply_openclaw_tool_limits(
+        self, fix: Dict[str, Any], agent_id: str, client: Any,
+    ) -> None:
+        """Add tool rate limits and permission restrictions."""
+        agent = await client.get_agent(agent_id)
+        limits = agent.get("limits", {})
+        limits["max_tool_calls_per_session"] = fix.get("parameters", {}).get("max_tool_calls", 100)
+        agent["limits"] = limits
+
+        # Restrict sensitive tools if specified
+        restricted = fix.get("parameters", {}).get("restricted_tools", [])
+        if restricted:
+            permissions = agent.get("permissions", {})
+            permissions["restricted_tools"] = restricted
+            agent["permissions"] = permissions
+
+        await client.update_agent(agent_id, agent)
+
+    async def _apply_openclaw_sandbox_enforcement(
+        self, fix: Dict[str, Any], agent_id: str, client: Any,
+    ) -> None:
+        """Enforce sandbox boundaries on agent."""
+        agent = await client.get_agent(agent_id)
+        sandbox = agent.get("sandbox", {})
+        sandbox["enabled"] = True
+        sandbox["strict_mode"] = True
+        sandbox["blocked_operations"] = fix.get("parameters", {}).get(
+            "blocked_operations", ["file_write", "network_external", "process_spawn"]
+        )
+        agent["sandbox"] = sandbox
+        await client.update_agent(agent_id, agent)
+
+    async def _apply_openclaw_channel_config(
+        self, fix: Dict[str, Any], agent_id: str, client: Any,
+    ) -> None:
+        """Configure channel-aware formatting."""
+        agent = await client.get_agent(agent_id)
+        metadata = agent.get("metadata", {})
+        metadata["channel_adaptation"] = {
+            "enabled": True,
+            "format_by_channel": fix.get("parameters", {}).get("format_rules", {}),
+        }
+        agent["metadata"] = metadata
+        await client.update_agent(agent_id, agent)
+
+    async def _apply_openclaw_generic_fix(
+        self, fix: Dict[str, Any], agent_id: str, client: Any,
+    ) -> None:
+        """Apply a generic fix by updating agent config."""
+        agent = await client.get_agent(agent_id)
+        modified_state = fix.get("modified_state", {})
+        if modified_state:
+            merged = self._deep_merge(agent, modified_state)
+            await client.update_agent(agent_id, merged)
+
     async def rollback(
         self,
         apply_result: ApplyResult,

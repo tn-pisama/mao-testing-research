@@ -574,6 +574,325 @@ class SelfHealingEngine:
         self._healing_history.append(result)
         return result
 
+    async def heal_langgraph_graph(
+        self,
+        detection: Dict[str, Any],
+        assistant_id: str,
+        langgraph_client: Any,
+        trace: Optional[Dict[str, Any]] = None,
+        skip_verification: bool = False,
+    ) -> HealingResult:
+        """
+        Heal a LangGraph graph with auto-apply, verification, and backup.
+
+        Mirrors heal_n8n_workflow but for LangGraph Platform deployments.
+
+        Args:
+            detection: The detection result to heal
+            assistant_id: LangGraph assistant ID
+            langgraph_client: LangGraph API client
+            trace: Optional trace data for analysis
+            skip_verification: If True, skip post-apply verification
+        """
+        lock = self._get_workflow_lock(f"lg_{assistant_id}")
+
+        if lock.locked():
+            return HealingResult(
+                id=f"heal_{secrets.token_hex(8)}",
+                detection_id=detection.get("id", ""),
+                status=HealingStatus.FAILED,
+                started_at=datetime.now(timezone.utc),
+                completed_at=datetime.now(timezone.utc),
+                failure_signature=None,
+                applied_fixes=[],
+                validation_results=[],
+                error=f"Concurrent healing blocked for LangGraph assistant {assistant_id}",
+            )
+
+        async with lock:
+            return await self._heal_framework_locked(
+                detection=detection,
+                entity_id=assistant_id,
+                framework="langgraph",
+                client=langgraph_client,
+                get_config_fn=langgraph_client.get_assistant,
+                trace=trace,
+                skip_verification=skip_verification,
+            )
+
+    async def heal_dify_workflow(
+        self,
+        detection: Dict[str, Any],
+        app_id: str,
+        dify_client: Any,
+        trace: Optional[Dict[str, Any]] = None,
+        skip_verification: bool = False,
+    ) -> HealingResult:
+        """
+        Heal a Dify workflow with auto-apply, verification, and backup.
+
+        Mirrors heal_n8n_workflow but for Dify app deployments.
+
+        Args:
+            detection: The detection result to heal
+            app_id: Dify app ID
+            dify_client: Dify API client
+            trace: Optional trace data for analysis
+            skip_verification: If True, skip post-apply verification
+        """
+        lock = self._get_workflow_lock(f"dify_{app_id}")
+
+        if lock.locked():
+            return HealingResult(
+                id=f"heal_{secrets.token_hex(8)}",
+                detection_id=detection.get("id", ""),
+                status=HealingStatus.FAILED,
+                started_at=datetime.now(timezone.utc),
+                completed_at=datetime.now(timezone.utc),
+                failure_signature=None,
+                applied_fixes=[],
+                validation_results=[],
+                error=f"Concurrent healing blocked for Dify app {app_id}",
+            )
+
+        async with lock:
+            return await self._heal_framework_locked(
+                detection=detection,
+                entity_id=app_id,
+                framework="dify",
+                client=dify_client,
+                get_config_fn=dify_client.get_app,
+                trace=trace,
+                skip_verification=skip_verification,
+            )
+
+    async def heal_openclaw_session(
+        self,
+        detection: Dict[str, Any],
+        agent_id: str,
+        openclaw_client: Any,
+        trace: Optional[Dict[str, Any]] = None,
+        skip_verification: bool = False,
+    ) -> HealingResult:
+        """
+        Heal an OpenClaw agent with auto-apply, verification, and backup.
+
+        Mirrors heal_n8n_workflow but for OpenClaw agent deployments.
+
+        Args:
+            detection: The detection result to heal
+            agent_id: OpenClaw agent ID
+            openclaw_client: OpenClaw API client
+            trace: Optional trace data for analysis
+            skip_verification: If True, skip post-apply verification
+        """
+        lock = self._get_workflow_lock(f"oc_{agent_id}")
+
+        if lock.locked():
+            return HealingResult(
+                id=f"heal_{secrets.token_hex(8)}",
+                detection_id=detection.get("id", ""),
+                status=HealingStatus.FAILED,
+                started_at=datetime.now(timezone.utc),
+                completed_at=datetime.now(timezone.utc),
+                failure_signature=None,
+                applied_fixes=[],
+                validation_results=[],
+                error=f"Concurrent healing blocked for OpenClaw agent {agent_id}",
+            )
+
+        async with lock:
+            return await self._heal_framework_locked(
+                detection=detection,
+                entity_id=agent_id,
+                framework="openclaw",
+                client=openclaw_client,
+                get_config_fn=openclaw_client.get_agent,
+                trace=trace,
+                skip_verification=skip_verification,
+            )
+
+    async def _heal_framework_locked(
+        self,
+        detection: Dict[str, Any],
+        entity_id: str,
+        framework: str,
+        client: Any,
+        get_config_fn: Any,
+        trace: Optional[Dict[str, Any]] = None,
+        skip_verification: bool = False,
+    ) -> HealingResult:
+        """Internal: generic heal method for any framework while holding the entity lock."""
+        result = HealingResult(
+            id=f"heal_{secrets.token_hex(8)}",
+            detection_id=detection.get("id", ""),
+            status=HealingStatus.ANALYZING,
+            started_at=datetime.now(timezone.utc),
+            completed_at=None,
+            failure_signature=None,
+            applied_fixes=[],
+            validation_results=[],
+        )
+
+        try:
+            # Step 1: Analyze the detection
+            result.failure_signature = self.analyzer.analyze(detection, trace)
+            result.status = HealingStatus.GENERATING_FIX
+            logger.info(f"[{framework}] Analyzed failure: {result.failure_signature.category.value}")
+
+            # Step 2: Get entity config
+            entity_config = await get_config_fn(entity_id)
+
+            # Step 3: Generate fix suggestions
+            context = {
+                "framework": framework,
+                "trace": trace,
+                "entity_id": entity_id,
+                "failure_signature": result.failure_signature,
+            }
+            fix_suggestions = self.fix_generator.generate_fixes(detection, context)
+
+            if not fix_suggestions:
+                result.status = HealingStatus.FAILED
+                result.error = "No fix suggestions generated"
+                result.completed_at = datetime.now(timezone.utc)
+                return result
+
+            result.metadata["fix_suggestions_count"] = len(fix_suggestions)
+            result.metadata["framework"] = framework
+            logger.info(f"[{framework}] Generated {len(fix_suggestions)} fix suggestions")
+
+            # Step 4: Check if auto-apply is available
+            if not self.auto_apply or not self.auto_apply_service:
+                result.status = HealingStatus.PENDING
+                result.metadata["requires_approval"] = True
+                result.metadata["fix_suggestions"] = [
+                    {"id": f.id, "type": f.fix_type.value, "confidence": f.confidence.value}
+                    for f in fix_suggestions[:5]
+                ]
+                result.completed_at = datetime.now(timezone.utc)
+                self._healing_history.append(result)
+                return result
+
+            # Step 5: Check rate limit
+            if not self.auto_apply_service.check_rate_limit(entity_id):
+                result.status = HealingStatus.PENDING
+                result.error = "Rate limited - too many fixes applied recently"
+                result.completed_at = datetime.now(timezone.utc)
+                self._healing_history.append(result)
+                return result
+
+            result.status = HealingStatus.APPLYING_FIX
+
+            # Step 6: Apply fixes using auto-apply service
+            for suggestion in fix_suggestions[:self.max_fix_attempts]:
+                fix_dict = suggestion.to_dict()
+
+                apply_result = await self.auto_apply_service.apply_fix_generic(
+                    fix=fix_dict,
+                    entity_id=entity_id,
+                    healing_id=result.id,
+                    framework=framework,
+                    client=client,
+                    git_backup=self.git_backup_service,
+                )
+
+                self._apply_results.append(apply_result)
+
+                if apply_result.success:
+                    applied_fix = AppliedFix(
+                        fix_id=suggestion.id,
+                        fix_type=suggestion.fix_type.value,
+                        applied_at=apply_result.applied_at or datetime.now(timezone.utc),
+                        target_component=getattr(suggestion, "target_component", entity_id),
+                        original_state=entity_config,
+                        modified_state=fix_dict.get("modified_state", {}),
+                        rollback_available=apply_result.backup_commit_sha is not None,
+                    )
+                    result.applied_fixes.append(applied_fix)
+                    result.metadata["backup_commit_sha"] = apply_result.backup_commit_sha
+
+                    if skip_verification:
+                        result.status = HealingStatus.SUCCESS
+                        result.metadata["verification_skipped"] = True
+                        result.completed_at = datetime.now(timezone.utc)
+                        self._healing_history.append(result)
+                        logger.info(f"[{framework}] Healed {entity_id} (verification skipped)")
+                        return result
+
+                    result.status = HealingStatus.VALIDATING
+                    try:
+                        verification = await asyncio.wait_for(
+                            self.verification_orchestrator.verify_level2_generic(
+                                detection_type=detection.get("detection_type", "unknown"),
+                                original_confidence=detection.get("confidence", 0),
+                                original_state=entity_config,
+                                applied_fixes={
+                                    "fix_applied": fix_dict,
+                                    "entity_id": entity_id,
+                                },
+                                framework=framework,
+                                client=client,
+                                entity_id=entity_id,
+                            ),
+                            timeout=self.validation_timeout + 15,
+                        )
+
+                        result.metadata["verification"] = verification.to_dict()
+
+                        if verification.passed:
+                            result.status = HealingStatus.SUCCESS
+                            result.completed_at = datetime.now(timezone.utc)
+                            self._healing_history.append(result)
+                            logger.info(
+                                f"[{framework}] Verified healing for {entity_id}: "
+                                f"confidence {verification.before_confidence:.2f} -> {verification.after_confidence:.2f}"
+                            )
+                            return result
+                        else:
+                            logger.warning(
+                                f"[{framework}] Verification failed for fix {suggestion.id}: "
+                                f"confidence {verification.before_confidence:.2f} -> {verification.after_confidence:.2f}"
+                            )
+                            continue
+
+                    except asyncio.TimeoutError:
+                        logger.warning(f"[{framework}] Verification timed out for {entity_id}")
+                        result.metadata["verification_timeout"] = True
+                        result.status = HealingStatus.PARTIAL_SUCCESS
+                        result.completed_at = datetime.now(timezone.utc)
+                        self._healing_history.append(result)
+                        return result
+
+                    except Exception as e:
+                        logger.warning(f"[{framework}] Verification error for {entity_id}: {e}")
+                        result.metadata["verification_error"] = str(e)
+                        continue
+
+                elif apply_result.rolled_back:
+                    logger.warning(f"[{framework}] Fix rolled back for {entity_id}")
+                    continue
+                else:
+                    logger.warning(f"[{framework}] Fix failed for {entity_id}: {apply_result.error}")
+                    continue
+
+            # All fixes failed
+            if result.applied_fixes:
+                result.status = HealingStatus.PARTIAL_SUCCESS
+                result.error = "Fixes applied but none passed verification"
+            else:
+                result.status = HealingStatus.FAILED
+                result.error = "All fix attempts failed"
+
+        except Exception as e:
+            result.status = HealingStatus.FAILED
+            result.error = str(e)
+            logger.error(f"[{framework}] Healing failed for {entity_id}: {e}")
+
+        result.completed_at = datetime.now(timezone.utc)
+        self._healing_history.append(result)
+        return result
+
     def get_apply_results(
         self,
         workflow_id: Optional[str] = None,

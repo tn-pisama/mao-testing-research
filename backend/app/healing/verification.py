@@ -281,6 +281,190 @@ class VerificationOrchestrator:
             verified_at=datetime.utcnow().isoformat(),
         )
 
+    async def verify_level2_generic(
+        self,
+        detection_type: str,
+        original_confidence: float,
+        original_state: Dict[str, Any],
+        applied_fixes: Dict[str, Any],
+        framework: str,
+        client: Any,
+        entity_id: str,
+    ) -> VerificationResult:
+        """Level 2: Execution-based verification for any framework.
+
+        Creates a test execution using the framework client, waits for
+        completion, and checks whether the execution succeeds without
+        triggering the same failure.
+
+        Args:
+            detection_type: The type of detection
+            original_confidence: Original detection confidence
+            original_state: Config state before fix
+            applied_fixes: Dict with fix details
+            framework: Framework name (langgraph, dify, openclaw)
+            client: Framework API client
+            entity_id: Entity ID (assistant_id, app_id, agent_id)
+        """
+        # First run Level 1
+        level1 = await self.verify_level1(
+            detection_type, original_confidence, original_state, applied_fixes
+        )
+
+        before = level1.before_confidence
+        execution_result = None
+        after = before  # Default: no improvement
+
+        try:
+            if framework == "langgraph":
+                execution_result, after = await self._verify_langgraph(
+                    client, entity_id, before
+                )
+            elif framework == "dify":
+                execution_result, after = await self._verify_dify(
+                    client, entity_id, before
+                )
+            elif framework == "openclaw":
+                execution_result, after = await self._verify_openclaw(
+                    client, entity_id, before
+                )
+            else:
+                return VerificationResult(
+                    passed=level1.passed,
+                    level=1,
+                    before_confidence=before,
+                    after_confidence=level1.after_confidence,
+                    config_checks=level1.config_checks,
+                    details={**level1.details, "unsupported_framework": framework},
+                    verified_at=datetime.utcnow().isoformat(),
+                )
+
+        except Exception as e:
+            logger.error(f"Level 2 verification failed for {framework}/{entity_id}: {e}")
+            return VerificationResult(
+                passed=level1.passed,
+                level=2,
+                before_confidence=before,
+                after_confidence=level1.after_confidence,
+                config_checks=level1.config_checks,
+                execution_result={"error": str(e)},
+                details={
+                    **level1.details,
+                    "level2_error": str(e),
+                    "fell_back_to_level1": True,
+                },
+                error=f"Execution verification failed: {e}",
+                verified_at=datetime.utcnow().isoformat(),
+            )
+
+        passed = level1.passed and after < before * self._config.improvement_threshold
+        return VerificationResult(
+            passed=passed,
+            level=2,
+            before_confidence=before,
+            after_confidence=after,
+            config_checks=level1.config_checks,
+            execution_result=execution_result,
+            details={
+                **level1.details,
+                "framework": framework,
+                "execution_completed": execution_result is not None,
+            },
+            verified_at=datetime.utcnow().isoformat(),
+        )
+
+    async def _verify_langgraph(
+        self, client: Any, assistant_id: str, before: float,
+    ) -> tuple:
+        """Run a LangGraph test execution and check results."""
+        result = await client.run_graph(
+            assistant_id=assistant_id,
+            input_data={"messages": [{"role": "user", "content": "test"}]},
+            config={"configurable": {"recursion_limit": 25}},
+            timeout=self._verification_timeout,
+        )
+
+        status = result.get("status", "")
+        execution_result = {
+            "run_id": result.get("run_id", result.get("id", "")),
+            "thread_id": result.get("thread_id", ""),
+            "status": status,
+        }
+
+        if status == "success":
+            after = 0.0
+        elif status == "error":
+            error_msg = result.get("error", "")
+            if "recursion" in str(error_msg).lower() or "circuit" in str(error_msg).lower():
+                after = 0.0
+                execution_result["controlled_termination"] = True
+            else:
+                after = before * self._config.partial_improvement_factor
+        else:
+            after = before * self._config.partial_improvement_factor
+
+        return execution_result, after
+
+    async def _verify_dify(
+        self, client: Any, app_id: str, before: float,
+    ) -> tuple:
+        """Run a Dify test workflow and check results."""
+        result = await client.run_and_wait(
+            inputs={"query": "test verification"},
+            timeout=self._verification_timeout,
+        )
+
+        workflow_run = result.get("workflow_run", result)
+        status = workflow_run.get("status", "")
+        execution_result = {
+            "workflow_run_id": workflow_run.get("id", ""),
+            "status": status,
+        }
+
+        if status == "succeeded":
+            after = 0.0
+        elif status == "failed":
+            error = workflow_run.get("error", "")
+            if "iteration" in str(error).lower() or "limit" in str(error).lower():
+                after = 0.0
+                execution_result["controlled_termination"] = True
+            else:
+                after = before * self._config.partial_improvement_factor
+        else:
+            after = before * self._config.partial_improvement_factor
+
+        return execution_result, after
+
+    async def _verify_openclaw(
+        self, client: Any, agent_id: str, before: float,
+    ) -> tuple:
+        """Run an OpenClaw test session and check results."""
+        result = await client.run_session(
+            agent_id=agent_id,
+            message="test verification",
+            timeout=self._verification_timeout,
+        )
+
+        status = result.get("status", "")
+        execution_result = {
+            "session_id": result.get("session_id", result.get("id", "")),
+            "status": status,
+        }
+
+        if status == "completed":
+            after = 0.0
+        elif status in ("failed", "error"):
+            error = result.get("error", "")
+            if "loop" in str(error).lower() or "limit" in str(error).lower():
+                after = 0.0
+                execution_result["controlled_termination"] = True
+            else:
+                after = before * self._config.partial_improvement_factor
+        else:
+            after = before * self._config.partial_improvement_factor
+
+        return execution_result, after
+
     def _get_redetector(self, detection_type: str, loop_detector=None):
         """Return the appropriate re-detection coroutine for a detection type.
 
