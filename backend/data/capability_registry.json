@@ -1,6 +1,6 @@
 {
   "version": "2.1",
-  "generated_at": "2026-03-02T19:06:14.723801+00:00",
+  "generated_at": "2026-03-02T20:38:43.701537+00:00",
   "capabilities": {
     "loop": {
       "name": "Loop Detection",
@@ -48,7 +48,7 @@
           "tn": 34
         }
       },
-      "last_calibrated": "2026-03-02T19:06:14.602130+00:00"
+      "last_calibrated": "2026-03-02T20:38:43.689239+00:00"
     },
     "persona_drift": {
       "name": "Persona Drift",
@@ -96,7 +96,7 @@
           "tn": 11
         }
       },
-      "last_calibrated": "2026-03-02T19:06:14.602130+00:00"
+      "last_calibrated": "2026-03-02T20:38:43.689239+00:00"
     },
     "hallucination": {
       "name": "Hallucination Detection",
@@ -144,7 +144,7 @@
           "tn": 19
         }
       },
-      "last_calibrated": "2026-03-02T19:06:14.602130+00:00"
+      "last_calibrated": "2026-03-02T20:38:43.689239+00:00"
     },
     "injection": {
       "name": "Injection Detection",
@@ -192,7 +192,7 @@
           "tn": 23
         }
       },
-      "last_calibrated": "2026-03-02T19:06:14.602130+00:00"
+      "last_calibrated": "2026-03-02T20:38:43.689239+00:00"
     },
     "overflow": {
       "name": "Context Overflow",
@@ -240,7 +240,7 @@
           "tn": 34
         }
       },
-      "last_calibrated": "2026-03-02T19:06:14.602130+00:00"
+      "last_calibrated": "2026-03-02T20:38:43.689239+00:00"
     },
     "corruption": {
       "name": "State Corruption",
@@ -288,7 +288,7 @@
           "tn": 30
         }
       },
-      "last_calibrated": "2026-03-02T19:06:14.602130+00:00"
+      "last_calibrated": "2026-03-02T20:38:43.689239+00:00"
     },
     "coordination": {
       "name": "Coordination Analysis",
@@ -336,7 +336,7 @@
           "tn": 33
         }
       },
-      "last_calibrated": "2026-03-02T19:06:14.602130+00:00"
+      "last_calibrated": "2026-03-02T20:38:43.689239+00:00"
     },
     "communication": {
       "name": "Communication Breakdown",
@@ -384,7 +384,7 @@
           "tn": 11
         }
       },
-      "last_calibrated": "2026-03-02T19:06:14.602130+00:00"
+      "last_calibrated": "2026-03-02T20:38:43.689239+00:00"
     },
     "context": {
       "name": "Context Neglect",
@@ -432,7 +432,7 @@
           "tn": 25
         }
       },
-      "last_calibrated": "2026-03-02T19:06:14.602130+00:00"
+      "last_calibrated": "2026-03-02T20:38:43.689239+00:00"
     },
     "derailment": {
       "name": "Task Derailment",
@@ -480,7 +480,7 @@
           "tn": 18
         }
       },
-      "last_calibrated": "2026-03-02T19:06:14.602130+00:00"
+      "last_calibrated": "2026-03-02T20:38:43.689239+00:00"
     },
     "specification": {
       "name": "Specification Mismatch",
@@ -528,7 +528,7 @@
           "tn": 16
         }
       },
-      "last_calibrated": "2026-03-02T19:06:14.602130+00:00"
+      "last_calibrated": "2026-03-02T20:38:43.689239+00:00"
     },
     "decomposition": {
       "name": "Task Decomposition",
@@ -576,7 +576,7 @@
           "tn": 25
         }
       },
-      "last_calibrated": "2026-03-02T19:06:14.602130+00:00"
+      "last_calibrated": "2026-03-02T20:38:43.689239+00:00"
     },
     "workflow": {
       "name": "Workflow Analysis",
@@ -624,7 +624,7 @@
           "tn": 31
         }
       },
-      "last_calibrated": "2026-03-02T19:06:14.602130+00:00"
+      "last_calibrated": "2026-03-02T20:38:43.689239+00:00"
     },
     "withholding": {
       "name": "Information Withholding",
@@ -672,7 +672,7 @@
           "tn": 5
         }
       },
-      "last_calibrated": "2026-03-02T19:06:14.602130+00:00"
+      "last_calibrated": "2026-03-02T20:38:43.689239+00:00"
     },
     "completion": {
       "name": "Completion Misjudgment",
@@ -720,7 +720,7 @@
           "tn": 18
         }
       },
-      "last_calibrated": "2026-03-02T19:06:14.602130+00:00"
+      "last_calibrated": "2026-03-02T20:38:43.689239+00:00"
     },
     "grounding": {
       "name": "Grounding Detection",
@@ -768,7 +768,7 @@
           "tn": 14
         }
       },
-      "last_calibrated": "2026-03-02T19:06:14.602130+00:00"
+      "last_calibrated": "2026-03-02T20:38:43.689239+00:00"
     },
     "retrieval_quality": {
       "name": "Retrieval Quality",
@@ -816,7 +816,7 @@
           "tn": 1
         }
       },
-      "last_calibrated": "2026-03-02T19:06:14.602130+00:00"
+      "last_calibrated": "2026-03-02T20:38:43.689239+00:00"
     },
     "n8n_schema": {
       "name": "N8N Schema Mismatch",
@@ -864,7 +864,7 @@
           "tn": 0
         }
       },
-      "last_calibrated": "2026-03-02T19:06:14.602130+00:00"
+      "last_calibrated": "2026-03-02T20:38:43.689239+00:00"
     },
     "n8n_cycle": {
       "name": "N8N Graph Cycle",
@@ -912,7 +912,7 @@
           "tn": 1
         }
       },
-      "last_calibrated": "2026-03-02T19:06:14.602130+00:00"
+      "last_calibrated": "2026-03-02T20:38:43.689239+00:00"
     },
     "n8n_complexity": {
       "name": "N8N Complexity",
@@ -960,7 +960,7 @@
           "tn": 1
         }
       },
-      "last_calibrated": "2026-03-02T19:06:14.602130+00:00",
+      "last_calibrated": "2026-03-02T20:38:43.689239+00:00",
       "saturation_warning": true
     },
     "n8n_error": {
@@ -1009,7 +1009,7 @@
           "tn": 2
         }
       },
-      "last_calibrated": "2026-03-02T19:06:14.602130+00:00",
+      "last_calibrated": "2026-03-02T20:38:43.689239+00:00",
       "saturation_warning": true
     },
     "n8n_resource": {
@@ -1058,7 +1058,7 @@
           "tn": 1
         }
       },
-      "last_calibrated": "2026-03-02T19:06:14.602130+00:00",
+      "last_calibrated": "2026-03-02T20:38:43.689239+00:00",
       "saturation_warning": true
     },
     "n8n_timeout": {
@@ -1107,14 +1107,878 @@
           "tn": 2
         }
       },
-      "last_calibrated": "2026-03-02T19:06:14.602130+00:00",
+      "last_calibrated": "2026-03-02T20:38:43.689239+00:00",
       "saturation_warning": true
+    },
+    "dify_rag_poisoning": {
+      "name": "Dify RAG Poisoning",
+      "tier": "enterprise",
+      "status": "passing",
+      "readiness": "production",
+      "eval_category": "regression",
+      "module": "app.detection.dify.rag_poisoning_detector",
+      "f1_score": 0.9516,
+      "precision": 0.9833,
+      "recall": 0.9219,
+      "optimal_threshold": 0.1,
+      "sample_count": 100,
+      "f1_ci_lower": 0.9104,
+      "f1_ci_upper": 0.9848,
+      "difficulty_breakdown": {
+        "easy": {
+          "f1": 0.9756,
+          "precision": 0.9524,
+          "recall": 1.0,
+          "n": 32,
+          "tp": 20,
+          "fp": 1,
+          "fn": 0,
+          "tn": 11
+        },
+        "hard": {
+          "f1": 0.9231,
+          "precision": 1.0,
+          "recall": 0.8571,
+          "n": 21,
+          "tp": 12,
+          "fp": 0,
+          "fn": 2,
+          "tn": 7
+        },
+        "medium": {
+          "f1": 0.9474,
+          "precision": 1.0,
+          "recall": 0.9,
+          "n": 47,
+          "tp": 27,
+          "fp": 0,
+          "fn": 3,
+          "tn": 17
+        }
+      },
+      "last_calibrated": "2026-03-02T20:38:43.689239+00:00"
+    },
+    "dify_iteration_escape": {
+      "name": "Dify Iteration Escape",
+      "tier": "enterprise",
+      "status": "passing",
+      "readiness": "production",
+      "eval_category": "regression",
+      "module": "app.detection.dify.iteration_escape_detector",
+      "f1_score": 0.9362,
+      "precision": 0.8919,
+      "recall": 0.9851,
+      "optimal_threshold": 0.1,
+      "sample_count": 100,
+      "f1_ci_lower": 0.8889,
+      "f1_ci_upper": 0.975,
+      "difficulty_breakdown": {
+        "easy": {
+          "f1": 0.9286,
+          "precision": 0.8667,
+          "recall": 1.0,
+          "n": 20,
+          "tp": 13,
+          "fp": 2,
+          "fn": 0,
+          "tn": 5
+        },
+        "hard": {
+          "f1": 0.88,
+          "precision": 0.8148,
+          "recall": 0.9565,
+          "n": 35,
+          "tp": 22,
+          "fp": 5,
+          "fn": 1,
+          "tn": 7
+        },
+        "medium": {
+          "f1": 0.9841,
+          "precision": 0.9688,
+          "recall": 1.0,
+          "n": 45,
+          "tp": 31,
+          "fp": 1,
+          "fn": 0,
+          "tn": 13
+        }
+      },
+      "last_calibrated": "2026-03-02T20:38:43.689239+00:00"
+    },
+    "dify_model_fallback": {
+      "name": "Dify Model Fallback",
+      "tier": "enterprise",
+      "status": "passing",
+      "readiness": "production",
+      "eval_category": "regression",
+      "module": "app.detection.dify.model_fallback_detector",
+      "f1_score": 0.973,
+      "precision": 1.0,
+      "recall": 0.9474,
+      "optimal_threshold": 0.1,
+      "sample_count": 99,
+      "f1_ci_lower": 0.9333,
+      "f1_ci_upper": 1.0,
+      "difficulty_breakdown": {
+        "easy": {
+          "f1": 0.9474,
+          "precision": 1.0,
+          "recall": 0.9,
+          "n": 20,
+          "tp": 9,
+          "fp": 0,
+          "fn": 1,
+          "tn": 10
+        },
+        "hard": {
+          "f1": 0.95,
+          "precision": 1.0,
+          "recall": 0.9048,
+          "n": 34,
+          "tp": 19,
+          "fp": 0,
+          "fn": 2,
+          "tn": 13
+        },
+        "medium": {
+          "f1": 1.0,
+          "precision": 1.0,
+          "recall": 1.0,
+          "n": 45,
+          "tp": 26,
+          "fp": 0,
+          "fn": 0,
+          "tn": 19
+        }
+      },
+      "last_calibrated": "2026-03-02T20:38:43.689239+00:00"
+    },
+    "dify_variable_leak": {
+      "name": "Dify Variable Leak",
+      "tier": "enterprise",
+      "status": "passing",
+      "readiness": "production",
+      "eval_category": "regression",
+      "module": "app.detection.dify.variable_leak_detector",
+      "f1_score": 0.8722,
+      "precision": 0.8169,
+      "recall": 0.9355,
+      "optimal_threshold": 0.1,
+      "sample_count": 94,
+      "f1_ci_lower": 0.8062,
+      "f1_ci_upper": 0.9265,
+      "difficulty_breakdown": {
+        "easy": {
+          "f1": 0.95,
+          "precision": 0.95,
+          "recall": 0.95,
+          "n": 31,
+          "tp": 19,
+          "fp": 1,
+          "fn": 1,
+          "tn": 10
+        },
+        "hard": {
+          "f1": 0.7692,
+          "precision": 0.6667,
+          "recall": 0.9091,
+          "n": 17,
+          "tp": 10,
+          "fp": 5,
+          "fn": 1,
+          "tn": 1
+        },
+        "medium": {
+          "f1": 0.8657,
+          "precision": 0.8056,
+          "recall": 0.9355,
+          "n": 46,
+          "tp": 29,
+          "fp": 7,
+          "fn": 2,
+          "tn": 8
+        }
+      },
+      "last_calibrated": "2026-03-02T20:38:43.689239+00:00"
+    },
+    "dify_classifier_drift": {
+      "name": "Dify Classifier Drift",
+      "tier": "enterprise",
+      "status": "passing",
+      "readiness": "production",
+      "eval_category": "regression",
+      "module": "app.detection.dify.classifier_drift_detector",
+      "f1_score": 0.9,
+      "precision": 1.0,
+      "recall": 0.8182,
+      "optimal_threshold": 0.1,
+      "sample_count": 100,
+      "f1_ci_lower": 0.8376,
+      "f1_ci_upper": 0.955,
+      "difficulty_breakdown": {
+        "easy": {
+          "f1": 1.0,
+          "precision": 1.0,
+          "recall": 1.0,
+          "n": 20,
+          "tp": 13,
+          "fp": 0,
+          "fn": 0,
+          "tn": 7
+        },
+        "hard": {
+          "f1": 0.9048,
+          "precision": 1.0,
+          "recall": 0.8261,
+          "n": 35,
+          "tp": 19,
+          "fp": 0,
+          "fn": 4,
+          "tn": 12
+        },
+        "medium": {
+          "f1": 0.8462,
+          "precision": 1.0,
+          "recall": 0.7333,
+          "n": 45,
+          "tp": 22,
+          "fp": 0,
+          "fn": 8,
+          "tn": 15
+        }
+      },
+      "last_calibrated": "2026-03-02T20:38:43.689239+00:00"
+    },
+    "dify_tool_schema_mismatch": {
+      "name": "Dify Tool Schema Mismatch",
+      "tier": "enterprise",
+      "status": "passing",
+      "readiness": "beta",
+      "eval_category": "capability",
+      "module": "app.detection.dify.tool_schema_mismatch_detector",
+      "f1_score": 0.6531,
+      "precision": 1.0,
+      "recall": 0.4848,
+      "optimal_threshold": 0.1,
+      "sample_count": 100,
+      "f1_ci_lower": 0.5361,
+      "f1_ci_upper": 0.7544,
+      "difficulty_breakdown": {
+        "easy": {
+          "f1": 0.6316,
+          "precision": 1.0,
+          "recall": 0.4615,
+          "n": 20,
+          "tp": 6,
+          "fp": 0,
+          "fn": 7,
+          "tn": 7
+        },
+        "hard": {
+          "f1": 0.6471,
+          "precision": 1.0,
+          "recall": 0.4783,
+          "n": 35,
+          "tp": 11,
+          "fp": 0,
+          "fn": 12,
+          "tn": 12
+        },
+        "medium": {
+          "f1": 0.6667,
+          "precision": 1.0,
+          "recall": 0.5,
+          "n": 45,
+          "tp": 15,
+          "fp": 0,
+          "fn": 15,
+          "tn": 15
+        }
+      },
+      "last_calibrated": "2026-03-02T20:38:43.689239+00:00"
+    },
+    "openclaw_session_loop": {
+      "name": "OpenClaw Session Loop",
+      "tier": "enterprise",
+      "status": "passing",
+      "readiness": "production",
+      "eval_category": "regression",
+      "module": "app.detection.openclaw.session_loop_detector",
+      "f1_score": 0.9818,
+      "precision": 1.0,
+      "recall": 0.9643,
+      "optimal_threshold": 0.1,
+      "sample_count": 95,
+      "f1_ci_lower": 0.9533,
+      "f1_ci_upper": 1.0,
+      "difficulty_breakdown": {
+        "easy": {
+          "f1": 1.0,
+          "precision": 1.0,
+          "recall": 1.0,
+          "n": 41,
+          "tp": 24,
+          "fp": 0,
+          "fn": 0,
+          "tn": 17
+        },
+        "hard": {
+          "f1": 0.9091,
+          "precision": 1.0,
+          "recall": 0.8333,
+          "n": 10,
+          "tp": 5,
+          "fp": 0,
+          "fn": 1,
+          "tn": 4
+        },
+        "medium": {
+          "f1": 0.9804,
+          "precision": 1.0,
+          "recall": 0.9615,
+          "n": 44,
+          "tp": 25,
+          "fp": 0,
+          "fn": 1,
+          "tn": 18
+        }
+      },
+      "last_calibrated": "2026-03-02T20:38:43.689239+00:00"
+    },
+    "openclaw_tool_abuse": {
+      "name": "OpenClaw Tool Abuse",
+      "tier": "enterprise",
+      "status": "passing",
+      "readiness": "production",
+      "eval_category": "regression",
+      "module": "app.detection.openclaw.tool_abuse_detector",
+      "f1_score": 0.8624,
+      "precision": 0.8545,
+      "recall": 0.8704,
+      "optimal_threshold": 0.1,
+      "sample_count": 90,
+      "f1_ci_lower": 0.7872,
+      "f1_ci_upper": 0.9245,
+      "difficulty_breakdown": {
+        "easy": {
+          "f1": 0.9167,
+          "precision": 0.9167,
+          "recall": 0.9167,
+          "n": 20,
+          "tp": 11,
+          "fp": 1,
+          "fn": 1,
+          "tn": 7
+        },
+        "hard": {
+          "f1": 0.8276,
+          "precision": 0.8571,
+          "recall": 0.8,
+          "n": 25,
+          "tp": 12,
+          "fp": 2,
+          "fn": 3,
+          "tn": 8
+        },
+        "medium": {
+          "f1": 0.8571,
+          "precision": 0.8276,
+          "recall": 0.8889,
+          "n": 45,
+          "tp": 24,
+          "fp": 5,
+          "fn": 3,
+          "tn": 13
+        }
+      },
+      "last_calibrated": "2026-03-02T20:38:43.689239+00:00"
+    },
+    "openclaw_elevated_risk": {
+      "name": "OpenClaw Elevated Risk",
+      "tier": "enterprise",
+      "status": "passing",
+      "readiness": "production",
+      "eval_category": "regression",
+      "module": "app.detection.openclaw.elevated_risk_detector",
+      "f1_score": 0.9023,
+      "precision": 0.8219,
+      "recall": 1.0,
+      "optimal_threshold": 0.1,
+      "sample_count": 100,
+      "f1_ci_lower": 0.8485,
+      "f1_ci_upper": 0.9481,
+      "difficulty_breakdown": {
+        "easy": {
+          "f1": 1.0,
+          "precision": 1.0,
+          "recall": 1.0,
+          "n": 20,
+          "tp": 12,
+          "fp": 0,
+          "fn": 0,
+          "tn": 8
+        },
+        "hard": {
+          "f1": 0.8571,
+          "precision": 0.75,
+          "recall": 1.0,
+          "n": 35,
+          "tp": 21,
+          "fp": 7,
+          "fn": 0,
+          "tn": 7
+        },
+        "medium": {
+          "f1": 0.9,
+          "precision": 0.8182,
+          "recall": 1.0,
+          "n": 45,
+          "tp": 27,
+          "fp": 6,
+          "fn": 0,
+          "tn": 12
+        }
+      },
+      "last_calibrated": "2026-03-02T20:38:43.689239+00:00"
+    },
+    "openclaw_spawn_chain": {
+      "name": "OpenClaw Spawn Chain",
+      "tier": "enterprise",
+      "status": "passing",
+      "readiness": "production",
+      "eval_category": "regression",
+      "module": "app.detection.openclaw.spawn_chain_detector",
+      "f1_score": 0.931,
+      "precision": 0.9153,
+      "recall": 0.9474,
+      "optimal_threshold": 0.1,
+      "sample_count": 90,
+      "f1_ci_lower": 0.8772,
+      "f1_ci_upper": 0.9756,
+      "difficulty_breakdown": {
+        "easy": {
+          "f1": 0.8571,
+          "precision": 1.0,
+          "recall": 0.75,
+          "n": 10,
+          "tp": 6,
+          "fp": 0,
+          "fn": 2,
+          "tn": 2
+        },
+        "hard": {
+          "f1": 0.913,
+          "precision": 0.875,
+          "recall": 0.9545,
+          "n": 35,
+          "tp": 21,
+          "fp": 3,
+          "fn": 1,
+          "tn": 10
+        },
+        "medium": {
+          "f1": 0.9643,
+          "precision": 0.931,
+          "recall": 1.0,
+          "n": 45,
+          "tp": 27,
+          "fp": 2,
+          "fn": 0,
+          "tn": 16
+        }
+      },
+      "last_calibrated": "2026-03-02T20:38:43.689239+00:00"
+    },
+    "openclaw_channel_mismatch": {
+      "name": "OpenClaw Channel Mismatch",
+      "tier": "enterprise",
+      "status": "passing",
+      "readiness": "production",
+      "eval_category": "regression",
+      "module": "app.detection.openclaw.channel_mismatch_detector",
+      "f1_score": 0.9913,
+      "precision": 1.0,
+      "recall": 0.9828,
+      "optimal_threshold": 0.1,
+      "sample_count": 100,
+      "f1_ci_lower": 0.972,
+      "f1_ci_upper": 1.0,
+      "difficulty_breakdown": {
+        "easy": {
+          "f1": 1.0,
+          "precision": 1.0,
+          "recall": 1.0,
+          "n": 20,
+          "tp": 10,
+          "fp": 0,
+          "fn": 0,
+          "tn": 10
+        },
+        "hard": {
+          "f1": 1.0,
+          "precision": 1.0,
+          "recall": 1.0,
+          "n": 35,
+          "tp": 21,
+          "fp": 0,
+          "fn": 0,
+          "tn": 14
+        },
+        "medium": {
+          "f1": 0.9811,
+          "precision": 1.0,
+          "recall": 0.963,
+          "n": 45,
+          "tp": 26,
+          "fp": 0,
+          "fn": 1,
+          "tn": 18
+        }
+      },
+      "last_calibrated": "2026-03-02T20:38:43.689239+00:00"
+    },
+    "openclaw_sandbox_escape": {
+      "name": "OpenClaw Sandbox Escape",
+      "tier": "enterprise",
+      "status": "passing",
+      "readiness": "production",
+      "eval_category": "regression",
+      "module": "app.detection.openclaw.sandbox_escape_detector",
+      "f1_score": 0.8451,
+      "precision": 0.7317,
+      "recall": 1.0,
+      "optimal_threshold": 0.6,
+      "sample_count": 100,
+      "f1_ci_lower": 0.7761,
+      "f1_ci_upper": 0.9067,
+      "difficulty_breakdown": {
+        "easy": {
+          "f1": 0.8,
+          "precision": 0.6667,
+          "recall": 1.0,
+          "n": 20,
+          "tp": 12,
+          "fp": 6,
+          "fn": 0,
+          "tn": 2
+        },
+        "hard": {
+          "f1": 0.8571,
+          "precision": 0.75,
+          "recall": 1.0,
+          "n": 35,
+          "tp": 21,
+          "fp": 7,
+          "fn": 0,
+          "tn": 7
+        },
+        "medium": {
+          "f1": 0.8571,
+          "precision": 0.75,
+          "recall": 1.0,
+          "n": 45,
+          "tp": 27,
+          "fp": 9,
+          "fn": 0,
+          "tn": 9
+        }
+      },
+      "last_calibrated": "2026-03-02T20:38:43.689239+00:00"
+    },
+    "langgraph_recursion": {
+      "name": "LangGraph Recursion",
+      "tier": "enterprise",
+      "status": "passing",
+      "readiness": "production",
+      "eval_category": "regression",
+      "module": "app.detection.langgraph.recursion_detector",
+      "f1_score": 1.0,
+      "precision": 1.0,
+      "recall": 1.0,
+      "optimal_threshold": 0.1,
+      "sample_count": 100,
+      "f1_ci_lower": 1.0,
+      "f1_ci_upper": 1.0,
+      "difficulty_breakdown": {
+        "easy": {
+          "f1": 1.0,
+          "precision": 1.0,
+          "recall": 1.0,
+          "n": 20,
+          "tp": 13,
+          "fp": 0,
+          "fn": 0,
+          "tn": 7
+        },
+        "hard": {
+          "f1": 1.0,
+          "precision": 1.0,
+          "recall": 1.0,
+          "n": 22,
+          "tp": 15,
+          "fp": 0,
+          "fn": 0,
+          "tn": 7
+        },
+        "medium": {
+          "f1": 1.0,
+          "precision": 1.0,
+          "recall": 1.0,
+          "n": 58,
+          "tp": 39,
+          "fp": 0,
+          "fn": 0,
+          "tn": 19
+        }
+      },
+      "last_calibrated": "2026-03-02T20:38:43.689239+00:00"
+    },
+    "langgraph_state_corruption": {
+      "name": "LangGraph State Corruption",
+      "tier": "enterprise",
+      "status": "passing",
+      "readiness": "production",
+      "eval_category": "regression",
+      "module": "app.detection.langgraph.state_corruption_detector",
+      "f1_score": 0.8679,
+      "precision": 0.9787,
+      "recall": 0.7797,
+      "optimal_threshold": 0.1,
+      "sample_count": 97,
+      "f1_ci_lower": 0.7872,
+      "f1_ci_upper": 0.9333,
+      "difficulty_breakdown": {
+        "easy": {
+          "f1": 0.0,
+          "precision": 0.0,
+          "recall": 0.0,
+          "n": 17,
+          "tp": 0,
+          "fp": 0,
+          "fn": 6,
+          "tn": 11
+        },
+        "hard": {
+          "f1": 0.85,
+          "precision": 1.0,
+          "recall": 0.7391,
+          "n": 35,
+          "tp": 17,
+          "fp": 0,
+          "fn": 6,
+          "tn": 12
+        },
+        "medium": {
+          "f1": 0.9667,
+          "precision": 0.9667,
+          "recall": 0.9667,
+          "n": 45,
+          "tp": 29,
+          "fp": 1,
+          "fn": 1,
+          "tn": 14
+        }
+      },
+      "last_calibrated": "2026-03-02T20:38:43.689239+00:00"
+    },
+    "langgraph_edge_misroute": {
+      "name": "LangGraph Edge Misroute",
+      "tier": "enterprise",
+      "status": "passing",
+      "readiness": "production",
+      "eval_category": "regression",
+      "module": "app.detection.langgraph.edge_misroute_detector",
+      "f1_score": 0.8348,
+      "precision": 0.9412,
+      "recall": 0.75,
+      "optimal_threshold": 0.1,
+      "sample_count": 100,
+      "f1_ci_lower": 0.7611,
+      "f1_ci_upper": 0.9043,
+      "difficulty_breakdown": {
+        "easy": {
+          "f1": 0.6667,
+          "precision": 0.8571,
+          "recall": 0.5455,
+          "n": 20,
+          "tp": 6,
+          "fp": 1,
+          "fn": 5,
+          "tn": 8
+        },
+        "hard": {
+          "f1": 0.8889,
+          "precision": 0.9091,
+          "recall": 0.8696,
+          "n": 35,
+          "tp": 20,
+          "fp": 2,
+          "fn": 3,
+          "tn": 10
+        },
+        "medium": {
+          "f1": 0.8462,
+          "precision": 1.0,
+          "recall": 0.7333,
+          "n": 45,
+          "tp": 22,
+          "fp": 0,
+          "fn": 8,
+          "tn": 15
+        }
+      },
+      "last_calibrated": "2026-03-02T20:38:43.689239+00:00"
+    },
+    "langgraph_tool_failure": {
+      "name": "LangGraph Tool Failure",
+      "tier": "enterprise",
+      "status": "passing",
+      "readiness": "production",
+      "eval_category": "regression",
+      "module": "app.detection.langgraph.tool_failure_detector",
+      "f1_score": 0.9,
+      "precision": 0.931,
+      "recall": 0.871,
+      "optimal_threshold": 0.1,
+      "sample_count": 94,
+      "f1_ci_lower": 0.8411,
+      "f1_ci_upper": 0.9524,
+      "difficulty_breakdown": {
+        "easy": {
+          "f1": 0.96,
+          "precision": 1.0,
+          "recall": 0.9231,
+          "n": 20,
+          "tp": 12,
+          "fp": 0,
+          "fn": 1,
+          "tn": 7
+        },
+        "hard": {
+          "f1": 0.7368,
+          "precision": 0.8235,
+          "recall": 0.6667,
+          "n": 32,
+          "tp": 14,
+          "fp": 3,
+          "fn": 7,
+          "tn": 8
+        },
+        "medium": {
+          "f1": 0.9825,
+          "precision": 0.9655,
+          "recall": 1.0,
+          "n": 42,
+          "tp": 28,
+          "fp": 1,
+          "fn": 0,
+          "tn": 13
+        }
+      },
+      "last_calibrated": "2026-03-02T20:38:43.689239+00:00"
+    },
+    "langgraph_parallel_sync": {
+      "name": "LangGraph Parallel Sync",
+      "tier": "enterprise",
+      "status": "passing",
+      "readiness": "production",
+      "eval_category": "regression",
+      "module": "app.detection.langgraph.parallel_sync_detector",
+      "f1_score": 0.8739,
+      "precision": 0.9455,
+      "recall": 0.8125,
+      "optimal_threshold": 0.3,
+      "sample_count": 97,
+      "f1_ci_lower": 0.8174,
+      "f1_ci_upper": 0.9394,
+      "difficulty_breakdown": {
+        "easy": {
+          "f1": 0.4211,
+          "precision": 0.6667,
+          "recall": 0.3077,
+          "n": 20,
+          "tp": 4,
+          "fp": 2,
+          "fn": 9,
+          "tn": 5
+        },
+        "hard": {
+          "f1": 0.9565,
+          "precision": 0.9565,
+          "recall": 0.9565,
+          "n": 35,
+          "tp": 22,
+          "fp": 1,
+          "fn": 1,
+          "tn": 11
+        },
+        "medium": {
+          "f1": 0.9818,
+          "precision": 1.0,
+          "recall": 0.9643,
+          "n": 42,
+          "tp": 27,
+          "fp": 0,
+          "fn": 1,
+          "tn": 14
+        }
+      },
+      "last_calibrated": "2026-03-02T20:38:43.689239+00:00"
+    },
+    "langgraph_checkpoint_corruption": {
+      "name": "LangGraph Checkpoint Corruption",
+      "tier": "enterprise",
+      "status": "passing",
+      "readiness": "production",
+      "eval_category": "regression",
+      "module": "app.detection.langgraph.checkpoint_corruption_detector",
+      "f1_score": 0.871,
+      "precision": 0.871,
+      "recall": 0.871,
+      "optimal_threshold": 0.1,
+      "sample_count": 100,
+      "f1_ci_lower": 0.8,
+      "f1_ci_upper": 0.9254,
+      "difficulty_breakdown": {
+        "easy": {
+          "f1": 0.6667,
+          "precision": 0.8333,
+          "recall": 0.5556,
+          "n": 20,
+          "tp": 5,
+          "fp": 1,
+          "fn": 4,
+          "tn": 10
+        },
+        "hard": {
+          "f1": 0.913,
+          "precision": 0.913,
+          "recall": 0.913,
+          "n": 35,
+          "tp": 21,
+          "fp": 2,
+          "fn": 2,
+          "tn": 10
+        },
+        "medium": {
+          "f1": 0.8889,
+          "precision": 0.8485,
+          "recall": 0.9333,
+          "n": 45,
+          "tp": 28,
+          "fp": 5,
+          "fn": 2,
+          "tn": 10
+        }
+      },
+      "last_calibrated": "2026-03-02T20:38:43.689239+00:00"
     }
   },
   "summary": {
-    "total": 23,
-    "production": 2,
-    "beta": 9,
+    "total": 41,
+    "production": 19,
+    "beta": 10,
     "experimental": 11,
     "failing": 1,
     "untested": 0,

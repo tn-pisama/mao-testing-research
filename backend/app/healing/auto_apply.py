@@ -752,13 +752,159 @@ class AutoApplyService:
             merged = self._deep_merge(agent, modified_state)
             await client.update_agent(agent_id, merged)
 
+    # ── Dedicated per-framework apply methods ────────────────────────
+
+    async def apply_fix_langgraph(
+        self,
+        fix: Dict[str, Any],
+        assistant_id: str,
+        healing_id: str,
+        langgraph_client: Any,
+        git_backup: Optional[Any] = None,
+    ) -> ApplyResult:
+        """Apply a fix to a LangGraph assistant with safety controls."""
+        return await self._apply_fix_for_framework(
+            fix=fix,
+            entity_id=assistant_id,
+            healing_id=healing_id,
+            framework="langgraph",
+            client=langgraph_client,
+            git_backup=git_backup,
+            applicator=self._apply_fix_to_langgraph,
+        )
+
+    async def apply_fix_dify(
+        self,
+        fix: Dict[str, Any],
+        app_id: str,
+        healing_id: str,
+        dify_client: Any,
+        git_backup: Optional[Any] = None,
+    ) -> ApplyResult:
+        """Apply a fix to a Dify app with safety controls."""
+        return await self._apply_fix_for_framework(
+            fix=fix,
+            entity_id=app_id,
+            healing_id=healing_id,
+            framework="dify",
+            client=dify_client,
+            git_backup=git_backup,
+            applicator=self._apply_fix_to_dify,
+        )
+
+    async def apply_fix_openclaw(
+        self,
+        fix: Dict[str, Any],
+        agent_id: str,
+        healing_id: str,
+        openclaw_client: Any,
+        git_backup: Optional[Any] = None,
+    ) -> ApplyResult:
+        """Apply a fix to an OpenClaw agent with safety controls."""
+        return await self._apply_fix_for_framework(
+            fix=fix,
+            entity_id=agent_id,
+            healing_id=healing_id,
+            framework="openclaw",
+            client=openclaw_client,
+            git_backup=git_backup,
+            applicator=self._apply_fix_to_openclaw,
+        )
+
+    async def _apply_fix_for_framework(
+        self,
+        fix: Dict[str, Any],
+        entity_id: str,
+        healing_id: str,
+        framework: str,
+        client: Any,
+        git_backup: Optional[Any],
+        applicator,
+    ) -> ApplyResult:
+        """Shared implementation for per-framework apply with safety controls."""
+        result = ApplyResult(
+            success=False,
+            healing_id=healing_id,
+            workflow_id=entity_id,
+            fix_id=fix.get("id"),
+        )
+
+        if not self.config.enabled:
+            result.error = "Auto-apply is disabled"
+            return result
+
+        fix_type = fix.get("fix_type", fix.get("type", ""))
+        risk_error = self.check_fix_risk(fix_type)
+        if risk_error:
+            result.error = risk_error
+            logger.warning(f"[{framework}] Fix blocked by risk policy: {risk_error}")
+            return result
+
+        if not self.check_rate_limit(entity_id):
+            remaining = self._rate_limiter.remaining(entity_id)
+            reset_time = self._rate_limiter.reset_time(entity_id)
+            if self.detect_healing_loop(entity_id):
+                result.error = (
+                    f"Healing loop detected: >{self.config.healing_loop_threshold} "
+                    f"attempts in {self.config.healing_loop_window_minutes} minutes. "
+                    "Escalate to human."
+                )
+            else:
+                result.error = f"Rate limited. Remaining: {remaining}, Resets: {reset_time}"
+            return result
+
+        backup_sha = None
+        if self.config.require_git_backup and git_backup:
+            try:
+                backup_sha = await git_backup.backup_entity(entity_id, framework, client)
+                result.backup_commit_sha = backup_sha
+                logger.info(f"[{framework}] Created backup {backup_sha} for {entity_id}")
+            except Exception as e:
+                result.error = f"Failed to create backup: {e}"
+                logger.error(f"[{framework}] Backup failed for {entity_id}: {e}")
+                return result
+
+        try:
+            await applicator(fix, entity_id, client)
+
+            result.success = True
+            result.applied_at = datetime.now(timezone.utc)
+            self._rate_limiter.record(entity_id)
+            self._healing_timestamps[entity_id].append(datetime.now(timezone.utc))
+            self._failure_counts[entity_id] = 0
+
+            logger.info(f"[{framework}] Successfully applied fix {fix.get('id')} to {entity_id}")
+
+        except Exception as e:
+            result.error = str(e)
+            self._failure_counts[entity_id] += 1
+            logger.error(f"[{framework}] Failed to apply fix to {entity_id}: {e}")
+
+            if self.config.rollback_on_failure and backup_sha and git_backup:
+                try:
+                    await git_backup.rollback_entity(backup_sha, entity_id, framework, client)
+                    result.rolled_back = True
+                    logger.info(f"[{framework}] Rolled back {entity_id} to {backup_sha}")
+                except Exception as rollback_error:
+                    logger.error(f"[{framework}] Rollback failed for {entity_id}: {rollback_error}")
+
+                self._cooldowns[entity_id] = (
+                    datetime.now(timezone.utc) +
+                    timedelta(seconds=self.config.cooldown_after_rollback_seconds)
+                )
+
+        self._apply_history.append(result)
+        return result
+
+    # ── Per-framework rollback methods ─────────────────────────────
+
     async def rollback(
         self,
         apply_result: ApplyResult,
         git_backup: Any,
         n8n_client: Any,
     ) -> bool:
-        """Rollback a previously applied fix."""
+        """Rollback a previously applied fix to an n8n workflow."""
         if not apply_result.backup_commit_sha:
             logger.error("Cannot rollback: no backup commit SHA")
             return False
@@ -773,6 +919,78 @@ class AutoApplyService:
             return True
         except Exception as e:
             logger.error(f"Rollback failed: {e}")
+            return False
+
+    async def rollback_langgraph(
+        self,
+        apply_result: ApplyResult,
+        git_backup: Any,
+        langgraph_client: Any,
+    ) -> bool:
+        """Rollback a previously applied fix to a LangGraph assistant."""
+        if not apply_result.backup_commit_sha:
+            logger.error("Cannot rollback LangGraph: no backup commit SHA")
+            return False
+
+        try:
+            await git_backup.rollback_entity(
+                apply_result.backup_commit_sha,
+                apply_result.workflow_id,
+                "langgraph",
+                langgraph_client,
+            )
+            logger.info(f"Rolled back LangGraph assistant {apply_result.workflow_id}")
+            return True
+        except Exception as e:
+            logger.error(f"LangGraph rollback failed: {e}")
+            return False
+
+    async def rollback_dify(
+        self,
+        apply_result: ApplyResult,
+        git_backup: Any,
+        dify_client: Any,
+    ) -> bool:
+        """Rollback a previously applied fix to a Dify app."""
+        if not apply_result.backup_commit_sha:
+            logger.error("Cannot rollback Dify: no backup commit SHA")
+            return False
+
+        try:
+            await git_backup.rollback_entity(
+                apply_result.backup_commit_sha,
+                apply_result.workflow_id,
+                "dify",
+                dify_client,
+            )
+            logger.info(f"Rolled back Dify app {apply_result.workflow_id}")
+            return True
+        except Exception as e:
+            logger.error(f"Dify rollback failed: {e}")
+            return False
+
+    async def rollback_openclaw(
+        self,
+        apply_result: ApplyResult,
+        git_backup: Any,
+        openclaw_client: Any,
+    ) -> bool:
+        """Rollback a previously applied fix to an OpenClaw agent."""
+        if not apply_result.backup_commit_sha:
+            logger.error("Cannot rollback OpenClaw: no backup commit SHA")
+            return False
+
+        try:
+            await git_backup.rollback_entity(
+                apply_result.backup_commit_sha,
+                apply_result.workflow_id,
+                "openclaw",
+                openclaw_client,
+            )
+            logger.info(f"Rolled back OpenClaw agent {apply_result.workflow_id}")
+            return True
+        except Exception as e:
+            logger.error(f"OpenClaw rollback failed: {e}")
             return False
 
     def get_apply_history(

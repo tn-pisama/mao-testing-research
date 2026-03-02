@@ -1844,6 +1844,27 @@ DETECTOR_METADATA: Dict[str, Dict[str, str]] = {
     "n8n_error": {"name": "N8N Error Handling", "tier": "enterprise", "module": "app.detection.n8n.error_detector"},
     "n8n_resource": {"name": "N8N Resource Limits", "tier": "enterprise", "module": "app.detection.n8n.resource_detector"},
     "n8n_timeout": {"name": "N8N Timeout Protection", "tier": "enterprise", "module": "app.detection.n8n.timeout_detector"},
+    # Dify framework-specific detectors
+    "dify_rag_poisoning": {"name": "Dify RAG Poisoning", "tier": "enterprise", "module": "app.detection.dify.rag_poisoning_detector"},
+    "dify_iteration_escape": {"name": "Dify Iteration Escape", "tier": "enterprise", "module": "app.detection.dify.iteration_escape_detector"},
+    "dify_model_fallback": {"name": "Dify Model Fallback", "tier": "enterprise", "module": "app.detection.dify.model_fallback_detector"},
+    "dify_variable_leak": {"name": "Dify Variable Leak", "tier": "enterprise", "module": "app.detection.dify.variable_leak_detector"},
+    "dify_classifier_drift": {"name": "Dify Classifier Drift", "tier": "enterprise", "module": "app.detection.dify.classifier_drift_detector"},
+    "dify_tool_schema_mismatch": {"name": "Dify Tool Schema Mismatch", "tier": "enterprise", "module": "app.detection.dify.tool_schema_mismatch_detector"},
+    # OpenClaw framework-specific detectors
+    "openclaw_session_loop": {"name": "OpenClaw Session Loop", "tier": "enterprise", "module": "app.detection.openclaw.session_loop_detector"},
+    "openclaw_tool_abuse": {"name": "OpenClaw Tool Abuse", "tier": "enterprise", "module": "app.detection.openclaw.tool_abuse_detector"},
+    "openclaw_elevated_risk": {"name": "OpenClaw Elevated Risk", "tier": "enterprise", "module": "app.detection.openclaw.elevated_risk_detector"},
+    "openclaw_spawn_chain": {"name": "OpenClaw Spawn Chain", "tier": "enterprise", "module": "app.detection.openclaw.spawn_chain_detector"},
+    "openclaw_channel_mismatch": {"name": "OpenClaw Channel Mismatch", "tier": "enterprise", "module": "app.detection.openclaw.channel_mismatch_detector"},
+    "openclaw_sandbox_escape": {"name": "OpenClaw Sandbox Escape", "tier": "enterprise", "module": "app.detection.openclaw.sandbox_escape_detector"},
+    # LangGraph framework-specific detectors
+    "langgraph_recursion": {"name": "LangGraph Recursion", "tier": "enterprise", "module": "app.detection.langgraph.recursion_detector"},
+    "langgraph_state_corruption": {"name": "LangGraph State Corruption", "tier": "enterprise", "module": "app.detection.langgraph.state_corruption_detector"},
+    "langgraph_edge_misroute": {"name": "LangGraph Edge Misroute", "tier": "enterprise", "module": "app.detection.langgraph.edge_misroute_detector"},
+    "langgraph_tool_failure": {"name": "LangGraph Tool Failure", "tier": "enterprise", "module": "app.detection.langgraph.tool_failure_detector"},
+    "langgraph_parallel_sync": {"name": "LangGraph Parallel Sync", "tier": "enterprise", "module": "app.detection.langgraph.parallel_sync_detector"},
+    "langgraph_checkpoint_corruption": {"name": "LangGraph Checkpoint Corruption", "tier": "enterprise", "module": "app.detection.langgraph.checkpoint_corruption_detector"},
 }
 
 MINIMUM_PASSING_F1 = 0.40

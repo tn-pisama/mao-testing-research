@@ -465,6 +465,399 @@ class VerificationOrchestrator:
 
         return execution_result, after
 
+    async def verify_level2_langgraph(
+        self,
+        detection_type: str,
+        original_confidence: float,
+        original_state: Dict[str, Any],
+        applied_fixes: Dict[str, Any],
+        langgraph_client: Any,
+        assistant_id: str,
+    ) -> VerificationResult:
+        """Level 2: Execution-based verification for LangGraph with re-detection.
+
+        Runs a test graph execution, then re-runs the appropriate detector
+        on the execution result to measure actual confidence reduction.
+        """
+        level1 = await self.verify_level1(
+            detection_type, original_confidence, original_state, applied_fixes
+        )
+
+        before = level1.before_confidence
+        execution_result = None
+        after = before
+
+        try:
+            execution_result, after = await self._verify_langgraph(
+                langgraph_client, assistant_id, before
+            )
+
+            # Re-detect on the execution result if basic verification succeeded
+            if after == 0.0 and execution_result:
+                redetector = self._get_redetector_for_framework(detection_type, "langgraph")
+                if redetector:
+                    after = await redetector(execution_result)
+
+        except Exception as e:
+            logger.error(f"Level 2 verification failed for langgraph/{assistant_id}: {e}")
+            return VerificationResult(
+                passed=level1.passed,
+                level=2,
+                before_confidence=before,
+                after_confidence=level1.after_confidence,
+                config_checks=level1.config_checks,
+                execution_result={"error": str(e)},
+                details={**level1.details, "level2_error": str(e), "fell_back_to_level1": True},
+                error=f"Execution verification failed: {e}",
+                verified_at=datetime.utcnow().isoformat(),
+            )
+
+        passed = level1.passed and after < before * self._config.improvement_threshold
+        return VerificationResult(
+            passed=passed,
+            level=2,
+            before_confidence=before,
+            after_confidence=after,
+            config_checks=level1.config_checks,
+            execution_result=execution_result,
+            details={
+                **level1.details,
+                "framework": "langgraph",
+                "execution_completed": execution_result is not None,
+                "redetection_applied": after != before,
+            },
+            verified_at=datetime.utcnow().isoformat(),
+        )
+
+    async def verify_level2_dify(
+        self,
+        detection_type: str,
+        original_confidence: float,
+        original_state: Dict[str, Any],
+        applied_fixes: Dict[str, Any],
+        dify_client: Any,
+        app_id: str,
+    ) -> VerificationResult:
+        """Level 2: Execution-based verification for Dify with re-detection."""
+        level1 = await self.verify_level1(
+            detection_type, original_confidence, original_state, applied_fixes
+        )
+
+        before = level1.before_confidence
+        execution_result = None
+        after = before
+
+        try:
+            execution_result, after = await self._verify_dify(
+                dify_client, app_id, before
+            )
+
+            if after == 0.0 and execution_result:
+                redetector = self._get_redetector_for_framework(detection_type, "dify")
+                if redetector:
+                    after = await redetector(execution_result)
+
+        except Exception as e:
+            logger.error(f"Level 2 verification failed for dify/{app_id}: {e}")
+            return VerificationResult(
+                passed=level1.passed,
+                level=2,
+                before_confidence=before,
+                after_confidence=level1.after_confidence,
+                config_checks=level1.config_checks,
+                execution_result={"error": str(e)},
+                details={**level1.details, "level2_error": str(e), "fell_back_to_level1": True},
+                error=f"Execution verification failed: {e}",
+                verified_at=datetime.utcnow().isoformat(),
+            )
+
+        passed = level1.passed and after < before * self._config.improvement_threshold
+        return VerificationResult(
+            passed=passed,
+            level=2,
+            before_confidence=before,
+            after_confidence=after,
+            config_checks=level1.config_checks,
+            execution_result=execution_result,
+            details={
+                **level1.details,
+                "framework": "dify",
+                "execution_completed": execution_result is not None,
+                "redetection_applied": after != before,
+            },
+            verified_at=datetime.utcnow().isoformat(),
+        )
+
+    async def verify_level2_openclaw(
+        self,
+        detection_type: str,
+        original_confidence: float,
+        original_state: Dict[str, Any],
+        applied_fixes: Dict[str, Any],
+        openclaw_client: Any,
+        agent_id: str,
+    ) -> VerificationResult:
+        """Level 2: Execution-based verification for OpenClaw with re-detection."""
+        level1 = await self.verify_level1(
+            detection_type, original_confidence, original_state, applied_fixes
+        )
+
+        before = level1.before_confidence
+        execution_result = None
+        after = before
+
+        try:
+            execution_result, after = await self._verify_openclaw(
+                openclaw_client, agent_id, before
+            )
+
+            if after == 0.0 and execution_result:
+                redetector = self._get_redetector_for_framework(detection_type, "openclaw")
+                if redetector:
+                    after = await redetector(execution_result)
+
+        except Exception as e:
+            logger.error(f"Level 2 verification failed for openclaw/{agent_id}: {e}")
+            return VerificationResult(
+                passed=level1.passed,
+                level=2,
+                before_confidence=before,
+                after_confidence=level1.after_confidence,
+                config_checks=level1.config_checks,
+                execution_result={"error": str(e)},
+                details={**level1.details, "level2_error": str(e), "fell_back_to_level1": True},
+                error=f"Execution verification failed: {e}",
+                verified_at=datetime.utcnow().isoformat(),
+            )
+
+        passed = level1.passed and after < before * self._config.improvement_threshold
+        return VerificationResult(
+            passed=passed,
+            level=2,
+            before_confidence=before,
+            after_confidence=after,
+            config_checks=level1.config_checks,
+            execution_result=execution_result,
+            details={
+                **level1.details,
+                "framework": "openclaw",
+                "execution_completed": execution_result is not None,
+                "redetection_applied": after != before,
+            },
+            verified_at=datetime.utcnow().isoformat(),
+        )
+
+    def _get_redetector_for_framework(self, detection_type: str, framework: str):
+        """Return the appropriate re-detection coroutine for a framework detection type.
+
+        Universal redetectors (overflow, hallucination, injection, corruption,
+        coordination) work for all frameworks. Framework-specific redetectors
+        handle recursion/loop/iteration types.
+
+        Returns a callable(execution_result) -> float, or None.
+        """
+        # Universal redetectors work across all frameworks
+        universal = {
+            "context_overflow": self._redetect_overflow_generic,
+            "overflow": self._redetect_overflow_generic,
+            "hallucination": self._redetect_hallucination_generic,
+            "injection": self._redetect_injection_generic,
+            "state_corruption": self._redetect_corruption_generic,
+            "corruption": self._redetect_corruption_generic,
+            "coordination_deadlock": self._redetect_coordination_generic,
+            "coordination_failure": self._redetect_coordination_generic,
+        }
+        if detection_type in universal:
+            return universal[detection_type]
+
+        # Framework-specific redetectors
+        framework_specific = {
+            "langgraph": {
+                "langgraph_recursion": self._redetect_langgraph_recursion,
+                "langgraph_checkpoint_corruption": self._redetect_langgraph_recursion,
+                "infinite_loop": self._redetect_langgraph_recursion,
+            },
+            "dify": {
+                "dify_iteration_escape": self._redetect_dify_iteration,
+                "dify_node_failure_cascade": self._redetect_dify_iteration,
+                "infinite_loop": self._redetect_dify_iteration,
+            },
+            "openclaw": {
+                "openclaw_session_loop": self._redetect_openclaw_loop,
+                "openclaw_spawn_bomb": self._redetect_openclaw_loop,
+                "infinite_loop": self._redetect_openclaw_loop,
+            },
+        }
+        fw_map = framework_specific.get(framework, {})
+        return fw_map.get(detection_type)
+
+    async def _redetect_langgraph_recursion(self, execution_result: Dict[str, Any]) -> float:
+        """Re-detect recursion/loop in LangGraph execution result."""
+        steps = execution_result.get("steps", [])
+        if not steps:
+            return 0.0
+
+        # Check for repeated node patterns indicating recursion
+        node_sequence = [s.get("node", "") for s in steps if isinstance(s, dict)]
+        if len(node_sequence) < 3:
+            return 0.0
+
+        # Count consecutive repeated subsequences
+        max_repeat = 1
+        for window_size in range(1, len(node_sequence) // 2 + 1):
+            repeats = 0
+            for i in range(window_size, len(node_sequence)):
+                if node_sequence[i] == node_sequence[i - window_size]:
+                    repeats += 1
+                else:
+                    break
+            if repeats >= window_size:
+                max_repeat = max(max_repeat, repeats // window_size + 1)
+
+        if max_repeat >= 3:
+            return min(0.9, max_repeat * 0.15)
+        return 0.0
+
+    async def _redetect_dify_iteration(self, execution_result: Dict[str, Any]) -> float:
+        """Re-detect iteration escape in Dify execution result."""
+        nodes = execution_result.get("nodes", [])
+        if not nodes:
+            return 0.0
+
+        iteration_count = 0
+        for node in nodes:
+            if isinstance(node, dict):
+                node_type = node.get("node_type", node.get("type", ""))
+                if node_type in ("iteration", "loop"):
+                    iteration_count += 1
+
+        if iteration_count > 10:
+            return min(0.9, iteration_count * 0.05)
+        return 0.0
+
+    async def _redetect_openclaw_loop(self, execution_result: Dict[str, Any]) -> float:
+        """Re-detect session loop in OpenClaw execution result."""
+        events = execution_result.get("events", [])
+        if not events:
+            return 0.0
+
+        # Check for repeated event patterns
+        event_types = [e.get("type", "") for e in events if isinstance(e, dict)]
+        if len(event_types) < 4:
+            return 0.0
+
+        # Simple loop detection: count consecutive same-type events
+        max_run = 1
+        current_run = 1
+        for i in range(1, len(event_types)):
+            if event_types[i] == event_types[i - 1]:
+                current_run += 1
+                max_run = max(max_run, current_run)
+            else:
+                current_run = 1
+
+        if max_run >= 5:
+            return min(0.9, max_run * 0.1)
+        return 0.0
+
+    async def _redetect_overflow_generic(self, execution_result: Dict[str, Any]) -> float:
+        """Re-run context overflow detection on generic execution data."""
+        total_tokens = execution_result.get("total_tokens", 0)
+        if not total_tokens:
+            # Try to sum from steps/nodes/events
+            for key in ("steps", "nodes", "events"):
+                for item in execution_result.get(key, []):
+                    if isinstance(item, dict):
+                        total_tokens += item.get("token_count", 0)
+                        total_tokens += item.get("tokens", 0)
+
+        if total_tokens == 0:
+            return 0.0
+
+        from app.detection.overflow import ContextOverflowDetector
+        detector = ContextOverflowDetector()
+        result = detector.detect(total_tokens=total_tokens)
+        return result.confidence if result.detected else 0.0
+
+    async def _redetect_hallucination_generic(self, execution_result: Dict[str, Any]) -> float:
+        """Re-run hallucination detection on generic execution output."""
+        outputs = []
+        for key in ("steps", "nodes", "events"):
+            for item in execution_result.get(key, []):
+                if isinstance(item, dict):
+                    output = item.get("output", item.get("outputs", {}).get("text", ""))
+                    if output and isinstance(output, str):
+                        outputs.append(output)
+
+        if not outputs:
+            return 0.0
+
+        from app.detection.hallucination import HallucinationDetector
+        detector = HallucinationDetector()
+        combined = "\n".join(outputs)
+        result = detector.detect(agent_output=combined)
+        return result.confidence if result.detected else 0.0
+
+    async def _redetect_injection_generic(self, execution_result: Dict[str, Any]) -> float:
+        """Re-run injection detection on generic execution prompts."""
+        prompts = []
+        for key in ("steps", "nodes", "events"):
+            for item in execution_result.get(key, []):
+                if isinstance(item, dict):
+                    prompt = item.get("input", item.get("inputs", {}).get("query", ""))
+                    if prompt and isinstance(prompt, str):
+                        prompts.append(prompt)
+
+        if not prompts:
+            return 0.0
+
+        from app.detection.injection import InjectionDetector
+        detector = InjectionDetector()
+        combined = "\n".join(prompts)
+        result = detector.detect(text=combined)
+        return result.confidence if result.detected else 0.0
+
+    async def _redetect_corruption_generic(self, execution_result: Dict[str, Any]) -> float:
+        """Re-run state corruption detection on generic execution data."""
+        states = []
+        for key in ("steps", "nodes", "events"):
+            for item in execution_result.get(key, []):
+                if isinstance(item, dict):
+                    states.append({
+                        "agent_id": item.get("node", item.get("agent_name", "unknown")),
+                        "state": item.get("outputs", item.get("data", {})),
+                    })
+
+        if len(states) < 2:
+            return 0.0
+
+        from app.detection.corruption import SemanticCorruptionDetector
+        detector = SemanticCorruptionDetector()
+        result = detector.detect(states=states)
+        return result.confidence if result.detected else 0.0
+
+    async def _redetect_coordination_generic(self, execution_result: Dict[str, Any]) -> float:
+        """Re-run coordination detection on generic execution data."""
+        messages = []
+        seq = 0
+        for key in ("steps", "nodes", "events"):
+            for item in execution_result.get(key, []):
+                if isinstance(item, dict):
+                    messages.append({
+                        "agent_id": item.get("node", item.get("agent_name", "unknown")),
+                        "content": str(item.get("outputs", item.get("data", ""))),
+                        "sequence": seq,
+                    })
+                    seq += 1
+
+        if len(messages) < 2:
+            return 0.0
+
+        from app.detection.coordination import CoordinationAnalyzer
+        analyzer = CoordinationAnalyzer()
+        result = analyzer.detect(messages=messages)
+        return result.confidence if result.detected else 0.0
+
     def _get_redetector(self, detection_type: str, loop_detector=None):
         """Return the appropriate re-detection coroutine for a detection type.
 

@@ -561,6 +561,75 @@ class DifyApp(Base):
     )
 
 
+class LangGraphDeployment(Base):
+    """Registered LangGraph Platform deployments per tenant."""
+    __tablename__ = "langgraph_deployments"
+
+    id = Column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
+    tenant_id = Column(UUID(as_uuid=True), ForeignKey("tenants.id"), nullable=False)
+
+    # Connection details
+    name = Column(String(255), nullable=False)
+    api_url = Column(String(512), nullable=False)
+    api_key_encrypted = Column(Text, nullable=False)
+
+    # Deployment metadata
+    deployment_id = Column(String(255), nullable=True)
+    graph_name = Column(String(255), nullable=True)
+
+    # Status
+    is_active = Column(Boolean, default=True)
+    last_verified_at = Column(DateTime(timezone=True), nullable=True)
+    last_error = Column(Text, nullable=True)
+
+    # Ingestion mode
+    ingestion_mode = Column(String(20), default="full", server_default="full", nullable=False)
+
+    # Timestamps
+    created_at = Column(DateTime(timezone=True), server_default=func.now())
+    updated_at = Column(DateTime(timezone=True), server_default=func.now(), onupdate=func.now())
+
+    assistants = relationship("LangGraphAssistant", back_populates="deployment", cascade="all, delete-orphan")
+
+    __table_args__ = (
+        Index("idx_lg_deployments_tenant", "tenant_id"),
+        UniqueConstraint("tenant_id", "name", name="uq_lg_deployment_name"),
+    )
+
+
+class LangGraphAssistant(Base):
+    """Registered LangGraph assistants (graphs) for monitoring."""
+    __tablename__ = "langgraph_assistants"
+
+    id = Column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
+    tenant_id = Column(UUID(as_uuid=True), ForeignKey("tenants.id"), nullable=False)
+    deployment_id = Column(UUID(as_uuid=True), ForeignKey("langgraph_deployments.id"), nullable=False)
+
+    # Assistant identity
+    assistant_id = Column(String(255), nullable=False)
+    graph_id = Column(String(255), nullable=False)
+    name = Column(String(255), nullable=True)
+
+    # Monitoring config
+    webhook_secret = Column(String(255), nullable=True)
+    monitoring_enabled = Column(Boolean, default=True)
+    detection_overrides = Column(JSONB, default=dict)
+    ingestion_mode = Column(String(20), nullable=True)
+
+    # Statistics
+    total_runs = Column(Integer, default=0)
+    last_active_at = Column(DateTime(timezone=True), nullable=True)
+    registered_at = Column(DateTime(timezone=True), server_default=func.now())
+
+    deployment = relationship("LangGraphDeployment", back_populates="assistants")
+
+    __table_args__ = (
+        UniqueConstraint("tenant_id", "deployment_id", "assistant_id", name="uq_lg_assistant"),
+        Index("idx_lg_assistants_tenant", "tenant_id"),
+        Index("idx_lg_assistants_deployment", "deployment_id"),
+    )
+
+
 class WorkflowGroup(Base):
     """
     Tenant-wide workflow groups for organizing and filtering workflows.
@@ -788,9 +857,12 @@ class HealingRecord(Base):
     # Error tracking
     error_message = Column(Text, nullable=True)
 
-    # n8n workflow tracking (for staged deployment)
-    workflow_id = Column(String(255), nullable=True)  # n8n workflow ID
+    # Framework entity tracking (for staged deployment and rollback)
+    workflow_id = Column(String(255), nullable=True)  # Entity ID (workflow, app, agent, assistant)
     n8n_connection_id = Column(UUID(as_uuid=True), ForeignKey("n8n_connections.id"), nullable=True)
+    dify_instance_id = Column(UUID(as_uuid=True), ForeignKey("dify_instances.id"), nullable=True)
+    openclaw_instance_id = Column(UUID(as_uuid=True), ForeignKey("openclaw_instances.id"), nullable=True)
+    langgraph_deployment_id = Column(UUID(as_uuid=True), ForeignKey("langgraph_deployments.id"), nullable=True)
     deployment_stage = Column(String(32), nullable=True)  # staged, promoted, rejected
     staged_at = Column(DateTime(timezone=True), nullable=True)
     promoted_at = Column(DateTime(timezone=True), nullable=True)

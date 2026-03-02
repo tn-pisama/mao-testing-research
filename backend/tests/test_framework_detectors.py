@@ -416,3 +416,261 @@ class TestFrameworkHealingRouting:
         for dt in framework_types:
             fixes = gen.generate_fixes({"id": "test", "detection_type": dt})
             assert len(fixes) >= 1, f"No fixes generated for {dt}"
+
+
+# -----------------------------------------------------------------------
+# Capability Registry Completeness
+# -----------------------------------------------------------------------
+
+class TestCapabilityRegistryCompleteness:
+    def test_detector_metadata_has_all_framework_entries(self):
+        from app.detection_enterprise.calibrate import DETECTOR_METADATA
+
+        expected = [
+            "dify_rag_poisoning", "dify_iteration_escape", "dify_model_fallback",
+            "dify_variable_leak", "dify_classifier_drift", "dify_tool_schema_mismatch",
+            "openclaw_session_loop", "openclaw_tool_abuse", "openclaw_elevated_risk",
+            "openclaw_spawn_chain", "openclaw_channel_mismatch", "openclaw_sandbox_escape",
+            "langgraph_recursion", "langgraph_state_corruption", "langgraph_edge_misroute",
+            "langgraph_tool_failure", "langgraph_parallel_sync", "langgraph_checkpoint_corruption",
+        ]
+        missing = [k for k in expected if k not in DETECTOR_METADATA]
+        assert not missing, f"Missing from DETECTOR_METADATA: {missing}"
+
+    def test_detector_metadata_has_correct_tiers(self):
+        from app.detection_enterprise.calibrate import DETECTOR_METADATA
+
+        for key in ["dify_rag_poisoning", "openclaw_session_loop", "langgraph_recursion"]:
+            assert DETECTOR_METADATA[key]["tier"] == "enterprise"
+
+
+# -----------------------------------------------------------------------
+# Dedicated Healing Paths
+# -----------------------------------------------------------------------
+
+class TestDedicatedHealingPaths:
+    @pytest.fixture
+    def engine(self):
+        from app.healing.engine import SelfHealingEngine
+        return SelfHealingEngine(auto_apply=False)
+
+    @pytest.mark.asyncio
+    async def test_heal_langgraph_uses_dedicated_locked(self, engine):
+        """heal_langgraph_graph calls _heal_langgraph_locked, not _heal_framework_locked."""
+        assert hasattr(engine, "_heal_langgraph_locked")
+        # Verify the shared method no longer exists
+        assert not hasattr(engine, "_heal_framework_locked")
+
+    @pytest.mark.asyncio
+    async def test_heal_dify_uses_dedicated_locked(self, engine):
+        """heal_dify_workflow calls _heal_dify_locked."""
+        assert hasattr(engine, "_heal_dify_locked")
+
+    @pytest.mark.asyncio
+    async def test_heal_openclaw_uses_dedicated_locked(self, engine):
+        """heal_openclaw_session calls _heal_openclaw_locked."""
+        assert hasattr(engine, "_heal_openclaw_locked")
+
+
+# -----------------------------------------------------------------------
+# Dedicated Auto-Apply Entry Points
+# -----------------------------------------------------------------------
+
+class TestDedicatedAutoApply:
+    def test_auto_apply_has_dedicated_methods(self):
+        from app.healing.auto_apply import AutoApplyService
+        service = AutoApplyService()
+        assert hasattr(service, "apply_fix_langgraph")
+        assert hasattr(service, "apply_fix_dify")
+        assert hasattr(service, "apply_fix_openclaw")
+
+    def test_auto_apply_has_dedicated_rollbacks(self):
+        from app.healing.auto_apply import AutoApplyService
+        service = AutoApplyService()
+        assert hasattr(service, "rollback_langgraph")
+        assert hasattr(service, "rollback_dify")
+        assert hasattr(service, "rollback_openclaw")
+
+
+# -----------------------------------------------------------------------
+# Verification Re-detection
+# -----------------------------------------------------------------------
+
+class TestVerificationRedetection:
+    def test_verification_has_dedicated_level2_methods(self):
+        from app.healing.verification import VerificationOrchestrator
+        vo = VerificationOrchestrator()
+        assert hasattr(vo, "verify_level2_langgraph")
+        assert hasattr(vo, "verify_level2_dify")
+        assert hasattr(vo, "verify_level2_openclaw")
+
+    def test_redetector_for_framework_returns_langgraph(self):
+        from app.healing.verification import VerificationOrchestrator
+        vo = VerificationOrchestrator()
+        redetector = vo._get_redetector_for_framework("langgraph_recursion", "langgraph")
+        assert redetector is not None
+
+    def test_redetector_for_framework_returns_dify(self):
+        from app.healing.verification import VerificationOrchestrator
+        vo = VerificationOrchestrator()
+        redetector = vo._get_redetector_for_framework("dify_iteration_escape", "dify")
+        assert redetector is not None
+
+    def test_redetector_for_framework_returns_openclaw(self):
+        from app.healing.verification import VerificationOrchestrator
+        vo = VerificationOrchestrator()
+        redetector = vo._get_redetector_for_framework("openclaw_session_loop", "openclaw")
+        assert redetector is not None
+
+    def test_universal_redetectors_work_for_all_frameworks(self):
+        from app.healing.verification import VerificationOrchestrator
+        vo = VerificationOrchestrator()
+        for framework in ("langgraph", "dify", "openclaw"):
+            redetector = vo._get_redetector_for_framework("hallucination", framework)
+            assert redetector is not None, f"hallucination redetector missing for {framework}"
+
+    @pytest.mark.asyncio
+    async def test_redetect_langgraph_recursion_with_repeated_nodes(self):
+        from app.healing.verification import VerificationOrchestrator
+        vo = VerificationOrchestrator()
+        execution = {
+            "steps": [
+                {"node": "agent"}, {"node": "tools"},
+                {"node": "agent"}, {"node": "tools"},
+                {"node": "agent"}, {"node": "tools"},
+                {"node": "agent"}, {"node": "tools"},
+            ],
+        }
+        confidence = await vo._redetect_langgraph_recursion(execution)
+        assert confidence > 0.0
+
+    @pytest.mark.asyncio
+    async def test_redetect_dify_iteration_with_many_iterations(self):
+        from app.healing.verification import VerificationOrchestrator
+        vo = VerificationOrchestrator()
+        execution = {
+            "nodes": [{"node_type": "iteration"} for _ in range(15)],
+        }
+        confidence = await vo._redetect_dify_iteration(execution)
+        assert confidence > 0.0
+
+    @pytest.mark.asyncio
+    async def test_redetect_openclaw_loop_with_repeated_events(self):
+        from app.healing.verification import VerificationOrchestrator
+        vo = VerificationOrchestrator()
+        execution = {
+            "events": [{"type": "agent.turn"} for _ in range(10)],
+        }
+        confidence = await vo._redetect_openclaw_loop(execution)
+        assert confidence > 0.0
+
+
+# -----------------------------------------------------------------------
+# LangGraph Parser
+# -----------------------------------------------------------------------
+
+class TestLangGraphParser:
+    def test_parse_run_basic(self):
+        from app.ingestion.langgraph_parser import langgraph_parser
+        raw = {
+            "run_id": "run_123",
+            "assistant_id": "asst_1",
+            "thread_id": "thread_1",
+            "graph_id": "graph_1",
+            "started_at": "2026-03-01T10:00:00Z",
+            "finished_at": "2026-03-01T10:00:30Z",
+            "status": "completed",
+            "steps": [
+                {
+                    "node": "__start__",
+                    "step_number": 0,
+                    "started_at": "2026-03-01T10:00:00Z",
+                    "finished_at": "2026-03-01T10:00:01Z",
+                },
+                {
+                    "node": "agent",
+                    "step_number": 1,
+                    "started_at": "2026-03-01T10:00:01Z",
+                    "finished_at": "2026-03-01T10:00:15Z",
+                    "inputs": {"messages": [{"role": "user", "content": "hi"}]},
+                    "outputs": {"messages": [{"role": "assistant", "content": "hello"}]},
+                },
+                {
+                    "node": "__end__",
+                    "step_number": 2,
+                    "started_at": "2026-03-01T10:00:15Z",
+                    "finished_at": "2026-03-01T10:00:15Z",
+                },
+            ],
+        }
+        run = langgraph_parser.parse_run(raw)
+        assert run.run_id == "run_123"
+        assert run.assistant_id == "asst_1"
+        assert run.graph_id == "graph_1"
+        assert len(run.steps) == 3
+        assert run.steps[1].node == "agent"
+
+    def test_parse_to_states(self):
+        from app.ingestion.langgraph_parser import langgraph_parser
+        raw = {
+            "run_id": "run_456",
+            "assistant_id": "asst_2",
+            "thread_id": "thread_2",
+            "graph_id": "graph_2",
+            "started_at": "2026-03-01T10:00:00Z",
+            "status": "completed",
+            "steps": [
+                {"node": "agent", "step_number": 0, "started_at": "2026-03-01T10:00:00Z", "finished_at": "2026-03-01T10:00:10Z"},
+                {"node": "tools", "step_number": 1, "started_at": "2026-03-01T10:00:10Z", "finished_at": "2026-03-01T10:00:12Z"},
+            ],
+        }
+        run = langgraph_parser.parse_run(raw)
+        states = langgraph_parser.parse_to_states(run, "tenant_1")
+        assert len(states) == 2
+        assert states[0].agent_id == "agent"
+        assert states[0].node_name == "agent"
+        assert states[0].latency_ms == 10000
+        assert states[1].agent_id == "tools"
+        assert states[1].latency_ms == 2000
+
+    def test_subgraph_detection(self):
+        from app.ingestion.langgraph_parser import langgraph_parser
+        raw = {
+            "run_id": "run_789",
+            "assistant_id": "asst_3",
+            "thread_id": "thread_3",
+            "graph_id": "graph_3",
+            "started_at": "2026-03-01T10:00:00Z",
+            "status": "completed",
+            "steps": [
+                {"node": "agent", "step_number": 0, "started_at": "2026-03-01T10:00:00Z", "finished_at": "2026-03-01T10:00:05Z"},
+                {"node": "sub_agent", "step_number": 1, "checkpoint_ns": "sub_ns", "started_at": "2026-03-01T10:00:05Z", "finished_at": "2026-03-01T10:00:10Z"},
+            ],
+        }
+        run = langgraph_parser.parse_run(raw)
+        assert run.steps[0].is_subgraph is False
+        assert run.steps[1].is_subgraph is True
+        states = langgraph_parser.parse_to_states(run, "tenant_1")
+        assert states[0].is_subgraph_step is False
+        assert states[1].is_subgraph_step is True
+
+    def test_trace_only_mode_strips_content(self):
+        from app.ingestion.langgraph_parser import langgraph_parser
+        raw = {
+            "run_id": "run_to",
+            "assistant_id": "asst_to",
+            "thread_id": "thread_to",
+            "graph_id": "graph_to",
+            "started_at": "2026-03-01T10:00:00Z",
+            "status": "completed",
+            "steps": [
+                {"node": "agent", "step_number": 0, "inputs": {"query": "secret"}, "outputs": {"result": "answer"}, "started_at": "2026-03-01T10:00:00Z", "finished_at": "2026-03-01T10:00:05Z"},
+            ],
+        }
+        run = langgraph_parser.parse_run(raw)
+        states = langgraph_parser.parse_to_states(run, "tenant_1", ingestion_mode="trace_only")
+        assert len(states) == 1
+        # In trace_only mode, content keys should be stripped
+        delta = states[0].state_delta
+        assert delta.get("inputs") is None or delta.get("inputs") == {}
+        assert delta.get("outputs") is None or delta.get("outputs") == {}

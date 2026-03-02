@@ -168,6 +168,17 @@ async def receive_dify_webhook(
 
     await db.commit()
 
+    # Run background framework detection
+    from app.detection_enterprise.background_detect import run_background_detection
+    background_tasks.add_task(
+        run_background_detection,
+        trace_id=str(trace.id),
+        tenant_id=tenant_id,
+        framework="dify",
+        states=states,
+        metadata={"workflow_run": payload.model_dump()},
+    )
+
     # Auto-capture golden dataset candidates
     settings = get_settings()
     if settings.features.is_enabled("golden_auto_capture"):

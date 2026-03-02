@@ -203,6 +203,17 @@ async def receive_n8n_webhook(
         }
     )
 
+    # Run background framework detection
+    from app.detection_enterprise.background_detect import run_background_detection
+    background_tasks.add_task(
+        run_background_detection,
+        trace_id=str(trace.id),
+        tenant_id=tenant_id,
+        framework="n8n",
+        states=states,
+        metadata={"workflow_json": payload.workflow} if payload.workflow else None,
+    )
+
     # Auto-capture golden dataset candidates from detections
     settings = get_settings()
     if settings.features.is_enabled("golden_auto_capture"):
