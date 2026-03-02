@@ -180,3 +180,52 @@ All 5 gaps have been implemented. **74 new tests pass** across the 3 new test fi
 - Statistics API: total patterns, graduated count, overall success rate
 
 **Tests:** 26 new tests in `test_playbook_graduation.py`
+
+---
+
+## Honest Assessment
+
+### What actually works end-to-end
+
+**Gap 1+2 (Diagnose → Fix Generation):** Fully functional. Verified:
+- `FixGenerator.generate_fixes(detection_dict)` works without context — signature is `context: Optional[Dict[str, Any]] = None`, defaults to `{}` (generator.py:69-72)
+- All 16 fix generators handle empty context safely via `.get()` patterns
+- Tests exercise real code paths (no mocks) — `create_fix_generator()` instantiates all 16 real generators
+- Category mapping covers all F1-F17 failure modes + span-based categories
+- Frontend "Fix This Now" button will activate since `self_healing_available` is now `True` when fixes are found
+
+**Gap 3 (Compound-Aware Healing):** Fully functional. The `_annotate_symptom_detections()` function correctly reads `_FAILURE_MODE_TITLES` (defined at line 40 of diagnose.py, covers F1-F17). Fix preview descriptions correctly note downstream symptom counts. Tests verify both the annotation and the compound-aware preview description.
+
+**Gap 4 (Approval Notifications):** Functional but **requires configuration**. The notification fires in the healing trigger endpoint via `asyncio.create_task()` (non-blocking, safe in FastAPI). However, it only activates when `HEALING_WEBHOOK_URL` or `HEALING_DISCORD_WEBHOOK` environment variables are set. With no env vars, `_get_notification_router()` returns `None` and nothing happens — silent no-op, not a crash.
+
+### What is a building block but not yet wired
+
+**Gap 5 (Playbook Graduation):** The `PlaybookRegistry` is a **standalone module**. It is:
+- Well-designed with clean API
+- Fully tested (26 tests)
+- Ready for integration
+
+But it is **not integrated** into the healing pipeline:
+- `SelfHealingEngine` does not instantiate a `PlaybookRegistry`
+- The healing engine does not call `registry.record_outcome()` after fix validation
+- `AutoApplyService` does not consult `registry.should_auto_apply()`
+- No API endpoints expose graduation data
+- No persistence layer — in-memory only (would reset on server restart)
+- Not exported from `backend/app/healing/__init__.py`
+
+To activate the learning loop, the following integration work remains:
+1. Instantiate `PlaybookRegistry` in `SelfHealingEngine.__init__`
+2. After fix validation, call `registry.record_outcome(FixOutcome(...))`
+3. Modify `AutoApplyService` to consult `registry.should_auto_apply()`
+4. Add persistence (DB or file-backed `to_dict()`/`from_dict()`)
+5. Expose graduated playbooks via API endpoint
+
+### Known limitations
+
+1. **Fix generation happens on every request with `include_fixes=True` (default)** — `create_fix_generator()` instantiates 16 generators per request. This is fast (no I/O, pure Python) but could be cached as a module-level singleton for efficiency.
+
+2. **Duplicate factory functions** — `get_fix_generator()` in `healing.py` and `create_fix_generator()` in `fixes/__init__.py` do the same thing. Should consolidate to eliminate duplication.
+
+3. **The `_CATEGORY_TO_DETECTION_TYPE` mapping for "error" category maps to `"workflow_error"`** which matches the WorkflowFixGenerator (contains "workflow"). This is a reasonable fallback but the WorkflowFixGenerator may not produce the most relevant fix for generic errors.
+
+4. **Compound annotation mutates detection dicts in place** — `_annotate_symptom_detections()` modifies the `suggested_fix` field of the detection dicts before they're used to build response models. This works correctly but is a side-effect pattern that could surprise future maintainers.
