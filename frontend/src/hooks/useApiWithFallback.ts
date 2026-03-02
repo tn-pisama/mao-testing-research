@@ -12,6 +12,12 @@ import {
   generateDemoEvalResult,
   generateDemoQuickEvalResult,
   generateDemoLLMJudgeResult,
+  generateDemoDifyInstances,
+  generateDemoDifyApps,
+  generateDemoOpenClawInstances,
+  generateDemoOpenClawAgents,
+  generateDemoLangGraphDeployments,
+  generateDemoLangGraphAssistants,
   QualityAssessment,
   HealingRecord,
   N8nConnection,
@@ -249,6 +255,57 @@ export function useN8nWorkflows() {
     () => demoDataStore.getN8nWorkflows(),
   )
   return { workflows: data ?? [], isLoading, isDemoMode }
+}
+
+export function useDifyInstances() {
+  const { data, isLoading, isDemoMode } = useApiResource(
+    (api) => api.listDifyInstances(),
+    () => generateDemoDifyInstances(),
+  )
+  return { instances: data ?? [], isLoading, isDemoMode }
+}
+
+export function useDifyApps(instanceId?: string) {
+  const { data, isLoading, isDemoMode } = useApiResource(
+    (api) => api.listDifyApps(instanceId),
+    () => generateDemoDifyApps(),
+    [instanceId],
+  )
+  return { apps: data ?? [], isLoading, isDemoMode }
+}
+
+export function useOpenClawInstances() {
+  const { data, isLoading, isDemoMode } = useApiResource(
+    (api) => api.listOpenClawInstances(),
+    () => generateDemoOpenClawInstances(),
+  )
+  return { instances: data ?? [], isLoading, isDemoMode }
+}
+
+export function useOpenClawAgents(instanceId?: string) {
+  const { data, isLoading, isDemoMode } = useApiResource(
+    (api) => api.listOpenClawAgents(instanceId),
+    () => generateDemoOpenClawAgents(),
+    [instanceId],
+  )
+  return { agents: data ?? [], isLoading, isDemoMode }
+}
+
+export function useLangGraphDeployments() {
+  const { data, isLoading, isDemoMode } = useApiResource(
+    (api) => api.listLangGraphDeployments(),
+    () => generateDemoLangGraphDeployments(),
+  )
+  return { deployments: data ?? [], isLoading, isDemoMode }
+}
+
+export function useLangGraphAssistants(deploymentId?: string) {
+  const { data, isLoading, isDemoMode } = useApiResource(
+    (api) => api.listLangGraphAssistants(deploymentId),
+    () => generateDemoLangGraphAssistants(),
+    [deploymentId],
+  )
+  return { assistants: data ?? [], isLoading, isDemoMode }
 }
 
 export function useReplayBundles() {

@@ -11,6 +11,7 @@ import {
   GitBranch,
   Bot,
   Workflow,
+  Network,
   Plus,
   RefreshCw,
   CheckCircle,
@@ -26,6 +27,8 @@ import type {
   OpenClawAgent,
   DifyInstance,
   DifyApp,
+  LangGraphDeployment,
+  LangGraphAssistant,
 } from '@/lib/api'
 import { useSafeAuth } from '@/hooks/useSafeAuth'
 import { useTenant } from '@/hooks/useTenant'
@@ -35,15 +38,18 @@ import {
   generateDemoOpenClawAgents,
   generateDemoDifyInstances,
   generateDemoDifyApps,
+  generateDemoLangGraphDeployments,
+  generateDemoLangGraphAssistants,
 } from '@/lib/demo-data'
 
-type TabId = 'overview' | 'n8n' | 'openclaw' | 'dify'
+type TabId = 'overview' | 'n8n' | 'openclaw' | 'dify' | 'langgraph'
 
 const tabs: { id: TabId; label: string; icon: React.ElementType }[] = [
   { id: 'overview', label: 'Overview', icon: Activity },
   { id: 'n8n', label: 'n8n', icon: GitBranch },
   { id: 'openclaw', label: 'OpenClaw', icon: Bot },
   { id: 'dify', label: 'Dify', icon: Workflow },
+  { id: 'langgraph', label: 'LangGraph', icon: Network },
 ]
 
 export default function IntegrationsPage() {
@@ -59,6 +65,9 @@ export default function IntegrationsPage() {
   // Dify state
   const [difyInstances, setDifyInstances] = useState<DifyInstance[]>([])
   const [difyApps, setDifyApps] = useState<DifyApp[]>([])
+  // LangGraph state
+  const [langGraphDeployments, setLangGraphDeployments] = useState<LangGraphDeployment[]>([])
+  const [langGraphAssistants, setLangGraphAssistants] = useState<LangGraphAssistant[]>([])
 
   const [isLoading, setIsLoading] = useState(true)
 
@@ -73,16 +82,20 @@ export default function IntegrationsPage() {
         setOpenclawAgents(generateDemoOpenClawAgents())
         setDifyInstances(generateDemoDifyInstances())
         setDifyApps(generateDemoDifyApps())
+        setLangGraphDeployments(generateDemoLangGraphDeployments())
+        setLangGraphAssistants(generateDemoLangGraphAssistants())
         return
       }
       const api = createApiClient(token, tenantId)
 
-      const [workflows, instances, agents, dInstances, apps] = await Promise.allSettled([
+      const [workflows, instances, agents, dInstances, apps, lgDeploys, lgAssists] = await Promise.allSettled([
         api.listN8nWorkflows(),
         api.listOpenClawInstances(),
         api.listOpenClawAgents(),
         api.listDifyInstances(),
         api.listDifyApps(),
+        api.listLangGraphDeployments(),
+        api.listLangGraphAssistants(),
       ])
 
       const wf = workflows.status === 'fulfilled' ? workflows.value : []
@@ -90,14 +103,18 @@ export default function IntegrationsPage() {
       const oca = agents.status === 'fulfilled' ? agents.value : []
       const di = dInstances.status === 'fulfilled' ? dInstances.value : []
       const da = apps.status === 'fulfilled' ? apps.value : []
+      const lgd = lgDeploys.status === 'fulfilled' ? lgDeploys.value : []
+      const lga = lgAssists.status === 'fulfilled' ? lgAssists.value : []
 
       // Use demo data as fallback when all API calls return empty
-      const allEmpty = wf.length === 0 && oci.length === 0 && di.length === 0
+      const allEmpty = wf.length === 0 && oci.length === 0 && di.length === 0 && lgd.length === 0
       setN8nWorkflows(wf.length > 0 ? wf : allEmpty ? generateDemoApiN8nWorkflows() : wf)
       setOpenclawInstances(oci.length > 0 ? oci : allEmpty ? generateDemoOpenClawInstances() : oci)
       setOpenclawAgents(oca.length > 0 ? oca : allEmpty ? generateDemoOpenClawAgents() : oca)
       setDifyInstances(di.length > 0 ? di : allEmpty ? generateDemoDifyInstances() : di)
       setDifyApps(da.length > 0 ? da : allEmpty ? generateDemoDifyApps() : da)
+      setLangGraphDeployments(lgd.length > 0 ? lgd : allEmpty ? generateDemoLangGraphDeployments() : lgd)
+      setLangGraphAssistants(lga.length > 0 ? lga : allEmpty ? generateDemoLangGraphAssistants() : lga)
     } catch {
       // API error — fall back to demo data
       setN8nWorkflows(generateDemoApiN8nWorkflows())
@@ -105,6 +122,8 @@ export default function IntegrationsPage() {
       setOpenclawAgents(generateDemoOpenClawAgents())
       setDifyInstances(generateDemoDifyInstances())
       setDifyApps(generateDemoDifyApps())
+      setLangGraphDeployments(generateDemoLangGraphDeployments())
+      setLangGraphAssistants(generateDemoLangGraphAssistants())
     } finally {
       setIsLoading(false)
     }
@@ -171,6 +190,8 @@ export default function IntegrationsPage() {
                 openclawAgents={openclawAgents}
                 difyInstances={difyInstances}
                 difyApps={difyApps}
+                langGraphDeployments={langGraphDeployments}
+                langGraphAssistants={langGraphAssistants}
                 onTabChange={setActiveTab}
               />
             )}
@@ -179,6 +200,9 @@ export default function IntegrationsPage() {
               <OpenClawTab instances={openclawInstances} agents={openclawAgents} />
             )}
             {activeTab === 'dify' && <DifyTab instances={difyInstances} apps={difyApps} />}
+            {activeTab === 'langgraph' && (
+              <LangGraphTab deployments={langGraphDeployments} assistants={langGraphAssistants} />
+            )}
           </>
         )}
       </div>
@@ -194,6 +218,8 @@ function OverviewTab({
   openclawAgents,
   difyInstances,
   difyApps,
+  langGraphDeployments,
+  langGraphAssistants,
   onTabChange,
 }: {
   n8nWorkflows: N8nWorkflow[]
@@ -201,6 +227,8 @@ function OverviewTab({
   openclawAgents: OpenClawAgent[]
   difyInstances: DifyInstance[]
   difyApps: DifyApp[]
+  langGraphDeployments: LangGraphDeployment[]
+  langGraphAssistants: LangGraphAssistant[]
   onTabChange: (tab: TabId) => void
 }) {
   const providers = [
@@ -237,10 +265,21 @@ function OverviewTab({
       entityLabel: `instances, ${difyApps.length} apps`,
       connected: difyInstances.length > 0,
     },
+    {
+      id: 'langgraph' as TabId,
+      name: 'LangGraph',
+      icon: Network,
+      color: 'text-emerald-400',
+      bgColor: 'bg-emerald-500/10',
+      borderColor: 'border-emerald-500/30',
+      entityCount: langGraphDeployments.length,
+      entityLabel: `deployments, ${langGraphAssistants.length} assistants`,
+      connected: langGraphDeployments.length > 0,
+    },
   ]
 
   return (
-    <div className="grid md:grid-cols-3 gap-4">
+    <div className="grid md:grid-cols-2 lg:grid-cols-4 gap-4">
       {providers.map((p) => {
         const Icon = p.icon
         return (
@@ -523,6 +562,108 @@ function DifyTab({
                   <div className="text-right text-xs text-slate-400">
                     <div>{app.total_runs} runs</div>
                     <div>{app.total_tokens.toLocaleString()} tokens</div>
+                  </div>
+                </div>
+              ))}
+            </div>
+          </Card>
+        )}
+      </div>
+    </div>
+  )
+}
+
+// --- LangGraph Tab ---
+
+function LangGraphTab({
+  deployments,
+  assistants,
+}: {
+  deployments: LangGraphDeployment[]
+  assistants: LangGraphAssistant[]
+}) {
+  return (
+    <div className="space-y-6">
+      {/* Deployments */}
+      <div>
+        <div className="flex items-center justify-between mb-4">
+          <h2 className="text-lg font-semibold text-white">LangGraph Deployments</h2>
+          <a
+            href="/langgraph"
+            className="flex items-center gap-2 px-4 py-2 bg-emerald-600 hover:bg-emerald-700 rounded-lg text-white text-sm transition-colors"
+          >
+            <Plus size={14} />
+            Manage Deployments
+          </a>
+        </div>
+        {deployments.length === 0 ? (
+          <EmptyState
+            icon={Network}
+            title="No LangGraph deployments connected"
+            description="Register a LangGraph deployment to monitor graph runs."
+          />
+        ) : (
+          <Card>
+            <div className="divide-y divide-slate-700">
+              {deployments.map((dep) => (
+                <div key={dep.id} className="p-4 flex items-center justify-between">
+                  <div>
+                    <div className="flex items-center gap-2">
+                      <span className="text-white font-medium">{dep.name}</span>
+                      {dep.is_active ? (
+                        <Badge variant="success" size="sm">Active</Badge>
+                      ) : (
+                        <Badge variant="default" size="sm">Inactive</Badge>
+                      )}
+                    </div>
+                    <div className="text-xs text-slate-400 mt-1 flex items-center gap-3">
+                      <span className="flex items-center gap-1">
+                        <Globe size={12} />
+                        {dep.api_url}
+                      </span>
+                      {dep.graph_name && <span>Graph: {dep.graph_name}</span>}
+                      <Badge variant="default" size="sm">{dep.ingestion_mode}</Badge>
+                    </div>
+                  </div>
+                </div>
+              ))}
+            </div>
+          </Card>
+        )}
+      </div>
+
+      {/* Assistants */}
+      <div>
+        <h2 className="text-lg font-semibold text-white mb-4">Registered Assistants</h2>
+        {assistants.length === 0 ? (
+          <EmptyState
+            icon={Key}
+            title="No assistants registered"
+            description="Register assistants within your LangGraph deployments for monitoring."
+          />
+        ) : (
+          <Card>
+            <div className="divide-y divide-slate-700">
+              {assistants.map((asst) => (
+                <div key={asst.id} className="p-4 flex items-center justify-between">
+                  <div>
+                    <div className="flex items-center gap-2">
+                      <span className="text-white font-medium">
+                        {asst.name || asst.assistant_id}
+                      </span>
+                      {asst.monitoring_enabled ? (
+                        <Badge variant="success" size="sm">Monitoring</Badge>
+                      ) : (
+                        <Badge variant="default" size="sm">Paused</Badge>
+                      )}
+                    </div>
+                    <div className="text-xs text-slate-400 mt-1 flex items-center gap-3">
+                      <span>Graph: {asst.graph_id}</span>
+                      <span>ID: {asst.assistant_id}</span>
+                    </div>
+                  </div>
+                  <div className="text-right text-xs text-slate-400">
+                    <div>{asst.total_runs} runs</div>
                   </div>
                 </div>
               ))}

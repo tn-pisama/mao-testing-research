@@ -1749,6 +1749,8 @@ import type {
   OpenClawAgent,
   DifyInstance,
   DifyApp,
+  LangGraphDeployment,
+  LangGraphAssistant,
 } from './api'
 
 export function generateDemoApiN8nWorkflows(): ApiN8nWorkflow[] {
@@ -1848,5 +1850,51 @@ export function generateDemoDifyApps(): DifyApp[] {
     total_runs: randomInt(100, 2000),
     total_tokens: randomInt(50000, 500000),
     registered_at: randomDate(randomInt(48, 360)),
+  }))
+}
+
+export function generateDemoLangGraphDeployments(): LangGraphDeployment[] {
+  return [
+    {
+      id: `lg-deploy-${randomId()}`,
+      name: 'Production LangGraph Cloud',
+      api_url: 'https://api.langgraph.cloud/v1',
+      is_active: true,
+      deployment_id: `dep-${randomId()}`,
+      graph_name: 'multi_agent_researcher',
+      ingestion_mode: 'full',
+      created_at: randomDate(randomInt(72, 240)),
+    },
+    {
+      id: `lg-deploy-${randomId()}`,
+      name: 'Staging Self-Hosted',
+      api_url: 'https://staging.internal.dev:8123',
+      is_active: true,
+      deployment_id: `dep-${randomId()}`,
+      graph_name: 'code_review_agent',
+      ingestion_mode: 'full',
+      created_at: randomDate(randomInt(24, 120)),
+    },
+  ]
+}
+
+export function generateDemoLangGraphAssistants(): LangGraphAssistant[] {
+  const assistants = [
+    { name: 'Research Assistant', graph_id: 'research_graph' },
+    { name: 'Code Reviewer', graph_id: 'code_review_graph' },
+    { name: 'Data Pipeline Agent', graph_id: 'data_pipeline_graph' },
+    { name: 'Customer Support Bot', graph_id: 'support_graph' },
+  ]
+
+  return assistants.map((a) => ({
+    id: `lg-asst-${randomId()}`,
+    deployment_id: `lg-deploy-${randomId()}`,
+    assistant_id: `asst-${randomId()}`,
+    graph_id: a.graph_id,
+    name: a.name,
+    monitoring_enabled: Math.random() > 0.15,
+    ingestion_mode: 'full',
+    total_runs: randomInt(50, 1500),
+    registered_at: randomDate(randomInt(24, 200)),
   }))
 }

@@ -21,6 +21,9 @@ import {
   Star,
   User,
   RotateCcw,
+  Workflow,
+  Bot,
+  Network,
 } from 'lucide-react'
 import { useUserPreferences } from '@/lib/user-preferences'
 
@@ -62,7 +65,10 @@ const developerImproveItems: NavItem[] = [
 const developerConfigureItems: NavItem[] = [
   { label: 'Integrations', href: '/integrations', icon: Box },
   { label: 'Agents', href: '/agents', icon: Users },
-  { label: 'Workflows', href: '/n8n', icon: GitBranch },
+  { label: 'n8n Workflows', href: '/n8n', icon: GitBranch },
+  { label: 'Dify Apps', href: '/dify', icon: Workflow },
+  { label: 'OpenClaw', href: '/openclaw', icon: Bot },
+  { label: 'LangGraph', href: '/langgraph', icon: Network },
   { label: 'Tools', href: '/tools', icon: Zap },
 ]
 

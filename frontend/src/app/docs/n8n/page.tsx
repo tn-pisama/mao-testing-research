@@ -1,5 +1,8 @@
+'use client'
+
 import Link from 'next/link'
-import { Terminal, Copy, Check, AlertTriangle, Boxes, Webhook, Shield, Zap } from 'lucide-react'
+import { AlertTriangle, Boxes, Shield, Zap } from 'lucide-react'
+import { CodeBlock, FeatureCard, MethodCard, SetupStep, DetectionTable, DataMappingTable, SecurityNote, RelatedDocs } from '@/components/docs/SharedDocComponents'
 
 export default function N8nPage() {
   return (
@@ -310,110 +313,12 @@ print(f"Synced {len(results)} executions")`}
   )
 }
 
-function CodeBlock({ title, language, children }: { title: string; language: string; children: React.ReactNode }) {
-  return (
-    <div className="rounded-lg bg-slate-900 border border-slate-700 overflow-hidden">
-      <div className="flex items-center justify-between px-4 py-2 border-b border-slate-700 bg-slate-800/50">
-        <div className="flex items-center gap-2">
-          <Terminal size={14} className="text-slate-400" />
-          <span className="text-sm text-slate-400">{title}</span>
-        </div>
-        <button className="p-1 text-slate-400 hover:text-white transition-colors">
-          <Copy size={14} />
-        </button>
-      </div>
-      <pre className="p-4 text-sm text-slate-300 overflow-x-auto">
-        <code>{children}</code>
-      </pre>
-    </div>
-  )
-}
-
-function FeatureCard({
-  icon: Icon,
-  title,
-  description,
-}: {
-  icon: typeof AlertTriangle
-  title: string
-  description: string
-}) {
-  return (
-    <div className="p-4 rounded-xl bg-slate-800/50 border border-slate-700">
-      <div className="flex items-center gap-2 mb-2">
-        <Icon size={18} className="text-primary-400" />
-        <h3 className="font-semibold text-white">{title}</h3>
-      </div>
-      <p className="text-sm text-slate-400">{description}</p>
-    </div>
-  )
-}
-
 function NodeBadge({ name, type }: { name: string; type: string }) {
   return (
     <div className="p-3 rounded-lg bg-slate-800/50 border border-slate-700 text-center">
       <div className="font-medium text-white">{name}</div>
       <code className="text-xs text-slate-400">{type}</code>
     </div>
-  )
-}
-
-function MethodCard({
-  title,
-  description,
-  pros,
-  cons,
-  children,
-}: {
-  title: string
-  description: string
-  pros: string[]
-  cons: string[]
-  children: React.ReactNode
-}) {
-  return (
-    <div className="rounded-xl bg-slate-800/30 border border-slate-700 p-6">
-      <h3 className="text-lg font-bold text-white mb-2">{title}</h3>
-      <p className="text-slate-300 mb-4">{description}</p>
-      
-      <div className="grid md:grid-cols-2 gap-4 mb-4">
-        <div>
-          <h4 className="text-sm font-semibold text-emerald-400 mb-2">Pros</h4>
-          <ul className="space-y-1">
-            {pros.map((pro) => (
-              <li key={pro} className="flex items-center gap-2 text-sm text-slate-300">
-                <Check size={14} className="text-emerald-400" />
-                {pro}
-              </li>
-            ))}
-          </ul>
-        </div>
-        <div>
-          <h4 className="text-sm font-semibold text-amber-400 mb-2">Cons</h4>
-          <ul className="space-y-1">
-            {cons.map((con) => (
-              <li key={con} className="flex items-center gap-2 text-sm text-slate-300">
-                <AlertTriangle size={14} className="text-amber-400" />
-                {con}
-              </li>
-            ))}
-          </ul>
-        </div>
-      </div>
-      
-      {children}
-    </div>
-  )
-}
-
-function SetupStep({ number, children }: { number: number; children: React.ReactNode }) {
-  return (
-    <li className="flex gap-4">
-      <div className="flex-shrink-0 w-8 h-8 rounded-full bg-primary-600 text-white font-bold flex items-center justify-center text-sm">
-        {number}
-      </div>
-      <div className="flex-1 text-slate-300">{children}</div>
-    </li>
   )
 }
 

@@ -18,6 +18,8 @@ import {
   Boxes,
   Webhook,
   Target,
+  Bot,
+  Network,
 } from 'lucide-react'
 
 const docsNav = [
@@ -43,6 +45,9 @@ const docsNav = [
       { href: '/docs/sdk', label: 'Python SDK', icon: Package },
       { href: '/docs/cli', label: 'CLI Reference', icon: Terminal },
       { href: '/docs/n8n', label: 'n8n Integration', icon: Boxes },
+      { href: '/docs/dify', label: 'Dify Integration', icon: Workflow },
+      { href: '/docs/openclaw', label: 'OpenClaw Integration', icon: Bot },
+      { href: '/docs/langgraph', label: 'LangGraph Integration', icon: Network },
     ],
   },
   {

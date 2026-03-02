@@ -434,6 +434,30 @@ export interface DifyApp {
   registered_at: string
 }
 
+// LangGraph types
+export interface LangGraphDeployment {
+  id: string
+  name: string
+  api_url: string
+  is_active: boolean
+  deployment_id: string | null
+  graph_name: string | null
+  ingestion_mode: string
+  created_at: string
+}
+
+export interface LangGraphAssistant {
+  id: string
+  deployment_id: string
+  assistant_id: string
+  graph_id: string
+  name: string | null
+  monitoring_enabled: boolean
+  ingestion_mode: string | null
+  total_runs: number
+  registered_at: string
+}
+
 // Security types
 export interface InjectionCheckResult {
   detected: boolean
@@ -1533,6 +1557,32 @@ export function createApiClient(token?: string | null, tenantId?: string | null)
     async listDifyApps(instanceId?: string) {
       const params = instanceId ? `?instance_id=${instanceId}` : ''
       return fetchApi<DifyApp[]>(`/dify/apps${params}`, opts)
+    },
+
+    // LangGraph endpoints
+    async registerLangGraphDeployment(data: { name: string; api_url: string; api_key: string; deployment_id?: string; graph_name?: string; ingestion_mode?: string }) {
+      return fetchApi<LangGraphDeployment>(`/langgraph/deployments`, {
+        ...opts,
+        method: 'POST',
+        body: data,
+      })
+    },
+
+    async listLangGraphDeployments() {
+      return fetchApi<LangGraphDeployment[]>(`/langgraph/deployments`, opts)
+    },
+
+    async registerLangGraphAssistant(data: { deployment_id: string; assistant_id: string; graph_id: string; name?: string; ingestion_mode?: string }) {
+      return fetchApi<LangGraphAssistant>(`/langgraph/assistants`, {
+        ...opts,
+        method: 'POST',
+        body: data,
+      })
+    },
+
+    async listLangGraphAssistants(deploymentId?: string) {
+      const params = deploymentId ? `?deployment_id=${deploymentId}` : ''
+      return fetchApi<LangGraphAssistant[]>(`/langgraph/assistants${params}`, opts)
     },
 
     // Security endpoints
