@@ -16,14 +16,7 @@ from app.storage.models import Detection, HealingRecord, N8nConnection, Trace, W
 from sqlalchemy import func, desc
 from app.core.auth import get_current_tenant
 from app.core.encryption import encrypt_value, decrypt_value
-from app.fixes import (
-    FixGenerator, LoopFixGenerator, CorruptionFixGenerator, PersonaFixGenerator,
-    DeadlockFixGenerator, HallucinationFixGenerator, InjectionFixGenerator,
-    OverflowFixGenerator, DerailmentFixGenerator, ContextNeglectFixGenerator,
-    CommunicationFixGenerator, SpecificationFixGenerator, DecompositionFixGenerator,
-    WorkflowFixGenerator, WithholdingFixGenerator, CompletionFixGenerator,
-    CostFixGenerator,
-)
+from app.fixes import create_fix_generator
 from app.integrations.n8n_client import N8nApiClient, N8nApiError, N8nWorkflowDiff
 from app.healing.verification import VerificationOrchestrator
 from app.notifications import create_notification_router
@@ -186,26 +179,9 @@ async def _notify_approval_required_background(
         logger.warning(f"Approval notification failed (non-critical): {e}")
 
 
-def get_fix_generator() -> FixGenerator:
+def get_fix_generator():
     """Create and configure the fix generator."""
-    generator = FixGenerator()
-    generator.register(LoopFixGenerator())
-    generator.register(CorruptionFixGenerator())
-    generator.register(PersonaFixGenerator())
-    generator.register(DeadlockFixGenerator())
-    generator.register(HallucinationFixGenerator())
-    generator.register(InjectionFixGenerator())
-    generator.register(OverflowFixGenerator())
-    generator.register(DerailmentFixGenerator())
-    generator.register(ContextNeglectFixGenerator())
-    generator.register(CommunicationFixGenerator())
-    generator.register(SpecificationFixGenerator())
-    generator.register(DecompositionFixGenerator())
-    generator.register(WorkflowFixGenerator())
-    generator.register(WithholdingFixGenerator())
-    generator.register(CompletionFixGenerator())
-    generator.register(CostFixGenerator())
-    return generator
+    return create_fix_generator()
 
 
 @router.post("/trigger/{detection_id}", response_model=TriggerHealingResponse)
@@ -1787,4 +1763,101 @@ async def get_verification_metrics(
         pass_rate=passed / total if total > 0 else 0.0,
         average_confidence_reduction=round(avg_reduction, 4),
         by_detection_type=by_type_summary,
+    )
+
+
+# ---------------------------------------------------------------------------
+#  Playbook graduation endpoints
+# ---------------------------------------------------------------------------
+
+class PlaybookEntryResponse(BaseModel):
+    detection_type: str
+    fix_type: str
+    success_count: int
+    failure_count: int
+    total_count: int
+    consecutive_successes: int
+    success_rate: float
+    graduated: bool
+    graduated_at: Optional[datetime]
+    last_applied: Optional[datetime]
+    avg_confidence: float
+
+
+class PlaybookStatsResponse(BaseModel):
+    total_patterns: int
+    graduated_count: int
+    total_outcomes: int
+    overall_success_rate: float
+    graduation_threshold: int
+    graduated_playbooks: List[PlaybookEntryResponse]
+
+
+@router.get("/playbooks/stats", response_model=PlaybookStatsResponse)
+async def get_playbook_stats(
+    tenant_id: str = Depends(get_current_tenant),
+    db: AsyncSession = Depends(get_db),
+):
+    """Get learning loop statistics and graduated playbooks.
+
+    Shows which (detection_type, fix_type) pairs have graduated to
+    auto-apply status based on consistent healing success.
+    """
+    from app.healing.playbook import PlaybookRegistry
+
+    # Build registry from historical healing records
+    await set_tenant_context(db, tenant_id)
+    result = await db.execute(
+        select(HealingRecord).where(
+            HealingRecord.tenant_id == UUID(tenant_id),
+            HealingRecord.status.in_(["applied", "rolled_back", "failed"]),
+        ).order_by(HealingRecord.created_at)
+    )
+    records = result.scalars().all()
+
+    registry = PlaybookRegistry()
+    for record in records:
+        detection_type = record.fix_type or "unknown"
+        # Try to get detection type from the linked detection
+        if record.detection_id:
+            det_result = await db.execute(
+                select(Detection.detection_type).where(Detection.id == record.detection_id)
+            )
+            det_type = det_result.scalar_one_or_none()
+            if det_type:
+                detection_type = det_type
+
+        from app.healing.playbook import FixOutcome
+        registry.record_outcome(FixOutcome(
+            detection_type=detection_type,
+            fix_type=record.fix_type or "unknown",
+            success=record.status in ("applied",),
+            healing_id=str(record.id),
+        ))
+
+    stats = registry.get_stats()
+    graduated = registry.get_all_graduated()
+
+    return PlaybookStatsResponse(
+        total_patterns=stats["total_patterns"],
+        graduated_count=stats["graduated_count"],
+        total_outcomes=stats["total_outcomes"],
+        overall_success_rate=round(stats["overall_success_rate"], 3),
+        graduation_threshold=stats["graduation_threshold"],
+        graduated_playbooks=[
+            PlaybookEntryResponse(
+                detection_type=e.detection_type,
+                fix_type=e.fix_type,
+                success_count=e.success_count,
+                failure_count=e.failure_count,
+                total_count=e.total_count,
+                consecutive_successes=e.consecutive_successes,
+                success_rate=round(e.success_rate, 3),
+                graduated=e.graduated,
+                graduated_at=e.graduated_at,
+                last_applied=e.last_applied,
+                avg_confidence=round(e.avg_confidence, 3),
+            )
+            for e in graduated
+        ],
     )

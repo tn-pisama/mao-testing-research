@@ -26,6 +26,11 @@ from .verification import (
     VerificationOrchestrator,
     VerificationResult,
 )
+from .playbook import (
+    PlaybookRegistry,
+    PlaybookEntry,
+    FixOutcome,
+)
 
 __all__ = [
     # Engine
@@ -51,4 +56,8 @@ __all__ = [
     # Verification
     "VerificationOrchestrator",
     "VerificationResult",
+    # Playbook
+    "PlaybookRegistry",
+    "PlaybookEntry",
+    "FixOutcome",
 ]

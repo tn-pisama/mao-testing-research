@@ -20,24 +20,9 @@ from .validator import FixValidator
 from .verification import VerificationOrchestrator
 from .auto_apply import AutoApplyService, AutoApplyConfig, ApplyResult
 from .git_backup import GitBackupService, GitBackupConfig
+from .playbook import PlaybookRegistry, FixOutcome
 
-from ..fixes.generator import FixGenerator
-from ..fixes.loop_fixes import LoopFixGenerator
-from ..fixes.corruption_fixes import CorruptionFixGenerator
-from ..fixes.persona_fixes import PersonaFixGenerator
-from ..fixes.deadlock_fixes import DeadlockFixGenerator
-from ..fixes.hallucination_fixes import HallucinationFixGenerator
-from ..fixes.injection_fixes import InjectionFixGenerator
-from ..fixes.overflow_fixes import OverflowFixGenerator
-from ..fixes.derailment_fixes import DerailmentFixGenerator
-from ..fixes.context_neglect_fixes import ContextNeglectFixGenerator
-from ..fixes.communication_fixes import CommunicationFixGenerator
-from ..fixes.specification_fixes import SpecificationFixGenerator
-from ..fixes.decomposition_fixes import DecompositionFixGenerator
-from ..fixes.workflow_fixes import WorkflowFixGenerator
-from ..fixes.withholding_fixes import WithholdingFixGenerator
-from ..fixes.completion_fixes import CompletionFixGenerator
-from ..fixes.cost_fixes import CostFixGenerator
+from ..fixes import create_fix_generator
 
 logger = logging.getLogger(__name__)
 
@@ -96,23 +81,7 @@ class SelfHealingEngine:
         # Per-workflow locks to prevent concurrent healing on the same workflow
         self._workflow_locks: Dict[str, asyncio.Lock] = {}
 
-        self.fix_generator = FixGenerator()
-        self.fix_generator.register(LoopFixGenerator())
-        self.fix_generator.register(CorruptionFixGenerator())
-        self.fix_generator.register(PersonaFixGenerator())
-        self.fix_generator.register(DeadlockFixGenerator())
-        self.fix_generator.register(HallucinationFixGenerator())
-        self.fix_generator.register(InjectionFixGenerator())
-        self.fix_generator.register(OverflowFixGenerator())
-        self.fix_generator.register(DerailmentFixGenerator())
-        self.fix_generator.register(ContextNeglectFixGenerator())
-        self.fix_generator.register(CommunicationFixGenerator())
-        self.fix_generator.register(SpecificationFixGenerator())
-        self.fix_generator.register(DecompositionFixGenerator())
-        self.fix_generator.register(WorkflowFixGenerator())
-        self.fix_generator.register(WithholdingFixGenerator())
-        self.fix_generator.register(CompletionFixGenerator())
-        self.fix_generator.register(CostFixGenerator())
+        self.fix_generator = create_fix_generator()
         # Framework-specific fix generators
         from app.fixes.framework_fixes import (
             OpenClawFixGenerator, DifyFixGenerator, LangGraphFixGenerator,
@@ -120,6 +89,8 @@ class SelfHealingEngine:
         self.fix_generator.register(OpenClawFixGenerator())
         self.fix_generator.register(DifyFixGenerator())
         self.fix_generator.register(LangGraphFixGenerator())
+
+        self.playbook_registry = PlaybookRegistry()
 
         self._healing_history: List[HealingResult] = []
         self._apply_results: List[ApplyResult] = []
@@ -129,6 +100,25 @@ class SelfHealingEngine:
         if workflow_id not in self._workflow_locks:
             self._workflow_locks[workflow_id] = asyncio.Lock()
         return self._workflow_locks[workflow_id]
+
+    def _record_playbook_outcome(self, result: HealingResult) -> None:
+        """Record a healing outcome in the playbook registry for learning loop.
+
+        Called after every healing completes (success or failure) so the
+        registry can track effectiveness and graduate consistent patterns.
+        """
+        detection_type = result.detection_id  # detection type from the original detection
+        if result.failure_signature:
+            detection_type = result.failure_signature.category.value
+
+        for fix in result.applied_fixes:
+            self.playbook_registry.record_outcome(FixOutcome(
+                detection_type=detection_type,
+                fix_type=fix.fix_type,
+                success=result.is_successful,
+                healing_id=result.id,
+                confidence=result.failure_signature.confidence if result.failure_signature else 0.0,
+            ))
 
     async def heal(
         self,
@@ -186,14 +176,26 @@ class SelfHealingEngine:
             ]
             
             if not self.auto_apply:
-                result.status = HealingStatus.PENDING
-                result.metadata["requires_approval"] = True
-                result.completed_at = datetime.now(timezone.utc)
-                self._healing_history.append(result)
-                return result
-            
+                # Check if playbook graduation overrides approval requirement
+                detection_type = result.failure_signature.category.value if result.failure_signature else ""
+                top_fix_type = fix_suggestions[0].fix_type.value if fix_suggestions else ""
+                playbook_auto, playbook_reason = self.playbook_registry.should_auto_apply(
+                    detection_type, top_fix_type
+                )
+                if not playbook_auto:
+                    result.status = HealingStatus.PENDING
+                    result.metadata["requires_approval"] = True
+                    result.completed_at = datetime.now(timezone.utc)
+                    self._record_playbook_outcome(result)
+                    self._healing_history.append(result)
+                    return result
+                else:
+                    result.metadata["playbook_auto_applied"] = True
+                    result.metadata["playbook_reason"] = playbook_reason
+                    logger.info(f"Playbook graduation overrides approval: {playbook_reason}")
+
             result.status = HealingStatus.APPLYING_FIX
-            
+
             current_config = workflow_config
             for attempt, suggestion in enumerate(fix_suggestions[:self.max_fix_attempts]):
                 try:
@@ -220,11 +222,12 @@ class SelfHealingEngine:
                     if all(v.success for v in validations):
                         result.status = HealingStatus.SUCCESS
                         result.completed_at = datetime.now(timezone.utc)
+                        self._record_playbook_outcome(result)
                         self._healing_history.append(result)
                         return result
-                    
+
                     current_config = applied_fix.modified_state
-                    
+
                 except Exception as e:
                     result.metadata[f"attempt_{attempt}_error"] = str(e)
                     continue
@@ -240,11 +243,12 @@ class SelfHealingEngine:
         except Exception as e:
             result.status = HealingStatus.FAILED
             result.error = str(e)
-        
+
         result.completed_at = datetime.now(timezone.utc)
+        self._record_playbook_outcome(result)
         self._healing_history.append(result)
         return result
-    
+
     async def heal_batch(
         self,
         detections: List[Dict[str, Any]],
@@ -441,21 +445,34 @@ class SelfHealingEngine:
 
             # Step 4: Check if auto-apply is available
             if not self.auto_apply or not self.auto_apply_service:
-                result.status = HealingStatus.PENDING
-                result.metadata["requires_approval"] = True
-                result.metadata["fix_suggestions"] = [
-                    {"id": f.id, "type": f.fix_type.value, "confidence": f.confidence.value}
-                    for f in fix_suggestions[:5]
-                ]
-                result.completed_at = datetime.now(timezone.utc)
-                self._healing_history.append(result)
-                return result
+                # Check if playbook graduation overrides approval
+                detection_type = result.failure_signature.category.value if result.failure_signature else ""
+                top_fix_type = fix_suggestions[0].fix_type.value if fix_suggestions else ""
+                playbook_auto, playbook_reason = self.playbook_registry.should_auto_apply(
+                    detection_type, top_fix_type
+                )
+                if not playbook_auto:
+                    result.status = HealingStatus.PENDING
+                    result.metadata["requires_approval"] = True
+                    result.metadata["fix_suggestions"] = [
+                        {"id": f.id, "type": f.fix_type.value, "confidence": f.confidence.value}
+                        for f in fix_suggestions[:5]
+                    ]
+                    result.completed_at = datetime.now(timezone.utc)
+                    self._record_playbook_outcome(result)
+                    self._healing_history.append(result)
+                    return result
+                else:
+                    result.metadata["playbook_auto_applied"] = True
+                    result.metadata["playbook_reason"] = playbook_reason
+                    logger.info(f"Playbook graduation overrides approval for {workflow_id}: {playbook_reason}")
 
             # Step 5: Check rate limit
             if not self.auto_apply_service.check_rate_limit(workflow_id):
                 result.status = HealingStatus.PENDING
                 result.error = "Rate limited - too many fixes applied recently"
                 result.completed_at = datetime.now(timezone.utc)
+                self._record_playbook_outcome(result)
                 self._healing_history.append(result)
                 return result
 
@@ -494,6 +511,7 @@ class SelfHealingEngine:
                         result.status = HealingStatus.SUCCESS
                         result.metadata["verification_skipped"] = True
                         result.completed_at = datetime.now(timezone.utc)
+                        self._record_playbook_outcome(result)
                         self._healing_history.append(result)
                         logger.info(f"Healed workflow {workflow_id} (verification skipped)")
                         return result
@@ -520,6 +538,7 @@ class SelfHealingEngine:
                         if verification.passed:
                             result.status = HealingStatus.SUCCESS
                             result.completed_at = datetime.now(timezone.utc)
+                            self._record_playbook_outcome(result)
                             self._healing_history.append(result)
                             logger.info(
                                 f"Verified healing for workflow {workflow_id}: "
@@ -539,6 +558,7 @@ class SelfHealingEngine:
                         result.metadata["verification_timeout"] = True
                         result.status = HealingStatus.PARTIAL_SUCCESS
                         result.completed_at = datetime.now(timezone.utc)
+                        self._record_playbook_outcome(result)
                         self._healing_history.append(result)
                         return result
 
@@ -570,6 +590,7 @@ class SelfHealingEngine:
             logger.error(f"Healing failed for workflow {workflow_id}: {e}")
 
         result.completed_at = datetime.now(timezone.utc)
+        self._record_playbook_outcome(result)
         self._healing_history.append(result)
         return result
 
