@@ -15,11 +15,13 @@ from app.storage.models import DifyInstance, DifyApp
 from app.core.auth import get_current_tenant
 from app.ingestion.dify_parser import dify_parser
 from app.core.redis_pubsub import publish_event
+from app.config import get_settings
 from app.api.v1.provider_base import (
     verify_api_key_and_get_tenant,
     verify_webhook_if_configured,
     create_trace_and_states,
     create_sse_response,
+    capture_golden_candidates,
 )
 
 logger = logging.getLogger(__name__)
@@ -165,6 +167,18 @@ async def receive_dify_webhook(
         app.last_active_at = datetime.utcnow()
 
     await db.commit()
+
+    # Auto-capture golden dataset candidates
+    settings = get_settings()
+    if settings.features.is_enabled("golden_auto_capture"):
+        background_tasks.add_task(
+            capture_golden_candidates,
+            tenant_id=tenant_id,
+            trace_id=str(trace.id),
+            states=states,
+            source_id=run.workflow_run_id,
+            framework="dify",
+        )
 
     # Publish real-time event
     await publish_event(

@@ -81,6 +81,22 @@ FRAMEWORK_THRESHOLDS: Dict[str, FrameworkThresholds] = {
         min_matches_for_loop=2,
         confidence_scaling=1.1,     # Higher confidence for detected loops
     ),
+    # Dify: Workflow automation with RAG, classifiers, iteration nodes
+    "dify": FrameworkThresholds(
+        structural_threshold=0.95,  # High - node-based DAG is structured
+        semantic_threshold=0.85,
+        loop_detection_window=6,    # Iteration nodes can repeat
+        min_matches_for_loop=2,
+        confidence_scaling=1.0,
+    ),
+    # OpenClaw: Multi-agent sessions, message-driven
+    "openclaw": FrameworkThresholds(
+        structural_threshold=0.90,  # Lower - session events are less deterministic
+        semantic_threshold=0.82,    # Multi-agent conversations are verbose
+        loop_detection_window=8,    # Spawn chains can be deep
+        min_matches_for_loop=3,     # More matches needed - natural repetition in chat
+        confidence_scaling=0.95,    # Slightly lower - chat sessions have more noise
+    ),
     # Default/unknown frameworks
     "unknown": FrameworkThresholds(
         structural_threshold=0.95,

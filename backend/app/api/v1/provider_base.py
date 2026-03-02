@@ -170,6 +170,68 @@ async def create_trace_and_states(
     return trace
 
 
+async def capture_golden_candidates(
+    tenant_id: str,
+    trace_id: str,
+    states: list,
+    source_id: str,
+    framework: str,
+):
+    """Background task: create golden dataset candidate entries from trace states.
+
+    Runs for any integration when the ``golden_auto_capture`` feature flag is
+    enabled.  Stores each state as an unverified golden entry for later human
+    review.
+
+    Args:
+        tenant_id: Tenant UUID string.
+        trace_id: Trace UUID string.
+        states: List of parsed state dataclass instances.
+        source_id: Provider-specific ID (workflow_id, app_id, session_id, etc.).
+        framework: Provider name ("n8n", "dify", "openclaw").
+    """
+    try:
+        from app.storage.database import async_session_maker
+        from app.storage.models import GoldenDatasetEntryModel
+        from app.storage.golden_dataset_repo import GoldenDatasetRepository
+        import uuid as uuid_mod
+
+        async with async_session_maker() as session:
+            repo = GoldenDatasetRepository(session)
+
+            for state in states:
+                state_data = state if isinstance(state, dict) else {
+                    "agent_id": getattr(state, "agent_id", "unknown"),
+                    "content": getattr(state, "content", ""),
+                    "role": getattr(state, "role", "assistant"),
+                }
+
+                entry = GoldenDatasetEntryModel(
+                    id=uuid_mod.uuid4(),
+                    tenant_id=UUID(tenant_id),
+                    entry_key=f"{framework}_auto_{trace_id[:8]}_{uuid_mod.uuid4().hex[:6]}",
+                    detection_type="unknown",
+                    input_data=state_data,
+                    expected_detected=False,
+                    source=f"{framework}_ingestion",
+                    tags=[framework, "auto_captured", "unverified"],
+                    difficulty="unknown",
+                    split="unverified",
+                    source_trace_id=trace_id,
+                    source_workflow_id=source_id,
+                    human_verified=False,
+                )
+                session.add(entry)
+
+            await session.commit()
+            logger.info(
+                "Auto-captured %d golden candidates from %s trace %s",
+                len(states), framework, trace_id,
+            )
+    except Exception as exc:
+        logger.warning("Failed to auto-capture golden candidates: %s", exc)
+
+
 def create_sse_response(tenant_id: str, provider_name: str = "provider") -> StreamingResponse:
     """Create a Server-Sent Events streaming response for real-time updates.
 
