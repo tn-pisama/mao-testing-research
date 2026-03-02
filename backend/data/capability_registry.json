@@ -1,6 +1,6 @@
 {
   "version": "2.1",
-  "generated_at": "2026-03-02T03:45:01.253893+00:00",
+  "generated_at": "2026-03-02T19:06:14.723801+00:00",
   "capabilities": {
     "loop": {
       "name": "Loop Detection",
@@ -48,7 +48,7 @@
           "tn": 34
         }
       },
-      "last_calibrated": "2026-03-02T03:45:01.242820+00:00"
+      "last_calibrated": "2026-03-02T19:06:14.602130+00:00"
     },
     "persona_drift": {
       "name": "Persona Drift",
@@ -96,7 +96,7 @@
           "tn": 11
         }
       },
-      "last_calibrated": "2026-03-02T03:45:01.242820+00:00"
+      "last_calibrated": "2026-03-02T19:06:14.602130+00:00"
     },
     "hallucination": {
       "name": "Hallucination Detection",
@@ -144,7 +144,7 @@
           "tn": 19
         }
       },
-      "last_calibrated": "2026-03-02T03:45:01.242820+00:00"
+      "last_calibrated": "2026-03-02T19:06:14.602130+00:00"
     },
     "injection": {
       "name": "Injection Detection",
@@ -192,7 +192,7 @@
           "tn": 23
         }
       },
-      "last_calibrated": "2026-03-02T03:45:01.242820+00:00"
+      "last_calibrated": "2026-03-02T19:06:14.602130+00:00"
     },
     "overflow": {
       "name": "Context Overflow",
@@ -240,7 +240,7 @@
           "tn": 34
         }
       },
-      "last_calibrated": "2026-03-02T03:45:01.242820+00:00"
+      "last_calibrated": "2026-03-02T19:06:14.602130+00:00"
     },
     "corruption": {
       "name": "State Corruption",
@@ -288,7 +288,7 @@
           "tn": 30
         }
       },
-      "last_calibrated": "2026-03-02T03:45:01.242820+00:00"
+      "last_calibrated": "2026-03-02T19:06:14.602130+00:00"
     },
     "coordination": {
       "name": "Coordination Analysis",
@@ -336,7 +336,7 @@
           "tn": 33
         }
       },
-      "last_calibrated": "2026-03-02T03:45:01.242820+00:00"
+      "last_calibrated": "2026-03-02T19:06:14.602130+00:00"
     },
     "communication": {
       "name": "Communication Breakdown",
@@ -384,7 +384,7 @@
           "tn": 11
         }
       },
-      "last_calibrated": "2026-03-02T03:45:01.242820+00:00"
+      "last_calibrated": "2026-03-02T19:06:14.602130+00:00"
     },
     "context": {
       "name": "Context Neglect",
@@ -432,7 +432,7 @@
           "tn": 25
         }
       },
-      "last_calibrated": "2026-03-02T03:45:01.242820+00:00"
+      "last_calibrated": "2026-03-02T19:06:14.602130+00:00"
     },
     "derailment": {
       "name": "Task Derailment",
@@ -480,7 +480,7 @@
           "tn": 18
         }
       },
-      "last_calibrated": "2026-03-02T03:45:01.242820+00:00"
+      "last_calibrated": "2026-03-02T19:06:14.602130+00:00"
     },
     "specification": {
       "name": "Specification Mismatch",
@@ -528,7 +528,7 @@
           "tn": 16
         }
       },
-      "last_calibrated": "2026-03-02T03:45:01.242820+00:00"
+      "last_calibrated": "2026-03-02T19:06:14.602130+00:00"
     },
     "decomposition": {
       "name": "Task Decomposition",
@@ -576,7 +576,7 @@
           "tn": 25
         }
       },
-      "last_calibrated": "2026-03-02T03:45:01.242820+00:00"
+      "last_calibrated": "2026-03-02T19:06:14.602130+00:00"
     },
     "workflow": {
       "name": "Workflow Analysis",
@@ -624,7 +624,7 @@
           "tn": 31
         }
       },
-      "last_calibrated": "2026-03-02T03:45:01.242820+00:00"
+      "last_calibrated": "2026-03-02T19:06:14.602130+00:00"
     },
     "withholding": {
       "name": "Information Withholding",
@@ -672,7 +672,7 @@
           "tn": 5
         }
       },
-      "last_calibrated": "2026-03-02T03:45:01.242820+00:00"
+      "last_calibrated": "2026-03-02T19:06:14.602130+00:00"
     },
     "completion": {
       "name": "Completion Misjudgment",
@@ -720,7 +720,7 @@
           "tn": 18
         }
       },
-      "last_calibrated": "2026-03-02T03:45:01.242820+00:00"
+      "last_calibrated": "2026-03-02T19:06:14.602130+00:00"
     },
     "grounding": {
       "name": "Grounding Detection",
@@ -768,7 +768,7 @@
           "tn": 14
         }
       },
-      "last_calibrated": "2026-03-02T03:45:01.242820+00:00"
+      "last_calibrated": "2026-03-02T19:06:14.602130+00:00"
     },
     "retrieval_quality": {
       "name": "Retrieval Quality",
@@ -816,7 +816,7 @@
           "tn": 1
         }
       },
-      "last_calibrated": "2026-03-02T03:45:01.242820+00:00"
+      "last_calibrated": "2026-03-02T19:06:14.602130+00:00"
     },
     "n8n_schema": {
       "name": "N8N Schema Mismatch",
@@ -864,7 +864,7 @@
           "tn": 0
         }
       },
-      "last_calibrated": "2026-03-02T03:45:01.242820+00:00"
+      "last_calibrated": "2026-03-02T19:06:14.602130+00:00"
     },
     "n8n_cycle": {
       "name": "N8N Graph Cycle",
@@ -912,7 +912,7 @@
           "tn": 1
         }
       },
-      "last_calibrated": "2026-03-02T03:45:01.242820+00:00"
+      "last_calibrated": "2026-03-02T19:06:14.602130+00:00"
     },
     "n8n_complexity": {
       "name": "N8N Complexity",
@@ -960,7 +960,7 @@
           "tn": 1
         }
       },
-      "last_calibrated": "2026-03-02T03:45:01.242820+00:00",
+      "last_calibrated": "2026-03-02T19:06:14.602130+00:00",
       "saturation_warning": true
     },
     "n8n_error": {
@@ -1009,7 +1009,7 @@
           "tn": 2
         }
       },
-      "last_calibrated": "2026-03-02T03:45:01.242820+00:00",
+      "last_calibrated": "2026-03-02T19:06:14.602130+00:00",
       "saturation_warning": true
     },
     "n8n_resource": {
@@ -1058,7 +1058,7 @@
           "tn": 1
         }
       },
-      "last_calibrated": "2026-03-02T03:45:01.242820+00:00",
+      "last_calibrated": "2026-03-02T19:06:14.602130+00:00",
       "saturation_warning": true
     },
     "n8n_timeout": {
@@ -1107,7 +1107,7 @@
           "tn": 2
         }
       },
-      "last_calibrated": "2026-03-02T03:45:01.242820+00:00",
+      "last_calibrated": "2026-03-02T19:06:14.602130+00:00",
       "saturation_warning": true
     }
   },

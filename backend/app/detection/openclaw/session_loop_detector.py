@@ -27,6 +27,7 @@ from app.detection.turn_aware._base import (
 logger = logging.getLogger(__name__)
 
 MIN_CONSECUTIVE_REPEATS = 3
+MIN_FUZZY_REPEATS = 5  # Higher threshold for fuzzy loops (same structure, different values)
 
 
 def _hash_input(tool_input: Any) -> str:
@@ -198,7 +199,7 @@ class OpenClawSessionLoopDetector(TurnAwareDetector):
             if evt.get("type") == "tool.call"
         ]
 
-        if len(tool_calls) < MIN_CONSECUTIVE_REPEATS:
+        if len(tool_calls) < MIN_FUZZY_REPEATS:
             return {"detected": False}
 
         best_run_start = 0
@@ -229,7 +230,7 @@ class OpenClawSessionLoopDetector(TurnAwareDetector):
             best_run_len = run_len
             best_run_start = run_start
 
-        if best_run_len >= MIN_CONSECUTIVE_REPEATS:
+        if best_run_len >= MIN_FUZZY_REPEATS:
             affected = [tool_calls[best_run_start + j][0] for j in range(best_run_len)]
             sample_evt = tool_calls[best_run_start][1]
             return {

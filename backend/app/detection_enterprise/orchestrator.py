@@ -34,6 +34,28 @@ from app.detection_enterprise.tool_provision import ToolProvisionDetector
 from app.detection_enterprise.grounding import GroundingDetector, GroundingSeverity
 from app.detection_enterprise.retrieval_quality import RetrievalQualityDetector, RetrievalSeverity
 
+# Framework-specific detectors
+from app.detection.n8n import (
+    N8NCycleDetector, N8NSchemaDetector, N8NComplexityDetector,
+    N8NErrorDetector, N8NResourceDetector, N8NTimeoutDetector,
+)
+from app.detection.dify import (
+    DifyRagPoisoningDetector, DifyIterationEscapeDetector,
+    DifyModelFallbackDetector, DifyVariableLeakDetector,
+    DifyClassifierDriftDetector, DifyToolSchemaMismatchDetector,
+)
+from app.detection.openclaw import (
+    OpenClawSessionLoopDetector, OpenClawToolAbuseDetector,
+    OpenClawElevatedRiskDetector, OpenClawSpawnChainDetector,
+    OpenClawChannelMismatchDetector, OpenClawSandboxEscapeDetector,
+)
+from app.detection.langgraph import (
+    LangGraphRecursionDetector, LangGraphStateCorruptionDetector,
+    LangGraphEdgeMisrouteDetector, LangGraphToolFailureDetector,
+    LangGraphParallelSyncDetector, LangGraphCheckpointCorruptionDetector,
+)
+from app.detection.turn_aware._base import TurnAwareDetectionResult, TurnAwareSeverity
+
 
 logger = logging.getLogger(__name__)
 
@@ -60,6 +82,34 @@ class DetectionCategory(str, Enum):
     CONTEXT_NEGLECT = "context"
     COORDINATION_FAILURE = "coordination"
     FLAWED_WORKFLOW = "workflow"
+    # n8n framework-specific
+    N8N_CYCLE = "n8n_cycle"
+    N8N_SCHEMA = "n8n_schema"
+    N8N_COMPLEXITY = "n8n_complexity"
+    N8N_ERROR = "n8n_error"
+    N8N_RESOURCE = "n8n_resource"
+    N8N_TIMEOUT = "n8n_timeout"
+    # Dify framework-specific
+    DIFY_RAG_POISONING = "dify_rag_poisoning"
+    DIFY_ITERATION_ESCAPE = "dify_iteration_escape"
+    DIFY_MODEL_FALLBACK = "dify_model_fallback"
+    DIFY_VARIABLE_LEAK = "dify_variable_leak"
+    DIFY_CLASSIFIER_DRIFT = "dify_classifier_drift"
+    DIFY_TOOL_SCHEMA_MISMATCH = "dify_tool_schema_mismatch"
+    # OpenClaw framework-specific
+    OPENCLAW_SESSION_LOOP = "openclaw_session_loop"
+    OPENCLAW_TOOL_ABUSE = "openclaw_tool_abuse"
+    OPENCLAW_ELEVATED_RISK = "openclaw_elevated_risk"
+    OPENCLAW_SPAWN_CHAIN = "openclaw_spawn_chain"
+    OPENCLAW_CHANNEL_MISMATCH = "openclaw_channel_mismatch"
+    OPENCLAW_SANDBOX_ESCAPE = "openclaw_sandbox_escape"
+    # LangGraph framework-specific
+    LANGGRAPH_RECURSION = "langgraph_recursion"
+    LANGGRAPH_STATE_CORRUPTION = "langgraph_state_corruption"
+    LANGGRAPH_EDGE_MISROUTE = "langgraph_edge_misroute"
+    LANGGRAPH_TOOL_FAILURE = "langgraph_tool_failure"
+    LANGGRAPH_PARALLEL_SYNC = "langgraph_parallel_sync"
+    LANGGRAPH_CHECKPOINT_CORRUPTION = "langgraph_checkpoint_corruption"
     UNKNOWN = "unknown"
 
 
@@ -194,6 +244,43 @@ class DetectionOrchestrator:
     # disable reasons were stale from before Sprint 3/4 improvements.
     DISABLED_DETECTORS: Dict[str, str] = {}
 
+    # Framework-specific detector registry: source_format → list of
+    # (name, detector_class, category) tuples.
+    FRAMEWORK_DETECTORS: Dict[str, List[Tuple[str, type, "DetectionCategory"]]] = {
+        "n8n": [
+            ("n8n_cycle", N8NCycleDetector, DetectionCategory.N8N_CYCLE),
+            ("n8n_schema", N8NSchemaDetector, DetectionCategory.N8N_SCHEMA),
+            ("n8n_complexity", N8NComplexityDetector, DetectionCategory.N8N_COMPLEXITY),
+            ("n8n_error", N8NErrorDetector, DetectionCategory.N8N_ERROR),
+            ("n8n_resource", N8NResourceDetector, DetectionCategory.N8N_RESOURCE),
+            ("n8n_timeout", N8NTimeoutDetector, DetectionCategory.N8N_TIMEOUT),
+        ],
+        "dify": [
+            ("dify_rag_poisoning", DifyRagPoisoningDetector, DetectionCategory.DIFY_RAG_POISONING),
+            ("dify_iteration_escape", DifyIterationEscapeDetector, DetectionCategory.DIFY_ITERATION_ESCAPE),
+            ("dify_model_fallback", DifyModelFallbackDetector, DetectionCategory.DIFY_MODEL_FALLBACK),
+            ("dify_variable_leak", DifyVariableLeakDetector, DetectionCategory.DIFY_VARIABLE_LEAK),
+            ("dify_classifier_drift", DifyClassifierDriftDetector, DetectionCategory.DIFY_CLASSIFIER_DRIFT),
+            ("dify_tool_schema_mismatch", DifyToolSchemaMismatchDetector, DetectionCategory.DIFY_TOOL_SCHEMA_MISMATCH),
+        ],
+        "openclaw": [
+            ("openclaw_session_loop", OpenClawSessionLoopDetector, DetectionCategory.OPENCLAW_SESSION_LOOP),
+            ("openclaw_tool_abuse", OpenClawToolAbuseDetector, DetectionCategory.OPENCLAW_TOOL_ABUSE),
+            ("openclaw_elevated_risk", OpenClawElevatedRiskDetector, DetectionCategory.OPENCLAW_ELEVATED_RISK),
+            ("openclaw_spawn_chain", OpenClawSpawnChainDetector, DetectionCategory.OPENCLAW_SPAWN_CHAIN),
+            ("openclaw_channel_mismatch", OpenClawChannelMismatchDetector, DetectionCategory.OPENCLAW_CHANNEL_MISMATCH),
+            ("openclaw_sandbox_escape", OpenClawSandboxEscapeDetector, DetectionCategory.OPENCLAW_SANDBOX_ESCAPE),
+        ],
+        "langgraph": [
+            ("langgraph_recursion", LangGraphRecursionDetector, DetectionCategory.LANGGRAPH_RECURSION),
+            ("langgraph_state_corruption", LangGraphStateCorruptionDetector, DetectionCategory.LANGGRAPH_STATE_CORRUPTION),
+            ("langgraph_edge_misroute", LangGraphEdgeMisrouteDetector, DetectionCategory.LANGGRAPH_EDGE_MISROUTE),
+            ("langgraph_tool_failure", LangGraphToolFailureDetector, DetectionCategory.LANGGRAPH_TOOL_FAILURE),
+            ("langgraph_parallel_sync", LangGraphParallelSyncDetector, DetectionCategory.LANGGRAPH_PARALLEL_SYNC),
+            ("langgraph_checkpoint_corruption", LangGraphCheckpointCorruptionDetector, DetectionCategory.LANGGRAPH_CHECKPOINT_CORRUPTION),
+        ],
+    }
+
     def __init__(
         self,
         enable_llm_explanation: bool = True,
@@ -319,6 +406,136 @@ class DetectionOrchestrator:
         if self._workflow_detector is None:
             self._workflow_detector = FlawedWorkflowDetector()
         return self._workflow_detector
+
+    @staticmethod
+    def _convert_turn_aware_result(
+        ta_result: TurnAwareDetectionResult,
+        category: DetectionCategory,
+    ) -> DetectionResult:
+        """Convert a TurnAwareDetectionResult to a DetectionResult."""
+        severity_map = {
+            TurnAwareSeverity.SEVERE: Severity.CRITICAL,
+            TurnAwareSeverity.MODERATE: Severity.MEDIUM,
+            TurnAwareSeverity.MINOR: Severity.LOW,
+            TurnAwareSeverity.NONE: Severity.INFO,
+        }
+        return DetectionResult(
+            category=category,
+            detected=ta_result.detected,
+            confidence=ta_result.confidence,
+            severity=severity_map.get(ta_result.severity, Severity.MEDIUM),
+            title=ta_result.failure_mode or category.value,
+            description=ta_result.explanation,
+            evidence=[ta_result.evidence] if ta_result.evidence else [],
+            affected_spans=[str(t) for t in ta_result.affected_turns],
+            suggested_fix=ta_result.suggested_fix,
+        )
+
+    def _build_framework_metadata(self, trace: UniversalTrace) -> Dict[str, Any]:
+        """Build conversation_metadata dict from trace data for framework detectors."""
+        framework = trace.source_format.lower() if trace.source_format else ""
+        metadata: Dict[str, Any] = {}
+
+        if framework == "n8n":
+            # n8n detectors read workflow_duration_ms and workflow_json
+            wf = trace.metadata.get("workflow_json", {})
+            if not wf and trace.spans:
+                # Build minimal workflow representation from spans
+                nodes = []
+                for span in trace.spans:
+                    span_meta = span.metadata or {}
+                    nodes.append({
+                        "id": span.id,
+                        "type": span_meta.get("n8n.node.type", span.name),
+                        "name": span.name,
+                        "parameters": span_meta.get("n8n.node.parameters", {}),
+                    })
+                wf = {"nodes": nodes}
+            metadata["workflow_json"] = wf
+            metadata["workflow_duration_ms"] = trace.total_duration_ms
+
+        elif framework == "dify":
+            # Dify detectors read workflow_run
+            wf_run = trace.metadata.get("workflow_run", {})
+            if not wf_run and trace.spans:
+                nodes = []
+                for span in trace.spans:
+                    span_meta = span.metadata or {}
+                    nodes.append({
+                        "node_id": span.id,
+                        "node_type": span_meta.get("dify.node.type", "unknown"),
+                        "title": span.name,
+                        "status": "succeeded" if not span.has_error else "failed",
+                        "inputs": span_meta.get("dify.node.inputs", {}),
+                        "outputs": span_meta.get("dify.node.outputs", {}),
+                    })
+                wf_run = {
+                    "workflow_run_id": trace.trace_id,
+                    "nodes": nodes,
+                    "status": "succeeded",
+                }
+            metadata["workflow_run"] = wf_run
+
+        elif framework == "openclaw":
+            # OpenClaw detectors read session
+            session = trace.metadata.get("session", {})
+            if not session and trace.spans:
+                events = []
+                for span in trace.spans:
+                    span_meta = span.metadata or {}
+                    events.append({
+                        "type": span_meta.get("openclaw.event.type", span.name),
+                        "agent_name": span_meta.get("openclaw.agent_name", ""),
+                        "timestamp": span.start_time.isoformat() if span.start_time else "",
+                        "data": span_meta.get("openclaw.event.data", {}),
+                    })
+                session = {
+                    "session_id": trace.trace_id,
+                    "events": events,
+                }
+            metadata["session"] = session
+
+        elif framework == "langgraph":
+            # LangGraph detectors read graph_execution
+            graph_exec = trace.metadata.get("graph_execution", {})
+            if not graph_exec and trace.spans:
+                steps = []
+                for span in trace.spans:
+                    span_meta = span.metadata or {}
+                    steps.append({
+                        "node": span.name,
+                        "span_id": span.id,
+                        "status": "ok" if not span.has_error else "error",
+                        "metadata": span_meta,
+                    })
+                graph_exec = {
+                    "trace_id": trace.trace_id,
+                    "steps": steps,
+                }
+            metadata["graph_execution"] = graph_exec
+
+        return metadata
+
+    def _run_framework_detectors(self, trace: UniversalTrace) -> List[DetectionResult]:
+        """Run framework-specific detectors based on trace.source_format."""
+        framework = (trace.source_format or "").lower()
+        detector_specs = self.FRAMEWORK_DETECTORS.get(framework, [])
+        if not detector_specs:
+            return []
+
+        metadata = self._build_framework_metadata(trace)
+        results: List[DetectionResult] = []
+
+        for name, detector_cls, category in detector_specs:
+            try:
+                detector = detector_cls()
+                ta_result = detector.detect(turns=[], conversation_metadata=metadata)
+                if ta_result.detected:
+                    results.append(self._convert_turn_aware_result(ta_result, category))
+            except Exception as e:
+                logger.warning("Framework detector %s failed: %s", name, e)
+
+        return results
 
     def analyze_trace(self, trace: UniversalTrace) -> DiagnosisResult:
         """Run comprehensive detection on a trace.
@@ -456,6 +673,12 @@ class DetectionOrchestrator:
             if retrieval_result:
                 all_detections.append(retrieval_result)
                 result.detectors_run.append("retrieval_quality")
+
+        # Run framework-specific detectors based on source_format
+        framework_results = self._run_framework_detectors(trace)
+        all_detections.extend(framework_results)
+        if framework_results:
+            result.detectors_run.append(f"framework:{trace.source_format}")
 
         # Report disabled detectors for transparency
         result.detectors_disabled = dict(self.DISABLED_DETECTORS)
@@ -615,6 +838,10 @@ class DetectionOrchestrator:
             tasks.append(_run("grounding", self._detect_grounding_failure, trace))
         if DetectionCategory.RETRIEVAL_QUALITY not in self.DISABLED_DETECTORS:
             tasks.append(_run("retrieval_quality", self._detect_retrieval_quality, trace))
+
+        # Add framework-specific detectors
+        if (trace.source_format or "").lower() in self.FRAMEWORK_DETECTORS:
+            tasks.append(_run(f"framework:{trace.source_format}", self._run_framework_detectors, trace))
 
         completed = await asyncio.gather(*tasks)
 

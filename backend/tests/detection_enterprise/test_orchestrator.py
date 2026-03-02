@@ -13,6 +13,7 @@ from app.detection_enterprise.orchestrator import (
     DetectionCategory,
     Severity,
 )
+from app.detection.turn_aware._base import TurnAwareDetectionResult, TurnAwareSeverity
 from app.ingestion.universal_trace import (
     UniversalTrace,
     UniversalSpan,
@@ -1319,3 +1320,247 @@ class TestMultipleSimultaneousFailures:
         assert len(d["all_detections"]) == 3
         categories_in_dict = {det["category"] for det in d["all_detections"]}
         assert categories_in_dict == {"injection", "persona_drift", "context"}
+
+
+# ============================================================================
+# Framework Detector Integration Tests
+# ============================================================================
+
+def _make_framework_trace(source_format: str, metadata: dict = None) -> UniversalTrace:
+    """Helper to create a minimal trace with a given source_format."""
+    now = datetime.utcnow()
+    span = UniversalSpan(
+        id=str(uuid4()),
+        trace_id=str(uuid4()),
+        name="test_span",
+        span_type=SpanType.LLM_CALL,
+        status=SpanStatus.OK,
+        start_time=now,
+        end_time=now + timedelta(milliseconds=100),
+        duration_ms=100,
+        agent_id="agent_1",
+    )
+    trace = UniversalTrace(
+        trace_id=span.trace_id,
+        spans=[span],
+        source_format=source_format,
+        metadata=metadata or {},
+    )
+    return trace
+
+
+class TestFrameworkDetectorIntegration:
+    """Tests for framework-specific detector routing in the orchestrator."""
+
+    def test_n8n_framework_detectors_run_for_n8n_trace(self):
+        """n8n trace should trigger n8n framework detectors."""
+        orchestrator = DetectionOrchestrator()
+        trace = _make_framework_trace("n8n", {
+            "workflow_json": {"nodes": [{"id": "1", "type": "n8n-nodes-base.httpRequest"}]},
+        })
+
+        results = orchestrator._run_framework_detectors(trace)
+
+        # Results is a list (may be empty if no issues detected on minimal data,
+        # but the method should not raise)
+        assert isinstance(results, list)
+        for r in results:
+            assert isinstance(r, DetectionResult)
+            assert r.category.value.startswith("n8n_")
+
+    def test_dify_framework_detectors_run_for_dify_trace(self):
+        """Dify trace should trigger dify framework detectors."""
+        orchestrator = DetectionOrchestrator()
+        trace = _make_framework_trace("dify", {
+            "workflow_run": {
+                "workflow_run_id": "run-1",
+                "nodes": [{"node_id": "n1", "node_type": "llm", "title": "LLM", "status": "succeeded"}],
+                "status": "succeeded",
+            },
+        })
+
+        results = orchestrator._run_framework_detectors(trace)
+        assert isinstance(results, list)
+        for r in results:
+            assert r.category.value.startswith("dify_")
+
+    def test_openclaw_framework_detectors_run_for_openclaw_trace(self):
+        """OpenClaw trace should trigger openclaw framework detectors."""
+        orchestrator = DetectionOrchestrator()
+        trace = _make_framework_trace("openclaw", {
+            "session": {
+                "session_id": "sess-1",
+                "events": [{"type": "message.received", "agent_name": "bot"}],
+            },
+        })
+
+        results = orchestrator._run_framework_detectors(trace)
+        assert isinstance(results, list)
+        for r in results:
+            assert r.category.value.startswith("openclaw_")
+
+    def test_langgraph_framework_detectors_run_for_langgraph_trace(self):
+        """LangGraph trace should trigger langgraph framework detectors."""
+        orchestrator = DetectionOrchestrator()
+        trace = _make_framework_trace("langgraph", {
+            "graph_execution": {
+                "trace_id": "t-1",
+                "steps": [{"node": "agent", "status": "ok"}],
+            },
+        })
+
+        results = orchestrator._run_framework_detectors(trace)
+        assert isinstance(results, list)
+        for r in results:
+            assert r.category.value.startswith("langgraph_")
+
+    def test_unknown_source_skips_framework_detectors(self):
+        """Unknown source_format should return empty list."""
+        orchestrator = DetectionOrchestrator()
+        trace = _make_framework_trace("unknown")
+
+        results = orchestrator._run_framework_detectors(trace)
+        assert results == []
+
+    def test_framework_results_included_in_diagnosis(self):
+        """Framework DetectionResults should appear in DiagnosisResult.all_detections."""
+        orchestrator = DetectionOrchestrator()
+        trace = _make_framework_trace("n8n", {
+            "workflow_json": {"nodes": [{"id": "1", "type": "n8n-nodes-base.httpRequest"}]},
+        })
+
+        result = orchestrator.analyze_trace(trace)
+        assert isinstance(result, DiagnosisResult)
+        # The framework detectors ran (even if nothing detected on minimal data)
+        # Check that detectors_run includes framework label if any detections
+        framework_categories = {d.category for d in result.all_detections if d.category.value.startswith("n8n_")}
+        if framework_categories:
+            assert any("framework:" in dr for dr in result.detectors_run)
+
+    def test_convert_turn_aware_result_severity_mapping(self):
+        """Severity conversion should map TurnAwareSeverity to Severity correctly."""
+        ta_result = TurnAwareDetectionResult(
+            detected=True,
+            severity=TurnAwareSeverity.SEVERE,
+            confidence=0.95,
+            failure_mode="test_failure",
+            explanation="A severe failure was found.",
+            affected_turns=[0, 1, 2],
+            evidence={"key": "value"},
+            suggested_fix="Fix the issue.",
+        )
+
+        det_result = DetectionOrchestrator._convert_turn_aware_result(
+            ta_result, DetectionCategory.N8N_CYCLE,
+        )
+
+        assert det_result.category == DetectionCategory.N8N_CYCLE
+        assert det_result.detected is True
+        assert det_result.severity == Severity.CRITICAL
+        assert det_result.confidence == 0.95
+        assert det_result.title == "test_failure"
+        assert det_result.suggested_fix == "Fix the issue."
+        assert det_result.affected_spans == ["0", "1", "2"]
+
+        # Test moderate → medium
+        ta_moderate = TurnAwareDetectionResult(
+            detected=True,
+            severity=TurnAwareSeverity.MODERATE,
+            confidence=0.7,
+            failure_mode="moderate_issue",
+            explanation="Moderate.",
+        )
+        det_moderate = DetectionOrchestrator._convert_turn_aware_result(
+            ta_moderate, DetectionCategory.DIFY_VARIABLE_LEAK,
+        )
+        assert det_moderate.severity == Severity.MEDIUM
+
+        # Test minor → low
+        ta_minor = TurnAwareDetectionResult(
+            detected=True,
+            severity=TurnAwareSeverity.MINOR,
+            confidence=0.4,
+            failure_mode="minor_issue",
+            explanation="Minor.",
+        )
+        det_minor = DetectionOrchestrator._convert_turn_aware_result(
+            ta_minor, DetectionCategory.OPENCLAW_CHANNEL_MISMATCH,
+        )
+        assert det_minor.severity == Severity.LOW
+
+        # Test none → info
+        ta_none = TurnAwareDetectionResult(
+            detected=False,
+            severity=TurnAwareSeverity.NONE,
+            confidence=0.0,
+            failure_mode=None,
+            explanation="Nothing.",
+        )
+        det_none = DetectionOrchestrator._convert_turn_aware_result(
+            ta_none, DetectionCategory.LANGGRAPH_RECURSION,
+        )
+        assert det_none.severity == Severity.INFO
+
+    @pytest.mark.asyncio
+    async def test_framework_detectors_in_async_path(self):
+        """analyze_trace_async should also run framework detectors."""
+        orchestrator = DetectionOrchestrator()
+        trace = _make_framework_trace("dify", {
+            "workflow_run": {
+                "workflow_run_id": "run-async",
+                "nodes": [],
+                "status": "succeeded",
+            },
+        })
+
+        result = await orchestrator.analyze_trace_async(trace)
+        assert isinstance(result, DiagnosisResult)
+        # Async path should process without errors
+        assert result.trace_id == trace.trace_id
+
+    def test_build_framework_metadata_n8n_from_spans(self):
+        """_build_framework_metadata should construct n8n metadata from spans."""
+        orchestrator = DetectionOrchestrator()
+        trace = _make_framework_trace("n8n")
+
+        metadata = orchestrator._build_framework_metadata(trace)
+        assert "workflow_json" in metadata
+        assert "workflow_duration_ms" in metadata
+        assert isinstance(metadata["workflow_json"]["nodes"], list)
+
+    def test_build_framework_metadata_dify_from_spans(self):
+        """_build_framework_metadata should construct dify metadata from spans."""
+        orchestrator = DetectionOrchestrator()
+        trace = _make_framework_trace("dify")
+
+        metadata = orchestrator._build_framework_metadata(trace)
+        assert "workflow_run" in metadata
+        assert "nodes" in metadata["workflow_run"]
+
+    def test_build_framework_metadata_openclaw_from_spans(self):
+        """_build_framework_metadata should construct openclaw metadata from spans."""
+        orchestrator = DetectionOrchestrator()
+        trace = _make_framework_trace("openclaw")
+
+        metadata = orchestrator._build_framework_metadata(trace)
+        assert "session" in metadata
+        assert "events" in metadata["session"]
+
+    def test_build_framework_metadata_langgraph_from_spans(self):
+        """_build_framework_metadata should construct langgraph metadata from spans."""
+        orchestrator = DetectionOrchestrator()
+        trace = _make_framework_trace("langgraph")
+
+        metadata = orchestrator._build_framework_metadata(trace)
+        assert "graph_execution" in metadata
+        assert "steps" in metadata["graph_execution"]
+
+    def test_framework_detector_registry_completeness(self):
+        """All four frameworks should be registered with exactly 6 detectors each."""
+        registry = DetectionOrchestrator.FRAMEWORK_DETECTORS
+        assert set(registry.keys()) == {"n8n", "dify", "openclaw", "langgraph"}
+        for framework, detectors in registry.items():
+            assert len(detectors) == 6, f"{framework} should have 6 detectors, got {len(detectors)}"
+            for name, cls, category in detectors:
+                assert name.startswith(framework.replace("langgraph", "langgraph")), \
+                    f"Detector name {name} should start with framework prefix"
