@@ -92,7 +92,7 @@ class TestTriggerHealingEndpoint:
         db_session.execute.return_value = mock_result
 
         response = await client.post(
-            f"/api/v1/healing/trigger/{detection_id}",
+            f"/api/v1/tenants/{test_tenant.id}/healing/trigger/{detection_id}",
             json={"approval_required": False},
         )
         assert response.status_code == 200
@@ -102,14 +102,14 @@ class TestTriggerHealingEndpoint:
         assert data["fix_type"] != ""
 
     @pytest.mark.asyncio
-    async def test_trigger_healing_detection_not_found(self, client, db_session):
+    async def test_trigger_healing_detection_not_found(self, client, db_session, test_tenant):
         """Triggering healing for a non-existent detection returns 404."""
         mock_result = MagicMock()
         mock_result.scalar_one_or_none.return_value = None
         db_session.execute.return_value = mock_result
 
         response = await client.post(
-            f"/api/v1/healing/trigger/{uuid4()}",
+            f"/api/v1/tenants/{test_tenant.id}/healing/trigger/{uuid4()}",
             json={},
         )
         assert response.status_code == 404
@@ -136,7 +136,7 @@ class TestTriggerHealingEndpoint:
         db_session.execute.return_value = mock_result
 
         response = await client.post(
-            f"/api/v1/healing/trigger/{detection_id}",
+            f"/api/v1/tenants/{test_tenant.id}/healing/trigger/{detection_id}",
             json={},
         )
         # Should not crash — either succeeds or returns a proper error
@@ -177,7 +177,7 @@ class TestHealingStatusEndpoint:
         mock_result.scalar_one_or_none.return_value = mock_healing
         db_session.execute.return_value = mock_result
 
-        response = await client.get(f"/api/v1/healing/{healing_id}")
+        response = await client.get(f"/api/v1/tenants/{test_tenant.id}/healing/{healing_id}/status")
         assert response.status_code == 200
         data = response.json()
         assert data["status"] == "staged"
@@ -186,13 +186,13 @@ class TestHealingStatusEndpoint:
         assert data["validation_status"] == "passed"
 
     @pytest.mark.asyncio
-    async def test_get_healing_not_found(self, client, db_session):
+    async def test_get_healing_not_found(self, client, db_session, test_tenant):
         """Getting non-existent healing returns 404."""
         mock_result = MagicMock()
         mock_result.scalar_one_or_none.return_value = None
         db_session.execute.return_value = mock_result
 
-        response = await client.get(f"/api/v1/healing/{uuid4()}")
+        response = await client.get(f"/api/v1/tenants/{test_tenant.id}/healing/{uuid4()}/status")
         assert response.status_code == 404
 
 
@@ -200,7 +200,7 @@ class TestHealingListEndpoint:
     """Tests for GET /healing/list."""
 
     @pytest.mark.asyncio
-    async def test_list_healings_pagination(self, client, db_session):
+    async def test_list_healings_pagination(self, client, db_session, test_tenant):
         """Listing healings returns paginated results."""
         # Mock empty result
         mock_count_result = MagicMock()
@@ -209,9 +209,10 @@ class TestHealingListEndpoint:
         mock_list_result = MagicMock()
         mock_list_result.scalars.return_value.all.return_value = []
 
-        db_session.execute.side_effect = [mock_count_result, mock_list_result]
+        # First call is set_tenant_context, then count query, then list query
+        db_session.execute.side_effect = [MagicMock(), mock_count_result, mock_list_result]
 
-        response = await client.get("/api/v1/healing/list?page=1&per_page=10")
+        response = await client.get(f"/api/v1/tenants/{test_tenant.id}/healing?page=1&per_page=10")
         assert response.status_code == 200
         data = response.json()
         assert "items" in data

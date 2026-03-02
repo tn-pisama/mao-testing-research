@@ -21,7 +21,6 @@ _saved = {}
 for mod_name in [
     "apscheduler", "apscheduler.schedulers", "apscheduler.schedulers.asyncio",
     "apscheduler.triggers", "apscheduler.triggers.interval",
-    "redis", "redis.asyncio",
 ]:
     if mod_name not in sys.modules:
         _saved[mod_name] = None

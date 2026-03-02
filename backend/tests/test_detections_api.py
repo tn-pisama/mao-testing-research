@@ -14,9 +14,8 @@ from uuid import uuid4
 
 # Pre-mock modules that aren't installed in test environment
 for mod_name in [
-    "asyncpg", "jose", "jose.jwt",
+    "asyncpg",
     "clerk_backend_api", "clerk_backend_api.jwks",
-    "bcrypt", "stripe", "httpx",
 ]:
     if mod_name not in sys.modules:
         sys.modules[mod_name] = MagicMock()
