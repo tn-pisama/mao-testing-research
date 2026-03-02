@@ -244,8 +244,9 @@ async def mock_db_n8n_client():
     
     async with AsyncClient(transport=ASGITransport(app=app), base_url="http://test") as ac:
         yield ac, mock_db, mock_tenant
-    
-    app.dependency_overrides.clear()
+
+    app.dependency_overrides.pop(get_db, None)
+    app.dependency_overrides.pop(get_current_tenant, None)
 
 
 class TestN8nWebhook:

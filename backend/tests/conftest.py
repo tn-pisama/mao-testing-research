@@ -205,6 +205,7 @@ async def n8n_workflow_client():
     mock_workflow.workflow_name = "Test Workflow"
     mock_workflow.registered_at = datetime.now(timezone.utc)
     mock_workflow.webhook_secret = "test_secret"
+    mock_workflow.ingestion_mode = "webhook"
 
     mock_result = MagicMock()
     mock_result.scalar_one.return_value = mock_workflow

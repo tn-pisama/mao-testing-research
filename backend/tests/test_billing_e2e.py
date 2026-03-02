@@ -44,11 +44,19 @@ class TestBillingUpgradeFlowMocked:
         )
         tenant_id = str(test_tenant.id)
 
-        # Mock database session
+        # Mock database session — return different results for tenant query
+        # vs owner/user query. Update calls get a generic MagicMock.
         mock_db = AsyncMock()
-        mock_result = MagicMock()
-        mock_result.scalar_one_or_none.return_value = test_tenant
-        mock_db.execute.return_value = mock_result
+        tenant_result = MagicMock()
+        tenant_result.scalar_one_or_none.return_value = test_tenant
+        owner_result = MagicMock()
+        owner_result.scalar_one_or_none.return_value = None  # no owner User row
+        generic_result = MagicMock()
+
+        # Calls: 1=get tenant, 2=get owner, 3=update customer_id, 4=update subscription
+        mock_db.execute = AsyncMock(
+            side_effect=[tenant_result, owner_result, generic_result, generic_result]
+        )
         mock_db.commit = AsyncMock()
         mock_db.refresh = AsyncMock()
 

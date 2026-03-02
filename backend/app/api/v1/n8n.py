@@ -204,7 +204,7 @@ async def receive_n8n_webhook(
 
     # Auto-capture golden dataset candidates from detections
     settings = get_settings()
-    if settings.features.is_enabled("golden_auto_capture", default=False):
+    if settings.features.is_enabled("golden_auto_capture"):
         background_tasks.add_task(
             _capture_golden_candidates,
             tenant_id=tenant_id,

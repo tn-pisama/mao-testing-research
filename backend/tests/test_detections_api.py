@@ -6,25 +6,10 @@ Tests the endpoint function directly with mocked DB, bypassing
 the deep import chain (asyncpg, jose, etc.) by pre-mocking modules.
 """
 
-import sys
 import pytest
 from datetime import datetime, timedelta, timezone
 from unittest.mock import AsyncMock, MagicMock
 from uuid import uuid4
-
-# Pre-mock modules that aren't installed in test environment
-for mod_name in [
-    "asyncpg",
-    "clerk_backend_api", "clerk_backend_api.jwks",
-]:
-    if mod_name not in sys.modules:
-        sys.modules[mod_name] = MagicMock()
-
-# Mock database module to avoid asyncpg engine creation
-_mock_db = MagicMock()
-_mock_db.get_db = MagicMock()
-_mock_db.set_tenant_context = AsyncMock()
-sys.modules["app.storage.database"] = _mock_db
 
 from app.api.v1.detections import list_detections, detection_to_response
 
@@ -86,11 +71,12 @@ class TestListDetectionsFiltering:
     @pytest.fixture
     def mock_db(self):
         db = AsyncMock()
+        tenant_ctx_result = MagicMock()  # set_tenant_context call
         count_result = MagicMock()
         count_result.scalar.return_value = 0
         data_result = MagicMock()
         data_result.scalars.return_value.all.return_value = []
-        db.execute = AsyncMock(side_effect=[count_result, data_result])
+        db.execute = AsyncMock(side_effect=[tenant_ctx_result, count_result, data_result])
         return db
 
     @pytest.mark.asyncio
@@ -122,11 +108,12 @@ class TestListDetectionsFiltering:
     @pytest.mark.asyncio
     async def test_total_reflects_filtered_count(self):
         mock_db = AsyncMock()
+        tenant_ctx_result = MagicMock()
         count_result = MagicMock()
         count_result.scalar.return_value = 42
         data_result = MagicMock()
         data_result.scalars.return_value.all.return_value = []
-        mock_db.execute = AsyncMock(side_effect=[count_result, data_result])
+        mock_db.execute = AsyncMock(side_effect=[tenant_ctx_result, count_result, data_result])
 
         result = await list_detections(
             page=1, per_page=20,
@@ -148,7 +135,7 @@ class TestListDetectionsFiltering:
         )
         assert result.page == 2
         assert result.per_page == 10
-        assert mock_db.execute.call_count == 2
+        assert mock_db.execute.call_count == 3  # set_tenant_context + count + data
 
     @pytest.mark.asyncio
     async def test_with_results(self):
@@ -157,11 +144,12 @@ class TestListDetectionsFiltering:
         detection.validated = True
         detection.false_positive = False
 
+        tenant_ctx_result = MagicMock()
         count_result = MagicMock()
         count_result.scalar.return_value = 1
         data_result = MagicMock()
         data_result.scalars.return_value.all.return_value = [detection]
-        mock_db.execute = AsyncMock(side_effect=[count_result, data_result])
+        mock_db.execute = AsyncMock(side_effect=[tenant_ctx_result, count_result, data_result])
 
         result = await list_detections(
             page=1, per_page=20,
@@ -185,7 +173,7 @@ class TestListDetectionsFiltering:
             tenant_id=str(uuid4()), db=mock_db,
         )
         assert result.total == 0
-        assert mock_db.execute.call_count == 2
+        assert mock_db.execute.call_count == 3  # set_tenant_context + count + data
 
     @pytest.mark.asyncio
     async def test_date_range_filter(self, mock_db):
@@ -199,4 +187,4 @@ class TestListDetectionsFiltering:
             tenant_id=str(uuid4()), db=mock_db,
         )
         assert result.total == 0
-        assert mock_db.execute.call_count == 2
+        assert mock_db.execute.call_count == 3  # set_tenant_context + count + data
