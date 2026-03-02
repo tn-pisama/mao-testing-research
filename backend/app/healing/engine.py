@@ -115,8 +115,9 @@ class SelfHealingEngine:
         self.fix_generator.register(CostFixGenerator())
         # Framework-specific fix generators
         from app.fixes.framework_fixes import (
-            OpenClawFixGenerator, DifyFixGenerator, LangGraphFixGenerator,
+            N8nFixGenerator, OpenClawFixGenerator, DifyFixGenerator, LangGraphFixGenerator,
         )
+        self.fix_generator.register(N8nFixGenerator())
         self.fix_generator.register(OpenClawFixGenerator())
         self.fix_generator.register(DifyFixGenerator())
         self.fix_generator.register(LangGraphFixGenerator())

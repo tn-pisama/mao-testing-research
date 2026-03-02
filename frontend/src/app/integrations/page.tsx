@@ -29,6 +29,13 @@ import type {
 } from '@/lib/api'
 import { useSafeAuth } from '@/hooks/useSafeAuth'
 import { useTenant } from '@/hooks/useTenant'
+import {
+  generateDemoApiN8nWorkflows,
+  generateDemoOpenClawInstances,
+  generateDemoOpenClawAgents,
+  generateDemoDifyInstances,
+  generateDemoDifyApps,
+} from '@/lib/demo-data'
 
 type TabId = 'overview' | 'n8n' | 'openclaw' | 'dify'
 
@@ -59,7 +66,15 @@ export default function IntegrationsPage() {
     try {
       setIsLoading(true)
       const token = await getToken()
-      if (!token || !tenantId) return
+      if (!token || !tenantId) {
+        // No auth — use demo data
+        setN8nWorkflows(generateDemoApiN8nWorkflows())
+        setOpenclawInstances(generateDemoOpenClawInstances())
+        setOpenclawAgents(generateDemoOpenClawAgents())
+        setDifyInstances(generateDemoDifyInstances())
+        setDifyApps(generateDemoDifyApps())
+        return
+      }
       const api = createApiClient(token, tenantId)
 
       const [workflows, instances, agents, dInstances, apps] = await Promise.allSettled([
@@ -70,13 +85,26 @@ export default function IntegrationsPage() {
         api.listDifyApps(),
       ])
 
-      if (workflows.status === 'fulfilled') setN8nWorkflows(workflows.value)
-      if (instances.status === 'fulfilled') setOpenclawInstances(instances.value)
-      if (agents.status === 'fulfilled') setOpenclawAgents(agents.value)
-      if (dInstances.status === 'fulfilled') setDifyInstances(dInstances.value)
-      if (apps.status === 'fulfilled') setDifyApps(apps.value)
+      const wf = workflows.status === 'fulfilled' ? workflows.value : []
+      const oci = instances.status === 'fulfilled' ? instances.value : []
+      const oca = agents.status === 'fulfilled' ? agents.value : []
+      const di = dInstances.status === 'fulfilled' ? dInstances.value : []
+      const da = apps.status === 'fulfilled' ? apps.value : []
+
+      // Use demo data as fallback when all API calls return empty
+      const allEmpty = wf.length === 0 && oci.length === 0 && di.length === 0
+      setN8nWorkflows(wf.length > 0 ? wf : allEmpty ? generateDemoApiN8nWorkflows() : wf)
+      setOpenclawInstances(oci.length > 0 ? oci : allEmpty ? generateDemoOpenClawInstances() : oci)
+      setOpenclawAgents(oca.length > 0 ? oca : allEmpty ? generateDemoOpenClawAgents() : oca)
+      setDifyInstances(di.length > 0 ? di : allEmpty ? generateDemoDifyInstances() : di)
+      setDifyApps(da.length > 0 ? da : allEmpty ? generateDemoDifyApps() : da)
     } catch {
-      // Silently handle - page will show empty states
+      // API error — fall back to demo data
+      setN8nWorkflows(generateDemoApiN8nWorkflows())
+      setOpenclawInstances(generateDemoOpenClawInstances())
+      setOpenclawAgents(generateDemoOpenClawAgents())
+      setDifyInstances(generateDemoDifyInstances())
+      setDifyApps(generateDemoDifyApps())
     } finally {
       setIsLoading(false)
     }

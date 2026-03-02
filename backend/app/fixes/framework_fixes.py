@@ -1,9 +1,88 @@
-"""Fix generators for framework-specific detection types (OpenClaw, Dify, LangGraph)."""
+"""Fix generators for framework-specific detection types (n8n, OpenClaw, Dify, LangGraph)."""
 
 from typing import List, Dict, Any
 
 from .generator import BaseFixGenerator
 from .models import FixSuggestion, FixType, FixConfidence, CodeChange
+
+
+class N8nFixGenerator(BaseFixGenerator):
+    """Generates fixes for n8n framework-specific structural detections."""
+
+    def can_handle(self, detection_type: str) -> bool:
+        return detection_type.startswith("n8n_")
+
+    def generate_fixes(
+        self,
+        detection: Dict[str, Any],
+        context: Dict[str, Any],
+    ) -> List[FixSuggestion]:
+        fixes = []
+        det_type = detection.get("detection_type", "")
+        det_id = detection.get("id", "")
+
+        if "complexity" in det_type:
+            fixes.append(self._create_suggestion(
+                detection_id=det_id,
+                detection_type=det_type,
+                fix_type=FixType.CIRCUIT_BREAKER,
+                confidence=FixConfidence.MEDIUM,
+                title="Split workflow into sub-workflows",
+                description="Reduce complexity by extracting node groups into Execute Workflow sub-workflows. Simplify branching with Switch nodes instead of nested IFs.",
+                rationale="Workflow exceeds complexity thresholds (node count, branching depth, or cyclomatic complexity).",
+            ))
+        elif "cycle" in det_type:
+            fixes.append(self._create_suggestion(
+                detection_id=det_id,
+                detection_type=det_type,
+                fix_type=FixType.CIRCUIT_BREAKER,
+                confidence=FixConfidence.HIGH,
+                title="Add cycle-breaking conditions",
+                description="Add IF node with exit condition before loop-back connections. Use Loop Over Items node with explicit bounds instead of manual cycles.",
+                rationale="Workflow graph contains circular connections that can cause infinite execution.",
+            ))
+        elif "error" in det_type:
+            fixes.append(self._create_suggestion(
+                detection_id=det_id,
+                detection_type=det_type,
+                fix_type=FixType.STEP_VALIDATOR,
+                confidence=FixConfidence.HIGH,
+                title="Add error handling to unprotected nodes",
+                description="Set continueOnFail=false on AI/HTTP nodes. Add IF nodes after error-prone operations to validate data before downstream processing.",
+                rationale="Critical nodes lack error handling, allowing failures to propagate silently.",
+            ))
+        elif "resource" in det_type:
+            fixes.append(self._create_suggestion(
+                detection_id=det_id,
+                detection_type=det_type,
+                fix_type=FixType.BUDGET_LIMITER,
+                confidence=FixConfidence.HIGH,
+                title="Add resource limits",
+                description="Set maxTokens on all AI nodes. Add Limit nodes to cap item counts. Configure pagination for bulk API calls and set batchSize on loop nodes.",
+                rationale="Workflow has unbounded resource consumption patterns that can cause cost explosion.",
+            ))
+        elif "schema" in det_type:
+            fixes.append(self._create_suggestion(
+                detection_id=det_id,
+                detection_type=det_type,
+                fix_type=FixType.SCHEMA_ENFORCEMENT,
+                confidence=FixConfidence.HIGH,
+                title="Fix node schema alignment",
+                description="Add Set or Code nodes to transform data between nodes with incompatible types. Verify $json expression references match fields produced by upstream nodes.",
+                rationale="Connected nodes have incompatible data schemas causing runtime failures.",
+            ))
+        elif "timeout" in det_type:
+            fixes.append(self._create_suggestion(
+                detection_id=det_id,
+                detection_type=det_type,
+                fix_type=FixType.TIMEOUT_ADDITION,
+                confidence=FixConfidence.HIGH,
+                title="Configure timeout protections",
+                description="Set executionTimeout in workflow settings. Add responseTimeout on webhook triggers. Configure timeout on HTTP request and AI nodes.",
+                rationale="Workflow nodes can run indefinitely without timeout protection.",
+            ))
+
+        return fixes
 
 
 class OpenClawFixGenerator(BaseFixGenerator):

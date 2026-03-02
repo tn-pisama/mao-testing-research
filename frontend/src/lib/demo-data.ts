@@ -1738,3 +1738,115 @@ export function generateHandoffMetrics(
 
   return metrics
 }
+
+// ============================================================================
+// FRAMEWORK INTEGRATION DEMO DATA (matches api.ts types)
+// ============================================================================
+
+import type {
+  N8nWorkflow as ApiN8nWorkflow,
+  OpenClawInstance,
+  OpenClawAgent,
+  DifyInstance,
+  DifyApp,
+} from './api'
+
+export function generateDemoApiN8nWorkflows(): ApiN8nWorkflow[] {
+  const names = [
+    'Customer Support Automation',
+    'Lead Qualification Pipeline',
+    'Content Generation Workflow',
+    'Data Enrichment Process',
+    'Slack Notification Handler',
+  ]
+
+  return names.map((name, i) => ({
+    id: `wf-${randomId()}`,
+    workflow_id: `${1000 + i}`,
+    workflow_name: name,
+    webhook_url: `https://n8n.example.com/webhook/${randomId()}`,
+    ingestion_mode: randomChoice(['webhook', 'polling']),
+    registered_at: randomDate(randomInt(48, 720)),
+  }))
+}
+
+export function generateDemoOpenClawInstances(): OpenClawInstance[] {
+  return [
+    {
+      id: `oc-inst-${randomId()}`,
+      name: 'Production Gateway',
+      gateway_url: 'https://openclaw.example.com',
+      otel_enabled: true,
+      is_active: true,
+      channels_configured: ['slack', 'web', 'api'],
+      ingestion_mode: 'otel',
+      created_at: randomDate(720),
+    },
+    {
+      id: `oc-inst-${randomId()}`,
+      name: 'Staging Gateway',
+      gateway_url: 'https://staging.openclaw.example.com',
+      otel_enabled: false,
+      is_active: true,
+      channels_configured: ['web'],
+      ingestion_mode: 'polling',
+      created_at: randomDate(360),
+    },
+  ]
+}
+
+export function generateDemoOpenClawAgents(): OpenClawAgent[] {
+  const agents = [
+    { name: 'Research Assistant', key: 'research-agent', model: 'claude-sonnet-4-20250514' },
+    { name: 'Code Reviewer', key: 'code-reviewer', model: 'claude-sonnet-4-20250514' },
+    { name: 'Customer Support Bot', key: 'support-bot', model: 'claude-haiku-4-5-20251001' },
+    { name: 'Data Analyst', key: 'data-analyst', model: 'claude-sonnet-4-20250514' },
+  ]
+
+  return agents.map((a) => ({
+    id: `oc-agent-${randomId()}`,
+    agent_key: a.key,
+    agent_name: a.name,
+    model: a.model,
+    monitoring_enabled: Math.random() > 0.2,
+    ingestion_mode: 'otel',
+    total_sessions: randomInt(50, 500),
+    total_messages: randomInt(200, 3000),
+    registered_at: randomDate(randomInt(48, 360)),
+  }))
+}
+
+export function generateDemoDifyInstances(): DifyInstance[] {
+  return [
+    {
+      id: `dify-inst-${randomId()}`,
+      name: 'Production Dify',
+      base_url: 'https://dify.example.com',
+      is_active: true,
+      app_types_configured: ['chatbot', 'workflow', 'agent'],
+      ingestion_mode: 'webhook',
+      created_at: randomDate(480),
+    },
+  ]
+}
+
+export function generateDemoDifyApps(): DifyApp[] {
+  const apps = [
+    { name: 'HR Onboarding Assistant', type: 'chatbot' },
+    { name: 'Invoice Processing Pipeline', type: 'workflow' },
+    { name: 'Legal Document Analyzer', type: 'agent' },
+    { name: 'Sales Lead Qualifier', type: 'chatbot' },
+  ]
+
+  return apps.map((a) => ({
+    id: `dify-app-${randomId()}`,
+    app_id: `app-${randomId()}`,
+    app_name: a.name,
+    app_type: a.type,
+    monitoring_enabled: Math.random() > 0.15,
+    ingestion_mode: 'webhook',
+    total_runs: randomInt(100, 2000),
+    total_tokens: randomInt(50000, 500000),
+    registered_at: randomDate(randomInt(48, 360)),
+  }))
+}

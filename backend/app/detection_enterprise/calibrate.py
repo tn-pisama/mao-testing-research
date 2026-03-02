@@ -767,6 +767,13 @@ def _entry_to_llm_prompt(entry: GoldenDatasetEntry, det_type: str,
         text = f"Internal state (what agent knows): {d.get('internal_state', '')}\nAgent output (what agent shared): {d.get('agent_output', '')}"
     elif det_type == "retrieval_quality":
         text = f"Query: {d.get('query', '')}\nRetrieved docs: {str(d.get('retrieved_documents', ''))[:400]}\nOutput: {d.get('agent_output', '')}"
+    elif det_type.startswith("n8n_"):
+        wf = d.get("workflow_json", d)
+        nodes_str = str(wf.get("nodes", []))[:600]
+        text = (f"n8n workflow ({det_type}):\n"
+                f"Node count: {len(wf.get('nodes', []))}\n"
+                f"Connections: {len(wf.get('connections', {}))}\n"
+                f"Nodes: {nodes_str}")
     elif det_type.startswith("openclaw_"):
         session = d.get("session", d)
         events_str = str(session.get("events", []))[:600]
@@ -837,6 +844,13 @@ def _entry_to_llm_prompt(entry: GoldenDatasetEntry, det_type: str,
         "langgraph_tool_failure": "Tool failure — tool node failures without proper retry or fallback handling. NOT a failure: handled tool errors with recovery.",
         "langgraph_parallel_sync": "Parallel sync — synchronization problems in parallel supersteps (write conflicts, missing joins). NOT a problem: independent parallel operations.",
         "langgraph_checkpoint_corruption": "Checkpoint corruption — checkpoint deserialization issues, gaps in sequence, or state inconsistency. NOT corruption: normal checkpoint creation.",
+        # n8n framework-specific structural detectors
+        "n8n_schema": "Schema mismatch — connected nodes have incompatible data types (e.g., json output to text input), missing required fields, or undefined field references. NOT a mismatch: optional fields being absent or minor format differences.",
+        "n8n_cycle": "Graph cycle — workflow has circular node connections creating infinite loops, repeated node sequences, or ping-pong delegation patterns. NOT a cycle: intentional retry loops with exit conditions.",
+        "n8n_complexity": "Excessive complexity — workflow has too many nodes (>50), deep branching (>10 levels), high cyclomatic complexity, or multiple unrelated concerns. NOT complex: legitimately large but well-structured workflows.",
+        "n8n_error": "Missing error handling — AI/HTTP nodes without error handlers, continueOnFail masking failures, or downstream nodes processing invalid data. NOT an error: properly handled failure paths.",
+        "n8n_resource": "Resource exhaustion risk — unbounded token usage, missing maxTokens on AI nodes, data amplification patterns, or API call loops without pagination. NOT a risk: bounded operations with explicit limits.",
+        "n8n_timeout": "Timeout vulnerability — missing workflow-level timeout, webhook nodes without response timeout, or AI nodes that can run indefinitely. NOT a vulnerability: operations with explicit timeout configuration.",
     }
     desc = failure_descriptions.get(det_type, f"Failure type: {det_type}")
 
@@ -1539,6 +1553,13 @@ def calibrate_all(
         DetectionType.LANGGRAPH_TOOL_FAILURE,
         DetectionType.LANGGRAPH_PARALLEL_SYNC,
         DetectionType.LANGGRAPH_CHECKPOINT_CORRUPTION,
+        # n8n framework-specific structural detectors
+        DetectionType.N8N_SCHEMA,
+        DetectionType.N8N_CYCLE,
+        DetectionType.N8N_COMPLEXITY,
+        DetectionType.N8N_ERROR,
+        DetectionType.N8N_RESOURCE,
+        DetectionType.N8N_TIMEOUT,
     ]
 
     # Optional: wrap in a Phoenix parent span
@@ -1816,6 +1837,13 @@ DETECTOR_METADATA: Dict[str, Dict[str, str]] = {
     "completion": {"name": "Completion Misjudgment", "tier": "icp", "module": "app.detection.completion"},
     "grounding": {"name": "Grounding Detection", "tier": "enterprise", "module": "app.detection_enterprise.grounding"},
     "retrieval_quality": {"name": "Retrieval Quality", "tier": "enterprise", "module": "app.detection_enterprise.retrieval_quality"},
+    # n8n framework-specific structural detectors
+    "n8n_schema": {"name": "N8N Schema Mismatch", "tier": "enterprise", "module": "app.detection.n8n.schema_detector"},
+    "n8n_cycle": {"name": "N8N Graph Cycle", "tier": "enterprise", "module": "app.detection.n8n.cycle_detector"},
+    "n8n_complexity": {"name": "N8N Complexity", "tier": "enterprise", "module": "app.detection.n8n.complexity_detector"},
+    "n8n_error": {"name": "N8N Error Handling", "tier": "enterprise", "module": "app.detection.n8n.error_detector"},
+    "n8n_resource": {"name": "N8N Resource Limits", "tier": "enterprise", "module": "app.detection.n8n.resource_detector"},
+    "n8n_timeout": {"name": "N8N Timeout Protection", "tier": "enterprise", "module": "app.detection.n8n.timeout_detector"},
 }
 
 MINIMUM_PASSING_F1 = 0.40
