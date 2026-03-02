@@ -225,16 +225,48 @@ class TestGoldenTracesDataset:
                 f"Type {trace_type} has {count} traces (expected 40-110)"
             )
 
-    @pytest.mark.skip(reason="Golden traces are in OTEL format, not n8n workflow format")
     def test_healthy_traces_score_higher(self, golden_traces_by_type):
-        """
-        SKIPPED: Golden traces are in OTEL span format, not n8n workflow format.
+        """Healthy OTEL traces should have consistent structure vs failing traces."""
+        healthy = golden_traces_by_type.get(None, [])
+        assert len(healthy) > 0, "No healthy traces found"
 
-        The quality assessor expects n8n workflow JSON with nodes and connections,
-        not OTEL traces. This test would require converting OTEL traces to
-        workflow definitions, which is out of scope.
-        """
-        pass
+        # All healthy traces should have expected_detection=False
+        for trace in healthy:
+            meta = trace.get("_golden_metadata", {})
+            assert meta.get("expected_detection") is False, (
+                f"Healthy trace has expected_detection={meta.get('expected_detection')}"
+            )
+
+        # Majority of failing traces should have expected_detection=True
+        # (some borderline variants intentionally have expected_detection=False)
+        for dtype, traces in golden_traces_by_type.items():
+            if dtype is None:
+                continue
+            expected_true = sum(1 for t in traces
+                                if t.get("_golden_metadata", {}).get("expected_detection") is True)
+            assert expected_true > len(traces) * 0.5, (
+                f"Type {dtype}: only {expected_true}/{len(traces)} have expected_detection=True"
+            )
+
+        def span_count(trace):
+            count = 0
+            for r in trace.get("resourceSpans", []):
+                for ss in r.get("scopeSpans", []):
+                    count += len(ss.get("spans", []))
+            return count
+
+        # Healthy traces should have uniform span counts (low variance)
+        healthy_counts = [span_count(t) for t in healthy]
+        assert max(healthy_counts) - min(healthy_counts) <= 2, (
+            f"Healthy span counts vary too much: {min(healthy_counts)}-{max(healthy_counts)}"
+        )
+
+        # Failing traces should have higher max span count (e.g. loops produce more spans)
+        failing_counts = [span_count(t) for typ, traces in golden_traces_by_type.items()
+                          if typ is not None for t in traces]
+        assert max(failing_counts) > max(healthy_counts), (
+            "Expected failing traces to have higher max span count than healthy"
+        )
 
 
 class TestDatasetScoreDistribution:

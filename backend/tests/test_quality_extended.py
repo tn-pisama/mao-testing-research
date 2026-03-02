@@ -60,16 +60,20 @@ class TestArchivedTracesDataset:
         # Verify counts
         assert total_traces >= 4000, f"Total traces {total_traces} < 4000"
 
-    @pytest.mark.skip(reason="OTEL traces need conversion to n8n workflow format")
     def test_quality_by_framework_sample(self, archived_traces_by_framework):
-        """
-        SKIPPED: Archived traces are in OTEL format, not n8n workflow format.
+        """Archived traces across frameworks should have valid content."""
+        assert len(archived_traces_by_framework) >= 3, (
+            f"Expected 3+ frameworks, got {len(archived_traces_by_framework)}"
+        )
 
-        The quality assessor expects n8n workflow JSON with nodes and connections,
-        not OTEL traces. This test would require converting OTEL traces to
-        workflow definitions, which is out of scope.
-        """
-        pass
+        for framework, traces in archived_traces_by_framework.items():
+            sample = traces[:30]
+            for trace in sample:
+                # Each trace should have non-empty content
+                content = trace.get("content", "")
+                assert content, f"Trace from {framework} has empty content"
+                # Each trace should have a framework label
+                assert trace.get("framework") == framework
 
 
 class TestExternalN8nWorkflows:
@@ -201,16 +205,27 @@ class TestMastBenchmark:
                 f"Trace {i} missing failure mode metadata: {list(trace.keys())}"
             )
 
-    @pytest.mark.skip(reason="MAST traces are in OTEL format, not n8n workflow format")
     def test_quality_correlation_with_failure_modes(self, mast_traces):
-        """
-        SKIPPED: MAST traces are in OTEL format, not n8n workflow format.
+        """MAST benchmark traces should have valid failure mode annotations."""
+        assert len(mast_traces) > 0, "No MAST traces loaded"
 
-        The quality assessor expects n8n workflow JSON with nodes and connections,
-        not OTEL traces. This test would require converting OTEL traces to
-        workflow definitions, which is out of scope.
-        """
-        pass
+        # Valid MAST taxonomy IDs: X.Y where X=1-3, Y=1-6
+        valid_ids = {f"{x}.{y}" for x in range(1, 4) for y in range(1, 7)}
+
+        for trace in mast_traces:
+            annotation = trace.get("mast_annotation", {})
+            assert len(annotation) > 0, "MAST trace missing annotations"
+
+            for key, value in annotation.items():
+                assert key in valid_ids, f"Invalid MAST taxonomy ID: {key}"
+                assert value in (0, 1), f"Annotation value must be 0 or 1, got {value}"
+
+        # At least some traces should have positive annotations
+        traces_with_failures = sum(
+            1 for t in mast_traces
+            if any(v == 1 for v in t.get("mast_annotation", {}).values())
+        )
+        assert traces_with_failures > 0, "No MAST traces have any failure annotations"
 
 
 class TestDatasetComprehensiveness:
