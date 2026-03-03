@@ -166,7 +166,7 @@ export default function TestingPage() {
                     <div key={metric.detection_type} className="flex items-center justify-between">
                       <span className="text-slate-300 text-sm">{metric.label}</span>
                       <div className="flex items-center gap-2">
-                        <span className={`font-mono font-medium ${
+                        <span className={`font-medium ${
                           metric.accuracy >= 90 ? 'text-emerald-400' :
                           metric.accuracy >= 80 ? 'text-amber-400' : 'text-red-400'
                         }`}>
@@ -189,7 +189,7 @@ export default function TestingPage() {
                     <div key={metric.detection_type} className="flex items-center justify-between">
                       <span className="text-slate-300 text-sm">{metric.label}</span>
                       <div className="flex items-center gap-2">
-                        <span className={`font-mono font-medium ${
+                        <span className={`font-medium ${
                           metric.accuracy >= 90 ? 'text-emerald-400' :
                           metric.accuracy >= 80 ? 'text-amber-400' : 'text-red-400'
                         }`}>
@@ -209,7 +209,7 @@ export default function TestingPage() {
                     <div key={metric.detection_type} className="flex items-center justify-between">
                       <span className="text-slate-300 text-sm">{metric.label}</span>
                       <div className="flex items-center gap-2">
-                        <span className={`font-mono font-medium ${
+                        <span className={`font-medium ${
                           metric.accuracy >= 90 ? 'text-emerald-400' :
                           metric.accuracy >= 80 ? 'text-amber-400' : 'text-red-400'
                         }`}>
@@ -259,7 +259,7 @@ export default function TestingPage() {
                       className="flex items-center justify-between p-3 bg-slate-700/50 rounded-lg"
                     >
                       <div className="flex items-center gap-3">
-                        <span className="text-slate-400 text-sm font-mono">{run.timestamp}</span>
+                        <span className="text-slate-400 text-sm">{run.timestamp}</span>
                         <span className="text-white">{run.name}</span>
                       </div>
                       <div className="flex items-center gap-2">
@@ -339,17 +339,17 @@ export default function TestingPage() {
                 <div className="space-y-3">
                   <div className="flex justify-between">
                     <span className="text-slate-400">Total Handoffs</span>
-                    <span className="text-white font-mono">{handoffs.length}</span>
+                    <span className="text-white">{handoffs.length}</span>
                   </div>
                   <div className="flex justify-between">
                     <span className="text-slate-400">Success Rate</span>
-                    <span className="text-emerald-400 font-mono">
+                    <span className="text-emerald-400">
                       {Math.round((handoffs.filter(h => h.status === 'success').length / handoffs.length) * 100)}%
                     </span>
                   </div>
                   <div className="flex justify-between">
                     <span className="text-slate-400">Data Loss Events</span>
-                    <span className="text-red-400 font-mono">
+                    <span className="text-red-400">
                       {handoffs.filter(h => h.dataLoss).length}
                     </span>
                   </div>
@@ -361,19 +361,19 @@ export default function TestingPage() {
                 <div className="space-y-3">
                   <div className="flex justify-between">
                     <span className="text-slate-400">Avg Latency</span>
-                    <span className="text-white font-mono">
+                    <span className="text-white">
                       {Math.round(handoffs.filter(h => h.latency > 0).reduce((s, h) => s + h.latency, 0) / handoffs.filter(h => h.latency > 0).length)}ms
                     </span>
                   </div>
                   <div className="flex justify-between">
                     <span className="text-slate-400">Max Latency</span>
-                    <span className="text-amber-400 font-mono">
+                    <span className="text-amber-400">
                       {Math.max(...handoffs.map(h => h.latency))}ms
                     </span>
                   </div>
                   <div className="flex justify-between">
                     <span className="text-slate-400">SLA Breaches</span>
-                    <span className="text-amber-400 font-mono">
+                    <span className="text-amber-400">
                       {handoffs.filter(h => h.latency > 1000).length}
                     </span>
                   </div>

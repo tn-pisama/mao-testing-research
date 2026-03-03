@@ -277,7 +277,7 @@ export default function RegressionPage() {
                         <div>
                           <span className="text-white font-medium">{baseline.name}</span>
                           <div className="flex items-center gap-3 mt-1">
-                            <span className="text-slate-500 text-sm font-mono">{baseline.model}</span>
+                            <span className="text-slate-500 text-sm">{baseline.model}</span>
                             <span className="text-slate-500 text-sm">{baseline.promptCount} prompts</span>
                           </div>
                         </div>
@@ -310,7 +310,7 @@ export default function RegressionPage() {
                           <div>
                             <div className="flex items-center gap-2">
                               <span className="text-white">{alert.type} drift</span>
-                              <span className={`text-sm font-mono ${
+                              <span className={`text-sm ${
                                 alert.similarity >= 0.9 ? 'text-emerald-400' :
                                 alert.similarity >= 0.7 ? 'text-amber-400' : 'text-red-400'
                               }`}>
@@ -356,7 +356,7 @@ export default function RegressionPage() {
                       </div>
                       <div className="flex items-center justify-between text-xs">
                         <span className="text-slate-400">{fp.provider}</span>
-                        <span className="text-slate-500 font-mono">{fp.version}</span>
+                        <span className="text-slate-500">{fp.version}</span>
                       </div>
                     </div>
                   ))}

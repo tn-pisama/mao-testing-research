@@ -3,7 +3,7 @@
 export function HeroSection() {
   return (
     <section className="py-8">
-      <div className="font-mono">
+      <div>
         <h1 className="text-4xl font-bold glow-text mb-2">
           {'> PISAMA_PLATFORM'}
         </h1>

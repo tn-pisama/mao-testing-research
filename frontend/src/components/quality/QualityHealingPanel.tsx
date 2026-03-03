@@ -207,7 +207,7 @@ export function QualityHealingPanel({
             <QualityHealingStatusBadge status={healingRecord.status} />
             <div>
               <p className="text-sm text-slate-300">
-                Healing record <span className="text-white font-mono text-xs">{healingRecord.id.slice(0, 8)}</span>
+                Healing record <span className="text-white text-xs">{healingRecord.id.slice(0, 8)}</span>
               </p>
               <p className="text-xs text-slate-500">
                 Created {new Date(healingRecord.created_at).toLocaleString()}

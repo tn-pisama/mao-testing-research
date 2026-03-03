@@ -674,7 +674,7 @@ function FailureModeCard({ mode }: { mode: FailureMode }) {
             <div className="flex items-center gap-2">
               <h3 className="text-lg font-semibold text-white">{mode.title}</h3>
               {mode.mastId !== 'Ext' && (
-                <span className="px-1.5 py-0.5 text-[10px] font-mono rounded bg-slate-700 text-slate-300">{mode.mastId}</span>
+                <span className="px-1.5 py-0.5 text-[10px] rounded bg-slate-700 text-slate-300">{mode.mastId}</span>
               )}
             </div>
             <div className="flex items-center gap-2 mt-0.5">
@@ -742,7 +742,7 @@ function FailureModeCard({ mode }: { mode: FailureMode }) {
           <h4 className="text-sm font-medium text-slate-400 mb-2">Sub-Types</h4>
           <div className="flex flex-wrap gap-1.5">
             {mode.subTypes.map((st) => (
-              <span key={st} className="px-2 py-0.5 text-[11px] rounded-full bg-slate-700/50 text-slate-400 font-mono">
+              <span key={st} className="px-2 py-0.5 text-[11px] rounded-full bg-slate-700/50 text-slate-400">
                 {st}
               </span>
             ))}
@@ -778,9 +778,9 @@ function SummaryTable() {
             return (
               <tr key={m.detectorKey} className="border-b border-slate-800 hover:bg-slate-800/30">
                 <td className="py-2 px-3 text-white">{m.title}</td>
-                <td className="py-2 px-3 text-slate-300 font-mono">{(f1 * 100).toFixed(1)}%</td>
-                <td className="py-2 px-3 text-slate-300 font-mono">{m.accuracy!.precision > 0 ? `${(m.accuracy!.precision * 100).toFixed(1)}%` : '—'}</td>
-                <td className="py-2 px-3 text-slate-300 font-mono">{m.accuracy!.recall > 0 ? `${(m.accuracy!.recall * 100).toFixed(1)}%` : '—'}</td>
+                <td className="py-2 px-3 text-slate-300">{(f1 * 100).toFixed(1)}%</td>
+                <td className="py-2 px-3 text-slate-300">{m.accuracy!.precision > 0 ? `${(m.accuracy!.precision * 100).toFixed(1)}%` : '—'}</td>
+                <td className="py-2 px-3 text-slate-300">{m.accuracy!.recall > 0 ? `${(m.accuracy!.recall * 100).toFixed(1)}%` : '—'}</td>
                 <td className={`py-2 px-3 text-xs font-medium ${statusColor}`}>{status}</td>
               </tr>
             )
@@ -898,7 +898,7 @@ export default function FailureModesPage() {
             { tier: 'Tier 5', method: 'Human review', cost: 'Variable', desc: 'When all automated tiers are uncertain' },
           ].map((t) => (
             <div key={t.tier} className="flex items-center gap-3 p-3 rounded-lg bg-slate-800/50">
-              <span className="font-mono text-xs text-primary-400 w-12">{t.tier}</span>
+              <span className="text-xs text-primary-400 w-12">{t.tier}</span>
               <span className="text-sm text-white flex-1">{t.method}</span>
               <span className="text-xs text-slate-400 w-24 text-right">{t.cost}</span>
             </div>

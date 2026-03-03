@@ -97,7 +97,7 @@ export function ManageGroupsModal({ isOpen, onClose }: ManageGroupsModalProps) {
       <div className="bg-slate-900 rounded-lg shadow-xl max-w-2xl w-full max-h-[80vh] overflow-hidden border border-slate-700">
         {/* Header */}
         <div className="flex items-center justify-between p-4 border-b border-slate-700">
-          <h2 className="text-xl font-bold text-white font-mono">Manage Workflow Groups</h2>
+          <h2 className="text-xl font-bold text-white">Manage Workflow Groups</h2>
           <button
             onClick={onClose}
             className="text-slate-400 hover:text-white transition-colors"
@@ -110,7 +110,7 @@ export function ManageGroupsModal({ isOpen, onClose }: ManageGroupsModalProps) {
         <div className="p-4 overflow-y-auto max-h-[60vh]">
           {/* Error Message */}
           {error && (
-            <div className="mb-4 p-3 bg-danger-500/20 border border-danger-500/50 rounded-lg text-danger-500 text-sm font-mono">
+            <div className="mb-4 p-3 bg-danger-500/20 border border-danger-500/50 rounded-lg text-danger-500 text-sm">
               {error}
             </div>
           )}
@@ -139,13 +139,13 @@ export function ManageGroupsModal({ isOpen, onClose }: ManageGroupsModalProps) {
                 placeholder="Group Name"
                 value={formData.name || ''}
                 onChange={(e) => setFormData({ ...formData, name: e.target.value })}
-                className="w-full px-3 py-2 bg-slate-900 border border-slate-700 rounded text-white mb-2 font-mono focus:border-primary-500 focus:outline-none"
+                className="w-full px-3 py-2 bg-slate-900 border border-slate-700 rounded text-white mb-2 focus:border-primary-500 focus:outline-none"
               />
               <textarea
                 placeholder="Description (optional)"
                 value={formData.description || ''}
                 onChange={(e) => setFormData({ ...formData, description: e.target.value })}
-                className="w-full px-3 py-2 bg-slate-900 border border-slate-700 rounded text-white mb-2 font-mono focus:border-primary-500 focus:outline-none"
+                className="w-full px-3 py-2 bg-slate-900 border border-slate-700 rounded text-white mb-2 focus:border-primary-500 focus:outline-none"
                 rows={2}
               />
               <div className="flex gap-2">
@@ -180,14 +180,14 @@ export function ManageGroupsModal({ isOpen, onClose }: ManageGroupsModalProps) {
                       type="text"
                       value={formData.name || group.name}
                       onChange={(e) => setFormData({ ...formData, name: e.target.value })}
-                      className="w-full px-3 py-2 bg-slate-900 border border-slate-700 rounded text-white mb-2 font-mono focus:border-primary-500 focus:outline-none"
+                      className="w-full px-3 py-2 bg-slate-900 border border-slate-700 rounded text-white mb-2 focus:border-primary-500 focus:outline-none"
                     />
                     <textarea
                       value={formData.description || group.description || ''}
                       onChange={(e) =>
                         setFormData({ ...formData, description: e.target.value })
                       }
-                      className="w-full px-3 py-2 bg-slate-900 border border-slate-700 rounded text-white mb-2 font-mono focus:border-primary-500 focus:outline-none"
+                      className="w-full px-3 py-2 bg-slate-900 border border-slate-700 rounded text-white mb-2 focus:border-primary-500 focus:outline-none"
                       rows={2}
                     />
                     <div className="flex gap-2">
@@ -219,16 +219,16 @@ export function ManageGroupsModal({ isOpen, onClose }: ManageGroupsModalProps) {
                         style={{ backgroundColor: group.color || '#3b82f6' }}
                       />
                       <div>
-                        <div className="font-medium text-white font-mono">{group.name}</div>
+                        <div className="font-medium text-white">{group.name}</div>
                         {group.description && (
-                          <div className="text-sm text-slate-400 font-mono">
+                          <div className="text-sm text-slate-400">
                             {group.description}
                           </div>
                         )}
                       </div>
                     </div>
                     <div className="flex items-center gap-2">
-                      <span className="text-sm text-slate-400 font-mono">
+                      <span className="text-sm text-slate-400">
                         {group.workflow_count || 0} workflows
                       </span>
                       <button
@@ -253,7 +253,7 @@ export function ManageGroupsModal({ isOpen, onClose }: ManageGroupsModalProps) {
           </div>
 
           {groups.length === 0 && !isCreating && (
-            <div className="text-center py-8 text-slate-400 font-mono">
+            <div className="text-center py-8 text-slate-400">
               No workflow groups yet. Create one to get started!
             </div>
           )}

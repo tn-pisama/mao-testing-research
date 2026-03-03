@@ -45,7 +45,7 @@ export function ProblemsOverviewCard({ detections, isLoading }: ProblemsOverview
           </CardTitle>
           <Link
             href="/detections"
-            className="flex items-center gap-1 text-sm text-primary-500 hover:text-primary-400 font-mono"
+            className="flex items-center gap-1 text-sm text-primary-500 hover:text-primary-400"
           >
             View all
             <ChevronRight size={16} />
@@ -57,7 +57,7 @@ export function ProblemsOverviewCard({ detections, isLoading }: ProblemsOverview
           <div className="text-4xl font-bold text-white">
             {totalProblems}
           </div>
-          <div className={`flex items-center gap-1 text-sm font-mono ${trend === 'down' ? 'text-success-500' : 'text-danger-500'}`}>
+          <div className={`flex items-center gap-1 text-sm ${trend === 'down' ? 'text-success-500' : 'text-danger-500'}`}>
             {trend === 'down' ? <TrendingDown size={16} /> : <TrendingUp size={16} />}
             {trendPercent}% this week
           </div>
@@ -65,7 +65,7 @@ export function ProblemsOverviewCard({ detections, isLoading }: ProblemsOverview
 
         {(criticalCount > 0 || highCount > 0) && (
           <div className="p-3 bg-danger-500/10 border border-danger-500/30 rounded-lg">
-            <div className="text-sm text-danger-500 font-mono">
+            <div className="text-sm text-danger-500">
               {criticalCount > 0 && (
                 <span className="font-medium">{criticalCount} critical</span>
               )}
@@ -79,13 +79,13 @@ export function ProblemsOverviewCard({ detections, isLoading }: ProblemsOverview
         )}
 
         {criticalCount === 0 && highCount === 0 && totalProblems > 0 && (
-          <div className="text-sm text-white/60 font-mono">
+          <div className="text-sm text-white/60">
             All issues are low or medium priority
           </div>
         )}
 
         {totalProblems === 0 && (
-          <div className="text-sm text-success-500 font-mono">
+          <div className="text-sm text-success-500">
             No problems detected - your workflows are healthy!
           </div>
         )}

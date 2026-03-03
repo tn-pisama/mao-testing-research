@@ -103,7 +103,7 @@ function FailureBadge({ code, name, count }: { code: string; name: string; count
   return (
     <div className="flex items-center justify-between py-2 px-3 bg-slate-900/30 rounded-lg">
       <div className="flex items-center gap-2">
-        <span className="text-amber-400 font-mono text-xs">{code}</span>
+        <span className="text-amber-400 text-xs">{code}</span>
         <span className="text-slate-300 text-sm">{name}</span>
       </div>
       <span className="text-slate-400 text-xs">{count} caught</span>

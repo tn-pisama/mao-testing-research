@@ -329,7 +329,7 @@ export default function EvalsPage() {
                             style={{ width: `${score * 100}%` }}
                           />
                         </div>
-                        <span className={`font-mono text-sm ${getScoreColor(score)}`}>
+                        <span className={`text-sm ${getScoreColor(score)}`}>
                           {(score * 100).toFixed(0)}%
                         </span>
                       </div>
@@ -362,7 +362,7 @@ export default function EvalsPage() {
                     <div key={key} className="p-3 bg-slate-700/50 rounded-lg">
                       <div className="flex items-center justify-between mb-2">
                         <span className="text-slate-400 text-sm capitalize">{key}</span>
-                        <span className={`font-mono text-sm ${getScoreColor(score)}`}>
+                        <span className={`text-sm ${getScoreColor(score)}`}>
                           {(score * 100).toFixed(0)}%
                         </span>
                       </div>
@@ -408,17 +408,17 @@ export default function EvalsPage() {
                 <div className="grid grid-cols-2 gap-3 text-sm">
                   <div className="p-3 bg-slate-700/50 rounded-lg">
                     <span className="text-slate-500">Confidence</span>
-                    <p className={`font-mono ${getScoreColor(llmResult.confidence)}`}>
+                    <p className={`${getScoreColor(llmResult.confidence)}`}>
                       {(llmResult.confidence * 100).toFixed(0)}%
                     </p>
                   </div>
                   <div className="p-3 bg-slate-700/50 rounded-lg">
                     <span className="text-slate-500">Model</span>
-                    <p className="text-white font-mono">{llmResult.model_used}</p>
+                    <p className="text-white">{llmResult.model_used}</p>
                   </div>
                   <div className="p-3 bg-slate-700/50 rounded-lg col-span-2">
                     <span className="text-slate-500">Tokens Used</span>
-                    <p className="text-white font-mono">{llmResult.tokens_used}</p>
+                    <p className="text-white">{llmResult.tokens_used}</p>
                   </div>
                 </div>
               </div>

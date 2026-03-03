@@ -188,7 +188,7 @@ export default function ReplayPage() {
                         <div>
                           <span className="text-white font-medium">{bundle.name}</span>
                           <div className="flex items-center gap-4 mt-1">
-                            <span className="text-slate-500 text-sm font-mono">{bundle.traceId}</span>
+                            <span className="text-slate-500 text-sm">{bundle.traceId}</span>
                             <span className="text-slate-500 text-sm">{bundle.createdAt}</span>
                           </div>
                         </div>
@@ -246,17 +246,17 @@ export default function ReplayPage() {
               <div className="space-y-3">
                 <div className="flex justify-between">
                   <span className="text-slate-400">Total Bundles</span>
-                  <span className="text-white font-mono">{bundles.length}</span>
+                  <span className="text-white">{bundles.length}</span>
                 </div>
                 <div className="flex justify-between">
                   <span className="text-slate-400">Avg Match Rate</span>
-                  <span className="text-emerald-400 font-mono">
+                  <span className="text-emerald-400">
                     {showResults ? `${(overallSimilarity * 100).toFixed(1)}%` : '94.2%'}
                   </span>
                 </div>
                 <div className="flex justify-between">
                   <span className="text-slate-400">Completed</span>
-                  <span className="text-white font-mono">
+                  <span className="text-white">
                     {bundles.filter(b => b.status === 'completed').length}
                   </span>
                 </div>
@@ -298,7 +298,7 @@ export default function ReplayPage() {
                     <div className="flex-1">
                       <div className="flex items-center justify-between mb-2">
                         <span className="text-slate-400 text-sm">Step {result.step}</span>
-                        <span className={`text-sm font-mono ${
+                        <span className={`text-sm ${
                           result.similarity >= 0.95 ? 'text-emerald-400' :
                           result.similarity >= 0.8 ? 'text-amber-400' : 'text-red-400'
                         }`}>

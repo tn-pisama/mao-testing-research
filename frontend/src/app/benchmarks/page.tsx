@@ -211,7 +211,7 @@ export default function BenchmarksPage() {
                   <tr key={mode.code} className="hover:bg-slate-700/30">
                     <td className="px-4 py-3">
                       <div className="flex items-center gap-2">
-                        <span className="text-emerald-400 font-mono text-sm">{mode.code}</span>
+                        <span className="text-emerald-400 text-sm">{mode.code}</span>
                         <span className="text-white text-sm">{mode.name}</span>
                       </div>
                     </td>
@@ -266,7 +266,7 @@ export default function BenchmarksPage() {
                   <tr key={mode.code} className="hover:bg-slate-700/30">
                     <td className="px-4 py-3">
                       <div className="flex items-center gap-2">
-                        <span className="text-amber-400 font-mono text-sm">{mode.code}</span>
+                        <span className="text-amber-400 text-sm">{mode.code}</span>
                         <span className="text-white text-sm">{mode.name}</span>
                       </div>
                     </td>
@@ -320,7 +320,7 @@ export default function BenchmarksPage() {
                   <tr key={mode.code} className="hover:bg-slate-700/30">
                     <td className="px-4 py-3">
                       <div className="flex items-center gap-2">
-                        <span className="text-slate-400 font-mono text-sm">{mode.code}</span>
+                        <span className="text-slate-400 text-sm">{mode.code}</span>
                         <span className="text-white text-sm">{mode.name}</span>
                       </div>
                     </td>
@@ -440,7 +440,7 @@ export default function BenchmarksPage() {
             {FAILURE_MODES.filter(m => m.improvement).map((mode) => (
               <div key={mode.code} className="p-3 bg-slate-900/50 rounded-lg">
                 <div className="flex items-center gap-2 mb-2">
-                  <span className="text-emerald-400 font-mono text-xs">{mode.code}</span>
+                  <span className="text-emerald-400 text-xs">{mode.code}</span>
                   <span className="text-white text-sm">{mode.name}</span>
                 </div>
                 <div className="flex items-center gap-2">

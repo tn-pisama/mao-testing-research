@@ -7,7 +7,7 @@ import './globals.css'
 import { Providers } from './providers'
 import { SessionWrapper } from '../components/SessionWrapper'
 
-const inter = Inter({ subsets: ['latin'] })
+const inter = Inter({ subsets: ['latin'], variable: '--font-inter' })
 
 export const metadata: Metadata = {
   title: 'PISAMA - Agent Forensics',
@@ -23,7 +23,7 @@ export default function RootLayout({
 
   return (
     <html lang="en">
-      <body className={inter.className}>
+      <body className={`${inter.variable} font-sans`}>
         <SessionWrapper>
           <Providers>{children}</Providers>
         </SessionWrapper>

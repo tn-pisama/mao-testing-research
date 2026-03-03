@@ -57,7 +57,7 @@ export function StatsCard({
     <Card>
       <div className="flex items-start justify-between">
         <div>
-          <p className="text-sm text-white/60 font-mono">{title}</p>
+          <p className="text-sm text-white/60">{title}</p>
           <p className="mt-1 text-3xl font-bold text-primary-500 font-mono">{value}</p>
           {change !== undefined && (
             <div className="flex items-center mt-2 gap-1">
@@ -65,7 +65,7 @@ export function StatsCard({
               <span className={clsx('text-sm font-medium font-mono', trendColor)}>
                 {change >= 0 ? '+' : ''}{change}%
               </span>
-              <span className="text-xs text-white/40 font-mono">{changeLabel}</span>
+              <span className="text-xs text-white/40">{changeLabel}</span>
             </div>
           )}
         </div>

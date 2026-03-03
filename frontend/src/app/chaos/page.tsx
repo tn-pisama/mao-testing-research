@@ -307,15 +307,15 @@ export default function ChaosPage() {
               <div className="space-y-3">
                 <div className="flex justify-between">
                   <span className="text-slate-400">Total Sessions</span>
-                  <span className="text-white font-mono">{sessions.length}</span>
+                  <span className="text-white">{sessions.length}</span>
                 </div>
                 <div className="flex justify-between">
                   <span className="text-slate-400">Completed</span>
-                  <span className="text-emerald-400 font-mono">{sessions.filter(s => s.status === 'completed').length}</span>
+                  <span className="text-emerald-400">{sessions.filter(s => s.status === 'completed').length}</span>
                 </div>
                 <div className="flex justify-between">
                   <span className="text-slate-400">Aborted</span>
-                  <span className="text-red-400 font-mono">{sessions.filter(s => s.status === 'aborted').length}</span>
+                  <span className="text-red-400">{sessions.filter(s => s.status === 'aborted').length}</span>
                 </div>
               </div>
             </div>

@@ -56,7 +56,7 @@ export interface CardTitleProps extends HTMLAttributes<HTMLHeadingElement> {}
 
 export const CardTitle = forwardRef<HTMLHeadingElement, CardTitleProps>(
   ({ className, children, ...props }, ref) => (
-    <h3 ref={ref} className={clsx('text-lg font-mono font-semibold text-primary-500', className)} {...props}>
+    <h3 ref={ref} className={clsx('text-lg font-semibold text-primary-500', className)} {...props}>
       {children}
     </h3>
   )

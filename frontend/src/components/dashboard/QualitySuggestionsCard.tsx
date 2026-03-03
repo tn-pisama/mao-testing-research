@@ -60,7 +60,7 @@ export function QualitySuggestionsCard({
           </CardTitle>
           <Link
             href="/quality"
-            className="flex items-center gap-1 text-sm text-primary-500 hover:text-primary-400 font-mono"
+            className="flex items-center gap-1 text-sm text-primary-500 hover:text-primary-400"
           >
             View all
             <ChevronRight size={16} />
@@ -70,8 +70,8 @@ export function QualitySuggestionsCard({
       <CardContent>
         {suggestions.length === 0 ? (
           <div className="text-center py-6">
-            <div className="text-success-500 mb-2 font-mono">All workflows are optimized!</div>
-            <div className="text-sm text-white/60 font-mono">
+            <div className="text-success-500 mb-2">All workflows are optimized!</div>
+            <div className="text-sm text-white/60">
               No improvement suggestions at this time
             </div>
           </div>
@@ -112,11 +112,11 @@ export function QualitySuggestionsCard({
                             {suggestion.title}
                           </span>
                         </div>
-                        <div className="text-xs text-white/60 font-mono line-clamp-2">
+                        <div className="text-xs text-white/60 line-clamp-2">
                           {suggestion.description}
                         </div>
                         <div className="flex items-center gap-3 mt-2">
-                          <span className="text-xs text-white/40 font-mono">
+                          <span className="text-xs text-white/40">
                             {suggestion.category}
                           </span>
                           <span className="text-xs text-white/40">•</span>
@@ -136,7 +136,7 @@ export function QualitySuggestionsCard({
               <div className="mt-3 text-center">
                 <Link
                   href="/quality"
-                  className="text-sm text-primary-500 hover:text-primary-400 font-mono"
+                  className="text-sm text-primary-500 hover:text-primary-400"
                 >
                   +{suggestions.length - maxItems} more suggestions
                 </Link>

@@ -53,7 +53,7 @@ export function WorkflowGroupFilter({ onManageGroups }: WorkflowGroupFilterProps
     <div className="relative" ref={dropdownRef}>
       <button
         onClick={() => setIsOpen(!isOpen)}
-        className="flex items-center gap-2 px-3 py-1.5 bg-slate-900 border border-slate-700 rounded-lg text-white text-sm hover:border-slate-600 transition-colors font-mono"
+        className="flex items-center gap-2 px-3 py-1.5 bg-slate-900 border border-slate-700 rounded-lg text-white text-sm hover:border-slate-600 transition-colors"
       >
         <Folder size={16} className="text-primary-500" />
         <span>{displayName}</span>
@@ -72,7 +72,7 @@ export function WorkflowGroupFilter({ onManageGroups }: WorkflowGroupFilterProps
               setIsOpen(false)
             }}
             className={clsx(
-              'w-full flex items-center gap-2 px-3 py-2 text-sm hover:bg-slate-800 transition-colors font-mono',
+              'w-full flex items-center gap-2 px-3 py-2 text-sm hover:bg-slate-800 transition-colors',
               selectedGroupId === 'all' && 'bg-primary-500/20 text-primary-500'
             )}
           >
@@ -87,7 +87,7 @@ export function WorkflowGroupFilter({ onManageGroups }: WorkflowGroupFilterProps
               setIsOpen(false)
             }}
             className={clsx(
-              'w-full flex items-center gap-2 px-3 py-2 text-sm hover:bg-slate-800 transition-colors font-mono',
+              'w-full flex items-center gap-2 px-3 py-2 text-sm hover:bg-slate-800 transition-colors',
               selectedGroupId === 'ungrouped' && 'bg-primary-500/20 text-primary-500'
             )}
           >
@@ -109,7 +109,7 @@ export function WorkflowGroupFilter({ onManageGroups }: WorkflowGroupFilterProps
                   setIsOpen(false)
                 }}
                 className={clsx(
-                  'w-full flex items-center gap-2 px-3 py-2 text-sm hover:bg-slate-800 transition-colors font-mono',
+                  'w-full flex items-center gap-2 px-3 py-2 text-sm hover:bg-slate-800 transition-colors',
                   selectedGroupId === group.id && 'bg-primary-500/20 text-primary-500'
                 )}
               >
@@ -133,7 +133,7 @@ export function WorkflowGroupFilter({ onManageGroups }: WorkflowGroupFilterProps
                   setIsOpen(false)
                   onManageGroups()
                 }}
-                className="w-full flex items-center gap-2 px-3 py-2 text-sm text-primary-500 hover:bg-slate-800 transition-colors font-mono"
+                className="w-full flex items-center gap-2 px-3 py-2 text-sm text-primary-500 hover:bg-slate-800 transition-colors"
               >
                 <Settings2 size={16} />
                 <span>Manage Groups</span>

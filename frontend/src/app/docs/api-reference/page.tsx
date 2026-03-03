@@ -426,7 +426,7 @@ function ErrorCode({
 }) {
   return (
     <div className="flex items-center gap-4 p-3 rounded-lg bg-slate-800/50">
-      <span className="font-mono text-red-400 w-12">{code}</span>
+      <span className="text-red-400 w-12">{code}</span>
       <span className="font-medium text-white w-40">{message}</span>
       <span className="text-sm text-slate-400">{description}</span>
     </div>

@@ -355,7 +355,7 @@ function CategorySection({
         {modes.map((mode) => (
           <div key={mode.code} className="flex items-center justify-between px-4 py-2">
             <div className="flex items-center gap-2">
-              <span className="text-slate-400 font-mono text-sm">{mode.code}</span>
+              <span className="text-slate-400 text-sm">{mode.code}</span>
               <span className="text-slate-300 text-sm">{mode.name}</span>
             </div>
             {mode.rate !== null ? (
@@ -389,7 +389,7 @@ function ImprovementItem({
     <div className="bg-slate-800 rounded-lg p-4 border border-slate-700">
       <div className="flex items-center justify-between mb-2">
         <div className="flex items-center gap-2">
-          <span className="text-emerald-400 font-mono text-sm">{code}</span>
+          <span className="text-emerald-400 text-sm">{code}</span>
           <span className="text-white">{name}</span>
         </div>
         <div className="flex items-center gap-2 text-sm">

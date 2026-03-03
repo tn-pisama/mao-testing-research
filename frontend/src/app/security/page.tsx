@@ -450,7 +450,7 @@ export default function SecurityPage() {
                 <div className="space-y-3">
                   <div className="flex justify-between p-3 bg-slate-700/50 rounded-lg">
                     <span className="text-slate-400">Grounding Score</span>
-                    <span className={`font-mono ${hallucinationResult.grounding_score >= 0.8 ? 'text-emerald-400' : hallucinationResult.grounding_score >= 0.6 ? 'text-amber-400' : 'text-red-400'}`}>
+                    <span className={`${hallucinationResult.grounding_score >= 0.8 ? 'text-emerald-400' : hallucinationResult.grounding_score >= 0.6 ? 'text-amber-400' : 'text-red-400'}`}>
                       {(hallucinationResult.grounding_score * 100).toFixed(1)}%
                     </span>
                   </div>
@@ -495,15 +495,15 @@ export default function SecurityPage() {
                 <div className="space-y-3">
                   <div className="flex justify-between p-3 bg-slate-700/50 rounded-lg">
                     <span className="text-slate-400">Current Tokens</span>
-                    <span className="text-white font-mono">{overflowResult.current_tokens.toLocaleString()}</span>
+                    <span className="text-white">{overflowResult.current_tokens.toLocaleString()}</span>
                   </div>
                   <div className="flex justify-between p-3 bg-slate-700/50 rounded-lg">
                     <span className="text-slate-400">Context Window</span>
-                    <span className="text-white font-mono">{overflowResult.context_window.toLocaleString()}</span>
+                    <span className="text-white">{overflowResult.context_window.toLocaleString()}</span>
                   </div>
                   <div className="flex justify-between p-3 bg-slate-700/50 rounded-lg">
                     <span className="text-slate-400">Remaining</span>
-                    <span className="text-white font-mono">{overflowResult.remaining_tokens.toLocaleString()}</span>
+                    <span className="text-white">{overflowResult.remaining_tokens.toLocaleString()}</span>
                   </div>
                 </div>
 
@@ -552,7 +552,7 @@ export default function SecurityPage() {
                   </div>
                   <div className="flex justify-between p-3 bg-slate-700/50 rounded-lg">
                     <span className="text-slate-400">Total Tokens</span>
-                    <span className="text-white font-mono">{costResult.total_tokens.toLocaleString()}</span>
+                    <span className="text-white">{costResult.total_tokens.toLocaleString()}</span>
                   </div>
                 </div>
               </div>

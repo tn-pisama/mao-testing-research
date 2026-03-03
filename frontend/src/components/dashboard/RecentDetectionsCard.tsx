@@ -56,7 +56,7 @@ export function RecentDetectionsCard({ detections, isLoading }: RecentDetections
           <CardTitle>Recent Detections</CardTitle>
           <Link
             href="/detections"
-            className="flex items-center gap-1 text-sm text-primary-500 hover:text-primary-400 font-mono"
+            className="flex items-center gap-1 text-sm text-primary-500 hover:text-primary-400"
           >
             View all
             <ChevronRight size={16} />
@@ -66,7 +66,7 @@ export function RecentDetectionsCard({ detections, isLoading }: RecentDetections
       <CardContent>
         <div className="space-y-3">
           {detections.length === 0 ? (
-            <div className="text-center py-8 text-white/60 font-mono">
+            <div className="text-center py-8 text-white/60">
               <AlertTriangle size={24} className="mx-auto mb-2 opacity-50" />
               <p className="text-sm">No recent detections</p>
             </div>
@@ -93,7 +93,7 @@ export function RecentDetectionsCard({ detections, isLoading }: RecentDetections
                       <p className="text-sm font-medium text-white">
                         {detection.detection_type.replace(/_/g, ' ')}
                       </p>
-                      <p className="text-xs text-white/40 font-mono">
+                      <p className="text-xs text-white/40">
                         Trace: {detection.trace_id.slice(0, 8)}...
                       </p>
                     </div>
@@ -102,7 +102,7 @@ export function RecentDetectionsCard({ detections, isLoading }: RecentDetections
                     <Badge variant={severityStyles[severity]} size="sm">
                       {severity}
                     </Badge>
-                    <div className="flex items-center gap-1 text-xs text-white/40 font-mono">
+                    <div className="flex items-center gap-1 text-xs text-white/40">
                       <Clock size={12} />
                       {formatTime(detection.created_at)}
                     </div>

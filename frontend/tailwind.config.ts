@@ -9,42 +9,44 @@ const config: Config = {
   theme: {
     extend: {
       colors: {
-        black: '#0a0a0a',
+        black: '#09090b',
         primary: {
-          400: '#22d3ee',
-          500: '#00d4ff',
-          600: '#00ffff',
+          400: '#60a5fa',
+          500: '#3b82f6',
+          600: '#2563eb',
         },
         accent: {
-          400: '#f472b6',
-          500: '#ff00ff',
-          600: '#ff00ff',
+          400: '#a78bfa',
+          500: '#8b5cf6',
+          600: '#7c3aed',
         },
         success: {
-          500: '#00ff88',
-          600: '#00ff88',
+          500: '#22c55e',
+          600: '#16a34a',
         },
         warning: {
-          500: '#ffaa00',
-          600: '#ffaa00',
+          500: '#f59e0b',
+          600: '#d97706',
         },
         danger: {
-          500: '#ff0055',
-          600: '#ff0055',
+          500: '#ef4444',
+          600: '#dc2626',
         },
       },
       fontFamily: {
-        sans: ['-apple-system', 'BlinkMacSystemFont', '"Segoe UI"', 'Roboto', 'Arial', 'sans-serif'],
+        sans: ['var(--font-inter)', '-apple-system', 'BlinkMacSystemFont', '"Segoe UI"', 'Roboto', 'Arial', 'sans-serif'],
         mono: ['"JetBrains Mono"', 'ui-monospace', '"SF Mono"', 'Monaco', 'Consolas', 'monospace'],
       },
       boxShadow: {
-        'glow-cyan': '0 0 10px rgba(0, 212, 255, 0.5)',
-        'glow-magenta': '0 0 10px rgba(255, 0, 255, 0.5)',
-        'glow-green': '0 0 8px rgba(0, 255, 136, 0.4)',
-        'glow-red': '0 0 8px rgba(255, 0, 85, 0.4)',
+        'glow-cyan': '0 0 0 2px rgba(59, 130, 246, 0.3)',
+        'glow-magenta': '0 0 0 2px rgba(139, 92, 246, 0.3)',
+        'glow-green': '0 0 0 2px rgba(34, 197, 94, 0.3)',
+        'glow-red': '0 0 0 2px rgba(239, 68, 68, 0.3)',
+        'card': '0 0 0 1px rgba(255, 255, 255, 0.05), 0 1px 3px rgba(0, 0, 0, 0.3)',
+        'elevated': '0 4px 12px rgba(0, 0, 0, 0.4)',
       },
     },
   },
-  plugins: [],
+  plugins: [require('tailwindcss-animate')],
 }
 export default config

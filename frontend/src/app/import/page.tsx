@@ -396,7 +396,7 @@ export default function ImportPage() {
                       </div>
                     </div>
                     <div className="text-right">
-                      <p className="text-white font-mono">
+                      <p className="text-white">
                         {job.recordsProcessed.toLocaleString()} records
                       </p>
                       {job.recordsFailed > 0 && (

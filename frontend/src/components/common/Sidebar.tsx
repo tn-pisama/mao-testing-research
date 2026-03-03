@@ -102,7 +102,7 @@ export function Sidebar({ isCollapsed = false, onToggle }: SidebarProps) {
       <Link
         href={item.href}
         className={clsx(
-          'flex items-center gap-3 px-3 py-2 rounded-lg transition-all duration-200 font-mono',
+          'flex items-center gap-3 px-3 py-2 rounded-lg transition-all duration-200',
           isActive
             ? 'bg-primary-500/20 text-primary-500 shadow-glow-green border border-primary-500/50'
             : 'text-primary-400 hover:bg-primary-500/10 hover:text-primary-500 hover:shadow-glow-green'
@@ -113,7 +113,7 @@ export function Sidebar({ isCollapsed = false, onToggle }: SidebarProps) {
           <>
             <span className="flex-1">{item.label}</span>
             {item.badge && (
-              <span className="px-2 py-0.5 text-xs bg-primary-500/20 text-primary-500 border border-primary-500/50 rounded-full font-mono">
+              <span className="px-2 py-0.5 text-xs bg-primary-500/20 text-primary-500 border border-primary-500/50 rounded-full">
                 {item.badge}
               </span>
             )}
@@ -132,7 +132,7 @@ export function Sidebar({ isCollapsed = false, onToggle }: SidebarProps) {
     return (
       <div className="space-y-1">
         {title && !isCollapsed && (
-          <div className="px-3 py-2 text-xs font-semibold text-primary-400/70 uppercase tracking-wider font-mono">
+          <div className="px-3 py-2 text-xs font-semibold text-primary-400/70 uppercase tracking-wider">
             {title}
           </div>
         )}
@@ -158,7 +158,7 @@ export function Sidebar({ isCollapsed = false, onToggle }: SidebarProps) {
         <Link href="/" className="flex items-center gap-2">
           <Shield className="h-8 w-8 text-primary-500 shadow-glow-green" />
           {!isCollapsed && (
-            <span className="text-xl font-bold text-primary-500 font-mono glow-text">
+            <span className="text-xl font-bold text-primary-500 glow-text">
               {isSimplifiedView ? 'Workflow Guard' : 'Pisama'}
             </span>
           )}
@@ -188,7 +188,7 @@ export function Sidebar({ isCollapsed = false, onToggle }: SidebarProps) {
       {/* Footer */}
       <div className="p-4 border-t border-primary-500/30">
         {!isCollapsed && (
-          <div className="text-xs text-primary-400 font-mono">
+          <div className="text-xs text-primary-400">
             {isSimplifiedView ? (
               <>
                 <div>Workflow Guard</div>

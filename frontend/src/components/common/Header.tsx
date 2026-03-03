@@ -27,7 +27,7 @@ export function Header({ onMenuClick, title, notificationCount = 0 }: HeaderProp
             <Menu size={20} />
           </button>
         )}
-        {title && <h1 className="text-xl font-semibold text-primary-500 font-mono">{title}</h1>}
+        {title && <h1 className="text-xl font-semibold text-primary-500">{title}</h1>}
       </div>
 
       <div className="flex items-center gap-3">
@@ -49,14 +49,14 @@ export function Header({ onMenuClick, title, notificationCount = 0 }: HeaderProp
         )}
 
         {/* Search */}
-        <div className="hidden md:flex items-center gap-2 px-3 py-2 bg-black border border-primary-500/30 rounded-lg font-mono">
+        <div className="hidden md:flex items-center gap-2 px-3 py-2 bg-black border border-primary-500/30 rounded-lg">
           <Search size={18} className="text-primary-400" />
           <input
             type="text"
             placeholder="Search..."
             className="bg-transparent border-none outline-none text-sm text-primary-400 placeholder-primary-500/40 w-48"
           />
-          <kbd className="hidden lg:inline-flex px-2 py-0.5 text-xs bg-primary-500/20 text-primary-500 border border-primary-500/30 rounded font-mono">
+          <kbd className="hidden lg:inline-flex px-2 py-0.5 text-xs bg-primary-500/20 text-primary-500 border border-primary-500/30 rounded">
             ⌘K
           </kbd>
         </div>

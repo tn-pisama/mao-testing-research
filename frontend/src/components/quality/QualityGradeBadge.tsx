@@ -29,7 +29,7 @@ function gradeToTier(grade: string): { label: string; className: string } {
 
 export const QualityGradeBadge = forwardRef<HTMLSpanElement, QualityGradeBadgeProps>(
   ({ className, grade, size = 'md', showLabel = false, ...props }, ref) => {
-    const baseStyles = 'inline-flex items-center font-semibold rounded-md border font-mono'
+    const baseStyles = 'inline-flex items-center font-semibold rounded-md border'
 
     const sizes = {
       sm: 'px-1.5 py-0.5 text-xs',

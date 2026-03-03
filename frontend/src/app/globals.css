@@ -4,24 +4,47 @@
 @tailwind components;
 @tailwind utilities;
 
-/* Terminal/Hacker - Black background, neon green, maximum density */
+/* shadcn/ui CSS variable foundation — premium dark theme */
+@layer base {
+  :root {
+    --background: 240 10% 3.9%;
+    --foreground: 0 0% 98%;
+    --card: 240 10% 3.9%;
+    --card-foreground: 0 0% 98%;
+    --popover: 240 10% 3.9%;
+    --popover-foreground: 0 0% 98%;
+    --primary: 217 91% 60%;
+    --primary-foreground: 0 0% 98%;
+    --secondary: 240 3.7% 15.9%;
+    --secondary-foreground: 0 0% 98%;
+    --muted: 240 3.7% 15.9%;
+    --muted-foreground: 240 5% 64.9%;
+    --accent: 240 3.7% 15.9%;
+    --accent-foreground: 0 0% 98%;
+    --destructive: 0 62.8% 30.6%;
+    --destructive-foreground: 0 0% 98%;
+    --border: 240 3.7% 15.9%;
+    --input: 240 3.7% 15.9%;
+    --ring: 217 91% 60%;
+    --radius: 0.5rem;
+  }
+}
 
+/* Premium tech theme variables */
 :root {
-  --bg-base: #000000;
-  --bg-elevated: #0a0a0a;
-  --border: #00ff00;
-  --neon-green: #00ff00;
-  --neon-cyan: #00ffff;
-  --neon-red: #ff0055;
+  --bg-base: #09090b;
+  --bg-elevated: #18181b;
+  --border: #27272a;
 }
 
 body {
-  color: var(--neon-green);
+  color: #fafafa;
   background: var(--bg-base);
-  font-family: 'JetBrains Mono', monospace;
-  line-height: 1.4;
+  line-height: 1.5;
   font-weight: 400;
   font-size: 14px;
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
 }
 
 .scrollbar-thin::-webkit-scrollbar {
@@ -34,30 +57,8 @@ body {
 }
 
 .scrollbar-thin::-webkit-scrollbar-thumb {
-  background-color: var(--neon-green);
-  border-radius: 0;
-}
-
-/* Terminal scanline effect */
-@keyframes scanline {
-  0% { top: -50%; }
-  100% { top: 150%; }
-}
-
-.scanline::before {
-  content: '';
-  position: absolute;
-  top: 0;
-  left: 0;
-  right: 0;
-  height: 2px;
-  background: rgba(0, 255, 0, 0.1);
-  animation: scanline 8s linear infinite;
-  pointer-events: none;
-}
-
-.glow-text {
-  text-shadow: 0 0 10px var(--neon-green), 0 0 20px var(--neon-green);
+  background-color: #52525b;
+  border-radius: 2px;
 }
 
 .react-flow__node {
@@ -65,7 +66,7 @@ body {
 }
 
 .react-flow__edge-path {
-  stroke: var(--neon-green);
+  stroke: #3b82f6;
 }
 
 .line-clamp-2 {

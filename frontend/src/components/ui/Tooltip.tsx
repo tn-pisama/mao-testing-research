@@ -44,7 +44,7 @@ export function Tooltip({ content, children, position = 'top', className }: Tool
           ref={tooltipRef}
           role="tooltip"
           className={clsx(
-            'absolute z-50 px-3 py-2 text-sm font-mono text-white bg-black border border-primary-500/50 rounded shadow-[0_0_15px_rgba(0,212,255,0.3)] whitespace-normal max-w-xs',
+            'absolute z-50 px-3 py-2 text-sm text-white bg-black border border-primary-500/50 rounded shadow-[0_0_15px_rgba(0,212,255,0.3)] whitespace-normal max-w-xs',
             positionClasses[position],
             className
           )}

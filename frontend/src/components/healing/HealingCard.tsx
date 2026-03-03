@@ -359,11 +359,11 @@ export function HealingCard({
               <div className="mt-2 grid grid-cols-2 gap-4 text-xs">
                 <div>
                   <p className="text-slate-500">Fix ID</p>
-                  <p className="text-white font-mono">{healing.fix_id || 'N/A'}</p>
+                  <p className="text-white">{healing.fix_id || 'N/A'}</p>
                 </div>
                 <div>
                   <p className="text-slate-500">Workflow ID</p>
-                  <p className="text-white font-mono">{healing.workflow_id || 'N/A'}</p>
+                  <p className="text-white">{healing.workflow_id || 'N/A'}</p>
                 </div>
               </div>
             </details>
