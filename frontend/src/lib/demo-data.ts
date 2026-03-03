@@ -510,7 +510,7 @@ export function generateDemoQualityAssessments(count: number = 20): QualityAsses
       workflow_id: `wf-${randomId()}`,
       workflow_name: randomChoice(workflowNames),
       trace_id: Math.random() > 0.3 ? `trace-${randomId()}` : undefined,
-      overall_score: overallScore / 100, // Convert to 0-1 range
+      overall_score: overallScore, // Keep as 0-100 integer to match DB format
       overall_grade: scoreToGrade(overallScore),
       agent_quality_score: Math.max(0, Math.min(100, overallScore + randomInt(-5, 5))) / 100, // Convert to 0-1 range
       orchestration_quality_score: Math.max(0, Math.min(100, overallScore + randomInt(-5, 5))) / 100, // Convert to 0-1 range

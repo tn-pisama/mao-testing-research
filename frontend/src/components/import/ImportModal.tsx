@@ -64,6 +64,7 @@ export function ImportModal({ isOpen, onClose, onImportComplete }: ImportModalPr
           <button
             onClick={onClose}
             className="p-1 text-zinc-400 hover:text-white rounded-lg hover:bg-zinc-800"
+            aria-label="Close dialog"
           >
             <X size={20} />
           </button>

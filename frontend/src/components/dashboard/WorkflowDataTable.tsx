@@ -54,10 +54,10 @@ const COLUMNS: Column[] = [
       // Value is already 0-100 from database
       const percent = Math.round(value)
       const color =
-        percent >= 90 ? 'text-success-500' :
+        percent >= 90 ? 'text-green-400' :
         percent >= 80 ? 'text-blue-400' :
-        percent >= 70 ? 'text-accent-500' :
-        'text-danger-500'
+        percent >= 70 ? 'text-amber-400' :
+        'text-red-400'
       return <span className={`font-mono font-medium ${color}`}>{percent}%</span>
     },
   },

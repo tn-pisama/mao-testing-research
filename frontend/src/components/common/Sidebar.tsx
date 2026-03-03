@@ -131,7 +131,7 @@ export function Sidebar({ isCollapsed = false, onToggle }: SidebarProps) {
     return (
       <div className="space-y-0.5">
         {title && !isCollapsed && (
-          <div className="px-3 py-2 text-xs font-medium text-zinc-500 uppercase tracking-wider">
+          <div className="px-3 py-2 text-xs font-medium text-zinc-400 uppercase tracking-wider">
             {title}
           </div>
         )}
@@ -164,7 +164,7 @@ export function Sidebar({ isCollapsed = false, onToggle }: SidebarProps) {
       </div>
 
       {/* Navigation */}
-      <nav className="flex-1 overflow-y-auto p-3 space-y-5">
+      <nav className="flex-1 overflow-y-auto p-3 space-y-5 relative [mask-image:linear-gradient(to_bottom,black_calc(100%-2rem),transparent)]">
         {isSimplifiedView ? (
           <>
             <NavSection title="Observe" items={n8nObserveItems} />

@@ -78,36 +78,44 @@ export default function DocsLayout({ children }: { children: React.ReactNode }) 
             </div>
 
             <nav className="space-y-6">
-              {docsNav.map((section) => (
-                <div key={section.title}>
-                  <h4 className="text-xs font-semibold text-zinc-400 uppercase tracking-wider mb-2">
-                    {section.title}
-                  </h4>
-                  <ul className="space-y-1">
-                    {section.items.map((item) => {
-                      const Icon = item.icon
-                      const isActive = pathname === item.href
-                      return (
-                        <li key={item.href}>
-                          <Link
-                            href={item.href}
-                            className={cn(
-                              'flex items-center gap-2 px-3 py-2 rounded-lg text-sm transition-colors',
-                              isActive
-                                ? 'bg-blue-600/20 text-blue-400 font-medium'
-                                : 'text-zinc-300 hover:bg-zinc-800 hover:text-white'
-                            )}
-                          >
-                            <Icon size={16} />
-                            {item.label}
-                            {isActive && <ChevronRight size={14} className="ml-auto" />}
-                          </Link>
-                        </li>
-                      )
-                    })}
-                  </ul>
-                </div>
-              ))}
+              {docsNav.map((section) => {
+                const sectionActive = section.items.some(item => pathname === item.href)
+                return (
+                  <div key={section.title}>
+                    <h4 className={cn(
+                      'text-xs font-semibold uppercase tracking-wider mb-2 pl-3 border-l-2 transition-colors',
+                      sectionActive
+                        ? 'text-blue-400 border-blue-500'
+                        : 'text-zinc-400 border-transparent'
+                    )}>
+                      {section.title}
+                    </h4>
+                    <ul className="space-y-1">
+                      {section.items.map((item) => {
+                        const Icon = item.icon
+                        const isActive = pathname === item.href
+                        return (
+                          <li key={item.href}>
+                            <Link
+                              href={item.href}
+                              className={cn(
+                                'flex items-center gap-2 px-3 py-2 rounded-lg text-sm transition-colors',
+                                isActive
+                                  ? 'bg-blue-600/20 text-blue-400 font-medium'
+                                  : 'text-zinc-300 hover:bg-zinc-800 hover:text-white'
+                              )}
+                            >
+                              <Icon size={16} />
+                              {item.label}
+                              {isActive && <ChevronRight size={14} className="ml-auto" />}
+                            </Link>
+                          </li>
+                        )
+                      })}
+                    </ul>
+                  </div>
+                )
+              })}
             </nav>
           </div>
         </aside>

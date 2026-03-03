@@ -101,6 +101,7 @@ export function ManageGroupsModal({ isOpen, onClose }: ManageGroupsModalProps) {
           <button
             onClick={onClose}
             className="text-zinc-400 hover:text-white transition-colors"
+            aria-label="Close dialog"
           >
             <X size={20} />
           </button>

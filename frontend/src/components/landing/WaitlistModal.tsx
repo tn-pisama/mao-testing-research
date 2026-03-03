@@ -71,6 +71,7 @@ export function WaitlistModal({ isOpen, onClose }: WaitlistModalProps) {
         <button
           onClick={onClose}
           className="absolute top-4 right-4 text-zinc-400 hover:text-white transition-colors"
+          aria-label="Close dialog"
         >
           <X size={20} />
         </button>

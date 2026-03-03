@@ -135,6 +135,7 @@ export default function ApiKeysPage() {
                           <button
                             onClick={() => handleCopy(key.prefix, key.id)}
                             className="p-1.5 text-zinc-400 hover:text-white hover:bg-zinc-700 rounded transition-colors"
+                            aria-label="Copy API key"
                           >
                             {copiedId === key.id ? (
                               <CheckCircle size={14} className="text-emerald-400" />
@@ -185,6 +186,7 @@ export default function ApiKeysPage() {
                           <button
                             onClick={() => setDeleteConfirm(key.id)}
                             className="p-2 text-zinc-400 hover:text-red-400 hover:bg-zinc-700 rounded transition-colors"
+                            aria-label="Delete API key"
                           >
                             <Trash2 size={16} />
                           </button>

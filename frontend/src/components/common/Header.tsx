@@ -24,6 +24,7 @@ export function Header({ onMenuClick, title, notificationCount = 0 }: HeaderProp
           <button
             onClick={onMenuClick}
             className="p-2 text-zinc-400 hover:text-white hover:bg-zinc-800 rounded-lg lg:hidden"
+            aria-label="Open navigation menu"
           >
             <Menu size={20} />
           </button>

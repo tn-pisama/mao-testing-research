@@ -147,7 +147,7 @@ export default function DifyPage() {
 
         {/* Register Instance Modal */}
         {showInstanceForm && (
-          <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50">
+          <div className="fixed inset-0 bg-black/70 backdrop-blur-sm flex items-center justify-center z-50">
             <div className="bg-zinc-800 rounded-xl p-6 border border-zinc-700 w-full max-w-md">
               <h2 className="text-lg font-semibold text-white mb-4">Add Dify Instance</h2>
               <div className="space-y-4">
@@ -178,7 +178,7 @@ export default function DifyPage() {
 
         {/* Register App Modal */}
         {showAppForm && (
-          <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50">
+          <div className="fixed inset-0 bg-black/70 backdrop-blur-sm flex items-center justify-center z-50">
             <div className="bg-zinc-800 rounded-xl p-6 border border-zinc-700 w-full max-w-md">
               <h2 className="text-lg font-semibold text-white mb-4">Register Dify App</h2>
               <div className="space-y-4">

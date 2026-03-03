@@ -196,12 +196,14 @@ export default function SettingsPage() {
                       <button
                         onClick={() => setShowApiKey(!showApiKey)}
                         className="p-2 text-zinc-400 hover:text-white transition-colors"
+                        aria-label={showApiKey ? 'Hide API key' : 'Show API key'}
                       >
                         {showApiKey ? <EyeOff size={16} /> : <Eye size={16} />}
                       </button>
                       <button
                         onClick={() => navigator.clipboard.writeText('mao_sk_1234567890abcdefghijklmnop')}
                         className="p-2 text-zinc-400 hover:text-white transition-colors"
+                        aria-label="Copy API key"
                       >
                         <Copy size={16} />
                       </button>

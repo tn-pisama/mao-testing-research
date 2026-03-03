@@ -102,10 +102,10 @@ export default function LangGraphPage() {
   return (
     <Layout>
       <div className="p-6 max-w-4xl mx-auto">
-        <div className="flex flex-wrap items-start justify-between gap-4 mb-6">
-          <div className="min-w-0">
+        <div className="flex items-center justify-between mb-6">
+          <div>
             <div className="flex items-center gap-3 mb-2">
-              <div className="p-2 bg-emerald-600/20 rounded-lg flex-shrink-0">
+              <div className="p-2 bg-emerald-600/20 rounded-lg">
                 <Network className="w-6 h-6 text-emerald-400" />
               </div>
               <h1 className="text-2xl font-bold text-white">LangGraph Deployments</h1>
@@ -157,7 +157,7 @@ export default function LangGraphPage() {
 
         {/* Register Deployment Modal */}
         {showDeploymentForm && (
-          <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50">
+          <div className="fixed inset-0 bg-black/70 backdrop-blur-sm flex items-center justify-center z-50">
             <div className="bg-zinc-800 rounded-xl p-6 border border-zinc-700 w-full max-w-md">
               <h2 className="text-lg font-semibold text-white mb-4">Add LangGraph Deployment</h2>
               <div className="space-y-4">
@@ -198,7 +198,7 @@ export default function LangGraphPage() {
 
         {/* Register Assistant Modal */}
         {showAssistantForm && (
-          <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50">
+          <div className="fixed inset-0 bg-black/70 backdrop-blur-sm flex items-center justify-center z-50">
             <div className="bg-zinc-800 rounded-xl p-6 border border-zinc-700 w-full max-w-md">
               <h2 className="text-lg font-semibold text-white mb-4">Register LangGraph Assistant</h2>
               <div className="space-y-4">

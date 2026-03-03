@@ -131,6 +131,7 @@ export function ComplexityMetricsCard({ assessments = [], isLoading }: Complexit
                   <button
                     className="text-zinc-500 hover:text-zinc-400"
                     title="Measures decision points in the workflow. Lower is simpler."
+                    aria-label="Cyclomatic complexity info"
                   >
                     <Info size={14} />
                   </button>
@@ -149,6 +150,7 @@ export function ComplexityMetricsCard({ assessments = [], isLoading }: Complexit
                   <button
                     className="text-zinc-500 hover:text-zinc-400"
                     title="Measures dependencies between components. Lower is better."
+                    aria-label="Coupling ratio info"
                   >
                     <Info size={14} />
                   </button>
@@ -167,6 +169,7 @@ export function ComplexityMetricsCard({ assessments = [], isLoading }: Complexit
                   <button
                     className="text-zinc-500 hover:text-zinc-400"
                     title="Maximum nesting level. Shallower workflows are easier to understand."
+                    aria-label="Max depth info"
                   >
                     <Info size={14} />
                   </button>
