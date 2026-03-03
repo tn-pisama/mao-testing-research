@@ -4,13 +4,17 @@ export const dynamic = 'force-dynamic'
 
 import { useState } from 'react'
 import { Layout } from '@/components/common/Layout'
-import { clsx } from 'clsx'
+import { cn } from '@/lib/utils'
+import { Button } from '@/components/ui/Button'
+import { Input } from '@/components/ui/Input'
+import { Select } from '@/components/ui/Select'
+import { Switch } from '@/components/ui/Switch'
+import { Label } from '@/components/ui/Label'
 import {
   Settings,
   Key,
   Bell,
   Shield,
-  Database,
   Webhook,
   Code,
   Save,
@@ -18,10 +22,8 @@ import {
   Eye,
   EyeOff,
   Check,
-  AlertTriangle,
   Zap,
   RefreshCw,
-  Trash2,
   Sliders,
   ExternalLink,
   Code2,
@@ -56,22 +58,17 @@ export default function SettingsPage() {
         <div className="flex items-center justify-between mb-6">
           <div>
             <h1 className="text-2xl font-bold text-white mb-1">Settings</h1>
-            <p className="text-sm text-slate-400">
+            <p className="text-sm text-zinc-400">
               Configure your PISAMA preferences
             </p>
           </div>
-          <button
+          <Button
             onClick={handleSave}
-            className={clsx(
-              'flex items-center gap-2 px-4 py-2 rounded-lg font-medium transition-all',
-              saved
-                ? 'bg-emerald-600 text-white'
-                : 'bg-primary-600 hover:bg-primary-700 text-white'
-            )}
+            variant={saved ? 'success' : 'primary'}
           >
-            {saved ? <Check size={16} /> : <Save size={16} />}
+            {saved ? <Check size={16} className="mr-2" /> : <Save size={16} className="mr-2" />}
             {saved ? 'Saved!' : 'Save Changes'}
-          </button>
+          </Button>
         </div>
 
         <div className="flex gap-6">
@@ -85,11 +82,11 @@ export default function SettingsPage() {
                     role="tab"
                     aria-selected={activeTab === tab.id}
                     onClick={() => setActiveTab(tab.id)}
-                    className={clsx(
+                    className={cn(
                       'w-full flex items-center gap-2 px-3 py-2 rounded-lg text-sm font-medium transition-colors',
                       activeTab === tab.id
-                        ? 'bg-primary-600 text-white'
-                        : 'text-slate-400 hover:text-white hover:bg-slate-800'
+                        ? 'bg-blue-600 text-white'
+                        : 'text-zinc-400 hover:text-white hover:bg-zinc-800'
                     )}
                   >
                     <Icon size={16} />
@@ -105,38 +102,26 @@ export default function SettingsPage() {
               <div className="space-y-6">
                 <SettingsSection title="Workspace" description="Manage your workspace settings">
                   <SettingsField label="Workspace Name">
-                    <input
-                      type="text"
-                      defaultValue="My Workspace"
-                      className="w-full px-3 py-2 rounded-lg bg-slate-900 border border-slate-700 text-white focus:outline-none focus:border-primary-500"
-                    />
+                    <Input defaultValue="My Workspace" />
                   </SettingsField>
                   <SettingsField label="Timezone">
-                    <select className="w-full px-3 py-2 rounded-lg bg-slate-900 border border-slate-700 text-white focus:outline-none focus:border-primary-500">
+                    <Select>
                       <option>UTC</option>
                       <option>America/New_York</option>
                       <option>America/Los_Angeles</option>
                       <option>Europe/London</option>
                       <option>Europe/Helsinki</option>
                       <option>Asia/Tokyo</option>
-                    </select>
+                    </Select>
                   </SettingsField>
                 </SettingsSection>
 
                 <SettingsSection title="Data Retention" description="Configure how long data is stored">
                   <SettingsField label="Trace Retention (days)">
-                    <input
-                      type="number"
-                      defaultValue={30}
-                      className="w-32 px-3 py-2 rounded-lg bg-slate-900 border border-slate-700 text-white focus:outline-none focus:border-primary-500"
-                    />
+                    <Input type="number" defaultValue={30} className="w-32" />
                   </SettingsField>
                   <SettingsField label="Detection Retention (days)">
-                    <input
-                      type="number"
-                      defaultValue={90}
-                      className="w-32 px-3 py-2 rounded-lg bg-slate-900 border border-slate-700 text-white focus:outline-none focus:border-primary-500"
-                    />
+                    <Input type="number" defaultValue={90} className="w-32" />
                   </SettingsField>
                 </SettingsSection>
 
@@ -149,65 +134,50 @@ export default function SettingsPage() {
                       <div className="flex gap-3">
                         <button
                           onClick={() => setUserType('n8n_user')}
-                          className={clsx(
+                          className={cn(
                             'flex-1 p-3 rounded-lg border-2 transition-all text-left',
                             preferences.userType === 'n8n_user'
-                              ? 'border-primary-500 bg-primary-500/10'
-                              : 'border-slate-700 hover:border-slate-600'
+                              ? 'border-blue-500 bg-blue-500/10'
+                              : 'border-zinc-700 hover:border-zinc-600'
                           )}
                         >
                           <div className="text-sm font-medium text-white">n8n / Workflows</div>
-                          <div className="text-xs text-slate-400">Simplified, visual interface</div>
+                          <div className="text-xs text-zinc-400">Simplified, visual interface</div>
                         </button>
                         <button
                           onClick={() => setUserType('developer')}
-                          className={clsx(
+                          className={cn(
                             'flex-1 p-3 rounded-lg border-2 transition-all text-left',
                             preferences.userType === 'developer'
-                              ? 'border-primary-500 bg-primary-500/10'
-                              : 'border-slate-700 hover:border-slate-600'
+                              ? 'border-blue-500 bg-blue-500/10'
+                              : 'border-zinc-700 hover:border-zinc-600'
                           )}
                         >
                           <div className="text-sm font-medium text-white">Developer</div>
-                          <div className="text-xs text-slate-400">Full-featured, technical</div>
+                          <div className="text-xs text-zinc-400">Full-featured, technical</div>
                         </button>
                       </div>
                     </SettingsField>
 
                     {isN8nUser && (
-                      <div className="p-4 rounded-lg bg-slate-900 border border-slate-700">
-                        <label className="flex items-start gap-3 cursor-pointer">
-                          <div className="relative mt-1">
-                            <input
-                              type="checkbox"
-                              checked={preferences.developerMode}
-                              onChange={(e) => setDeveloperMode(e.target.checked)}
-                              className="sr-only"
-                            />
-                            <div
-                              className={clsx(
-                                'w-10 h-6 rounded-full transition-colors',
-                                preferences.developerMode ? 'bg-primary-600' : 'bg-slate-700'
-                              )}
-                            />
-                            <div
-                              className={clsx(
-                                'absolute top-1 w-4 h-4 rounded-full bg-white transition-transform',
-                                preferences.developerMode ? 'translate-x-5' : 'translate-x-1'
-                              )}
-                            />
-                          </div>
+                      <div className="p-4 rounded-lg bg-zinc-900 border border-zinc-800">
+                        <div className="flex items-start gap-3">
+                          <Switch
+                            checked={preferences.developerMode}
+                            onCheckedChange={setDeveloperMode}
+                            className="mt-1"
+                          />
                           <div>
                             <div className="text-sm font-medium text-white flex items-center gap-2">
                               <Code2 size={16} />
                               Developer Mode
                             </div>
-                            <div className="text-xs text-slate-400">
+                            <div className="text-xs text-zinc-400">
                               Show advanced features like Traces, Agents, and raw data views.
                               Turn this on if you want access to technical debugging tools.
                             </div>
                           </div>
-                        </label>
+                        </div>
                       </div>
                     )}
                   </div>
@@ -218,46 +188,46 @@ export default function SettingsPage() {
             {activeTab === 'api' && (
               <div className="space-y-6">
                 <SettingsSection title="API Key" description="Use this key to authenticate with the PISAMA API">
-                  <div className="p-4 rounded-lg bg-slate-900 border border-slate-700">
+                  <div className="p-4 rounded-lg bg-zinc-900 border border-zinc-800">
                     <div className="flex items-center gap-3">
-                      <div className="flex-1 font-mono text-sm text-slate-300">
+                      <div className="flex-1 font-mono text-sm text-zinc-300">
                         {showApiKey ? 'mao_sk_1234567890abcdefghijklmnop' : '••••••••••••••••••••••••••••••'}
                       </div>
                       <button
                         onClick={() => setShowApiKey(!showApiKey)}
-                        className="p-2 text-slate-400 hover:text-white transition-colors"
+                        className="p-2 text-zinc-400 hover:text-white transition-colors"
                       >
                         {showApiKey ? <EyeOff size={16} /> : <Eye size={16} />}
                       </button>
                       <button
                         onClick={() => navigator.clipboard.writeText('mao_sk_1234567890abcdefghijklmnop')}
-                        className="p-2 text-slate-400 hover:text-white transition-colors"
+                        className="p-2 text-zinc-400 hover:text-white transition-colors"
                       >
                         <Copy size={16} />
                       </button>
                     </div>
                   </div>
                   <div className="flex gap-3 mt-4">
-                    <button className="flex items-center gap-2 px-3 py-2 rounded-lg bg-slate-800 hover:bg-slate-700 text-white text-sm transition-colors">
-                      <RefreshCw size={14} />
+                    <Button variant="secondary" size="sm">
+                      <RefreshCw size={14} className="mr-2" />
                       Regenerate Key
-                    </button>
+                    </Button>
                   </div>
                 </SettingsSection>
 
                 <SettingsSection title="Usage" description="API usage for current billing period">
                   <div className="grid grid-cols-3 gap-4">
-                    <div className="p-4 rounded-lg bg-slate-900 border border-slate-700">
+                    <div className="p-4 rounded-lg bg-zinc-900 border border-zinc-800">
                       <div className="text-2xl font-bold text-white">12,450</div>
-                      <div className="text-xs text-slate-400">API Calls</div>
+                      <div className="text-xs text-zinc-400">API Calls</div>
                     </div>
-                    <div className="p-4 rounded-lg bg-slate-900 border border-slate-700">
+                    <div className="p-4 rounded-lg bg-zinc-900 border border-zinc-800">
                       <div className="text-2xl font-bold text-white">847</div>
-                      <div className="text-xs text-slate-400">Traces Processed</div>
+                      <div className="text-xs text-zinc-400">Traces Processed</div>
                     </div>
-                    <div className="p-4 rounded-lg bg-slate-900 border border-slate-700">
+                    <div className="p-4 rounded-lg bg-zinc-900 border border-zinc-800">
                       <div className="text-2xl font-bold text-white">156</div>
-                      <div className="text-xs text-slate-400">Detections</div>
+                      <div className="text-xs text-zinc-400">Detections</div>
                     </div>
                   </div>
                 </SettingsSection>
@@ -285,10 +255,8 @@ export default function SettingsPage() {
 
                 <SettingsSection title="Slack Integration" description="Send notifications to Slack">
                   <SettingsField label="Webhook URL">
-                    <input
-                      type="text"
+                    <Input
                       placeholder="https://hooks.slack.com/services/..."
-                      className="w-full px-3 py-2 rounded-lg bg-slate-900 border border-slate-700 text-white placeholder-slate-500 focus:outline-none focus:border-primary-500"
                     />
                   </SettingsField>
                   <ToggleSetting
@@ -301,23 +269,22 @@ export default function SettingsPage() {
 
             {activeTab === 'detection' && (
               <div className="space-y-6">
-                {/* Link to advanced threshold tuning */}
                 <Link
                   href="/settings/tuning"
-                  className="flex items-center justify-between p-4 rounded-xl bg-gradient-to-r from-purple-600/20 to-indigo-600/20 border border-purple-500/30 hover:border-purple-500/50 transition-colors group"
+                  className="flex items-center justify-between p-4 rounded-xl bg-gradient-to-r from-violet-600/10 to-blue-600/10 border border-violet-500/20 hover:border-violet-500/40 transition-colors group"
                 >
                   <div className="flex items-center gap-3">
-                    <div className="p-2 bg-purple-600/30 rounded-lg">
-                      <Sliders className="w-5 h-5 text-purple-400" />
+                    <div className="p-2 bg-violet-600/20 rounded-lg">
+                      <Sliders className="w-5 h-5 text-violet-400" />
                     </div>
                     <div>
                       <div className="text-white font-medium">Advanced Threshold Tuning</div>
-                      <div className="text-sm text-slate-400">
+                      <div className="text-sm text-zinc-400">
                         Optimize detection accuracy using feedback analytics
                       </div>
                     </div>
                   </div>
-                  <ExternalLink size={16} className="text-purple-400 group-hover:translate-x-1 transition-transform" />
+                  <ExternalLink size={16} className="text-violet-400 group-hover:translate-x-1 transition-transform" />
                 </Link>
 
                 <SettingsSection title="Detection Sensitivity" description="Adjust detection thresholds">
@@ -327,9 +294,9 @@ export default function SettingsPage() {
                       min="50"
                       max="99"
                       defaultValue="75"
-                      className="w-full"
+                      className="w-full accent-blue-500"
                     />
-                    <div className="flex justify-between text-xs text-slate-400 mt-1">
+                    <div className="flex justify-between text-xs text-zinc-500 mt-1">
                       <span>More detections</span>
                       <span>Fewer false positives</span>
                     </div>
@@ -362,12 +329,12 @@ export default function SettingsPage() {
             {activeTab === 'integrations' && (
               <div className="space-y-6">
                 <SettingsSection title="OTEL Endpoint" description="Configure your OpenTelemetry endpoint">
-                  <div className="p-4 rounded-lg bg-slate-900 border border-slate-700">
+                  <div className="p-4 rounded-lg bg-zinc-900 border border-zinc-800">
                     <div className="flex items-center gap-2 mb-2">
-                      <Code size={14} className="text-primary-400" />
+                      <Code size={14} className="text-blue-400" />
                       <span className="text-sm font-medium text-white">Endpoint URL</span>
                     </div>
-                    <code className="text-sm text-slate-300">
+                    <code className="text-sm text-zinc-300 font-mono">
                       https://api.pisama.ai/v1/traces
                     </code>
                   </div>
@@ -398,10 +365,10 @@ export default function SettingsPage() {
                 </SettingsSection>
 
                 <SettingsSection title="Webhooks" description="Send detection events to external services">
-                  <button className="flex items-center gap-2 px-4 py-2 rounded-lg bg-slate-800 hover:bg-slate-700 text-white text-sm transition-colors">
-                    <Webhook size={14} />
+                  <Button variant="secondary" size="sm">
+                    <Webhook size={14} className="mr-2" />
                     Add Webhook
-                  </button>
+                  </Button>
                 </SettingsSection>
               </div>
             )}
@@ -420,9 +387,9 @@ interface SettingsSectionProps {
 
 function SettingsSection({ title, description, children }: SettingsSectionProps) {
   return (
-    <div className="p-6 rounded-xl bg-slate-800/50 border border-slate-700">
+    <div className="p-6 rounded-xl bg-zinc-900/50 border border-zinc-800">
       <h3 className="text-lg font-semibold text-white mb-1">{title}</h3>
-      <p className="text-sm text-slate-400 mb-4">{description}</p>
+      <p className="text-sm text-zinc-400 mb-4">{description}</p>
       <div className="space-y-4">{children}</div>
     </div>
   )
@@ -436,7 +403,7 @@ interface SettingsFieldProps {
 function SettingsField({ label, children }: SettingsFieldProps) {
   return (
     <div>
-      <label className="text-sm text-slate-300 mb-2 block">{label}</label>
+      <Label className="mb-2 block">{label}</Label>
       {children}
     </div>
   )
@@ -452,34 +419,19 @@ function ToggleSetting({ label, description, defaultChecked }: ToggleSettingProp
   const [checked, setChecked] = useState(defaultChecked || false)
 
   return (
-    <label className="flex items-start gap-3 cursor-pointer">
-      <div className="relative mt-1">
-        <input
-          type="checkbox"
-          checked={checked}
-          onChange={(e) => setChecked(e.target.checked)}
-          className="sr-only"
-        />
-        <div
-          className={clsx(
-            'w-10 h-6 rounded-full transition-colors',
-            checked ? 'bg-primary-600' : 'bg-slate-700'
-          )}
-        />
-        <div
-          className={clsx(
-            'absolute top-1 w-4 h-4 rounded-full bg-white transition-transform',
-            checked ? 'translate-x-5' : 'translate-x-1'
-          )}
-        />
-      </div>
+    <div className="flex items-start gap-3">
+      <Switch
+        checked={checked}
+        onCheckedChange={setChecked}
+        className="mt-0.5"
+      />
       <div>
         <div className="text-sm font-medium text-white">{label}</div>
         {description && (
-          <div className="text-xs text-slate-400">{description}</div>
+          <div className="text-xs text-zinc-400">{description}</div>
         )}
       </div>
-    </label>
+    </div>
   )
 }
 
@@ -491,24 +443,24 @@ interface IntegrationCardProps {
 
 function IntegrationCard({ name, status, lastSeen }: IntegrationCardProps) {
   return (
-    <div className="flex items-center justify-between p-3 rounded-lg bg-slate-900 border border-slate-700">
+    <div className="flex items-center justify-between p-3 rounded-lg bg-zinc-900 border border-zinc-800">
       <div className="flex items-center gap-3">
-        <div className={clsx(
+        <div className={cn(
           'w-2 h-2 rounded-full',
-          status === 'connected' ? 'bg-emerald-500' : 'bg-slate-500'
+          status === 'connected' ? 'bg-green-500' : 'bg-zinc-500'
         )} />
         <div>
           <div className="text-sm font-medium text-white">{name}</div>
           {lastSeen && (
-            <div className="text-xs text-slate-400">Last seen: {lastSeen}</div>
+            <div className="text-xs text-zinc-400">Last seen: {lastSeen}</div>
           )}
         </div>
       </div>
-      <span className={clsx(
+      <span className={cn(
         'text-xs px-2 py-1 rounded-full',
         status === 'connected'
-          ? 'bg-emerald-500/20 text-emerald-400'
-          : 'bg-slate-500/20 text-slate-400'
+          ? 'bg-green-500/10 text-green-400'
+          : 'bg-zinc-500/10 text-zinc-400'
       )}>
         {status}
       </span>
