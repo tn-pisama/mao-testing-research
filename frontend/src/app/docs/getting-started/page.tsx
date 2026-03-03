@@ -199,7 +199,7 @@ function CodeBlock({ title, language, children }: { title: string; language: str
           <Terminal size={14} className="text-slate-400" />
           <span className="text-sm text-slate-400">{title}</span>
         </div>
-        <button className="p-1 text-slate-400 hover:text-white transition-colors">
+        <button className="p-1 text-slate-400 hover:text-white transition-colors" aria-label="Copy code">
           <Copy size={14} />
         </button>
       </div>

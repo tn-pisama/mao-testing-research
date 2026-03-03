@@ -20,7 +20,7 @@ export function CodeBlock({ title, language, children }: { title: string; langua
           <Terminal size={14} className="text-slate-400" />
           <span className="text-sm text-slate-400">{title}</span>
         </div>
-        <button onClick={handleCopy} className="p-1 text-slate-400 hover:text-white transition-colors">
+        <button onClick={handleCopy} className="p-1 text-slate-400 hover:text-white transition-colors" aria-label="Copy code">
           {copied ? <Check size={14} className="text-emerald-400" /> : <Copy size={14} />}
         </button>
       </div>

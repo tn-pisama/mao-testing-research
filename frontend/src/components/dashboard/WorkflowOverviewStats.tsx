@@ -153,7 +153,7 @@ function StatCard({ icon, label, value, color, subtitle }: StatCardProps) {
       </div>
       <div className="text-2xl font-bold">{value}</div>
       {subtitle && (
-        <div className="text-xs text-slate-500 mt-0.5">{subtitle}</div>
+        <div className="text-xs text-slate-300 mt-0.5">{subtitle}</div>
       )}
     </div>
   )

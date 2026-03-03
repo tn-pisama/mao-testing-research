@@ -138,6 +138,7 @@ export default function OpenClawPage() {
             <button
               onClick={() => copyToClipboard(webhookUrl)}
               className="p-2 text-cyan-300 hover:text-white transition-colors"
+              aria-label="Copy webhook URL"
             >
               {copiedUrl === webhookUrl ? <CheckCircle size={16} className="text-emerald-400" /> : <Copy size={16} />}
             </button>
@@ -229,7 +230,7 @@ export default function OpenClawPage() {
             <div className="text-center py-12 px-4">
               <Bot className="w-12 h-12 text-slate-600 mx-auto mb-4" />
               <p className="text-slate-400 mb-2">No OpenClaw instances connected</p>
-              <p className="text-slate-500 text-sm">Add an OpenClaw instance to start monitoring agent sessions</p>
+              <p className="text-slate-400 text-sm">Add an OpenClaw instance to start monitoring agent sessions</p>
             </div>
           ) : (
             <div className="divide-y divide-slate-700">
@@ -247,7 +248,7 @@ export default function OpenClawPage() {
                         {inst.otel_enabled && <Badge variant="info" size="sm">OTEL</Badge>}
                         <Badge variant="default" size="sm">{inst.ingestion_mode}</Badge>
                       </div>
-                      <div className="flex items-center gap-3 text-slate-500 text-sm">
+                      <div className="flex items-center gap-3 text-slate-400 text-sm">
                         <span className="flex items-center gap-1"><Globe size={12} />{inst.gateway_url}</span>
                         {inst.channels_configured.length > 0 && (
                           <span>{inst.channels_configured.join(', ')}</span>
@@ -270,7 +271,7 @@ export default function OpenClawPage() {
                               <Badge variant="default" size="sm">Paused</Badge>
                             )}
                           </div>
-                          <div className="text-xs text-slate-500 flex items-center gap-4">
+                          <div className="text-xs text-slate-400 flex items-center gap-4">
                             <span>{agent.total_sessions} sessions</span>
                             <span>{agent.total_messages} messages</span>
                           </div>

@@ -102,10 +102,10 @@ export default function LangGraphPage() {
   return (
     <Layout>
       <div className="p-6 max-w-4xl mx-auto">
-        <div className="flex items-center justify-between mb-6">
-          <div>
+        <div className="flex flex-wrap items-start justify-between gap-4 mb-6">
+          <div className="min-w-0">
             <div className="flex items-center gap-3 mb-2">
-              <div className="p-2 bg-emerald-600/20 rounded-lg">
+              <div className="p-2 bg-emerald-600/20 rounded-lg flex-shrink-0">
                 <Network className="w-6 h-6 text-emerald-400" />
               </div>
               <h1 className="text-2xl font-bold text-white">LangGraph Deployments</h1>
@@ -148,6 +148,7 @@ export default function LangGraphPage() {
             <button
               onClick={() => copyToClipboard(webhookUrl)}
               className="p-2 text-emerald-300 hover:text-white transition-colors"
+              aria-label="Copy webhook URL"
             >
               {copiedUrl === webhookUrl ? <CheckCircle size={16} className="text-emerald-400" /> : <Copy size={16} />}
             </button>
@@ -249,7 +250,7 @@ export default function LangGraphPage() {
             <div className="text-center py-12 px-4">
               <Network className="w-12 h-12 text-slate-600 mx-auto mb-4" />
               <p className="text-slate-400 mb-2">No LangGraph deployments connected</p>
-              <p className="text-slate-500 text-sm">Add a LangGraph deployment to start monitoring graph runs</p>
+              <p className="text-slate-400 text-sm">Add a LangGraph deployment to start monitoring graph runs</p>
             </div>
           ) : (
             <div className="divide-y divide-slate-700">
@@ -266,7 +267,7 @@ export default function LangGraphPage() {
                         )}
                         <Badge variant="default" size="sm">{dep.ingestion_mode}</Badge>
                       </div>
-                      <div className="flex items-center gap-3 text-slate-500 text-sm">
+                      <div className="flex items-center gap-3 text-slate-400 text-sm">
                         <span className="flex items-center gap-1"><Globe size={12} />{dep.api_url}</span>
                         {dep.graph_name && <span>Graph: {dep.graph_name}</span>}
                       </div>
@@ -287,7 +288,7 @@ export default function LangGraphPage() {
                               <Badge variant="default" size="sm">Paused</Badge>
                             )}
                           </div>
-                          <div className="text-xs text-slate-500">
+                          <div className="text-xs text-slate-400">
                             <span>{asst.total_runs} runs</span>
                           </div>
                         </div>

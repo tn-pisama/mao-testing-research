@@ -73,7 +73,10 @@ export function Header({ onMenuClick, title, notificationCount = 0 }: HeaderProp
         </button>
 
         {/* User Menu */}
-        <button className="flex items-center gap-2 p-2 text-primary-400 hover:text-primary-500 hover:bg-primary-500/10 hover:shadow-glow-green rounded-lg">
+        <button
+          className="flex items-center gap-2 p-2 text-primary-400 hover:text-primary-500 hover:bg-primary-500/10 hover:shadow-glow-green rounded-lg"
+          aria-label="User menu"
+        >
           <User size={20} />
         </button>
       </div>

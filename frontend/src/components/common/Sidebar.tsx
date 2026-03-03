@@ -132,7 +132,7 @@ export function Sidebar({ isCollapsed = false, onToggle }: SidebarProps) {
     return (
       <div className="space-y-1">
         {title && !isCollapsed && (
-          <div className="px-3 py-2 text-xs font-semibold text-primary-500/60 uppercase tracking-wider font-mono">
+          <div className="px-3 py-2 text-xs font-semibold text-primary-400/70 uppercase tracking-wider font-mono">
             {title}
           </div>
         )}

@@ -138,6 +138,7 @@ export default function DifyPage() {
             <button
               onClick={() => copyToClipboard(webhookUrl)}
               className="p-2 text-violet-300 hover:text-white transition-colors"
+              aria-label="Copy webhook URL"
             >
               {copiedUrl === webhookUrl ? <CheckCircle size={16} className="text-emerald-400" /> : <Copy size={16} />}
             </button>
@@ -237,7 +238,7 @@ export default function DifyPage() {
             <div className="text-center py-12 px-4">
               <Workflow className="w-12 h-12 text-slate-600 mx-auto mb-4" />
               <p className="text-slate-400 mb-2">No Dify instances connected</p>
-              <p className="text-slate-500 text-sm">Add a Dify instance to start monitoring workflow runs</p>
+              <p className="text-slate-400 text-sm">Add a Dify instance to start monitoring workflow runs</p>
             </div>
           ) : (
             <div className="divide-y divide-slate-700">
@@ -256,7 +257,7 @@ export default function DifyPage() {
                           )}
                           <Badge variant="default" size="sm">{inst.ingestion_mode}</Badge>
                         </div>
-                        <div className="flex items-center gap-1 text-slate-500 text-sm">
+                        <div className="flex items-center gap-1 text-slate-400 text-sm">
                           <Globe size={12} />
                           <span>{inst.base_url}</span>
                         </div>
@@ -277,7 +278,7 @@ export default function DifyPage() {
                                 <Badge variant="default" size="sm">Paused</Badge>
                               )}
                             </div>
-                            <div className="text-xs text-slate-500 flex items-center gap-4">
+                            <div className="text-xs text-slate-400 flex items-center gap-4">
                               <span>{app.total_runs} runs</span>
                               <span>{app.total_tokens.toLocaleString()} tokens</span>
                             </div>
