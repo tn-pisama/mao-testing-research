@@ -1,35 +1,43 @@
 'use client'
 
 import { HTMLAttributes, forwardRef } from 'react'
-import clsx from 'clsx'
+import { cva, type VariantProps } from 'class-variance-authority'
+import { cn } from '@/lib/utils'
 
-export interface CardProps extends HTMLAttributes<HTMLDivElement> {
-  variant?: 'default' | 'bordered' | 'elevated'
-  padding?: 'none' | 'sm' | 'md' | 'lg' | 'compact'
-}
+const cardVariants = cva(
+  'rounded-lg transition-colors duration-200',
+  {
+    variants: {
+      variant: {
+        default: 'bg-zinc-900 border border-zinc-800 hover:border-zinc-700',
+        bordered: 'bg-transparent border-2 border-zinc-700 hover:border-zinc-600',
+        elevated: 'bg-zinc-900 border border-zinc-800 shadow-elevated',
+      },
+      padding: {
+        none: '',
+        sm: 'p-3',
+        md: 'p-4',
+        lg: 'p-6',
+        compact: 'p-2',
+      },
+    },
+    defaultVariants: {
+      variant: 'default',
+      padding: 'md',
+    },
+  }
+)
+
+export interface CardProps
+  extends HTMLAttributes<HTMLDivElement>,
+    VariantProps<typeof cardVariants> {}
 
 export const Card = forwardRef<HTMLDivElement, CardProps>(
-  ({ className, variant = 'default', padding = 'md', children, ...props }, ref) => {
-    const baseStyles = 'rounded transition-all duration-200'
-
-    const variants = {
-      default: 'bg-black/90 border border-primary-500/30 shadow-[0_0_15px_rgba(0,212,255,0.1)] hover:border-primary-500/60 hover:shadow-[0_0_20px_rgba(0,212,255,0.2)]',
-      bordered: 'bg-transparent border-2 border-primary-500/50 hover:border-primary-500',
-      elevated: 'bg-black/95 border border-primary-500/40 shadow-[0_0_25px_rgba(0,212,255,0.15)]',
-    }
-
-    const paddings = {
-      none: '',
-      sm: 'p-3',
-      md: 'p-4',
-      lg: 'p-6',
-      compact: 'p-2',
-    }
-
+  ({ className, variant, padding, children, ...props }, ref) => {
     return (
       <div
         ref={ref}
-        className={clsx(baseStyles, variants[variant], paddings[padding], className)}
+        className={cn(cardVariants({ variant, padding }), className)}
         {...props}
       >
         {children}
@@ -44,7 +52,7 @@ export interface CardHeaderProps extends HTMLAttributes<HTMLDivElement> {}
 
 export const CardHeader = forwardRef<HTMLDivElement, CardHeaderProps>(
   ({ className, children, ...props }, ref) => (
-    <div ref={ref} className={clsx('mb-4', className)} {...props}>
+    <div ref={ref} className={cn('mb-4', className)} {...props}>
       {children}
     </div>
   )
@@ -56,7 +64,7 @@ export interface CardTitleProps extends HTMLAttributes<HTMLHeadingElement> {}
 
 export const CardTitle = forwardRef<HTMLHeadingElement, CardTitleProps>(
   ({ className, children, ...props }, ref) => (
-    <h3 ref={ref} className={clsx('text-lg font-semibold text-primary-500', className)} {...props}>
+    <h3 ref={ref} className={cn('text-lg font-semibold text-white', className)} {...props}>
       {children}
     </h3>
   )
@@ -68,7 +76,7 @@ export interface CardDescriptionProps extends HTMLAttributes<HTMLParagraphElemen
 
 export const CardDescription = forwardRef<HTMLParagraphElement, CardDescriptionProps>(
   ({ className, children, ...props }, ref) => (
-    <p ref={ref} className={clsx('text-sm text-white/60', className)} {...props}>
+    <p ref={ref} className={cn('text-sm text-zinc-400', className)} {...props}>
       {children}
     </p>
   )
@@ -80,7 +88,7 @@ export interface CardContentProps extends HTMLAttributes<HTMLDivElement> {}
 
 export const CardContent = forwardRef<HTMLDivElement, CardContentProps>(
   ({ className, children, ...props }, ref) => (
-    <div ref={ref} className={clsx('', className)} {...props}>
+    <div ref={ref} className={cn('', className)} {...props}>
       {children}
     </div>
   )

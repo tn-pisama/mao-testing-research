@@ -1,7 +1,7 @@
 'use client'
 
 import { createContext, useContext, useState, useEffect, ReactNode, useRef, useId, KeyboardEvent, useCallback } from 'react'
-import clsx from 'clsx'
+import { cn } from '@/lib/utils'
 
 interface TabsContextType {
   value: string
@@ -92,7 +92,6 @@ export function TabsList({ children, className }: TabsListProps) {
 
     if (newIndex !== currentIndex && tabs[newIndex]) {
       onValueChange(tabs[newIndex])
-      // Focus the new tab
       const buttons = listRef.current?.querySelectorAll('[role="tab"]')
       if (buttons?.[newIndex]) {
         (buttons[newIndex] as HTMLElement).focus()
@@ -106,7 +105,7 @@ export function TabsList({ children, className }: TabsListProps) {
       role="tablist"
       aria-orientation="horizontal"
       onKeyDown={handleKeyDown}
-      className={clsx('flex gap-2 border-b border-primary-500/30', className)}
+      className={cn('flex gap-1 border-b border-zinc-800', className)}
     >
       {children}
     </div>
@@ -126,7 +125,6 @@ export function TabsTrigger({ value, children, className }: TabsTriggerProps) {
   const { value: activeValue, onValueChange, tabsId, registerTab } = context
   const isActive = activeValue === value
 
-  // Register this tab on mount
   useEffect(() => {
     registerTab(value)
   }, [registerTab, value])
@@ -142,11 +140,11 @@ export function TabsTrigger({ value, children, className }: TabsTriggerProps) {
       aria-controls={panelId}
       tabIndex={isActive ? 0 : -1}
       onClick={() => onValueChange(value)}
-      className={clsx(
-        'px-4 py-2 font-medium border-b-2 transition-all duration-200 focus:outline-none focus:ring-2 focus:ring-primary-500 focus:ring-offset-2 focus:ring-offset-black',
+      className={cn(
+        'px-4 py-2 text-sm font-medium border-b-2 -mb-px transition-colors duration-200 focus:outline-none focus-visible:ring-2 focus-visible:ring-blue-500 focus-visible:ring-offset-2 focus-visible:ring-offset-zinc-950',
         isActive
-          ? 'text-primary-500 border-primary-500 shadow-[0_2px_8px_rgba(0,212,255,0.3)]'
-          : 'text-white/50 border-transparent hover:text-primary-500 hover:border-primary-500/50',
+          ? 'text-white border-blue-500'
+          : 'text-zinc-500 border-transparent hover:text-zinc-300 hover:border-zinc-700',
         className
       )}
     >
@@ -178,7 +176,7 @@ export function TabsContent({ value, children, className }: TabsContentProps) {
       role="tabpanel"
       aria-labelledby={tabId}
       tabIndex={0}
-      className={clsx('mt-4 focus:outline-none', className)}
+      className={cn('mt-4 focus:outline-none', className)}
     >
       {children}
     </div>

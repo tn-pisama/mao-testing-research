@@ -1,7 +1,7 @@
 'use client'
 
-import { useState, useRef, useEffect } from 'react'
-import clsx from 'clsx'
+import { useState, useRef } from 'react'
+import { cn } from '@/lib/utils'
 
 export interface TooltipProps {
   content: React.ReactNode
@@ -23,10 +23,10 @@ export function Tooltip({ content, children, position = 'top', className }: Tool
   }
 
   const arrowClasses = {
-    top: 'top-full left-1/2 -translate-x-1/2 border-t-black border-x-transparent border-b-transparent',
-    bottom: 'bottom-full left-1/2 -translate-x-1/2 border-b-black border-x-transparent border-t-transparent',
-    left: 'left-full top-1/2 -translate-y-1/2 border-l-black border-y-transparent border-r-transparent',
-    right: 'right-full top-1/2 -translate-y-1/2 border-r-black border-y-transparent border-l-transparent',
+    top: 'top-full left-1/2 -translate-x-1/2 border-t-zinc-800 border-x-transparent border-b-transparent',
+    bottom: 'bottom-full left-1/2 -translate-x-1/2 border-b-zinc-800 border-x-transparent border-t-transparent',
+    left: 'left-full top-1/2 -translate-y-1/2 border-l-zinc-800 border-y-transparent border-r-transparent',
+    right: 'right-full top-1/2 -translate-y-1/2 border-r-zinc-800 border-y-transparent border-l-transparent',
   }
 
   return (
@@ -43,15 +43,15 @@ export function Tooltip({ content, children, position = 'top', className }: Tool
         <div
           ref={tooltipRef}
           role="tooltip"
-          className={clsx(
-            'absolute z-50 px-3 py-2 text-sm text-white bg-black border border-primary-500/50 rounded shadow-[0_0_15px_rgba(0,212,255,0.3)] whitespace-normal max-w-xs',
+          className={cn(
+            'absolute z-50 px-3 py-2 text-sm text-zinc-200 bg-zinc-900 border border-zinc-700 rounded-md shadow-elevated whitespace-normal max-w-xs',
             positionClasses[position],
             className
           )}
         >
           {content}
           <span
-            className={clsx(
+            className={cn(
               'absolute w-0 h-0 border-4',
               arrowClasses[position]
             )}
@@ -130,18 +130,18 @@ export function TermTooltip({ term, children, showIcon = true }: TermTooltipProp
       content={
         <div className="space-y-1">
           <p className="font-medium text-white">{info.term}</p>
-          <p className="text-slate-300">{info.definition}</p>
+          <p className="text-zinc-400">{info.definition}</p>
           {info.example && (
-            <p className="text-slate-400 text-xs italic">Example: {info.example}</p>
+            <p className="text-zinc-500 text-xs italic">Example: {info.example}</p>
           )}
         </div>
       }
       position="top"
     >
-      <span className="inline-flex items-center gap-1 border-b border-dashed border-primary-500/50 cursor-help">
+      <span className="inline-flex items-center gap-1 border-b border-dashed border-zinc-600 cursor-help">
         {children || info.term}
         {showIcon && (
-          <svg className="w-3 h-3 text-primary-500" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+          <svg className="w-3 h-3 text-zinc-500" fill="none" viewBox="0 0 24 24" stroke="currentColor">
             <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
           </svg>
         )}

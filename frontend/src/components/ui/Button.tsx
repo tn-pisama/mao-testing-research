@@ -1,11 +1,37 @@
 'use client'
 
 import { forwardRef, ButtonHTMLAttributes, ReactNode } from 'react'
-import clsx from 'clsx'
+import { cva, type VariantProps } from 'class-variance-authority'
+import { cn } from '@/lib/utils'
 
-export interface ButtonProps extends ButtonHTMLAttributes<HTMLButtonElement> {
-  variant?: 'primary' | 'secondary' | 'ghost' | 'danger' | 'success' | 'warning'
-  size?: 'sm' | 'md' | 'lg'
+const buttonVariants = cva(
+  'inline-flex items-center justify-center font-medium rounded transition-colors duration-200 focus:outline-none focus-visible:ring-2 focus-visible:ring-offset-2 focus-visible:ring-offset-zinc-950 disabled:opacity-50 disabled:pointer-events-none',
+  {
+    variants: {
+      variant: {
+        primary: 'bg-blue-600 text-white hover:bg-blue-700 focus-visible:ring-blue-500',
+        secondary: 'border border-zinc-700 text-zinc-300 hover:bg-zinc-800 hover:text-white focus-visible:ring-zinc-500',
+        ghost: 'text-zinc-400 hover:bg-zinc-800 hover:text-white focus-visible:ring-zinc-500',
+        danger: 'bg-red-600 text-white hover:bg-red-700 focus-visible:ring-red-500',
+        success: 'bg-green-600 text-white hover:bg-green-700 focus-visible:ring-green-500',
+        warning: 'bg-amber-600 text-white hover:bg-amber-700 focus-visible:ring-amber-500',
+      },
+      size: {
+        sm: 'px-3 py-1.5 text-xs',
+        md: 'px-4 py-2 text-sm',
+        lg: 'px-6 py-3 text-base',
+      },
+    },
+    defaultVariants: {
+      variant: 'primary',
+      size: 'md',
+    },
+  }
+)
+
+export interface ButtonProps
+  extends ButtonHTMLAttributes<HTMLButtonElement>,
+    VariantProps<typeof buttonVariants> {
   isLoading?: boolean
   loading?: boolean
   leftIcon?: ReactNode
@@ -13,29 +39,13 @@ export interface ButtonProps extends ButtonHTMLAttributes<HTMLButtonElement> {
 }
 
 export const Button = forwardRef<HTMLButtonElement, ButtonProps>(
-  ({ className, variant = 'primary', size = 'md', isLoading, loading, disabled, children, leftIcon, rightIcon, ...props }, ref) => {
+  ({ className, variant, size, isLoading, loading, disabled, children, leftIcon, rightIcon, ...props }, ref) => {
     const showLoading = isLoading || loading
-    const baseStyles = 'inline-flex items-center justify-center font-medium rounded transition-all duration-200 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-offset-black disabled:opacity-50 disabled:cursor-not-allowed'
-
-    const variants = {
-      primary: 'bg-transparent border border-primary-500 text-primary-500 hover:bg-primary-500/10 hover:shadow-glow-cyan focus:ring-primary-500',
-      secondary: 'bg-transparent border border-white/20 text-white hover:border-white/40 hover:bg-white/5 focus:ring-white/50',
-      ghost: 'bg-transparent text-primary-500 hover:bg-primary-500/10 focus:ring-primary-500',
-      danger: 'bg-transparent border border-danger-500 text-danger-500 hover:bg-danger-500/10 hover:shadow-glow-red focus:ring-danger-500',
-      success: 'bg-transparent border border-success-500 text-success-500 hover:bg-success-500/10 hover:shadow-glow-green focus:ring-success-500',
-      warning: 'bg-transparent border border-warning-500 text-warning-500 hover:bg-warning-500/10 focus:ring-warning-500',
-    }
-
-    const sizes = {
-      sm: 'px-3 py-1.5 text-xs',
-      md: 'px-4 py-2 text-sm',
-      lg: 'px-6 py-3 text-base',
-    }
 
     return (
       <button
         ref={ref}
-        className={clsx(baseStyles, variants[variant], sizes[size], className)}
+        className={cn(buttonVariants({ variant, size }), className)}
         disabled={disabled || showLoading}
         {...props}
       >
@@ -54,3 +64,5 @@ export const Button = forwardRef<HTMLButtonElement, ButtonProps>(
 )
 
 Button.displayName = 'Button'
+
+export { buttonVariants }

@@ -1,35 +1,43 @@
 'use client'
 
 import { HTMLAttributes, forwardRef } from 'react'
-import clsx from 'clsx'
+import { cva, type VariantProps } from 'class-variance-authority'
+import { cn } from '@/lib/utils'
 
-export interface BadgeProps extends HTMLAttributes<HTMLSpanElement> {
-  variant?: 'default' | 'success' | 'warning' | 'error' | 'danger' | 'info'
-  size?: 'sm' | 'md'
-}
+const badgeVariants = cva(
+  'inline-flex items-center font-medium rounded border',
+  {
+    variants: {
+      variant: {
+        default: 'border-zinc-600 text-zinc-300 bg-zinc-800',
+        success: 'border-green-500/50 text-green-400 bg-green-500/10',
+        warning: 'border-amber-500/50 text-amber-400 bg-amber-500/10',
+        error: 'border-red-500/50 text-red-400 bg-red-500/10',
+        danger: 'border-red-500/50 text-red-400 bg-red-500/10',
+        info: 'border-blue-500/50 text-blue-400 bg-blue-500/10',
+      },
+      size: {
+        sm: 'px-2 py-0.5 text-xs',
+        md: 'px-2.5 py-0.5 text-xs',
+      },
+    },
+    defaultVariants: {
+      variant: 'default',
+      size: 'md',
+    },
+  }
+)
+
+export interface BadgeProps
+  extends HTMLAttributes<HTMLSpanElement>,
+    VariantProps<typeof badgeVariants> {}
 
 export const Badge = forwardRef<HTMLSpanElement, BadgeProps>(
-  ({ className, variant = 'default', size = 'md', children, ...props }, ref) => {
-    const baseStyles = 'inline-flex items-center font-medium rounded border'
-
-    const variants = {
-      default: 'border-white/30 text-white bg-white/10',
-      success: 'border-success-500 text-success-500 bg-success-500/10',
-      warning: 'border-warning-500 text-warning-500 bg-warning-500/10',
-      error: 'border-danger-500 text-danger-500 bg-danger-500/10',
-      danger: 'border-danger-500 text-danger-500 bg-danger-500/10',
-      info: 'border-primary-500 text-primary-500 bg-primary-500/10',
-    }
-
-    const sizes = {
-      sm: 'px-2 py-0.5 text-xs',
-      md: 'px-2.5 py-0.5 text-xs',
-    }
-
+  ({ className, variant, size, children, ...props }, ref) => {
     return (
       <span
         ref={ref}
-        className={clsx(baseStyles, variants[variant], sizes[size], className)}
+        className={cn(badgeVariants({ variant, size }), className)}
         {...props}
       >
         {children}

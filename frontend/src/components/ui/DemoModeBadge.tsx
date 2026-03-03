@@ -7,10 +7,6 @@ export interface DemoModeBadgeProps {
   className?: string
 }
 
-/**
- * Badge component to indicate when demo/mock data is being displayed
- * Styled for the Neon Dark (Terminal/Hacker) theme
- */
 export function DemoModeBadge({ show, className }: DemoModeBadgeProps) {
   if (!show) return null
 
