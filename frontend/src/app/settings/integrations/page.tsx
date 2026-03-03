@@ -22,7 +22,7 @@ import {
   RefreshCw,
 } from 'lucide-react'
 import Link from 'next/link'
-import clsx from 'clsx'
+import { cn } from '@/lib/utils'
 
 interface Integration {
   id: string
@@ -174,7 +174,7 @@ export default function IntegrationsPage() {
                 <CardContent className="p-4">
                   <div className="flex items-center justify-between">
                     <div className="flex items-center gap-4">
-                      <div className={clsx(
+                      <div className={cn(
                         'p-3 rounded-lg',
                         isConnected ? 'bg-slate-700' : 'bg-slate-800'
                       )}>

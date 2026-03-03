@@ -17,7 +17,7 @@ const severityConfig = {
   high: { icon: AlertTriangle, color: 'text-accent-500', bg: 'bg-accent-500/20', label: 'High' },
   medium: { icon: AlertTriangle, color: 'text-accent-500', bg: 'bg-accent-500/20', label: 'Medium' },
   low: { icon: Info, color: 'text-white/60', bg: 'bg-white/10', label: 'Low' },
-  info: { icon: Info, color: 'text-primary-500', bg: 'bg-primary-500/20', label: 'Info' },
+  info: { icon: Info, color: 'text-blue-400', bg: 'bg-blue-500/10', label: 'Info' },
 }
 
 const effortColors = {
@@ -34,7 +34,7 @@ export function QualitySuggestionsCard({
   if (isLoading) {
     return (
       <Card>
-        <div className="h-64 animate-pulse bg-primary-500/20 rounded-lg" />
+        <div className="h-64 animate-pulse bg-zinc-800 rounded-lg" />
       </Card>
     )
   }
@@ -60,7 +60,7 @@ export function QualitySuggestionsCard({
           </CardTitle>
           <Link
             href="/quality"
-            className="flex items-center gap-1 text-sm text-primary-500 hover:text-primary-400"
+            className="flex items-center gap-1 text-sm text-blue-400 hover:text-blue-300"
           >
             View all
             <ChevronRight size={16} />
@@ -100,7 +100,7 @@ export function QualitySuggestionsCard({
                 return (
                   <div
                     key={key}
-                    className="p-3 bg-primary-500/10 rounded-lg border border-primary-500/30 hover:border-primary-500/50 hover:shadow-glow-green transition-all"
+                    className="p-3 bg-zinc-800/50 rounded-lg border border-zinc-800 hover:border-zinc-700 transition-all"
                   >
                     <div className="flex items-start gap-3">
                       <div className={`p-1.5 rounded ${config.bg}`}>
@@ -136,7 +136,7 @@ export function QualitySuggestionsCard({
               <div className="mt-3 text-center">
                 <Link
                   href="/quality"
-                  className="text-sm text-primary-500 hover:text-primary-400"
+                  className="text-sm text-blue-400 hover:text-blue-300"
                 >
                   +{suggestions.length - maxItems} more suggestions
                 </Link>

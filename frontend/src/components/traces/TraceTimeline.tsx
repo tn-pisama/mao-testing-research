@@ -37,10 +37,10 @@ export function TraceTimeline({ states, isLoading }: TraceTimelineProps) {
         {states.map((state, idx) => (
           <div
             key={state.id}
-            className="flex items-start gap-3 p-3 bg-primary-500/10 border border-primary-500/30 rounded-lg"
+            className="flex items-start gap-3 p-3 bg-zinc-800/50 border border-zinc-800 rounded-lg"
           >
-            <div className="flex-shrink-0 w-6 h-6 rounded-full bg-primary-500/20 border border-primary-500/50 flex items-center justify-center">
-              <span className="text-xs text-primary-500 font-mono">{idx + 1}</span>
+            <div className="flex-shrink-0 w-6 h-6 rounded-full bg-blue-500/10 border border-zinc-700 flex items-center justify-center">
+              <span className="text-xs text-blue-400 font-mono">{idx + 1}</span>
             </div>
             <div className="flex-1 min-w-0">
               <div className="flex items-center gap-2 text-sm">

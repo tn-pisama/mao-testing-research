@@ -25,14 +25,14 @@ export function TraceSearch({
           placeholder="Search traces..."
           aria-label="Search traces"
           onChange={(e) => onSearch?.(e.target.value)}
-          className="flex-1 px-4 py-2 bg-black border border-primary-500/30 rounded-lg text-white placeholder-white/40 font-mono focus:outline-none focus:ring-2 focus:ring-primary-500 focus:shadow-glow-cyan"
+          className="flex-1 px-4 py-2 bg-zinc-950 border border-zinc-800 rounded-lg text-white placeholder-white/40 font-mono focus:outline-none focus:ring-2 focus:ring-blue-500"
         />
         {onFrameworkChange && (
           <select
             value={frameworkFilter || ''}
             aria-label="Filter by framework"
             onChange={(e) => onFrameworkChange(e.target.value || undefined)}
-            className="px-4 py-2 bg-black border border-primary-500/30 rounded-lg text-white font-mono focus:outline-none focus:ring-2 focus:ring-primary-500 focus:shadow-glow-cyan"
+            className="px-4 py-2 bg-zinc-950 border border-zinc-800 rounded-lg text-white font-mono focus:outline-none focus:ring-2 focus:ring-blue-500"
           >
             <option value="">All Providers</option>
             <option value="n8n">n8n</option>
@@ -45,7 +45,7 @@ export function TraceSearch({
             value={statusFilter || ''}
             aria-label="Filter by status"
             onChange={(e) => onStatusChange(e.target.value || undefined)}
-            className="px-4 py-2 bg-black border border-primary-500/30 rounded-lg text-white font-mono focus:outline-none focus:ring-2 focus:ring-primary-500 focus:shadow-glow-cyan"
+            className="px-4 py-2 bg-zinc-950 border border-zinc-800 rounded-lg text-white font-mono focus:outline-none focus:ring-2 focus:ring-blue-500"
           >
             <option value="">All Statuses</option>
             <option value="running">Running</option>

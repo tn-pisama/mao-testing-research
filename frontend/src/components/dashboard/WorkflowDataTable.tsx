@@ -55,7 +55,7 @@ const COLUMNS: Column[] = [
       const percent = Math.round(value)
       const color =
         percent >= 90 ? 'text-success-500' :
-        percent >= 80 ? 'text-primary-500' :
+        percent >= 80 ? 'text-blue-400' :
         percent >= 70 ? 'text-accent-500' :
         'text-danger-500'
       return <span className={`font-mono font-medium ${color}`}>{percent}%</span>
@@ -305,11 +305,11 @@ export function WorkflowDataTable({
                         type="checkbox"
                         checked={visibleColumns.has(column.key)}
                         onChange={() => handleToggleColumn(column.key)}
-                        className="rounded border-slate-600 text-primary-500 focus:ring-primary-500"
+                        className="rounded border-slate-600 text-blue-400 focus:ring-blue-400"
                       />
                       <span className="text-sm text-slate-300 flex-1">{column.label}</span>
                       {visibleColumns.has(column.key) ? (
-                        <Eye size={14} className="text-primary-500" />
+                        <Eye size={14} className="text-blue-400" />
                       ) : (
                         <EyeOff size={14} className="text-slate-500" />
                       )}
@@ -341,9 +341,9 @@ export function WorkflowDataTable({
                       {column.label}
                       {sortConfig.key === column.key ? (
                         sortConfig.direction === 'asc' ? (
-                          <ChevronUp size={16} className="text-primary-500" />
+                          <ChevronUp size={16} className="text-blue-400" />
                         ) : (
-                          <ChevronDown size={16} className="text-primary-500" />
+                          <ChevronDown size={16} className="text-blue-400" />
                         )
                       ) : (
                         <ChevronsUpDown size={16} className="opacity-30" />
@@ -371,7 +371,7 @@ export function WorkflowDataTable({
                   className={`
                     border-b border-slate-800 cursor-pointer transition-colors
                     hover:bg-slate-800/50
-                    ${selectedWorkflowId === workflow.workflow_id ? 'bg-primary-500/10 border-primary-500/30' : ''}
+                    ${selectedWorkflowId === workflow.workflow_id ? 'bg-blue-500/10 border-zinc-700' : ''}
                   `}
                 >
                   {visibleCols.map(column => (

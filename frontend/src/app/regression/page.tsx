@@ -182,7 +182,7 @@ export default function RegressionPage() {
         <div className="flex items-center justify-between mb-6">
           <div>
             <h1 className="text-2xl font-bold text-white flex items-center gap-2">
-              <GitBranch className="text-cyan-400" />
+              <GitBranch className="text-blue-400" />
               Model Regression Testing
             </h1>
             <p className="text-slate-400 text-sm mt-1">
@@ -255,7 +255,7 @@ export default function RegressionPage() {
 
         {isLoading ? (
           <div className="flex items-center justify-center py-16">
-            <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-cyan-400"></div>
+            <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-400"></div>
           </div>
         ) : (
           <div className="grid lg:grid-cols-3 gap-6 mb-6">
@@ -269,7 +269,7 @@ export default function RegressionPage() {
                       onClick={() => setSelectedBaseline(baseline.id)}
                       className={`w-full p-4 rounded-lg border text-left transition-all ${
                         selectedBaseline === baseline.id
-                          ? 'border-primary-500 bg-primary-500/10'
+                          ? 'border-blue-500 bg-blue-500/10'
                           : 'border-slate-600 bg-slate-700/50 hover:border-slate-500'
                       }`}
                     >
@@ -411,7 +411,7 @@ function CreateBaselineModal({ isCreating, onClose, onCreate }: CreateBaselineMo
               value={name}
               onChange={(e) => setName(e.target.value)}
               placeholder="e.g., Production Prompts v3.0"
-              className="w-full bg-slate-900 border border-slate-600 rounded-lg p-3 text-white text-sm focus:border-cyan-500 focus:outline-none"
+              className="w-full bg-slate-900 border border-slate-600 rounded-lg p-3 text-white text-sm focus:border-blue-500 focus:outline-none"
               required
             />
           </div>
@@ -423,7 +423,7 @@ function CreateBaselineModal({ isCreating, onClose, onCreate }: CreateBaselineMo
             <select
               value={model}
               onChange={(e) => setModel(e.target.value)}
-              className="w-full bg-slate-900 border border-slate-600 rounded-lg p-3 text-white text-sm focus:border-cyan-500 focus:outline-none"
+              className="w-full bg-slate-900 border border-slate-600 rounded-lg p-3 text-white text-sm focus:border-blue-500 focus:outline-none"
               required
             >
               <option value="">Select a model...</option>
@@ -446,7 +446,7 @@ function CreateBaselineModal({ isCreating, onClose, onCreate }: CreateBaselineMo
               onChange={(e) => setDescription(e.target.value)}
               placeholder="Describe the purpose of this baseline..."
               rows={3}
-              className="w-full bg-slate-900 border border-slate-600 rounded-lg p-3 text-white text-sm focus:border-cyan-500 focus:outline-none resize-none"
+              className="w-full bg-slate-900 border border-slate-600 rounded-lg p-3 text-white text-sm focus:border-blue-500 focus:outline-none resize-none"
             />
           </div>
 

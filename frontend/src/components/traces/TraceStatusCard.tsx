@@ -41,7 +41,7 @@ export function TraceStatusCard({ traces, isLoading }: TraceStatusCardProps) {
   if (isLoading) {
     return (
       <Card>
-        <div className="h-64 animate-pulse bg-primary-500/20 rounded-lg" />
+        <div className="h-64 animate-pulse bg-zinc-800 rounded-lg" />
       </Card>
     )
   }
@@ -62,7 +62,7 @@ export function TraceStatusCard({ traces, isLoading }: TraceStatusCardProps) {
           <CardTitle>Trace Status</CardTitle>
           <Link
             href="/traces"
-            className="flex items-center gap-1 text-sm text-primary-500 hover:text-primary-400 font-mono"
+            className="flex items-center gap-1 text-sm text-blue-400 hover:text-blue-300 font-mono"
           >
             View all
             <ChevronRight size={16} />
@@ -77,9 +77,9 @@ export function TraceStatusCard({ traces, isLoading }: TraceStatusCardProps) {
             <div className="text-xl font-bold text-success-500 font-mono">{statusCounts.completed}</div>
             <div className="text-xs text-white/60">Completed</div>
           </div>
-          <div className="text-center p-3 bg-primary-500/20 rounded-lg border border-primary-500/30 shadow-glow-cyan">
-            <Clock size={20} className="mx-auto text-primary-500 mb-1" />
-            <div className="text-xl font-bold text-primary-500 font-mono">{statusCounts.running}</div>
+          <div className="text-center p-3 bg-blue-500/10 rounded-lg border border-zinc-700">
+            <Clock size={20} className="mx-auto text-blue-400 mb-1" />
+            <div className="text-xl font-bold text-blue-400 font-mono">{statusCounts.running}</div>
             <div className="text-xs text-white/60">Running</div>
           </div>
           <div className="text-center p-3 bg-danger-500/20 rounded-lg border border-danger-500/30">
@@ -92,7 +92,7 @@ export function TraceStatusCard({ traces, isLoading }: TraceStatusCardProps) {
         {/* Recent traces */}
         <div className="space-y-2">
           {traces.length === 0 ? (
-            <div className="text-center py-8 text-primary-400">
+            <div className="text-center py-8 text-zinc-400">
               <Activity size={24} className="mx-auto mb-2 opacity-50" />
               <p className="text-sm font-mono">No recent traces</p>
             </div>
@@ -104,12 +104,12 @@ export function TraceStatusCard({ traces, isLoading }: TraceStatusCardProps) {
                 <Link
                   key={trace.id}
                   href={`/traces/${trace.id}`}
-                  className="flex items-center justify-between p-2 bg-primary-500/10 border border-primary-500/30 rounded-lg hover:bg-primary-500/20 hover:shadow-glow-green transition-all"
+                  className="flex items-center justify-between p-2 bg-zinc-800/50 border border-zinc-800 rounded-lg hover:bg-zinc-800 transition-all"
                 >
                   <div className="flex items-center gap-2">
                     <StatusIcon size={14} className={
                       status === 'completed' ? 'text-success-500' :
-                      status === 'running' ? 'text-primary-500' :
+                      status === 'running' ? 'text-blue-400' :
                       'text-danger-500'
                     } />
                     <span className="text-sm text-white font-mono">{trace.id.slice(0, 8)}...</span>

@@ -275,8 +275,8 @@ mao mcp serve --port 8080
 mao mcp install-claude`}
         </CodeBlock>
 
-        <div className="mt-4 p-4 rounded-lg bg-primary-500/10 border border-primary-500/30">
-          <p className="text-primary-200 text-sm">
+        <div className="mt-4 p-4 rounded-lg bg-blue-500/10 border border-zinc-800">
+          <p className="text-slate-300 text-sm">
             MCP mode allows AI assistants like Claude to query your traces and detections 
             directly, enabling intelligent debugging assistance.
           </p>
@@ -360,14 +360,14 @@ mao mcp install-claude`}
         <div className="grid md:grid-cols-2 gap-4">
           <Link
             href="/docs/sdk"
-            className="p-4 rounded-lg bg-slate-900/50 border border-slate-700 hover:border-primary-500/50 transition-colors"
+            className="p-4 rounded-lg bg-slate-900/50 border border-slate-700 hover:border-zinc-700 transition-colors"
           >
             <h3 className="font-medium text-white">Python SDK</h3>
             <p className="text-sm text-slate-400">Programmatic access for custom integrations</p>
           </Link>
           <Link
             href="/docs/api-reference"
-            className="p-4 rounded-lg bg-slate-900/50 border border-slate-700 hover:border-primary-500/50 transition-colors"
+            className="p-4 rounded-lg bg-slate-900/50 border border-slate-700 hover:border-zinc-700 transition-colors"
           >
             <h3 className="font-medium text-white">REST API</h3>
             <p className="text-sm text-slate-400">Direct HTTP API access</p>
@@ -411,7 +411,7 @@ function CommandSection({
   return (
     <div className="rounded-xl bg-slate-800/30 border border-slate-700 p-6">
       <div className="flex items-center gap-3 mb-4">
-        <div className="p-2 rounded-lg bg-primary-500/20 text-primary-400">
+        <div className="p-2 rounded-lg bg-blue-500/10 text-blue-400">
           <Icon size={20} />
         </div>
         <div>
@@ -432,7 +432,7 @@ function OptionTable({ options }: { options: Array<{ flag: string; description: 
           {options.map((opt) => (
             <tr key={opt.flag}>
               <td className="px-4 py-2 w-40">
-                <code className="text-primary-400">{opt.flag}</code>
+                <code className="text-blue-400">{opt.flag}</code>
               </td>
               <td className="px-4 py-2 text-slate-400">{opt.description}</td>
             </tr>
@@ -450,7 +450,7 @@ function WorkflowExample({ title, steps }: { title: string; steps: string[] }) {
       <div className="space-y-2">
         {steps.map((step, i) => (
           <div key={i} className="flex items-start gap-3">
-            <span className="flex-shrink-0 w-6 h-6 rounded-full bg-primary-600/30 text-primary-400 text-xs flex items-center justify-center font-medium">
+            <span className="flex-shrink-0 w-6 h-6 rounded-full bg-blue-600/20 text-blue-400 text-xs flex items-center justify-center font-medium">
               {i + 1}
             </span>
             <code className="text-sm text-slate-300 bg-slate-900 px-2 py-1 rounded">{step}</code>

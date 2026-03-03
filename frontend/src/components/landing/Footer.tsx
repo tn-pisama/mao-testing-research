@@ -2,8 +2,8 @@
 
 export function Footer() {
   return (
-    <footer className="py-8 border-t border-primary-500/30">
-      <div className="text-center text-sm text-primary-400">
+    <footer className="py-8 border-t border-zinc-800">
+      <div className="text-center text-sm text-zinc-400">
         Pisama Platform
       </div>
     </footer>

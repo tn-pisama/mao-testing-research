@@ -44,7 +44,7 @@ export function RecentDetectionsCard({ detections, isLoading }: RecentDetections
   if (isLoading) {
     return (
       <Card>
-        <div className="h-64 animate-pulse bg-primary-500/20 rounded-lg" />
+        <div className="h-64 animate-pulse bg-zinc-800 rounded-lg" />
       </Card>
     )
   }
@@ -56,7 +56,7 @@ export function RecentDetectionsCard({ detections, isLoading }: RecentDetections
           <CardTitle>Recent Detections</CardTitle>
           <Link
             href="/detections"
-            className="flex items-center gap-1 text-sm text-primary-500 hover:text-primary-400"
+            className="flex items-center gap-1 text-sm text-blue-400 hover:text-blue-300"
           >
             View all
             <ChevronRight size={16} />
@@ -77,7 +77,7 @@ export function RecentDetectionsCard({ detections, isLoading }: RecentDetections
                 <Link
                   key={detection.id}
                   href={`/detections/${detection.id}`}
-                  className="flex items-center justify-between p-3 bg-primary-500/10 rounded-lg border border-primary-500/30 hover:bg-primary-500/20 hover:shadow-glow-green transition-all"
+                  className="flex items-center justify-between p-3 bg-zinc-800/50 rounded-lg border border-zinc-800 hover:bg-zinc-800 transition-all"
                 >
                   <div className="flex items-center gap-3">
                     <AlertTriangle
@@ -85,7 +85,7 @@ export function RecentDetectionsCard({ detections, isLoading }: RecentDetections
                       className={
                         severity === 'critical' ? 'text-danger-500' :
                         severity === 'high' ? 'text-accent-500' :
-                        severity === 'medium' ? 'text-primary-500' :
+                        severity === 'medium' ? 'text-blue-400' :
                         'text-white/60'
                       }
                     />

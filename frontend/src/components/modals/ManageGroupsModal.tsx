@@ -139,13 +139,13 @@ export function ManageGroupsModal({ isOpen, onClose }: ManageGroupsModalProps) {
                 placeholder="Group Name"
                 value={formData.name || ''}
                 onChange={(e) => setFormData({ ...formData, name: e.target.value })}
-                className="w-full px-3 py-2 bg-slate-900 border border-slate-700 rounded text-white mb-2 focus:border-primary-500 focus:outline-none"
+                className="w-full px-3 py-2 bg-slate-900 border border-slate-700 rounded text-white mb-2 focus:border-blue-500 focus:outline-none"
               />
               <textarea
                 placeholder="Description (optional)"
                 value={formData.description || ''}
                 onChange={(e) => setFormData({ ...formData, description: e.target.value })}
-                className="w-full px-3 py-2 bg-slate-900 border border-slate-700 rounded text-white mb-2 focus:border-primary-500 focus:outline-none"
+                className="w-full px-3 py-2 bg-slate-900 border border-slate-700 rounded text-white mb-2 focus:border-blue-500 focus:outline-none"
                 rows={2}
               />
               <div className="flex gap-2">
@@ -180,14 +180,14 @@ export function ManageGroupsModal({ isOpen, onClose }: ManageGroupsModalProps) {
                       type="text"
                       value={formData.name || group.name}
                       onChange={(e) => setFormData({ ...formData, name: e.target.value })}
-                      className="w-full px-3 py-2 bg-slate-900 border border-slate-700 rounded text-white mb-2 focus:border-primary-500 focus:outline-none"
+                      className="w-full px-3 py-2 bg-slate-900 border border-slate-700 rounded text-white mb-2 focus:border-blue-500 focus:outline-none"
                     />
                     <textarea
                       value={formData.description || group.description || ''}
                       onChange={(e) =>
                         setFormData({ ...formData, description: e.target.value })
                       }
-                      className="w-full px-3 py-2 bg-slate-900 border border-slate-700 rounded text-white mb-2 focus:border-primary-500 focus:outline-none"
+                      className="w-full px-3 py-2 bg-slate-900 border border-slate-700 rounded text-white mb-2 focus:border-blue-500 focus:outline-none"
                       rows={2}
                     />
                     <div className="flex gap-2">

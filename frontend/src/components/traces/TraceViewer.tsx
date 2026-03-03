@@ -39,15 +39,15 @@ function StateItem({ state, isFirst }: { state: State; isFirst: boolean }) {
     <div className="relative">
       {/* Timeline connector */}
       {!isFirst && (
-        <div className="absolute left-4 -top-4 w-0.5 h-4 bg-primary-500/30" />
+        <div className="absolute left-4 -top-4 w-0.5 h-4 bg-zinc-800" />
       )}
 
       <div
         onClick={() => setIsExpanded(!isExpanded)}
-        className="flex items-start gap-3 p-3 bg-primary-500/10 border border-primary-500/30 rounded-lg cursor-pointer hover:bg-primary-500/20 hover:shadow-glow-green transition-all"
+        className="flex items-start gap-3 p-3 bg-zinc-800/50 border border-zinc-800 rounded-lg cursor-pointer hover:bg-zinc-800 transition-all"
       >
         {/* Timeline dot */}
-        <div className="flex-shrink-0 w-8 h-8 bg-primary-500/20 border border-primary-500/50 rounded-full flex items-center justify-center text-sm font-medium text-primary-500 font-mono">
+        <div className="flex-shrink-0 w-8 h-8 bg-blue-500/10 border border-zinc-700 rounded-full flex items-center justify-center text-sm font-medium text-blue-400 font-mono">
           {state.sequence_num}
         </div>
 
@@ -82,7 +82,7 @@ function StateItem({ state, isFirst }: { state: State; isFirst: boolean }) {
 
       {/* Expanded state details */}
       {isExpanded && (
-        <div className="mt-2 ml-11 p-3 bg-black rounded-lg border border-primary-500/30">
+        <div className="mt-2 ml-11 p-3 bg-zinc-950 rounded-lg border border-zinc-800">
           {state.metadata?.user_input && (
             <div className="mb-3">
               <p className="text-xs font-medium text-white/40 font-mono mb-1">Input</p>
@@ -104,9 +104,9 @@ function StateItem({ state, isFirst }: { state: State; isFirst: boolean }) {
             </div>
           )}
 
-          <div className="pt-2 border-t border-primary-500/30">
+          <div className="pt-2 border-t border-zinc-800">
             <p className="text-xs font-medium text-white/40 font-mono mb-1">State Delta</p>
-            <pre className="text-xs text-primary-400 overflow-x-auto p-2 bg-black rounded border border-primary-500/30 font-mono">
+            <pre className="text-xs text-zinc-400 overflow-x-auto p-2 bg-zinc-950 rounded border border-zinc-800 font-mono">
               {JSON.stringify(state.state_delta, null, 2)}
             </pre>
           </div>

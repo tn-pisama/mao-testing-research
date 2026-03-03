@@ -20,10 +20,10 @@ export default function DetectionsPage() {
         </p>
       </div>
 
-      <div className="mb-8 p-4 rounded-xl bg-primary-600/10 border border-primary-500/30">
+      <div className="mb-8 p-4 rounded-xl bg-blue-500/10 border border-zinc-800">
         <p className="text-sm text-slate-300">
           For a complete reference of all 21 failure mode detectors including examples, detection methods, and accuracy metrics, see the{' '}
-          <a href="/docs/failure-modes" className="text-primary-400 hover:underline font-medium">Failure Modes Reference</a>.
+          <a href="/docs/failure-modes" className="text-blue-400 hover:underline font-medium">Failure Modes Reference</a>.
         </p>
       </div>
 
@@ -183,7 +183,7 @@ export default function DetectionsPage() {
 
       <section className="bg-slate-800/50 rounded-xl border border-slate-700 p-6">
         <div className="flex items-start gap-3">
-          <HelpCircle size={20} className="text-primary-400 flex-shrink-0 mt-0.5" />
+          <HelpCircle size={20} className="text-blue-400 flex-shrink-0 mt-0.5" />
           <div>
             <h3 className="font-semibold text-white mb-2">Need Help Interpreting Detections?</h3>
             <p className="text-sm text-slate-300">
@@ -224,7 +224,7 @@ function DetectionTypeCard({
     <div className={`rounded-xl border p-6 ${severityColors[severity]}`}>
       <div className="flex items-center gap-3 mb-3">
         <div className="p-2 rounded-lg bg-slate-800">
-          <Icon size={20} className="text-primary-400" />
+          <Icon size={20} className="text-blue-400" />
         </div>
         <div>
           <h3 className="text-lg font-semibold text-white">{title}</h3>

@@ -98,14 +98,14 @@ export default function DocsPage() {
         </div>
       </section>
 
-      <section className="bg-gradient-to-r from-primary-600/20 to-purple-600/20 rounded-xl border border-primary-500/30 p-6">
+      <section className="bg-gradient-to-r from-blue-600/10 to-purple-600/10 rounded-xl border border-zinc-800 p-6">
         <h2 className="text-xl font-bold text-white mb-2">Ready to get started?</h2>
         <p className="text-slate-300 mb-4">
           Follow our quick start guide to integrate PISAMA with your agent system.
         </p>
         <Link
           href="/docs/getting-started"
-          className="inline-flex items-center gap-2 bg-primary-600 hover:bg-primary-700 text-white font-medium px-4 py-2 rounded-lg transition-colors"
+          className="inline-flex items-center gap-2 bg-blue-600 hover:bg-blue-700 text-white font-medium px-4 py-2 rounded-lg transition-colors"
         >
           Start Integration
           <ArrowRight size={16} />
@@ -129,13 +129,13 @@ function QuickStartCard({
   return (
     <Link
       href={href}
-      className="flex items-start gap-4 p-4 rounded-xl bg-slate-800/50 border border-slate-700 hover:border-primary-500/50 transition-colors group"
+      className="flex items-start gap-4 p-4 rounded-xl bg-slate-800/50 border border-slate-700 hover:border-zinc-700 transition-colors group"
     >
-      <div className="p-2 rounded-lg bg-primary-500/20 text-primary-400 group-hover:bg-primary-500/30 transition-colors">
+      <div className="p-2 rounded-lg bg-blue-500/10 text-blue-400 group-hover:bg-blue-500/20 transition-colors">
         <Icon size={20} />
       </div>
       <div>
-        <h3 className="font-semibold text-white group-hover:text-primary-400 transition-colors">
+        <h3 className="font-semibold text-white group-hover:text-blue-400 transition-colors">
           {title}
         </h3>
         <p className="text-sm text-slate-400">{description}</p>
@@ -156,7 +156,7 @@ function FeatureCard({
   return (
     <div className="p-4 rounded-xl bg-slate-800/50 border border-slate-700">
       <div className="flex items-center gap-2 mb-2">
-        <Icon size={18} className="text-primary-400" />
+        <Icon size={18} className="text-blue-400" />
         <h3 className="font-semibold text-white">{title}</h3>
       </div>
       <p className="text-sm text-slate-400">{description}</p>
@@ -167,7 +167,7 @@ function FeatureCard({
 function Step({ number, title, children }: { number: number; title: string; children: React.ReactNode }) {
   return (
     <li className="flex gap-4">
-      <div className="flex-shrink-0 w-8 h-8 rounded-full bg-primary-600 text-white font-bold flex items-center justify-center text-sm">
+      <div className="flex-shrink-0 w-8 h-8 rounded-full bg-blue-600 text-white font-bold flex items-center justify-center text-sm">
         {number}
       </div>
       <div>
