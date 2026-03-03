@@ -139,7 +139,7 @@ Multi-Agent Orchestration Testing Platform - Failure detection for LLM agent sys
 
 ### Conventions
 - All interactive components use `'use client'` directive
-- UI components use variant pattern with `clsx` + `tailwind-merge`
+- UI components use CVA (class-variance-authority) + `cn()` from `@/lib/utils`
 - API client factory: `createApiClient(token, tenantId)`
 - Demo mode fallback for graceful API failures
 - Protected routes require authentication (middleware.ts)
@@ -149,12 +149,21 @@ Multi-Agent Orchestration Testing Platform - Failure detection for LLM agent sys
 - **TanStack Query**: Server state (60s staleTime, no refetchOnWindowFocus)
 - **UserPreferences context**: User type (n8n_user vs developer)
 
-### Color Palette
-- Primary: Blue (#0ea5e9)
+### Color Palette (Premium Dark Theme)
+- Primary: Blue (#3b82f6 / blue-500, #60a5fa / blue-400)
+- Accent: Violet (#8b5cf6 / violet-500)
 - Danger: Red (#ef4444)
 - Warning: Amber (#f59e0b)
 - Success: Green (#22c55e)
-- Background: Slate-950, Slate-800
+- Background: Zinc-950 (#09090b), Zinc-900 (#18181b)
+- Borders: Zinc-800 (#27272a)
+- Text: Zinc-100 (primary), Zinc-400 (secondary), Zinc-500 (muted)
+
+### UI Component Library
+- shadcn/ui pattern: CVA + Radix primitives + Tailwind
+- Config: `components.json`, aliases `@/components/ui`, `@/lib/utils`
+- Core: Button, Badge, Card, Tabs, Tooltip, Input, Select, Switch, Label, Textarea, Skeleton
+- Animation: framer-motion via `FadeIn`, `StaggerContainer`, `StaggerItem`, `ScaleIn`
 
 ### Frontend Testing
 - Framework: Playwright 1.41
