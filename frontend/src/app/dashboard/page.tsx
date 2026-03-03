@@ -15,6 +15,8 @@ import { WorkflowOverviewStats } from '@/components/dashboard/WorkflowOverviewSt
 import { WorkflowDataTable } from '@/components/dashboard/WorkflowDataTable'
 import { WorkflowDetailPanel } from '@/components/dashboard/WorkflowDetailPanel'
 import { Button } from '@/components/ui/Button'
+import { Skeleton } from '@/components/ui/Skeleton'
+import { FadeIn, StaggerContainer, StaggerItem } from '@/components/ui/Motion'
 import { ImportModal } from '@/components/import'
 import { useApiWithFallback } from '@/hooks/useApiWithFallback'
 import { useUserPreferences } from '@/lib/user-preferences'
@@ -35,10 +37,8 @@ export default function DashboardPage() {
   const [selectedWorkflowId, setSelectedWorkflowId] = useState<string | null>(null)
   const { isN8nUser, showAdvancedFeatures } = useUserPreferences()
 
-  // n8n users see simplified view unless they enabled developer mode
   const showSimplifiedDashboard = isN8nUser && !showAdvancedFeatures
 
-  // Get selected workflow
   const selectedWorkflow = selectedWorkflowId
     ? qualityAssessments.find(a => a.workflow_id === selectedWorkflowId)
     : null
@@ -47,14 +47,14 @@ export default function DashboardPage() {
     return (
       <Layout>
         <div className="p-6">
-          <div className="h-8 w-40 bg-slate-700 rounded mb-6 animate-pulse" />
+          <Skeleton className="h-8 w-40 mb-6" />
           <div className="grid lg:grid-cols-2 gap-6 mb-6">
-            <div className="h-64 bg-slate-700 rounded-xl animate-pulse" />
-            <div className="h-64 bg-slate-700 rounded-xl animate-pulse" />
+            <Skeleton className="h-64 rounded-xl" />
+            <Skeleton className="h-64 rounded-xl" />
           </div>
           <div className="grid lg:grid-cols-2 gap-6">
-            <div className="h-64 bg-slate-700 rounded-xl animate-pulse" />
-            <div className="h-64 bg-slate-700 rounded-xl animate-pulse" />
+            <Skeleton className="h-64 rounded-xl" />
+            <Skeleton className="h-64 rounded-xl" />
           </div>
         </div>
       </Layout>
@@ -64,138 +64,146 @@ export default function DashboardPage() {
   return (
     <Layout>
       <div className="p-6">
-        <div className="flex items-center justify-between mb-6">
-          <div className="flex items-center gap-3">
-            <h1 className="text-2xl font-bold text-white">
-              {showSimplifiedDashboard ? 'Workflow Overview' : 'Dashboard'}
-            </h1>
-            {isDemoMode && (
-              <span className="flex items-center gap-1.5 px-2 py-1 text-xs font-medium rounded-full bg-amber-500/20 text-amber-400 border border-amber-500/30">
-                <WifiOff size={12} />
-                Demo Mode
-              </span>
-            )}
-            {!isDemoMode && (
-              <span className="flex items-center gap-1.5 px-2 py-1 text-xs font-medium rounded-full bg-green-500/20 text-green-400 border border-green-500/30">
-                <Wifi size={12} />
-                Live
-              </span>
-            )}
-          </div>
-          <div className="flex items-center gap-3">
-            <Button
-              onClick={refresh}
-              variant="secondary"
-              size="sm"
-            >
-              Refresh
-            </Button>
-            {!showSimplifiedDashboard && (
+        <FadeIn>
+          <div className="flex items-center justify-between mb-6">
+            <div className="flex items-center gap-3">
+              <h1 className="text-2xl font-bold text-white">
+                {showSimplifiedDashboard ? 'Workflow Overview' : 'Dashboard'}
+              </h1>
+              {isDemoMode && (
+                <span className="flex items-center gap-1.5 px-2 py-1 text-xs font-medium rounded-full bg-amber-500/10 text-amber-400 border border-amber-500/20">
+                  <WifiOff size={12} />
+                  Demo Mode
+                </span>
+              )}
+              {!isDemoMode && (
+                <span className="flex items-center gap-1.5 px-2 py-1 text-xs font-medium rounded-full bg-green-500/10 text-green-400 border border-green-500/20">
+                  <Wifi size={12} />
+                  Live
+                </span>
+              )}
+            </div>
+            <div className="flex items-center gap-3">
               <Button
-                onClick={() => setShowImportModal(true)}
+                onClick={refresh}
+                variant="secondary"
+                size="sm"
               >
-                <Upload size={16} className="mr-2" />
-                Import Historical Data
+                Refresh
               </Button>
-            )}
+              {!showSimplifiedDashboard && (
+                <Button
+                  onClick={() => setShowImportModal(true)}
+                >
+                  <Upload size={16} className="mr-2" />
+                  Import Historical Data
+                </Button>
+              )}
+            </div>
           </div>
-        </div>
+        </FadeIn>
 
         {error && (
-          <div className="mb-6 p-4 bg-red-500/10 border border-red-500/20 rounded-xl flex items-center gap-3">
-            <AlertTriangle size={20} className="text-red-400 flex-shrink-0" />
-            <p className="text-sm text-red-300 flex-1">{error}</p>
-            <Button variant="ghost" size="sm" onClick={refresh}>
-              Retry
-            </Button>
-          </div>
+          <FadeIn>
+            <div className="mb-6 p-4 bg-red-500/10 border border-red-500/20 rounded-xl flex items-center gap-3">
+              <AlertTriangle size={20} className="text-red-400 flex-shrink-0" />
+              <p className="text-sm text-red-300 flex-1">{error}</p>
+              <Button variant="ghost" size="sm" onClick={refresh}>
+                Retry
+              </Button>
+            </div>
+          </FadeIn>
         )}
 
         {showSimplifiedDashboard ? (
-          <>
-            {/* Simplified n8n user dashboard - WORKFLOW-CENTRIC */}
+          <StaggerContainer stagger={0.06}>
+            <StaggerItem>
+              <WorkflowOverviewStats workflows={qualityAssessments} isLoading={false} />
+            </StaggerItem>
 
-            {/* 1. Workflow Overview Stats */}
-            <WorkflowOverviewStats workflows={qualityAssessments} isLoading={false} />
-
-            {/* 2. Workflow List - PRIMARY FOCUS */}
-            <div className="mb-6">
-              <div className="flex items-center justify-between mb-4">
-                <h2 className="text-xl font-semibold text-white">Your Workflows</h2>
+            <StaggerItem>
+              <div className="mb-6">
+                <div className="flex items-center justify-between mb-4">
+                  <h2 className="text-xl font-semibold text-white">Your Workflows</h2>
+                </div>
+                <WorkflowDataTable
+                  workflows={qualityAssessments}
+                  onSelectWorkflow={setSelectedWorkflowId}
+                  selectedWorkflowId={selectedWorkflowId}
+                />
               </div>
-              <WorkflowDataTable
-                workflows={qualityAssessments}
-                onSelectWorkflow={setSelectedWorkflowId}
-                selectedWorkflowId={selectedWorkflowId}
-              />
-            </div>
+            </StaggerItem>
 
-            {/* 3. Workflows Needing Attention */}
-            <WorkflowAttentionList detections={detections} isLoading={false} />
+            <StaggerItem>
+              <WorkflowAttentionList detections={detections} isLoading={false} />
+            </StaggerItem>
 
-            {/* 4. Improvement Suggestions */}
-            <div className="mt-6">
-              <QualitySuggestionsCard
-                suggestions={qualityAssessments.flatMap(a => a.improvements)}
-                isLoading={false}
-                maxItems={8}
-              />
-            </div>
-          </>
+            <StaggerItem>
+              <div className="mt-6">
+                <QualitySuggestionsCard
+                  suggestions={qualityAssessments.flatMap(a => a.improvements)}
+                  isLoading={false}
+                  maxItems={8}
+                />
+              </div>
+            </StaggerItem>
+          </StaggerContainer>
         ) : (
-          <>
-            {/* Full developer dashboard - WORKFLOW-CENTRIC */}
+          <StaggerContainer stagger={0.06}>
+            <StaggerItem>
+              <WorkflowOverviewStats workflows={qualityAssessments} isLoading={false} />
+            </StaggerItem>
 
-            {/* 1. Workflow Overview Stats */}
-            <WorkflowOverviewStats workflows={qualityAssessments} isLoading={false} />
-
-            {/* 2. Workflow List - PRIMARY FOCUS */}
-            <div className="mb-6">
-              <div className="flex items-center justify-between mb-4">
-                <h2 className="text-xl font-semibold text-white">Your Workflows</h2>
+            <StaggerItem>
+              <div className="mb-6">
+                <div className="flex items-center justify-between mb-4">
+                  <h2 className="text-xl font-semibold text-white">Your Workflows</h2>
+                </div>
+                <WorkflowDataTable
+                  workflows={qualityAssessments}
+                  onSelectWorkflow={setSelectedWorkflowId}
+                  selectedWorkflowId={selectedWorkflowId}
+                />
               </div>
-              <WorkflowDataTable
-                workflows={qualityAssessments}
-                onSelectWorkflow={setSelectedWorkflowId}
-                selectedWorkflowId={selectedWorkflowId}
-              />
-            </div>
+            </StaggerItem>
 
-            {/* 3. Workflows Needing Attention */}
-            <WorkflowAttentionList detections={detections} isLoading={false} />
+            <StaggerItem>
+              <WorkflowAttentionList detections={detections} isLoading={false} />
+            </StaggerItem>
 
-            {/* 4. Improvement Suggestions */}
-            <div className="grid lg:grid-cols-2 gap-6 mb-6 mt-6">
-              <QualitySuggestionsCard
-                suggestions={qualityAssessments.flatMap(a => a.improvements)}
-                isLoading={false}
-                maxItems={6}
-              />
-              <TraceStatusCard
-                traces={traces}
-                isLoading={false}
-              />
-            </div>
-
-            {/* 5. Developer Analytics (Below Fold) */}
-            <div className="mt-8 pt-8 border-t border-slate-700">
-              <h2 className="text-lg font-semibold text-white mb-4">Developer Analytics</h2>
-              <div className="grid lg:grid-cols-2 gap-6 mb-6">
-                <LoopAnalyticsCard data={loopAnalytics} isLoading={false} />
-                <CostAnalyticsCard data={costAnalytics} isLoading={false} />
-              </div>
-              <div className="grid lg:grid-cols-2 gap-6">
-                <RecentDetectionsCard
-                  detections={detections}
+            <StaggerItem>
+              <div className="grid lg:grid-cols-2 gap-6 mb-6 mt-6">
+                <QualitySuggestionsCard
+                  suggestions={qualityAssessments.flatMap(a => a.improvements)}
+                  isLoading={false}
+                  maxItems={6}
+                />
+                <TraceStatusCard
+                  traces={traces}
                   isLoading={false}
                 />
               </div>
-            </div>
-          </>
+            </StaggerItem>
+
+            <StaggerItem>
+              <div className="mt-8 pt-8 border-t border-zinc-800">
+                <h2 className="text-lg font-semibold text-white mb-4">Developer Analytics</h2>
+                <div className="grid lg:grid-cols-2 gap-6 mb-6">
+                  <LoopAnalyticsCard data={loopAnalytics} isLoading={false} />
+                  <CostAnalyticsCard data={costAnalytics} isLoading={false} />
+                </div>
+                <div className="grid lg:grid-cols-2 gap-6">
+                  <RecentDetectionsCard
+                    detections={detections}
+                    isLoading={false}
+                  />
+                </div>
+              </div>
+            </StaggerItem>
+          </StaggerContainer>
         )}
       </div>
 
-      {/* Workflow Detail Panel (Slide-in) */}
       {selectedWorkflow && (
         <WorkflowDetailPanel
           workflow={selectedWorkflow}

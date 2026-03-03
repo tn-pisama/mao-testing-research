@@ -33,6 +33,7 @@
     "dagre": "^0.8.5",
     "date-fns": "^3.2.0",
     "diff2html": "^3.4.47",
+    "framer-motion": "^12.34.4",
     "html-to-image": "^1.11.13",
     "lucide-react": "^0.309.0",
     "next": "^16.1.1",
