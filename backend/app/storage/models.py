@@ -1012,7 +1012,7 @@ class QualityHealingRecord(Base):
 
     id = Column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
     tenant_id = Column(UUID(as_uuid=True), ForeignKey("tenants.id"), nullable=False)
-    assessment_id = Column(UUID(as_uuid=True), ForeignKey("workflow_quality_assessments.id"), nullable=False)
+    assessment_id = Column(UUID(as_uuid=True), ForeignKey("workflow_quality_assessments.id"), nullable=True)
 
     # Status
     status = Column(String(32), nullable=False, default="pending")

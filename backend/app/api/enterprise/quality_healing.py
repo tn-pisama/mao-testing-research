@@ -181,7 +181,7 @@ async def trigger_healing(
 
         record = QualityHealingRecord(
             tenant_id=tenant_id,
-            assessment_id=assessment_id or UUID("00000000-0000-0000-0000-000000000000"),
+            assessment_id=assessment_id,
             status=result.status.value,
             before_score=result.before_score,
             after_score=result.after_score,
