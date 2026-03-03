@@ -27,14 +27,14 @@ export default function Home() {
 
   if (!mounted) {
     return (
-      <main className="min-h-screen bg-zinc-900 flex items-center justify-center">
+      <main className="min-h-screen bg-zinc-950 flex items-center justify-center">
         <div className="text-white">Loading...</div>
       </main>
     )
   }
 
   return (
-    <main className="min-h-screen bg-zinc-900">
+    <main className="min-h-screen bg-zinc-950">
       <LandingHeader onJoinWaitlist={() => setShowWaitlist(true)} />
       <HeroSection />
       <DemoVideo />
