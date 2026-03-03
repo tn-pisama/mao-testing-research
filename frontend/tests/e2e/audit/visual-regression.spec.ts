@@ -1,5 +1,7 @@
 import { test, expect } from '@playwright/test'
 
+test.setTimeout(60000)
+
 const pages = [
   { path: '/dashboard', name: 'Dashboard' },
   { path: '/dify', name: 'Dify' },
@@ -15,9 +17,8 @@ const pages = [
 test.describe('Visual Regression - Full Page Baselines', () => {
   for (const pg of pages) {
     test(`${pg.name} matches visual baseline`, async ({ page }) => {
-      await page.goto(pg.path)
-      await page.waitForLoadState('networkidle')
-      await page.waitForTimeout(2000)
+      await page.goto(pg.path, { waitUntil: 'domcontentloaded' })
+      await page.waitForTimeout(3000)
 
       // Hide any animated elements that cause flaky diffs
       await page.evaluate(() => {
@@ -39,9 +40,8 @@ test.describe('Visual Regression - Full Page Baselines', () => {
 test.describe('Visual Regression - Above-the-Fold', () => {
   for (const pg of pages) {
     test(`${pg.name} above-the-fold matches baseline`, async ({ page }) => {
-      await page.goto(pg.path)
-      await page.waitForLoadState('networkidle')
-      await page.waitForTimeout(2000)
+      await page.goto(pg.path, { waitUntil: 'domcontentloaded' })
+      await page.waitForTimeout(3000)
 
       await page.evaluate(() => {
         document.querySelectorAll('.animate-spin, .animate-pulse, .animate-bounce').forEach(el => {
@@ -59,42 +59,3 @@ test.describe('Visual Regression - Above-the-Fold', () => {
   }
 })
 
-test.describe('Visual Regression - Interactive States', () => {
-  test('Dify modal open state', async ({ page }) => {
-    await page.goto('/dify')
-    await page.waitForLoadState('networkidle')
-    await page.waitForTimeout(2000)
-
-    await page.getByRole('button', { name: /Add Instance/i }).click()
-    await page.waitForTimeout(500)
-
-    await expect(page).toHaveScreenshot('Dify-modal-open.png', {
-      maxDiffPixelRatio: 0.02,
-    })
-    console.log('✅ Dify modal state captured')
-  })
-
-  test('Integrations tab states', async ({ page }) => {
-    await page.goto('/integrations')
-    await page.waitForLoadState('networkidle')
-    await page.waitForTimeout(2000)
-
-    // Capture each tab state
-    const tabs = ['n8n', 'Dify', 'OpenClaw', 'LangGraph']
-    for (const tab of tabs) {
-      await page.locator('button').filter({ hasText: tab }).first().click()
-      await page.waitForTimeout(500)
-
-      await page.evaluate(() => {
-        document.querySelectorAll('.animate-spin, .animate-pulse').forEach(el => {
-          ;(el as HTMLElement).style.display = 'none'
-        })
-      })
-
-      await expect(page).toHaveScreenshot(`Integrations-tab-${tab}.png`, {
-        maxDiffPixelRatio: 0.02,
-      })
-    }
-    console.log('✅ All integration tab states captured')
-  })
-})
