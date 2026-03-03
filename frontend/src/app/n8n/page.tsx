@@ -162,7 +162,7 @@ export default function N8nPage() {
                 </div>
               )}
             </div>
-            <p className="text-slate-400">
+            <p className="text-zinc-400">
               Connect n8n workflows for automated trace ingestion
             </p>
           </div>
@@ -204,12 +204,12 @@ export default function N8nPage() {
         {/* Register Form Modal */}
         {showRegisterForm && (
           <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50">
-            <div className="bg-slate-800 rounded-xl p-6 border border-slate-700 w-full max-w-md">
+            <div className="bg-zinc-800 rounded-xl p-6 border border-zinc-700 w-full max-w-md">
               <h2 className="text-lg font-semibold text-white mb-4">Register n8n Workflow</h2>
 
               <div className="space-y-4">
                 <div>
-                  <label className="text-sm font-medium text-slate-300 block mb-2">
+                  <label className="text-sm font-medium text-zinc-300 block mb-2">
                     Workflow ID *
                   </label>
                   <input
@@ -217,12 +217,12 @@ export default function N8nPage() {
                     value={newWorkflowId}
                     onChange={(e) => setNewWorkflowId(e.target.value)}
                     placeholder="e.g., abc123..."
-                    className="w-full bg-slate-900 border border-slate-600 rounded-lg p-3 text-white text-sm focus:border-orange-500 focus:outline-none"
+                    className="w-full bg-zinc-900 border border-zinc-600 rounded-lg p-3 text-white text-sm focus:border-orange-500 focus:outline-none"
                   />
                 </div>
 
                 <div>
-                  <label className="text-sm font-medium text-slate-300 block mb-2">
+                  <label className="text-sm font-medium text-zinc-300 block mb-2">
                     Workflow Name (Optional)
                   </label>
                   <input
@@ -230,7 +230,7 @@ export default function N8nPage() {
                     value={newWorkflowName}
                     onChange={(e) => setNewWorkflowName(e.target.value)}
                     placeholder="e.g., Customer Support Agent"
-                    className="w-full bg-slate-900 border border-slate-600 rounded-lg p-3 text-white text-sm focus:border-orange-500 focus:outline-none"
+                    className="w-full bg-zinc-900 border border-zinc-600 rounded-lg p-3 text-white text-sm focus:border-orange-500 focus:outline-none"
                   />
                 </div>
 
@@ -264,35 +264,35 @@ export default function N8nPage() {
         )}
 
         {/* Workflow List */}
-        <div className="bg-slate-800 rounded-xl border border-slate-700">
+        <div className="bg-zinc-800 rounded-xl border border-zinc-700">
           {isLoading ? (
             <div className="flex items-center justify-center py-12">
               <Loader2 className="w-8 h-8 text-orange-400 animate-spin" />
             </div>
           ) : workflows.length === 0 ? (
             <div className="text-center py-12 px-4">
-              <Workflow className="w-12 h-12 text-slate-600 mx-auto mb-4" />
-              <p className="text-slate-400 mb-2">No workflows registered</p>
-              <p className="text-slate-500 text-sm">
+              <Workflow className="w-12 h-12 text-zinc-600 mx-auto mb-4" />
+              <p className="text-zinc-400 mb-2">No workflows registered</p>
+              <p className="text-zinc-500 text-sm">
                 Register an n8n workflow to start ingesting traces automatically
               </p>
             </div>
           ) : (
-            <div className="divide-y divide-slate-700">
+            <div className="divide-y divide-zinc-700">
               {workflows.map((workflow) => (
                 <div key={workflow.id} className="p-4">
                   <div className="flex items-start justify-between">
                     <div>
                       <div className="flex items-center gap-2 mb-1">
                         <span className="text-white font-medium">{workflow.workflowName}</span>
-                        <span className="text-slate-500 text-xs font-mono bg-slate-700 px-2 py-0.5 rounded">
+                        <span className="text-zinc-500 text-xs font-mono bg-zinc-700 px-2 py-0.5 rounded">
                           {workflow.workflowId}
                         </span>
                         {workflow.qualityGrade && (
                           <QualityGradeBadge grade={workflow.qualityGrade} size="sm" />
                         )}
                       </div>
-                      <p className="text-slate-500 text-sm">
+                      <p className="text-zinc-500 text-sm">
                         Registered: {workflow.registeredAt}
                       </p>
                     </div>
@@ -309,7 +309,7 @@ export default function N8nPage() {
                         href={n8nInstanceUrl}
                         target="_blank"
                         rel="noopener noreferrer"
-                        className="text-slate-400 hover:text-white transition-colors"
+                        className="text-zinc-400 hover:text-white transition-colors"
                         title="Open in n8n"
                       >
                         <ExternalLink size={18} />
@@ -319,17 +319,17 @@ export default function N8nPage() {
 
                   {/* Webhook URL or unregistered note */}
                   {workflow.isRegistered ? (
-                    <div className="mt-3 p-3 bg-slate-900 rounded-lg">
+                    <div className="mt-3 p-3 bg-zinc-900 rounded-lg">
                       <div className="flex items-center justify-between gap-3">
                         <div className="flex items-center gap-2 min-w-0">
-                          <Link size={14} className="text-slate-500 flex-shrink-0" />
-                          <code className="text-sm text-slate-400 truncate">
+                          <Link size={14} className="text-zinc-500 flex-shrink-0" />
+                          <code className="text-sm text-zinc-400 truncate">
                             {workflow.webhookUrl}
                           </code>
                         </div>
                         <button
                           onClick={() => copyWebhookUrl(workflow.webhookUrl)}
-                          className="p-1.5 text-slate-400 hover:text-white hover:bg-slate-700 rounded transition-colors flex-shrink-0"
+                          className="p-1.5 text-zinc-400 hover:text-white hover:bg-zinc-700 rounded transition-colors flex-shrink-0"
                         >
                           {copiedUrl === workflow.webhookUrl ? (
                             <CheckCircle size={16} className="text-emerald-400" />
@@ -341,7 +341,7 @@ export default function N8nPage() {
                     </div>
                   ) : (
                     <div className="mt-2">
-                      <span className="text-xs text-slate-500 italic">Not connected via webhook</span>
+                      <span className="text-xs text-zinc-500 italic">Not connected via webhook</span>
                     </div>
                   )}
                 </div>
@@ -351,9 +351,9 @@ export default function N8nPage() {
         </div>
 
         {/* Instructions */}
-        <div className="mt-6 p-6 bg-slate-800/50 rounded-xl border border-slate-700">
+        <div className="mt-6 p-6 bg-zinc-800/50 rounded-xl border border-zinc-700">
           <h3 className="text-lg font-semibold text-white mb-4">Setup Instructions</h3>
-          <ol className="space-y-3 text-sm text-slate-400">
+          <ol className="space-y-3 text-sm text-zinc-400">
             <li className="flex gap-3">
               <span className="w-6 h-6 bg-orange-500/20 text-orange-400 rounded-full flex items-center justify-center text-xs font-medium flex-shrink-0">1</span>
               <span>Register your n8n workflow ID above to get a webhook URL</span>
@@ -372,9 +372,9 @@ export default function N8nPage() {
             </li>
           </ol>
 
-          <div className="mt-4 p-4 bg-slate-900 rounded-lg">
-            <p className="text-sm text-slate-500 mb-2">Example payload structure:</p>
-            <pre className="text-xs text-slate-400 overflow-x-auto">
+          <div className="mt-4 p-4 bg-zinc-900 rounded-lg">
+            <p className="text-sm text-zinc-500 mb-2">Example payload structure:</p>
+            <pre className="text-xs text-zinc-400 overflow-x-auto">
 {`{
   "workflow_id": "your-workflow-id",
   "execution_id": "execution-123",

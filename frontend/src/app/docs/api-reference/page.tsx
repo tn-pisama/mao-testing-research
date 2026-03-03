@@ -11,14 +11,14 @@ export default function ApiReferencePage() {
     <div>
       <div className="mb-8">
         <h1 className="text-3xl font-bold text-white mb-4">API Reference</h1>
-        <p className="text-lg text-slate-300">
+        <p className="text-lg text-zinc-300">
           Complete reference for the Pisama REST API and SDK methods.
         </p>
       </div>
 
       <section className="mb-10">
         <h2 className="text-xl font-bold text-white mb-4">Authentication</h2>
-        <p className="text-slate-300 mb-4">
+        <p className="text-zinc-300 mb-4">
           All API requests require authentication via Bearer token:
         </p>
 
@@ -29,8 +29,8 @@ export default function ApiReferencePage() {
 
       <section className="mb-10">
         <h2 className="text-xl font-bold text-white mb-4">Base URL</h2>
-        <div className="p-4 rounded-lg bg-slate-800/50 border border-slate-700">
-          <code className="text-primary-400">https://api.mao-testing.com/v1</code>
+        <div className="p-4 rounded-lg bg-zinc-800/50 border border-zinc-700">
+          <code className="text-blue-400">https://api.mao-testing.com/v1</code>
         </div>
       </section>
 
@@ -295,23 +295,23 @@ export default function ApiReferencePage() {
         </div>
       </section>
 
-      <section className="bg-slate-800/50 rounded-xl border border-slate-700 p-6">
+      <section className="bg-zinc-800/50 rounded-xl border border-zinc-700 p-6">
         <h3 className="font-semibold text-white mb-2">Rate Limits</h3>
-        <p className="text-sm text-slate-300 mb-4">
+        <p className="text-sm text-zinc-300 mb-4">
           API rate limits vary by plan. Current limits are returned in response headers:
         </p>
         <div className="space-y-1 text-sm">
           <div className="flex gap-4">
-            <code className="text-primary-400 w-48">X-RateLimit-Limit</code>
-            <span className="text-slate-400">Requests allowed per minute</span>
+            <code className="text-blue-400 w-48">X-RateLimit-Limit</code>
+            <span className="text-zinc-400">Requests allowed per minute</span>
           </div>
           <div className="flex gap-4">
-            <code className="text-primary-400 w-48">X-RateLimit-Remaining</code>
-            <span className="text-slate-400">Requests remaining in current window</span>
+            <code className="text-blue-400 w-48">X-RateLimit-Remaining</code>
+            <span className="text-zinc-400">Requests remaining in current window</span>
           </div>
           <div className="flex gap-4">
-            <code className="text-primary-400 w-48">X-RateLimit-Reset</code>
-            <span className="text-slate-400">Unix timestamp when limit resets</span>
+            <code className="text-blue-400 w-48">X-RateLimit-Reset</code>
+            <span className="text-zinc-400">Unix timestamp when limit resets</span>
           </div>
         </div>
       </section>
@@ -321,14 +321,14 @@ export default function ApiReferencePage() {
 
 function CodeBlock({ title, children }: { title: string; children: React.ReactNode }) {
   return (
-    <div className="rounded-lg bg-slate-900 border border-slate-700 overflow-hidden">
-      <div className="flex items-center justify-between px-4 py-2 border-b border-slate-700 bg-slate-800/50">
-        <span className="text-sm text-slate-400">{title}</span>
-        <button className="p-1 text-slate-400 hover:text-white transition-colors" aria-label="Copy code">
+    <div className="rounded-lg bg-zinc-900 border border-zinc-700 overflow-hidden">
+      <div className="flex items-center justify-between px-4 py-2 border-b border-zinc-700 bg-zinc-800/50">
+        <span className="text-sm text-zinc-400">{title}</span>
+        <button className="p-1 text-zinc-400 hover:text-white transition-colors" aria-label="Copy code">
           <Copy size={14} />
         </button>
       </div>
-      <pre className="p-4 text-sm text-slate-300 overflow-x-auto">
+      <pre className="p-4 text-sm text-zinc-300 overflow-x-auto">
         <code>{children}</code>
       </pre>
     </div>
@@ -356,34 +356,34 @@ function ApiEndpoint({
   }
 
   return (
-    <div className="rounded-xl border border-slate-700 overflow-hidden">
-      <div className="p-4 bg-slate-800/50 border-b border-slate-700">
+    <div className="rounded-xl border border-zinc-700 overflow-hidden">
+      <div className="p-4 bg-zinc-800/50 border-b border-zinc-700">
         <div className="flex items-center gap-3 mb-2">
           <span className={`px-2 py-1 rounded text-xs font-bold ${methodColors[method]}`}>
             {method}
           </span>
           <code className="text-white">{path}</code>
         </div>
-        <p className="text-sm text-slate-400">{description}</p>
+        <p className="text-sm text-zinc-400">{description}</p>
       </div>
       
-      <div className="p-4 border-b border-slate-700">
-        <h4 className="text-sm font-medium text-slate-400 mb-2">Parameters</h4>
+      <div className="p-4 border-b border-zinc-700">
+        <h4 className="text-sm font-medium text-zinc-400 mb-2">Parameters</h4>
         <div className="space-y-2">
           {params.map((param) => (
             <div key={param.name} className="flex items-start gap-2 text-sm">
-              <code className="text-primary-400">{param.name}</code>
-              <span className="text-slate-500">({param.type})</span>
+              <code className="text-blue-400">{param.name}</code>
+              <span className="text-zinc-500">({param.type})</span>
               {param.required && <span className="text-red-400 text-xs">required</span>}
-              <span className="text-slate-400">- {param.description}</span>
+              <span className="text-zinc-400">- {param.description}</span>
             </div>
           ))}
         </div>
       </div>
       
-      <div className="p-4 bg-slate-900">
-        <h4 className="text-sm font-medium text-slate-400 mb-2">Response</h4>
-        <pre className="text-xs text-slate-300 overflow-x-auto">
+      <div className="p-4 bg-zinc-900">
+        <h4 className="text-sm font-medium text-zinc-400 mb-2">Response</h4>
+        <pre className="text-xs text-zinc-300 overflow-x-auto">
           <code>{response}</code>
         </pre>
       </div>
@@ -401,12 +401,12 @@ function SdkMethod({
   params: string[]
 }) {
   return (
-    <div className="p-4 rounded-lg bg-slate-800/50 border border-slate-700">
-      <code className="text-primary-400 font-medium">{name}</code>
-      <p className="text-sm text-slate-400 mt-1 mb-2">{description}</p>
+    <div className="p-4 rounded-lg bg-zinc-800/50 border border-zinc-700">
+      <code className="text-blue-400 font-medium">{name}</code>
+      <p className="text-sm text-zinc-400 mt-1 mb-2">{description}</p>
       <div className="space-y-1">
         {params.map((param, i) => (
-          <div key={i} className="text-xs text-slate-500 pl-4 border-l-2 border-slate-700">
+          <div key={i} className="text-xs text-zinc-500 pl-4 border-l-2 border-zinc-700">
             {param}
           </div>
         ))}
@@ -425,10 +425,10 @@ function ErrorCode({
   description: string
 }) {
   return (
-    <div className="flex items-center gap-4 p-3 rounded-lg bg-slate-800/50">
+    <div className="flex items-center gap-4 p-3 rounded-lg bg-zinc-800/50">
       <span className="text-red-400 w-12">{code}</span>
       <span className="font-medium text-white w-40">{message}</span>
-      <span className="text-sm text-slate-400">{description}</span>
+      <span className="text-sm text-zinc-400">{description}</span>
     </div>
   )
 }

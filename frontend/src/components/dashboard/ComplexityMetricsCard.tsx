@@ -3,7 +3,7 @@
 import { Network, AlertCircle, TrendingUp, Info } from 'lucide-react'
 import { Card, CardHeader, CardTitle, CardContent } from '../ui/Card'
 import type { QualityAssessment, ComplexityMetrics } from '@/lib/api'
-import clsx from 'clsx'
+import { cn } from '@/lib/utils'
 
 interface ComplexityMetricsCardProps {
   assessments?: QualityAssessment[]
@@ -29,7 +29,7 @@ function getComplexityColor(value: number, type: 'cyclomatic' | 'coupling' | 'de
     if (value <= 10) return 'text-amber-400'
     return 'text-red-400'
   }
-  return 'text-slate-400'
+  return 'text-zinc-400'
 }
 
 function getHealthIndicator(value: number, type: 'cyclomatic' | 'coupling' | 'depth'): React.ReactNode {
@@ -38,7 +38,7 @@ function getHealthIndicator(value: number, type: 'cyclomatic' | 'coupling' | 'de
   const isModerate = color === 'text-amber-400'
 
   return (
-    <span className={clsx('text-xs font-medium', color)}>
+    <span className={cn('text-xs font-medium', color)}>
       {isHealthy ? '✓ Good' : isModerate ? '⚠ Moderate' : '✗ High'}
     </span>
   )
@@ -96,27 +96,27 @@ export function ComplexityMetricsCard({ assessments = [], isLoading }: Complexit
       <CardContent>
         {!avgMetrics ? (
           <div className="text-center py-8">
-            <Info size={32} className="mx-auto mb-2 opacity-50 text-slate-500" />
-            <p className="text-slate-400 text-sm">No complexity data available</p>
+            <Info size={32} className="mx-auto mb-2 opacity-50 text-zinc-500" />
+            <p className="text-zinc-400 text-sm">No complexity data available</p>
           </div>
         ) : (
           <>
             {/* Key Metrics Grid */}
             <div className="grid grid-cols-2 gap-3 mb-4">
-              <div className="bg-slate-700/50 rounded-lg p-3">
-                <div className="text-xs text-slate-400 mb-1">Agents</div>
+              <div className="bg-zinc-700/50 rounded-lg p-3">
+                <div className="text-xs text-zinc-400 mb-1">Agents</div>
                 <div className="text-2xl font-bold text-white">{avgMetrics.agent_count}</div>
               </div>
-              <div className="bg-slate-700/50 rounded-lg p-3">
-                <div className="text-xs text-slate-400 mb-1">Nodes</div>
+              <div className="bg-zinc-700/50 rounded-lg p-3">
+                <div className="text-xs text-zinc-400 mb-1">Nodes</div>
                 <div className="text-2xl font-bold text-white">{avgMetrics.node_count}</div>
               </div>
-              <div className="bg-slate-700/50 rounded-lg p-3">
-                <div className="text-xs text-slate-400 mb-1">Connections</div>
+              <div className="bg-zinc-700/50 rounded-lg p-3">
+                <div className="text-xs text-zinc-400 mb-1">Connections</div>
                 <div className="text-2xl font-bold text-white">{avgMetrics.connection_count}</div>
               </div>
-              <div className="bg-slate-700/50 rounded-lg p-3">
-                <div className="text-xs text-slate-400 mb-1">Branches</div>
+              <div className="bg-zinc-700/50 rounded-lg p-3">
+                <div className="text-xs text-zinc-400 mb-1">Branches</div>
                 <div className="text-2xl font-bold text-white">
                   {avgMetrics.parallel_branches + avgMetrics.conditional_branches}
                 </div>
@@ -125,54 +125,54 @@ export function ComplexityMetricsCard({ assessments = [], isLoading }: Complexit
 
             {/* Complexity Indicators */}
             <div className="space-y-2 mb-4">
-              <div className="flex items-center justify-between p-2 bg-slate-800/50 rounded">
+              <div className="flex items-center justify-between p-2 bg-zinc-800/50 rounded">
                 <div className="flex items-center gap-2">
-                  <span className="text-sm text-slate-300">Cyclomatic Complexity</span>
+                  <span className="text-sm text-zinc-300">Cyclomatic Complexity</span>
                   <button
-                    className="text-slate-500 hover:text-slate-400"
+                    className="text-zinc-500 hover:text-zinc-400"
                     title="Measures decision points in the workflow. Lower is simpler."
                   >
                     <Info size={14} />
                   </button>
                 </div>
                 <div className="flex items-center gap-2">
-                  <span className={clsx('text-lg font-bold', getComplexityColor(avgMetrics.cyclomatic_complexity, 'cyclomatic'))}>
+                  <span className={cn('text-lg font-bold', getComplexityColor(avgMetrics.cyclomatic_complexity, 'cyclomatic'))}>
                     {avgMetrics.cyclomatic_complexity}
                   </span>
                   {getHealthIndicator(avgMetrics.cyclomatic_complexity, 'cyclomatic')}
                 </div>
               </div>
 
-              <div className="flex items-center justify-between p-2 bg-slate-800/50 rounded">
+              <div className="flex items-center justify-between p-2 bg-zinc-800/50 rounded">
                 <div className="flex items-center gap-2">
-                  <span className="text-sm text-slate-300">Coupling Ratio</span>
+                  <span className="text-sm text-zinc-300">Coupling Ratio</span>
                   <button
-                    className="text-slate-500 hover:text-slate-400"
+                    className="text-zinc-500 hover:text-zinc-400"
                     title="Measures dependencies between components. Lower is better."
                   >
                     <Info size={14} />
                   </button>
                 </div>
                 <div className="flex items-center gap-2">
-                  <span className={clsx('text-lg font-bold', getComplexityColor(avgMetrics.coupling_ratio, 'coupling'))}>
+                  <span className={cn('text-lg font-bold', getComplexityColor(avgMetrics.coupling_ratio, 'coupling'))}>
                     {avgMetrics.coupling_ratio.toFixed(2)}
                   </span>
                   {getHealthIndicator(avgMetrics.coupling_ratio, 'coupling')}
                 </div>
               </div>
 
-              <div className="flex items-center justify-between p-2 bg-slate-800/50 rounded">
+              <div className="flex items-center justify-between p-2 bg-zinc-800/50 rounded">
                 <div className="flex items-center gap-2">
-                  <span className="text-sm text-slate-300">Max Depth</span>
+                  <span className="text-sm text-zinc-300">Max Depth</span>
                   <button
-                    className="text-slate-500 hover:text-slate-400"
+                    className="text-zinc-500 hover:text-zinc-400"
                     title="Maximum nesting level. Shallower workflows are easier to understand."
                   >
                     <Info size={14} />
                   </button>
                 </div>
                 <div className="flex items-center gap-2">
-                  <span className={clsx('text-lg font-bold', getComplexityColor(avgMetrics.max_depth, 'depth'))}>
+                  <span className={cn('text-lg font-bold', getComplexityColor(avgMetrics.max_depth, 'depth'))}>
                     {avgMetrics.max_depth}
                   </span>
                   {getHealthIndicator(avgMetrics.max_depth, 'depth')}
@@ -182,8 +182,8 @@ export function ComplexityMetricsCard({ assessments = [], isLoading }: Complexit
 
             {/* Detected Patterns */}
             {patterns.length > 0 && (
-              <div className="pt-3 border-t border-slate-700">
-                <div className="text-xs text-slate-400 mb-2">Detected Patterns</div>
+              <div className="pt-3 border-t border-zinc-700">
+                <div className="text-xs text-zinc-400 mb-2">Detected Patterns</div>
                 <div className="flex flex-wrap gap-2">
                   {patterns.map((pattern, idx) => (
                     <span

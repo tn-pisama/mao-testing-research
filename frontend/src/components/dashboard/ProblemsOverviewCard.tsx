@@ -22,7 +22,7 @@ export function ProblemsOverviewCard({ detections, isLoading }: ProblemsOverview
   if (isLoading) {
     return (
       <Card>
-        <div className="h-40 animate-pulse bg-primary-500/20 rounded-lg" />
+        <div className="h-40 animate-pulse bg-blue-500/20 rounded-lg" />
       </Card>
     )
   }
@@ -45,7 +45,7 @@ export function ProblemsOverviewCard({ detections, isLoading }: ProblemsOverview
           </CardTitle>
           <Link
             href="/detections"
-            className="flex items-center gap-1 text-sm text-primary-500 hover:text-primary-400"
+            className="flex items-center gap-1 text-sm text-blue-500 hover:text-blue-400"
           >
             View all
             <ChevronRight size={16} />

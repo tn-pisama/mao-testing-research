@@ -50,7 +50,7 @@ export function WorkflowAttentionList({ detections, isLoading }: WorkflowAttenti
   if (isLoading) {
     return (
       <Card>
-        <div className="h-64 animate-pulse bg-slate-700 rounded-lg" />
+        <div className="h-64 animate-pulse bg-zinc-700 rounded-lg" />
       </Card>
     )
   }
@@ -80,7 +80,7 @@ export function WorkflowAttentionList({ detections, isLoading }: WorkflowAttenti
         {needsAttention.length === 0 ? (
           <div className="text-center py-8">
             <div className="text-green-400 text-lg mb-2">All Clear!</div>
-            <p className="text-slate-400 text-sm">
+            <p className="text-zinc-400 text-sm">
               No workflows need immediate attention. Great work!
             </p>
           </div>
@@ -91,7 +91,7 @@ export function WorkflowAttentionList({ detections, isLoading }: WorkflowAttenti
               return (
                 <div
                   key={detection.id}
-                  className="flex items-center justify-between p-4 bg-slate-800/50 rounded-lg border border-slate-700"
+                  className="flex items-center justify-between p-4 bg-zinc-800/50 rounded-lg border border-zinc-700"
                 >
                   <div className="flex items-center gap-4">
                     <div className={`w-2 h-2 rounded-full ${
@@ -101,7 +101,7 @@ export function WorkflowAttentionList({ detections, isLoading }: WorkflowAttenti
                       <p className="text-sm font-medium text-white">
                         {getPlainEnglishType(detection.detection_type)}
                       </p>
-                      <p className="text-xs text-slate-500">
+                      <p className="text-xs text-zinc-500">
                         {formatTime(detection.created_at)}
                       </p>
                     </div>
@@ -116,7 +116,7 @@ export function WorkflowAttentionList({ detections, isLoading }: WorkflowAttenti
                     </Link>
                     <Link
                       href={`/detections/${detection.id}`}
-                      className="flex items-center gap-1 px-3 py-1.5 text-sm text-slate-400 hover:text-white transition-colors"
+                      className="flex items-center gap-1 px-3 py-1.5 text-sm text-zinc-400 hover:text-white transition-colors"
                     >
                       Details
                       <ChevronRight size={14} />

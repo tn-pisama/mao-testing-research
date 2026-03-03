@@ -75,13 +75,13 @@ function CopyButton({ text }: { text: string }) {
   return (
     <button
       onClick={handleCopy}
-      className="p-2 hover:bg-slate-700 rounded transition-colors"
+      className="p-2 hover:bg-zinc-700 rounded transition-colors"
       title="Copy to clipboard"
     >
       {copied ? (
         <Check size={16} className="text-green-400" />
       ) : (
-        <Copy size={16} className="text-slate-400" />
+        <Copy size={16} className="text-zinc-400" />
       )}
     </button>
   )
@@ -99,7 +99,7 @@ function StepUserType({
       <div className="text-center">
         <Users size={64} className="mx-auto mb-4 text-blue-500" />
         <h2 className="text-2xl font-bold text-white mb-2">How do you build automations?</h2>
-        <p className="text-slate-400 max-w-md mx-auto">
+        <p className="text-zinc-400 max-w-md mx-auto">
           This helps us show you the right features and use language you'll understand.
         </p>
       </div>
@@ -110,21 +110,21 @@ function StepUserType({
           className={`text-left p-6 rounded-xl border-2 transition-all ${
             selectedType === 'n8n_user'
               ? 'border-blue-500 bg-blue-500/10'
-              : 'border-slate-700 hover:border-slate-600 bg-slate-800/50'
+              : 'border-zinc-700 hover:border-zinc-600 bg-zinc-800/50'
           }`}
         >
           <div className="w-14 h-14 bg-amber-500/20 rounded-xl flex items-center justify-center mb-4">
             <GitBranch size={28} className="text-amber-400" />
           </div>
           <h3 className="text-lg font-semibold text-white mb-2">n8n / Visual Workflows</h3>
-          <p className="text-sm text-slate-400 mb-4">
+          <p className="text-sm text-zinc-400 mb-4">
             I use n8n, Dify, Flowise, or similar visual automation tools.
             I prefer simple interfaces and don't write much code.
           </p>
           <div className="flex flex-wrap gap-2">
-            <span className="text-xs bg-slate-700 text-slate-300 px-2 py-1 rounded">n8n</span>
-            <span className="text-xs bg-slate-700 text-slate-300 px-2 py-1 rounded">Dify</span>
-            <span className="text-xs bg-slate-700 text-slate-300 px-2 py-1 rounded">Flowise</span>
+            <span className="text-xs bg-zinc-700 text-zinc-300 px-2 py-1 rounded">n8n</span>
+            <span className="text-xs bg-zinc-700 text-zinc-300 px-2 py-1 rounded">Dify</span>
+            <span className="text-xs bg-zinc-700 text-zinc-300 px-2 py-1 rounded">Flowise</span>
           </div>
         </button>
 
@@ -133,26 +133,26 @@ function StepUserType({
           className={`text-left p-6 rounded-xl border-2 transition-all ${
             selectedType === 'developer'
               ? 'border-blue-500 bg-blue-500/10'
-              : 'border-slate-700 hover:border-slate-600 bg-slate-800/50'
+              : 'border-zinc-700 hover:border-zinc-600 bg-zinc-800/50'
           }`}
         >
           <div className="w-14 h-14 bg-green-500/20 rounded-xl flex items-center justify-center mb-4">
             <Code2 size={28} className="text-green-400" />
           </div>
           <h3 className="text-lg font-semibold text-white mb-2">Developer / Code-first</h3>
-          <p className="text-sm text-slate-400 mb-4">
+          <p className="text-sm text-zinc-400 mb-4">
             I build AI agents with code using frameworks like LangGraph, AutoGen, or CrewAI.
             I'm comfortable with APIs and debugging.
           </p>
           <div className="flex flex-wrap gap-2">
-            <span className="text-xs bg-slate-700 text-slate-300 px-2 py-1 rounded">LangGraph</span>
-            <span className="text-xs bg-slate-700 text-slate-300 px-2 py-1 rounded">AutoGen</span>
-            <span className="text-xs bg-slate-700 text-slate-300 px-2 py-1 rounded">CrewAI</span>
+            <span className="text-xs bg-zinc-700 text-zinc-300 px-2 py-1 rounded">LangGraph</span>
+            <span className="text-xs bg-zinc-700 text-zinc-300 px-2 py-1 rounded">AutoGen</span>
+            <span className="text-xs bg-zinc-700 text-zinc-300 px-2 py-1 rounded">CrewAI</span>
           </div>
         </button>
       </div>
 
-      <p className="text-center text-xs text-slate-500 mt-6">
+      <p className="text-center text-xs text-zinc-500 mt-6">
         You can always change this later in Settings
       </p>
     </div>
@@ -165,7 +165,7 @@ function StepWelcome() {
       <div className="text-center">
         <Shield size={64} className="mx-auto mb-4 text-blue-500" />
         <h2 className="text-2xl font-bold text-white mb-2">Welcome to Pisama</h2>
-        <p className="text-slate-400 max-w-md mx-auto">
+        <p className="text-zinc-400 max-w-md mx-auto">
           We help you find and fix problems in your AI workflows automatically.
           No coding required!
         </p>
@@ -178,7 +178,7 @@ function StepWelcome() {
               <Zap size={24} className="text-blue-400" />
             </div>
             <h3 className="text-sm font-medium text-white mb-1">Find Problems</h3>
-            <p className="text-xs text-slate-400">
+            <p className="text-xs text-zinc-400">
               We automatically detect when something goes wrong in your workflows
             </p>
           </CardContent>
@@ -190,7 +190,7 @@ function StepWelcome() {
               <Shield size={24} className="text-green-400" />
             </div>
             <h3 className="text-sm font-medium text-white mb-1">Fix Automatically</h3>
-            <p className="text-xs text-slate-400">
+            <p className="text-xs text-zinc-400">
               We suggest fixes and can apply them to your workflows for you
             </p>
           </CardContent>
@@ -202,7 +202,7 @@ function StepWelcome() {
               <Play size={24} className="text-amber-400" />
             </div>
             <h3 className="text-sm font-medium text-white mb-1">Test First</h3>
-            <p className="text-xs text-slate-400">
+            <p className="text-xs text-zinc-400">
               Preview and test any fix before it goes live - you're always in control
             </p>
           </CardContent>
@@ -221,28 +221,28 @@ function StepConnectN8n() {
       <div className="text-center mb-8">
         <Link2 size={48} className="mx-auto mb-4 text-blue-500" />
         <h2 className="text-xl font-bold text-white mb-2">Connect Your n8n Instance</h2>
-        <p className="text-slate-400">
+        <p className="text-zinc-400">
           This lets us apply fixes directly to your workflows
         </p>
       </div>
 
       <div className="max-w-md mx-auto space-y-4">
         <div>
-          <label className="block text-sm text-slate-400 mb-2">
+          <label className="block text-sm text-zinc-400 mb-2">
             Your n8n URL
-            <span className="text-slate-500 ml-1">(e.g., https://your-name.app.n8n.cloud)</span>
+            <span className="text-zinc-500 ml-1">(e.g., https://your-name.app.n8n.cloud)</span>
           </label>
           <input
             type="url"
             value={n8nUrl}
             onChange={(e) => setN8nUrl(e.target.value)}
             placeholder="https://your-instance.app.n8n.cloud"
-            className="w-full px-4 py-2 bg-slate-800 border border-slate-700 rounded-lg text-white placeholder:text-slate-500 focus:outline-none focus:border-blue-500"
+            className="w-full px-4 py-2 bg-zinc-800 border border-zinc-700 rounded-lg text-white placeholder:text-zinc-500 focus:outline-none focus:border-blue-500"
           />
         </div>
 
         <div>
-          <label className="block text-sm text-slate-400 mb-2">
+          <label className="block text-sm text-zinc-400 mb-2">
             n8n API Key
             <a
               href="https://docs.n8n.io/api/authentication/"
@@ -258,7 +258,7 @@ function StepConnectN8n() {
             value={apiKey}
             onChange={(e) => setApiKey(e.target.value)}
             placeholder="n8n_api_..."
-            className="w-full px-4 py-2 bg-slate-800 border border-slate-700 rounded-lg text-white placeholder:text-slate-500 focus:outline-none focus:border-blue-500"
+            className="w-full px-4 py-2 bg-zinc-800 border border-zinc-700 rounded-lg text-white placeholder:text-zinc-500 focus:outline-none focus:border-blue-500"
           />
         </div>
 
@@ -281,7 +281,7 @@ function StepAddMonitoring() {
       <div className="text-center mb-8">
         <Zap size={48} className="mx-auto mb-4 text-amber-500" />
         <h2 className="text-xl font-bold text-white mb-2">Add Monitoring to Your Workflow</h2>
-        <p className="text-slate-400">
+        <p className="text-zinc-400">
           Add one node to send us workflow data - takes less than a minute!
         </p>
       </div>
@@ -294,7 +294,7 @@ function StepAddMonitoring() {
             </div>
             <div>
               <h3 className="text-sm font-medium text-white mb-1">Open your workflow in n8n</h3>
-              <p className="text-xs text-slate-400">
+              <p className="text-xs text-zinc-400">
                 Open the workflow you want to monitor
               </p>
             </div>
@@ -306,7 +306,7 @@ function StepAddMonitoring() {
             </div>
             <div>
               <h3 className="text-sm font-medium text-white mb-1">Add an HTTP Request node</h3>
-              <p className="text-xs text-slate-400">
+              <p className="text-xs text-zinc-400">
                 Click the + button and search for "HTTP Request"
               </p>
             </div>
@@ -318,13 +318,13 @@ function StepAddMonitoring() {
             </div>
             <div className="flex-1">
               <h3 className="text-sm font-medium text-white mb-1">Configure with this URL</h3>
-              <div className="flex items-center gap-2 bg-slate-800 rounded-lg p-3 mt-2">
+              <div className="flex items-center gap-2 bg-zinc-800 rounded-lg p-3 mt-2">
                 <code className="text-xs text-green-400 flex-1 overflow-x-auto">
                   {webhookUrl}
                 </code>
                 <CopyButton text={webhookUrl} />
               </div>
-              <p className="text-xs text-slate-500 mt-2">
+              <p className="text-xs text-zinc-500 mt-2">
                 Set Method to POST and paste this URL
               </p>
             </div>
@@ -336,7 +336,7 @@ function StepAddMonitoring() {
             </div>
             <div>
               <h3 className="text-sm font-medium text-white mb-1">Connect it to your workflow</h3>
-              <p className="text-xs text-slate-400">
+              <p className="text-xs text-zinc-400">
                 Connect the HTTP Request after your main workflow steps
               </p>
             </div>
@@ -359,7 +359,7 @@ function StepComplete() {
       <div>
         <CheckCircle2 size={64} className="mx-auto mb-4 text-green-500" />
         <h2 className="text-2xl font-bold text-white mb-2">You're All Set!</h2>
-        <p className="text-slate-400 max-w-md mx-auto">
+        <p className="text-zinc-400 max-w-md mx-auto">
           Your workflows are now being monitored. We'll let you know if we find any problems.
         </p>
       </div>
@@ -368,7 +368,7 @@ function StepComplete() {
         <Card className="hover:border-blue-500/50 transition-colors cursor-pointer">
           <CardContent className="p-4">
             <h3 className="text-sm font-medium text-white mb-1">View Dashboard</h3>
-            <p className="text-xs text-slate-400">
+            <p className="text-xs text-zinc-400">
               See all your workflow runs and any issues we've found
             </p>
           </CardContent>
@@ -377,7 +377,7 @@ function StepComplete() {
         <Card className="hover:border-blue-500/50 transition-colors cursor-pointer">
           <CardContent className="p-4">
             <h3 className="text-sm font-medium text-white mb-1">Connect More Workflows</h3>
-            <p className="text-xs text-slate-400">
+            <p className="text-xs text-zinc-400">
               Add monitoring to your other n8n workflows
             </p>
           </CardContent>
@@ -453,9 +453,9 @@ export default function OnboardingPage() {
   const isNextDisabled = currentStep === 1 && !selectedUserType
 
   return (
-    <div className="min-h-screen bg-slate-950 flex flex-col">
+    <div className="min-h-screen bg-zinc-950 flex flex-col">
       {/* Header */}
-      <header className="border-b border-slate-800 p-4">
+      <header className="border-b border-zinc-800 p-4">
         <div className="max-w-4xl mx-auto flex items-center justify-between">
           <div className="flex items-center gap-2">
             <Shield className="h-8 w-8 text-blue-500" />
@@ -468,7 +468,7 @@ export default function OnboardingPage() {
       </header>
 
       {/* Progress */}
-      <div className="border-b border-slate-800 py-4">
+      <div className="border-b border-zinc-800 py-4">
         <div className="max-w-4xl mx-auto px-4">
           <div className="flex items-center justify-between">
             {steps.map((step, idx) => (
@@ -484,17 +484,17 @@ export default function OnboardingPage() {
                       {step.id}
                     </div>
                   ) : (
-                    <Circle size={24} className="text-slate-600" />
+                    <Circle size={24} className="text-zinc-600" />
                   )}
                   <span className={`text-sm hidden md:inline ${
-                    currentStep >= step.id ? 'text-white' : 'text-slate-500'
+                    currentStep >= step.id ? 'text-white' : 'text-zinc-500'
                   }`}>
                     {step.title}
                   </span>
                 </div>
                 {idx < steps.length - 1 && (
                   <div className={`w-12 md:w-24 h-0.5 mx-2 ${
-                    currentStep > step.id ? 'bg-green-500' : 'bg-slate-700'
+                    currentStep > step.id ? 'bg-green-500' : 'bg-zinc-700'
                   }`} />
                 )}
               </div>
@@ -511,7 +511,7 @@ export default function OnboardingPage() {
       </main>
 
       {/* Footer */}
-      <footer className="border-t border-slate-800 p-4">
+      <footer className="border-t border-zinc-800 p-4">
         <div className="max-w-4xl mx-auto flex items-center justify-between">
           <Button
             variant="ghost"
@@ -522,7 +522,7 @@ export default function OnboardingPage() {
             Back
           </Button>
 
-          <span className="text-sm text-slate-500">
+          <span className="text-sm text-zinc-500">
             Step {currentStep} of {steps.length}
           </span>
 

@@ -40,10 +40,10 @@ export default function TracesPage() {
     return (
       <Layout>
         <div className="p-6">
-          <div className="h-8 w-32 bg-slate-700 rounded mb-6 animate-pulse" />
+          <div className="h-8 w-32 bg-zinc-700 rounded mb-6 animate-pulse" />
           <div className="space-y-4">
             {[1,2,3,4,5].map(i => (
-              <div key={i} className="h-20 bg-slate-700 rounded-xl animate-pulse" />
+              <div key={i} className="h-20 bg-zinc-700 rounded-xl animate-pulse" />
             ))}
           </div>
         </div>

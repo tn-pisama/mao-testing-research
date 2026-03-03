@@ -46,7 +46,7 @@ const deploymentStageConfig = {
   staged: { label: 'Ready to test', description: 'Fix is prepared but not live yet', color: 'text-amber-400 bg-amber-500/20' },
   promoted: { label: 'Live', description: 'Fix is active in your workflow', color: 'text-green-400 bg-green-500/20' },
   rejected: { label: 'Not applied', description: 'Fix was declined after review', color: 'text-red-400 bg-red-500/20' },
-  rolled_back: { label: 'Undone', description: 'Fix was removed and workflow restored', color: 'text-slate-400 bg-slate-500/20' },
+  rolled_back: { label: 'Undone', description: 'Fix was removed and workflow restored', color: 'text-zinc-400 bg-zinc-500/20' },
 }
 
 function formatTime(isoString: string | null): string {
@@ -134,7 +134,7 @@ export function HealingCard({
       <CardContent className="p-0">
         {/* Header */}
         <div
-          className="p-4 cursor-pointer hover:bg-slate-800/50 transition-colors"
+          className="p-4 cursor-pointer hover:bg-zinc-800/50 transition-colors"
           onClick={() => setIsExpanded(!isExpanded)}
         >
           <div className="flex items-center justify-between">
@@ -146,14 +146,14 @@ export function HealingCard({
                   healing.status === 'applied' ? 'text-green-400' :
                   healing.status === 'failed' || healing.status === 'rejected' ? 'text-red-400' :
                   healing.status === 'staged' ? 'text-amber-400' :
-                  'text-slate-400'
+                  'text-zinc-400'
                 }
               />
               <div>
                 <p className="text-sm font-medium text-white">
                   {healing.fix_type.replace(/_/g, ' ')}
                 </p>
-                <p className="text-xs text-slate-500">
+                <p className="text-xs text-zinc-500">
                   Detection: {healing.detection_id.slice(0, 8)}...
                   {healing.workflow_id && ` | Workflow: ${healing.workflow_id}`}
                 </p>
@@ -185,7 +185,7 @@ export function HealingCard({
                   Unverified
                 </span>
               )}
-              <div className="flex items-center gap-1 text-xs text-slate-500">
+              <div className="flex items-center gap-1 text-xs text-zinc-500">
                 <Clock size={12} />
                 {formatTime(healing.created_at)}
               </div>
@@ -196,19 +196,19 @@ export function HealingCard({
 
         {/* Expanded Content */}
         {isExpanded && (
-          <div className="border-t border-slate-700 p-4 space-y-4">
+          <div className="border-t border-zinc-700 p-4 space-y-4">
             {/* Status explanation for non-technical users */}
-            <div className="bg-slate-800/50 rounded-lg p-3 mb-4">
+            <div className="bg-zinc-800/50 rounded-lg p-3 mb-4">
               <div className="flex items-center gap-2 mb-1">
                 <StatusIcon size={16} className={
                   healing.status === 'applied' ? 'text-green-400' :
                   healing.status === 'staged' ? 'text-amber-400' :
                   healing.status === 'failed' || healing.status === 'rejected' ? 'text-red-400' :
-                  'text-slate-400'
+                  'text-zinc-400'
                 } />
                 <p className="text-sm font-medium text-white">{status.label}</p>
               </div>
-              <p className="text-xs text-slate-400">{status.description}</p>
+              <p className="text-xs text-zinc-400">{status.description}</p>
             </div>
 
             {/* Pipeline Progress */}
@@ -217,11 +217,11 @@ export function HealingCard({
             {/* Timeline - simple view of what happened */}
             <div className="grid grid-cols-2 gap-4 text-sm">
               <div>
-                <p className="text-slate-500 text-xs mb-1">Started</p>
+                <p className="text-zinc-500 text-xs mb-1">Started</p>
                 <p className="text-white">{formatTime(healing.started_at)}</p>
               </div>
               <div>
-                <p className="text-slate-500 text-xs mb-1">Completed</p>
+                <p className="text-zinc-500 text-xs mb-1">Completed</p>
                 <p className="text-white">{formatTime(healing.completed_at)}</p>
               </div>
             </div>
@@ -232,11 +232,11 @@ export function HealingCard({
                 <p className="text-xs text-purple-400 mb-2 font-medium">Approval Info</p>
                 <div className="grid grid-cols-2 gap-3 text-sm">
                   <div>
-                    <p className="text-slate-500 text-xs">Approved by</p>
+                    <p className="text-zinc-500 text-xs">Approved by</p>
                     <p className="text-white">{healing.approved_by || 'Pending'}</p>
                   </div>
                   <div>
-                    <p className="text-slate-500 text-xs">Approved at</p>
+                    <p className="text-zinc-500 text-xs">Approved at</p>
                     <p className="text-white">{healing.approved_at ? formatTime(healing.approved_at) : 'Pending'}</p>
                   </div>
                 </div>
@@ -245,7 +245,7 @@ export function HealingCard({
 
             {/* Testing Status - for staged deployments */}
             {healing.deployment_stage && (
-              <div className={`rounded-lg p-3 ${deploymentStage?.color || 'bg-slate-500/20'}`}>
+              <div className={`rounded-lg p-3 ${deploymentStage?.color || 'bg-zinc-500/20'}`}>
                 <p className="text-xs mb-1">Current Status</p>
                 <p className="text-sm font-medium">{deploymentStage?.label}</p>
                 <p className="text-xs opacity-80 mt-1">{deploymentStage?.description}</p>
@@ -276,7 +276,7 @@ export function HealingCard({
                 </div>
                 <div className="grid grid-cols-3 gap-3 text-xs">
                   <div>
-                    <p className="text-slate-500">Before</p>
+                    <p className="text-zinc-500">Before</p>
                     <p className="text-white">
                       {healing.validation_results.before_confidence != null
                         ? `${(healing.validation_results.before_confidence * 100).toFixed(0)}% confidence`
@@ -284,7 +284,7 @@ export function HealingCard({
                     </p>
                   </div>
                   <div>
-                    <p className="text-slate-500">After</p>
+                    <p className="text-zinc-500">After</p>
                     <p className={healing.validation_results.after_confidence === 0 ? 'text-green-400' : 'text-white'}>
                       {healing.validation_results.after_confidence != null
                         ? `${(healing.validation_results.after_confidence * 100).toFixed(0)}% confidence`
@@ -292,7 +292,7 @@ export function HealingCard({
                     </p>
                   </div>
                   <div>
-                    <p className="text-slate-500">Reduction</p>
+                    <p className="text-zinc-500">Reduction</p>
                     <p className="text-green-400">
                       {healing.validation_results.confidence_reduction != null
                         ? `${(healing.validation_results.confidence_reduction * 100).toFixed(0)}%`
@@ -331,11 +331,11 @@ export function HealingCard({
             {/* Fix Suggestions - what we can do */}
             {healing.fix_suggestions && healing.fix_suggestions.length > 0 && (
               <div className="space-y-2">
-                <p className="text-xs text-slate-500">Available Fixes</p>
+                <p className="text-xs text-zinc-500">Available Fixes</p>
                 {healing.fix_suggestions.map((suggestion, idx) => (
                   <div
                     key={suggestion.id || idx}
-                    className="bg-slate-800/50 rounded-lg p-3"
+                    className="bg-zinc-800/50 rounded-lg p-3"
                   >
                     <div className="flex items-center justify-between mb-2">
                       <p className="text-sm font-medium text-white">{suggestion.title}</p>
@@ -345,7 +345,7 @@ export function HealingCard({
                         </Badge>
                       </TermTooltip>
                     </div>
-                    <p className="text-xs text-slate-400">{suggestion.description}</p>
+                    <p className="text-xs text-zinc-400">{suggestion.description}</p>
                   </div>
                 ))}
               </div>
@@ -353,23 +353,23 @@ export function HealingCard({
 
             {/* Technical details - collapsed by default */}
             <details className="group">
-              <summary className="text-xs text-slate-500 cursor-pointer hover:text-slate-400">
+              <summary className="text-xs text-zinc-500 cursor-pointer hover:text-zinc-400">
                 Technical Details (click to expand)
               </summary>
               <div className="mt-2 grid grid-cols-2 gap-4 text-xs">
                 <div>
-                  <p className="text-slate-500">Fix ID</p>
+                  <p className="text-zinc-500">Fix ID</p>
                   <p className="text-white">{healing.fix_id || 'N/A'}</p>
                 </div>
                 <div>
-                  <p className="text-slate-500">Workflow ID</p>
+                  <p className="text-zinc-500">Workflow ID</p>
                   <p className="text-white">{healing.workflow_id || 'N/A'}</p>
                 </div>
               </div>
             </details>
 
             {/* Actions */}
-            <div className="flex items-center gap-2 pt-2 border-t border-slate-700">
+            <div className="flex items-center gap-2 pt-2 border-t border-zinc-700">
               {showPromoteReject && (
                 <>
                   {onVerify && (

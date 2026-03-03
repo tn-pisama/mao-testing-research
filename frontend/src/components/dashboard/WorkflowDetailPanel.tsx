@@ -9,7 +9,7 @@ import { WorkflowNodeDetails } from '@/components/workflow/WorkflowNodeDetails'
 import { WorkflowEdgeDetails } from '@/components/workflow/WorkflowEdgeDetails'
 import { useHandoffAnalysis } from '@/hooks/useHandoffAnalysis'
 import { X, ChevronDown, ChevronUp, AlertCircle, Info, TrendingUp, GitBranch, Activity } from 'lucide-react'
-import clsx from 'clsx'
+import { cn } from '@/lib/utils'
 
 interface WorkflowDetailPanelProps {
   workflow: QualityAssessment
@@ -42,24 +42,24 @@ export function WorkflowDetailPanel({ workflow, onClose }: WorkflowDetailPanelPr
   }
 
   return (
-    <div className="fixed inset-y-0 right-0 w-full md:w-2/3 lg:w-1/2 bg-slate-900 border-l border-slate-700 shadow-2xl overflow-y-auto z-50">
+    <div className="fixed inset-y-0 right-0 w-full md:w-2/3 lg:w-1/2 bg-zinc-900 border-l border-zinc-700 shadow-2xl overflow-y-auto z-50">
       {/* Header */}
-      <div className="sticky top-0 bg-slate-900 border-b border-slate-700 p-6 z-10">
+      <div className="sticky top-0 bg-zinc-900 border-b border-zinc-700 p-6 z-10">
         <div className="flex items-start justify-between">
           <div className="flex-1 min-w-0 mr-4">
             <h2 className="text-2xl font-bold text-white mb-2 truncate">
               {workflow.workflow_name}
             </h2>
-            <div className="text-sm text-slate-400">
+            <div className="text-sm text-zinc-400">
               ID: {workflow.workflow_id}
             </div>
           </div>
           <button
             onClick={onClose}
-            className="p-2 hover:bg-slate-800 rounded-lg transition-colors flex-shrink-0"
+            className="p-2 hover:bg-zinc-800 rounded-lg transition-colors flex-shrink-0"
             aria-label="Close panel"
           >
-            <X size={24} className="text-slate-400" />
+            <X size={24} className="text-zinc-400" />
           </button>
         </div>
       </div>
@@ -73,12 +73,12 @@ export function WorkflowDetailPanel({ workflow, onClose }: WorkflowDetailPanelPr
             <TrendingUp size={20} className="text-purple-400" />
           </div>
 
-          <div className="bg-slate-800 rounded-lg p-4 border border-slate-700">
+          <div className="bg-zinc-800 rounded-lg p-4 border border-zinc-700">
             {/* Overall Score */}
             <div className="flex items-center gap-4 mb-4">
               <QualityGradeBadge grade={workflow.overall_grade} size="lg" />
               <div>
-                <div className={clsx(
+                <div className={cn(
                   'text-3xl font-bold',
                   workflow.overall_score >= 80 ? 'text-green-400' :
                   workflow.overall_score >= 60 ? 'text-blue-400' :
@@ -87,11 +87,11 @@ export function WorkflowDetailPanel({ workflow, onClose }: WorkflowDetailPanelPr
                 )}>
                   {Math.round(workflow.overall_score)}%
                 </div>
-                <div className="text-sm text-slate-400">Overall Quality</div>
+                <div className="text-sm text-zinc-400">Overall Quality</div>
               </div>
               {orchestrationScore?.detected_pattern && (
                 <div className="ml-auto">
-                  <div className="text-xs text-slate-400">Pattern</div>
+                  <div className="text-xs text-zinc-400">Pattern</div>
                   <div className="text-sm text-white font-medium capitalize">
                     {orchestrationScore.detected_pattern}
                   </div>
@@ -102,12 +102,12 @@ export function WorkflowDetailPanel({ workflow, onClose }: WorkflowDetailPanelPr
             {/* Orchestration Dimensions */}
             {orchestrationScore?.dimensions && orchestrationScore.dimensions.length > 0 && (
               <div className="space-y-3">
-                <div className="text-sm font-medium text-slate-300">Dimensions</div>
+                <div className="text-sm font-medium text-zinc-300">Dimensions</div>
                 {orchestrationScore.dimensions.map((dim) => (
                   <div key={dim.dimension} className="space-y-1">
                     <div className="flex items-center justify-between text-sm">
-                      <span className="text-slate-300 capitalize">{dim.dimension}</span>
-                      <span className={clsx(
+                      <span className="text-zinc-300 capitalize">{dim.dimension}</span>
+                      <span className={cn(
                         'font-semibold',
                         dim.score >= 0.8 ? 'text-green-400' :
                         dim.score >= 0.6 ? 'text-blue-400' :
@@ -117,9 +117,9 @@ export function WorkflowDetailPanel({ workflow, onClose }: WorkflowDetailPanelPr
                         {(dim.score * 100).toFixed(0)}%
                       </span>
                     </div>
-                    <div className="bg-slate-700 rounded-full h-1.5 overflow-hidden">
+                    <div className="bg-zinc-700 rounded-full h-1.5 overflow-hidden">
                       <div
-                        className={clsx(
+                        className={cn(
                           'h-1.5 rounded-full transition-all',
                           dim.score >= 0.8 ? 'bg-green-500' :
                           dim.score >= 0.6 ? 'bg-blue-500' :
@@ -136,7 +136,7 @@ export function WorkflowDetailPanel({ workflow, onClose }: WorkflowDetailPanelPr
 
             {/* Critical Orchestration Issues */}
             {orchestrationScore?.critical_issues && orchestrationScore.critical_issues.length > 0 && (
-              <div className="mt-4 pt-4 border-t border-slate-700">
+              <div className="mt-4 pt-4 border-t border-zinc-700">
                 <div className="flex items-center gap-2 text-sm font-medium text-red-400 mb-2">
                   <AlertCircle size={16} />
                   <span>Critical Issues</span>
@@ -145,7 +145,7 @@ export function WorkflowDetailPanel({ workflow, onClose }: WorkflowDetailPanelPr
                   {orchestrationScore.critical_issues.map((issue, idx) => (
                     <div
                       key={idx}
-                      className="text-sm text-slate-300 bg-red-500/10 border border-red-500/20 rounded-lg p-2"
+                      className="text-sm text-zinc-300 bg-red-500/10 border border-red-500/20 rounded-lg p-2"
                     >
                       {issue}
                     </div>
@@ -167,17 +167,17 @@ export function WorkflowDetailPanel({ workflow, onClose }: WorkflowDetailPanelPr
               </span>
             )}
             {(selectedNodeId || selectedEdgeId) && (
-              <div className="ml-auto text-xs text-slate-400">
+              <div className="ml-auto text-xs text-zinc-400">
                 Click {selectedNodeId ? 'node' : 'edge'} for details • Click outside to close
               </div>
             )}
           </div>
           <div className="relative">
             {handoffLoading ? (
-              <div className="h-[600px] flex items-center justify-center bg-slate-800 rounded-lg border border-slate-700">
+              <div className="h-[600px] flex items-center justify-center bg-zinc-800 rounded-lg border border-zinc-700">
                 <div className="text-center">
                   <Activity className="w-8 h-8 text-blue-500 animate-spin mx-auto mb-2" />
-                  <p className="text-slate-400 text-sm">Loading workflow diagram...</p>
+                  <p className="text-zinc-400 text-sm">Loading workflow diagram...</p>
                 </div>
               </div>
             ) : handoffAnalysis ? (
@@ -243,9 +243,9 @@ export function WorkflowDetailPanel({ workflow, onClose }: WorkflowDetailPanelPr
         {workflow.key_findings && workflow.key_findings.length > 0 && (
           <section>
             <h3 className="text-lg font-semibold text-white mb-4">Key Findings</h3>
-            <div className="bg-slate-800 rounded-lg p-4 border border-slate-700 space-y-2">
+            <div className="bg-zinc-800 rounded-lg p-4 border border-zinc-700 space-y-2">
               {workflow.key_findings.map((finding, idx) => (
-                <div key={idx} className="flex items-start gap-2 text-sm text-slate-300">
+                <div key={idx} className="flex items-start gap-2 text-sm text-zinc-300">
                   <span className="text-blue-400 flex-shrink-0">•</span>
                   <span>{finding}</span>
                 </div>
@@ -258,7 +258,7 @@ export function WorkflowDetailPanel({ workflow, onClose }: WorkflowDetailPanelPr
         {workflow.summary && (
           <section>
             <h3 className="text-lg font-semibold text-white mb-4">Summary</h3>
-            <div className="bg-slate-800 rounded-lg p-4 border border-slate-700 text-sm text-slate-300">
+            <div className="bg-zinc-800 rounded-lg p-4 border border-zinc-700 text-sm text-zinc-300">
               {workflow.summary}
             </div>
           </section>
@@ -272,11 +272,11 @@ export function WorkflowDetailPanel({ workflow, onClose }: WorkflowDetailPanelPr
               {orchestrationImprovements.map((improvement) => (
                 <div
                   key={improvement.id}
-                  className="bg-slate-800 rounded-lg p-4 border border-slate-700"
+                  className="bg-zinc-800 rounded-lg p-4 border border-zinc-700"
                 >
                   <div className="flex items-start justify-between mb-2">
                     <div className="flex items-center gap-2">
-                      <span className={clsx(
+                      <span className={cn(
                         'text-xs font-medium px-2 py-0.5 rounded',
                         improvement.severity === 'critical' ? 'bg-red-500/20 text-red-400' :
                         improvement.severity === 'high' ? 'bg-orange-500/20 text-orange-400' :
@@ -285,7 +285,7 @@ export function WorkflowDetailPanel({ workflow, onClose }: WorkflowDetailPanelPr
                       )}>
                         {improvement.severity}
                       </span>
-                      <span className="text-xs text-slate-500">
+                      <span className="text-xs text-zinc-500">
                         {improvement.effort} effort
                       </span>
                     </div>
@@ -293,11 +293,11 @@ export function WorkflowDetailPanel({ workflow, onClose }: WorkflowDetailPanelPr
                   <div className="text-sm font-medium text-white mb-1">
                     {improvement.title}
                   </div>
-                  <div className="text-sm text-slate-400">
+                  <div className="text-sm text-zinc-400">
                     {improvement.description}
                   </div>
                   {improvement.estimated_impact && (
-                    <div className="text-xs text-slate-500 mt-2">
+                    <div className="text-xs text-zinc-500 mt-2">
                       Impact: {improvement.estimated_impact}
                     </div>
                   )}
@@ -336,12 +336,12 @@ interface MetricCardProps {
 
 function MetricCard({ label, value, status }: MetricCardProps) {
   return (
-    <div className="bg-slate-800 rounded-lg p-3 border border-slate-700">
-      <div className="text-xs text-slate-400 mb-1">{label}</div>
+    <div className="bg-zinc-800 rounded-lg p-3 border border-zinc-700">
+      <div className="text-xs text-zinc-400 mb-1">{label}</div>
       <div className="flex items-baseline gap-2">
         <div className="text-xl font-bold text-white">{value}</div>
         {status && (
-          <div className={clsx(
+          <div className={cn(
             'text-xs font-medium',
             status === 'good' ? 'text-green-400' :
             status === 'moderate' ? 'text-amber-400' :

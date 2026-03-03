@@ -14,7 +14,7 @@ export function WorkflowHealthCard({ traces, isLoading }: WorkflowHealthCardProp
   if (isLoading) {
     return (
       <Card>
-        <div className="h-40 animate-pulse bg-slate-700 rounded-lg" />
+        <div className="h-40 animate-pulse bg-zinc-700 rounded-lg" />
       </Card>
     )
   }
@@ -49,17 +49,17 @@ export function WorkflowHealthCard({ traces, isLoading }: WorkflowHealthCardProp
         <div className="grid grid-cols-3 gap-4 text-sm">
           <div className="flex items-center gap-2">
             <CheckCircle className="h-4 w-4 text-green-400" />
-            <span className="text-slate-400">Healthy:</span>
+            <span className="text-zinc-400">Healthy:</span>
             <span className="font-medium text-green-400">{healthyCount}</span>
           </div>
           <div className="flex items-center gap-2">
             <AlertCircle className="h-4 w-4 text-red-400" />
-            <span className="text-slate-400">Issues:</span>
+            <span className="text-zinc-400">Issues:</span>
             <span className="font-medium text-red-400">{failedCount}</span>
           </div>
           <div className="flex items-center gap-2">
             <Clock className="h-4 w-4 text-yellow-400" />
-            <span className="text-slate-400">Running:</span>
+            <span className="text-zinc-400">Running:</span>
             <span className="font-medium text-yellow-400">{runningCount}</span>
           </div>
         </div>

@@ -70,7 +70,7 @@ export default function TestingPage() {
   const TrendIcon = ({ trend }: { trend: string }) => {
     if (trend === 'up') return <TrendingUp className="text-emerald-400" size={16} />
     if (trend === 'down') return <TrendingDown className="text-red-400" size={16} />
-    return <Minus className="text-slate-400" size={16} />
+    return <Minus className="text-zinc-400" size={16} />
   }
 
   const runTests = async () => {
@@ -85,10 +85,10 @@ export default function TestingPage() {
     return (
       <Layout>
         <div className="p-6 animate-pulse">
-          <div className="h-8 w-48 bg-slate-700 rounded mb-6" />
+          <div className="h-8 w-48 bg-zinc-700 rounded mb-6" />
           <div className="grid lg:grid-cols-2 gap-6">
-            <div className="h-48 bg-slate-700 rounded-xl" />
-            <div className="h-48 bg-slate-700 rounded-xl" />
+            <div className="h-48 bg-zinc-700 rounded-xl" />
+            <div className="h-48 bg-zinc-700 rounded-xl" />
           </div>
         </div>
       </Layout>
@@ -105,7 +105,7 @@ export default function TestingPage() {
         <div className="flex items-center justify-between mb-6">
           <div>
             <h1 className="text-2xl font-bold text-white">Testing Dashboard</h1>
-            <p className="text-slate-400 text-sm mt-1">
+            <p className="text-zinc-400 text-sm mt-1">
               MAST 14-Mode Detection Accuracy
             </p>
           </div>
@@ -135,8 +135,8 @@ export default function TestingPage() {
             onClick={() => setActiveTab('accuracy')}
             className={`px-4 py-2 rounded-lg text-sm font-medium transition-colors ${
               activeTab === 'accuracy'
-                ? 'bg-primary-600 text-white'
-                : 'bg-slate-700 text-slate-300 hover:bg-slate-600'
+                ? 'bg-blue-600 text-white'
+                : 'bg-zinc-700 text-zinc-300 hover:bg-zinc-600'
             }`}
           >
             Detection Accuracy
@@ -145,8 +145,8 @@ export default function TestingPage() {
             onClick={() => setActiveTab('handoffs')}
             className={`px-4 py-2 rounded-lg text-sm font-medium transition-colors ${
               activeTab === 'handoffs'
-                ? 'bg-primary-600 text-white'
-                : 'bg-slate-700 text-slate-300 hover:bg-slate-600'
+                ? 'bg-blue-600 text-white'
+                : 'bg-zinc-700 text-zinc-300 hover:bg-zinc-600'
             }`}
           >
             Handoff Testing
@@ -156,15 +156,15 @@ export default function TestingPage() {
         {activeTab === 'accuracy' ? (
           <>
             <div className="grid lg:grid-cols-3 gap-6 mb-6">
-              <div className="bg-slate-800 rounded-xl p-6 border border-slate-700">
+              <div className="bg-zinc-800 rounded-xl p-6 border border-zinc-700">
                 <h2 className="text-lg font-semibold text-white mb-4 flex items-center gap-2">
                   System Design (F1-F5)
-                  <span className="text-xs text-slate-400 font-normal">(24hr avg)</span>
+                  <span className="text-xs text-zinc-400 font-normal">(24hr avg)</span>
                 </h2>
                 <div className="space-y-3">
                   {systemMetrics.map((metric) => (
                     <div key={metric.detection_type} className="flex items-center justify-between">
-                      <span className="text-slate-300 text-sm">{metric.label}</span>
+                      <span className="text-zinc-300 text-sm">{metric.label}</span>
                       <div className="flex items-center gap-2">
                         <span className={`font-medium ${
                           metric.accuracy >= 90 ? 'text-emerald-400' :
@@ -179,15 +179,15 @@ export default function TestingPage() {
                 </div>
               </div>
 
-              <div className="bg-slate-800 rounded-xl p-6 border border-slate-700">
+              <div className="bg-zinc-800 rounded-xl p-6 border border-zinc-700">
                 <h2 className="text-lg font-semibold text-white mb-4 flex items-center gap-2">
                   Inter-Agent (F6-F10)
-                  <span className="text-xs text-slate-400 font-normal">(24hr avg)</span>
+                  <span className="text-xs text-zinc-400 font-normal">(24hr avg)</span>
                 </h2>
                 <div className="space-y-3">
                   {interAgentMetrics.map((metric) => (
                     <div key={metric.detection_type} className="flex items-center justify-between">
-                      <span className="text-slate-300 text-sm">{metric.label}</span>
+                      <span className="text-zinc-300 text-sm">{metric.label}</span>
                       <div className="flex items-center gap-2">
                         <span className={`font-medium ${
                           metric.accuracy >= 90 ? 'text-emerald-400' :
@@ -202,12 +202,12 @@ export default function TestingPage() {
                 </div>
               </div>
 
-              <div className="bg-slate-800 rounded-xl p-6 border border-slate-700">
+              <div className="bg-zinc-800 rounded-xl p-6 border border-zinc-700">
                 <h2 className="text-lg font-semibold text-white mb-4">Verification (F11-F14)</h2>
                 <div className="space-y-3">
                   {verificationMetrics.map((metric) => (
                     <div key={metric.detection_type} className="flex items-center justify-between">
-                      <span className="text-slate-300 text-sm">{metric.label}</span>
+                      <span className="text-zinc-300 text-sm">{metric.label}</span>
                       <div className="flex items-center gap-2">
                         <span className={`font-medium ${
                           metric.accuracy >= 90 ? 'text-emerald-400' :
@@ -224,23 +224,23 @@ export default function TestingPage() {
             </div>
 
             <div className="grid lg:grid-cols-2 gap-6">
-              <div className="bg-slate-800 rounded-xl p-6 border border-slate-700">
+              <div className="bg-zinc-800 rounded-xl p-6 border border-zinc-700">
                 <h2 className="text-lg font-semibold text-white mb-4">Integration Test Status</h2>
                 <div className="space-y-2">
                   {integrations.map((integration) => (
                     <div
                       key={integration.name}
-                      className="flex items-center justify-between p-3 bg-slate-700/50 rounded-lg"
+                      className="flex items-center justify-between p-3 bg-zinc-700/50 rounded-lg"
                     >
                       <div className="flex items-center gap-3">
                         <span className={integration.passed === integration.total ? 'text-emerald-400' : 'text-amber-400'}>
                           {integration.passed === integration.total ? '✓' : '!'}
                         </span>
                         <span className="text-white font-medium">{integration.name}</span>
-                        <span className="text-slate-400 text-sm">{integration.version}</span>
+                        <span className="text-zinc-400 text-sm">{integration.version}</span>
                       </div>
                       <div className="flex items-center gap-4">
-                        <span className="text-slate-300">
+                        <span className="text-zinc-300">
                           {integration.passed}/{integration.total} passed
                         </span>
                         <Button variant="ghost" size="sm">View</Button>
@@ -250,23 +250,23 @@ export default function TestingPage() {
                 </div>
               </div>
 
-              <div className="bg-slate-800 rounded-xl p-6 border border-slate-700">
+              <div className="bg-zinc-800 rounded-xl p-6 border border-zinc-700">
                 <h2 className="text-lg font-semibold text-white mb-4">Recent Test Runs</h2>
                 <div className="space-y-2">
                   {recentRuns.map((run) => (
                     <div
                       key={run.id}
-                      className="flex items-center justify-between p-3 bg-slate-700/50 rounded-lg"
+                      className="flex items-center justify-between p-3 bg-zinc-700/50 rounded-lg"
                     >
                       <div className="flex items-center gap-3">
-                        <span className="text-slate-400 text-sm">{run.timestamp}</span>
+                        <span className="text-zinc-400 text-sm">{run.timestamp}</span>
                         <span className="text-white">{run.name}</span>
                       </div>
                       <div className="flex items-center gap-2">
                         <span className={run.passed === run.total ? 'text-emerald-400' : 'text-amber-400'}>
                           {run.passed === run.total ? '✓' : '!'}
                         </span>
-                        <span className="text-slate-300">{run.passed}/{run.total}</span>
+                        <span className="text-zinc-300">{run.passed}/{run.total}</span>
                       </div>
                     </div>
                   ))}
@@ -276,14 +276,14 @@ export default function TestingPage() {
           </>
         ) : (
           <div className="space-y-6">
-            <div className="bg-slate-800 rounded-xl p-6 border border-slate-700">
+            <div className="bg-zinc-800 rounded-xl p-6 border border-zinc-700">
               <h2 className="text-lg font-semibold text-white mb-4">Agent Handoff Analysis</h2>
               <div className="space-y-3">
                 {handoffs.map((handoff) => (
                   <div
                     key={handoff.id}
                     className={`flex items-center gap-4 p-4 rounded-lg border ${
-                      handoff.status === 'success' ? 'border-slate-600 bg-slate-700/30' :
+                      handoff.status === 'success' ? 'border-zinc-600 bg-zinc-700/30' :
                       handoff.status === 'warning' ? 'border-amber-500/30 bg-amber-500/5' :
                       'border-red-500/30 bg-red-500/5'
                     }`}
@@ -298,18 +298,18 @@ export default function TestingPage() {
                       )}
                     </div>
                     <div className="flex-1 flex items-center gap-3">
-                      <span className="bg-slate-700 px-3 py-1 rounded-lg text-white text-sm">
+                      <span className="bg-zinc-700 px-3 py-1 rounded-lg text-white text-sm">
                         {handoff.from}
                       </span>
-                      <ArrowRight className="text-slate-500" size={16} />
-                      <span className="bg-slate-700 px-3 py-1 rounded-lg text-white text-sm">
+                      <ArrowRight className="text-zinc-500" size={16} />
+                      <span className="bg-zinc-700 px-3 py-1 rounded-lg text-white text-sm">
                         {handoff.to}
                       </span>
                     </div>
                     <div className="flex items-center gap-6 text-sm">
                       {handoff.latency > 0 && (
                         <span className={`flex items-center gap-1 ${
-                          handoff.latency > 1000 ? 'text-amber-400' : 'text-slate-400'
+                          handoff.latency > 1000 ? 'text-amber-400' : 'text-zinc-400'
                         }`}>
                           <Clock size={14} />
                           {handoff.latency}ms
@@ -334,21 +334,21 @@ export default function TestingPage() {
             </div>
 
             <div className="grid lg:grid-cols-3 gap-6">
-              <div className="bg-slate-800 rounded-xl p-6 border border-slate-700">
+              <div className="bg-zinc-800 rounded-xl p-6 border border-zinc-700">
                 <h3 className="text-white font-semibold mb-4">Handoff Summary</h3>
                 <div className="space-y-3">
                   <div className="flex justify-between">
-                    <span className="text-slate-400">Total Handoffs</span>
+                    <span className="text-zinc-400">Total Handoffs</span>
                     <span className="text-white">{handoffs.length}</span>
                   </div>
                   <div className="flex justify-between">
-                    <span className="text-slate-400">Success Rate</span>
+                    <span className="text-zinc-400">Success Rate</span>
                     <span className="text-emerald-400">
                       {Math.round((handoffs.filter(h => h.status === 'success').length / handoffs.length) * 100)}%
                     </span>
                   </div>
                   <div className="flex justify-between">
-                    <span className="text-slate-400">Data Loss Events</span>
+                    <span className="text-zinc-400">Data Loss Events</span>
                     <span className="text-red-400">
                       {handoffs.filter(h => h.dataLoss).length}
                     </span>
@@ -356,23 +356,23 @@ export default function TestingPage() {
                 </div>
               </div>
 
-              <div className="bg-slate-800 rounded-xl p-6 border border-slate-700">
+              <div className="bg-zinc-800 rounded-xl p-6 border border-zinc-700">
                 <h3 className="text-white font-semibold mb-4">Latency Analysis</h3>
                 <div className="space-y-3">
                   <div className="flex justify-between">
-                    <span className="text-slate-400">Avg Latency</span>
+                    <span className="text-zinc-400">Avg Latency</span>
                     <span className="text-white">
                       {Math.round(handoffs.filter(h => h.latency > 0).reduce((s, h) => s + h.latency, 0) / handoffs.filter(h => h.latency > 0).length)}ms
                     </span>
                   </div>
                   <div className="flex justify-between">
-                    <span className="text-slate-400">Max Latency</span>
+                    <span className="text-zinc-400">Max Latency</span>
                     <span className="text-amber-400">
                       {Math.max(...handoffs.map(h => h.latency))}ms
                     </span>
                   </div>
                   <div className="flex justify-between">
-                    <span className="text-slate-400">SLA Breaches</span>
+                    <span className="text-zinc-400">SLA Breaches</span>
                     <span className="text-amber-400">
                       {handoffs.filter(h => h.latency > 1000).length}
                     </span>
@@ -380,24 +380,24 @@ export default function TestingPage() {
                 </div>
               </div>
 
-              <div className="bg-slate-800 rounded-xl p-6 border border-slate-700">
+              <div className="bg-zinc-800 rounded-xl p-6 border border-zinc-700">
                 <h3 className="text-white font-semibold mb-4">Test Assertions</h3>
                 <div className="space-y-2">
                   <div className="flex items-center gap-2">
                     <CheckCircle className="text-emerald-400" size={16} />
-                    <span className="text-slate-300 text-sm">Context completeness</span>
+                    <span className="text-zinc-300 text-sm">Context completeness</span>
                   </div>
                   <div className="flex items-center gap-2">
                     <XCircle className="text-red-400" size={16} />
-                    <span className="text-slate-300 text-sm">No data loss</span>
+                    <span className="text-zinc-300 text-sm">No data loss</span>
                   </div>
                   <div className="flex items-center gap-2">
                     <AlertCircle className="text-amber-400" size={16} />
-                    <span className="text-slate-300 text-sm">Handoff SLA (&lt;1s)</span>
+                    <span className="text-zinc-300 text-sm">Handoff SLA (&lt;1s)</span>
                   </div>
                   <div className="flex items-center gap-2">
                     <CheckCircle className="text-emerald-400" size={16} />
-                    <span className="text-slate-300 text-sm">No circular handoffs</span>
+                    <span className="text-zinc-300 text-sm">No circular handoffs</span>
                   </div>
                 </div>
               </div>

@@ -4,7 +4,7 @@ import { useState } from 'react'
 import { AgentQualityScore } from '@/lib/api'
 import { QualityGradeBadge } from '@/components/quality/QualityGradeBadge'
 import { AlertCircle, CheckCircle, AlertTriangle, ChevronDown, ChevronUp, User } from 'lucide-react'
-import clsx from 'clsx'
+import { cn } from '@/lib/utils'
 
 interface AgentStatusGridProps {
   agents: AgentQualityScore[]
@@ -18,7 +18,7 @@ export function AgentStatusGrid({ agents, isLoading }: AgentStatusGridProps) {
     return (
       <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-4">
         {[1, 2, 3].map((i) => (
-          <div key={i} className="h-40 bg-slate-700/50 rounded-xl animate-pulse" />
+          <div key={i} className="h-40 bg-zinc-700/50 rounded-xl animate-pulse" />
         ))}
       </div>
     )
@@ -26,10 +26,10 @@ export function AgentStatusGrid({ agents, isLoading }: AgentStatusGridProps) {
 
   if (agents.length === 0) {
     return (
-      <div className="text-center py-12 px-4 bg-slate-800 rounded-xl border border-slate-700">
-        <User className="w-12 h-12 text-slate-600 mx-auto mb-4" />
-        <p className="text-slate-400 mb-2">No agent data available</p>
-        <p className="text-slate-500 text-sm">
+      <div className="text-center py-12 px-4 bg-zinc-800 rounded-xl border border-zinc-700">
+        <User className="w-12 h-12 text-zinc-600 mx-auto mb-4" />
+        <p className="text-zinc-400 mb-2">No agent data available</p>
+        <p className="text-zinc-500 text-sm">
           Agent quality scores will appear here once workflow assessments are completed
         </p>
       </div>
@@ -63,10 +63,10 @@ function AgentCard({ agent, isExpanded, onToggleExpand }: AgentCardProps) {
 
   return (
     <div
-      className={clsx(
-        'bg-slate-800 rounded-xl border transition-all',
-        isExpanded ? 'border-blue-500/50' : 'border-slate-700',
-        'hover:border-slate-600 cursor-pointer'
+      className={cn(
+        'bg-zinc-800 rounded-xl border transition-all',
+        isExpanded ? 'border-blue-500/50' : 'border-zinc-700',
+        'hover:border-zinc-600 cursor-pointer'
       )}
       onClick={onToggleExpand}
     >
@@ -78,25 +78,25 @@ function AgentCard({ agent, isExpanded, onToggleExpand }: AgentCardProps) {
               <h3 className="text-white font-medium truncate">{agent.agent_name}</h3>
               <QualityGradeBadge grade={agent.grade} size="sm" />
             </div>
-            <p className="text-xs text-slate-400 capitalize">{agent.agent_type}</p>
+            <p className="text-xs text-zinc-400 capitalize">{agent.agent_type}</p>
           </div>
           <div className="ml-2 flex-shrink-0">
             {isExpanded ? (
-              <ChevronUp size={18} className="text-slate-400" />
+              <ChevronUp size={18} className="text-zinc-400" />
             ) : (
-              <ChevronDown size={18} className="text-slate-400" />
+              <ChevronDown size={18} className="text-zinc-400" />
             )}
           </div>
         </div>
 
         {/* Health Status */}
         <div className="flex items-center gap-2 mb-3">
-          <div className={clsx('flex items-center gap-1.5 text-xs font-medium', healthStatus.color)}>
+          <div className={cn('flex items-center gap-1.5 text-xs font-medium', healthStatus.color)}>
             {healthStatus.icon}
             <span>{healthStatus.label}</span>
           </div>
           {agent.issues_count > 0 && (
-            <span className="text-xs text-slate-500">
+            <span className="text-xs text-zinc-500">
               {agent.issues_count} issue{agent.issues_count !== 1 ? 's' : ''}
             </span>
           )}
@@ -104,14 +104,14 @@ function AgentCard({ agent, isExpanded, onToggleExpand }: AgentCardProps) {
 
         {/* Quick Metrics */}
         <div className="grid grid-cols-2 gap-3">
-          <div className="bg-slate-700/50 rounded-lg p-2">
-            <div className="text-xs text-slate-400 mb-0.5">Score</div>
+          <div className="bg-zinc-700/50 rounded-lg p-2">
+            <div className="text-xs text-zinc-400 mb-0.5">Score</div>
             <div className="text-lg font-semibold text-white">
               {(agent.overall_score * 100).toFixed(0)}%
             </div>
           </div>
-          <div className="bg-slate-700/50 rounded-lg p-2">
-            <div className="text-xs text-slate-400 mb-0.5">Critical</div>
+          <div className="bg-zinc-700/50 rounded-lg p-2">
+            <div className="text-xs text-zinc-400 mb-0.5">Critical</div>
             <div className="text-lg font-semibold text-white">
               {agent.critical_issues.length}
             </div>
@@ -121,7 +121,7 @@ function AgentCard({ agent, isExpanded, onToggleExpand }: AgentCardProps) {
 
       {/* Expanded Details */}
       {isExpanded && (
-        <div className="border-t border-slate-700 p-4 space-y-4">
+        <div className="border-t border-zinc-700 p-4 space-y-4">
           {/* Quality Dimensions */}
           {agent.dimensions && agent.dimensions.length > 0 && (
             <div>
@@ -129,10 +129,10 @@ function AgentCard({ agent, isExpanded, onToggleExpand }: AgentCardProps) {
               <div className="space-y-2">
                 {agent.dimensions.map((dim) => (
                   <div key={dim.dimension} className="flex items-center gap-2">
-                    <span className="text-xs text-slate-400 w-24 capitalize">{dim.dimension}</span>
-                    <div className="flex-1 bg-slate-700 rounded-full h-1.5">
+                    <span className="text-xs text-zinc-400 w-24 capitalize">{dim.dimension}</span>
+                    <div className="flex-1 bg-zinc-700 rounded-full h-1.5">
                       <div
-                        className={clsx(
+                        className={cn(
                           'h-1.5 rounded-full transition-all',
                           dim.score >= 0.8
                             ? 'bg-green-500'
@@ -145,7 +145,7 @@ function AgentCard({ agent, isExpanded, onToggleExpand }: AgentCardProps) {
                         style={{ width: `${dim.score * 100}%` }}
                       />
                     </div>
-                    <span className="text-xs text-slate-400 w-12 text-right">
+                    <span className="text-xs text-zinc-400 w-12 text-right">
                       {(dim.score * 100).toFixed(0)}%
                     </span>
                   </div>
@@ -162,7 +162,7 @@ function AgentCard({ agent, isExpanded, onToggleExpand }: AgentCardProps) {
                 {agent.critical_issues.map((issue, idx) => (
                   <div
                     key={idx}
-                    className="flex items-start gap-2 text-xs text-slate-300 bg-red-500/10 border border-red-500/20 rounded-lg p-2"
+                    className="flex items-start gap-2 text-xs text-zinc-300 bg-red-500/10 border border-red-500/20 rounded-lg p-2"
                   >
                     <AlertCircle size={14} className="text-red-400 flex-shrink-0 mt-0.5" />
                     <span>{issue}</span>

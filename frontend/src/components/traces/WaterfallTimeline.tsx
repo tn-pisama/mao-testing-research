@@ -100,7 +100,7 @@ export function WaterfallTimeline({ states, onStateClick, selectedStateId }: Wat
       <CardHeader>
         <div className="flex items-center justify-between">
           <CardTitle>Waterfall Timeline</CardTitle>
-          <span className="text-xs text-slate-500 font-mono">
+          <span className="text-xs text-zinc-500 font-mono">
             Total: {formatDuration(timeRange.duration)}
           </span>
         </div>
@@ -115,7 +115,7 @@ export function WaterfallTimeline({ states, onStateClick, selectedStateId }: Wat
               return (
                 <div
                   key={i}
-                  className="absolute text-[10px] text-slate-500 font-mono"
+                  className="absolute text-[10px] text-zinc-500 font-mono"
                   style={{ left: `${left}%`, transform: 'translateX(-50%)' }}
                 >
                   {formatDuration(time - timeRange.start)}
@@ -141,14 +141,14 @@ export function WaterfallTimeline({ states, onStateClick, selectedStateId }: Wat
               </div>
 
               {/* Bar area */}
-              <div className="flex-1 relative h-8 bg-slate-800/50 rounded">
+              <div className="flex-1 relative h-8 bg-zinc-800/50 rounded">
                 {/* Grid lines */}
                 {timeMarkers.map((time, i) => {
                   const left = ((time - timeRange.start) / timeRange.duration) * 100
                   return (
                     <div
                       key={i}
-                      className="absolute top-0 bottom-0 w-px bg-slate-700/50"
+                      className="absolute top-0 bottom-0 w-px bg-zinc-700/50"
                       style={{ left: `${left}%` }}
                     />
                   )
@@ -188,25 +188,25 @@ export function WaterfallTimeline({ states, onStateClick, selectedStateId }: Wat
           const state = states.find(s => s.id === hoveredStateId)
           if (!state) return null
           return (
-            <div className="mt-3 p-3 bg-slate-800 rounded-lg border border-slate-700">
+            <div className="mt-3 p-3 bg-zinc-800 rounded-lg border border-zinc-700">
               <div className="flex items-center gap-4 text-sm">
                 <span className="font-mono text-white">
                   #{state.sequence_num} {state.agent_id}
                 </span>
-                <span className="text-slate-400 font-mono flex items-center gap-1">
+                <span className="text-zinc-400 font-mono flex items-center gap-1">
                   <Clock size={12} />
                   {formatDuration(state.latency_ms)}
                 </span>
-                <span className="text-slate-400 font-mono flex items-center gap-1">
+                <span className="text-zinc-400 font-mono flex items-center gap-1">
                   <Cpu size={12} />
                   {state.token_count.toLocaleString()} tokens
                 </span>
-                <span className="text-slate-500 font-mono text-xs">
+                <span className="text-zinc-500 font-mono text-xs">
                   {new Date(state.created_at).toLocaleTimeString()}
                 </span>
               </div>
               {state.metadata?.ai_output && (
-                <p className="text-xs text-slate-500 font-mono mt-1 truncate">
+                <p className="text-xs text-zinc-500 font-mono mt-1 truncate">
                   {state.metadata.ai_output.slice(0, 120)}...
                 </p>
               )}

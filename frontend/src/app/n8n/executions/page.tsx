@@ -25,7 +25,7 @@ import { Layout } from '@/components/common/Layout'
 import { Button } from '@/components/ui/Button'
 import { Badge } from '@/components/ui/Badge'
 import { createApiClient, Trace } from '@/lib/api'
-import { clsx } from 'clsx'
+import { cn } from '@/lib/utils'
 
 interface ExecutionDisplay {
   id: string
@@ -154,7 +154,7 @@ export default function ExecutionsPage() {
       case 'running':
         return <Play size={16} className="text-blue-400" />
       default:
-        return <AlertCircle size={16} className="text-slate-400" />
+        return <AlertCircle size={16} className="text-zinc-400" />
     }
   }
 
@@ -198,7 +198,7 @@ export default function ExecutionsPage() {
                 </div>
               )}
             </div>
-            <p className="text-slate-400">
+            <p className="text-zinc-400">
               View and analyze your n8n workflow execution history
             </p>
           </div>
@@ -230,14 +230,14 @@ export default function ExecutionsPage() {
 
         {/* Filters */}
         {showFilters && (
-          <div className="mb-6 p-4 bg-slate-800 rounded-xl border border-slate-700 space-y-4">
+          <div className="mb-6 p-4 bg-zinc-800 rounded-xl border border-zinc-700 space-y-4">
             <div className="grid grid-cols-2 gap-4">
               <div>
-                <label className="text-sm text-slate-400 mb-2 block">Status</label>
+                <label className="text-sm text-zinc-400 mb-2 block">Status</label>
                 <select
                   value={statusFilter}
                   onChange={(e) => setStatusFilter(e.target.value)}
-                  className="w-full px-3 py-2 bg-slate-900 border border-slate-700 rounded-lg text-white text-sm focus:outline-none focus:border-orange-500"
+                  className="w-full px-3 py-2 bg-zinc-900 border border-zinc-700 rounded-lg text-white text-sm focus:outline-none focus:border-orange-500"
                 >
                   <option value="all">All</option>
                   <option value="success">Success</option>
@@ -246,15 +246,15 @@ export default function ExecutionsPage() {
                 </select>
               </div>
               <div>
-                <label className="text-sm text-slate-400 mb-2 block">Search</label>
+                <label className="text-sm text-zinc-400 mb-2 block">Search</label>
                 <div className="relative">
-                  <Search size={16} className="absolute left-3 top-1/2 transform -translate-y-1/2 text-slate-500" />
+                  <Search size={16} className="absolute left-3 top-1/2 transform -translate-y-1/2 text-zinc-500" />
                   <input
                     type="text"
                     value={searchQuery}
                     onChange={(e) => setSearchQuery(e.target.value)}
                     placeholder="Search by workflow name or execution ID..."
-                    className="w-full pl-10 pr-3 py-2 bg-slate-900 border border-slate-700 rounded-lg text-white text-sm focus:outline-none focus:border-orange-500"
+                    className="w-full pl-10 pr-3 py-2 bg-zinc-900 border border-zinc-700 rounded-lg text-white text-sm focus:outline-none focus:border-orange-500"
                   />
                 </div>
               </div>
@@ -264,45 +264,45 @@ export default function ExecutionsPage() {
 
         {/* Stats */}
         <div className="grid grid-cols-4 gap-4 mb-6">
-          <div className="bg-slate-800 rounded-xl p-4 border border-slate-700">
+          <div className="bg-zinc-800 rounded-xl p-4 border border-zinc-700">
             <div className="text-2xl font-bold text-white">{executions.length}</div>
-            <div className="text-sm text-slate-400">Total Executions</div>
+            <div className="text-sm text-zinc-400">Total Executions</div>
           </div>
-          <div className="bg-slate-800 rounded-xl p-4 border border-slate-700">
+          <div className="bg-zinc-800 rounded-xl p-4 border border-zinc-700">
             <div className="text-2xl font-bold text-emerald-400">
               {executions.filter(e => e.status === 'success').length}
             </div>
-            <div className="text-sm text-slate-400">Successful</div>
+            <div className="text-sm text-zinc-400">Successful</div>
           </div>
-          <div className="bg-slate-800 rounded-xl p-4 border border-slate-700">
+          <div className="bg-zinc-800 rounded-xl p-4 border border-zinc-700">
             <div className="text-2xl font-bold text-red-400">
               {executions.filter(e => e.status === 'error').length}
             </div>
-            <div className="text-sm text-slate-400">Failed</div>
+            <div className="text-sm text-zinc-400">Failed</div>
           </div>
-          <div className="bg-slate-800 rounded-xl p-4 border border-slate-700">
+          <div className="bg-zinc-800 rounded-xl p-4 border border-zinc-700">
             <div className="text-2xl font-bold text-blue-400">
               {executions.filter(e => e.status === 'running').length}
             </div>
-            <div className="text-sm text-slate-400">Running</div>
+            <div className="text-sm text-zinc-400">Running</div>
           </div>
         </div>
 
         {/* Execution List */}
-        <div className="bg-slate-800 rounded-xl border border-slate-700">
+        <div className="bg-zinc-800 rounded-xl border border-zinc-700">
           {isLoading ? (
             <div className="flex items-center justify-center py-12">
               <Loader2 className="w-8 h-8 text-orange-400 animate-spin" />
             </div>
           ) : filteredExecutions.length === 0 ? (
             <div className="text-center py-12 px-4">
-              <Play className="w-12 h-12 text-slate-600 mx-auto mb-4" />
-              <p className="text-slate-400 mb-2">
+              <Play className="w-12 h-12 text-zinc-600 mx-auto mb-4" />
+              <p className="text-zinc-400 mb-2">
                 {searchQuery || statusFilter !== 'all'
                   ? 'No executions match your filters'
                   : 'No executions found'}
               </p>
-              <p className="text-slate-500 text-sm">
+              <p className="text-zinc-500 text-sm">
                 {searchQuery || statusFilter !== 'all'
                   ? 'Try adjusting your filters'
                   : 'Execute a workflow to see it here'}
@@ -311,36 +311,36 @@ export default function ExecutionsPage() {
           ) : (
             <div className="overflow-x-auto">
               <table className="w-full">
-                <thead className="border-b border-slate-700">
+                <thead className="border-b border-zinc-700">
                   <tr>
-                    <th className="px-4 py-3 text-left text-xs font-medium text-slate-400 uppercase tracking-wider">
+                    <th className="px-4 py-3 text-left text-xs font-medium text-zinc-400 uppercase tracking-wider">
                       Status
                     </th>
-                    <th className="px-4 py-3 text-left text-xs font-medium text-slate-400 uppercase tracking-wider">
+                    <th className="px-4 py-3 text-left text-xs font-medium text-zinc-400 uppercase tracking-wider">
                       Workflow
                     </th>
-                    <th className="px-4 py-3 text-left text-xs font-medium text-slate-400 uppercase tracking-wider">
+                    <th className="px-4 py-3 text-left text-xs font-medium text-zinc-400 uppercase tracking-wider">
                       Execution ID
                     </th>
-                    <th className="px-4 py-3 text-left text-xs font-medium text-slate-400 uppercase tracking-wider">
+                    <th className="px-4 py-3 text-left text-xs font-medium text-zinc-400 uppercase tracking-wider">
                       Started At
                     </th>
-                    <th className="px-4 py-3 text-left text-xs font-medium text-slate-400 uppercase tracking-wider">
+                    <th className="px-4 py-3 text-left text-xs font-medium text-zinc-400 uppercase tracking-wider">
                       Duration
                     </th>
-                    <th className="px-4 py-3 text-left text-xs font-medium text-slate-400 uppercase tracking-wider">
+                    <th className="px-4 py-3 text-left text-xs font-medium text-zinc-400 uppercase tracking-wider">
                       Tokens
                     </th>
-                    <th className="px-4 py-3 text-right text-xs font-medium text-slate-400 uppercase tracking-wider">
+                    <th className="px-4 py-3 text-right text-xs font-medium text-zinc-400 uppercase tracking-wider">
                       Actions
                     </th>
                   </tr>
                 </thead>
-                <tbody className="divide-y divide-slate-700">
+                <tbody className="divide-y divide-zinc-700">
                   {filteredExecutions.map((execution) => (
                     <tr
                       key={execution.id}
-                      className="hover:bg-slate-700/50 transition-colors cursor-pointer"
+                      className="hover:bg-zinc-700/50 transition-colors cursor-pointer"
                       onClick={() => router.push(`/traces/${execution.id}`)}
                     >
                       <td className="px-4 py-4 whitespace-nowrap">
@@ -355,23 +355,23 @@ export default function ExecutionsPage() {
                         </div>
                       </td>
                       <td className="px-4 py-4">
-                        <code className="text-xs text-slate-400 bg-slate-900 px-2 py-1 rounded">
+                        <code className="text-xs text-zinc-400 bg-zinc-900 px-2 py-1 rounded">
                           {execution.executionId.substring(0, 12)}...
                         </code>
                       </td>
                       <td className="px-4 py-4 whitespace-nowrap">
-                        <div className="text-sm text-slate-300">
+                        <div className="text-sm text-zinc-300">
                           {execution.startedAt.toLocaleString()}
                         </div>
                       </td>
                       <td className="px-4 py-4 whitespace-nowrap">
-                        <div className="flex items-center gap-1 text-sm text-slate-300">
-                          <Clock size={12} className="text-slate-500" />
+                        <div className="flex items-center gap-1 text-sm text-zinc-300">
+                          <Clock size={12} className="text-zinc-500" />
                           {formatDuration(execution.duration)}
                         </div>
                       </td>
                       <td className="px-4 py-4 whitespace-nowrap">
-                        <div className="text-sm text-slate-300">
+                        <div className="text-sm text-zinc-300">
                           {execution.tokenCount.toLocaleString()}
                         </div>
                       </td>
@@ -397,8 +397,8 @@ export default function ExecutionsPage() {
         </div>
 
         {/* Help Text */}
-        <div className="mt-6 p-4 bg-slate-800/50 rounded-xl border border-slate-700">
-          <p className="text-sm text-slate-400">
+        <div className="mt-6 p-4 bg-zinc-800/50 rounded-xl border border-zinc-700">
+          <p className="text-sm text-zinc-400">
             <strong className="text-white">Tip:</strong> Click on any execution to see detailed
             trace information, including node execution order, data flow, and any detected issues.
           </p>

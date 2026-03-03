@@ -73,11 +73,11 @@ export default function AgentsPage() {
       <Layout>
         <div className="p-6">
           <div className="animate-pulse space-y-6">
-            <div className="h-8 w-64 bg-slate-700 rounded" />
+            <div className="h-8 w-64 bg-zinc-700 rounded" />
             <div className="grid grid-cols-4 gap-4">
-              {[1,2,3,4].map(i => <div key={i} className="h-24 bg-slate-700 rounded-xl" />)}
+              {[1,2,3,4].map(i => <div key={i} className="h-24 bg-zinc-700 rounded-xl" />)}
             </div>
-            <div className="h-96 bg-slate-700 rounded-xl" />
+            <div className="h-96 bg-zinc-700 rounded-xl" />
           </div>
         </div>
       </Layout>
@@ -96,7 +96,7 @@ export default function AgentsPage() {
                 Demo Mode
               </span>
             </div>
-            <p className="text-sm text-slate-400">
+            <p className="text-sm text-zinc-400">
               Real-time visualization and monitoring of multi-agent system execution
             </p>
           </div>
@@ -195,7 +195,7 @@ export default function AgentsPage() {
               <div className="grid lg:grid-cols-2 gap-6">
                 <div className="space-y-4">
                   <h3 className="text-lg font-semibold text-white">Agent Details</h3>
-                  <p className="text-sm text-slate-400 mb-4">
+                  <p className="text-sm text-zinc-400 mb-4">
                     Click on an agent to view detailed performance metrics
                   </p>
                   {agents.map((agent) => (

@@ -4,7 +4,7 @@ import { useMemo } from 'react'
 import type { AgentQualityScore, QualityAssessment } from '@/lib/api'
 import { QualityGradeBadge } from '@/components/quality/QualityGradeBadge'
 import { X, AlertCircle, TrendingUp, Clock, Coins, Zap } from 'lucide-react'
-import clsx from 'clsx'
+import { cn } from '@/lib/utils'
 
 interface WorkflowNodeDetailsProps {
   agentId: string
@@ -25,41 +25,41 @@ export function WorkflowNodeDetails({ agentId, workflow, onClose }: WorkflowNode
 
   if (!agent) {
     return (
-      <div className="absolute top-0 right-0 w-80 h-full bg-slate-800 border-l border-slate-700 shadow-xl p-6">
+      <div className="absolute top-0 right-0 w-80 h-full bg-zinc-800 border-l border-zinc-700 shadow-xl p-6">
         <div className="flex items-center justify-between mb-4">
           <h3 className="text-lg font-semibold text-white">Agent Not Found</h3>
           <button
             onClick={onClose}
-            className="p-1 hover:bg-slate-700 rounded transition-colors"
+            className="p-1 hover:bg-zinc-700 rounded transition-colors"
             aria-label="Close"
           >
-            <X size={20} className="text-slate-400" />
+            <X size={20} className="text-zinc-400" />
           </button>
         </div>
-        <p className="text-sm text-slate-400">Unable to load agent details.</p>
+        <p className="text-sm text-zinc-400">Unable to load agent details.</p>
       </div>
     )
   }
 
   return (
-    <div className="absolute top-0 right-0 w-96 h-full bg-slate-800 border-l border-slate-700 shadow-xl overflow-y-auto">
+    <div className="absolute top-0 right-0 w-96 h-full bg-zinc-800 border-l border-zinc-700 shadow-xl overflow-y-auto">
       {/* Header */}
-      <div className="sticky top-0 bg-slate-800 border-b border-slate-700 p-4 z-10">
+      <div className="sticky top-0 bg-zinc-800 border-b border-zinc-700 p-4 z-10">
         <div className="flex items-start justify-between">
           <div className="flex-1 min-w-0 mr-2">
             <h3 className="text-lg font-semibold text-white mb-1 truncate">
               {agent.agent_name}
             </h3>
             {agent.agent_type && (
-              <div className="text-xs text-slate-400 capitalize">{agent.agent_type}</div>
+              <div className="text-xs text-zinc-400 capitalize">{agent.agent_type}</div>
             )}
           </div>
           <button
             onClick={onClose}
-            className="p-1 hover:bg-slate-700 rounded transition-colors flex-shrink-0"
+            className="p-1 hover:bg-zinc-700 rounded transition-colors flex-shrink-0"
             aria-label="Close"
           >
-            <X size={20} className="text-slate-400" />
+            <X size={20} className="text-zinc-400" />
           </button>
         </div>
       </div>
@@ -71,7 +71,7 @@ export function WorkflowNodeDetails({ agentId, workflow, onClose }: WorkflowNode
           <div className="flex items-center gap-3 mb-3">
             <QualityGradeBadge grade={agent.grade} size="lg" />
             <div>
-              <div className={clsx(
+              <div className={cn(
                 'text-2xl font-bold',
                 agent.overall_score >= 0.9 ? 'text-green-400' :
                 agent.overall_score >= 0.8 ? 'text-blue-400' :
@@ -80,7 +80,7 @@ export function WorkflowNodeDetails({ agentId, workflow, onClose }: WorkflowNode
               )}>
                 {(agent.overall_score * 100).toFixed(0)}%
               </div>
-              <div className="text-xs text-slate-400">Overall Quality</div>
+              <div className="text-xs text-zinc-400">Overall Quality</div>
             </div>
           </div>
         </section>
@@ -94,7 +94,7 @@ export function WorkflowNodeDetails({ agentId, workflow, onClose }: WorkflowNode
             </div>
             <div className="space-y-1.5">
               {agent.critical_issues.map((issue, idx) => (
-                <div key={idx} className="text-xs text-slate-300">
+                <div key={idx} className="text-xs text-zinc-300">
                   • {issue}
                 </div>
               ))}
@@ -113,8 +113,8 @@ export function WorkflowNodeDetails({ agentId, workflow, onClose }: WorkflowNode
               {agent.dimensions.map((dim) => (
                 <div key={dim.dimension}>
                   <div className="flex items-center justify-between text-xs mb-1">
-                    <span className="text-slate-300 capitalize">{dim.dimension}</span>
-                    <span className={clsx(
+                    <span className="text-zinc-300 capitalize">{dim.dimension}</span>
+                    <span className={cn(
                       'font-semibold',
                       dim.score >= 0.8 ? 'text-green-400' :
                       dim.score >= 0.6 ? 'text-blue-400' :
@@ -124,9 +124,9 @@ export function WorkflowNodeDetails({ agentId, workflow, onClose }: WorkflowNode
                       {(dim.score * 100).toFixed(0)}%
                     </span>
                   </div>
-                  <div className="bg-slate-700 rounded-full h-1.5 overflow-hidden">
+                  <div className="bg-zinc-700 rounded-full h-1.5 overflow-hidden">
                     <div
-                      className={clsx(
+                      className={cn(
                         'h-1.5 rounded-full transition-all',
                         dim.score >= 0.8 ? 'bg-green-500' :
                         dim.score >= 0.6 ? 'bg-blue-500' :
@@ -137,7 +137,7 @@ export function WorkflowNodeDetails({ agentId, workflow, onClose }: WorkflowNode
                     />
                   </div>
                   {dim.reasoning && (
-                    <div className="text-xs text-slate-500 mt-1">{dim.reasoning}</div>
+                    <div className="text-xs text-zinc-500 mt-1">{dim.reasoning}</div>
                   )}
                 </div>
               ))}
@@ -193,10 +193,10 @@ export function WorkflowNodeDetails({ agentId, workflow, onClose }: WorkflowNode
               {agentImprovements.map((improvement) => (
                 <div
                   key={improvement.id}
-                  className="bg-slate-700/50 rounded-lg p-3 border border-slate-600"
+                  className="bg-zinc-700/50 rounded-lg p-3 border border-zinc-600"
                 >
                   <div className="flex items-start justify-between mb-1.5">
-                    <span className={clsx(
+                    <span className={cn(
                       'text-xs font-medium px-2 py-0.5 rounded',
                       improvement.severity === 'critical' ? 'bg-red-500/20 text-red-400' :
                       improvement.severity === 'high' ? 'bg-orange-500/20 text-orange-400' :
@@ -205,12 +205,12 @@ export function WorkflowNodeDetails({ agentId, workflow, onClose }: WorkflowNode
                     )}>
                       {improvement.severity}
                     </span>
-                    <span className="text-xs text-slate-500">{improvement.effort}</span>
+                    <span className="text-xs text-zinc-500">{improvement.effort}</span>
                   </div>
                   <div className="text-sm font-medium text-white mb-1">
                     {improvement.title}
                   </div>
-                  <div className="text-xs text-slate-400">
+                  <div className="text-xs text-zinc-400">
                     {improvement.description}
                   </div>
                   {improvement.estimated_impact && (
@@ -230,7 +230,7 @@ export function WorkflowNodeDetails({ agentId, workflow, onClose }: WorkflowNode
             <h4 className="text-sm font-semibold text-white mb-3">
               Issues Detected ({agent.issues_count})
             </h4>
-            <div className="text-xs text-slate-400 bg-slate-700/30 rounded-lg p-3 border border-slate-600">
+            <div className="text-xs text-zinc-400 bg-zinc-700/30 rounded-lg p-3 border border-zinc-600">
               <p>Issue details would be displayed here based on trace analysis.</p>
               <p className="mt-2">This includes detection types, timestamps, and affected operations.</p>
             </div>
@@ -250,17 +250,17 @@ interface MetricCardProps {
 
 function MetricCard({ icon, label, value, status = 'neutral' }: MetricCardProps) {
   return (
-    <div className="bg-slate-700/50 rounded-lg p-2.5 border border-slate-600">
+    <div className="bg-zinc-700/50 rounded-lg p-2.5 border border-zinc-600">
       <div className="flex items-center gap-1.5 mb-1">
-        <span className={clsx(
+        <span className={cn(
           status === 'good' ? 'text-green-400' :
           status === 'moderate' ? 'text-amber-400' :
           status === 'poor' ? 'text-red-400' :
-          'text-slate-400'
+          'text-zinc-400'
         )}>
           {icon}
         </span>
-        <span className="text-xs text-slate-400">{label}</span>
+        <span className="text-xs text-zinc-400">{label}</span>
       </div>
       <div className="text-lg font-bold text-white">{value}</div>
     </div>

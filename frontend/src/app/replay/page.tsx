@@ -133,7 +133,7 @@ export default function ReplayPage() {
               <RotateCcw className="text-purple-400" />
               Deterministic Replay
             </h1>
-            <p className="text-slate-400 text-sm mt-1">
+            <p className="text-zinc-400 text-sm mt-1">
               Record and replay agent executions for debugging and testing
             </p>
           </div>
@@ -166,7 +166,7 @@ export default function ReplayPage() {
 
         <div className="grid lg:grid-cols-3 gap-6 mb-6">
           <div className="lg:col-span-2">
-            <div className="bg-slate-800 rounded-xl p-6 border border-slate-700">
+            <div className="bg-zinc-800 rounded-xl p-6 border border-zinc-700">
               <h2 className="text-lg font-semibold text-white mb-4">Replay Bundles</h2>
               {isLoading ? (
                 <div className="flex items-center justify-center py-8">
@@ -180,30 +180,30 @@ export default function ReplayPage() {
                       onClick={() => setSelectedBundle(bundle.id)}
                       className={`w-full p-4 rounded-lg border text-left transition-all ${
                         selectedBundle === bundle.id
-                          ? 'border-primary-500 bg-primary-500/10'
-                          : 'border-slate-600 bg-slate-700/50 hover:border-slate-500'
+                          ? 'border-blue-500 bg-blue-500/10'
+                          : 'border-zinc-600 bg-zinc-700/50 hover:border-zinc-500'
                       }`}
                     >
                       <div className="flex items-center justify-between">
                         <div>
                           <span className="text-white font-medium">{bundle.name}</span>
                           <div className="flex items-center gap-4 mt-1">
-                            <span className="text-slate-500 text-sm">{bundle.traceId}</span>
-                            <span className="text-slate-500 text-sm">{bundle.createdAt}</span>
+                            <span className="text-zinc-500 text-sm">{bundle.traceId}</span>
+                            <span className="text-zinc-500 text-sm">{bundle.createdAt}</span>
                           </div>
                         </div>
                         <div className="flex items-center gap-4 text-sm">
-                          <span className="text-slate-400">
+                          <span className="text-zinc-400">
                             {bundle.eventCount} events
                           </span>
-                          <span className="text-slate-400 flex items-center gap-1">
+                          <span className="text-zinc-400 flex items-center gap-1">
                             <Clock size={14} />
                             {bundle.duration}
                           </span>
                           <span className={`px-2 py-0.5 rounded-full text-xs ${
                             bundle.status === 'completed' ? 'bg-emerald-400/10 text-emerald-400' :
                             bundle.status === 'replaying' ? 'bg-amber-400/10 text-amber-400' :
-                            'bg-slate-400/10 text-slate-400'
+                            'bg-zinc-400/10 text-zinc-400'
                           }`}>
                             {bundle.status}
                           </span>
@@ -217,7 +217,7 @@ export default function ReplayPage() {
           </div>
 
           <div className="space-y-6">
-            <div className="bg-slate-800 rounded-xl p-6 border border-slate-700">
+            <div className="bg-zinc-800 rounded-xl p-6 border border-zinc-700">
               <h2 className="text-lg font-semibold text-white mb-4">Replay Mode</h2>
               <div className="space-y-2">
                 {[
@@ -231,31 +231,31 @@ export default function ReplayPage() {
                     className={`w-full p-3 rounded-lg border text-left transition-all ${
                       replayMode === mode.id
                         ? 'border-purple-500 bg-purple-500/10'
-                        : 'border-slate-600 bg-slate-700/50 hover:border-slate-500'
+                        : 'border-zinc-600 bg-zinc-700/50 hover:border-zinc-500'
                     }`}
                   >
                     <span className="text-white text-sm">{mode.name}</span>
-                    <p className="text-slate-500 text-xs mt-0.5">{mode.desc}</p>
+                    <p className="text-zinc-500 text-xs mt-0.5">{mode.desc}</p>
                   </button>
                 ))}
               </div>
             </div>
 
-            <div className="bg-slate-800 rounded-xl p-6 border border-slate-700">
+            <div className="bg-zinc-800 rounded-xl p-6 border border-zinc-700">
               <h2 className="text-lg font-semibold text-white mb-4">Statistics</h2>
               <div className="space-y-3">
                 <div className="flex justify-between">
-                  <span className="text-slate-400">Total Bundles</span>
+                  <span className="text-zinc-400">Total Bundles</span>
                   <span className="text-white">{bundles.length}</span>
                 </div>
                 <div className="flex justify-between">
-                  <span className="text-slate-400">Avg Match Rate</span>
+                  <span className="text-zinc-400">Avg Match Rate</span>
                   <span className="text-emerald-400">
                     {showResults ? `${(overallSimilarity * 100).toFixed(1)}%` : '94.2%'}
                   </span>
                 </div>
                 <div className="flex justify-between">
-                  <span className="text-slate-400">Completed</span>
+                  <span className="text-zinc-400">Completed</span>
                   <span className="text-white">
                     {bundles.filter(b => b.status === 'completed').length}
                   </span>
@@ -266,7 +266,7 @@ export default function ReplayPage() {
         </div>
 
         {showResults && (
-          <div className="bg-slate-800 rounded-xl p-6 border border-slate-700">
+          <div className="bg-zinc-800 rounded-xl p-6 border border-zinc-700">
             <div className="flex items-center justify-between mb-4">
               <h2 className="text-lg font-semibold text-white flex items-center gap-2">
                 <GitCompare className="text-purple-400" />
@@ -283,7 +283,7 @@ export default function ReplayPage() {
                   key={result.step}
                   className={`p-4 rounded-lg border ${
                     result.match
-                      ? 'border-slate-600 bg-slate-700/30'
+                      ? 'border-zinc-600 bg-zinc-700/30'
                       : 'border-amber-500/30 bg-amber-500/5'
                   }`}
                 >
@@ -297,7 +297,7 @@ export default function ReplayPage() {
                     </div>
                     <div className="flex-1">
                       <div className="flex items-center justify-between mb-2">
-                        <span className="text-slate-400 text-sm">Step {result.step}</span>
+                        <span className="text-zinc-400 text-sm">Step {result.step}</span>
                         <span className={`text-sm ${
                           result.similarity >= 0.95 ? 'text-emerald-400' :
                           result.similarity >= 0.8 ? 'text-amber-400' : 'text-red-400'
@@ -307,15 +307,15 @@ export default function ReplayPage() {
                       </div>
                       <div className="grid md:grid-cols-2 gap-4">
                         <div>
-                          <span className="text-slate-500 text-xs block mb-1">Original</span>
-                          <p className="text-slate-300 text-sm bg-slate-800 p-2 rounded">
+                          <span className="text-zinc-500 text-xs block mb-1">Original</span>
+                          <p className="text-zinc-300 text-sm bg-zinc-800 p-2 rounded">
                             {result.original}
                           </p>
                         </div>
                         <div>
-                          <span className="text-slate-500 text-xs block mb-1">Replayed</span>
+                          <span className="text-zinc-500 text-xs block mb-1">Replayed</span>
                           <p className={`text-sm p-2 rounded ${
-                            result.match ? 'text-slate-300 bg-slate-800' : 'text-amber-300 bg-amber-900/20'
+                            result.match ? 'text-zinc-300 bg-zinc-800' : 'text-amber-300 bg-amber-900/20'
                           }`}>
                             {result.replayed}
                           </p>
@@ -327,10 +327,10 @@ export default function ReplayPage() {
               ))}
             </div>
 
-            <div className="mt-4 p-4 bg-slate-700/50 rounded-lg flex items-center justify-between">
+            <div className="mt-4 p-4 bg-zinc-700/50 rounded-lg flex items-center justify-between">
               <div>
                 <span className="text-white font-medium">Overall Match Rate</span>
-                <p className="text-slate-400 text-sm">{matchingSteps} of {totalSteps} steps matched exactly</p>
+                <p className="text-zinc-400 text-sm">{matchingSteps} of {totalSteps} steps matched exactly</p>
               </div>
               <span className="text-2xl font-bold text-emerald-400">
                 {(overallSimilarity * 100).toFixed(1)}%

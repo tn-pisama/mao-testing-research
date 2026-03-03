@@ -21,7 +21,7 @@ export default function MethodologyPage() {
           </div>
           <h1 className="text-3xl font-bold text-white">Benchmark Methodology</h1>
         </div>
-        <p className="text-slate-300 text-lg">
+        <p className="text-zinc-300 text-lg">
           How we measure detection accuracy and ensure transparent, reproducible results.
         </p>
       </div>
@@ -29,24 +29,24 @@ export default function MethodologyPage() {
       {/* Overview */}
       <section className="mb-10">
         <h2 className="text-xl font-semibold text-white mb-4">Overview</h2>
-        <p className="text-slate-300 mb-4">
+        <p className="text-zinc-300 mb-4">
           PISAMA detection benchmarks are run against real-world agent traces sourced from
           public datasets and research. We use the MAST (Multi-Agent System Testing) taxonomy
           which defines 16 failure modes across content, structural, and RAG categories.
         </p>
-        <div className="bg-slate-800/50 rounded-lg p-4 border border-slate-700">
+        <div className="bg-zinc-800/50 rounded-lg p-4 border border-zinc-700">
           <div className="grid md:grid-cols-3 gap-4 text-center">
             <div>
               <div className="text-2xl font-bold text-emerald-400">82.4%</div>
-              <div className="text-sm text-slate-400">Overall Detection Rate</div>
+              <div className="text-sm text-zinc-400">Overall Detection Rate</div>
             </div>
             <div>
               <div className="text-2xl font-bold text-white">16</div>
-              <div className="text-sm text-slate-400">Failure Modes (F1-F16)</div>
+              <div className="text-sm text-zinc-400">Failure Modes (F1-F16)</div>
             </div>
             <div>
               <div className="text-2xl font-bold text-white">20,575</div>
-              <div className="text-sm text-slate-400">Evaluation Traces</div>
+              <div className="text-sm text-zinc-400">Evaluation Traces</div>
             </div>
           </div>
         </div>
@@ -58,13 +58,13 @@ export default function MethodologyPage() {
           <Database size={20} className="text-indigo-400" />
           Dataset
         </h2>
-        <p className="text-slate-300 mb-4">
+        <p className="text-zinc-300 mb-4">
           All benchmark traces are sourced from real-world agent executions. We do not use
           synthetic or mock data for evaluation.
         </p>
 
         <div className="space-y-4">
-          <div className="bg-slate-800 rounded-lg p-4 border border-slate-700">
+          <div className="bg-zinc-800 rounded-lg p-4 border border-zinc-700">
             <h3 className="font-medium text-white mb-3">Data Sources</h3>
             <div className="grid md:grid-cols-2 gap-3">
               <SourceItem
@@ -86,30 +86,30 @@ export default function MethodologyPage() {
             </div>
           </div>
 
-          <div className="bg-slate-800 rounded-lg p-4 border border-slate-700">
+          <div className="bg-zinc-800 rounded-lg p-4 border border-zinc-700">
             <h3 className="font-medium text-white mb-3">Framework Coverage</h3>
             <div className="flex flex-wrap gap-2">
               {['LangChain', 'LangGraph', 'AutoGen', 'CrewAI', 'OpenAI', 'Anthropic', 'React', 'Function Calling'].map((fw) => (
-                <span key={fw} className="px-3 py-1 bg-slate-700 text-slate-300 rounded-lg text-sm">
+                <span key={fw} className="px-3 py-1 bg-zinc-700 text-zinc-300 rounded-lg text-sm">
                   {fw}
                 </span>
               ))}
             </div>
           </div>
 
-          <div className="bg-slate-800 rounded-lg p-4 border border-slate-700">
+          <div className="bg-zinc-800 rounded-lg p-4 border border-zinc-700">
             <h3 className="font-medium text-white mb-3">Dataset Statistics</h3>
             <div className="grid md:grid-cols-3 gap-4 text-sm">
               <div>
-                <span className="text-slate-400">Total Size:</span>
+                <span className="text-zinc-400">Total Size:</span>
                 <span className="text-white ml-2">207 MB</span>
               </div>
               <div>
-                <span className="text-slate-400">Trace Count:</span>
+                <span className="text-zinc-400">Trace Count:</span>
                 <span className="text-white ml-2">20,575</span>
               </div>
               <div>
-                <span className="text-slate-400">F1-F14 Eval:</span>
+                <span className="text-zinc-400">F1-F14 Eval:</span>
                 <span className="text-white ml-2">1,300 traces</span>
               </div>
             </div>
@@ -123,7 +123,7 @@ export default function MethodologyPage() {
           <Layers size={20} className="text-purple-400" />
           Detection Approach
         </h2>
-        <p className="text-slate-300 mb-4">
+        <p className="text-zinc-300 mb-4">
           PISAMA uses a tiered detection architecture, starting with fast rule-based checks
           and escalating to semantic analysis when needed.
         </p>
@@ -158,7 +158,7 @@ export default function MethodologyPage() {
           <GitBranch size={20} className="text-amber-400" />
           MAST Failure Taxonomy
         </h2>
-        <p className="text-slate-300 mb-4">
+        <p className="text-zinc-300 mb-4">
           The Multi-Agent System Testing (MAST) taxonomy defines 16 failure modes organized
           into three categories.
         </p>
@@ -209,7 +209,7 @@ export default function MethodologyPage() {
           <CheckCircle size={20} className="text-emerald-400" />
           Improvement Techniques
         </h2>
-        <p className="text-slate-300 mb-4">
+        <p className="text-zinc-300 mb-4">
           Detection improved from 68.7% to 82.4% baseline through targeted enhancements.
         </p>
 
@@ -251,20 +251,20 @@ export default function MethodologyPage() {
           <FileText size={20} className="text-blue-400" />
           Reproducibility
         </h2>
-        <p className="text-slate-300 mb-4">
+        <p className="text-zinc-300 mb-4">
           All evaluation code is available in the repository for independent verification.
         </p>
 
-        <div className="bg-slate-800 rounded-lg p-4 border border-slate-700">
+        <div className="bg-zinc-800 rounded-lg p-4 border border-zinc-700">
           <h3 className="font-medium text-white mb-3">Evaluation Scripts</h3>
           <div className="space-y-2 font-mono text-sm">
-            <code className="block text-slate-300">
+            <code className="block text-zinc-300">
               /benchmarks/evaluation/run_all_detectors.py
             </code>
-            <code className="block text-slate-300">
+            <code className="block text-zinc-300">
               /benchmarks/evaluation/phase1_synthetic_eval.py
             </code>
-            <code className="block text-slate-300">
+            <code className="block text-zinc-300">
               /benchmarks/evaluation/phase2_adversarial_eval.py
             </code>
           </div>
@@ -273,7 +273,7 @@ export default function MethodologyPage() {
         <div className="mt-4 bg-blue-500/10 border border-blue-500/30 rounded-lg p-4">
           <div className="flex items-start gap-2">
             <AlertTriangle className="text-blue-400 mt-0.5 flex-shrink-0" size={16} />
-            <div className="text-sm text-slate-300">
+            <div className="text-sm text-zinc-300">
               <strong className="text-blue-300">Note:</strong> Results may vary based on
               embedding model version and threshold configuration. We recommend running
               on the provided dataset for consistent comparison.
@@ -293,7 +293,7 @@ export default function MethodologyPage() {
         </Link>
         <Link
           href="/docs/detections"
-          className="flex items-center gap-2 px-4 py-2 bg-slate-700 hover:bg-slate-600 text-white rounded-lg transition-colors"
+          className="flex items-center gap-2 px-4 py-2 bg-zinc-700 hover:bg-zinc-600 text-white rounded-lg transition-colors"
         >
           Detection Types
           <ArrowRight size={16} />
@@ -309,7 +309,7 @@ function SourceItem({ name, description }: { name: string; description: string }
       <CheckCircle className="text-emerald-400 mt-0.5 flex-shrink-0" size={14} />
       <div>
         <span className="text-white font-medium">{name}</span>
-        <span className="text-slate-400 text-sm ml-2">{description}</span>
+        <span className="text-zinc-400 text-sm ml-2">{description}</span>
       </div>
     </div>
   )
@@ -324,14 +324,14 @@ function ApproachItem({ tier, name, description }: { tier: number; name: string;
   }
 
   return (
-    <div className="bg-slate-800 rounded-lg p-4 border border-slate-700">
+    <div className="bg-zinc-800 rounded-lg p-4 border border-zinc-700">
       <div className="flex items-center gap-3 mb-2">
         <span className={`px-2 py-0.5 text-xs rounded border ${tierColors[tier as keyof typeof tierColors]}`}>
           Tier {tier}
         </span>
         <span className="text-white font-medium">{name}</span>
       </div>
-      <p className="text-slate-400 text-sm">{description}</p>
+      <p className="text-zinc-400 text-sm">{description}</p>
     </div>
   )
 }
@@ -346,24 +346,24 @@ function CategorySection({
   modes: { code: string; name: string; rate: number | null }[]
 }) {
   return (
-    <div className="bg-slate-800 rounded-lg border border-slate-700 overflow-hidden">
-      <div className="p-4 border-b border-slate-700">
+    <div className="bg-zinc-800 rounded-lg border border-zinc-700 overflow-hidden">
+      <div className="p-4 border-b border-zinc-700">
         <h3 className="font-medium text-white">{name}</h3>
-        <p className="text-slate-400 text-sm">{description}</p>
+        <p className="text-zinc-400 text-sm">{description}</p>
       </div>
-      <div className="divide-y divide-slate-700">
+      <div className="divide-y divide-zinc-700">
         {modes.map((mode) => (
           <div key={mode.code} className="flex items-center justify-between px-4 py-2">
             <div className="flex items-center gap-2">
-              <span className="text-slate-400 text-sm">{mode.code}</span>
-              <span className="text-slate-300 text-sm">{mode.name}</span>
+              <span className="text-zinc-400 text-sm">{mode.code}</span>
+              <span className="text-zinc-300 text-sm">{mode.name}</span>
             </div>
             {mode.rate !== null ? (
               <span className={`text-sm font-medium ${mode.rate >= 95 ? 'text-emerald-400' : mode.rate >= 60 ? 'text-amber-400' : 'text-red-400'}`}>
                 {mode.rate}%
               </span>
             ) : (
-              <span className="text-slate-500 text-sm">TBD</span>
+              <span className="text-zinc-500 text-sm">TBD</span>
             )}
           </div>
         ))}
@@ -386,19 +386,19 @@ function ImprovementItem({
   technique: string
 }) {
   return (
-    <div className="bg-slate-800 rounded-lg p-4 border border-slate-700">
+    <div className="bg-zinc-800 rounded-lg p-4 border border-zinc-700">
       <div className="flex items-center justify-between mb-2">
         <div className="flex items-center gap-2">
           <span className="text-emerald-400 text-sm">{code}</span>
           <span className="text-white">{name}</span>
         </div>
         <div className="flex items-center gap-2 text-sm">
-          <span className="text-slate-500">{before}%</span>
+          <span className="text-zinc-500">{before}%</span>
           <ArrowRight size={14} className="text-emerald-400" />
           <span className="text-emerald-400 font-semibold">{after}%</span>
         </div>
       </div>
-      <p className="text-slate-400 text-sm">{technique}</p>
+      <p className="text-zinc-400 text-sm">{technique}</p>
     </div>
   )
 }

@@ -82,7 +82,7 @@ function ApprovalItem({
               <p className="text-sm font-medium text-white">
                 {healing.fix_type.replace(/_/g, ' ')}
               </p>
-              <p className="text-xs text-slate-500">
+              <p className="text-xs text-zinc-500">
                 Detection: {healing.detection_id.slice(0, 8)}...
                 {healing.workflow_id && ` | Workflow: ${healing.workflow_id}`}
               </p>
@@ -90,7 +90,7 @@ function ApprovalItem({
           </div>
           <div className="flex items-center gap-2">
             <Badge variant="warning" size="sm">Awaiting Approval</Badge>
-            <span className="text-xs text-slate-500 flex items-center gap-1">
+            <span className="text-xs text-zinc-500 flex items-center gap-1">
               <Clock size={12} />
               {formatTime(healing.created_at)}
             </span>
@@ -100,11 +100,11 @@ function ApprovalItem({
         {/* Fix Suggestions */}
         {healing.fix_suggestions && healing.fix_suggestions.length > 0 && (
           <div className="space-y-2">
-            <p className="text-xs text-slate-500">Proposed Fixes</p>
+            <p className="text-xs text-zinc-500">Proposed Fixes</p>
             {healing.fix_suggestions.map((suggestion, idx) => (
               <div
                 key={suggestion.id || idx}
-                className="bg-slate-800/50 rounded-lg p-3"
+                className="bg-zinc-800/50 rounded-lg p-3"
               >
                 <div className="flex items-center justify-between mb-1">
                   <p className="text-sm font-medium text-white">{suggestion.title}</p>
@@ -112,7 +112,7 @@ function ApprovalItem({
                     {suggestion.confidence}
                   </Badge>
                 </div>
-                <p className="text-xs text-slate-400">{suggestion.description}</p>
+                <p className="text-xs text-zinc-400">{suggestion.description}</p>
               </div>
             ))}
           </div>
@@ -120,7 +120,7 @@ function ApprovalItem({
 
         {/* Notes Input */}
         <div>
-          <label className="text-xs text-slate-500 mb-1 block">
+          <label className="text-xs text-zinc-500 mb-1 block">
             Approval Notes (optional)
           </label>
           <textarea
@@ -128,12 +128,12 @@ function ApprovalItem({
             onChange={(e) => setNotes(e.target.value)}
             placeholder="Add notes for audit trail..."
             rows={2}
-            className="w-full px-3 py-2 bg-slate-800 border border-slate-700 rounded-lg text-white text-sm placeholder:text-slate-600 focus:outline-none focus:ring-2 focus:ring-purple-500 resize-none"
+            className="w-full px-3 py-2 bg-zinc-800 border border-zinc-700 rounded-lg text-white text-sm placeholder:text-zinc-600 focus:outline-none focus:ring-2 focus:ring-purple-500 resize-none"
           />
         </div>
 
         {/* Actions */}
-        <div className="flex items-center gap-2 pt-2 border-t border-slate-700">
+        <div className="flex items-center gap-2 pt-2 border-t border-zinc-700">
           <Button
             variant="success"
             size="sm"
@@ -185,9 +185,9 @@ export function ApprovalQueue({
           <Card key={i}>
             <CardContent className="p-4">
               <div className="animate-pulse space-y-3">
-                <div className="h-5 bg-slate-700 rounded w-1/3" />
-                <div className="h-3 bg-slate-700 rounded w-1/2" />
-                <div className="h-16 bg-slate-700 rounded" />
+                <div className="h-5 bg-zinc-700 rounded w-1/3" />
+                <div className="h-3 bg-zinc-700 rounded w-1/2" />
+                <div className="h-16 bg-zinc-700 rounded" />
               </div>
             </CardContent>
           </Card>
@@ -199,10 +199,10 @@ export function ApprovalQueue({
   if (pendingApprovals.length === 0) {
     return (
       <Card>
-        <CardContent className="p-8 text-center text-slate-400">
+        <CardContent className="p-8 text-center text-zinc-400">
           <ShieldCheck size={32} className="mx-auto mb-3 opacity-50" />
           <p className="text-sm">No fixes awaiting approval</p>
-          <p className="text-xs text-slate-500 mt-1">
+          <p className="text-xs text-zinc-500 mt-1">
             Fixes triggered with approval_required will appear here for review
           </p>
         </CardContent>

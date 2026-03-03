@@ -169,7 +169,7 @@ export default function ImportPage() {
       case 'completed': return <CheckCircle className="text-emerald-400" size={18} />
       case 'failed': return <XCircle className="text-red-400" size={18} />
       case 'running': return <Loader2 className="text-amber-400 animate-spin" size={18} />
-      default: return <Clock className="text-slate-400" size={18} />
+      default: return <Clock className="text-zinc-400" size={18} />
     }
   }
 
@@ -178,7 +178,7 @@ export default function ImportPage() {
       case 'completed': return 'bg-emerald-400/10 text-emerald-400'
       case 'failed': return 'bg-red-400/10 text-red-400'
       case 'running': return 'bg-amber-400/10 text-amber-400'
-      default: return 'bg-slate-400/10 text-slate-400'
+      default: return 'bg-zinc-400/10 text-zinc-400'
     }
   }
 
@@ -193,7 +193,7 @@ export default function ImportPage() {
               </div>
               <h1 className="text-2xl font-bold text-white">Import Jobs</h1>
             </div>
-            <p className="text-slate-400">
+            <p className="text-zinc-400">
               Import traces from external sources
             </p>
           </div>
@@ -217,12 +217,12 @@ export default function ImportPage() {
         {/* Create Form Modal */}
         {showCreateForm && (
           <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50">
-            <div className="bg-slate-800 rounded-xl p-6 border border-slate-700 w-full max-w-md">
+            <div className="bg-zinc-800 rounded-xl p-6 border border-zinc-700 w-full max-w-md">
               <h2 className="text-lg font-semibold text-white mb-4">Create Import Job</h2>
 
               <div className="space-y-4">
                 <div>
-                  <label className="text-sm font-medium text-slate-300 block mb-2">
+                  <label className="text-sm font-medium text-zinc-300 block mb-2">
                     Source Type
                   </label>
                   <div className="grid grid-cols-2 gap-2">
@@ -233,11 +233,11 @@ export default function ImportPage() {
                         className={`p-3 rounded-lg border text-left transition-all ${
                           selectedSource === source.id
                             ? 'border-blue-500 bg-blue-500/10'
-                            : 'border-slate-600 bg-slate-700/50 hover:border-slate-500'
+                            : 'border-zinc-600 bg-zinc-700/50 hover:border-zinc-500'
                         }`}
                       >
                         <span className="text-white text-sm font-medium">{source.name}</span>
-                        <p className="text-slate-500 text-xs mt-0.5">{source.description}</p>
+                        <p className="text-zinc-500 text-xs mt-0.5">{source.description}</p>
                       </button>
                     ))}
                   </div>
@@ -246,7 +246,7 @@ export default function ImportPage() {
                 {(selectedSource === 'langsmith' || selectedSource === 'otel') && (
                   <>
                     <div>
-                      <label className="text-sm font-medium text-slate-300 block mb-2">
+                      <label className="text-sm font-medium text-zinc-300 block mb-2">
                         Endpoint URL
                       </label>
                       <input
@@ -254,12 +254,12 @@ export default function ImportPage() {
                         value={configUrl}
                         onChange={(e) => setConfigUrl(e.target.value)}
                         placeholder={selectedSource === 'langsmith' ? 'https://api.smith.langchain.com' : 'http://localhost:4318'}
-                        className="w-full bg-slate-900 border border-slate-600 rounded-lg p-3 text-white text-sm focus:border-blue-500 focus:outline-none"
+                        className="w-full bg-zinc-900 border border-zinc-600 rounded-lg p-3 text-white text-sm focus:border-blue-500 focus:outline-none"
                       />
                     </div>
 
                     <div>
-                      <label className="text-sm font-medium text-slate-300 block mb-2">
+                      <label className="text-sm font-medium text-zinc-300 block mb-2">
                         API Key (if required)
                       </label>
                       <input
@@ -267,7 +267,7 @@ export default function ImportPage() {
                         value={configApiKey}
                         onChange={(e) => setConfigApiKey(e.target.value)}
                         placeholder="Enter API key..."
-                        className="w-full bg-slate-900 border border-slate-600 rounded-lg p-3 text-white text-sm focus:border-blue-500 focus:outline-none"
+                        className="w-full bg-zinc-900 border border-zinc-600 rounded-lg p-3 text-white text-sm focus:border-blue-500 focus:outline-none"
                       />
                     </div>
                   </>
@@ -284,7 +284,7 @@ export default function ImportPage() {
                         ? 'border-blue-500 bg-blue-500/10'
                         : selectedFile
                         ? 'border-emerald-500 bg-emerald-500/10'
-                        : 'border-slate-600 hover:border-slate-500'
+                        : 'border-zinc-600 hover:border-zinc-500'
                     }`}
                   >
                     <input
@@ -298,7 +298,7 @@ export default function ImportPage() {
                       <>
                         <CheckCircle className="w-10 h-10 text-emerald-400 mx-auto mb-2" />
                         <p className="text-emerald-400 font-medium">{selectedFile.name}</p>
-                        <p className="text-slate-500 text-xs mt-1">
+                        <p className="text-zinc-500 text-xs mt-1">
                           {(selectedFile.size / 1024).toFixed(1)} KB
                         </p>
                         <button
@@ -307,18 +307,18 @@ export default function ImportPage() {
                             e.stopPropagation()
                             setSelectedFile(null)
                           }}
-                          className="mt-2 text-slate-400 hover:text-white text-xs underline"
+                          className="mt-2 text-zinc-400 hover:text-white text-xs underline"
                         >
                           Choose a different file
                         </button>
                       </>
                     ) : (
                       <>
-                        <FileJson className="w-10 h-10 text-slate-500 mx-auto mb-2" />
-                        <p className="text-slate-400 text-sm">
+                        <FileJson className="w-10 h-10 text-zinc-500 mx-auto mb-2" />
+                        <p className="text-zinc-400 text-sm">
                           Drag and drop a {selectedSource.toUpperCase()} file here
                         </p>
-                        <p className="text-slate-500 text-xs mt-1">
+                        <p className="text-zinc-500 text-xs mt-1">
                           or click to browse
                         </p>
                       </>
@@ -356,21 +356,21 @@ export default function ImportPage() {
         )}
 
         {/* Jobs List */}
-        <div className="bg-slate-800 rounded-xl border border-slate-700">
+        <div className="bg-zinc-800 rounded-xl border border-zinc-700">
           {isLoading ? (
             <div className="flex items-center justify-center py-12">
               <Loader2 className="w-8 h-8 text-blue-400 animate-spin" />
             </div>
           ) : jobs.length === 0 ? (
             <div className="text-center py-12 px-4">
-              <Database className="w-12 h-12 text-slate-600 mx-auto mb-4" />
-              <p className="text-slate-400 mb-2">No import jobs yet</p>
-              <p className="text-slate-500 text-sm">
+              <Database className="w-12 h-12 text-zinc-600 mx-auto mb-4" />
+              <p className="text-zinc-400 mb-2">No import jobs yet</p>
+              <p className="text-zinc-500 text-sm">
                 Create an import job to bring traces into the platform
               </p>
             </div>
           ) : (
-            <div className="divide-y divide-slate-700">
+            <div className="divide-y divide-zinc-700">
               {jobs.map((job) => (
                 <div key={job.id} className="p-4">
                   <div className="flex items-start justify-between">
@@ -385,11 +385,11 @@ export default function ImportPage() {
                             {job.status}
                           </span>
                         </div>
-                        <p className="text-slate-500 text-sm mt-1">
+                        <p className="text-zinc-500 text-sm mt-1">
                           Created: {job.createdAt}
                         </p>
                         {job.completedAt && (
-                          <p className="text-slate-500 text-sm">
+                          <p className="text-zinc-500 text-sm">
                             Completed: {job.completedAt}
                           </p>
                         )}
@@ -419,13 +419,13 @@ export default function ImportPage() {
         </div>
 
         {/* Supported Formats */}
-        <div className="mt-6 p-6 bg-slate-800/50 rounded-xl border border-slate-700">
+        <div className="mt-6 p-6 bg-zinc-800/50 rounded-xl border border-zinc-700">
           <h3 className="text-lg font-semibold text-white mb-4">Supported Import Sources</h3>
           <div className="grid md:grid-cols-2 gap-4">
             {SOURCE_TYPES.map((source) => (
-              <div key={source.id} className="p-4 bg-slate-900/50 rounded-lg">
+              <div key={source.id} className="p-4 bg-zinc-900/50 rounded-lg">
                 <h4 className="font-medium text-white mb-1">{source.name}</h4>
-                <p className="text-sm text-slate-400">{source.description}</p>
+                <p className="text-sm text-zinc-400">{source.description}</p>
               </div>
             ))}
           </div>

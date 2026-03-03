@@ -31,7 +31,7 @@ export default function AgentDetailPage() {
     return (
       <Layout>
         <div className="p-6 text-center">
-          <p className="text-slate-400">Agent not found</p>
+          <p className="text-zinc-400">Agent not found</p>
         </div>
       </Layout>
     )
@@ -42,7 +42,7 @@ export default function AgentDetailPage() {
       <div className="p-6">
         <button
           onClick={() => router.back()}
-          className="flex items-center gap-2 text-slate-400 hover:text-white transition-colors mb-6"
+          className="flex items-center gap-2 text-zinc-400 hover:text-white transition-colors mb-6"
         >
           <ArrowLeft size={16} />
           <span className="text-sm">Back to Agents</span>

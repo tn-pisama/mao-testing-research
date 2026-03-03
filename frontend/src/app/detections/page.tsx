@@ -5,7 +5,7 @@ export const dynamic = 'force-dynamic'
 import { useState, useEffect, useMemo } from 'react'
 import { Layout } from '@/components/common/Layout'
 import { formatDistanceToNow } from 'date-fns'
-import { clsx } from 'clsx'
+import { cn } from '@/lib/utils'
 import {
   AlertTriangle,
   AlertCircle,
@@ -68,7 +68,7 @@ const detectionTypeConfig: Record<string, { label: string; color: string; icon: 
 }
 
 const severityConfig: Record<string, { label: string; color: string; bg: string }> = {
-  low: { label: 'Low', color: 'text-slate-400', bg: 'bg-slate-500/20' },
+  low: { label: 'Low', color: 'text-zinc-400', bg: 'bg-zinc-500/20' },
   medium: { label: 'Medium', color: 'text-amber-400', bg: 'bg-amber-500/20' },
   high: { label: 'High', color: 'text-orange-400', bg: 'bg-orange-500/20' },
   critical: { label: 'Critical', color: 'text-red-400', bg: 'bg-red-500/20' },
@@ -164,11 +164,11 @@ export default function DetectionsPage() {
       <Layout>
         <div className="p-6">
           <div className="animate-pulse space-y-6">
-            <div className="h-8 w-48 bg-slate-700 rounded" />
+            <div className="h-8 w-48 bg-zinc-700 rounded" />
             <div className="grid grid-cols-4 gap-4">
-              {[1,2,3,4].map(i => <div key={i} className="h-20 bg-slate-700 rounded-xl" />)}
+              {[1,2,3,4].map(i => <div key={i} className="h-20 bg-zinc-700 rounded-xl" />)}
             </div>
-            <div className="h-96 bg-slate-700 rounded-xl" />
+            <div className="h-96 bg-zinc-700 rounded-xl" />
           </div>
         </div>
       </Layout>
@@ -189,14 +189,14 @@ export default function DetectionsPage() {
               <h1 className="text-2xl font-bold text-white mb-1">
                 {showSimplifiedView ? 'Problems Found' : 'Detections'}
               </h1>
-              <p className="text-sm text-slate-400">
+              <p className="text-sm text-zinc-400">
                 {showSimplifiedView
                   ? 'Issues we found in your workflows that need attention'
                   : 'Monitor and validate failure detections across your agent systems'}
               </p>
             </div>
           </div>
-          <button className="flex items-center gap-2 px-4 py-2 bg-primary-600 hover:bg-primary-700 rounded-lg text-white font-medium transition-colors">
+          <button className="flex items-center gap-2 px-4 py-2 bg-blue-600 hover:bg-blue-700 rounded-lg text-white font-medium transition-colors">
             <RefreshCw size={16} />
             Refresh
           </button>
@@ -243,8 +243,8 @@ export default function DetectionsPage() {
               icon={ThumbsDown}
               label="False Positives"
               value={stats.falsePositives}
-              color="text-slate-400"
-              bgColor="bg-slate-500/20"
+              color="text-zinc-400"
+              bgColor="bg-zinc-500/20"
             />
           )}
           <StatCard
@@ -258,7 +258,7 @@ export default function DetectionsPage() {
 
         <div className="grid lg:grid-cols-4 gap-6">
           <div className="lg:col-span-1 space-y-4">
-            <div className="p-4 rounded-xl bg-slate-800/50 border border-slate-700">
+            <div className="p-4 rounded-xl bg-zinc-800/50 border border-zinc-700">
               <h3 className="text-sm font-semibold text-white mb-3 flex items-center gap-2">
                 <Filter size={14} />
                 Filters
@@ -266,11 +266,11 @@ export default function DetectionsPage() {
 
               <div className="space-y-4">
                 <div>
-                  <label className="text-xs text-slate-400 mb-2 block">Detection Type</label>
+                  <label className="text-xs text-zinc-400 mb-2 block">Detection Type</label>
                   <select
                     value={typeFilter}
                     onChange={(e) => setTypeFilter(e.target.value as DetectionType)}
-                    className="w-full px-3 py-2 rounded-lg bg-slate-900 border border-slate-700 text-white text-sm focus:outline-none focus:border-primary-500"
+                    className="w-full px-3 py-2 rounded-lg bg-zinc-900 border border-zinc-700 text-white text-sm focus:outline-none focus:border-blue-500"
                   >
                     <option value="all">All Types</option>
                     <optgroup label="System Design">
@@ -293,11 +293,11 @@ export default function DetectionsPage() {
                 </div>
 
                 <div>
-                  <label className="text-xs text-slate-400 mb-2 block">Severity</label>
+                  <label className="text-xs text-zinc-400 mb-2 block">Severity</label>
                   <select
                     value={severityFilter}
                     onChange={(e) => setSeverityFilter(e.target.value as Severity)}
-                    className="w-full px-3 py-2 rounded-lg bg-slate-900 border border-slate-700 text-white text-sm focus:outline-none focus:border-primary-500"
+                    className="w-full px-3 py-2 rounded-lg bg-zinc-900 border border-zinc-700 text-white text-sm focus:outline-none focus:border-blue-500"
                   >
                     <option value="all">All Severities</option>
                     <option value="critical">Critical</option>
@@ -312,14 +312,14 @@ export default function DetectionsPage() {
                     type="checkbox"
                     checked={showValidated}
                     onChange={(e) => setShowValidated(e.target.checked)}
-                    className="rounded border-slate-600 bg-slate-900 text-primary-500 focus:ring-primary-500"
+                    className="rounded border-zinc-600 bg-zinc-900 text-blue-500 focus:ring-blue-500"
                   />
-                  <span className="text-sm text-slate-300">Show Validated</span>
+                  <span className="text-sm text-zinc-300">Show Validated</span>
                 </label>
               </div>
             </div>
 
-            <div className="p-4 rounded-xl bg-slate-800/50 border border-slate-700">
+            <div className="p-4 rounded-xl bg-zinc-800/50 border border-zinc-700">
               <h3 className="text-sm font-semibold text-white mb-3">By Type</h3>
               <div className="space-y-2">
                 {Object.entries(stats.byType).map(([type, count]) => {
@@ -329,14 +329,14 @@ export default function DetectionsPage() {
                     <button
                       key={type}
                       onClick={() => setTypeFilter(type as DetectionType)}
-                      className={clsx(
+                      className={cn(
                         'w-full flex items-center justify-between p-2 rounded-lg transition-colors',
-                        typeFilter === type ? 'bg-slate-700' : 'hover:bg-slate-700/50'
+                        typeFilter === type ? 'bg-zinc-700' : 'hover:bg-zinc-700/50'
                       )}
                     >
                       <div className="flex items-center gap-2">
                         <Icon size={14} className={config.color} />
-                        <span className="text-sm text-slate-300">{config.label}</span>
+                        <span className="text-sm text-zinc-300">{config.label}</span>
                       </div>
                       <span className="text-sm font-medium text-white">{count}</span>
                     </button>
@@ -347,33 +347,33 @@ export default function DetectionsPage() {
           </div>
 
           <div className="lg:col-span-3">
-            <div className="rounded-xl bg-slate-800/50 border border-slate-700 overflow-hidden">
-              <div className="p-4 border-b border-slate-700 flex items-center justify-between">
+            <div className="rounded-xl bg-zinc-800/50 border border-zinc-700 overflow-hidden">
+              <div className="p-4 border-b border-zinc-700 flex items-center justify-between">
                 <div className="flex items-center gap-2">
-                  <span className="text-sm text-slate-400">
+                  <span className="text-sm text-zinc-400">
                     {filteredDetections.length} detections
                   </span>
                 </div>
                 <div className="relative">
-                  <Search size={14} className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400" />
+                  <Search size={14} className="absolute left-3 top-1/2 -translate-y-1/2 text-zinc-400" />
                   <input
                     type="text"
                     placeholder="Search..."
                     value={searchQuery}
                     onChange={(e) => setSearchQuery(e.target.value)}
-                    className="pl-9 pr-4 py-1.5 rounded-lg bg-slate-900 border border-slate-700 text-white text-sm placeholder-slate-500 focus:outline-none focus:border-primary-500 w-64"
+                    className="pl-9 pr-4 py-1.5 rounded-lg bg-zinc-900 border border-zinc-700 text-white text-sm placeholder-zinc-500 focus:outline-none focus:border-blue-500 w-64"
                   />
                 </div>
               </div>
 
-              <div className="divide-y divide-slate-700/50">
+              <div className="divide-y divide-zinc-700/50">
                 {filteredDetections.length === 0 ? (
                   <div className="text-center py-12 px-4">
-                    <AlertTriangle size={48} className="mx-auto mb-4 text-slate-600 opacity-50" />
-                    <p className="text-slate-400 mb-2">
+                    <AlertTriangle size={48} className="mx-auto mb-4 text-zinc-600 opacity-50" />
+                    <p className="text-zinc-400 mb-2">
                       {showSimplifiedView ? 'No problems found' : 'No detections found'}
                     </p>
-                    <p className="text-sm text-slate-500">
+                    <p className="text-sm text-zinc-500">
                       {typeFilter !== 'all' || severityFilter !== 'all'
                         ? 'Try adjusting your filters to see more results'
                         : showSimplifiedView
@@ -394,16 +394,16 @@ export default function DetectionsPage() {
                       <Link
                         key={detection.id}
                         href={showSimplifiedView ? `/healing?detection=${detection.id}` : `/traces/${detection.trace_id}`}
-                        className="flex items-center gap-4 p-4 hover:bg-slate-700/30 transition-colors"
+                        className="flex items-center gap-4 p-4 hover:bg-zinc-700/30 transition-colors"
                       >
-                        <div className={clsx('p-2 rounded-lg', severity.bg)}>
+                        <div className={cn('p-2 rounded-lg', severity.bg)}>
                           <TypeIcon size={16} className={typeConfig.color} />
                         </div>
 
                         <div className="flex-1 min-w-0">
                           <div className="flex items-center gap-2 mb-1">
                             <span className="font-medium text-white">{displayLabel}</span>
-                            <span className={clsx('text-xs px-2 py-0.5 rounded-full', severity.bg, severity.color)}>
+                            <span className={cn('text-xs px-2 py-0.5 rounded-full', severity.bg, severity.color)}>
                               {severity.label}
                             </span>
                             {detection.validated && (
@@ -412,12 +412,12 @@ export default function DetectionsPage() {
                               </span>
                             )}
                             {detection.false_positive && (
-                              <span className="text-xs px-2 py-0.5 rounded-full bg-slate-500/20 text-slate-400">
+                              <span className="text-xs px-2 py-0.5 rounded-full bg-zinc-500/20 text-zinc-400">
                                 {showSimplifiedView ? 'Not an Issue' : 'False Positive'}
                               </span>
                             )}
                           </div>
-                          <div className="flex items-center gap-4 text-xs text-slate-400">
+                          <div className="flex items-center gap-4 text-xs text-zinc-400">
                             {showSimplifiedView ? (
                               <>
                                 <span>{formatDistanceToNow(new Date(detection.created_at), { addSuffix: true })}</span>
@@ -449,7 +449,7 @@ export default function DetectionsPage() {
                             </div>
                           ) : (
                             <>
-                              <div className="text-xs text-slate-400 mb-1">
+                              <div className="text-xs text-zinc-400 mb-1">
                                 {formatDistanceToNow(new Date(detection.created_at), { addSuffix: true })}
                               </div>
                               <div className="flex items-center gap-1">
@@ -457,21 +457,21 @@ export default function DetectionsPage() {
                                   <>
                                     <button
                                       onClick={(e) => { e.preventDefault() }}
-                                      className="p-1.5 rounded hover:bg-emerald-500/20 text-slate-400 hover:text-emerald-400 transition-colors"
+                                      className="p-1.5 rounded hover:bg-emerald-500/20 text-zinc-400 hover:text-emerald-400 transition-colors"
                                       title="Mark as valid"
                                     >
                                       <ThumbsUp size={14} />
                                     </button>
                                     <button
                                       onClick={(e) => { e.preventDefault() }}
-                                      className="p-1.5 rounded hover:bg-red-500/20 text-slate-400 hover:text-red-400 transition-colors"
+                                      className="p-1.5 rounded hover:bg-red-500/20 text-zinc-400 hover:text-red-400 transition-colors"
                                       title="Mark as false positive"
                                     >
                                       <ThumbsDown size={14} />
                                     </button>
                                   </>
                                 )}
-                                <ChevronRight size={14} className="text-slate-500" />
+                                <ChevronRight size={14} className="text-zinc-500" />
                               </div>
                             </>
                           )}
@@ -485,21 +485,21 @@ export default function DetectionsPage() {
               {/* Pagination */}
               {totalPages > 1 && (
                 <div className="flex items-center justify-between mt-4 px-1">
-                  <span className="text-sm text-slate-400">
+                  <span className="text-sm text-zinc-400">
                     Page {currentPage} of {totalPages} ({total} total)
                   </span>
                   <div className="flex gap-2">
                     <button
                       onClick={() => setCurrentPage(p => Math.max(1, p - 1))}
                       disabled={currentPage <= 1}
-                      className="px-3 py-1.5 text-sm rounded-lg bg-slate-800 text-slate-300 hover:bg-slate-700 disabled:opacity-40 disabled:cursor-not-allowed"
+                      className="px-3 py-1.5 text-sm rounded-lg bg-zinc-800 text-zinc-300 hover:bg-zinc-700 disabled:opacity-40 disabled:cursor-not-allowed"
                     >
                       Previous
                     </button>
                     <button
                       onClick={() => setCurrentPage(p => Math.min(totalPages, p + 1))}
                       disabled={currentPage >= totalPages}
-                      className="px-3 py-1.5 text-sm rounded-lg bg-slate-800 text-slate-300 hover:bg-slate-700 disabled:opacity-40 disabled:cursor-not-allowed"
+                      className="px-3 py-1.5 text-sm rounded-lg bg-zinc-800 text-zinc-300 hover:bg-zinc-700 disabled:opacity-40 disabled:cursor-not-allowed"
                     >
                       Next
                     </button>
@@ -524,14 +524,14 @@ interface StatCardProps {
 
 function StatCard({ icon: Icon, label, value, color, bgColor }: StatCardProps) {
   return (
-    <div className="p-4 rounded-xl bg-slate-800/50 border border-slate-700">
+    <div className="p-4 rounded-xl bg-zinc-800/50 border border-zinc-700">
       <div className="flex items-center gap-3">
-        <div className={clsx('p-2 rounded-lg', bgColor)}>
+        <div className={cn('p-2 rounded-lg', bgColor)}>
           <Icon size={18} className={color} />
         </div>
         <div>
           <div className="text-2xl font-bold text-white">{value}</div>
-          <div className="text-xs text-slate-400">{label}</div>
+          <div className="text-xs text-zinc-400">{label}</div>
         </div>
       </div>
     </div>

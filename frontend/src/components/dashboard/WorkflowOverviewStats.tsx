@@ -2,7 +2,7 @@
 
 import { Workflow, TrendingUp, AlertTriangle, CheckCircle } from 'lucide-react'
 import type { QualityAssessment } from '@/lib/api'
-import clsx from 'clsx'
+import { cn } from '@/lib/utils'
 
 interface WorkflowOverviewStatsProps {
   workflows: QualityAssessment[]
@@ -45,7 +45,7 @@ export function WorkflowOverviewStats({ workflows, isLoading }: WorkflowOverview
     return (
       <div className="grid grid-cols-2 md:grid-cols-4 lg:grid-cols-6 gap-3 mb-6">
         {[1, 2, 3, 4, 5, 6].map((i) => (
-          <div key={i} className="h-20 bg-slate-700/50 rounded-lg animate-pulse" />
+          <div key={i} className="h-20 bg-zinc-700/50 rounded-lg animate-pulse" />
         ))}
       </div>
     )
@@ -102,11 +102,11 @@ export function WorkflowOverviewStats({ workflows, isLoading }: WorkflowOverview
       />
 
       {/* Average Quality */}
-      <div className="bg-slate-800 rounded-lg p-3 border border-slate-700">
+      <div className="bg-zinc-800 rounded-lg p-3 border border-zinc-700">
         <div className="flex items-center gap-2 mb-1">
-          <div className="text-xs text-slate-400">Avg Quality</div>
+          <div className="text-xs text-zinc-400">Avg Quality</div>
         </div>
-        <div className={clsx(
+        <div className={cn(
           'text-2xl font-bold',
           avgQuality >= 0.8 ? 'text-green-400' :
           avgQuality >= 0.6 ? 'text-blue-400' :
@@ -135,7 +135,7 @@ interface StatCardProps {
 
 function StatCard({ icon, label, value, color, subtitle }: StatCardProps) {
   const colorClasses = {
-    slate: 'bg-slate-700/50 text-slate-300',
+    slate: 'bg-zinc-700/50 text-zinc-300',
     green: 'bg-green-500/20 text-green-400 border-green-500/30',
     blue: 'bg-blue-500/20 text-blue-400 border-blue-500/30',
     amber: 'bg-amber-500/20 text-amber-400 border-amber-500/30',
@@ -143,17 +143,17 @@ function StatCard({ icon, label, value, color, subtitle }: StatCardProps) {
   }
 
   return (
-    <div className={clsx(
+    <div className={cn(
       'rounded-lg p-3 border',
-      color === 'slate' ? 'bg-slate-800 border-slate-700' : colorClasses[color]
+      color === 'slate' ? 'bg-zinc-800 border-zinc-700' : colorClasses[color]
     )}>
       <div className="flex items-center gap-2 mb-1">
         {icon}
-        <div className="text-xs text-slate-400">{label}</div>
+        <div className="text-xs text-zinc-400">{label}</div>
       </div>
       <div className="text-2xl font-bold">{value}</div>
       {subtitle && (
-        <div className="text-xs text-slate-300 mt-0.5">{subtitle}</div>
+        <div className="text-xs text-zinc-300 mt-0.5">{subtitle}</div>
       )}
     </div>
   )

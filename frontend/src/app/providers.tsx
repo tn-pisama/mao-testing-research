@@ -26,10 +26,10 @@ class ErrorBoundary extends Component<{ children: ReactNode; fallback?: ReactNod
   render() {
     if (this.state.hasError) {
       return this.props.fallback || (
-        <div className="min-h-screen bg-slate-900 flex items-center justify-center p-4">
-          <div className="bg-slate-800 rounded-lg p-8 max-w-md text-center">
+        <div className="min-h-screen bg-zinc-900 flex items-center justify-center p-4">
+          <div className="bg-zinc-800 rounded-lg p-8 max-w-md text-center">
             <h2 className="text-xl font-semibold text-white mb-4">Something went wrong</h2>
-            <p className="text-slate-400 mb-6">
+            <p className="text-zinc-400 mb-6">
               An unexpected error occurred. Please refresh the page to try again.
             </p>
             <button

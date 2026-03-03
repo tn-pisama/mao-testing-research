@@ -43,9 +43,9 @@ export function RollbackConfirmModal({
       />
 
       {/* Modal */}
-      <div className="relative bg-slate-900 border border-slate-700 rounded-xl shadow-2xl w-full max-w-md">
+      <div className="relative bg-zinc-900 border border-zinc-700 rounded-xl shadow-2xl w-full max-w-md">
         {/* Header */}
-        <div className="flex items-center justify-between p-4 border-b border-slate-700">
+        <div className="flex items-center justify-between p-4 border-b border-zinc-700">
           <div className="flex items-center gap-3">
             <div className="p-2 bg-amber-500/20 rounded-lg">
               <RotateCcw size={20} className="text-amber-400" />
@@ -54,10 +54,10 @@ export function RollbackConfirmModal({
           </div>
           <button
             onClick={onClose}
-            className="p-2 hover:bg-slate-800 rounded-lg transition-colors"
+            className="p-2 hover:bg-zinc-800 rounded-lg transition-colors"
             aria-label="Close dialog"
           >
-            <X size={20} className="text-slate-400" />
+            <X size={20} className="text-zinc-400" />
           </button>
         </div>
 
@@ -78,31 +78,31 @@ export function RollbackConfirmModal({
 
           <div className="space-y-2 text-sm">
             <div className="flex justify-between">
-              <span className="text-slate-400">Healing ID</span>
+              <span className="text-zinc-400">Healing ID</span>
               <span className="text-white font-mono text-xs">{healingId.slice(0, 12)}...</span>
             </div>
             {workflowId && (
               <div className="flex justify-between">
-                <span className="text-slate-400">Workflow ID</span>
+                <span className="text-zinc-400">Workflow ID</span>
                 <span className="text-white">{workflowId}</span>
               </div>
             )}
             {fixType && (
               <div className="flex justify-between">
-                <span className="text-slate-400">Fix Type</span>
+                <span className="text-zinc-400">Fix Type</span>
                 <span className="text-white">{fixType.replace(/_/g, ' ')}</span>
               </div>
             )}
           </div>
 
-          <p className="text-xs text-slate-500">
+          <p className="text-xs text-zinc-500">
             This action will push the original workflow back to your n8n instance.
             The workflow will be reactivated with its previous configuration.
           </p>
         </div>
 
         {/* Footer */}
-        <div className="flex items-center justify-end gap-3 p-4 border-t border-slate-700 bg-slate-800/50">
+        <div className="flex items-center justify-end gap-3 p-4 border-t border-zinc-700 bg-zinc-800/50">
           <Button variant="ghost" onClick={onClose} disabled={isRollingBack}>
             Cancel
           </Button>

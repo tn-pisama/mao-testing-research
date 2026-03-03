@@ -60,19 +60,19 @@ export function FixPreviewModal({
       />
 
       {/* Modal */}
-      <div className="relative bg-slate-900 border border-slate-700 rounded-xl shadow-2xl w-full max-w-2xl max-h-[90vh] overflow-hidden">
+      <div className="relative bg-zinc-900 border border-zinc-700 rounded-xl shadow-2xl w-full max-w-2xl max-h-[90vh] overflow-hidden">
         {/* Header */}
-        <div className="flex items-center justify-between p-4 border-b border-slate-700">
+        <div className="flex items-center justify-between p-4 border-b border-zinc-700">
           <div>
             <h2 id="fix-preview-modal-title" className="text-lg font-semibold text-white">Preview Fix</h2>
-            <p className="text-sm text-slate-400">Review changes before applying to n8n</p>
+            <p className="text-sm text-zinc-400">Review changes before applying to n8n</p>
           </div>
           <button
             onClick={onClose}
-            className="p-2 hover:bg-slate-800 rounded-lg transition-colors"
+            className="p-2 hover:bg-zinc-800 rounded-lg transition-colors"
             aria-label="Close dialog"
           >
-            <X size={20} className="text-slate-400" />
+            <X size={20} className="text-zinc-400" />
           </button>
         </div>
 
@@ -80,27 +80,27 @@ export function FixPreviewModal({
         <div className="p-4 space-y-4 max-h-[60vh] overflow-y-auto">
           {/* Fix Details */}
           {fix && (
-            <div className="bg-slate-800/50 rounded-lg p-4">
+            <div className="bg-zinc-800/50 rounded-lg p-4">
               <div className="flex items-center justify-between mb-3">
                 <h3 className="text-sm font-medium text-white">Fix Details</h3>
                 <Badge variant={confidenceColor} size="sm">
                   {fix.confidence} confidence
                 </Badge>
               </div>
-              <p className="text-sm text-slate-300 mb-2">
-                <span className="text-slate-500">Type:</span> {fix.type.replace(/_/g, ' ')}
+              <p className="text-sm text-zinc-300 mb-2">
+                <span className="text-zinc-500">Type:</span> {fix.type.replace(/_/g, ' ')}
               </p>
-              <p className="text-sm text-slate-300">{fix.description}</p>
+              <p className="text-sm text-zinc-300">{fix.description}</p>
             </div>
           )}
 
           {/* Diff Preview */}
           {diff && (
-            <div className="bg-slate-800/50 rounded-lg p-4">
+            <div className="bg-zinc-800/50 rounded-lg p-4">
               <h3 className="text-sm font-medium text-white mb-3">Workflow Changes</h3>
 
               {/* Summary */}
-              <p className="text-sm text-slate-400 mb-4">{diff.summary}</p>
+              <p className="text-sm text-zinc-400 mb-4">{diff.summary}</p>
 
               {/* Added Nodes */}
               {diff.added_nodes.length > 0 && (
@@ -178,10 +178,10 @@ export function FixPreviewModal({
           )}
 
           {/* Connection Selection */}
-          <div className="bg-slate-800/50 rounded-lg p-4">
+          <div className="bg-zinc-800/50 rounded-lg p-4">
             <h3 className="text-sm font-medium text-white mb-3">Target n8n Instance</h3>
             {connections.length === 0 ? (
-              <div className="text-center py-4 text-slate-400">
+              <div className="text-center py-4 text-zinc-400">
                 <AlertTriangle size={24} className="mx-auto mb-2 opacity-50" />
                 <p className="text-sm">No n8n connections configured</p>
                 <p className="text-xs">Add a connection in Settings first</p>
@@ -190,7 +190,7 @@ export function FixPreviewModal({
               <select
                 value={selectedConnection}
                 onChange={(e) => setSelectedConnection(e.target.value)}
-                className="w-full bg-slate-700 border border-slate-600 rounded-lg px-3 py-2 text-white text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
+                className="w-full bg-zinc-700 border border-zinc-600 rounded-lg px-3 py-2 text-white text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
               >
                 <option value="">Select a connection...</option>
                 {connections.map((conn) => (
@@ -209,7 +209,7 @@ export function FixPreviewModal({
                 type="checkbox"
                 checked={stageForTesting}
                 onChange={(e) => setStageForTesting(e.target.checked)}
-                className="mt-1 w-4 h-4 rounded border-slate-600 bg-slate-700 text-amber-500 focus:ring-amber-500"
+                className="mt-1 w-4 h-4 rounded border-zinc-600 bg-zinc-700 text-amber-500 focus:ring-amber-500"
               />
               <div>
                 <p className="text-sm font-medium text-amber-400">Stage for Testing</p>
@@ -222,7 +222,7 @@ export function FixPreviewModal({
           </div>
 
           {/* Warning */}
-          <div className="flex items-start gap-3 text-slate-400 text-xs">
+          <div className="flex items-start gap-3 text-zinc-400 text-xs">
             <AlertTriangle size={16} className="flex-shrink-0 mt-0.5" />
             <p>
               {stageForTesting
@@ -233,7 +233,7 @@ export function FixPreviewModal({
         </div>
 
         {/* Footer */}
-        <div className="flex items-center justify-end gap-3 p-4 border-t border-slate-700 bg-slate-800/50">
+        <div className="flex items-center justify-end gap-3 p-4 border-t border-zinc-700 bg-zinc-800/50">
           <Button variant="ghost" onClick={onClose}>
             Cancel
           </Button>

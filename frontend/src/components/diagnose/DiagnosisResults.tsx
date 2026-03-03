@@ -29,7 +29,7 @@ const severityConfig = {
   critical: { label: 'Urgent', description: 'Needs immediate attention', variant: 'error' as const, color: 'text-red-400', bg: 'bg-red-500/20' },
   high: { label: 'Important', description: 'Should fix soon', variant: 'warning' as const, color: 'text-orange-400', bg: 'bg-orange-500/20' },
   medium: { label: 'Worth Fixing', description: 'Can cause issues over time', variant: 'info' as const, color: 'text-amber-400', bg: 'bg-amber-500/20' },
-  low: { label: 'Minor', description: 'Small improvement opportunity', variant: 'default' as const, color: 'text-slate-400', bg: 'bg-slate-500/20' },
+  low: { label: 'Minor', description: 'Small improvement opportunity', variant: 'default' as const, color: 'text-zinc-400', bg: 'bg-zinc-500/20' },
 }
 
 const categoryIcons: Record<string, LucideIcon> = {
@@ -54,9 +54,9 @@ function DetectionItem({ detection }: { detection: DiagnoseDetection }) {
   const Icon = categoryIcons[detection.category] || AlertTriangle
 
   return (
-    <div className="border border-slate-700 rounded-lg overflow-hidden">
+    <div className="border border-zinc-700 rounded-lg overflow-hidden">
       <div
-        className="p-3 cursor-pointer hover:bg-slate-800/50 transition-colors"
+        className="p-3 cursor-pointer hover:bg-zinc-800/50 transition-colors"
         onClick={() => setIsExpanded(!isExpanded)}
       >
         <div className="flex items-center justify-between">
@@ -68,7 +68,7 @@ function DetectionItem({ detection }: { detection: DiagnoseDetection }) {
               <p className="text-sm font-medium text-white">
                 {getPlainEnglishTitle(detection.category) || detection.title}
               </p>
-              <p className="text-xs text-slate-500">
+              <p className="text-xs text-zinc-500">
                 {categoryNames[detection.category] || detection.category.replace(/_/g, ' ')}
               </p>
             </div>
@@ -80,7 +80,7 @@ function DetectionItem({ detection }: { detection: DiagnoseDetection }) {
               </Badge>
             </TermTooltip>
             <TermTooltip term="confidence">
-              <span className="text-xs text-slate-500">
+              <span className="text-xs text-zinc-500">
                 {Math.round(detection.confidence * 100)}% certain
               </span>
             </TermTooltip>
@@ -90,11 +90,11 @@ function DetectionItem({ detection }: { detection: DiagnoseDetection }) {
       </div>
 
       {isExpanded && (
-        <div className="border-t border-slate-700 p-3 space-y-3 bg-slate-800/30">
+        <div className="border-t border-zinc-700 p-3 space-y-3 bg-zinc-800/30">
           {/* What happened - plain explanation */}
           <div>
-            <p className="text-xs text-slate-500 mb-1">What Happened</p>
-            <p className="text-sm text-slate-300">{detection.description}</p>
+            <p className="text-xs text-zinc-500 mb-1">What Happened</p>
+            <p className="text-sm text-zinc-300">{detection.description}</p>
           </div>
 
           {/* What you can do about it */}
@@ -109,18 +109,18 @@ function DetectionItem({ detection }: { detection: DiagnoseDetection }) {
           {((detection.evidence && detection.evidence.length > 0) ||
             (detection.affected_spans && detection.affected_spans.length > 0)) && (
             <details className="group">
-              <summary className="text-xs text-slate-500 cursor-pointer hover:text-slate-400">
+              <summary className="text-xs text-zinc-500 cursor-pointer hover:text-zinc-400">
                 Technical Details (click to expand)
               </summary>
               <div className="mt-2 space-y-3">
                 {detection.evidence && detection.evidence.length > 0 && (
                   <div>
-                    <p className="text-xs text-slate-500 mb-2">Evidence</p>
+                    <p className="text-xs text-zinc-500 mb-2">Evidence</p>
                     <div className="space-y-1">
                       {detection.evidence.map((ev, idx) => (
                         <div
                           key={idx}
-                          className="text-xs text-slate-400 bg-slate-800/50 px-2 py-1 rounded"
+                          className="text-xs text-zinc-400 bg-zinc-800/50 px-2 py-1 rounded"
                         >
                           {typeof ev === 'string' ? ev : JSON.stringify(ev)}
                         </div>
@@ -131,12 +131,12 @@ function DetectionItem({ detection }: { detection: DiagnoseDetection }) {
 
                 {detection.affected_spans && detection.affected_spans.length > 0 && (
                   <div>
-                    <p className="text-xs text-slate-500 mb-1">Affected Steps</p>
+                    <p className="text-xs text-zinc-500 mb-1">Affected Steps</p>
                     <div className="flex flex-wrap gap-1">
                       {detection.affected_spans.map((span, idx) => (
                         <span
                           key={idx}
-                          className="text-xs text-slate-400 bg-slate-700 px-2 py-0.5 rounded"
+                          className="text-xs text-zinc-400 bg-zinc-700 px-2 py-0.5 rounded"
                         >
                           {span}
                         </span>
@@ -185,36 +185,36 @@ export function DiagnosisResults({ result, onApplyAutoFix }: DiagnosisResultsPro
           <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
             <div>
               <TermTooltip term="trace">
-                <p className="text-xs text-slate-500 mb-1">Workflow Run ID</p>
+                <p className="text-xs text-zinc-500 mb-1">Workflow Run ID</p>
               </TermTooltip>
               <p className="text-sm text-white font-mono">{result.trace_id.slice(0, 12)}...</p>
             </div>
             <div>
               <TermTooltip term="span">
-                <p className="text-xs text-slate-500 mb-1">Total Steps</p>
+                <p className="text-xs text-zinc-500 mb-1">Total Steps</p>
               </TermTooltip>
               <p className="text-sm text-white">{result.total_spans}</p>
             </div>
             <div>
-              <p className="text-xs text-slate-500 mb-1">Steps with Errors</p>
+              <p className="text-xs text-zinc-500 mb-1">Steps with Errors</p>
               <p className="text-sm text-white">{result.error_spans}</p>
             </div>
             <div>
-              <p className="text-xs text-slate-500 mb-1">Analysis Time</p>
+              <p className="text-xs text-zinc-500 mb-1">Analysis Time</p>
               <p className="text-sm text-white">{result.detection_time_ms}ms</p>
             </div>
           </div>
 
           {result.detectors_run && result.detectors_run.length > 0 && (
             <details className="mt-4 group">
-              <summary className="text-xs text-slate-500 cursor-pointer hover:text-slate-400">
+              <summary className="text-xs text-zinc-500 cursor-pointer hover:text-zinc-400">
                 Checks Performed ({result.detectors_run.length})
               </summary>
               <div className="mt-2 flex flex-wrap gap-1">
                 {result.detectors_run.map((detector, idx) => (
                   <span
                     key={idx}
-                    className="text-xs text-slate-400 bg-slate-700 px-2 py-0.5 rounded"
+                    className="text-xs text-zinc-400 bg-zinc-700 px-2 py-0.5 rounded"
                   >
                     {detector.replace(/_/g, ' ')}
                   </span>
@@ -235,7 +235,7 @@ export function DiagnosisResults({ result, onApplyAutoFix }: DiagnosisResultsPro
               </div>
               <div>
                 <p className="text-sm font-medium text-white mb-1">Why This Is Happening</p>
-                <p className="text-sm text-slate-300">{result.root_cause_explanation}</p>
+                <p className="text-sm text-zinc-300">{result.root_cause_explanation}</p>
               </div>
             </div>
           </CardContent>
@@ -253,13 +253,13 @@ export function DiagnosisResults({ result, onApplyAutoFix }: DiagnosisResultsPro
                 </div>
                 <div>
                   <p className="text-sm font-medium text-green-400 mb-1">We Can Fix This For You</p>
-                  <p className="text-sm text-slate-300 mb-2">{result.auto_fix_preview.description}</p>
+                  <p className="text-sm text-zinc-300 mb-2">{result.auto_fix_preview.description}</p>
                   <div className="flex items-center gap-4 text-xs">
-                    <span className="text-slate-500">
-                      What we'll do: <span className="text-slate-300">{result.auto_fix_preview.action}</span>
+                    <span className="text-zinc-500">
+                      What we'll do: <span className="text-zinc-300">{result.auto_fix_preview.action}</span>
                     </span>
                     <TermTooltip term="confidence">
-                      <span className="text-slate-500">
+                      <span className="text-zinc-500">
                         {Math.round(result.auto_fix_preview.confidence * 100)}% certain this will work
                       </span>
                     </TermTooltip>
@@ -304,7 +304,7 @@ export function DiagnosisResults({ result, onApplyAutoFix }: DiagnosisResultsPro
           <CardContent className="p-8 text-center">
             <CheckCircle2 size={48} className="mx-auto mb-4 text-green-400 opacity-50" />
             <p className="text-lg font-medium text-white mb-2">Everything Looks Good!</p>
-            <p className="text-sm text-slate-400">
+            <p className="text-sm text-zinc-400">
               We analyzed your workflow and found no problems. Nice work!
             </p>
           </CardContent>

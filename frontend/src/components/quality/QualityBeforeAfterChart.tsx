@@ -16,7 +16,7 @@ function getImprovementColor(before: number, after: number): string {
   const diff = after - before
   if (diff > 0.1) return 'bg-green-500'
   if (diff > 0) return 'bg-green-400'
-  if (diff === 0) return 'bg-slate-400'
+  if (diff === 0) return 'bg-zinc-400'
   if (diff > -0.1) return 'bg-amber-400'
   return 'bg-red-400'
 }
@@ -32,7 +32,7 @@ export function QualityBeforeAfterChart({
 }: QualityBeforeAfterChartProps) {
   if (dimensions.length === 0) {
     return (
-      <div className="text-center py-8 text-slate-500 text-sm">
+      <div className="text-center py-8 text-zinc-500 text-sm">
         No dimension data available
       </div>
     )
@@ -41,9 +41,9 @@ export function QualityBeforeAfterChart({
   return (
     <div className="space-y-4">
       {/* Legend */}
-      <div className="flex items-center gap-6 text-xs text-slate-400 mb-2">
+      <div className="flex items-center gap-6 text-xs text-zinc-400 mb-2">
         <div className="flex items-center gap-2">
-          <div className="w-3 h-3 rounded bg-slate-600" />
+          <div className="w-3 h-3 rounded bg-zinc-600" />
           <span>{beforeLabel}</span>
         </div>
         <div className="flex items-center gap-2">
@@ -61,10 +61,10 @@ export function QualityBeforeAfterChart({
         return (
           <div key={dim.dimension} className="space-y-1">
             <div className="flex items-center justify-between">
-              <span className="text-sm text-slate-300 capitalize">
+              <span className="text-sm text-zinc-300 capitalize">
                 {dim.dimension.replace(/_/g, ' ')}
               </span>
-              <span className="text-xs text-slate-400">
+              <span className="text-xs text-zinc-400">
                 {formatPercent(dim.before)} → {formatPercent(dim.after)}
                 {improvement !== 0 && (
                   <span
@@ -78,14 +78,14 @@ export function QualityBeforeAfterChart({
               </span>
             </div>
             {/* Before bar */}
-            <div className="h-2 bg-slate-800 rounded-full overflow-hidden">
+            <div className="h-2 bg-zinc-800 rounded-full overflow-hidden">
               <div
-                className="h-full bg-slate-600 transition-all duration-500 rounded-full"
+                className="h-full bg-zinc-600 transition-all duration-500 rounded-full"
                 style={{ width: `${beforePercent}%` }}
               />
             </div>
             {/* After bar */}
-            <div className="h-2 bg-slate-800 rounded-full overflow-hidden">
+            <div className="h-2 bg-zinc-800 rounded-full overflow-hidden">
               <div
                 className={`h-full transition-all duration-500 rounded-full ${getImprovementColor(
                   dim.before,
@@ -105,10 +105,10 @@ export function QualityBeforeAfterChart({
         const avgImprovement = Math.round((avgAfter - avgBefore) * 100)
 
         return (
-          <div className="mt-4 pt-4 border-t border-slate-700 flex items-center justify-between">
-            <span className="text-sm font-medium text-slate-300">Overall Average</span>
+          <div className="mt-4 pt-4 border-t border-zinc-700 flex items-center justify-between">
+            <span className="text-sm font-medium text-zinc-300">Overall Average</span>
             <div className="flex items-center gap-3">
-              <span className="text-sm text-slate-400">
+              <span className="text-sm text-zinc-400">
                 {formatPercent(avgBefore)} → {formatPercent(avgAfter)}
               </span>
               {avgImprovement !== 0 && (

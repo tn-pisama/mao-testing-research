@@ -88,7 +88,7 @@ export default function MetricsPage() {
             </div>
             <h1 className="text-2xl font-bold text-white">Metrics Export</h1>
           </div>
-          <p className="text-slate-400">
+          <p className="text-zinc-400">
             Export platform metrics for monitoring and alerting
           </p>
         </div>
@@ -96,8 +96,8 @@ export default function MetricsPage() {
         <div className="grid lg:grid-cols-3 gap-6">
           {/* Format Selection */}
           <div className="space-y-4">
-            <div className="bg-slate-800 rounded-xl p-4 border border-slate-700">
-              <h3 className="text-sm font-medium text-slate-300 mb-3">Export Format</h3>
+            <div className="bg-zinc-800 rounded-xl p-4 border border-zinc-700">
+              <h3 className="text-sm font-medium text-zinc-300 mb-3">Export Format</h3>
               <div className="space-y-2">
                 {EXPORT_FORMATS.map((format) => (
                   <button
@@ -109,11 +109,11 @@ export default function MetricsPage() {
                     className={`w-full p-3 rounded-lg border text-left transition-all ${
                       selectedFormat === format.id
                         ? 'border-indigo-500 bg-indigo-500/10'
-                        : 'border-slate-600 bg-slate-700/50 hover:border-slate-500'
+                        : 'border-zinc-600 bg-zinc-700/50 hover:border-zinc-500'
                     }`}
                   >
                     <span className="text-white text-sm font-medium">{format.name}</span>
-                    <p className="text-slate-500 text-xs mt-0.5">{format.description}</p>
+                    <p className="text-zinc-500 text-xs mt-0.5">{format.description}</p>
                   </button>
                 ))}
               </div>
@@ -139,8 +139,8 @@ export default function MetricsPage() {
             )}
 
             {exportResult ? (
-              <div className="bg-slate-800 rounded-xl border border-slate-700">
-                <div className="flex items-center justify-between p-4 border-b border-slate-700">
+              <div className="bg-zinc-800 rounded-xl border border-zinc-700">
+                <div className="flex items-center justify-between p-4 border-b border-zinc-700">
                   <div className="flex items-center gap-2">
                     <CheckCircle className="text-emerald-400" size={18} />
                     <span className="text-white font-medium">Export Complete</span>
@@ -166,19 +166,19 @@ export default function MetricsPage() {
                 </div>
 
                 <div className="p-4">
-                  <div className="flex items-center gap-4 text-sm text-slate-400 mb-4">
+                  <div className="flex items-center gap-4 text-sm text-zinc-400 mb-4">
                     <span>Format: {exportResult.format}</span>
                     <span>Generated: {new Date(exportResult.timestamp).toLocaleString()}</span>
                   </div>
 
-                  <pre className="bg-slate-900 rounded-lg p-4 text-sm text-slate-300 overflow-x-auto max-h-96 overflow-y-auto font-mono">
+                  <pre className="bg-zinc-900 rounded-lg p-4 text-sm text-zinc-300 overflow-x-auto max-h-96 overflow-y-auto font-mono">
                     {exportResult.data}
                   </pre>
                 </div>
               </div>
             ) : (
-              <div className="h-full flex items-center justify-center bg-slate-800/50 rounded-xl border border-slate-700 border-dashed p-8">
-                <div className="text-center text-slate-500">
+              <div className="h-full flex items-center justify-center bg-zinc-800/50 rounded-xl border border-zinc-700 border-dashed p-8">
+                <div className="text-center text-zinc-500">
                   <BarChart3 className="w-12 h-12 mx-auto mb-4 opacity-50" />
                   <p className="text-lg font-medium mb-2">No export yet</p>
                   <p className="text-sm">Select a format and click Export to generate metrics</p>
@@ -189,39 +189,39 @@ export default function MetricsPage() {
         </div>
 
         {/* Available Metrics */}
-        <div className="mt-6 p-6 bg-slate-800/50 rounded-xl border border-slate-700">
+        <div className="mt-6 p-6 bg-zinc-800/50 rounded-xl border border-zinc-700">
           <h3 className="text-lg font-semibold text-white mb-4">Available Metrics</h3>
           <div className="grid md:grid-cols-3 gap-4">
-            <div className="p-4 bg-slate-900/50 rounded-lg">
+            <div className="p-4 bg-zinc-900/50 rounded-lg">
               <div className="flex items-center gap-2 mb-2">
                 <Activity className="text-indigo-400" size={18} />
                 <h4 className="font-medium text-white">Trace Metrics</h4>
               </div>
-              <ul className="text-sm text-slate-400 space-y-1">
+              <ul className="text-sm text-zinc-400 space-y-1">
                 <li>mao_traces_total</li>
                 <li>mao_traces_by_status</li>
                 <li>mao_trace_duration_seconds</li>
                 <li>mao_trace_tokens_total</li>
               </ul>
             </div>
-            <div className="p-4 bg-slate-900/50 rounded-lg">
+            <div className="p-4 bg-zinc-900/50 rounded-lg">
               <div className="flex items-center gap-2 mb-2">
                 <TrendingUp className="text-emerald-400" size={18} />
                 <h4 className="font-medium text-white">Detection Metrics</h4>
               </div>
-              <ul className="text-sm text-slate-400 space-y-1">
+              <ul className="text-sm text-zinc-400 space-y-1">
                 <li>mao_detections_total</li>
                 <li>mao_detections_by_type</li>
                 <li>mao_detection_confidence</li>
                 <li>mao_false_positives_total</li>
               </ul>
             </div>
-            <div className="p-4 bg-slate-900/50 rounded-lg">
+            <div className="p-4 bg-zinc-900/50 rounded-lg">
               <div className="flex items-center gap-2 mb-2">
                 <Clock className="text-amber-400" size={18} />
                 <h4 className="font-medium text-white">Performance Metrics</h4>
               </div>
-              <ul className="text-sm text-slate-400 space-y-1">
+              <ul className="text-sm text-zinc-400 space-y-1">
                 <li>mao_api_latency_seconds</li>
                 <li>mao_ingestion_rate</li>
                 <li>mao_detection_latency_ms</li>
@@ -232,12 +232,12 @@ export default function MetricsPage() {
         </div>
 
         {/* Integration Instructions */}
-        <div className="mt-6 p-6 bg-slate-800/50 rounded-xl border border-slate-700">
+        <div className="mt-6 p-6 bg-zinc-800/50 rounded-xl border border-zinc-700">
           <h3 className="text-lg font-semibold text-white mb-4">Integration Examples</h3>
           <div className="space-y-4">
             <div>
-              <h4 className="text-sm font-medium text-slate-300 mb-2">Prometheus</h4>
-              <pre className="bg-slate-900 rounded-lg p-3 text-sm text-slate-400 overflow-x-auto">
+              <h4 className="text-sm font-medium text-zinc-300 mb-2">Prometheus</h4>
+              <pre className="bg-zinc-900 rounded-lg p-3 text-sm text-zinc-400 overflow-x-auto">
 {`# prometheus.yml
 scrape_configs:
   - job_name: 'mao-testing'
@@ -247,14 +247,14 @@ scrape_configs:
               </pre>
             </div>
             <div>
-              <h4 className="text-sm font-medium text-slate-300 mb-2">Grafana</h4>
-              <p className="text-sm text-slate-400">
+              <h4 className="text-sm font-medium text-zinc-300 mb-2">Grafana</h4>
+              <p className="text-sm text-zinc-400">
                 Use the Prometheus data source with the scraped metrics to create custom dashboards.
               </p>
             </div>
             <div>
-              <h4 className="text-sm font-medium text-slate-300 mb-2">Datadog</h4>
-              <pre className="bg-slate-900 rounded-lg p-3 text-sm text-slate-400 overflow-x-auto">
+              <h4 className="text-sm font-medium text-zinc-300 mb-2">Datadog</h4>
+              <pre className="bg-zinc-900 rounded-lg p-3 text-sm text-zinc-400 overflow-x-auto">
 {`# datadog.yaml
 instances:
   - openmetrics_endpoint: 'https://your-api-url/metrics'

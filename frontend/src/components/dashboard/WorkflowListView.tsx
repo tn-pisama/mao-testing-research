@@ -5,7 +5,7 @@ import Link from 'next/link'
 import type { QualityAssessment } from '@/lib/api'
 import { QualityGradeBadge } from '@/components/quality/QualityGradeBadge'
 import { AlertCircle, Users, Clock, ExternalLink } from 'lucide-react'
-import clsx from 'clsx'
+import { cn } from '@/lib/utils'
 
 interface WorkflowListViewProps {
   workflows: QualityAssessment[]
@@ -51,7 +51,7 @@ export function WorkflowListView({
     return (
       <div className="grid md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4">
         {[1, 2, 3, 4, 5, 6, 7, 8].map((i) => (
-          <div key={i} className="h-48 bg-slate-700/50 rounded-xl animate-pulse" />
+          <div key={i} className="h-48 bg-zinc-700/50 rounded-xl animate-pulse" />
         ))}
       </div>
     )
@@ -59,10 +59,10 @@ export function WorkflowListView({
 
   if (workflows.length === 0) {
     return (
-      <div className="text-center py-16 px-4 bg-slate-800 rounded-xl border border-slate-700">
+      <div className="text-center py-16 px-4 bg-zinc-800 rounded-xl border border-zinc-700">
         <div className="text-4xl mb-4">📋</div>
-        <p className="text-slate-400 mb-2 text-lg">No workflows found</p>
-        <p className="text-slate-500 text-sm">
+        <p className="text-zinc-400 mb-2 text-lg">No workflows found</p>
+        <p className="text-zinc-500 text-sm">
           Workflows will appear here once quality assessments are completed
         </p>
       </div>
@@ -97,9 +97,9 @@ function WorkflowCard({ workflow, isSelected, onClick }: WorkflowCardProps) {
   return (
     <div
       onClick={onClick}
-      className={clsx(
-        'bg-slate-800 rounded-xl border p-4 cursor-pointer transition-all hover:border-blue-500/50',
-        isSelected ? 'border-blue-500 ring-2 ring-blue-500/20' : 'border-slate-700',
+      className={cn(
+        'bg-zinc-800 rounded-xl border p-4 cursor-pointer transition-all hover:border-blue-500/50',
+        isSelected ? 'border-blue-500 ring-2 ring-blue-500/20' : 'border-zinc-700',
         'hover:shadow-lg hover:shadow-blue-500/10'
       )}
     >
@@ -109,7 +109,7 @@ function WorkflowCard({ workflow, isSelected, onClick }: WorkflowCardProps) {
           <h3 className="text-white font-medium truncate mb-1">
             {workflow.workflow_name}
           </h3>
-          <div className="text-xs text-slate-500 truncate">
+          <div className="text-xs text-zinc-500 truncate">
             ID: {workflow.workflow_id.substring(0, 8)}...
           </div>
         </div>
@@ -119,7 +119,7 @@ function WorkflowCard({ workflow, isSelected, onClick }: WorkflowCardProps) {
       {/* Score */}
       <div className="mb-3">
         <div className="flex items-baseline gap-2">
-          <span className={clsx(
+          <span className={cn(
             'text-2xl font-bold',
             workflow.overall_score >= 80 ? 'text-green-400' :
             workflow.overall_score >= 60 ? 'text-blue-400' :
@@ -128,7 +128,7 @@ function WorkflowCard({ workflow, isSelected, onClick }: WorkflowCardProps) {
           )}>
             {Math.round(workflow.overall_score)}%
           </span>
-          <span className="text-sm text-slate-400">quality</span>
+          <span className="text-sm text-zinc-400">quality</span>
         </div>
       </div>
 
@@ -156,7 +156,7 @@ function WorkflowCard({ workflow, isSelected, onClick }: WorkflowCardProps) {
       </div>
 
       {/* Metadata Row */}
-      <div className="flex items-center justify-between text-xs text-slate-400 pt-3 border-t border-slate-700">
+      <div className="flex items-center justify-between text-xs text-zinc-400 pt-3 border-t border-zinc-700">
         <div className="flex items-center gap-1">
           <span className="text-base">{getPatternIcon(pattern)}</span>
           <span className="capitalize">{pattern}</span>
@@ -169,7 +169,7 @@ function WorkflowCard({ workflow, isSelected, onClick }: WorkflowCardProps) {
 
       {/* Last Assessed */}
       {workflow.assessed_at && (
-        <div className="flex items-center gap-1 text-xs text-slate-500 mt-2">
+        <div className="flex items-center gap-1 text-xs text-zinc-500 mt-2">
           <Clock size={11} />
           <span>{formatTimeAgo(workflow.assessed_at)}</span>
         </div>

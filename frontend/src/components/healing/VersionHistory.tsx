@@ -57,8 +57,8 @@ const changeTypeConfig = {
   rollback: {
     label: 'Rollback',
     icon: RotateCcw,
-    color: 'text-slate-400',
-    bgColor: 'bg-slate-500/20',
+    color: 'text-zinc-400',
+    bgColor: 'bg-zinc-500/20',
     badgeVariant: 'default' as const
   },
   restored: {
@@ -109,10 +109,10 @@ export function VersionHistory({
             {[1, 2, 3].map((i) => (
               <div key={i} className="animate-pulse">
                 <div className="flex items-start gap-4">
-                  <div className="w-8 h-8 bg-slate-700 rounded-full" />
+                  <div className="w-8 h-8 bg-zinc-700 rounded-full" />
                   <div className="flex-1">
-                    <div className="h-4 bg-slate-700 rounded w-1/4 mb-2" />
-                    <div className="h-3 bg-slate-700 rounded w-1/2" />
+                    <div className="h-4 bg-zinc-700 rounded w-1/4 mb-2" />
+                    <div className="h-3 bg-zinc-700 rounded w-1/2" />
                   </div>
                 </div>
               </div>
@@ -128,24 +128,24 @@ export function VersionHistory({
       <CardHeader>
         <div className="flex items-center justify-between">
           <CardTitle>Version History</CardTitle>
-          <span className="text-xs text-slate-500">
+          <span className="text-xs text-zinc-500">
             Workflow: {workflowId}
           </span>
         </div>
       </CardHeader>
       <CardContent>
         {versions.length === 0 ? (
-          <div className="text-center py-8 text-slate-400">
+          <div className="text-center py-8 text-zinc-400">
             <GitBranch size={24} className="mx-auto mb-2 opacity-50" />
             <p className="text-sm">No version history</p>
-            <p className="text-xs text-slate-500 mt-1">
+            <p className="text-xs text-zinc-500 mt-1">
               Versions are created when fixes are applied
             </p>
           </div>
         ) : (
           <div className="relative">
             {/* Timeline line */}
-            <div className="absolute left-4 top-0 bottom-0 w-0.5 bg-slate-700" />
+            <div className="absolute left-4 top-0 bottom-0 w-0.5 bg-zinc-700" />
 
             {/* Version items */}
             <div className="space-y-4">
@@ -180,11 +180,11 @@ export function VersionHistory({
                               </Badge>
                             )}
                           </div>
-                          <p className="text-xs text-slate-400 mb-2">
+                          <p className="text-xs text-zinc-400 mb-2">
                             {formatDate(version.created_at)}
                           </p>
                           {version.change_description && (
-                            <p className="text-sm text-slate-300 mb-2">
+                            <p className="text-sm text-zinc-300 mb-2">
                               {version.change_description}
                             </p>
                           )}

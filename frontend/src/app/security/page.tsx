@@ -157,7 +157,7 @@ export default function SecurityPage() {
       case 'high': return 'text-orange-400 bg-orange-400/10'
       case 'medium': return 'text-amber-400 bg-amber-400/10'
       case 'low': return 'text-emerald-400 bg-emerald-400/10'
-      default: return 'text-slate-400 bg-slate-400/10'
+      default: return 'text-zinc-400 bg-zinc-400/10'
     }
   }
 
@@ -177,7 +177,7 @@ export default function SecurityPage() {
               </div>
             )}
           </div>
-          <p className="text-slate-400">
+          <p className="text-zinc-400">
             Detect prompt injection, hallucinations, and monitor resource usage
           </p>
         </div>
@@ -185,8 +185,8 @@ export default function SecurityPage() {
         <div className="grid lg:grid-cols-3 gap-6">
           {/* Check Type Selection */}
           <div className="space-y-4">
-            <div className="bg-slate-800 rounded-xl p-4 border border-slate-700">
-              <h3 className="text-sm font-medium text-slate-300 mb-3">Check Type</h3>
+            <div className="bg-zinc-800 rounded-xl p-4 border border-zinc-700">
+              <h3 className="text-sm font-medium text-zinc-300 mb-3">Check Type</h3>
               <div className="space-y-2">
                 {CHECK_TYPES.map((check) => (
                   <button
@@ -198,16 +198,16 @@ export default function SecurityPage() {
                     className={`w-full p-3 rounded-lg border text-left transition-all ${
                       selectedCheck === check.id
                         ? 'border-red-500 bg-red-500/10'
-                        : 'border-slate-600 bg-slate-700/50 hover:border-slate-500'
+                        : 'border-zinc-600 bg-zinc-700/50 hover:border-zinc-500'
                     }`}
                   >
                     <div className="flex items-center gap-3">
-                      <span className={selectedCheck === check.id ? 'text-red-400' : 'text-slate-400'}>
+                      <span className={selectedCheck === check.id ? 'text-red-400' : 'text-zinc-400'}>
                         {check.icon}
                       </span>
                       <div>
                         <span className="text-white text-sm font-medium">{check.name}</span>
-                        <p className="text-slate-500 text-xs">{check.description}</p>
+                        <p className="text-zinc-500 text-xs">{check.description}</p>
                       </div>
                     </div>
                   </button>
@@ -220,26 +220,26 @@ export default function SecurityPage() {
           <div className="space-y-4">
             {selectedCheck === 'injection' && (
               <>
-                <div className="bg-slate-800 rounded-xl p-4 border border-slate-700">
-                  <label className="text-sm font-medium text-slate-300 block mb-2">
+                <div className="bg-zinc-800 rounded-xl p-4 border border-zinc-700">
+                  <label className="text-sm font-medium text-zinc-300 block mb-2">
                     Text to Check *
                   </label>
                   <textarea
                     value={injectionText}
                     onChange={(e) => setInjectionText(e.target.value)}
                     placeholder="Enter user input or prompt to check for injection attacks..."
-                    className="w-full h-32 bg-slate-900 border border-slate-600 rounded-lg p-3 text-white text-sm resize-none focus:border-red-500 focus:outline-none"
+                    className="w-full h-32 bg-zinc-900 border border-zinc-600 rounded-lg p-3 text-white text-sm resize-none focus:border-red-500 focus:outline-none"
                   />
                 </div>
-                <div className="bg-slate-800 rounded-xl p-4 border border-slate-700">
-                  <label className="text-sm font-medium text-slate-300 block mb-2">
+                <div className="bg-zinc-800 rounded-xl p-4 border border-zinc-700">
+                  <label className="text-sm font-medium text-zinc-300 block mb-2">
                     Context (Optional)
                   </label>
                   <textarea
                     value={injectionContext}
                     onChange={(e) => setInjectionContext(e.target.value)}
                     placeholder="Provide additional context..."
-                    className="w-full h-20 bg-slate-900 border border-slate-600 rounded-lg p-3 text-white text-sm resize-none focus:border-red-500 focus:outline-none"
+                    className="w-full h-20 bg-zinc-900 border border-zinc-600 rounded-lg p-3 text-white text-sm resize-none focus:border-red-500 focus:outline-none"
                   />
                 </div>
               </>
@@ -247,41 +247,41 @@ export default function SecurityPage() {
 
             {selectedCheck === 'hallucination' && (
               <>
-                <div className="bg-slate-800 rounded-xl p-4 border border-slate-700">
-                  <label className="text-sm font-medium text-slate-300 block mb-2">
+                <div className="bg-zinc-800 rounded-xl p-4 border border-zinc-700">
+                  <label className="text-sm font-medium text-zinc-300 block mb-2">
                     LLM Output to Check *
                   </label>
                   <textarea
                     value={hallucinationOutput}
                     onChange={(e) => setHallucinationOutput(e.target.value)}
                     placeholder="Enter the LLM output to check for hallucinations..."
-                    className="w-full h-32 bg-slate-900 border border-slate-600 rounded-lg p-3 text-white text-sm resize-none focus:border-red-500 focus:outline-none"
+                    className="w-full h-32 bg-zinc-900 border border-zinc-600 rounded-lg p-3 text-white text-sm resize-none focus:border-red-500 focus:outline-none"
                   />
                 </div>
-                <div className="bg-slate-800 rounded-xl p-4 border border-slate-700">
-                  <label className="text-sm font-medium text-slate-300 block mb-2">
+                <div className="bg-zinc-800 rounded-xl p-4 border border-zinc-700">
+                  <label className="text-sm font-medium text-zinc-300 block mb-2">
                     Sources (One per line)
                   </label>
                   <textarea
                     value={hallucinationSources}
                     onChange={(e) => setHallucinationSources(e.target.value)}
                     placeholder="Enter source documents/facts for grounding..."
-                    className="w-full h-24 bg-slate-900 border border-slate-600 rounded-lg p-3 text-white text-sm resize-none focus:border-red-500 focus:outline-none"
+                    className="w-full h-24 bg-zinc-900 border border-zinc-600 rounded-lg p-3 text-white text-sm resize-none focus:border-red-500 focus:outline-none"
                   />
                 </div>
               </>
             )}
 
             {selectedCheck === 'overflow' && (
-              <div className="bg-slate-800 rounded-xl p-4 border border-slate-700 space-y-4">
+              <div className="bg-zinc-800 rounded-xl p-4 border border-zinc-700 space-y-4">
                 <div>
-                  <label className="text-sm font-medium text-slate-300 block mb-2">
+                  <label className="text-sm font-medium text-zinc-300 block mb-2">
                     Model
                   </label>
                   <select
                     value={overflowModel}
                     onChange={(e) => setOverflowModel(e.target.value)}
-                    className="w-full bg-slate-900 border border-slate-600 rounded-lg p-3 text-white text-sm focus:border-red-500 focus:outline-none"
+                    className="w-full bg-zinc-900 border border-zinc-600 rounded-lg p-3 text-white text-sm focus:border-red-500 focus:outline-none"
                   >
                     <option value="gpt-4">GPT-4 (8K)</option>
                     <option value="gpt-4-32k">GPT-4 (32K)</option>
@@ -292,7 +292,7 @@ export default function SecurityPage() {
                   </select>
                 </div>
                 <div>
-                  <label className="text-sm font-medium text-slate-300 block mb-2">
+                  <label className="text-sm font-medium text-zinc-300 block mb-2">
                     Current Token Count: {overflowTokens.toLocaleString()}
                   </label>
                   <input
@@ -309,15 +309,15 @@ export default function SecurityPage() {
             )}
 
             {selectedCheck === 'cost' && (
-              <div className="bg-slate-800 rounded-xl p-4 border border-slate-700 space-y-4">
+              <div className="bg-zinc-800 rounded-xl p-4 border border-zinc-700 space-y-4">
                 <div>
-                  <label className="text-sm font-medium text-slate-300 block mb-2">
+                  <label className="text-sm font-medium text-zinc-300 block mb-2">
                     Model
                   </label>
                   <select
                     value={costModel}
                     onChange={(e) => setCostModel(e.target.value)}
-                    className="w-full bg-slate-900 border border-slate-600 rounded-lg p-3 text-white text-sm focus:border-red-500 focus:outline-none"
+                    className="w-full bg-zinc-900 border border-zinc-600 rounded-lg p-3 text-white text-sm focus:border-red-500 focus:outline-none"
                   >
                     <option value="gpt-4">GPT-4</option>
                     <option value="gpt-4-turbo">GPT-4 Turbo</option>
@@ -329,7 +329,7 @@ export default function SecurityPage() {
                   </select>
                 </div>
                 <div>
-                  <label className="text-sm font-medium text-slate-300 block mb-2">
+                  <label className="text-sm font-medium text-zinc-300 block mb-2">
                     Input Tokens: {costInputTokens.toLocaleString()}
                   </label>
                   <input
@@ -343,7 +343,7 @@ export default function SecurityPage() {
                   />
                 </div>
                 <div>
-                  <label className="text-sm font-medium text-slate-300 block mb-2">
+                  <label className="text-sm font-medium text-zinc-300 block mb-2">
                     Output Tokens: {costOutputTokens.toLocaleString()}
                   </label>
                   <input
@@ -379,7 +379,7 @@ export default function SecurityPage() {
           {/* Results Section */}
           <div>
             {injectionResult && (
-              <div className="bg-slate-800 rounded-xl p-6 border border-slate-700">
+              <div className="bg-zinc-800 rounded-xl p-6 border border-zinc-700">
                 <div className="flex items-center justify-between mb-4">
                   <h2 className="text-lg font-semibold text-white">Injection Check</h2>
                   {injectionResult.detected ? (
@@ -398,24 +398,24 @@ export default function SecurityPage() {
                 {injectionResult.detected && (
                   <>
                     <div className="space-y-3">
-                      <div className="flex justify-between p-3 bg-slate-700/50 rounded-lg">
-                        <span className="text-slate-400">Attack Type</span>
+                      <div className="flex justify-between p-3 bg-zinc-700/50 rounded-lg">
+                        <span className="text-zinc-400">Attack Type</span>
                         <span className="text-white">{injectionResult.attack_type || 'Unknown'}</span>
                       </div>
-                      <div className="flex justify-between p-3 bg-slate-700/50 rounded-lg">
-                        <span className="text-slate-400">Confidence</span>
+                      <div className="flex justify-between p-3 bg-zinc-700/50 rounded-lg">
+                        <span className="text-zinc-400">Confidence</span>
                         <span className="text-white">{(injectionResult.confidence * 100).toFixed(1)}%</span>
                       </div>
-                      <div className="flex justify-between p-3 bg-slate-700/50 rounded-lg">
-                        <span className="text-slate-400">Severity</span>
+                      <div className="flex justify-between p-3 bg-zinc-700/50 rounded-lg">
+                        <span className="text-zinc-400">Severity</span>
                         <span className={`px-2 py-0.5 rounded-full text-xs ${getSeverityColor(injectionResult.severity)}`}>
                           {injectionResult.severity}
                         </span>
                       </div>
                     </div>
                     {injectionResult.matched_patterns.length > 0 && (
-                      <div className="mt-4 p-3 bg-slate-900 rounded-lg">
-                        <span className="text-slate-500 text-sm">Matched Patterns:</span>
+                      <div className="mt-4 p-3 bg-zinc-900 rounded-lg">
+                        <span className="text-zinc-500 text-sm">Matched Patterns:</span>
                         <div className="mt-2 flex flex-wrap gap-2">
                           {injectionResult.matched_patterns.map((p, i) => (
                             <span key={i} className="px-2 py-1 bg-red-500/20 text-red-400 rounded text-xs font-mono">
@@ -431,7 +431,7 @@ export default function SecurityPage() {
             )}
 
             {hallucinationResult && (
-              <div className="bg-slate-800 rounded-xl p-6 border border-slate-700">
+              <div className="bg-zinc-800 rounded-xl p-6 border border-zinc-700">
                 <div className="flex items-center justify-between mb-4">
                   <h2 className="text-lg font-semibold text-white">Hallucination Check</h2>
                   {hallucinationResult.detected ? (
@@ -448,19 +448,19 @@ export default function SecurityPage() {
                 </div>
 
                 <div className="space-y-3">
-                  <div className="flex justify-between p-3 bg-slate-700/50 rounded-lg">
-                    <span className="text-slate-400">Grounding Score</span>
+                  <div className="flex justify-between p-3 bg-zinc-700/50 rounded-lg">
+                    <span className="text-zinc-400">Grounding Score</span>
                     <span className={`${hallucinationResult.grounding_score >= 0.8 ? 'text-emerald-400' : hallucinationResult.grounding_score >= 0.6 ? 'text-amber-400' : 'text-red-400'}`}>
                       {(hallucinationResult.grounding_score * 100).toFixed(1)}%
                     </span>
                   </div>
-                  <div className="flex justify-between p-3 bg-slate-700/50 rounded-lg">
-                    <span className="text-slate-400">Confidence</span>
+                  <div className="flex justify-between p-3 bg-zinc-700/50 rounded-lg">
+                    <span className="text-zinc-400">Confidence</span>
                     <span className="text-white">{(hallucinationResult.confidence * 100).toFixed(1)}%</span>
                   </div>
                   {hallucinationResult.hallucination_type && (
-                    <div className="flex justify-between p-3 bg-slate-700/50 rounded-lg">
-                      <span className="text-slate-400">Type</span>
+                    <div className="flex justify-between p-3 bg-zinc-700/50 rounded-lg">
+                      <span className="text-zinc-400">Type</span>
                       <span className="text-white">{hallucinationResult.hallucination_type}</span>
                     </div>
                   )}
@@ -469,7 +469,7 @@ export default function SecurityPage() {
             )}
 
             {overflowResult && (
-              <div className="bg-slate-800 rounded-xl p-6 border border-slate-700">
+              <div className="bg-zinc-800 rounded-xl p-6 border border-zinc-700">
                 <div className="flex items-center justify-between mb-4">
                   <h2 className="text-lg font-semibold text-white">Context Overflow</h2>
                   <span className={`px-2 py-0.5 rounded-full text-xs ${getSeverityColor(overflowResult.severity)}`}>
@@ -479,12 +479,12 @@ export default function SecurityPage() {
 
                 <div className="mb-4">
                   <div className="flex justify-between text-sm mb-2">
-                    <span className="text-slate-400">Usage</span>
+                    <span className="text-zinc-400">Usage</span>
                     <span className={`${overflowResult.usage_percent >= 90 ? 'text-red-400' : overflowResult.usage_percent >= 70 ? 'text-amber-400' : 'text-emerald-400'}`}>
                       {overflowResult.usage_percent.toFixed(1)}%
                     </span>
                   </div>
-                  <div className="w-full bg-slate-600 rounded-full h-3">
+                  <div className="w-full bg-zinc-600 rounded-full h-3">
                     <div
                       className={`h-3 rounded-full ${overflowResult.usage_percent >= 90 ? 'bg-red-400' : overflowResult.usage_percent >= 70 ? 'bg-amber-400' : 'bg-emerald-400'}`}
                       style={{ width: `${Math.min(overflowResult.usage_percent, 100)}%` }}
@@ -493,16 +493,16 @@ export default function SecurityPage() {
                 </div>
 
                 <div className="space-y-3">
-                  <div className="flex justify-between p-3 bg-slate-700/50 rounded-lg">
-                    <span className="text-slate-400">Current Tokens</span>
+                  <div className="flex justify-between p-3 bg-zinc-700/50 rounded-lg">
+                    <span className="text-zinc-400">Current Tokens</span>
                     <span className="text-white">{overflowResult.current_tokens.toLocaleString()}</span>
                   </div>
-                  <div className="flex justify-between p-3 bg-slate-700/50 rounded-lg">
-                    <span className="text-slate-400">Context Window</span>
+                  <div className="flex justify-between p-3 bg-zinc-700/50 rounded-lg">
+                    <span className="text-zinc-400">Context Window</span>
                     <span className="text-white">{overflowResult.context_window.toLocaleString()}</span>
                   </div>
-                  <div className="flex justify-between p-3 bg-slate-700/50 rounded-lg">
-                    <span className="text-slate-400">Remaining</span>
+                  <div className="flex justify-between p-3 bg-zinc-700/50 rounded-lg">
+                    <span className="text-zinc-400">Remaining</span>
                     <span className="text-white">{overflowResult.remaining_tokens.toLocaleString()}</span>
                   </div>
                 </div>
@@ -521,12 +521,12 @@ export default function SecurityPage() {
             )}
 
             {costResult && (
-              <div className="bg-slate-800 rounded-xl p-6 border border-slate-700">
+              <div className="bg-zinc-800 rounded-xl p-6 border border-zinc-700">
                 <h2 className="text-lg font-semibold text-white mb-4">Cost Calculation</h2>
 
                 <div className="p-4 bg-emerald-500/10 rounded-lg mb-4">
                   <div className="flex items-center justify-between">
-                    <span className="text-slate-300">Total Cost</span>
+                    <span className="text-zinc-300">Total Cost</span>
                     <span className="text-2xl font-bold text-emerald-400">
                       ${costResult.total_cost_usd.toFixed(4)}
                     </span>
@@ -534,24 +534,24 @@ export default function SecurityPage() {
                 </div>
 
                 <div className="space-y-3">
-                  <div className="flex justify-between p-3 bg-slate-700/50 rounded-lg">
-                    <span className="text-slate-400">Model</span>
+                  <div className="flex justify-between p-3 bg-zinc-700/50 rounded-lg">
+                    <span className="text-zinc-400">Model</span>
                     <span className="text-white">{costResult.model}</span>
                   </div>
-                  <div className="flex justify-between p-3 bg-slate-700/50 rounded-lg">
-                    <span className="text-slate-400">Provider</span>
+                  <div className="flex justify-between p-3 bg-zinc-700/50 rounded-lg">
+                    <span className="text-zinc-400">Provider</span>
                     <span className="text-white">{costResult.provider}</span>
                   </div>
-                  <div className="flex justify-between p-3 bg-slate-700/50 rounded-lg">
-                    <span className="text-slate-400">Input Cost</span>
+                  <div className="flex justify-between p-3 bg-zinc-700/50 rounded-lg">
+                    <span className="text-zinc-400">Input Cost</span>
                     <span className="text-white">${costResult.input_cost_usd.toFixed(4)}</span>
                   </div>
-                  <div className="flex justify-between p-3 bg-slate-700/50 rounded-lg">
-                    <span className="text-slate-400">Output Cost</span>
+                  <div className="flex justify-between p-3 bg-zinc-700/50 rounded-lg">
+                    <span className="text-zinc-400">Output Cost</span>
                     <span className="text-white">${costResult.output_cost_usd.toFixed(4)}</span>
                   </div>
-                  <div className="flex justify-between p-3 bg-slate-700/50 rounded-lg">
-                    <span className="text-slate-400">Total Tokens</span>
+                  <div className="flex justify-between p-3 bg-zinc-700/50 rounded-lg">
+                    <span className="text-zinc-400">Total Tokens</span>
                     <span className="text-white">{costResult.total_tokens.toLocaleString()}</span>
                   </div>
                 </div>
@@ -559,8 +559,8 @@ export default function SecurityPage() {
             )}
 
             {!injectionResult && !hallucinationResult && !overflowResult && !costResult && (
-              <div className="h-full flex items-center justify-center bg-slate-800/50 rounded-xl border border-slate-700 border-dashed p-8">
-                <div className="text-center text-slate-500">
+              <div className="h-full flex items-center justify-center bg-zinc-800/50 rounded-xl border border-zinc-700 border-dashed p-8">
+                <div className="text-center text-zinc-500">
                   <Shield className="w-12 h-12 mx-auto mb-4 opacity-50" />
                   <p className="text-lg font-medium mb-2">No results yet</p>
                   <p className="text-sm">Select a check type and run to see results</p>

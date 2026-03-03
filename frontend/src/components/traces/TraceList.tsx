@@ -22,7 +22,7 @@ const frameworkStyles: Record<string, string> = {
 }
 
 function getFrameworkBadge(framework: string) {
-  const style = frameworkStyles[framework] || 'text-slate-400 bg-slate-500/10 border-slate-500/30'
+  const style = frameworkStyles[framework] || 'text-zinc-400 bg-zinc-500/10 border-zinc-500/30'
   const label = framework === 'openclaw' ? 'OpenClaw' : framework === 'dify' ? 'Dify' : framework
   return (
     <span className={`text-xs px-2 py-0.5 rounded border ${style}`}>
@@ -73,7 +73,7 @@ export function TraceList({
   if (isLoading) {
     return (
       <Card>
-        <div className="text-center py-8 text-slate-400">
+        <div className="text-center py-8 text-zinc-400">
           <Loader2 size={24} className="mx-auto mb-2 animate-spin" />
           <p className="text-sm">Loading traces...</p>
         </div>
@@ -87,18 +87,18 @@ export function TraceList({
     <Card>
       <div className="space-y-0">
         {(!traces || traces.length === 0) ? (
-          <div className="text-center py-8 text-slate-400">
+          <div className="text-center py-8 text-zinc-400">
             <Clock size={32} className="mx-auto mb-2 opacity-50" />
             <p className="text-sm">No traces found</p>
-            <p className="text-xs mt-1 text-slate-500">Traces will appear here once your agents start running</p>
+            <p className="text-xs mt-1 text-zinc-500">Traces will appear here once your agents start running</p>
           </div>
         ) : (
-          <div className="divide-y divide-slate-700">
+          <div className="divide-y divide-zinc-700">
             {traces.map((trace) => (
               <div
                 key={trace.id}
                 onClick={() => onSelect?.(trace.id)}
-                className={`p-4 ${onSelect ? 'cursor-pointer hover:bg-slate-700/50' : ''} transition-colors`}
+                className={`p-4 ${onSelect ? 'cursor-pointer hover:bg-zinc-700/50' : ''} transition-colors`}
               >
                 <div className="flex items-center justify-between">
                   <div className="flex-1 min-w-0">
@@ -109,7 +109,7 @@ export function TraceList({
                       {getStatusBadge(trace.status)}
                       {getFrameworkBadge(trace.framework)}
                     </div>
-                    <div className="flex items-center gap-4 text-sm text-slate-400">
+                    <div className="flex items-center gap-4 text-sm text-zinc-400">
                       <span className="flex items-center gap-1">
                         <Clock size={14} />
                         {formatDuration(trace.created_at, trace.completed_at)}
@@ -126,7 +126,7 @@ export function TraceList({
                     </div>
                   </div>
                   {onSelect && (
-                    <ChevronRight size={20} className="text-slate-500 flex-shrink-0" />
+                    <ChevronRight size={20} className="text-zinc-500 flex-shrink-0" />
                   )}
                 </div>
               </div>
@@ -135,22 +135,22 @@ export function TraceList({
         )}
 
         {onPageChange && totalPages > 1 && (
-          <div className="flex items-center justify-between border-t border-slate-700 p-4">
-            <span className="text-sm text-slate-400">
+          <div className="flex items-center justify-between border-t border-zinc-700 p-4">
+            <span className="text-sm text-zinc-400">
               Page {page} of {totalPages} ({total} total)
             </span>
             <div className="flex gap-2">
               <button
                 onClick={() => onPageChange(page - 1)}
                 disabled={page <= 1}
-                className="px-3 py-1 text-sm bg-slate-700 hover:bg-slate-600 rounded disabled:opacity-50 disabled:hover:bg-slate-700 transition-colors"
+                className="px-3 py-1 text-sm bg-zinc-700 hover:bg-zinc-600 rounded disabled:opacity-50 disabled:hover:bg-zinc-700 transition-colors"
               >
                 Previous
               </button>
               <button
                 onClick={() => onPageChange(page + 1)}
                 disabled={page >= totalPages}
-                className="px-3 py-1 text-sm bg-slate-700 hover:bg-slate-600 rounded disabled:opacity-50 disabled:hover:bg-slate-700 transition-colors"
+                className="px-3 py-1 text-sm bg-zinc-700 hover:bg-zinc-600 rounded disabled:opacity-50 disabled:hover:bg-zinc-700 transition-colors"
               >
                 Next
               </button>

@@ -88,7 +88,7 @@ export default function ApiKeysPage() {
         <div className="flex items-center gap-4 mb-6">
           <Link
             href="/settings"
-            className="p-2 text-slate-400 hover:text-white hover:bg-slate-800 rounded-lg transition-colors"
+            className="p-2 text-zinc-400 hover:text-white hover:bg-zinc-800 rounded-lg transition-colors"
           >
             <ArrowLeft size={20} />
           </Link>
@@ -99,7 +99,7 @@ export default function ApiKeysPage() {
               </div>
               <h1 className="text-2xl font-bold text-white">API Keys</h1>
             </div>
-            <p className="text-slate-400 text-sm">
+            <p className="text-zinc-400 text-sm">
               Manage API keys for accessing the PISAMA API
             </p>
           </div>
@@ -113,14 +113,14 @@ export default function ApiKeysPage() {
           <CardContent className="p-0">
             {apiKeys.length === 0 ? (
               <div className="text-center py-12">
-                <Key size={32} className="mx-auto mb-3 text-slate-600" />
-                <p className="text-slate-400 mb-1">No API keys yet</p>
-                <p className="text-sm text-slate-500">
+                <Key size={32} className="mx-auto mb-3 text-zinc-600" />
+                <p className="text-zinc-400 mb-1">No API keys yet</p>
+                <p className="text-sm text-zinc-500">
                   Create an API key to start using the PISAMA API
                 </p>
               </div>
             ) : (
-              <div className="divide-y divide-slate-700">
+              <div className="divide-y divide-zinc-700">
                 {apiKeys.map((key) => (
                   <div key={key.id} className="p-4">
                     <div className="flex items-start justify-between">
@@ -129,12 +129,12 @@ export default function ApiKeysPage() {
                           <span className="text-white font-medium">{key.name}</span>
                         </div>
                         <div className="flex items-center gap-2 mb-2">
-                          <code className="text-sm text-slate-400 bg-slate-800 px-2 py-1 rounded">
+                          <code className="text-sm text-zinc-400 bg-zinc-800 px-2 py-1 rounded">
                             {key.prefix}{'*'.repeat(20)}
                           </code>
                           <button
                             onClick={() => handleCopy(key.prefix, key.id)}
-                            className="p-1.5 text-slate-400 hover:text-white hover:bg-slate-700 rounded transition-colors"
+                            className="p-1.5 text-zinc-400 hover:text-white hover:bg-zinc-700 rounded transition-colors"
                           >
                             {copiedId === key.id ? (
                               <CheckCircle size={14} className="text-emerald-400" />
@@ -143,7 +143,7 @@ export default function ApiKeysPage() {
                             )}
                           </button>
                         </div>
-                        <div className="flex items-center gap-4 text-xs text-slate-500">
+                        <div className="flex items-center gap-4 text-xs text-zinc-500">
                           <span className="flex items-center gap-1">
                             <Clock size={12} />
                             Created {formatDate(key.createdAt)}
@@ -156,7 +156,7 @@ export default function ApiKeysPage() {
                           {key.scopes.map((scope) => (
                             <span
                               key={scope}
-                              className="px-2 py-0.5 text-xs bg-slate-700 text-slate-300 rounded"
+                              className="px-2 py-0.5 text-xs bg-zinc-700 text-zinc-300 rounded"
                             >
                               {scope}
                             </span>
@@ -184,7 +184,7 @@ export default function ApiKeysPage() {
                         ) : (
                           <button
                             onClick={() => setDeleteConfirm(key.id)}
-                            className="p-2 text-slate-400 hover:text-red-400 hover:bg-slate-700 rounded transition-colors"
+                            className="p-2 text-zinc-400 hover:text-red-400 hover:bg-zinc-700 rounded transition-colors"
                           >
                             <Trash2 size={16} />
                           </button>
@@ -205,19 +205,19 @@ export default function ApiKeysPage() {
             <Card>
               <CardContent className="p-4">
                 <div className="text-2xl font-bold text-white">12,450</div>
-                <div className="text-xs text-slate-400">API Requests</div>
+                <div className="text-xs text-zinc-400">API Requests</div>
               </CardContent>
             </Card>
             <Card>
               <CardContent className="p-4">
                 <div className="text-2xl font-bold text-white">847</div>
-                <div className="text-xs text-slate-400">Traces Processed</div>
+                <div className="text-xs text-zinc-400">Traces Processed</div>
               </CardContent>
             </Card>
             <Card>
               <CardContent className="p-4">
                 <div className="text-2xl font-bold text-white">156</div>
-                <div className="text-xs text-slate-400">Detections Created</div>
+                <div className="text-xs text-zinc-400">Detections Created</div>
               </CardContent>
             </Card>
           </div>
@@ -296,7 +296,7 @@ function CreateApiKeyModal({ onClose, onCreated }: CreateApiKeyModalProps) {
 
   return (
     <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50" role="dialog" aria-modal="true" aria-labelledby="create-api-key-title">
-      <div className="bg-slate-800 rounded-xl p-6 border border-slate-700 w-full max-w-md">
+      <div className="bg-zinc-800 rounded-xl p-6 border border-zinc-700 w-full max-w-md">
         {newKey ? (
           <>
             <div className="flex items-center gap-2 mb-4">
@@ -304,8 +304,8 @@ function CreateApiKeyModal({ onClose, onCreated }: CreateApiKeyModalProps) {
               <h2 id="create-api-key-title" className="text-lg font-semibold text-white">API Key Created</h2>
             </div>
 
-            <div className="p-4 bg-slate-900 rounded-lg mb-4">
-              <p className="text-xs text-slate-400 mb-2">
+            <div className="p-4 bg-zinc-900 rounded-lg mb-4">
+              <p className="text-xs text-zinc-400 mb-2">
                 Copy this key now. You won&apos;t be able to see it again.
               </p>
               <code className="text-sm text-emerald-400 break-all">{newKey}</code>
@@ -332,7 +332,7 @@ function CreateApiKeyModal({ onClose, onCreated }: CreateApiKeyModalProps) {
 
             <div className="space-y-4">
               <div>
-                <label htmlFor="api-key-name" className="text-sm font-medium text-slate-300 block mb-2">
+                <label htmlFor="api-key-name" className="text-sm font-medium text-zinc-300 block mb-2">
                   Key Name
                 </label>
                 <input
@@ -342,27 +342,27 @@ function CreateApiKeyModal({ onClose, onCreated }: CreateApiKeyModalProps) {
                   onChange={(e) => setName(e.target.value)}
                   placeholder="e.g., Production API Key"
                   aria-required="true"
-                  className="w-full bg-slate-900 border border-slate-600 rounded-lg p-3 text-white text-sm focus:border-blue-500 focus:outline-none"
+                  className="w-full bg-zinc-900 border border-zinc-600 rounded-lg p-3 text-white text-sm focus:border-blue-500 focus:outline-none"
                 />
               </div>
 
               <div>
-                <label className="text-sm font-medium text-slate-300 block mb-2">
+                <label className="text-sm font-medium text-zinc-300 block mb-2">
                   Permissions
                 </label>
                 <div className="space-y-2">
                   {availableScopes.map((scope) => (
                     <label
                       key={scope.id}
-                      className="flex items-center gap-3 p-2 bg-slate-900 rounded-lg cursor-pointer hover:bg-slate-800"
+                      className="flex items-center gap-3 p-2 bg-zinc-900 rounded-lg cursor-pointer hover:bg-zinc-800"
                     >
                       <input
                         type="checkbox"
                         checked={scopes.includes(scope.id)}
                         onChange={() => toggleScope(scope.id)}
-                        className="w-4 h-4 rounded border-slate-600 text-blue-500 focus:ring-blue-500 focus:ring-offset-slate-800"
+                        className="w-4 h-4 rounded border-zinc-600 text-blue-500 focus:ring-blue-500 focus:ring-offset-zinc-800"
                       />
-                      <span className="text-sm text-slate-300">{scope.label}</span>
+                      <span className="text-sm text-zinc-300">{scope.label}</span>
                     </label>
                   ))}
                 </div>

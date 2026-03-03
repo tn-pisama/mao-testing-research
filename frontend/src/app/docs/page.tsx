@@ -16,7 +16,7 @@ export default function DocsPage() {
     <div>
       <div className="mb-8">
         <h1 className="text-4xl font-bold text-white mb-4">PISAMA Agent Forensics</h1>
-        <p className="text-xl text-slate-300">
+        <p className="text-xl text-zinc-300">
           Comprehensive failure detection for multi-agent LLM systems. Detect infinite loops,
           state corruption, persona drift, and coordination failures before they impact production.
         </p>
@@ -39,7 +39,7 @@ export default function DocsPage() {
 
       <section className="mb-12">
         <h2 className="text-2xl font-bold text-white mb-4">What is PISAMA?</h2>
-        <p className="text-slate-300 mb-4">
+        <p className="text-zinc-300 mb-4">
           AI agent systems are powerful but prone to subtle failures that
           traditional monitoring misses. PISAMA provides specialized forensics for:
         </p>
@@ -70,7 +70,7 @@ export default function DocsPage() {
 
       <section className="mb-12">
         <h2 className="text-2xl font-bold text-white mb-4">How It Works</h2>
-        <div className="bg-slate-800/50 rounded-xl border border-slate-700 p-6">
+        <div className="bg-zinc-800/50 rounded-xl border border-zinc-700 p-6">
           <ol className="space-y-4">
             <Step number={1} title="Instrument Your Agents">
               Add our lightweight SDK or configure OTEL export to send trace data to PISAMA.
@@ -100,7 +100,7 @@ export default function DocsPage() {
 
       <section className="bg-gradient-to-r from-blue-600/10 to-purple-600/10 rounded-xl border border-zinc-800 p-6">
         <h2 className="text-xl font-bold text-white mb-2">Ready to get started?</h2>
-        <p className="text-slate-300 mb-4">
+        <p className="text-zinc-300 mb-4">
           Follow our quick start guide to integrate PISAMA with your agent system.
         </p>
         <Link
@@ -129,7 +129,7 @@ function QuickStartCard({
   return (
     <Link
       href={href}
-      className="flex items-start gap-4 p-4 rounded-xl bg-slate-800/50 border border-slate-700 hover:border-zinc-700 transition-colors group"
+      className="flex items-start gap-4 p-4 rounded-xl bg-zinc-800/50 border border-zinc-700 hover:border-zinc-700 transition-colors group"
     >
       <div className="p-2 rounded-lg bg-blue-500/10 text-blue-400 group-hover:bg-blue-500/20 transition-colors">
         <Icon size={20} />
@@ -138,7 +138,7 @@ function QuickStartCard({
         <h3 className="font-semibold text-white group-hover:text-blue-400 transition-colors">
           {title}
         </h3>
-        <p className="text-sm text-slate-400">{description}</p>
+        <p className="text-sm text-zinc-400">{description}</p>
       </div>
     </Link>
   )
@@ -154,12 +154,12 @@ function FeatureCard({
   description: string
 }) {
   return (
-    <div className="p-4 rounded-xl bg-slate-800/50 border border-slate-700">
+    <div className="p-4 rounded-xl bg-zinc-800/50 border border-zinc-700">
       <div className="flex items-center gap-2 mb-2">
         <Icon size={18} className="text-blue-400" />
         <h3 className="font-semibold text-white">{title}</h3>
       </div>
-      <p className="text-sm text-slate-400">{description}</p>
+      <p className="text-sm text-zinc-400">{description}</p>
     </div>
   )
 }
@@ -172,7 +172,7 @@ function Step({ number, title, children }: { number: number; title: string; chil
       </div>
       <div>
         <h4 className="font-semibold text-white">{title}</h4>
-        <p className="text-sm text-slate-400">{children}</p>
+        <p className="text-sm text-zinc-400">{children}</p>
       </div>
     </li>
   )
@@ -180,9 +180,9 @@ function Step({ number, title, children }: { number: number; title: string; chil
 
 function FrameworkBadge({ name, status }: { name: string; status: string }) {
   return (
-    <div className="p-3 rounded-lg bg-slate-800/50 border border-slate-700 text-center">
+    <div className="p-3 rounded-lg bg-zinc-800/50 border border-zinc-700 text-center">
       <div className="font-medium text-white">{name}</div>
-      <div className="text-xs text-slate-400">{status}</div>
+      <div className="text-xs text-zinc-400">{status}</div>
     </div>
   )
 }

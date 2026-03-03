@@ -207,11 +207,11 @@ export function StagedFixBanner({ healings, onPromote, onReject, onVerify }: Sta
               </div>
               <div className="grid grid-cols-3 gap-3 text-xs">
                 <div>
-                  <p className="text-slate-500">Level</p>
+                  <p className="text-zinc-500">Level</p>
                   <p className="text-white">{healing.validation_results.level || 1}</p>
                 </div>
                 <div>
-                  <p className="text-slate-500">Confidence Before</p>
+                  <p className="text-zinc-500">Confidence Before</p>
                   <p className="text-white">
                     {healing.validation_results.before_confidence != null
                       ? `${(healing.validation_results.before_confidence * 100).toFixed(0)}%`
@@ -219,7 +219,7 @@ export function StagedFixBanner({ healings, onPromote, onReject, onVerify }: Sta
                   </p>
                 </div>
                 <div>
-                  <p className="text-slate-500">Confidence After</p>
+                  <p className="text-zinc-500">Confidence After</p>
                   <p className={`${healing.validation_results.after_confidence === 0 ? 'text-green-400' : 'text-white'}`}>
                     {healing.validation_results.after_confidence != null
                       ? `${(healing.validation_results.after_confidence * 100).toFixed(0)}%`

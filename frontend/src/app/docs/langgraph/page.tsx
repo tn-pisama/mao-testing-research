@@ -8,7 +8,7 @@ export default function LangGraphDocsPage() {
     <div>
       <div className="mb-8">
         <h1 className="text-3xl font-bold text-white mb-4">LangGraph Integration</h1>
-        <p className="text-lg text-slate-300">
+        <p className="text-lg text-zinc-300">
           Monitor stateful graph-based agents built with LangGraph. Detect recursion limits,
           state corruption, edge misroutes, and checkpoint integrity issues.
         </p>
@@ -16,7 +16,7 @@ export default function LangGraphDocsPage() {
 
       <section className="mb-10">
         <h2 className="text-xl font-bold text-white mb-4">Why LangGraph Integration?</h2>
-        <p className="text-slate-300 mb-4">
+        <p className="text-zinc-300 mb-4">
           LangGraph agents use stateful graph execution with nodes, edges, and checkpoints that can exhibit unique failure modes:
         </p>
         <div className="grid md:grid-cols-2 gap-4">
@@ -33,31 +33,31 @@ export default function LangGraphDocsPage() {
 
       <section className="mb-10">
         <h2 className="text-xl font-bold text-white mb-4">Graph Concepts</h2>
-        <p className="text-slate-300 mb-4">
+        <p className="text-zinc-300 mb-4">
           LangGraph models agent workflows as directed graphs. Pisama maps these to traces:
         </p>
         <div className="grid md:grid-cols-2 gap-4">
-          <div className="p-4 rounded-xl bg-slate-800/50 border border-slate-700">
+          <div className="p-4 rounded-xl bg-zinc-800/50 border border-zinc-700">
             <h3 className="font-semibold text-white mb-2">Nodes</h3>
-            <p className="text-sm text-slate-400">
+            <p className="text-sm text-zinc-400">
               Each graph node (agent, tool, router) becomes a state entry in the trace with its inputs and outputs.
             </p>
           </div>
-          <div className="p-4 rounded-xl bg-slate-800/50 border border-slate-700">
+          <div className="p-4 rounded-xl bg-zinc-800/50 border border-zinc-700">
             <h3 className="font-semibold text-white mb-2">Edges</h3>
-            <p className="text-sm text-slate-400">
+            <p className="text-sm text-zinc-400">
               Conditional edges are tracked to detect misroutes where the wrong node is selected.
             </p>
           </div>
-          <div className="p-4 rounded-xl bg-slate-800/50 border border-slate-700">
+          <div className="p-4 rounded-xl bg-zinc-800/50 border border-zinc-700">
             <h3 className="font-semibold text-white mb-2">State</h3>
-            <p className="text-sm text-slate-400">
+            <p className="text-sm text-zinc-400">
               The graph state object is captured at each step boundary to detect corruption and drift.
             </p>
           </div>
-          <div className="p-4 rounded-xl bg-slate-800/50 border border-slate-700">
+          <div className="p-4 rounded-xl bg-zinc-800/50 border border-zinc-700">
             <h3 className="font-semibold text-white mb-2">Checkpoints</h3>
-            <p className="text-sm text-slate-400">
+            <p className="text-sm text-zinc-400">
               Checkpoint data is verified against the running state to detect serialization or consistency issues.
             </p>
           </div>
@@ -110,7 +110,7 @@ result = await app.ainvoke(
             pros={['Works with LangGraph Cloud', 'No SDK needed in agent code', 'Centralized configuration']}
             cons={['Requires deployment-level config']}
           >
-            <h4 className="text-sm font-semibold text-slate-400 mb-2 mt-4">Setup Steps</h4>
+            <h4 className="text-sm font-semibold text-zinc-400 mb-2 mt-4">Setup Steps</h4>
             <ol className="space-y-3">
               <SetupStep number={1} accentColor="bg-emerald-600">
                 <strong>Register your deployment</strong> in Pisama:
@@ -155,7 +155,7 @@ result = await app.ainvoke(
 
       <section className="mb-10">
         <h2 className="text-xl font-bold text-white mb-4">Webhook Security</h2>
-        <p className="text-slate-300 mb-4">
+        <p className="text-zinc-300 mb-4">
           Enable HMAC signature verification for production webhook endpoints:
         </p>
         <CodeBlock title="Signed Webhook Headers" language="text">
@@ -184,7 +184,7 @@ X-MAO-Signature: sha256=<hmac-of-timestamp.body>`}
 
       <section className="mb-10">
         <h2 className="text-xl font-bold text-white mb-4">Data Mapping</h2>
-        <p className="text-slate-300 mb-4">
+        <p className="text-zinc-300 mb-4">
           LangGraph run data is mapped to Pisama traces as follows:
         </p>
         <DataMappingTable sourceLabel="LangGraph" mappings={[

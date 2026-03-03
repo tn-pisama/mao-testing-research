@@ -385,7 +385,7 @@ export default function HealingPage() {
               <h1 className="text-2xl font-bold text-white">
                 {showSimplifiedView ? 'Fixes' : 'Self-Healing'}
               </h1>
-              <p className="text-sm text-slate-400">
+              <p className="text-sm text-zinc-400">
                 {showSimplifiedView
                   ? 'Review and apply fixes to your workflows'
                   : 'Manage automated fixes and staged deployments for n8n workflows'}
@@ -483,17 +483,17 @@ export default function HealingPage() {
                   <CardContent className="p-4">
                     <div className="animate-pulse space-y-3">
                       {[1, 2].map(i => (
-                        <div key={i} className="h-16 bg-slate-700 rounded-lg" />
+                        <div key={i} className="h-16 bg-zinc-700 rounded-lg" />
                       ))}
                     </div>
                   </CardContent>
                 </Card>
               ) : connections.length === 0 ? (
                 <Card>
-                  <CardContent className="p-8 text-center text-slate-400">
+                  <CardContent className="p-8 text-center text-zinc-400">
                     <Settings size={32} className="mx-auto mb-3 opacity-50" />
                     <p className="text-sm">No n8n connections configured</p>
-                    <p className="text-xs text-slate-500 mt-1">
+                    <p className="text-xs text-zinc-500 mt-1">
                       Add a connection to apply fixes to your n8n workflows
                     </p>
                     <Button
@@ -514,15 +514,15 @@ export default function HealingPage() {
                       <CardContent className="p-4">
                         <div className="flex items-center justify-between">
                           <div className="flex items-center gap-3">
-                            <div className={`p-2 rounded-lg ${conn.is_active ? 'bg-green-500/20' : 'bg-slate-500/20'}`}>
+                            <div className={`p-2 rounded-lg ${conn.is_active ? 'bg-green-500/20' : 'bg-zinc-500/20'}`}>
                               {conn.is_active
                                 ? <CheckCircle2 size={20} className="text-green-400" />
-                                : <XCircle size={20} className="text-slate-400" />
+                                : <XCircle size={20} className="text-zinc-400" />
                               }
                             </div>
                             <div>
                               <p className="text-sm font-medium text-white">{conn.name}</p>
-                              <p className="text-xs text-slate-400">{conn.instance_url}</p>
+                              <p className="text-xs text-zinc-400">{conn.instance_url}</p>
                               {conn.last_error && (
                                 <p className="text-xs text-red-400 mt-1">{conn.last_error}</p>
                               )}
@@ -569,37 +569,37 @@ export default function HealingPage() {
               {showAddConnection && (
                 <div className="fixed inset-0 z-50 flex items-center justify-center">
                   <div className="absolute inset-0 bg-black/60" onClick={() => setShowAddConnection(false)} />
-                  <div className="relative bg-slate-900 border border-slate-700 rounded-xl p-6 w-full max-w-md">
+                  <div className="relative bg-zinc-900 border border-zinc-700 rounded-xl p-6 w-full max-w-md">
                     <h3 className="text-lg font-semibold text-white mb-4">Add n8n Connection</h3>
                     <div className="space-y-4">
                       <div>
-                        <label className="text-sm text-slate-400 mb-1 block">Name</label>
+                        <label className="text-sm text-zinc-400 mb-1 block">Name</label>
                         <input
                           type="text"
                           value={newConnection.name}
                           onChange={(e) => setNewConnection({ ...newConnection, name: e.target.value })}
                           placeholder="Production n8n"
-                          className="w-full px-3 py-2 bg-slate-800 border border-slate-700 rounded-lg text-white text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
+                          className="w-full px-3 py-2 bg-zinc-800 border border-zinc-700 rounded-lg text-white text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
                         />
                       </div>
                       <div>
-                        <label className="text-sm text-slate-400 mb-1 block">Instance URL</label>
+                        <label className="text-sm text-zinc-400 mb-1 block">Instance URL</label>
                         <input
                           type="text"
                           value={newConnection.instance_url}
                           onChange={(e) => setNewConnection({ ...newConnection, instance_url: e.target.value })}
                           placeholder="https://your-instance.app.n8n.cloud"
-                          className="w-full px-3 py-2 bg-slate-800 border border-slate-700 rounded-lg text-white text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
+                          className="w-full px-3 py-2 bg-zinc-800 border border-zinc-700 rounded-lg text-white text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
                         />
                       </div>
                       <div>
-                        <label className="text-sm text-slate-400 mb-1 block">API Key</label>
+                        <label className="text-sm text-zinc-400 mb-1 block">API Key</label>
                         <input
                           type="password"
                           value={newConnection.api_key}
                           onChange={(e) => setNewConnection({ ...newConnection, api_key: e.target.value })}
                           placeholder="n8n_api_..."
-                          className="w-full px-3 py-2 bg-slate-800 border border-slate-700 rounded-lg text-white text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
+                          className="w-full px-3 py-2 bg-zinc-800 border border-zinc-700 rounded-lg text-white text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
                         />
                       </div>
                     </div>
@@ -627,11 +627,11 @@ export default function HealingPage() {
             <div className="space-y-4">
               <div className="flex items-center gap-4">
                 <div className="flex-1">
-                  <label className="text-sm text-slate-400 mb-1 block">Workflow ID</label>
+                  <label className="text-sm text-zinc-400 mb-1 block">Workflow ID</label>
                   <select
                     value={selectedWorkflowId}
                     onChange={(e) => setSelectedWorkflowId(e.target.value)}
-                    className="w-full px-3 py-2 bg-slate-800 border border-slate-700 rounded-lg text-white text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
+                    className="w-full px-3 py-2 bg-zinc-800 border border-zinc-700 rounded-lg text-white text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
                   >
                     <option value="">Select a workflow...</option>
                     {workflowIds.map(id => (
@@ -640,11 +640,11 @@ export default function HealingPage() {
                   </select>
                 </div>
                 <div className="flex-1">
-                  <label className="text-sm text-slate-400 mb-1 block">Connection</label>
+                  <label className="text-sm text-zinc-400 mb-1 block">Connection</label>
                   <select
                     value={selectedConnectionId}
                     onChange={(e) => setSelectedConnectionId(e.target.value)}
-                    className="w-full px-3 py-2 bg-slate-800 border border-slate-700 rounded-lg text-white text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
+                    className="w-full px-3 py-2 bg-zinc-800 border border-zinc-700 rounded-lg text-white text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
                   >
                     <option value="">Select a connection...</option>
                     {connections.map(conn => (
@@ -663,7 +663,7 @@ export default function HealingPage() {
                 />
               ) : (
                 <Card>
-                  <CardContent className="p-8 text-center text-slate-400">
+                  <CardContent className="p-8 text-center text-zinc-400">
                     <GitBranch size={32} className="mx-auto mb-3 opacity-50" />
                     <p className="text-sm">Select a workflow and connection to view version history</p>
                   </CardContent>

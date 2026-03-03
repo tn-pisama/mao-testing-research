@@ -70,13 +70,13 @@ const stateStyles = {
   },
   current: {
     circle: 'bg-blue-500/20 text-blue-400 ring-2 ring-blue-500/40',
-    connector: 'bg-slate-600',
+    connector: 'bg-zinc-600',
     label: 'text-blue-400 font-medium',
   },
   pending: {
-    circle: 'bg-slate-700 text-slate-500',
-    connector: 'bg-slate-700',
-    label: 'text-slate-500',
+    circle: 'bg-zinc-700 text-zinc-500',
+    connector: 'bg-zinc-700',
+    label: 'text-zinc-500',
   },
   failed: {
     circle: 'bg-red-500/20 text-red-400',

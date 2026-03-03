@@ -104,8 +104,8 @@ export default function ReviewPage() {
     return (
       <Layout>
         <div className="p-6 animate-pulse">
-          <div className="h-8 w-64 bg-slate-700 rounded mb-6" />
-          <div className="h-64 bg-slate-700 rounded-xl" />
+          <div className="h-8 w-64 bg-zinc-700 rounded mb-6" />
+          <div className="h-64 bg-zinc-700 rounded-xl" />
         </div>
       </Layout>
     )
@@ -117,7 +117,7 @@ export default function ReviewPage() {
         <div className="p-6 flex flex-col items-center justify-center h-[60vh]">
           <AlertCircle className="text-red-400 mb-4" size={64} />
           <h2 className="text-xl font-semibold text-white mb-2">Failed to load detections</h2>
-          <p className="text-slate-400 mb-4">{error}</p>
+          <p className="text-zinc-400 mb-4">{error}</p>
           <Button onClick={loadDetections}>Try Again</Button>
         </div>
       </Layout>
@@ -130,7 +130,7 @@ export default function ReviewPage() {
         <div className="p-6 flex flex-col items-center justify-center h-[60vh]">
           <CheckCircle2 className="text-emerald-400 mb-4" size={64} />
           <h2 className="text-xl font-semibold text-white mb-2">All caught up!</h2>
-          <p className="text-slate-400">No detections pending review.</p>
+          <p className="text-zinc-400">No detections pending review.</p>
         </div>
       </Layout>
     )
@@ -142,7 +142,7 @@ export default function ReviewPage() {
         <div className="flex items-center justify-between mb-6">
           <div>
             <h1 className="text-2xl font-bold text-white">Detection Review Queue</h1>
-            <p className="text-slate-400 text-sm mt-1">
+            <p className="text-zinc-400 text-sm mt-1">
               {reviewed} reviewed today - {pending} pending
             </p>
           </div>
@@ -150,7 +150,7 @@ export default function ReviewPage() {
             <select 
               value={filter}
               onChange={(e) => setFilter(e.target.value)}
-              className="bg-slate-700 border border-slate-600 rounded-lg px-3 py-2 text-white"
+              className="bg-zinc-700 border border-zinc-600 rounded-lg px-3 py-2 text-white"
             >
               <option value="all">All Types</option>
               <option value="infinite_loop">Infinite Loop</option>
@@ -164,12 +164,12 @@ export default function ReviewPage() {
           </div>
         </div>
 
-        <div className="bg-slate-800 rounded-lg p-4 mb-6 border border-slate-700">
+        <div className="bg-zinc-800 rounded-lg p-4 mb-6 border border-zinc-700">
           <div className="flex items-center justify-between mb-2">
-            <span className="text-slate-400 text-sm">Session Progress</span>
+            <span className="text-zinc-400 text-sm">Session Progress</span>
             <span className="text-white font-medium">{reviewed}/{detections.length}</span>
           </div>
-          <div className="w-full bg-slate-700 rounded-full h-2">
+          <div className="w-full bg-zinc-700 rounded-full h-2">
             <div 
               className="bg-emerald-500 h-2 rounded-full transition-all duration-300"
               style={{ width: `${(reviewed / detections.length) * 100}%` }}
@@ -178,13 +178,13 @@ export default function ReviewPage() {
         </div>
 
         {current && (
-          <div className="bg-slate-800 rounded-xl p-6 border border-slate-700 mb-6">
+          <div className="bg-zinc-800 rounded-xl p-6 border border-zinc-700 mb-6">
             <div className="flex items-start justify-between mb-4">
               <div>
                 <h2 className="text-lg font-semibold text-white">
                   Detection #{current.id.slice(-6)} - {current.type.replace('_', ' ')}
                 </h2>
-                <p className="text-slate-400 text-sm mt-1">
+                <p className="text-zinc-400 text-sm mt-1">
                   Trace: {current.traceId.slice(0, 12)}... | Agent: {current.agentType}
                 </p>
               </div>
@@ -197,7 +197,7 @@ export default function ReviewPage() {
                 >
                   <ChevronLeft size={16} />
                 </Button>
-                <span className="text-slate-400 text-sm">
+                <span className="text-zinc-400 text-sm">
                   {currentIndex + 1} of {detections.length}
                 </span>
                 <Button 
@@ -211,11 +211,11 @@ export default function ReviewPage() {
               </div>
             </div>
 
-            <div className="bg-slate-700/50 rounded-lg p-4 mb-4">
-              <p className="text-slate-300 mb-2">
+            <div className="bg-zinc-700/50 rounded-lg p-4 mb-4">
+              <p className="text-zinc-300 mb-2">
                 <strong>Pattern:</strong> {current.pattern}
               </p>
-              <p className="text-slate-300">
+              <p className="text-zinc-300">
                 <strong>Confidence:</strong>{' '}
                 <span className={current.confidence >= 90 ? 'text-emerald-400' : current.confidence >= 70 ? 'text-amber-400' : 'text-red-400'}>
                   {current.confidence.toFixed(1)}%
@@ -229,14 +229,14 @@ export default function ReviewPage() {
             </div>
 
             {showFeedback && (
-              <div className="bg-slate-700 rounded-lg p-3 mb-4 text-center">
+              <div className="bg-zinc-700 rounded-lg p-3 mb-4 text-center">
                 <span className="text-white">{showFeedback}</span>
-                <span className="text-slate-400 text-sm ml-2">Auto-advancing...</span>
+                <span className="text-zinc-400 text-sm ml-2">Auto-advancing...</span>
               </div>
             )}
 
-            <div className="border-t border-slate-700 pt-4">
-              <p className="text-slate-400 text-sm mb-3">Was this detection correct?</p>
+            <div className="border-t border-zinc-700 pt-4">
+              <p className="text-zinc-400 text-sm mb-3">Was this detection correct?</p>
               <div className="flex items-center gap-3 flex-wrap">
                 <Button 
                   variant="success" 
@@ -257,28 +257,28 @@ export default function ReviewPage() {
                   onClick={() => handleLabel('unclear')}
                   leftIcon={<HelpCircle size={16} />}
                 >
-                  Unclear <kbd className="ml-2 text-xs opacity-60 bg-slate-600 px-1 rounded">U</kbd>
+                  Unclear <kbd className="ml-2 text-xs opacity-60 bg-zinc-600 px-1 rounded">U</kbd>
                 </Button>
                 <Button 
                   variant="ghost" 
                   onClick={() => handleLabel('skip')}
                   leftIcon={<SkipForward size={16} />}
                 >
-                  Skip <kbd className="ml-2 text-xs opacity-60 bg-slate-600 px-1 rounded">S</kbd>
+                  Skip <kbd className="ml-2 text-xs opacity-60 bg-zinc-600 px-1 rounded">S</kbd>
                 </Button>
               </div>
             </div>
           </div>
         )}
 
-        <div className="bg-slate-800/50 rounded-lg p-4 border border-slate-700">
-          <p className="text-slate-400 text-sm">
+        <div className="bg-zinc-800/50 rounded-lg p-4 border border-zinc-700">
+          <p className="text-zinc-400 text-sm">
             <strong>Keyboard shortcuts:</strong>{' '}
-            <kbd className="bg-slate-700 px-1.5 py-0.5 rounded text-xs">C</kbd> Correct{' '}
-            <kbd className="bg-slate-700 px-1.5 py-0.5 rounded text-xs">F</kbd> False Positive{' '}
-            <kbd className="bg-slate-700 px-1.5 py-0.5 rounded text-xs">U</kbd> Unclear{' '}
-            <kbd className="bg-slate-700 px-1.5 py-0.5 rounded text-xs">S</kbd> Skip{' '}
-            <kbd className="bg-slate-700 px-1.5 py-0.5 rounded text-xs">←/→</kbd> Navigate
+            <kbd className="bg-zinc-700 px-1.5 py-0.5 rounded text-xs">C</kbd> Correct{' '}
+            <kbd className="bg-zinc-700 px-1.5 py-0.5 rounded text-xs">F</kbd> False Positive{' '}
+            <kbd className="bg-zinc-700 px-1.5 py-0.5 rounded text-xs">U</kbd> Unclear{' '}
+            <kbd className="bg-zinc-700 px-1.5 py-0.5 rounded text-xs">S</kbd> Skip{' '}
+            <kbd className="bg-zinc-700 px-1.5 py-0.5 rounded text-xs">←/→</kbd> Navigate
           </p>
         </div>
       </div>

@@ -22,7 +22,7 @@ export default function AccountPage() {
     return (
       <Layout>
         <div className="p-6">
-          <p className="text-slate-400">Please sign in to view your account.</p>
+          <p className="text-zinc-400">Please sign in to view your account.</p>
         </div>
       </Layout>
     )
@@ -35,11 +35,11 @@ export default function AccountPage() {
       <div className="p-6 max-w-4xl mx-auto">
         <div className="mb-8">
           <h1 className="text-2xl font-bold text-white mb-2">Account Settings</h1>
-          <p className="text-slate-400">Manage your profile and account preferences</p>
+          <p className="text-zinc-400">Manage your profile and account preferences</p>
         </div>
 
         {/* User Profile Section */}
-        <div className="bg-slate-800 border border-slate-700 rounded-lg p-6 mb-6">
+        <div className="bg-zinc-800 border border-zinc-700 rounded-lg p-6 mb-6">
           <h2 className="text-lg font-semibold text-white mb-4 flex items-center gap-2">
             <User size={20} />
             Profile Information
@@ -52,39 +52,39 @@ export default function AccountPage() {
                 <img
                   src={user.image}
                   alt={user.name || 'User'}
-                  className="w-16 h-16 rounded-full border-2 border-slate-600"
+                  className="w-16 h-16 rounded-full border-2 border-zinc-600"
                 />
                 <div>
-                  <p className="text-sm text-slate-400">Profile Picture</p>
+                  <p className="text-sm text-zinc-400">Profile Picture</p>
                   <p className="text-white font-medium">{user.name || 'Not set'}</p>
                 </div>
               </div>
             )}
 
             {/* Name */}
-            <div className="flex items-start gap-3 py-3 border-t border-slate-700">
-              <User size={18} className="text-slate-400 mt-0.5" />
+            <div className="flex items-start gap-3 py-3 border-t border-zinc-700">
+              <User size={18} className="text-zinc-400 mt-0.5" />
               <div className="flex-1">
-                <p className="text-sm text-slate-400">Full Name</p>
+                <p className="text-sm text-zinc-400">Full Name</p>
                 <p className="text-white">{user.name || 'Not set'}</p>
               </div>
             </div>
 
             {/* Email */}
-            <div className="flex items-start gap-3 py-3 border-t border-slate-700">
-              <Mail size={18} className="text-slate-400 mt-0.5" />
+            <div className="flex items-start gap-3 py-3 border-t border-zinc-700">
+              <Mail size={18} className="text-zinc-400 mt-0.5" />
               <div className="flex-1">
-                <p className="text-sm text-slate-400">Email Address</p>
+                <p className="text-sm text-zinc-400">Email Address</p>
                 <p className="text-white">{user.email}</p>
               </div>
             </div>
 
             {/* Tenant/Organization */}
             {tenantId && tenantId !== 'default' && (
-              <div className="flex items-start gap-3 py-3 border-t border-slate-700">
-                <Building2 size={18} className="text-slate-400 mt-0.5" />
+              <div className="flex items-start gap-3 py-3 border-t border-zinc-700">
+                <Building2 size={18} className="text-zinc-400 mt-0.5" />
                 <div className="flex-1">
-                  <p className="text-sm text-slate-400">Organization</p>
+                  <p className="text-sm text-zinc-400">Organization</p>
                   <p className="text-white">{tenantId}</p>
                 </div>
               </div>
@@ -93,12 +93,12 @@ export default function AccountPage() {
         </div>
 
         {/* Billing Section */}
-        <div className="bg-slate-800 border border-slate-700 rounded-lg p-6 mb-6">
+        <div className="bg-zinc-800 border border-zinc-700 rounded-lg p-6 mb-6">
           <h2 className="text-lg font-semibold text-white mb-4 flex items-center gap-2">
             <CreditCard size={20} />
             Billing
           </h2>
-          <p className="text-slate-400 mb-4">
+          <p className="text-zinc-400 mb-4">
             Manage your subscription and billing information.
           </p>
           <Link
@@ -110,12 +110,12 @@ export default function AccountPage() {
         </div>
 
         {/* Sign Out Section */}
-        <div className="bg-slate-800 border border-slate-700 rounded-lg p-6">
+        <div className="bg-zinc-800 border border-zinc-700 rounded-lg p-6">
           <h2 className="text-lg font-semibold text-white mb-4 flex items-center gap-2">
             <LogOut size={20} />
             Sign Out
           </h2>
-          <p className="text-slate-400 mb-4">
+          <p className="text-zinc-400 mb-4">
             Sign out of your PISAMA account.
           </p>
           <button

@@ -45,7 +45,7 @@ export default function TraceDetailPage() {
     return (
       <Layout>
         <div className="p-6 flex items-center justify-center">
-          <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary-500"></div>
+          <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-500"></div>
         </div>
       </Layout>
     )
@@ -59,7 +59,7 @@ export default function TraceDetailPage() {
           <h1 className="text-2xl font-bold text-white mb-2">
             Trace: {trace?.session_id?.slice(0, 8)}...
           </h1>
-          <div className="flex gap-4 text-sm text-slate-400">
+          <div className="flex gap-4 text-sm text-zinc-400">
             <span>Framework: {trace?.framework}</span>
             <span>Status: {trace?.status}</span>
             <span>Tokens: {trace?.total_tokens?.toLocaleString()}</span>
@@ -83,15 +83,15 @@ export default function TraceDetailPage() {
         )}
 
         {/* Tab bar */}
-        <div className="flex gap-1 mb-6 bg-slate-800 rounded-lg p-1">
+        <div className="flex gap-1 mb-6 bg-zinc-800 rounded-lg p-1">
           {tabs.map((tab) => (
             <button
               key={tab.id}
               onClick={() => setActiveTab(tab.id)}
               className={`flex-1 px-4 py-2 rounded-md text-sm font-medium transition-colors ${
                 activeTab === tab.id
-                  ? 'bg-slate-700 text-white'
-                  : 'text-slate-400 hover:text-white'
+                  ? 'bg-zinc-700 text-white'
+                  : 'text-zinc-400 hover:text-white'
               }`}
             >
               {tab.label}

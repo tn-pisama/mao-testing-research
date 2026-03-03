@@ -69,9 +69,9 @@ function DimensionGroup({
       >
         <ChevronDown
           size={16}
-          className={`text-slate-400 transition-transform ${expanded ? '' : '-rotate-90'}`}
+          className={`text-zinc-400 transition-transform ${expanded ? '' : '-rotate-90'}`}
         />
-        <span className="text-sm font-medium text-slate-300 capitalize">
+        <span className="text-sm font-medium text-zinc-300 capitalize">
           {dimension.replace(/_/g, ' ')}
         </span>
         <Badge variant="default">{fixes.length}</Badge>
@@ -115,16 +115,16 @@ function FixCard({
             </div>
             <div className="flex-1 min-w-0">
               <h4 className="text-sm text-white font-medium mb-1">{fix.title}</h4>
-              <p className="text-xs text-slate-400 mb-2">{fix.description}</p>
+              <p className="text-xs text-zinc-400 mb-2">{fix.description}</p>
               <div className="flex items-center gap-3 flex-wrap">
-                <span className={`text-xs ${confidenceColors[fix.confidence] || 'text-slate-400'}`}>
+                <span className={`text-xs ${confidenceColors[fix.confidence] || 'text-zinc-400'}`}>
                   {fix.confidence} confidence
                 </span>
                 <span className={`text-xs flex items-center gap-1 ${effort.color}`}>
                   <Clock size={10} />
                   {effort.label}
                 </span>
-                <span className="text-xs text-slate-500">{fix.fix_type}</span>
+                <span className="text-xs text-zinc-500">{fix.fix_type}</span>
               </div>
             </div>
           </div>
@@ -153,14 +153,14 @@ function FixCard({
             {showDetails && (
               <div className="mt-2 space-y-2">
                 {fix.code_changes.map((change, i) => (
-                  <div key={i} className="bg-slate-900 rounded-lg p-3">
+                  <div key={i} className="bg-zinc-900 rounded-lg p-3">
                     <div className="flex items-center gap-2 mb-2">
-                      <span className="text-xs text-slate-500">{change.file_path}</span>
-                      <span className="text-xs text-slate-600">({change.language})</span>
+                      <span className="text-xs text-zinc-500">{change.file_path}</span>
+                      <span className="text-xs text-zinc-600">({change.language})</span>
                     </div>
-                    <p className="text-xs text-slate-400 mb-2">{change.description}</p>
+                    <p className="text-xs text-zinc-400 mb-2">{change.description}</p>
                     {change.diff && (
-                      <pre className="text-xs text-slate-300 overflow-x-auto whitespace-pre-wrap">
+                      <pre className="text-xs text-zinc-300 overflow-x-auto whitespace-pre-wrap">
                         {change.diff}
                       </pre>
                     )}
@@ -202,14 +202,14 @@ export function QualityHealingPanel({
     <div className="space-y-6">
       {/* Healing status header */}
       {healingRecord && (
-        <div className="flex items-center justify-between p-4 bg-slate-800 rounded-lg">
+        <div className="flex items-center justify-between p-4 bg-zinc-800 rounded-lg">
           <div className="flex items-center gap-4">
             <QualityHealingStatusBadge status={healingRecord.status} />
             <div>
-              <p className="text-sm text-slate-300">
+              <p className="text-sm text-zinc-300">
                 Healing record <span className="text-white text-xs">{healingRecord.id.slice(0, 8)}</span>
               </p>
-              <p className="text-xs text-slate-500">
+              <p className="text-xs text-zinc-500">
                 Created {new Date(healingRecord.created_at).toLocaleString()}
               </p>
             </div>
@@ -246,10 +246,10 @@ export function QualityHealingPanel({
             </span>
           </div>
           {healingRecord.validation_results && Object.keys(healingRecord.validation_results).length > 0 && (
-            <div className="text-xs text-slate-400 space-y-1">
+            <div className="text-xs text-zinc-400 space-y-1">
               {Object.entries(healingRecord.validation_results).map(([key, val]) => (
                 <div key={key}>
-                  <span className="text-slate-500">{key.replace(/_/g, ' ')}:</span>{' '}
+                  <span className="text-zinc-500">{key.replace(/_/g, ' ')}:</span>{' '}
                   {String(val)}
                 </div>
               ))}
@@ -261,7 +261,7 @@ export function QualityHealingPanel({
       {/* Before/After chart */}
       {chartDimensions.length > 0 && (
         <div>
-          <h3 className="text-sm font-medium text-slate-300 mb-3">Score Comparison</h3>
+          <h3 className="text-sm font-medium text-zinc-300 mb-3">Score Comparison</h3>
           <QualityBeforeAfterChart dimensions={chartDimensions} />
         </div>
       )}
@@ -270,7 +270,7 @@ export function QualityHealingPanel({
       {fixSuggestions.length > 0 && (
         <div>
           <div className="flex items-center justify-between mb-4">
-            <h3 className="text-sm font-medium text-slate-300 flex items-center gap-2">
+            <h3 className="text-sm font-medium text-zinc-300 flex items-center gap-2">
               <Zap size={16} className="text-amber-400" />
               Fix Suggestions ({fixSuggestions.length})
             </h3>
@@ -301,9 +301,9 @@ export function QualityHealingPanel({
 
       {fixSuggestions.length === 0 && !healingRecord && (
         <div className="text-center py-8">
-          <Wrench className="w-10 h-10 text-slate-600 mx-auto mb-3" />
-          <p className="text-slate-400 text-sm">No fix suggestions available</p>
-          <p className="text-slate-500 text-xs mt-1">
+          <Wrench className="w-10 h-10 text-zinc-600 mx-auto mb-3" />
+          <p className="text-zinc-400 text-sm">No fix suggestions available</p>
+          <p className="text-zinc-500 text-xs mt-1">
             Trigger a healing analysis to generate fix suggestions
           </p>
         </div>

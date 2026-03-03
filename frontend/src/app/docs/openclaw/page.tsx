@@ -8,7 +8,7 @@ export default function OpenClawDocsPage() {
     <div>
       <div className="mb-8">
         <h1 className="text-3xl font-bold text-white mb-4">OpenClaw Integration</h1>
-        <p className="text-lg text-slate-300">
+        <p className="text-lg text-zinc-300">
           Monitor multi-channel AI agents deployed via OpenClaw. Track sessions across
           WhatsApp, Telegram, Slack, and more with real-time failure detection.
         </p>
@@ -16,7 +16,7 @@ export default function OpenClawDocsPage() {
 
       <section className="mb-10">
         <h2 className="text-xl font-bold text-white mb-4">Why OpenClaw Integration?</h2>
-        <p className="text-slate-300 mb-4">
+        <p className="text-zinc-300 mb-4">
           OpenClaw agents operate across multiple channels with complex spawning and session patterns:
         </p>
         <div className="grid md:grid-cols-2 gap-4">
@@ -35,9 +35,9 @@ export default function OpenClawDocsPage() {
         <h2 className="text-xl font-bold text-white mb-4">Supported Channels</h2>
         <div className="grid grid-cols-2 md:grid-cols-5 gap-4">
           {['WhatsApp', 'Telegram', 'Slack', 'Discord', 'Web'].map((channel) => (
-            <div key={channel} className="p-3 rounded-lg bg-slate-800/50 border border-slate-700 text-center">
+            <div key={channel} className="p-3 rounded-lg bg-zinc-800/50 border border-zinc-700 text-center">
               <div className="font-medium text-white">{channel}</div>
-              <code className="text-xs text-slate-400">{channel.toLowerCase()}</code>
+              <code className="text-xs text-zinc-400">{channel.toLowerCase()}</code>
             </div>
           ))}
         </div>
@@ -52,7 +52,7 @@ export default function OpenClawDocsPage() {
             pros={['Real-time detection', 'Works with all channels', 'Captures full session history']}
             cons={['Requires gateway configuration']}
           >
-            <h4 className="text-sm font-semibold text-slate-400 mb-2 mt-4">Setup Steps</h4>
+            <h4 className="text-sm font-semibold text-zinc-400 mb-2 mt-4">Setup Steps</h4>
             <ol className="space-y-3">
               <SetupStep number={1} accentColor="bg-cyan-600">
                 <strong>Register your OpenClaw instance</strong> in Pisama:
@@ -108,29 +108,29 @@ export default function OpenClawDocsPage() {
 
       <section className="mb-10">
         <h2 className="text-xl font-bold text-white mb-4">Multi-Agent Monitoring</h2>
-        <p className="text-slate-300 mb-4">
+        <p className="text-zinc-300 mb-4">
           OpenClaw supports agent spawning where one agent can create child agents. Pisama tracks the full spawn tree:
         </p>
-        <div className="rounded-xl bg-slate-800/50 border border-slate-700 p-6">
-          <div className="space-y-2 text-sm font-mono text-slate-300">
+        <div className="rounded-xl bg-zinc-800/50 border border-zinc-700 p-6">
+          <div className="space-y-2 text-sm font-mono text-zinc-300">
             <div className="flex items-center gap-2">
               <span className="text-cyan-400">root-agent</span>
-              <span className="text-slate-500">session-001</span>
+              <span className="text-zinc-500">session-001</span>
             </div>
             <div className="flex items-center gap-2 ml-6">
-              <span className="text-slate-500">|--</span>
+              <span className="text-zinc-500">|--</span>
               <span className="text-cyan-400">research-agent</span>
-              <span className="text-slate-500">session-002</span>
+              <span className="text-zinc-500">session-002</span>
               <span className="text-emerald-400 text-xs">(spawned)</span>
             </div>
             <div className="flex items-center gap-2 ml-6">
-              <span className="text-slate-500">|--</span>
+              <span className="text-zinc-500">|--</span>
               <span className="text-cyan-400">writer-agent</span>
-              <span className="text-slate-500">session-003</span>
+              <span className="text-zinc-500">session-003</span>
               <span className="text-emerald-400 text-xs">(spawned)</span>
             </div>
           </div>
-          <p className="text-sm text-slate-400 mt-4">
+          <p className="text-sm text-zinc-400 mt-4">
             Pisama detects when spawn chains grow unbounded or when spawned agents exceed their permission scope.
           </p>
         </div>
@@ -138,7 +138,7 @@ export default function OpenClawDocsPage() {
 
       <section className="mb-10">
         <h2 className="text-xl font-bold text-white mb-4">Webhook Security</h2>
-        <p className="text-slate-300 mb-4">
+        <p className="text-zinc-300 mb-4">
           Enable HMAC signature verification for production:
         </p>
         <CodeBlock title="Signed Webhook Headers" language="text">
@@ -166,7 +166,7 @@ X-MAO-Signature: sha256=<hmac-of-timestamp.body>`}
 
       <section className="mb-10">
         <h2 className="text-xl font-bold text-white mb-4">Data Mapping</h2>
-        <p className="text-slate-300 mb-4">
+        <p className="text-zinc-300 mb-4">
           OpenClaw session data is mapped to Pisama traces as follows:
         </p>
         <DataMappingTable sourceLabel="OpenClaw" mappings={[

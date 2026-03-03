@@ -49,7 +49,7 @@ export function FAQSection() {
           <h2 className="text-3xl md:text-4xl font-bold text-white mb-4">
             Frequently Asked Questions
           </h2>
-          <p className="text-slate-400">
+          <p className="text-zinc-400">
             Everything you need to know about PISAMA
           </p>
         </div>
@@ -58,7 +58,7 @@ export function FAQSection() {
           {faqs.map((faq, index) => (
             <div
               key={index}
-              className="bg-slate-800/50 border border-slate-700 rounded-lg overflow-hidden hover:border-sky-500/50 transition-colors"
+              className="bg-zinc-800/50 border border-zinc-700 rounded-lg overflow-hidden hover:border-sky-500/50 transition-colors"
             >
               <button
                 onClick={() => {
@@ -75,7 +75,7 @@ export function FAQSection() {
                   {faq.question}
                 </span>
                 <ChevronDown
-                  className={`w-5 h-5 text-slate-400 flex-shrink-0 transition-transform ${
+                  className={`w-5 h-5 text-zinc-400 flex-shrink-0 transition-transform ${
                     openIndex === index ? 'rotate-180' : ''
                   }`}
                 />
@@ -83,7 +83,7 @@ export function FAQSection() {
 
               {openIndex === index && (
                 <div className="px-6 pb-6">
-                  <p className="text-slate-400 leading-relaxed">
+                  <p className="text-zinc-400 leading-relaxed">
                     {faq.answer}
                   </p>
                 </div>
@@ -94,7 +94,7 @@ export function FAQSection() {
 
         {/* Contact CTA */}
         <div className="mt-12 text-center">
-          <p className="text-slate-400 mb-4">
+          <p className="text-zinc-400 mb-4">
             Still have questions?
           </p>
           <a

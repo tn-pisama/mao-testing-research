@@ -35,21 +35,21 @@ interface AgentStats {
 function TraceAgentNode({ data }: { data: AgentStats }) {
   return (
     <div
-      className="px-4 py-3 rounded-lg border-2 bg-slate-900 min-w-[160px]"
+      className="px-4 py-3 rounded-lg border-2 bg-zinc-900 min-w-[160px]"
       style={{ borderColor: data.color }}
     >
-      <Handle type="target" position={Position.Top} className="!bg-slate-500" />
+      <Handle type="target" position={Position.Top} className="!bg-zinc-500" />
       <div className="text-sm font-medium font-mono text-white truncate" title={data.agentId}>
         {data.agentId}
       </div>
-      <div className="flex items-center gap-3 mt-1 text-[11px] font-mono text-slate-400">
+      <div className="flex items-center gap-3 mt-1 text-[11px] font-mono text-zinc-400">
         <span>{data.stateCount} steps</span>
         <span>{data.totalTokens.toLocaleString()} tok</span>
       </div>
-      <div className="text-[11px] font-mono text-slate-500 mt-0.5">
+      <div className="text-[11px] font-mono text-zinc-500 mt-0.5">
         {data.totalLatency < 1000 ? `${data.totalLatency}ms` : `${(data.totalLatency / 1000).toFixed(1)}s`}
       </div>
-      <Handle type="source" position={Position.Bottom} className="!bg-slate-500" />
+      <Handle type="source" position={Position.Bottom} className="!bg-zinc-500" />
     </div>
   )
 }
@@ -229,7 +229,7 @@ export function TraceFlowGraph({ states, height = 500 }: TraceFlowGraphProps) {
       </CardHeader>
       <CardContent className="p-0">
         <div
-          className="bg-slate-900 rounded-b-lg overflow-hidden"
+          className="bg-zinc-900 rounded-b-lg overflow-hidden"
           style={{ height }}
         >
           <ReactFlow
@@ -253,9 +253,9 @@ export function TraceFlowGraph({ states, height = 500 }: TraceFlowGraphProps) {
               size={1}
               color="#334155"
             />
-            <Controls className="bg-slate-800 border border-slate-700 rounded-lg" />
+            <Controls className="bg-zinc-800 border border-zinc-700 rounded-lg" />
             <MiniMap
-              className="bg-slate-800 border border-slate-700 rounded"
+              className="bg-zinc-800 border border-zinc-700 rounded"
               nodeColor={(node) => {
                 if (node.type === 'input' || node.type === 'output') return '#475569'
                 return (node.data as AgentStats)?.color || '#64748b'

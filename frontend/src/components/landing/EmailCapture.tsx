@@ -58,7 +58,7 @@ export function EmailCapture() {
           onChange={(e) => setEmail(e.target.value)}
           placeholder="your@email.com"
           disabled={status === 'loading' || status === 'success'}
-          className="flex-1 px-4 py-3 rounded-lg bg-slate-800 border border-slate-700 text-white placeholder-slate-500 focus:outline-none focus:ring-2 focus:ring-sky-500 focus:border-transparent disabled:opacity-50 disabled:cursor-not-allowed"
+          className="flex-1 px-4 py-3 rounded-lg bg-zinc-800 border border-zinc-700 text-white placeholder-zinc-500 focus:outline-none focus:ring-2 focus:ring-sky-500 focus:border-transparent disabled:opacity-50 disabled:cursor-not-allowed"
         />
         <button
           type="submit"

@@ -121,13 +121,13 @@ export function WorkflowGraphView({
   if (!workflow.agent_scores || workflow.agent_scores.length === 0) {
     return (
       <div
-        className="flex items-center justify-center bg-slate-800 rounded-lg border border-slate-700"
+        className="flex items-center justify-center bg-zinc-800 rounded-lg border border-zinc-700"
         style={{ height }}
       >
         <div className="text-center py-12 px-4">
           <div className="text-4xl mb-4">📊</div>
-          <p className="text-slate-400 mb-2">No workflow structure available</p>
-          <p className="text-slate-500 text-sm">
+          <p className="text-zinc-400 mb-2">No workflow structure available</p>
+          <p className="text-zinc-500 text-sm">
             Workflow diagram will appear once agent data is available
           </p>
         </div>
@@ -138,7 +138,7 @@ export function WorkflowGraphView({
   return (
     <div
       ref={exportRef}
-      className="bg-slate-900 rounded-lg border border-slate-700 overflow-hidden"
+      className="bg-zinc-900 rounded-lg border border-zinc-700 overflow-hidden"
       style={{ height }}
     >
       <ReactFlow
@@ -164,9 +164,9 @@ export function WorkflowGraphView({
           size={1}
           color="#334155"
         />
-        <Controls className="bg-slate-800 border border-slate-700 rounded-lg" />
+        <Controls className="bg-zinc-800 border border-zinc-700 rounded-lg" />
         <MiniMap
-          className="bg-slate-800 border border-slate-700 rounded"
+          className="bg-zinc-800 border border-zinc-700 rounded"
           nodeColor={(node) => {
             if (node.type === 'startEnd') return '#475569'
             const score = (node.data as any).score || 0

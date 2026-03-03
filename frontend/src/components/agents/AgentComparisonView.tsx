@@ -3,7 +3,7 @@
 import { useState } from 'react'
 import { Card } from '../ui/Card'
 import { GitCompare } from 'lucide-react'
-import clsx from 'clsx'
+import { cn } from '@/lib/utils'
 import type { AgentInfo } from './index'
 
 interface AgentComparisonViewProps {
@@ -12,7 +12,7 @@ interface AgentComparisonViewProps {
 
 const statusColors: Record<string, string> = {
   running: 'text-green-400',
-  idle: 'text-slate-400',
+  idle: 'text-zinc-400',
   completed: 'text-blue-400',
   failed: 'text-red-400',
   waiting: 'text-amber-400',
@@ -58,7 +58,7 @@ export function AgentComparisonView({ agents }: AgentComparisonViewProps) {
   if (!agents || agents.length === 0) {
     return (
       <Card>
-        <div className="text-center py-12 text-slate-400">
+        <div className="text-center py-12 text-zinc-400">
           <GitCompare size={32} className="mx-auto mb-3 opacity-50" />
           <p className="text-sm">Select agents to compare</p>
           <p className="text-xs mt-1">Side-by-side agent metrics comparison</p>
@@ -85,20 +85,20 @@ export function AgentComparisonView({ agents }: AgentComparisonViewProps) {
     <div className="space-y-4">
       <Card>
         <div className="flex items-center gap-2 mb-3">
-          <GitCompare size={16} className="text-slate-400" />
+          <GitCompare size={16} className="text-zinc-400" />
           <span className="text-sm font-medium text-white">Select Agents</span>
-          <span className="text-xs text-slate-500">(max 4)</span>
+          <span className="text-xs text-zinc-500">(max 4)</span>
         </div>
         <div className="flex flex-wrap gap-2">
           {agents.map((agent) => (
             <button
               key={agent.id}
               onClick={() => toggleAgent(agent.id)}
-              className={clsx(
+              className={cn(
                 'px-3 py-1.5 rounded-lg text-sm border transition-all',
                 selected.has(agent.id)
                   ? 'bg-blue-500/20 text-blue-400 border-blue-500/50'
-                  : 'bg-slate-800/50 text-slate-400 border-slate-700/50 hover:border-slate-600'
+                  : 'bg-zinc-800/50 text-zinc-400 border-zinc-700/50 hover:border-zinc-600'
               )}
             >
               {agent.name}
@@ -109,7 +109,7 @@ export function AgentComparisonView({ agents }: AgentComparisonViewProps) {
 
       {selectedAgents.length === 0 ? (
         <Card>
-          <div className="text-center py-8 text-slate-400">
+          <div className="text-center py-8 text-zinc-400">
             <p className="text-sm">Click agents above to compare</p>
           </div>
         </Card>
@@ -118,18 +118,18 @@ export function AgentComparisonView({ agents }: AgentComparisonViewProps) {
           <div className="overflow-x-auto">
             <table className="w-full">
               <thead>
-                <tr className="border-b border-slate-700/50">
-                  <th className="px-4 py-3 text-left text-xs font-medium text-slate-500 uppercase w-24">
+                <tr className="border-b border-zinc-700/50">
+                  <th className="px-4 py-3 text-left text-xs font-medium text-zinc-500 uppercase w-24">
                     Metric
                   </th>
                   {selectedAgents.map((agent) => (
-                    <th key={agent.id} className="px-4 py-3 text-left text-xs font-medium text-slate-400">
+                    <th key={agent.id} className="px-4 py-3 text-left text-xs font-medium text-zinc-400">
                       {agent.name}
                     </th>
                   ))}
                 </tr>
               </thead>
-              <tbody className="divide-y divide-slate-800/50">
+              <tbody className="divide-y divide-zinc-800/50">
                 {metrics.map((metric) => {
                   const numericValues = metric.getNumeric
                     ? selectedAgents.map((a) => metric.getNumeric!(a))
@@ -138,7 +138,7 @@ export function AgentComparisonView({ agents }: AgentComparisonViewProps) {
 
                   return (
                     <tr key={metric.label}>
-                      <td className="px-4 py-3 text-xs text-slate-500">{metric.label}</td>
+                      <td className="px-4 py-3 text-xs text-zinc-500">{metric.label}</td>
                       {selectedAgents.map((agent) => {
                         const value = metric.getValue(agent)
                         const numericVal = metric.getNumeric?.(agent)
@@ -147,16 +147,16 @@ export function AgentComparisonView({ agents }: AgentComparisonViewProps) {
                         return (
                           <td key={agent.id} className="px-4 py-3">
                             <div className="space-y-1">
-                              <span className={clsx(
+                              <span className={cn(
                                 'text-sm font-medium',
                                 isStatus
-                                  ? statusColors[String(value)] ?? 'text-slate-400'
+                                  ? statusColors[String(value)] ?? 'text-zinc-400'
                                   : 'text-white'
                               )}>
                                 {String(value)}
                               </span>
                               {numericVal !== undefined && maxValue > 0 && (
-                                <div className="w-full bg-slate-800 rounded-full h-1">
+                                <div className="w-full bg-zinc-800 rounded-full h-1">
                                   <div
                                     className="bg-blue-500 h-1 rounded-full transition-all"
                                     style={{ width: `${(numericVal / maxValue) * 100}%` }}

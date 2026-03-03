@@ -20,7 +20,7 @@ import {
   GitBranch,
   Activity,
 } from 'lucide-react'
-import clsx from 'clsx'
+import { cn } from '@/lib/utils'
 
 export default function WorkflowPage() {
   const params = useParams()
@@ -83,10 +83,10 @@ export default function WorkflowPage() {
 
   if (isLoading) {
     return (
-      <div className="min-h-screen bg-slate-950 flex items-center justify-center">
+      <div className="min-h-screen bg-zinc-950 flex items-center justify-center">
         <div className="text-center">
           <Activity className="w-12 h-12 text-blue-500 animate-spin mx-auto mb-4" />
-          <p className="text-slate-400">Loading workflow...</p>
+          <p className="text-zinc-400">Loading workflow...</p>
         </div>
       </div>
     )
@@ -94,11 +94,11 @@ export default function WorkflowPage() {
 
   if (!workflow) {
     return (
-      <div className="min-h-screen bg-slate-950 flex items-center justify-center">
+      <div className="min-h-screen bg-zinc-950 flex items-center justify-center">
         <div className="text-center">
           <AlertCircle className="w-12 h-12 text-red-500 mx-auto mb-4" />
           <h1 className="text-xl font-bold text-white mb-2">Workflow Not Found</h1>
-          <p className="text-slate-400 mb-4">The workflow you're looking for doesn't exist.</p>
+          <p className="text-zinc-400 mb-4">The workflow you're looking for doesn't exist.</p>
           <Link
             href="/dashboard"
             className="inline-flex items-center gap-2 text-blue-400 hover:text-blue-300"
@@ -114,23 +114,23 @@ export default function WorkflowPage() {
   const orchestrationScore = workflow.orchestration_score
 
   return (
-    <div className={clsx(
-      'min-h-screen bg-slate-950',
+    <div className={cn(
+      'min-h-screen bg-zinc-950',
       isFullscreen ? 'fixed inset-0 z-50' : ''
     )}>
       {/* Header */}
-      <header className="border-b border-slate-800 bg-slate-900/80 backdrop-blur-sm sticky top-0 z-40">
+      <header className="border-b border-zinc-800 bg-zinc-900/80 backdrop-blur-sm sticky top-0 z-40">
         <div className="px-6 py-4">
           {/* Breadcrumb */}
           <div className="flex items-center gap-2 text-sm mb-3">
-            <Link href="/dashboard" className="text-slate-400 hover:text-white transition-colors">
+            <Link href="/dashboard" className="text-zinc-400 hover:text-white transition-colors">
               Dashboard
             </Link>
-            <span className="text-slate-600">/</span>
-            <Link href="/quality" className="text-slate-400 hover:text-white transition-colors">
+            <span className="text-zinc-600">/</span>
+            <Link href="/quality" className="text-zinc-400 hover:text-white transition-colors">
               Quality
             </Link>
-            <span className="text-slate-600">/</span>
+            <span className="text-zinc-600">/</span>
             <span className="text-white font-medium">Workflow</span>
           </div>
 
@@ -140,7 +140,7 @@ export default function WorkflowPage() {
               <h1 className="text-2xl font-bold text-white mb-2 truncate">
                 {workflow.workflow_name}
               </h1>
-              <div className="flex items-center gap-4 text-sm text-slate-400">
+              <div className="flex items-center gap-4 text-sm text-zinc-400">
                 <span>ID: {workflow.workflow_id}</span>
                 {orchestrationScore?.detected_pattern && (
                   <div className="flex items-center gap-1.5">
@@ -159,7 +159,7 @@ export default function WorkflowPage() {
             <div className="flex items-center gap-2">
               <button
                 onClick={handleShare}
-                className="flex items-center gap-2 px-3 py-2 bg-slate-800 hover:bg-slate-700 text-white rounded-lg transition-colors"
+                className="flex items-center gap-2 px-3 py-2 bg-zinc-800 hover:bg-zinc-700 text-white rounded-lg transition-colors"
               >
                 <Share2 size={16} />
                 Share
@@ -167,14 +167,14 @@ export default function WorkflowPage() {
               <button
                 onClick={handleExport}
                 disabled={isExporting}
-                className="flex items-center gap-2 px-3 py-2 bg-slate-800 hover:bg-slate-700 text-white rounded-lg transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+                className="flex items-center gap-2 px-3 py-2 bg-zinc-800 hover:bg-zinc-700 text-white rounded-lg transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
               >
                 <Download size={16} className={isExporting ? 'animate-pulse' : ''} />
                 {isExporting ? 'Exporting...' : 'Export'}
               </button>
               <button
                 onClick={() => setIsFullscreen(!isFullscreen)}
-                className="flex items-center gap-2 px-3 py-2 bg-slate-800 hover:bg-slate-700 text-white rounded-lg transition-colors"
+                className="flex items-center gap-2 px-3 py-2 bg-zinc-800 hover:bg-zinc-700 text-white rounded-lg transition-colors"
               >
                 <Maximize2 size={16} />
                 {isFullscreen ? 'Exit' : 'Fullscreen'}
@@ -187,7 +187,7 @@ export default function WorkflowPage() {
       {/* Main Content */}
       <div className="flex h-[calc(100vh-140px)]">
         {/* Left Sidebar - Metrics */}
-        <aside className="w-80 border-r border-slate-800 bg-slate-900/50 overflow-y-auto">
+        <aside className="w-80 border-r border-zinc-800 bg-zinc-900/50 overflow-y-auto">
           <div className="p-6 space-y-6">
             {/* Overall Quality */}
             <section>
@@ -200,11 +200,11 @@ export default function WorkflowPage() {
                   </span>
                 )}
               </div>
-              <div className="bg-slate-800 rounded-lg p-4 border border-slate-700">
+              <div className="bg-zinc-800 rounded-lg p-4 border border-zinc-700">
                 <div className="flex items-center gap-4 mb-3">
                   <QualityGradeBadge grade={workflow.overall_grade} size="lg" />
                   <div>
-                    <div className={clsx(
+                    <div className={cn(
                       'text-3xl font-bold',
                       workflow.overall_score >= 0.8 ? 'text-green-400' :
                       workflow.overall_score >= 0.6 ? 'text-blue-400' :
@@ -213,7 +213,7 @@ export default function WorkflowPage() {
                     )}>
                       {(workflow.overall_score * 100).toFixed(0)}%
                     </div>
-                    <div className="text-xs text-slate-400">Health Score</div>
+                    <div className="text-xs text-zinc-400">Health Score</div>
                   </div>
                 </div>
               </div>
@@ -225,10 +225,10 @@ export default function WorkflowPage() {
                 <h3 className="text-sm font-semibold text-white mb-3">Orchestration</h3>
                 <div className="space-y-2">
                   {orchestrationScore.dimensions?.map((dim) => (
-                    <div key={dim.dimension} className="bg-slate-800/50 rounded-lg p-3">
+                    <div key={dim.dimension} className="bg-zinc-800/50 rounded-lg p-3">
                       <div className="flex items-center justify-between text-xs mb-1.5">
-                        <span className="text-slate-300 capitalize">{dim.dimension}</span>
-                        <span className={clsx(
+                        <span className="text-zinc-300 capitalize">{dim.dimension}</span>
+                        <span className={cn(
                           'font-semibold',
                           dim.score >= 0.8 ? 'text-green-400' :
                           dim.score >= 0.6 ? 'text-blue-400' :
@@ -237,9 +237,9 @@ export default function WorkflowPage() {
                           {(dim.score * 100).toFixed(0)}%
                         </span>
                       </div>
-                      <div className="bg-slate-700 rounded-full h-1 overflow-hidden">
+                      <div className="bg-zinc-700 rounded-full h-1 overflow-hidden">
                         <div
-                          className={clsx(
+                          className={cn(
                             'h-1 rounded-full',
                             dim.score >= 0.8 ? 'bg-green-500' :
                             dim.score >= 0.6 ? 'bg-blue-500' :
@@ -290,7 +290,7 @@ export default function WorkflowPage() {
                   {orchestrationScore.critical_issues.map((issue, idx) => (
                     <div
                       key={idx}
-                      className="text-xs text-slate-300 bg-red-500/10 border border-red-500/20 rounded-lg p-2"
+                      className="text-xs text-zinc-300 bg-red-500/10 border border-red-500/20 rounded-lg p-2"
                     >
                       {issue}
                     </div>
@@ -305,7 +305,7 @@ export default function WorkflowPage() {
                 <h3 className="text-sm font-semibold text-white mb-3">Key Findings</h3>
                 <div className="space-y-2">
                   {workflow.key_findings.map((finding, idx) => (
-                    <div key={idx} className="flex items-start gap-2 text-xs text-slate-300">
+                    <div key={idx} className="flex items-start gap-2 text-xs text-zinc-300">
                       <span className="text-blue-400 flex-shrink-0">•</span>
                       <span>{finding}</span>
                     </div>
@@ -317,12 +317,12 @@ export default function WorkflowPage() {
         </aside>
 
         {/* Center - Workflow Diagram */}
-        <main className="flex-1 relative bg-slate-900">
+        <main className="flex-1 relative bg-zinc-900">
           {handoffLoading ? (
             <div className="h-full flex items-center justify-center">
               <div className="text-center">
                 <Activity className="w-12 h-12 text-blue-500 animate-spin mx-auto mb-4" />
-                <p className="text-slate-400">Loading workflow diagram...</p>
+                <p className="text-zinc-400">Loading workflow diagram...</p>
               </div>
             </div>
           ) : handoffAnalysis ? (
@@ -368,8 +368,8 @@ interface MetricCardProps {
 
 function MetricCard({ label, value }: MetricCardProps) {
   return (
-    <div className="bg-slate-800/50 rounded-lg p-2.5">
-      <div className="text-xs text-slate-400 mb-0.5">{label}</div>
+    <div className="bg-zinc-800/50 rounded-lg p-2.5">
+      <div className="text-xs text-zinc-400 mb-0.5">{label}</div>
       <div className="text-lg font-bold text-white">{value}</div>
     </div>
   )

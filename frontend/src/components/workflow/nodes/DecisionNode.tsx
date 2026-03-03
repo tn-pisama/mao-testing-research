@@ -14,7 +14,7 @@ export const DecisionNode = memo(({ data }: NodeProps<DecisionNodeData>) => {
       <Handle
         type="target"
         position={Position.Top}
-        className="w-3 h-3 !bg-slate-600 !border-2 !border-slate-400"
+        className="w-3 h-3 !bg-zinc-600 !border-2 !border-zinc-400"
       />
 
       {/* Diamond shape */}

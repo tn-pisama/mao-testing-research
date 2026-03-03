@@ -6,7 +6,7 @@ import { useState, useEffect, useCallback } from 'react'
 import { Layout } from '@/components/common/Layout'
 import { Card } from '@/components/ui/Card'
 import { Badge } from '@/components/ui/Badge'
-import { clsx } from 'clsx'
+import { cn } from '@/lib/utils'
 import {
   GitBranch,
   Bot,
@@ -139,13 +139,13 @@ export default function IntegrationsPage() {
         <div className="flex items-center justify-between mb-6">
           <div>
             <h1 className="text-2xl font-bold text-white">Integrations</h1>
-            <p className="text-sm text-slate-400 mt-1">
+            <p className="text-sm text-zinc-400 mt-1">
               Connect and manage your AI orchestration platforms
             </p>
           </div>
           <button
             onClick={loadData}
-            className="flex items-center gap-2 px-4 py-2 bg-slate-700 hover:bg-slate-600 rounded-lg text-white text-sm transition-colors"
+            className="flex items-center gap-2 px-4 py-2 bg-zinc-700 hover:bg-zinc-600 rounded-lg text-white text-sm transition-colors"
           >
             <RefreshCw size={14} />
             Refresh
@@ -153,18 +153,18 @@ export default function IntegrationsPage() {
         </div>
 
         {/* Tab navigation */}
-        <div className="flex gap-1 mb-6 border-b border-slate-700 pb-px">
+        <div className="flex gap-1 mb-6 border-b border-zinc-700 pb-px">
           {tabs.map((tab) => {
             const Icon = tab.icon
             return (
               <button
                 key={tab.id}
                 onClick={() => setActiveTab(tab.id)}
-                className={clsx(
+                className={cn(
                   'flex items-center gap-2 px-4 py-2.5 text-sm font-medium rounded-t-lg transition-colors border-b-2 -mb-px',
                   activeTab === tab.id
-                    ? 'text-primary-400 border-primary-500 bg-primary-500/10'
-                    : 'text-slate-400 border-transparent hover:text-white hover:bg-slate-700/50'
+                    ? 'text-blue-400 border-blue-500 bg-blue-500/10'
+                    : 'text-zinc-400 border-transparent hover:text-white hover:bg-zinc-700/50'
                 )}
               >
                 <Icon size={16} />
@@ -178,7 +178,7 @@ export default function IntegrationsPage() {
         {isLoading ? (
           <div className="space-y-4">
             {[1, 2, 3].map((i) => (
-              <div key={i} className="h-24 bg-slate-700 rounded-xl animate-pulse" />
+              <div key={i} className="h-24 bg-zinc-700 rounded-xl animate-pulse" />
             ))}
           </div>
         ) : (
@@ -286,14 +286,14 @@ function OverviewTab({
           <button
             key={p.id}
             onClick={() => onTabChange(p.id)}
-            className={clsx(
+            className={cn(
               'p-6 rounded-xl border text-left transition-all hover:scale-[1.02]',
               p.bgColor,
               p.borderColor
             )}
           >
             <div className="flex items-center gap-3 mb-4">
-              <div className={clsx('p-2 rounded-lg', p.bgColor)}>
+              <div className={cn('p-2 rounded-lg', p.bgColor)}>
                 <Icon size={24} className={p.color} />
               </div>
               <div>
@@ -306,14 +306,14 @@ function OverviewTab({
                     </>
                   ) : (
                     <>
-                      <XCircle size={12} className="text-slate-500" />
-                      <span className="text-xs text-slate-500">Not configured</span>
+                      <XCircle size={12} className="text-zinc-500" />
+                      <span className="text-xs text-zinc-500">Not configured</span>
                     </>
                   )}
                 </div>
               </div>
             </div>
-            <div className="text-sm text-slate-300">
+            <div className="text-sm text-zinc-300">
               {p.entityCount} {p.entityLabel}
             </div>
           </button>
@@ -347,21 +347,21 @@ function N8nTab({ workflows }: { workflows: N8nWorkflow[] }) {
         />
       ) : (
         <Card>
-          <div className="divide-y divide-slate-700">
+          <div className="divide-y divide-zinc-700">
             {workflows.map((w) => (
               <div key={w.id} className="p-4 flex items-center justify-between">
                 <div>
                   <div className="text-white font-medium">
                     {w.workflow_name || w.workflow_id}
                   </div>
-                  <div className="text-xs text-slate-400 mt-1 flex items-center gap-3">
+                  <div className="text-xs text-zinc-400 mt-1 flex items-center gap-3">
                     <span>ID: {w.workflow_id}</span>
                     {w.ingestion_mode && (
                       <Badge variant="default" size="sm">{w.ingestion_mode}</Badge>
                     )}
                   </div>
                 </div>
-                <div className="text-xs text-slate-500 flex items-center gap-2">
+                <div className="text-xs text-zinc-500 flex items-center gap-2">
                   <Globe size={12} />
                   {w.webhook_url}
                 </div>
@@ -396,7 +396,7 @@ function OpenClawTab({
           />
         ) : (
           <Card>
-            <div className="divide-y divide-slate-700">
+            <div className="divide-y divide-zinc-700">
               {instances.map((inst) => (
                 <div key={inst.id} className="p-4 flex items-center justify-between">
                   <div>
@@ -411,7 +411,7 @@ function OpenClawTab({
                         <Badge variant="info" size="sm">OTEL</Badge>
                       )}
                     </div>
-                    <div className="text-xs text-slate-400 mt-1 flex items-center gap-3">
+                    <div className="text-xs text-zinc-400 mt-1 flex items-center gap-3">
                       <span className="flex items-center gap-1">
                         <Globe size={12} />
                         {inst.gateway_url}
@@ -419,7 +419,7 @@ function OpenClawTab({
                       <Badge variant="default" size="sm">{inst.ingestion_mode}</Badge>
                     </div>
                   </div>
-                  <div className="text-xs text-slate-500">
+                  <div className="text-xs text-zinc-500">
                     {inst.channels_configured.length > 0
                       ? inst.channels_configured.join(', ')
                       : 'No channels'}
@@ -442,7 +442,7 @@ function OpenClawTab({
           />
         ) : (
           <Card>
-            <div className="divide-y divide-slate-700">
+            <div className="divide-y divide-zinc-700">
               {agents.map((agent) => (
                 <div key={agent.id} className="p-4 flex items-center justify-between">
                   <div>
@@ -456,12 +456,12 @@ function OpenClawTab({
                         <Badge variant="default" size="sm">Paused</Badge>
                       )}
                     </div>
-                    <div className="text-xs text-slate-400 mt-1 flex items-center gap-3">
+                    <div className="text-xs text-zinc-400 mt-1 flex items-center gap-3">
                       <span>Key: {agent.agent_key}</span>
                       {agent.model && <span>Model: {agent.model}</span>}
                     </div>
                   </div>
-                  <div className="text-right text-xs text-slate-400">
+                  <div className="text-right text-xs text-zinc-400">
                     <div>{agent.total_sessions} sessions</div>
                     <div>{agent.total_messages} messages</div>
                   </div>
@@ -497,7 +497,7 @@ function DifyTab({
           />
         ) : (
           <Card>
-            <div className="divide-y divide-slate-700">
+            <div className="divide-y divide-zinc-700">
               {instances.map((inst) => (
                 <div key={inst.id} className="p-4 flex items-center justify-between">
                   <div>
@@ -509,7 +509,7 @@ function DifyTab({
                         <Badge variant="default" size="sm">Inactive</Badge>
                       )}
                     </div>
-                    <div className="text-xs text-slate-400 mt-1 flex items-center gap-3">
+                    <div className="text-xs text-zinc-400 mt-1 flex items-center gap-3">
                       <span className="flex items-center gap-1">
                         <Globe size={12} />
                         {inst.base_url}
@@ -517,7 +517,7 @@ function DifyTab({
                       <Badge variant="default" size="sm">{inst.ingestion_mode}</Badge>
                     </div>
                   </div>
-                  <div className="text-xs text-slate-500">
+                  <div className="text-xs text-zinc-500">
                     {inst.app_types_configured.length > 0
                       ? inst.app_types_configured.join(', ')
                       : 'No app types'}
@@ -540,7 +540,7 @@ function DifyTab({
           />
         ) : (
           <Card>
-            <div className="divide-y divide-slate-700">
+            <div className="divide-y divide-zinc-700">
               {apps.map((app) => (
                 <div key={app.id} className="p-4 flex items-center justify-between">
                   <div>
@@ -555,11 +555,11 @@ function DifyTab({
                         <Badge variant="default" size="sm">Paused</Badge>
                       )}
                     </div>
-                    <div className="text-xs text-slate-400 mt-1">
+                    <div className="text-xs text-zinc-400 mt-1">
                       App ID: {app.app_id}
                     </div>
                   </div>
-                  <div className="text-right text-xs text-slate-400">
+                  <div className="text-right text-xs text-zinc-400">
                     <div>{app.total_runs} runs</div>
                     <div>{app.total_tokens.toLocaleString()} tokens</div>
                   </div>
@@ -604,7 +604,7 @@ function LangGraphTab({
           />
         ) : (
           <Card>
-            <div className="divide-y divide-slate-700">
+            <div className="divide-y divide-zinc-700">
               {deployments.map((dep) => (
                 <div key={dep.id} className="p-4 flex items-center justify-between">
                   <div>
@@ -616,7 +616,7 @@ function LangGraphTab({
                         <Badge variant="default" size="sm">Inactive</Badge>
                       )}
                     </div>
-                    <div className="text-xs text-slate-400 mt-1 flex items-center gap-3">
+                    <div className="text-xs text-zinc-400 mt-1 flex items-center gap-3">
                       <span className="flex items-center gap-1">
                         <Globe size={12} />
                         {dep.api_url}
@@ -643,7 +643,7 @@ function LangGraphTab({
           />
         ) : (
           <Card>
-            <div className="divide-y divide-slate-700">
+            <div className="divide-y divide-zinc-700">
               {assistants.map((asst) => (
                 <div key={asst.id} className="p-4 flex items-center justify-between">
                   <div>
@@ -657,12 +657,12 @@ function LangGraphTab({
                         <Badge variant="default" size="sm">Paused</Badge>
                       )}
                     </div>
-                    <div className="text-xs text-slate-400 mt-1 flex items-center gap-3">
+                    <div className="text-xs text-zinc-400 mt-1 flex items-center gap-3">
                       <span>Graph: {asst.graph_id}</span>
                       <span>ID: {asst.assistant_id}</span>
                     </div>
                   </div>
-                  <div className="text-right text-xs text-slate-400">
+                  <div className="text-right text-xs text-zinc-400">
                     <div>{asst.total_runs} runs</div>
                   </div>
                 </div>
@@ -689,9 +689,9 @@ function EmptyState({
   return (
     <Card>
       <div className="text-center py-12 px-4">
-        <Icon size={40} className="mx-auto mb-4 text-slate-600 opacity-50" />
-        <p className="text-slate-300 mb-2 font-medium">{title}</p>
-        <p className="text-sm text-slate-500">{description}</p>
+        <Icon size={40} className="mx-auto mb-4 text-zinc-600 opacity-50" />
+        <p className="text-zinc-300 mb-2 font-medium">{title}</p>
+        <p className="text-sm text-zinc-500">{description}</p>
       </div>
     </Card>
   )

@@ -12,7 +12,7 @@ export function FixesStatusCard({ isLoading }: FixesStatusCardProps) {
   if (isLoading) {
     return (
       <Card>
-        <div className="h-40 animate-pulse bg-slate-700 rounded-lg" />
+        <div className="h-40 animate-pulse bg-zinc-700 rounded-lg" />
       </Card>
     )
   }
@@ -47,7 +47,7 @@ export function FixesStatusCard({ isLoading }: FixesStatusCardProps) {
           <div className="text-4xl font-bold text-white">
             {fixStats.successRate}%
           </div>
-          <div className="text-sm text-slate-400 mb-1">
+          <div className="text-sm text-zinc-400 mb-1">
             success rate
           </div>
         </div>
@@ -55,17 +55,17 @@ export function FixesStatusCard({ isLoading }: FixesStatusCardProps) {
         <div className="grid grid-cols-3 gap-4 text-sm">
           <div className="flex items-center gap-2">
             <CheckCircle className="h-4 w-4 text-green-400" />
-            <span className="text-slate-400">Applied:</span>
+            <span className="text-zinc-400">Applied:</span>
             <span className="font-medium text-green-400">{fixStats.applied}</span>
           </div>
           <div className="flex items-center gap-2">
             <Clock className="h-4 w-4 text-yellow-400" />
-            <span className="text-slate-400">Pending:</span>
+            <span className="text-zinc-400">Pending:</span>
             <span className="font-medium text-yellow-400">{fixStats.pending}</span>
           </div>
           <div className="flex items-center gap-2">
             <XCircle className="h-4 w-4 text-red-400" />
-            <span className="text-slate-400">Rejected:</span>
+            <span className="text-zinc-400">Rejected:</span>
             <span className="font-medium text-red-400">{fixStats.rejected}</span>
           </div>
         </div>

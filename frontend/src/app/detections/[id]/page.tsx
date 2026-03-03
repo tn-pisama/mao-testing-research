@@ -28,7 +28,7 @@ import {
   Info,
   Zap,
 } from 'lucide-react'
-import clsx from 'clsx'
+import { cn } from '@/lib/utils'
 
 function getSeverityFromType(type: string): 'critical' | 'high' | 'medium' | 'low' {
   if (type.includes('infinite') || type.includes('deadlock')) return 'critical'
@@ -46,7 +46,7 @@ function SeverityBadge({ severity }: { severity: string }) {
   }
 
   return (
-    <span className={clsx(
+    <span className={cn(
       'px-2 py-1 text-xs font-medium rounded-full border',
       colors[severity as keyof typeof colors] || colors.medium
     )}>
@@ -127,7 +127,7 @@ export default function DetectionDetailPage() {
     return (
       <Layout>
         <div className="p-6 flex items-center justify-center min-h-[400px]">
-          <Loader2 size={32} className="animate-spin text-slate-400" />
+          <Loader2 size={32} className="animate-spin text-zinc-400" />
         </div>
       </Layout>
     )
@@ -140,7 +140,7 @@ export default function DetectionDetailPage() {
           <div className="flex items-center gap-4 mb-6">
             <button
               onClick={() => router.back()}
-              className="p-2 text-slate-400 hover:text-white hover:bg-slate-800 rounded-lg transition-colors"
+              className="p-2 text-zinc-400 hover:text-white hover:bg-zinc-800 rounded-lg transition-colors"
             >
               <ArrowLeft size={20} />
             </button>
@@ -148,8 +148,8 @@ export default function DetectionDetailPage() {
           </div>
           <Card>
             <CardContent className="p-8 text-center">
-              <AlertCircle size={48} className="mx-auto mb-4 text-slate-500" />
-              <p className="text-slate-400 mb-4">{error || 'Detection not found'}</p>
+              <AlertCircle size={48} className="mx-auto mb-4 text-zinc-500" />
+              <p className="text-zinc-400 mb-4">{error || 'Detection not found'}</p>
               <Button onClick={() => router.push('/detections')}>
                 Back to Detections
               </Button>
@@ -169,7 +169,7 @@ export default function DetectionDetailPage() {
         <div className="flex items-center gap-4 mb-6">
           <button
             onClick={() => router.back()}
-            className="p-2 text-slate-400 hover:text-white hover:bg-slate-800 rounded-lg transition-colors"
+            className="p-2 text-zinc-400 hover:text-white hover:bg-zinc-800 rounded-lg transition-colors"
           >
             <ArrowLeft size={20} />
           </button>
@@ -186,7 +186,7 @@ export default function DetectionDetailPage() {
                 )
               )}
             </div>
-            <p className="text-slate-400 text-sm">
+            <p className="text-zinc-400 text-sm">
               {detection.detection_type.replace(/_/g, ' ').replace(/\b\w/g, l => l.toUpperCase())}
             </p>
           </div>
@@ -202,17 +202,17 @@ export default function DetectionDetailPage() {
             <CardContent>
               <div className="grid md:grid-cols-2 gap-4">
                 <div>
-                  <p className="text-xs text-slate-500 mb-1">Detection Type</p>
+                  <p className="text-xs text-zinc-500 mb-1">Detection Type</p>
                   <p className="text-sm text-white font-medium">
                     {detection.detection_type.replace(/_/g, ' ')}
                   </p>
                 </div>
                 <div>
-                  <p className="text-xs text-slate-500 mb-1">Confidence</p>
+                  <p className="text-xs text-zinc-500 mb-1">Confidence</p>
                   <div className="flex items-center gap-2">
-                    <div className="flex-1 h-2 bg-slate-700 rounded-full overflow-hidden">
+                    <div className="flex-1 h-2 bg-zinc-700 rounded-full overflow-hidden">
                       <div
-                        className={clsx(
+                        className={cn(
                           'h-full rounded-full',
                           detection.confidence >= 80 ? 'bg-red-500' :
                           detection.confidence >= 60 ? 'bg-amber-500' : 'bg-blue-500'
@@ -226,13 +226,13 @@ export default function DetectionDetailPage() {
                   </div>
                 </div>
                 <div>
-                  <p className="text-xs text-slate-500 mb-1">Detection Method</p>
+                  <p className="text-xs text-zinc-500 mb-1">Detection Method</p>
                   <p className="text-sm text-white">{detection.method}</p>
                 </div>
                 <div>
-                  <p className="text-xs text-slate-500 mb-1">Detected At</p>
+                  <p className="text-xs text-zinc-500 mb-1">Detected At</p>
                   <p className="text-sm text-white flex items-center gap-1">
-                    <Clock size={14} className="text-slate-400" />
+                    <Clock size={14} className="text-zinc-400" />
                     {new Date(detection.created_at).toLocaleString()}
                   </p>
                 </div>
@@ -250,7 +250,7 @@ export default function DetectionDetailPage() {
                 </CardTitle>
               </CardHeader>
               <CardContent>
-                <p className="text-slate-300">{detection.explanation}</p>
+                <p className="text-zinc-300">{detection.explanation}</p>
               </CardContent>
             </Card>
           )}
@@ -265,7 +265,7 @@ export default function DetectionDetailPage() {
                 </CardTitle>
               </CardHeader>
               <CardContent>
-                <p className="text-slate-300">{detection.business_impact}</p>
+                <p className="text-zinc-300">{detection.business_impact}</p>
               </CardContent>
             </Card>
           )}
@@ -280,7 +280,7 @@ export default function DetectionDetailPage() {
                 </CardTitle>
               </CardHeader>
               <CardContent>
-                <p className="text-slate-300 mb-4">{detection.suggested_action}</p>
+                <p className="text-zinc-300 mb-4">{detection.suggested_action}</p>
                 <Link href={`/healing?detection=${detection.id}`}>
                   <Button size="sm" leftIcon={<Wrench size={14} />}>
                     View Auto-Fix Suggestions
@@ -296,7 +296,7 @@ export default function DetectionDetailPage() {
               <CardTitle>Technical Details</CardTitle>
             </CardHeader>
             <CardContent>
-              <pre className="text-xs text-slate-400 bg-slate-900 p-4 rounded-lg overflow-x-auto">
+              <pre className="text-xs text-zinc-400 bg-zinc-900 p-4 rounded-lg overflow-x-auto">
                 {JSON.stringify(detection.details, null, 2)}
               </pre>
             </CardContent>
@@ -350,7 +350,7 @@ export default function DetectionDetailPage() {
 
                 {!detection.validated && (
                   <div className="flex items-center gap-2">
-                    <span className="text-sm text-slate-400 mr-2">Was this helpful?</span>
+                    <span className="text-sm text-zinc-400 mr-2">Was this helpful?</span>
                     <Button
                       variant="secondary"
                       size="sm"
@@ -376,8 +376,8 @@ export default function DetectionDetailPage() {
                   <div className="flex items-center gap-2 text-sm">
                     {detection.false_positive ? (
                       <>
-                        <XCircle size={16} className="text-slate-400" />
-                        <span className="text-slate-400">Marked as false positive</span>
+                        <XCircle size={16} className="text-zinc-400" />
+                        <span className="text-zinc-400">Marked as false positive</span>
                       </>
                     ) : (
                       <>

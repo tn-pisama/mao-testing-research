@@ -29,7 +29,7 @@ export function AgentMetricsPanel({ agents = [] }: AgentMetricsPanelProps) {
         <Card key={label}>
           <div className="p-4 text-center">
             <div className="text-2xl font-bold text-white">{value}</div>
-            <div className="text-xs text-slate-400 mt-1">{label}</div>
+            <div className="text-xs text-zinc-400 mt-1">{label}</div>
           </div>
         </Card>
       ))}

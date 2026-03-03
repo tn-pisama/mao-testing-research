@@ -38,7 +38,7 @@ const severityConfig = {
   critical: { icon: AlertCircle, color: 'text-red-400', bg: 'bg-red-500/20', label: 'Critical' },
   high: { icon: AlertTriangle, color: 'text-orange-400', bg: 'bg-orange-500/20', label: 'High' },
   medium: { icon: AlertTriangle, color: 'text-amber-400', bg: 'bg-amber-500/20', label: 'Medium' },
-  low: { icon: Info, color: 'text-slate-400', bg: 'bg-slate-500/20', label: 'Low' },
+  low: { icon: Info, color: 'text-zinc-400', bg: 'bg-zinc-500/20', label: 'Low' },
   info: { icon: Info, color: 'text-blue-400', bg: 'bg-blue-500/20', label: 'Info' },
 }
 
@@ -61,17 +61,17 @@ function DimensionBar({ dimension }: { dimension: QualityDimensionScore }) {
         className={`flex items-center justify-between mb-1 ${hasDetails ? 'cursor-pointer' : ''}`}
         onClick={() => hasDetails && setExpanded(!expanded)}
       >
-        <span className="text-sm text-slate-300 capitalize flex items-center gap-1">
+        <span className="text-sm text-zinc-300 capitalize flex items-center gap-1">
           {dimension.dimension.replace(/_/g, ' ')}
           {hasDetails && (
-            <ChevronDown size={12} className={`text-slate-500 transition-transform ${expanded ? 'rotate-180' : ''}`} />
+            <ChevronDown size={12} className={`text-zinc-500 transition-transform ${expanded ? 'rotate-180' : ''}`} />
           )}
         </span>
         <span className={`text-sm font-medium ${getScoreColor(dimension.score)}`}>
           {scorePercent}%
         </span>
       </div>
-      <div className="h-2 bg-slate-700 rounded-full overflow-hidden">
+      <div className="h-2 bg-zinc-700 rounded-full overflow-hidden">
         <div
           className={`h-full ${barColor} transition-all duration-500`}
           style={{ width: `${scorePercent}%` }}
@@ -80,17 +80,17 @@ function DimensionBar({ dimension }: { dimension: QualityDimensionScore }) {
       {dimension.issues.length > 0 && (
         <div className="mt-1">
           {dimension.issues.slice(0, 2).map((issue, i) => (
-            <p key={i} className="text-xs text-slate-500 truncate">{issue}</p>
+            <p key={i} className="text-xs text-zinc-500 truncate">{issue}</p>
           ))}
         </div>
       )}
 
       {expanded && (
-        <div className="mt-2 ml-2 pl-3 border-l-2 border-slate-700 space-y-2">
+        <div className="mt-2 ml-2 pl-3 border-l-2 border-zinc-700 space-y-2">
           {dimension.suggestions.length > 0 && (
             <div>
-              <span className="text-xs text-slate-500 uppercase">Suggestions</span>
-              <ul className="text-xs text-slate-400 space-y-1 mt-1">
+              <span className="text-xs text-zinc-500 uppercase">Suggestions</span>
+              <ul className="text-xs text-zinc-400 space-y-1 mt-1">
                 {dimension.suggestions.map((s, i) => (
                   <li key={i} className="flex items-start gap-1">
                     <Lightbulb size={10} className="text-amber-400 mt-0.5 flex-shrink-0" />
@@ -102,11 +102,11 @@ function DimensionBar({ dimension }: { dimension: QualityDimensionScore }) {
           )}
           {Object.keys(dimension.evidence || {}).length > 0 && (
             <div>
-              <span className="text-xs text-slate-500 uppercase">Evidence</span>
-              <div className="text-xs text-slate-400 mt-1 space-y-1">
+              <span className="text-xs text-zinc-500 uppercase">Evidence</span>
+              <div className="text-xs text-zinc-400 mt-1 space-y-1">
                 {Object.entries(dimension.evidence).map(([key, val]) => (
                   <div key={key}>
-                    <span className="text-slate-500">{key.replace(/_/g, ' ')}:</span>{' '}
+                    <span className="text-zinc-500">{key.replace(/_/g, ' ')}:</span>{' '}
                     {String(val)}
                   </div>
                 ))}
@@ -135,7 +135,7 @@ function AgentScoreCard({ agent }: { agent: AgentQualityScore }) {
             </div>
             <div>
               <h4 className="text-white font-medium">{agent.agent_name}</h4>
-              <p className="text-sm text-slate-500">{agent.agent_type}</p>
+              <p className="text-sm text-zinc-500">{agent.agent_type}</p>
             </div>
           </div>
           <div className="flex items-center gap-3">
@@ -143,15 +143,15 @@ function AgentScoreCard({ agent }: { agent: AgentQualityScore }) {
               <div className={`text-lg font-bold ${getScoreColor(agent.overall_score)}`}>
                 {Math.round(agent.overall_score * 100)}%
               </div>
-              <div className="text-xs text-slate-500">{agent.issues_count} issues</div>
+              <div className="text-xs text-zinc-500">{agent.issues_count} issues</div>
             </div>
             <QualityGradeBadge grade={agent.grade} size="md" />
           </div>
         </div>
 
         {expanded && (
-          <div className="mt-4 pt-4 border-t border-slate-700">
-            <h5 className="text-sm font-medium text-slate-300 mb-3">Dimension Scores</h5>
+          <div className="mt-4 pt-4 border-t border-zinc-700">
+            <h5 className="text-sm font-medium text-zinc-300 mb-3">Dimension Scores</h5>
             {agent.dimensions.map((dim, i) => (
               <DimensionBar key={i} dimension={dim} />
             ))}
@@ -171,9 +171,9 @@ function AgentScoreCard({ agent }: { agent: AgentQualityScore }) {
             )}
 
             {agent.reasoning && (
-              <div className="mt-4 p-3 bg-slate-800 rounded-lg">
-                <h5 className="text-xs font-medium text-slate-500 uppercase mb-2">Reasoning</h5>
-                <p className="text-sm text-slate-300 leading-relaxed whitespace-pre-wrap">
+              <div className="mt-4 p-3 bg-zinc-800 rounded-lg">
+                <h5 className="text-xs font-medium text-zinc-500 uppercase mb-2">Reasoning</h5>
+                <p className="text-sm text-zinc-300 leading-relaxed whitespace-pre-wrap">
                   {agent.reasoning}
                 </p>
               </div>
@@ -212,11 +212,11 @@ function ImprovementCard({ improvement }: { improvement: QualityImprovement }) {
                 {improvement.severity}
               </Badge>
             </div>
-            <p className="text-sm text-slate-400">{improvement.description}</p>
+            <p className="text-sm text-zinc-400">{improvement.description}</p>
 
             <div className="flex items-center gap-4 mt-2">
-              <span className="text-xs text-slate-500">{improvement.category}</span>
-              <span className="text-xs text-slate-500">
+              <span className="text-xs text-zinc-500">{improvement.category}</span>
+              <span className="text-xs text-zinc-500">
                 {improvement.target_type}: {improvement.target_id}
               </span>
               <span className={`text-xs flex items-center gap-1 ${effortColors[improvement.effort]}`}>
@@ -228,30 +228,30 @@ function ImprovementCard({ improvement }: { improvement: QualityImprovement }) {
         </div>
 
         {expanded && (
-          <div className="mt-4 pt-4 border-t border-slate-700 space-y-3">
+          <div className="mt-4 pt-4 border-t border-zinc-700 space-y-3">
             {improvement.rationale && (
               <div>
-                <h5 className="text-xs font-medium text-slate-500 uppercase mb-1">Rationale</h5>
-                <p className="text-sm text-slate-300">{improvement.rationale}</p>
+                <h5 className="text-xs font-medium text-zinc-500 uppercase mb-1">Rationale</h5>
+                <p className="text-sm text-zinc-300">{improvement.rationale}</p>
               </div>
             )}
             {improvement.suggested_change && (
               <div>
-                <h5 className="text-xs font-medium text-slate-500 uppercase mb-1">Suggested Change</h5>
-                <p className="text-sm text-slate-300">{improvement.suggested_change}</p>
+                <h5 className="text-xs font-medium text-zinc-500 uppercase mb-1">Suggested Change</h5>
+                <p className="text-sm text-zinc-300">{improvement.suggested_change}</p>
               </div>
             )}
             {improvement.code_example && (
               <div>
-                <h5 className="text-xs font-medium text-slate-500 uppercase mb-1">Code Example</h5>
-                <pre className="text-sm text-slate-400 bg-slate-900 p-3 rounded-lg overflow-x-auto">
+                <h5 className="text-xs font-medium text-zinc-500 uppercase mb-1">Code Example</h5>
+                <pre className="text-sm text-zinc-400 bg-zinc-900 p-3 rounded-lg overflow-x-auto">
                   {improvement.code_example}
                 </pre>
               </div>
             )}
             {improvement.estimated_impact && (
               <div>
-                <h5 className="text-xs font-medium text-slate-500 uppercase mb-1">Estimated Impact</h5>
+                <h5 className="text-xs font-medium text-zinc-500 uppercase mb-1">Estimated Impact</h5>
                 <p className="text-sm text-green-400">{improvement.estimated_impact}</p>
               </div>
             )}
@@ -417,14 +417,14 @@ export default function QualityDetailPage() {
     return (
       <Layout>
         <div className="p-6 max-w-6xl mx-auto">
-          <Link href="/quality" className="flex items-center gap-2 text-slate-400 hover:text-white mb-6">
+          <Link href="/quality" className="flex items-center gap-2 text-zinc-400 hover:text-white mb-6">
             <ArrowLeft size={18} />
             Back to Quality Assessments
           </Link>
           <Card>
             <div className="text-center py-12">
               <AlertCircle className="w-12 h-12 text-red-400 mx-auto mb-4" />
-              <p className="text-slate-400">Assessment not found</p>
+              <p className="text-zinc-400">Assessment not found</p>
             </div>
           </Card>
         </div>
@@ -438,7 +438,7 @@ export default function QualityDetailPage() {
   return (
     <Layout>
       <div className="p-6 max-w-6xl mx-auto">
-        <Link href="/quality" className="flex items-center gap-2 text-slate-400 hover:text-white mb-6">
+        <Link href="/quality" className="flex items-center gap-2 text-zinc-400 hover:text-white mb-6">
           <ArrowLeft size={18} />
           Back to Quality Assessments
         </Link>
@@ -451,7 +451,7 @@ export default function QualityDetailPage() {
               <h1 className="text-2xl font-bold text-white mb-1">
                 {assessment.workflow_name}
               </h1>
-              <p className="text-slate-400">
+              <p className="text-zinc-400">
                 Assessed {new Date(assessment.assessed_at).toLocaleString()}
               </p>
             </div>
@@ -460,20 +460,20 @@ export default function QualityDetailPage() {
             <div className={`text-4xl font-bold ${getScoreColor(assessment.overall_score)}`}>
               {Math.round(assessment.overall_score * 100)}%
             </div>
-            <div className="text-sm text-slate-500">Overall Score</div>
+            <div className="text-sm text-zinc-500">Overall Score</div>
           </div>
         </div>
 
         {/* Tabs */}
-        <div className="flex gap-1 mb-6 bg-slate-800 rounded-lg p-1">
+        <div className="flex gap-1 mb-6 bg-zinc-800 rounded-lg p-1">
           {tabs.map((tab) => (
             <button
               key={tab.id}
               onClick={() => setActiveTab(tab.id)}
               className={`flex-1 px-4 py-2 rounded-md text-sm font-medium transition-colors ${
                 activeTab === tab.id
-                  ? 'bg-slate-700 text-white'
-                  : 'text-slate-400 hover:text-white'
+                  ? 'bg-zinc-700 text-white'
+                  : 'text-zinc-400 hover:text-white'
               }`}
             >
               {tab.label}
@@ -500,19 +500,19 @@ export default function QualityDetailPage() {
               </CardHeader>
               <CardContent>
                 <div className="space-y-4">
-                  <div className="flex items-center justify-between p-3 bg-slate-800 rounded-lg">
+                  <div className="flex items-center justify-between p-3 bg-zinc-800 rounded-lg">
                     <div className="flex items-center gap-3">
                       <Bot size={18} className="text-blue-400" />
-                      <span className="text-slate-300">Agent Quality (60%)</span>
+                      <span className="text-zinc-300">Agent Quality (60%)</span>
                     </div>
                     <span className={`font-bold ${getScoreColor(assessment.agent_quality_score)}`}>
                       {Math.round(assessment.agent_quality_score * 100)}%
                     </span>
                   </div>
-                  <div className="flex items-center justify-between p-3 bg-slate-800 rounded-lg">
+                  <div className="flex items-center justify-between p-3 bg-zinc-800 rounded-lg">
                     <div className="flex items-center gap-3">
                       <GitBranch size={18} className="text-purple-400" />
-                      <span className="text-slate-300">Orchestration Quality (40%)</span>
+                      <span className="text-zinc-300">Orchestration Quality (40%)</span>
                     </div>
                     <span className={`font-bold ${getScoreColor(assessment.orchestration_quality_score)}`}>
                       {Math.round(assessment.orchestration_quality_score * 100)}%
@@ -528,21 +528,21 @@ export default function QualityDetailPage() {
               </CardHeader>
               <CardContent>
                 <div className="grid grid-cols-2 gap-4">
-                  <div className="p-3 bg-slate-800 rounded-lg">
+                  <div className="p-3 bg-zinc-800 rounded-lg">
                     <div className="text-2xl font-bold text-red-400">{criticalCount}</div>
-                    <div className="text-sm text-slate-400">Critical</div>
+                    <div className="text-sm text-zinc-400">Critical</div>
                   </div>
-                  <div className="p-3 bg-slate-800 rounded-lg">
+                  <div className="p-3 bg-zinc-800 rounded-lg">
                     <div className="text-2xl font-bold text-orange-400">{highCount}</div>
-                    <div className="text-sm text-slate-400">High</div>
+                    <div className="text-sm text-zinc-400">High</div>
                   </div>
-                  <div className="p-3 bg-slate-800 rounded-lg">
+                  <div className="p-3 bg-zinc-800 rounded-lg">
                     <div className="text-2xl font-bold text-white">{assessment.total_issues}</div>
-                    <div className="text-sm text-slate-400">Total Issues</div>
+                    <div className="text-sm text-zinc-400">Total Issues</div>
                   </div>
-                  <div className="p-3 bg-slate-800 rounded-lg">
+                  <div className="p-3 bg-zinc-800 rounded-lg">
                     <div className="text-2xl font-bold text-blue-400">{assessment.agent_scores.length}</div>
-                    <div className="text-sm text-slate-400">Agents</div>
+                    <div className="text-sm text-zinc-400">Agents</div>
                   </div>
                 </div>
               </CardContent>
@@ -556,7 +556,7 @@ export default function QualityDetailPage() {
                 <CardContent>
                   <ul className="space-y-2">
                     {assessment.key_findings.map((finding, i) => (
-                      <li key={i} className="flex items-start gap-2 text-slate-300">
+                      <li key={i} className="flex items-start gap-2 text-zinc-300">
                         <CheckCircle size={16} className="text-green-400 mt-0.5 flex-shrink-0" />
                         {finding}
                       </li>
@@ -575,7 +575,7 @@ export default function QualityDetailPage() {
                   </CardTitle>
                 </CardHeader>
                 <CardContent>
-                  <p className="text-sm text-slate-300 leading-relaxed whitespace-pre-wrap">
+                  <p className="text-sm text-zinc-300 leading-relaxed whitespace-pre-wrap">
                     {assessment.reasoning}
                   </p>
                 </CardContent>
@@ -589,8 +589,8 @@ export default function QualityDetailPage() {
             {assessment.agent_scores.length === 0 ? (
               <Card>
                 <div className="text-center py-12">
-                  <Bot className="w-12 h-12 text-slate-600 mx-auto mb-4" />
-                  <p className="text-slate-400">No agent scores available</p>
+                  <Bot className="w-12 h-12 text-zinc-600 mx-auto mb-4" />
+                  <p className="text-zinc-400">No agent scores available</p>
                 </div>
               </Card>
             ) : (
@@ -666,21 +666,21 @@ export default function QualityDetailPage() {
                   <div className={`text-2xl font-bold ${getScoreColor(assessment.orchestration_score.overall_score)}`}>
                     {Math.round(assessment.orchestration_score.overall_score * 100)}%
                   </div>
-                  <div className="text-sm text-slate-400">
+                  <div className="text-sm text-zinc-400">
                     {assessment.orchestration_score.issues_count} issues found
                   </div>
                 </div>
               </div>
 
-              <h4 className="text-sm font-medium text-slate-300 mb-4">Dimension Scores</h4>
+              <h4 className="text-sm font-medium text-zinc-300 mb-4">Dimension Scores</h4>
               {assessment.orchestration_score.dimensions.map((dim, i) => (
                 <DimensionBar key={i} dimension={dim} />
               ))}
 
               {assessment.orchestration_score.detected_pattern && (
-                <div className="mt-6 p-3 bg-slate-800 rounded-lg">
-                  <span className="text-xs text-slate-500 uppercase">Detected Pattern</span>
-                  <p className="text-sm text-slate-300 mt-1 capitalize">
+                <div className="mt-6 p-3 bg-zinc-800 rounded-lg">
+                  <span className="text-xs text-zinc-500 uppercase">Detected Pattern</span>
+                  <p className="text-sm text-zinc-300 mt-1 capitalize">
                     {assessment.orchestration_score.detected_pattern.replace(/_/g, ' ')}
                   </p>
                 </div>
@@ -688,14 +688,14 @@ export default function QualityDetailPage() {
 
               {assessment.orchestration_score.complexity_metrics && (
                 <div className="mt-6">
-                  <h4 className="text-sm font-medium text-slate-300 mb-3">Complexity Metrics</h4>
+                  <h4 className="text-sm font-medium text-zinc-300 mb-3">Complexity Metrics</h4>
                   <div className="grid grid-cols-3 gap-3">
                     {Object.entries(assessment.orchestration_score.complexity_metrics).map(([key, val]) => (
-                      <div key={key} className="p-3 bg-slate-800 rounded-lg">
+                      <div key={key} className="p-3 bg-zinc-800 rounded-lg">
                         <div className="text-lg font-bold text-white">
                           {typeof val === 'number' ? (val % 1 ? val.toFixed(1) : val) : String(val)}
                         </div>
-                        <div className="text-xs text-slate-500 capitalize">{key.replace(/_/g, ' ')}</div>
+                        <div className="text-xs text-zinc-500 capitalize">{key.replace(/_/g, ' ')}</div>
                       </div>
                     ))}
                   </div>
@@ -703,9 +703,9 @@ export default function QualityDetailPage() {
               )}
 
               {assessment.orchestration_score.reasoning && (
-                <div className="mt-6 p-3 bg-slate-800 rounded-lg">
-                  <span className="text-xs text-slate-500 uppercase">Reasoning</span>
-                  <p className="text-sm text-slate-300 mt-2 leading-relaxed whitespace-pre-wrap">
+                <div className="mt-6 p-3 bg-zinc-800 rounded-lg">
+                  <span className="text-xs text-zinc-500 uppercase">Reasoning</span>
+                  <p className="text-sm text-zinc-300 mt-2 leading-relaxed whitespace-pre-wrap">
                     {assessment.orchestration_score.reasoning}
                   </p>
                 </div>
@@ -721,7 +721,7 @@ export default function QualityDetailPage() {
                 <div className="text-center py-12">
                   <CheckCircle className="w-12 h-12 text-green-400 mx-auto mb-4" />
                   <p className="text-green-400 font-medium mb-2">No improvements needed!</p>
-                  <p className="text-slate-500 text-sm">
+                  <p className="text-zinc-500 text-sm">
                     This workflow meets all quality standards
                   </p>
                 </div>
@@ -759,7 +759,7 @@ export default function QualityDetailPage() {
                 <Heart size={20} className="text-green-400" />
                 <div>
                   <h3 className="text-white font-medium">Quality Healing</h3>
-                  <p className="text-sm text-slate-400">
+                  <p className="text-sm text-zinc-400">
                     Analyze and auto-fix quality issues in this workflow
                   </p>
                 </div>
@@ -852,31 +852,31 @@ export default function QualityDetailPage() {
                 </CardHeader>
                 <CardContent>
                   <div className="grid grid-cols-3 gap-4 mb-6">
-                    <div className="p-4 bg-slate-800 rounded-lg text-center">
-                      <div className="text-2xl font-bold text-slate-400">
+                    <div className="p-4 bg-zinc-800 rounded-lg text-center">
+                      <div className="text-2xl font-bold text-zinc-400">
                         {Math.round(healingRecord.before_score)}%
                       </div>
-                      <div className="text-xs text-slate-500 mt-1">Before Score</div>
+                      <div className="text-xs text-zinc-500 mt-1">Before Score</div>
                     </div>
-                    <div className="p-4 bg-slate-800 rounded-lg text-center">
+                    <div className="p-4 bg-zinc-800 rounded-lg text-center">
                       <div className="text-2xl font-bold text-green-400">
                         {Math.round(healingRecord.after_score)}%
                       </div>
-                      <div className="text-xs text-slate-500 mt-1">After Score</div>
+                      <div className="text-xs text-zinc-500 mt-1">After Score</div>
                     </div>
-                    <div className="p-4 bg-slate-800 rounded-lg text-center">
+                    <div className="p-4 bg-zinc-800 rounded-lg text-center">
                       <div
                         className={`text-2xl font-bold ${
                           (healingRecord.score_improvement || 0) > 0
                             ? 'text-green-400'
-                            : 'text-slate-400'
+                            : 'text-zinc-400'
                         }`}
                       >
                         {healingRecord.score_improvement !== null
                           ? `+${Math.round(healingRecord.score_improvement)}%`
                           : 'N/A'}
                       </div>
-                      <div className="text-xs text-slate-500 mt-1">Improvement</div>
+                      <div className="text-xs text-zinc-500 mt-1">Improvement</div>
                     </div>
                   </div>
 
@@ -906,9 +906,9 @@ export default function QualityDetailPage() {
             {!isHealingLoading && !healingRecord && healingSuggestions.length === 0 && (
               <Card>
                 <div className="text-center py-12">
-                  <Heart className="w-12 h-12 text-slate-600 mx-auto mb-4" />
-                  <p className="text-slate-400 mb-2">No healing data yet</p>
-                  <p className="text-slate-500 text-sm">
+                  <Heart className="w-12 h-12 text-zinc-600 mx-auto mb-4" />
+                  <p className="text-zinc-400 mb-2">No healing data yet</p>
+                  <p className="text-zinc-500 text-sm">
                     Click &quot;Trigger Healing&quot; to analyze and generate fix suggestions
                   </p>
                 </div>

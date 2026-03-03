@@ -15,7 +15,7 @@ export function AgentDetailHeader({ agent, isLive }: AgentDetailHeaderProps) {
         <div className="flex items-center justify-between">
           <div>
             <h2 className="text-xl font-semibold text-white">{agent?.name || 'Agent'}</h2>
-            <p className="text-sm text-slate-400">{agent?.type || 'worker'}</p>
+            <p className="text-sm text-zinc-400">{agent?.type || 'worker'}</p>
           </div>
           {isLive && (
             <span className="px-2 py-1 text-xs bg-green-500/20 text-green-400 rounded-full">

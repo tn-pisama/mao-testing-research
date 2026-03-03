@@ -76,7 +76,7 @@ function ProgressBar({ value, max = 100, color = 'indigo' }: { value: number; ma
   }
 
   return (
-    <div className="w-full bg-slate-700 rounded-full h-2">
+    <div className="w-full bg-zinc-700 rounded-full h-2">
       <div
         className={`h-2 rounded-full ${colorClasses[color as keyof typeof colorClasses] || colorClasses.indigo}`}
         style={{ width: `${percentage}%` }}
@@ -89,7 +89,7 @@ function TierBadge({ tier }: { tier: 1 | 2 | 3 }) {
   const styles = {
     1: 'bg-emerald-500/20 text-emerald-400 border-emerald-500/30',
     2: 'bg-amber-500/20 text-amber-400 border-amber-500/30',
-    3: 'bg-slate-500/20 text-slate-400 border-slate-500/30',
+    3: 'bg-zinc-500/20 text-zinc-400 border-zinc-500/30',
   }
   const labels = {
     1: 'Tier 1: >95%',
@@ -142,49 +142,49 @@ export default function BenchmarksPage() {
             </div>
             <h1 className="text-2xl font-bold text-white">Detection Benchmarks</h1>
           </div>
-          <p className="text-slate-400">
+          <p className="text-zinc-400">
             Transparent accuracy metrics for MAST failure mode detection
           </p>
         </div>
 
         {/* Overall Stats */}
         <div className="grid md:grid-cols-4 gap-4 mb-8">
-          <div className="bg-slate-800 rounded-xl p-5 border border-slate-700">
+          <div className="bg-zinc-800 rounded-xl p-5 border border-zinc-700">
             <div className="flex items-center gap-2 mb-2">
               <BarChart3 className="text-emerald-400" size={20} />
-              <span className="text-slate-400 text-sm">Detection Rate</span>
+              <span className="text-zinc-400 text-sm">Detection Rate</span>
             </div>
             <div className="text-3xl font-bold text-white">{OVERALL_STATS.detectionRate}%</div>
-            <div className="text-xs text-slate-500 mt-1">
+            <div className="text-xs text-zinc-500 mt-1">
               {OVERALL_STATS.detectedTraces.toLocaleString()}/{OVERALL_STATS.totalTraces.toLocaleString()} traces
             </div>
           </div>
 
-          <div className="bg-slate-800 rounded-xl p-5 border border-slate-700">
+          <div className="bg-zinc-800 rounded-xl p-5 border border-zinc-700">
             <div className="flex items-center gap-2 mb-2">
               <Shield className="text-indigo-400" size={20} />
-              <span className="text-slate-400 text-sm">Failure Modes</span>
+              <span className="text-zinc-400 text-sm">Failure Modes</span>
             </div>
             <div className="text-3xl font-bold text-white">{OVERALL_STATS.failureModes}</div>
-            <div className="text-xs text-slate-500 mt-1">F1-F16 MAST taxonomy</div>
+            <div className="text-xs text-zinc-500 mt-1">F1-F16 MAST taxonomy</div>
           </div>
 
-          <div className="bg-slate-800 rounded-xl p-5 border border-slate-700">
+          <div className="bg-zinc-800 rounded-xl p-5 border border-zinc-700">
             <div className="flex items-center gap-2 mb-2">
               <Zap className="text-amber-400" size={20} />
-              <span className="text-slate-400 text-sm">High Confidence</span>
+              <span className="text-zinc-400 text-sm">High Confidence</span>
             </div>
             <div className="text-3xl font-bold text-white">8</div>
-            <div className="text-xs text-slate-500 mt-1">Modes with &gt;95% detection</div>
+            <div className="text-xs text-zinc-500 mt-1">Modes with &gt;95% detection</div>
           </div>
 
-          <div className="bg-slate-800 rounded-xl p-5 border border-slate-700">
+          <div className="bg-zinc-800 rounded-xl p-5 border border-zinc-700">
             <div className="flex items-center gap-2 mb-2">
               <TrendingUp className="text-blue-400" size={20} />
-              <span className="text-slate-400 text-sm">Improvement</span>
+              <span className="text-zinc-400 text-sm">Improvement</span>
             </div>
             <div className="text-3xl font-bold text-white">+13.7%</div>
-            <div className="text-xs text-slate-500 mt-1">From 68.7% baseline</div>
+            <div className="text-xs text-zinc-500 mt-1">From 68.7% baseline</div>
           </div>
         </div>
 
@@ -193,22 +193,22 @@ export default function BenchmarksPage() {
           <div className="flex items-center gap-3 mb-4">
             <CheckCircle className="text-emerald-400" size={20} />
             <h2 className="text-lg font-semibold text-white">Tier 1: High Detection (&gt;95%)</h2>
-            <span className="text-xs text-slate-500">{tier1Modes.length} modes</span>
+            <span className="text-xs text-zinc-500">{tier1Modes.length} modes</span>
           </div>
-          <div className="bg-slate-800 rounded-xl border border-slate-700 overflow-hidden">
+          <div className="bg-zinc-800 rounded-xl border border-zinc-700 overflow-hidden">
             <table className="w-full">
-              <thead className="bg-slate-900/50">
+              <thead className="bg-zinc-900/50">
                 <tr>
-                  <th className="text-left px-4 py-3 text-xs font-medium text-slate-400">Mode</th>
-                  <th className="text-left px-4 py-3 text-xs font-medium text-slate-400">Category</th>
-                  <th className="text-left px-4 py-3 text-xs font-medium text-slate-400">Detection Rate</th>
-                  <th className="text-left px-4 py-3 text-xs font-medium text-slate-400">Sample</th>
-                  <th className="text-left px-4 py-3 text-xs font-medium text-slate-400"></th>
+                  <th className="text-left px-4 py-3 text-xs font-medium text-zinc-400">Mode</th>
+                  <th className="text-left px-4 py-3 text-xs font-medium text-zinc-400">Category</th>
+                  <th className="text-left px-4 py-3 text-xs font-medium text-zinc-400">Detection Rate</th>
+                  <th className="text-left px-4 py-3 text-xs font-medium text-zinc-400">Sample</th>
+                  <th className="text-left px-4 py-3 text-xs font-medium text-zinc-400"></th>
                 </tr>
               </thead>
-              <tbody className="divide-y divide-slate-700">
+              <tbody className="divide-y divide-zinc-700">
                 {tier1Modes.map((mode) => (
-                  <tr key={mode.code} className="hover:bg-slate-700/30">
+                  <tr key={mode.code} className="hover:bg-zinc-700/30">
                     <td className="px-4 py-3">
                       <div className="flex items-center gap-2">
                         <span className="text-emerald-400 text-sm">{mode.code}</span>
@@ -226,7 +226,7 @@ export default function BenchmarksPage() {
                         </div>
                       </div>
                     </td>
-                    <td className="px-4 py-3 text-slate-400 text-sm">
+                    <td className="px-4 py-3 text-zinc-400 text-sm">
                       {mode.detected}/{mode.total}
                     </td>
                     <td className="px-4 py-3">
@@ -248,22 +248,22 @@ export default function BenchmarksPage() {
           <div className="flex items-center gap-3 mb-4">
             <AlertTriangle className="text-amber-400" size={20} />
             <h2 className="text-lg font-semibold text-white">Tier 2: Good Detection (60-95%)</h2>
-            <span className="text-xs text-slate-500">{tier2Modes.length} modes</span>
+            <span className="text-xs text-zinc-500">{tier2Modes.length} modes</span>
           </div>
-          <div className="bg-slate-800 rounded-xl border border-slate-700 overflow-hidden">
+          <div className="bg-zinc-800 rounded-xl border border-zinc-700 overflow-hidden">
             <table className="w-full">
-              <thead className="bg-slate-900/50">
+              <thead className="bg-zinc-900/50">
                 <tr>
-                  <th className="text-left px-4 py-3 text-xs font-medium text-slate-400">Mode</th>
-                  <th className="text-left px-4 py-3 text-xs font-medium text-slate-400">Category</th>
-                  <th className="text-left px-4 py-3 text-xs font-medium text-slate-400">Detection Rate</th>
-                  <th className="text-left px-4 py-3 text-xs font-medium text-slate-400">Sample</th>
-                  <th className="text-left px-4 py-3 text-xs font-medium text-slate-400"></th>
+                  <th className="text-left px-4 py-3 text-xs font-medium text-zinc-400">Mode</th>
+                  <th className="text-left px-4 py-3 text-xs font-medium text-zinc-400">Category</th>
+                  <th className="text-left px-4 py-3 text-xs font-medium text-zinc-400">Detection Rate</th>
+                  <th className="text-left px-4 py-3 text-xs font-medium text-zinc-400">Sample</th>
+                  <th className="text-left px-4 py-3 text-xs font-medium text-zinc-400"></th>
                 </tr>
               </thead>
-              <tbody className="divide-y divide-slate-700">
+              <tbody className="divide-y divide-zinc-700">
                 {tier2Modes.map((mode) => (
-                  <tr key={mode.code} className="hover:bg-slate-700/30">
+                  <tr key={mode.code} className="hover:bg-zinc-700/30">
                     <td className="px-4 py-3">
                       <div className="flex items-center gap-2">
                         <span className="text-amber-400 text-sm">{mode.code}</span>
@@ -281,7 +281,7 @@ export default function BenchmarksPage() {
                         </div>
                       </div>
                     </td>
-                    <td className="px-4 py-3 text-slate-400 text-sm">
+                    <td className="px-4 py-3 text-zinc-400 text-sm">
                       {mode.detected}/{mode.total}
                     </td>
                     <td className="px-4 py-3">
@@ -301,26 +301,26 @@ export default function BenchmarksPage() {
         {/* Tier 3: RAG/Grounding */}
         <div className="mb-8">
           <div className="flex items-center gap-3 mb-4">
-            <Info className="text-slate-400" size={20} />
+            <Info className="text-zinc-400" size={20} />
             <h2 className="text-lg font-semibold text-white">Tier 3: RAG/Grounding (New)</h2>
-            <span className="text-xs text-slate-500">{tier3Modes.length} modes</span>
+            <span className="text-xs text-zinc-500">{tier3Modes.length} modes</span>
           </div>
-          <div className="bg-slate-800 rounded-xl border border-slate-700 overflow-hidden">
+          <div className="bg-zinc-800 rounded-xl border border-zinc-700 overflow-hidden">
             <table className="w-full">
-              <thead className="bg-slate-900/50">
+              <thead className="bg-zinc-900/50">
                 <tr>
-                  <th className="text-left px-4 py-3 text-xs font-medium text-slate-400">Mode</th>
-                  <th className="text-left px-4 py-3 text-xs font-medium text-slate-400">Category</th>
-                  <th className="text-left px-4 py-3 text-xs font-medium text-slate-400">Status</th>
-                  <th className="text-left px-4 py-3 text-xs font-medium text-slate-400">Description</th>
+                  <th className="text-left px-4 py-3 text-xs font-medium text-zinc-400">Mode</th>
+                  <th className="text-left px-4 py-3 text-xs font-medium text-zinc-400">Category</th>
+                  <th className="text-left px-4 py-3 text-xs font-medium text-zinc-400">Status</th>
+                  <th className="text-left px-4 py-3 text-xs font-medium text-zinc-400">Description</th>
                 </tr>
               </thead>
-              <tbody className="divide-y divide-slate-700">
+              <tbody className="divide-y divide-zinc-700">
                 {tier3Modes.map((mode) => (
-                  <tr key={mode.code} className="hover:bg-slate-700/30">
+                  <tr key={mode.code} className="hover:bg-zinc-700/30">
                     <td className="px-4 py-3">
                       <div className="flex items-center gap-2">
-                        <span className="text-slate-400 text-sm">{mode.code}</span>
+                        <span className="text-zinc-400 text-sm">{mode.code}</span>
                         <span className="text-white text-sm">{mode.name}</span>
                       </div>
                     </td>
@@ -328,11 +328,11 @@ export default function BenchmarksPage() {
                       <CategoryBadge category={mode.category} />
                     </td>
                     <td className="px-4 py-3">
-                      <span className="px-2 py-0.5 text-xs rounded bg-slate-600/50 text-slate-300">
+                      <span className="px-2 py-0.5 text-xs rounded bg-zinc-600/50 text-zinc-300">
                         Evaluation Pending
                       </span>
                     </td>
-                    <td className="px-4 py-3 text-slate-400 text-sm">
+                    <td className="px-4 py-3 text-zinc-400 text-sm">
                       {mode.description}
                     </td>
                   </tr>
@@ -343,28 +343,28 @@ export default function BenchmarksPage() {
         </div>
 
         {/* Methodology */}
-        <div className="bg-slate-800 rounded-xl border border-slate-700 overflow-hidden">
+        <div className="bg-zinc-800 rounded-xl border border-zinc-700 overflow-hidden">
           <button
             onClick={() => setShowMethodology(!showMethodology)}
-            className="w-full flex items-center justify-between p-4 text-left hover:bg-slate-700/30"
+            className="w-full flex items-center justify-between p-4 text-left hover:bg-zinc-700/30"
           >
             <div className="flex items-center gap-2">
               <FileText className="text-indigo-400" size={20} />
               <h2 className="text-lg font-semibold text-white">Methodology & Transparency</h2>
             </div>
             {showMethodology ? (
-              <ChevronUp className="text-slate-400" size={20} />
+              <ChevronUp className="text-zinc-400" size={20} />
             ) : (
-              <ChevronDown className="text-slate-400" size={20} />
+              <ChevronDown className="text-zinc-400" size={20} />
             )}
           </button>
 
           {showMethodology && (
-            <div className="p-4 pt-0 border-t border-slate-700">
+            <div className="p-4 pt-0 border-t border-zinc-700">
               <div className="grid md:grid-cols-2 gap-6 mt-4">
                 <div>
-                  <h3 className="text-sm font-medium text-slate-300 mb-3">Dataset</h3>
-                  <ul className="space-y-2 text-sm text-slate-400">
+                  <h3 className="text-sm font-medium text-zinc-300 mb-3">Dataset</h3>
+                  <ul className="space-y-2 text-sm text-zinc-400">
                     <li className="flex justify-between">
                       <span>Total Size</span>
                       <span className="text-white">{METHODOLOGY.datasetSize}</span>
@@ -379,10 +379,10 @@ export default function BenchmarksPage() {
                     </li>
                   </ul>
                   <div className="mt-3">
-                    <span className="text-xs text-slate-500">Data Sources:</span>
+                    <span className="text-xs text-zinc-500">Data Sources:</span>
                     <div className="flex flex-wrap gap-1 mt-1">
                       {METHODOLOGY.sources.map((source) => (
-                        <span key={source} className="px-2 py-0.5 text-xs bg-slate-700 text-slate-300 rounded">
+                        <span key={source} className="px-2 py-0.5 text-xs bg-zinc-700 text-zinc-300 rounded">
                           {source}
                         </span>
                       ))}
@@ -391,10 +391,10 @@ export default function BenchmarksPage() {
                 </div>
 
                 <div>
-                  <h3 className="text-sm font-medium text-slate-300 mb-3">Detection Approach</h3>
+                  <h3 className="text-sm font-medium text-zinc-300 mb-3">Detection Approach</h3>
                   <ul className="space-y-2">
                     {METHODOLOGY.detectionApproach.map((approach, i) => (
-                      <li key={i} className="flex items-start gap-2 text-sm text-slate-400">
+                      <li key={i} className="flex items-start gap-2 text-sm text-zinc-400">
                         <CheckCircle className="text-emerald-400 mt-0.5 flex-shrink-0" size={14} />
                         {approach}
                       </li>
@@ -403,8 +403,8 @@ export default function BenchmarksPage() {
                 </div>
               </div>
 
-              <div className="mt-6 pt-4 border-t border-slate-700">
-                <h3 className="text-sm font-medium text-slate-300 mb-3">Framework Coverage</h3>
+              <div className="mt-6 pt-4 border-t border-zinc-700">
+                <h3 className="text-sm font-medium text-zinc-300 mb-3">Framework Coverage</h3>
                 <div className="flex flex-wrap gap-2">
                   {METHODOLOGY.frameworks.map((framework) => (
                     <span key={framework} className="px-3 py-1 text-sm bg-indigo-500/20 text-indigo-300 rounded-lg">
@@ -414,17 +414,17 @@ export default function BenchmarksPage() {
                 </div>
               </div>
 
-              <div className="mt-6 p-4 bg-slate-900/50 rounded-lg">
+              <div className="mt-6 p-4 bg-zinc-900/50 rounded-lg">
                 <div className="flex items-start gap-2">
                   <Info className="text-blue-400 mt-0.5 flex-shrink-0" size={16} />
-                  <div className="text-sm text-slate-400">
+                  <div className="text-sm text-zinc-400">
                     <p className="mb-2">
-                      <strong className="text-slate-300">No mock data:</strong> All traces are sourced from real-world
+                      <strong className="text-zinc-300">No mock data:</strong> All traces are sourced from real-world
                       datasets including HuggingFace agent traces, GitHub repositories, and published research.
                     </p>
                     <p>
-                      <strong className="text-slate-300">Reproducibility:</strong> Full evaluation scripts available at{' '}
-                      <code className="px-1 bg-slate-800 rounded text-xs">/benchmarks/evaluation/</code>
+                      <strong className="text-zinc-300">Reproducibility:</strong> Full evaluation scripts available at{' '}
+                      <code className="px-1 bg-zinc-800 rounded text-xs">/benchmarks/evaluation/</code>
                     </p>
                   </div>
                 </div>
@@ -434,17 +434,17 @@ export default function BenchmarksPage() {
         </div>
 
         {/* Improvement History */}
-        <div className="mt-6 bg-slate-800/50 rounded-xl border border-slate-700 p-4">
-          <h3 className="text-sm font-medium text-slate-300 mb-4">Key Improvements</h3>
+        <div className="mt-6 bg-zinc-800/50 rounded-xl border border-zinc-700 p-4">
+          <h3 className="text-sm font-medium text-zinc-300 mb-4">Key Improvements</h3>
           <div className="grid md:grid-cols-4 gap-4">
             {FAILURE_MODES.filter(m => m.improvement).map((mode) => (
-              <div key={mode.code} className="p-3 bg-slate-900/50 rounded-lg">
+              <div key={mode.code} className="p-3 bg-zinc-900/50 rounded-lg">
                 <div className="flex items-center gap-2 mb-2">
                   <span className="text-emerald-400 text-xs">{mode.code}</span>
                   <span className="text-white text-sm">{mode.name}</span>
                 </div>
                 <div className="flex items-center gap-2">
-                  <span className="text-slate-500 text-xs">{mode.improvement?.before}%</span>
+                  <span className="text-zinc-500 text-xs">{mode.improvement?.before}%</span>
                   <TrendingUp className="text-emerald-400" size={12} />
                   <span className="text-emerald-400 text-xs font-semibold">{mode.improvement?.after}%</span>
                 </div>
@@ -454,7 +454,7 @@ export default function BenchmarksPage() {
         </div>
 
         {/* Footer */}
-        <div className="mt-6 text-center text-xs text-slate-500">
+        <div className="mt-6 text-center text-xs text-zinc-500">
           Last updated: {OVERALL_STATS.lastUpdated} | Evaluation runs automatically on new detector versions
         </div>
       </div>

@@ -6,7 +6,7 @@ export default function SDKPage() {
     <div>
       <div className="mb-8">
         <h1 className="text-3xl font-bold text-white mb-4">Python SDK Reference</h1>
-        <p className="text-lg text-slate-300">
+        <p className="text-lg text-zinc-300">
           Complete reference for the Pisama Python SDK. Instrument your multi-agent 
           systems with minimal code changes.
         </p>
@@ -51,7 +51,7 @@ with tracer.trace("my-workflow") as session:
 
       <section className="mb-10">
         <h2 className="text-xl font-bold text-white mb-4">MAOTracer Class</h2>
-        <p className="text-slate-300 mb-4">
+        <p className="text-zinc-300 mb-4">
           The main entry point for tracing multi-agent workflows.
         </p>
 
@@ -99,8 +99,8 @@ with tracer.trace("my-workflow") as session:
 
       <section className="mb-10">
         <h2 className="text-xl font-bold text-white mb-4">TraceSession Class</h2>
-        <p className="text-slate-300 mb-4">
-          Returned by <code className="bg-slate-800 px-1 rounded">tracer.trace()</code>. 
+        <p className="text-zinc-300 mb-4">
+          Returned by <code className="bg-zinc-800 px-1 rounded">tracer.trace()</code>. 
           Use to capture state and add metadata during a trace.
         </p>
 
@@ -278,7 +278,7 @@ await tracer.send_to_mao(execution)`}
 
       <section className="mb-10">
         <h2 className="text-xl font-bold text-white mb-4">Span Attributes</h2>
-        <p className="text-slate-300 mb-4">
+        <p className="text-zinc-300 mb-4">
           Set attributes on spans to provide additional context:
         </p>
 
@@ -349,16 +349,16 @@ tracer = MAOTracer(on_error="ignore")`}
 
       <section className="mb-10">
         <h2 className="text-xl font-bold text-white mb-4">Environment Variables</h2>
-        <div className="rounded-lg bg-slate-900 border border-slate-700 overflow-hidden">
+        <div className="rounded-lg bg-zinc-900 border border-zinc-700 overflow-hidden">
           <table className="w-full text-sm">
-            <thead className="bg-slate-800/50 border-b border-slate-700">
+            <thead className="bg-zinc-800/50 border-b border-zinc-700">
               <tr>
-                <th className="px-4 py-3 text-left text-slate-300 font-medium">Variable</th>
-                <th className="px-4 py-3 text-left text-slate-300 font-medium">Description</th>
-                <th className="px-4 py-3 text-left text-slate-300 font-medium">Default</th>
+                <th className="px-4 py-3 text-left text-zinc-300 font-medium">Variable</th>
+                <th className="px-4 py-3 text-left text-zinc-300 font-medium">Description</th>
+                <th className="px-4 py-3 text-left text-zinc-300 font-medium">Default</th>
               </tr>
             </thead>
-            <tbody className="divide-y divide-slate-700">
+            <tbody className="divide-y divide-zinc-700">
               <EnvRow name="MAO_API_KEY" description="API key for authentication" required />
               <EnvRow name="MAO_ENDPOINT" description="API endpoint URL" defaultValue="https://api.mao-testing.com" />
               <EnvRow name="MAO_ENVIRONMENT" description="Environment tag" defaultValue="production" />
@@ -370,22 +370,22 @@ tracer = MAOTracer(on_error="ignore")`}
         </div>
       </section>
 
-      <section className="bg-slate-800/50 rounded-xl border border-slate-700 p-6">
+      <section className="bg-zinc-800/50 rounded-xl border border-zinc-700 p-6">
         <h2 className="text-lg font-bold text-white mb-4">Next Steps</h2>
         <div className="grid md:grid-cols-2 gap-4">
           <Link
             href="/docs/cli"
-            className="p-4 rounded-lg bg-slate-900/50 border border-slate-700 hover:border-primary-500/50 transition-colors"
+            className="p-4 rounded-lg bg-zinc-900/50 border border-zinc-700 hover:border-blue-500/50 transition-colors"
           >
             <h3 className="font-medium text-white">CLI Reference</h3>
-            <p className="text-sm text-slate-400">Import traces, query detections from command line</p>
+            <p className="text-sm text-zinc-400">Import traces, query detections from command line</p>
           </Link>
           <Link
             href="/docs/api-reference"
-            className="p-4 rounded-lg bg-slate-900/50 border border-slate-700 hover:border-primary-500/50 transition-colors"
+            className="p-4 rounded-lg bg-zinc-900/50 border border-zinc-700 hover:border-blue-500/50 transition-colors"
           >
             <h3 className="font-medium text-white">REST API</h3>
-            <p className="text-sm text-slate-400">Direct API access for custom integrations</p>
+            <p className="text-sm text-zinc-400">Direct API access for custom integrations</p>
           </Link>
         </div>
       </section>
@@ -395,17 +395,17 @@ tracer = MAOTracer(on_error="ignore")`}
 
 function CodeBlock({ title, language, children }: { title: string; language: string; children: React.ReactNode }) {
   return (
-    <div className="rounded-lg bg-slate-900 border border-slate-700 overflow-hidden">
-      <div className="flex items-center justify-between px-4 py-2 border-b border-slate-700 bg-slate-800/50">
+    <div className="rounded-lg bg-zinc-900 border border-zinc-700 overflow-hidden">
+      <div className="flex items-center justify-between px-4 py-2 border-b border-zinc-700 bg-zinc-800/50">
         <div className="flex items-center gap-2">
-          <Terminal size={14} className="text-slate-400" />
-          <span className="text-sm text-slate-400">{title}</span>
+          <Terminal size={14} className="text-zinc-400" />
+          <span className="text-sm text-zinc-400">{title}</span>
         </div>
-        <button className="p-1 text-slate-400 hover:text-white transition-colors" aria-label="Copy code">
+        <button className="p-1 text-zinc-400 hover:text-white transition-colors" aria-label="Copy code">
           <Copy size={14} />
         </button>
       </div>
-      <pre className="p-4 text-sm text-slate-300 overflow-x-auto">
+      <pre className="p-4 text-sm text-zinc-300 overflow-x-auto">
         <code>{children}</code>
       </pre>
     </div>
@@ -426,28 +426,28 @@ function APIMethod({
   returns?: string
 }) {
   return (
-    <div className="rounded-lg bg-slate-800/50 border border-slate-700 overflow-hidden">
-      <div className="px-4 py-3 bg-slate-900/50 border-b border-slate-700">
-        <code className="text-primary-400 font-mono text-sm">{signature}</code>
+    <div className="rounded-lg bg-zinc-800/50 border border-zinc-700 overflow-hidden">
+      <div className="px-4 py-3 bg-zinc-900/50 border-b border-zinc-700">
+        <code className="text-blue-400 font-mono text-sm">{signature}</code>
       </div>
       <div className="p-4">
-        <p className="text-slate-300 mb-4">{description}</p>
+        <p className="text-zinc-300 mb-4">{description}</p>
         
-        <h4 className="text-sm font-semibold text-slate-400 mb-2">Parameters</h4>
+        <h4 className="text-sm font-semibold text-zinc-400 mb-2">Parameters</h4>
         <div className="space-y-2 mb-4">
           {params.map((param) => (
             <div key={param.name} className="flex gap-2 text-sm">
-              <code className="text-primary-400">{param.name}</code>
-              <span className="text-slate-500">({param.type})</span>
-              <span className="text-slate-400">- {param.description}</span>
+              <code className="text-blue-400">{param.name}</code>
+              <span className="text-zinc-500">({param.type})</span>
+              <span className="text-zinc-400">- {param.description}</span>
             </div>
           ))}
         </div>
         
         {returns && (
           <>
-            <h4 className="text-sm font-semibold text-slate-400 mb-2">Returns</h4>
-            <p className="text-sm text-slate-300">{returns}</p>
+            <h4 className="text-sm font-semibold text-zinc-400 mb-2">Returns</h4>
+            <p className="text-sm text-zinc-300">{returns}</p>
           </>
         )}
       </div>
@@ -467,9 +467,9 @@ function FrameworkIntegration({
   features: string[]
 }) {
   return (
-    <div className="rounded-lg bg-slate-800/30 border border-slate-700 p-6">
+    <div className="rounded-lg bg-zinc-800/30 border border-zinc-700 p-6">
       <h3 className="text-lg font-bold text-white mb-2">{name}</h3>
-      <code className="text-sm text-primary-400 bg-slate-900 px-2 py-1 rounded">{importPath}</code>
+      <code className="text-sm text-blue-400 bg-zinc-900 px-2 py-1 rounded">{importPath}</code>
       
       <div className="mt-4">
         <CodeBlock title={`${name} Example`} language="python">
@@ -478,10 +478,10 @@ function FrameworkIntegration({
       </div>
       
       <div className="mt-4">
-        <h4 className="text-sm font-semibold text-slate-400 mb-2">Features</h4>
+        <h4 className="text-sm font-semibold text-zinc-400 mb-2">Features</h4>
         <ul className="grid grid-cols-2 gap-2">
           {features.map((feature) => (
-            <li key={feature} className="flex items-center gap-2 text-sm text-slate-300">
+            <li key={feature} className="flex items-center gap-2 text-sm text-zinc-300">
               <Check size={14} className="text-emerald-400" />
               {feature}
             </li>
@@ -494,9 +494,9 @@ function FrameworkIntegration({
 
 function AttributeCard({ prefix, description }: { prefix: string; description: string }) {
   return (
-    <div className="p-3 rounded-lg bg-slate-800/50 border border-slate-700">
-      <code className="text-primary-400 text-sm">{prefix}</code>
-      <p className="text-sm text-slate-400 mt-1">{description}</p>
+    <div className="p-3 rounded-lg bg-zinc-800/50 border border-zinc-700">
+      <code className="text-blue-400 text-sm">{prefix}</code>
+      <p className="text-sm text-zinc-400 mt-1">{description}</p>
     </div>
   )
 }
@@ -515,11 +515,11 @@ function EnvRow({
   return (
     <tr>
       <td className="px-4 py-3">
-        <code className="text-primary-400">{name}</code>
+        <code className="text-blue-400">{name}</code>
         {required && <span className="ml-2 text-xs text-red-400">required</span>}
       </td>
-      <td className="px-4 py-3 text-slate-300">{description}</td>
-      <td className="px-4 py-3 text-slate-400">{defaultValue || "-"}</td>
+      <td className="px-4 py-3 text-zinc-300">{description}</td>
+      <td className="px-4 py-3 text-zinc-400">{defaultValue || "-"}</td>
     </tr>
   )
 }

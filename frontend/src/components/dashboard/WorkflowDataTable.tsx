@@ -72,7 +72,7 @@ const COLUMNS: Column[] = [
       value > 0 ? (
         <Badge variant="error">{value}</Badge>
       ) : (
-        <span className="text-slate-500 text-sm">—</span>
+        <span className="text-zinc-500 text-sm">—</span>
       )
     ),
   },
@@ -84,7 +84,7 @@ const COLUMNS: Column[] = [
     defaultVisible: true,
     width: '90px',
     render: (value) => (
-      <span className="text-slate-300">{value}</span>
+      <span className="text-zinc-300">{value}</span>
     ),
   },
   {
@@ -97,7 +97,7 @@ const COLUMNS: Column[] = [
     render: (value, row) => {
       const pattern = row.orchestration_score?.detected_pattern || 'unknown'
       return (
-        <span className="text-slate-300 text-sm capitalize">
+        <span className="text-zinc-300 text-sm capitalize">
           {pattern.replace(/-/g, ' ')}
         </span>
       )
@@ -111,7 +111,7 @@ const COLUMNS: Column[] = [
     defaultVisible: true,
     width: '90px',
     render: (value, row) => (
-      <span className="text-slate-300">{row.agent_scores.length}</span>
+      <span className="text-zinc-300">{row.agent_scores.length}</span>
     ),
   },
   {
@@ -143,7 +143,7 @@ const COLUMNS: Column[] = [
     defaultVisible: false,
     width: '160px',
     render: (value) => (
-      <span className="font-mono text-xs text-slate-400" title={value}>
+      <span className="font-mono text-xs text-zinc-400" title={value}>
         {value.slice(0, 8)}...
       </span>
     ),
@@ -156,7 +156,7 @@ const COLUMNS: Column[] = [
     defaultVisible: false,
     width: '120px',
     render: (value) => (
-      <span className="font-mono text-slate-300">{Math.round(value * 100)}%</span>
+      <span className="font-mono text-zinc-300">{Math.round(value * 100)}%</span>
     ),
   },
   {
@@ -167,7 +167,7 @@ const COLUMNS: Column[] = [
     defaultVisible: false,
     width: '120px',
     render: (value) => (
-      <span className="font-mono text-slate-300">{Math.round(value * 100)}%</span>
+      <span className="font-mono text-zinc-300">{Math.round(value * 100)}%</span>
     ),
   },
   {
@@ -178,7 +178,7 @@ const COLUMNS: Column[] = [
     defaultVisible: false,
     width: '100px',
     render: (value) => (
-      <span className="text-slate-400 text-sm capitalize">{value}</span>
+      <span className="text-zinc-400 text-sm capitalize">{value}</span>
     ),
   },
 ]
@@ -273,8 +273,8 @@ export function WorkflowDataTable({
                 className="fixed inset-0 z-10"
                 onClick={() => setShowColumnControl(false)}
               />
-              <div className="absolute right-0 mt-2 w-64 bg-slate-800 border border-slate-700 rounded-lg shadow-xl z-20">
-                <div className="p-3 border-b border-slate-700">
+              <div className="absolute right-0 mt-2 w-64 bg-zinc-800 border border-zinc-700 rounded-lg shadow-xl z-20">
+                <div className="p-3 border-b border-zinc-700">
                   <div className="text-sm font-medium text-white mb-2">
                     Column Visibility
                   </div>
@@ -299,19 +299,19 @@ export function WorkflowDataTable({
                   {COLUMNS.map(column => (
                     <label
                       key={column.key}
-                      className="flex items-center gap-2 px-3 py-2 hover:bg-slate-700/50 cursor-pointer"
+                      className="flex items-center gap-2 px-3 py-2 hover:bg-zinc-700/50 cursor-pointer"
                     >
                       <input
                         type="checkbox"
                         checked={visibleColumns.has(column.key)}
                         onChange={() => handleToggleColumn(column.key)}
-                        className="rounded border-slate-600 text-blue-400 focus:ring-blue-400"
+                        className="rounded border-zinc-600 text-blue-400 focus:ring-blue-400"
                       />
-                      <span className="text-sm text-slate-300 flex-1">{column.label}</span>
+                      <span className="text-sm text-zinc-300 flex-1">{column.label}</span>
                       {visibleColumns.has(column.key) ? (
                         <Eye size={14} className="text-blue-400" />
                       ) : (
-                        <EyeOff size={14} className="text-slate-500" />
+                        <EyeOff size={14} className="text-zinc-500" />
                       )}
                     </label>
                   ))}
@@ -323,14 +323,14 @@ export function WorkflowDataTable({
       </div>
 
       {/* Data Table */}
-      <div className="overflow-x-auto bg-slate-900 border border-slate-700 rounded-lg">
+      <div className="overflow-x-auto bg-zinc-900 border border-zinc-700 rounded-lg">
         <table className="w-full border-collapse">
-          <thead className="bg-slate-800/50">
-            <tr className="border-b border-slate-700">
+          <thead className="bg-zinc-800/50">
+            <tr className="border-b border-zinc-700">
               {visibleCols.map(column => (
                 <th
                   key={column.key}
-                  className="px-4 py-3 text-left text-sm font-medium text-slate-300"
+                  className="px-4 py-3 text-left text-sm font-medium text-zinc-300"
                   style={{ width: column.width }}
                 >
                   {column.sortable ? (
@@ -359,7 +359,7 @@ export function WorkflowDataTable({
           <tbody>
             {sortedData.length === 0 ? (
               <tr>
-                <td colSpan={visibleCols.length} className="px-4 py-12 text-center text-slate-400">
+                <td colSpan={visibleCols.length} className="px-4 py-12 text-center text-zinc-400">
                   No workflows found
                 </td>
               </tr>
@@ -369,8 +369,8 @@ export function WorkflowDataTable({
                   key={workflow.id}
                   onClick={() => onSelectWorkflow(workflow.workflow_id)}
                   className={`
-                    border-b border-slate-800 cursor-pointer transition-colors
-                    hover:bg-slate-800/50
+                    border-b border-zinc-800 cursor-pointer transition-colors
+                    hover:bg-zinc-800/50
                     ${selectedWorkflowId === workflow.workflow_id ? 'bg-blue-500/10 border-zinc-700' : ''}
                   `}
                 >
@@ -389,7 +389,7 @@ export function WorkflowDataTable({
       </div>
 
       {/* Summary Footer */}
-      <div className="text-sm text-slate-400 px-1">
+      <div className="text-sm text-zinc-400 px-1">
         Showing {sortedData.length} workflow{sortedData.length !== 1 ? 's' : ''}
         {sortConfig.key && sortConfig.direction && (
           <span className="ml-2">

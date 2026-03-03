@@ -55,15 +55,15 @@ export default function DiagnosePage() {
         {/* Header */}
         <div className="mb-8">
           <div className="flex items-center gap-3 mb-2">
-            <div className="p-2 bg-primary-600/20 rounded-lg">
-              <Search className="w-6 h-6 text-primary-400" />
+            <div className="p-2 bg-blue-600/20 rounded-lg">
+              <Search className="w-6 h-6 text-blue-400" />
             </div>
             <h1 className="text-2xl font-bold text-white">Agent Forensics</h1>
             <span className="px-2 py-0.5 text-xs font-medium bg-purple-500/20 text-purple-400 rounded-full">
               Beta
             </span>
           </div>
-          <p className="text-slate-400">
+          <p className="text-zinc-400">
             Paste your trace and find out why your AI agent failed - and how to fix it.
           </p>
         </div>
@@ -93,7 +93,7 @@ export default function DiagnosePage() {
               <button
                 onClick={handleAnalyze}
                 disabled={isAnalyzing || !traceContent.trim()}
-                className="flex-1 py-3 px-4 bg-primary-600 hover:bg-primary-500 disabled:bg-slate-700 disabled:text-slate-500 text-white font-medium rounded-lg transition-colors flex items-center justify-center gap-2"
+                className="flex-1 py-3 px-4 bg-blue-600 hover:bg-blue-500 disabled:bg-zinc-700 disabled:text-zinc-500 text-white font-medium rounded-lg transition-colors flex items-center justify-center gap-2"
               >
                 {isAnalyzing ? (
                   <>
@@ -111,7 +111,7 @@ export default function DiagnosePage() {
                 <button
                   onClick={handleClear}
                   disabled={isAnalyzing}
-                  className="py-3 px-4 bg-slate-700 hover:bg-slate-600 text-slate-300 font-medium rounded-lg transition-colors"
+                  className="py-3 px-4 bg-zinc-700 hover:bg-zinc-600 text-zinc-300 font-medium rounded-lg transition-colors"
                 >
                   Clear
                 </button>
@@ -124,8 +124,8 @@ export default function DiagnosePage() {
             {result ? (
               <DiagnosisResults result={result} />
             ) : (
-              <div className="h-full flex items-center justify-center bg-slate-800/50 rounded-xl border border-slate-700 border-dashed p-8">
-                <div className="text-center text-slate-500">
+              <div className="h-full flex items-center justify-center bg-zinc-800/50 rounded-xl border border-zinc-700 border-dashed p-8">
+                <div className="text-center text-zinc-500">
                   <Search className="w-12 h-12 mx-auto mb-4 opacity-50" />
                   <p className="text-lg font-medium mb-2">No diagnosis yet</p>
                   <p className="text-sm">Paste a trace and click Diagnose to see results</p>
@@ -136,7 +136,7 @@ export default function DiagnosePage() {
         </div>
 
         {/* Supported Formats */}
-        <div className="mt-8 p-6 bg-slate-800/50 rounded-xl border border-slate-700">
+        <div className="mt-8 p-6 bg-zinc-800/50 rounded-xl border border-zinc-700">
           <h3 className="text-lg font-semibold text-white mb-4">Supported Formats</h3>
           <div className="grid md:grid-cols-4 gap-4">
             {[
@@ -145,9 +145,9 @@ export default function DiagnosePage() {
               { name: 'OpenTelemetry', desc: 'OTEL spans (resourceSpans format)' },
               { name: 'Raw JSON', desc: 'Any JSON with agent/tool info' },
             ].map((fmt) => (
-              <div key={fmt.name} className="p-4 bg-slate-900/50 rounded-lg">
+              <div key={fmt.name} className="p-4 bg-zinc-900/50 rounded-lg">
                 <h4 className="font-medium text-white mb-1">{fmt.name}</h4>
-                <p className="text-sm text-slate-400">{fmt.desc}</p>
+                <p className="text-sm text-zinc-400">{fmt.desc}</p>
               </div>
             ))}
           </div>

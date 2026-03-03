@@ -4,7 +4,7 @@ import { memo } from 'react'
 import { Handle, Position, NodeProps } from 'reactflow'
 import { QualityGradeBadge } from '@/components/quality/QualityGradeBadge'
 import { AlertTriangle } from 'lucide-react'
-import clsx from 'clsx'
+import { cn } from '@/lib/utils'
 import { getHealthColor } from '@/lib/workflow-layout'
 
 interface AgentNodeData {
@@ -25,9 +25,9 @@ export const AgentNode = memo(({ data, selected }: NodeProps<AgentNodeData>) => 
 
   return (
     <div
-      className={clsx(
-        'px-4 py-3 rounded-lg bg-slate-800 min-w-[180px] transition-all',
-        selected && 'ring-2 ring-blue-500 ring-offset-2 ring-offset-slate-900'
+      className={cn(
+        'px-4 py-3 rounded-lg bg-zinc-800 min-w-[180px] transition-all',
+        selected && 'ring-2 ring-blue-500 ring-offset-2 ring-offset-zinc-900'
       )}
       style={{
         borderWidth: `${borderWidth}px`,
@@ -39,7 +39,7 @@ export const AgentNode = memo(({ data, selected }: NodeProps<AgentNodeData>) => 
       <Handle
         type="target"
         position={Position.Top}
-        className="w-3 h-3 !bg-slate-600 !border-2 !border-slate-400"
+        className="w-3 h-3 !bg-zinc-600 !border-2 !border-zinc-400"
       />
 
       {/* Header: Agent Name + Grade */}
@@ -50,7 +50,7 @@ export const AgentNode = memo(({ data, selected }: NodeProps<AgentNodeData>) => 
 
       {/* Agent Type */}
       {data.agentType && (
-        <div className="text-xs text-slate-400 mb-2 capitalize">{data.agentType}</div>
+        <div className="text-xs text-zinc-400 mb-2 capitalize">{data.agentType}</div>
       )}
 
       {/* Score */}
@@ -61,7 +61,7 @@ export const AgentNode = memo(({ data, selected }: NodeProps<AgentNodeData>) => 
         >
           {(score * 100).toFixed(0)}%
         </span>
-        <span className="text-xs text-slate-400">health</span>
+        <span className="text-xs text-zinc-400">health</span>
       </div>
 
       {/* Issues Badge */}
@@ -83,7 +83,7 @@ export const AgentNode = memo(({ data, selected }: NodeProps<AgentNodeData>) => 
       <Handle
         type="source"
         position={Position.Bottom}
-        className="w-3 h-3 !bg-slate-600 !border-2 !border-slate-400"
+        className="w-3 h-3 !bg-zinc-600 !border-2 !border-zinc-400"
       />
     </div>
   )

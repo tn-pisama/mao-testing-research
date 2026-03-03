@@ -43,7 +43,7 @@ function StatsCard({ title, value, icon: Icon, color }: StatsCardProps) {
     amber: 'bg-amber-500/20 text-amber-400',
     red: 'bg-red-500/20 text-red-400',
     purple: 'bg-purple-500/20 text-purple-400',
-    slate: 'bg-slate-500/20 text-slate-400',
+    slate: 'bg-zinc-500/20 text-zinc-400',
   }
 
   return (
@@ -51,7 +51,7 @@ function StatsCard({ title, value, icon: Icon, color }: StatsCardProps) {
       <CardContent className="p-4">
         <div className="flex items-center justify-between">
           <div>
-            <p className="text-xs text-slate-500 mb-1">{title}</p>
+            <p className="text-xs text-zinc-500 mb-1">{title}</p>
             <p className="text-2xl font-bold text-white">{value}</p>
           </div>
           <div className={`p-3 rounded-lg ${colorClasses[color as keyof typeof colorClasses] || colorClasses.slate}`}>
@@ -110,8 +110,8 @@ export function HealingDashboard({
             <Card key={i}>
               <CardContent className="p-4">
                 <div className="animate-pulse">
-                  <div className="h-3 bg-slate-700 rounded w-1/2 mb-2" />
-                  <div className="h-8 bg-slate-700 rounded w-1/3" />
+                  <div className="h-3 bg-zinc-700 rounded w-1/2 mb-2" />
+                  <div className="h-8 bg-zinc-700 rounded w-1/3" />
                 </div>
               </CardContent>
             </Card>
@@ -124,8 +124,8 @@ export function HealingDashboard({
             <Card key={i}>
               <CardContent className="p-4">
                 <div className="animate-pulse">
-                  <div className="h-4 bg-slate-700 rounded w-1/4 mb-2" />
-                  <div className="h-3 bg-slate-700 rounded w-1/2" />
+                  <div className="h-4 bg-zinc-700 rounded w-1/4 mb-2" />
+                  <div className="h-3 bg-zinc-700 rounded w-1/2" />
                 </div>
               </CardContent>
             </Card>
@@ -187,31 +187,31 @@ export function HealingDashboard({
             </div>
             <div className="grid grid-cols-5 gap-4 text-sm">
               <div>
-                <p className="text-xs text-slate-500">Total</p>
+                <p className="text-xs text-zinc-500">Total</p>
                 <p className="text-lg font-bold text-white">{verificationMetrics.total_verifications}</p>
               </div>
               <div>
-                <p className="text-xs text-slate-500">Passed</p>
+                <p className="text-xs text-zinc-500">Passed</p>
                 <p className="text-lg font-bold text-green-400">{verificationMetrics.passed}</p>
               </div>
               <div>
-                <p className="text-xs text-slate-500">Failed</p>
+                <p className="text-xs text-zinc-500">Failed</p>
                 <p className="text-lg font-bold text-red-400">{verificationMetrics.failed}</p>
               </div>
               <div>
-                <p className="text-xs text-slate-500">Pass Rate</p>
+                <p className="text-xs text-zinc-500">Pass Rate</p>
                 <p className="text-lg font-bold text-white">{(verificationMetrics.pass_rate * 100).toFixed(0)}%</p>
               </div>
               <div>
-                <p className="text-xs text-slate-500">Avg Confidence Reduction</p>
+                <p className="text-xs text-zinc-500">Avg Confidence Reduction</p>
                 <p className="text-lg font-bold text-green-400">
                   {(verificationMetrics.average_confidence_reduction * 100).toFixed(0)}%
                 </p>
               </div>
             </div>
             {verificationMetrics.by_detection_type && Object.keys(verificationMetrics.by_detection_type).length > 0 && (
-              <div className="mt-3 pt-3 border-t border-slate-700">
-                <p className="text-xs text-slate-500 mb-2">By Detection Type</p>
+              <div className="mt-3 pt-3 border-t border-zinc-700">
+                <p className="text-xs text-zinc-500 mb-2">By Detection Type</p>
                 <div className="flex flex-wrap gap-2">
                   {Object.entries(verificationMetrics.by_detection_type).map(([type, data]) => (
                     <span
@@ -280,10 +280,10 @@ export function HealingDashboard({
 
         {filteredHealings.length === 0 ? (
           <Card>
-            <CardContent className="p-8 text-center text-slate-400">
+            <CardContent className="p-8 text-center text-zinc-400">
               <AlertTriangle size={32} className="mx-auto mb-3 opacity-50" />
               <p className="text-sm">No healing records found</p>
-              <p className="text-xs text-slate-500 mt-1">
+              <p className="text-xs text-zinc-500 mt-1">
                 Healing records are created when fixes are applied to detected issues
               </p>
             </CardContent>

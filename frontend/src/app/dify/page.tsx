@@ -106,7 +106,7 @@ export default function DifyPage() {
                 </div>
               )}
             </div>
-            <p className="text-slate-400">
+            <p className="text-zinc-400">
               Connect Dify instances for automated trace ingestion
             </p>
           </div>
@@ -148,23 +148,23 @@ export default function DifyPage() {
         {/* Register Instance Modal */}
         {showInstanceForm && (
           <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50">
-            <div className="bg-slate-800 rounded-xl p-6 border border-slate-700 w-full max-w-md">
+            <div className="bg-zinc-800 rounded-xl p-6 border border-zinc-700 w-full max-w-md">
               <h2 className="text-lg font-semibold text-white mb-4">Add Dify Instance</h2>
               <div className="space-y-4">
                 <div>
-                  <label className="text-sm font-medium text-slate-300 block mb-2">Instance Name *</label>
+                  <label className="text-sm font-medium text-zinc-300 block mb-2">Instance Name *</label>
                   <input type="text" value={instanceName} onChange={(e) => setInstanceName(e.target.value)}
-                    placeholder="e.g., Production Dify" className="w-full bg-slate-900 border border-slate-600 rounded-lg p-3 text-white text-sm focus:border-violet-500 focus:outline-none" />
+                    placeholder="e.g., Production Dify" className="w-full bg-zinc-900 border border-zinc-600 rounded-lg p-3 text-white text-sm focus:border-violet-500 focus:outline-none" />
                 </div>
                 <div>
-                  <label className="text-sm font-medium text-slate-300 block mb-2">Base URL *</label>
+                  <label className="text-sm font-medium text-zinc-300 block mb-2">Base URL *</label>
                   <input type="text" value={baseUrl} onChange={(e) => setBaseUrl(e.target.value)}
-                    placeholder="https://api.dify.ai/v1" className="w-full bg-slate-900 border border-slate-600 rounded-lg p-3 text-white text-sm focus:border-violet-500 focus:outline-none" />
+                    placeholder="https://api.dify.ai/v1" className="w-full bg-zinc-900 border border-zinc-600 rounded-lg p-3 text-white text-sm focus:border-violet-500 focus:outline-none" />
                 </div>
                 <div>
-                  <label className="text-sm font-medium text-slate-300 block mb-2">API Key *</label>
+                  <label className="text-sm font-medium text-zinc-300 block mb-2">API Key *</label>
                   <input type="password" value={apiKey} onChange={(e) => setApiKey(e.target.value)}
-                    placeholder="app-xxxxxxxxxx" className="w-full bg-slate-900 border border-slate-600 rounded-lg p-3 text-white text-sm focus:border-violet-500 focus:outline-none" />
+                    placeholder="app-xxxxxxxxxx" className="w-full bg-zinc-900 border border-zinc-600 rounded-lg p-3 text-white text-sm focus:border-violet-500 focus:outline-none" />
                 </div>
                 {error && <p className="text-red-400 text-sm">{error}</p>}
                 <div className="flex gap-3 pt-2">
@@ -179,43 +179,43 @@ export default function DifyPage() {
         {/* Register App Modal */}
         {showAppForm && (
           <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50">
-            <div className="bg-slate-800 rounded-xl p-6 border border-slate-700 w-full max-w-md">
+            <div className="bg-zinc-800 rounded-xl p-6 border border-zinc-700 w-full max-w-md">
               <h2 className="text-lg font-semibold text-white mb-4">Register Dify App</h2>
               <div className="space-y-4">
                 <div>
-                  <label className="text-sm font-medium text-slate-300 block mb-2">Instance *</label>
+                  <label className="text-sm font-medium text-zinc-300 block mb-2">Instance *</label>
                   <div className="relative">
                     <select value={selectedInstanceId} onChange={(e) => setSelectedInstanceId(e.target.value)}
-                      className="w-full bg-slate-900 border border-slate-600 rounded-lg p-3 text-white text-sm focus:border-violet-500 focus:outline-none appearance-none">
+                      className="w-full bg-zinc-900 border border-zinc-600 rounded-lg p-3 text-white text-sm focus:border-violet-500 focus:outline-none appearance-none">
                       <option value="">Select instance...</option>
                       {instances.map((inst) => (
                         <option key={inst.id} value={inst.id}>{inst.name}</option>
                       ))}
                     </select>
-                    <ChevronDown size={16} className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-400 pointer-events-none" />
+                    <ChevronDown size={16} className="absolute right-3 top-1/2 -translate-y-1/2 text-zinc-400 pointer-events-none" />
                   </div>
                 </div>
                 <div>
-                  <label className="text-sm font-medium text-slate-300 block mb-2">App ID *</label>
+                  <label className="text-sm font-medium text-zinc-300 block mb-2">App ID *</label>
                   <input type="text" value={appId} onChange={(e) => setAppId(e.target.value)}
-                    placeholder="e.g., app-abc123" className="w-full bg-slate-900 border border-slate-600 rounded-lg p-3 text-white text-sm focus:border-violet-500 focus:outline-none" />
+                    placeholder="e.g., app-abc123" className="w-full bg-zinc-900 border border-zinc-600 rounded-lg p-3 text-white text-sm focus:border-violet-500 focus:outline-none" />
                 </div>
                 <div>
-                  <label className="text-sm font-medium text-slate-300 block mb-2">App Name</label>
+                  <label className="text-sm font-medium text-zinc-300 block mb-2">App Name</label>
                   <input type="text" value={appName} onChange={(e) => setAppName(e.target.value)}
-                    placeholder="e.g., Customer Support Bot" className="w-full bg-slate-900 border border-slate-600 rounded-lg p-3 text-white text-sm focus:border-violet-500 focus:outline-none" />
+                    placeholder="e.g., Customer Support Bot" className="w-full bg-zinc-900 border border-zinc-600 rounded-lg p-3 text-white text-sm focus:border-violet-500 focus:outline-none" />
                 </div>
                 <div>
-                  <label className="text-sm font-medium text-slate-300 block mb-2">App Type</label>
+                  <label className="text-sm font-medium text-zinc-300 block mb-2">App Type</label>
                   <div className="relative">
                     <select value={appType} onChange={(e) => setAppType(e.target.value)}
-                      className="w-full bg-slate-900 border border-slate-600 rounded-lg p-3 text-white text-sm focus:border-violet-500 focus:outline-none appearance-none">
+                      className="w-full bg-zinc-900 border border-zinc-600 rounded-lg p-3 text-white text-sm focus:border-violet-500 focus:outline-none appearance-none">
                       <option value="workflow">Workflow</option>
                       <option value="chatbot">Chatbot</option>
                       <option value="agent">Agent</option>
                       <option value="chatflow">Chatflow</option>
                     </select>
-                    <ChevronDown size={16} className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-400 pointer-events-none" />
+                    <ChevronDown size={16} className="absolute right-3 top-1/2 -translate-y-1/2 text-zinc-400 pointer-events-none" />
                   </div>
                 </div>
                 {error && <p className="text-red-400 text-sm">{error}</p>}
@@ -229,19 +229,19 @@ export default function DifyPage() {
         )}
 
         {/* Instances & Apps List */}
-        <div className="bg-slate-800 rounded-xl border border-slate-700">
+        <div className="bg-zinc-800 rounded-xl border border-zinc-700">
           {isLoading ? (
             <div className="flex items-center justify-center py-12">
               <Loader2 className="w-8 h-8 text-violet-400 animate-spin" />
             </div>
           ) : instances.length === 0 ? (
             <div className="text-center py-12 px-4">
-              <Workflow className="w-12 h-12 text-slate-600 mx-auto mb-4" />
-              <p className="text-slate-400 mb-2">No Dify instances connected</p>
-              <p className="text-slate-400 text-sm">Add a Dify instance to start monitoring workflow runs</p>
+              <Workflow className="w-12 h-12 text-zinc-600 mx-auto mb-4" />
+              <p className="text-zinc-400 mb-2">No Dify instances connected</p>
+              <p className="text-zinc-400 text-sm">Add a Dify instance to start monitoring workflow runs</p>
             </div>
           ) : (
-            <div className="divide-y divide-slate-700">
+            <div className="divide-y divide-zinc-700">
               {instances.map((inst) => {
                 const instanceApps = apps.filter((a) => true) // In demo mode, show all apps
                 return (
@@ -257,7 +257,7 @@ export default function DifyPage() {
                           )}
                           <Badge variant="default" size="sm">{inst.ingestion_mode}</Badge>
                         </div>
-                        <div className="flex items-center gap-1 text-slate-400 text-sm">
+                        <div className="flex items-center gap-1 text-zinc-400 text-sm">
                           <Globe size={12} />
                           <span>{inst.base_url}</span>
                         </div>
@@ -268,9 +268,9 @@ export default function DifyPage() {
                     {instanceApps.length > 0 && (
                       <div className="mt-3 ml-4 space-y-2">
                         {instanceApps.map((app) => (
-                          <div key={app.id} className="p-3 bg-slate-900 rounded-lg flex items-center justify-between">
+                          <div key={app.id} className="p-3 bg-zinc-900 rounded-lg flex items-center justify-between">
                             <div className="flex items-center gap-2">
-                              <span className="text-slate-300 text-sm">{app.app_name || app.app_id}</span>
+                              <span className="text-zinc-300 text-sm">{app.app_name || app.app_id}</span>
                               <Badge variant="info" size="sm">{app.app_type}</Badge>
                               {app.monitoring_enabled ? (
                                 <Badge variant="success" size="sm">Monitoring</Badge>
@@ -278,7 +278,7 @@ export default function DifyPage() {
                                 <Badge variant="default" size="sm">Paused</Badge>
                               )}
                             </div>
-                            <div className="text-xs text-slate-400 flex items-center gap-4">
+                            <div className="text-xs text-zinc-400 flex items-center gap-4">
                               <span>{app.total_runs} runs</span>
                               <span>{app.total_tokens.toLocaleString()} tokens</span>
                             </div>
@@ -294,9 +294,9 @@ export default function DifyPage() {
         </div>
 
         {/* Setup Instructions */}
-        <div className="mt-6 p-6 bg-slate-800/50 rounded-xl border border-slate-700">
+        <div className="mt-6 p-6 bg-zinc-800/50 rounded-xl border border-zinc-700">
           <h3 className="text-lg font-semibold text-white mb-4">Setup Instructions</h3>
-          <ol className="space-y-3 text-sm text-slate-400">
+          <ol className="space-y-3 text-sm text-zinc-400">
             <li className="flex gap-3">
               <span className="w-6 h-6 bg-violet-500/20 text-violet-400 rounded-full flex items-center justify-center text-xs font-medium flex-shrink-0">1</span>
               <span>Add your Dify instance above with its API URL and key</span>

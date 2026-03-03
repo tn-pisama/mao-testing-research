@@ -57,13 +57,13 @@ export function ImportModal({ isOpen, onClose, onImportComplete }: ImportModalPr
       />
 
       {/* Modal */}
-      <div className="relative bg-slate-900 rounded-xl border border-slate-700 shadow-2xl w-full max-w-md mx-4">
+      <div className="relative bg-zinc-900 rounded-xl border border-zinc-700 shadow-2xl w-full max-w-md mx-4">
         {/* Header */}
-        <div className="flex items-center justify-between p-4 border-b border-slate-700">
+        <div className="flex items-center justify-between p-4 border-b border-zinc-700">
           <h2 className="text-lg font-semibold text-white">Import Historical Data</h2>
           <button
             onClick={onClose}
-            className="p-1 text-slate-400 hover:text-white rounded-lg hover:bg-slate-800"
+            className="p-1 text-zinc-400 hover:text-white rounded-lg hover:bg-zinc-800"
           >
             <X size={20} />
           </button>
@@ -71,7 +71,7 @@ export function ImportModal({ isOpen, onClose, onImportComplete }: ImportModalPr
 
         {/* Content */}
         <div className="p-4">
-          <p className="text-sm text-slate-400 mb-4">
+          <p className="text-sm text-zinc-400 mb-4">
             Upload a JSON or JSONL file containing trace data from your agent framework.
           </p>
 
@@ -80,7 +80,7 @@ export function ImportModal({ isOpen, onClose, onImportComplete }: ImportModalPr
             className={`flex flex-col items-center justify-center p-8 border-2 border-dashed rounded-lg cursor-pointer transition-colors ${
               file
                 ? 'border-blue-500 bg-blue-500/10'
-                : 'border-slate-600 hover:border-slate-500 hover:bg-slate-800/50'
+                : 'border-zinc-600 hover:border-zinc-500 hover:bg-zinc-800/50'
             }`}
           >
             <input
@@ -94,17 +94,17 @@ export function ImportModal({ isOpen, onClose, onImportComplete }: ImportModalPr
               <>
                 <FileJson size={32} className="text-blue-400 mb-2" />
                 <span className="text-sm text-white font-medium">{file.name}</span>
-                <span className="text-xs text-slate-400 mt-1">
+                <span className="text-xs text-zinc-400 mt-1">
                   {(file.size / 1024).toFixed(1)} KB
                 </span>
               </>
             ) : (
               <>
-                <Upload size={32} className="text-slate-400 mb-2" />
-                <span className="text-sm text-slate-300">
+                <Upload size={32} className="text-zinc-400 mb-2" />
+                <span className="text-sm text-zinc-300">
                   Drag & drop or click to browse
                 </span>
-                <span className="text-xs text-slate-500 mt-1">
+                <span className="text-xs text-zinc-500 mt-1">
                   Supports JSON and JSONL files
                 </span>
               </>
@@ -128,7 +128,7 @@ export function ImportModal({ isOpen, onClose, onImportComplete }: ImportModalPr
         </div>
 
         {/* Footer */}
-        <div className="flex items-center justify-end gap-3 p-4 border-t border-slate-700">
+        <div className="flex items-center justify-end gap-3 p-4 border-t border-zinc-700">
           <Button variant="ghost" onClick={onClose} disabled={status === 'uploading'}>
             Cancel
           </Button>

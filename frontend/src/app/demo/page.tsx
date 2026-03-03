@@ -109,9 +109,9 @@ export default function DemoPage() {
       <Layout>
         <div className="p-6">
           <div className="animate-pulse space-y-6">
-            <div className="h-10 w-64 bg-slate-700 rounded" />
+            <div className="h-10 w-64 bg-zinc-700 rounded" />
             <div className="grid grid-cols-4 gap-4">
-              {[1,2,3,4].map(i => <div key={i} className="h-32 bg-slate-700 rounded-xl" />)}
+              {[1,2,3,4].map(i => <div key={i} className="h-32 bg-zinc-700 rounded-xl" />)}
             </div>
           </div>
         </div>
@@ -138,7 +138,7 @@ export default function DemoPage() {
               </div>
               <div>
                 <h1 className="text-2xl font-bold text-white">Interactive Demo</h1>
-                <p className="text-sm text-slate-400">
+                <p className="text-sm text-zinc-400">
                   Experience real-time multi-agent failure detection
                 </p>
               </div>
@@ -176,8 +176,8 @@ export default function DemoPage() {
           )}
 
           {demoStep > 0 && (
-            <div className="flex items-center gap-2 px-4 py-2 rounded-lg bg-slate-800/50 border border-slate-700">
-              <span className="text-sm text-slate-400">Scenario:</span>
+            <div className="flex items-center gap-2 px-4 py-2 rounded-lg bg-zinc-800/50 border border-zinc-700">
+              <span className="text-sm text-zinc-400">Scenario:</span>
               <span className="text-sm font-medium text-white">{scenarios[activeScenario].title}</span>
             </div>
           )}
@@ -233,13 +233,13 @@ export default function DemoPage() {
         {demoStep === 0 && (
           <div className="mt-8 grid lg:grid-cols-3 gap-6">
             {/* Main CTA */}
-            <div className="lg:col-span-2 p-8 rounded-2xl border border-slate-700 bg-gradient-to-br from-slate-800/50 to-slate-900/50 text-center">
+            <div className="lg:col-span-2 p-8 rounded-2xl border border-zinc-700 bg-gradient-to-br from-zinc-800/50 to-zinc-900/50 text-center">
               <div className="max-w-md mx-auto">
-                <div className="p-4 rounded-full bg-slate-800 border border-slate-700 w-16 h-16 mx-auto mb-4 flex items-center justify-center">
-                  <Play size={24} className="text-primary-400" />
+                <div className="p-4 rounded-full bg-zinc-800 border border-zinc-700 w-16 h-16 mx-auto mb-4 flex items-center justify-center">
+                  <Play size={24} className="text-blue-400" />
                 </div>
                 <h3 className="text-xl font-semibold text-white mb-2">Ready to Demo</h3>
-                <p className="text-slate-400 mb-6">
+                <p className="text-zinc-400 mb-6">
                   Select a scenario above and click Start Demo to see PISAMA in action.
                   Watch as agents execute, metrics update in real-time, and failures are detected.
                 </p>

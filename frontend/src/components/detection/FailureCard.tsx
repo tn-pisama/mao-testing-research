@@ -31,7 +31,7 @@ const severityConfig = {
   critical: { label: 'Critical', variant: 'error' as const, color: 'text-red-400', bg: 'bg-red-500/20' },
   high: { label: 'High', variant: 'warning' as const, color: 'text-orange-400', bg: 'bg-orange-500/20' },
   medium: { label: 'Medium', variant: 'info' as const, color: 'text-amber-400', bg: 'bg-amber-500/20' },
-  low: { label: 'Low', variant: 'default' as const, color: 'text-slate-400', bg: 'bg-slate-500/20' },
+  low: { label: 'Low', variant: 'default' as const, color: 'text-zinc-400', bg: 'bg-zinc-500/20' },
 }
 
 function formatTime(isoString: string): string {
@@ -102,7 +102,7 @@ export function FailureCard({
         <CardContent className="p-0">
           {/* Header */}
           <div
-            className="p-4 cursor-pointer hover:bg-slate-800/50 transition-colors"
+            className="p-4 cursor-pointer hover:bg-zinc-800/50 transition-colors"
             onClick={() => setIsExpanded(!isExpanded)}
           >
             <div className="flex items-center justify-between">
@@ -114,7 +114,7 @@ export function FailureCard({
                   <p className="text-sm font-medium text-white">
                     {getPlainEnglishTitle(detection.detection_type)}
                   </p>
-                  <p className="text-xs text-slate-500">
+                  <p className="text-xs text-zinc-500">
                     Workflow run: {detection.trace_id.slice(0, 8)}...
                     {detection.method && ` | detected by ${detection.method.replace(/_/g, ' ')}`}
                   </p>
@@ -126,11 +126,11 @@ export function FailureCard({
                 </Badge>
                 <ConfidenceTierBadge tier={detection.confidence_tier} />
                 <TermTooltip term="confidence">
-                  <span className="text-xs text-slate-500">
+                  <span className="text-xs text-zinc-500">
                     {Math.round(detection.confidence)}% certain
                   </span>
                 </TermTooltip>
-                <div className="flex items-center gap-1 text-xs text-slate-500">
+                <div className="flex items-center gap-1 text-xs text-zinc-500">
                   <Clock size={12} />
                   {formatTime(detection.created_at)}
                 </div>
@@ -141,7 +141,7 @@ export function FailureCard({
 
           {/* Expanded Content */}
           {isExpanded && (
-            <div className="border-t border-slate-700 p-4 space-y-4">
+            <div className="border-t border-zinc-700 p-4 space-y-4">
               {/* Business Impact - FIRST for non-technical users */}
               {detection.business_impact && (
                 <div className="bg-amber-500/10 border border-amber-500/20 rounded-lg p-3">
@@ -161,19 +161,19 @@ export function FailureCard({
               {/* Explanation - More details */}
               {detection.explanation && (
                 <div>
-                  <p className="text-xs text-slate-500 mb-1">What Happened</p>
-                  <p className="text-sm text-slate-300">{detection.explanation}</p>
+                  <p className="text-xs text-zinc-500 mb-1">What Happened</p>
+                  <p className="text-sm text-zinc-300">{detection.explanation}</p>
                 </div>
               )}
 
               {/* Technical Details - Hidden by default for non-technical users */}
               {detection.details && Object.keys(detection.details).length > 0 && (
                 <details className="group">
-                  <summary className="text-xs text-slate-500 cursor-pointer hover:text-slate-400">
+                  <summary className="text-xs text-zinc-500 cursor-pointer hover:text-zinc-400">
                     Technical Details (click to expand)
                   </summary>
-                  <div className="mt-2 bg-slate-800/50 rounded-lg p-3">
-                    <pre className="text-xs text-slate-400 overflow-x-auto">
+                  <div className="mt-2 bg-zinc-800/50 rounded-lg p-3">
+                    <pre className="text-xs text-zinc-400 overflow-x-auto">
                       {JSON.stringify(detection.details, null, 2)}
                     </pre>
                   </div>
@@ -181,7 +181,7 @@ export function FailureCard({
               )}
 
               {/* Actions */}
-              <div className="flex items-center gap-2 pt-2 border-t border-slate-700">
+              <div className="flex items-center gap-2 pt-2 border-t border-zinc-700">
                 {onGenerateFix && (
                   <Button
                     variant="primary"

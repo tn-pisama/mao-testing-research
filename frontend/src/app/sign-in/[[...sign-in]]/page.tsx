@@ -10,19 +10,19 @@ export default function SignInPage() {
   }
 
   return (
-    <main className="min-h-screen bg-slate-900 flex flex-col items-center justify-center p-4">
+    <main className="min-h-screen bg-zinc-900 flex flex-col items-center justify-center p-4">
       <Link
         href="/"
-        className="absolute top-6 left-6 flex items-center gap-2 text-slate-400 hover:text-white transition-colors"
+        className="absolute top-6 left-6 flex items-center gap-2 text-zinc-400 hover:text-white transition-colors"
       >
         <ArrowLeft size={16} />
         <span>Back</span>
       </Link>
 
-      <div className="bg-slate-800 border border-slate-700 shadow-xl rounded-lg p-8 w-full max-w-md">
+      <div className="bg-zinc-800 border border-zinc-700 shadow-xl rounded-lg p-8 w-full max-w-md">
         <div className="text-center mb-8">
           <h1 className="text-2xl font-bold text-white mb-2">Welcome to PISAMA</h1>
-          <p className="text-slate-400">Sign in to access your agent diagnostics</p>
+          <p className="text-zinc-400">Sign in to access your agent diagnostics</p>
         </div>
 
         <button
@@ -50,7 +50,7 @@ export default function SignInPage() {
           Continue with Google
         </button>
 
-        <p className="text-slate-500 text-sm text-center mt-6">
+        <p className="text-zinc-500 text-sm text-center mt-6">
           By signing in, you agree to our Terms of Service
         </p>
       </div>

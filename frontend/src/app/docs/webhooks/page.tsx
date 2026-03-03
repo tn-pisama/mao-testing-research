@@ -6,7 +6,7 @@ export default function WebhooksPage() {
     <div>
       <div className="mb-8">
         <h1 className="text-3xl font-bold text-white mb-4">Webhooks</h1>
-        <p className="text-lg text-slate-300">
+        <p className="text-lg text-zinc-300">
           Receive real-time notifications when detections occur in your multi-agent systems.
           Configure webhooks to integrate with Slack, PagerDuty, or custom endpoints.
         </p>
@@ -14,7 +14,7 @@ export default function WebhooksPage() {
 
       <section className="mb-10">
         <h2 className="text-xl font-bold text-white mb-4">Overview</h2>
-        <p className="text-slate-300 mb-4">
+        <p className="text-zinc-300 mb-4">
           Pisama sends HTTP POST requests to your configured endpoints when events occur:
         </p>
 
@@ -40,7 +40,7 @@ export default function WebhooksPage() {
 
       <section className="mb-10">
         <h2 className="text-xl font-bold text-white mb-4">Webhook Payload</h2>
-        <p className="text-slate-300 mb-4">
+        <p className="text-zinc-300 mb-4">
           All webhook requests include a JSON payload with event details:
         </p>
 
@@ -73,38 +73,38 @@ export default function WebhooksPage() {
 
       <section className="mb-10">
         <h2 className="text-xl font-bold text-white mb-4">Request Headers</h2>
-        <p className="text-slate-300 mb-4">
+        <p className="text-zinc-300 mb-4">
           Each webhook request includes these headers:
         </p>
 
-        <div className="rounded-lg bg-slate-900 border border-slate-700 overflow-hidden">
+        <div className="rounded-lg bg-zinc-900 border border-zinc-700 overflow-hidden">
           <table className="w-full text-sm">
-            <thead className="bg-slate-800/50 border-b border-slate-700">
+            <thead className="bg-zinc-800/50 border-b border-zinc-700">
               <tr>
-                <th className="px-4 py-3 text-left text-slate-300 font-medium">Header</th>
-                <th className="px-4 py-3 text-left text-slate-300 font-medium">Description</th>
+                <th className="px-4 py-3 text-left text-zinc-300 font-medium">Header</th>
+                <th className="px-4 py-3 text-left text-zinc-300 font-medium">Description</th>
               </tr>
             </thead>
-            <tbody className="divide-y divide-slate-700">
+            <tbody className="divide-y divide-zinc-700">
               <tr>
-                <td className="px-4 py-3"><code className="text-primary-400">Content-Type</code></td>
-                <td className="px-4 py-3 text-slate-400">application/json</td>
+                <td className="px-4 py-3"><code className="text-blue-400">Content-Type</code></td>
+                <td className="px-4 py-3 text-zinc-400">application/json</td>
               </tr>
               <tr>
-                <td className="px-4 py-3"><code className="text-primary-400">X-MAO-Signature</code></td>
-                <td className="px-4 py-3 text-slate-400">HMAC-SHA256 signature for verification</td>
+                <td className="px-4 py-3"><code className="text-blue-400">X-MAO-Signature</code></td>
+                <td className="px-4 py-3 text-zinc-400">HMAC-SHA256 signature for verification</td>
               </tr>
               <tr>
-                <td className="px-4 py-3"><code className="text-primary-400">X-MAO-Timestamp</code></td>
-                <td className="px-4 py-3 text-slate-400">Unix timestamp when request was sent</td>
+                <td className="px-4 py-3"><code className="text-blue-400">X-MAO-Timestamp</code></td>
+                <td className="px-4 py-3 text-zinc-400">Unix timestamp when request was sent</td>
               </tr>
               <tr>
-                <td className="px-4 py-3"><code className="text-primary-400">X-MAO-Event</code></td>
-                <td className="px-4 py-3 text-slate-400">Event type (detection.created, etc.)</td>
+                <td className="px-4 py-3"><code className="text-blue-400">X-MAO-Event</code></td>
+                <td className="px-4 py-3 text-zinc-400">Event type (detection.created, etc.)</td>
               </tr>
               <tr>
-                <td className="px-4 py-3"><code className="text-primary-400">X-MAO-Delivery-ID</code></td>
-                <td className="px-4 py-3 text-slate-400">Unique ID for this delivery (for deduplication)</td>
+                <td className="px-4 py-3"><code className="text-blue-400">X-MAO-Delivery-ID</code></td>
+                <td className="px-4 py-3 text-zinc-400">Unique ID for this delivery (for deduplication)</td>
               </tr>
             </tbody>
           </table>
@@ -113,7 +113,7 @@ export default function WebhooksPage() {
 
       <section className="mb-10">
         <h2 className="text-xl font-bold text-white mb-4">Signature Verification</h2>
-        <p className="text-slate-300 mb-4">
+        <p className="text-zinc-300 mb-4">
           Always verify the webhook signature to ensure requests are from Pisama:
         </p>
 
@@ -179,20 +179,20 @@ function verifyWebhook(req, secret) {
           <div>
             <h3 className="text-lg font-semibold text-white mb-3">Via Dashboard</h3>
             <ol className="space-y-2">
-              <li className="flex items-start gap-2 text-slate-300">
-                <span className="flex-shrink-0 w-6 h-6 rounded-full bg-primary-600/30 text-primary-400 text-xs flex items-center justify-center font-medium">1</span>
+              <li className="flex items-start gap-2 text-zinc-300">
+                <span className="flex-shrink-0 w-6 h-6 rounded-full bg-blue-600/30 text-blue-400 text-xs flex items-center justify-center font-medium">1</span>
                 Go to Settings → Webhooks
               </li>
-              <li className="flex items-start gap-2 text-slate-300">
-                <span className="flex-shrink-0 w-6 h-6 rounded-full bg-primary-600/30 text-primary-400 text-xs flex items-center justify-center font-medium">2</span>
+              <li className="flex items-start gap-2 text-zinc-300">
+                <span className="flex-shrink-0 w-6 h-6 rounded-full bg-blue-600/30 text-blue-400 text-xs flex items-center justify-center font-medium">2</span>
                 Click &quot;Add Webhook&quot;
               </li>
-              <li className="flex items-start gap-2 text-slate-300">
-                <span className="flex-shrink-0 w-6 h-6 rounded-full bg-primary-600/30 text-primary-400 text-xs flex items-center justify-center font-medium">3</span>
+              <li className="flex items-start gap-2 text-zinc-300">
+                <span className="flex-shrink-0 w-6 h-6 rounded-full bg-blue-600/30 text-blue-400 text-xs flex items-center justify-center font-medium">3</span>
                 Enter your endpoint URL and select events to subscribe to
               </li>
-              <li className="flex items-start gap-2 text-slate-300">
-                <span className="flex-shrink-0 w-6 h-6 rounded-full bg-primary-600/30 text-primary-400 text-xs flex items-center justify-center font-medium">4</span>
+              <li className="flex items-start gap-2 text-zinc-300">
+                <span className="flex-shrink-0 w-6 h-6 rounded-full bg-blue-600/30 text-blue-400 text-xs flex items-center justify-center font-medium">4</span>
                 Copy the signing secret and store it securely
               </li>
             </ol>
@@ -285,30 +285,30 @@ def handle_webhook(payload):
 
       <section className="mb-10">
         <h2 className="text-xl font-bold text-white mb-4">Retry Policy</h2>
-        <p className="text-slate-300 mb-4">
+        <p className="text-zinc-300 mb-4">
           If your endpoint returns a non-2xx status code, we&apos;ll retry the delivery:
         </p>
 
-        <div className="rounded-lg bg-slate-800/50 border border-slate-700 p-4">
-          <ul className="space-y-2 text-slate-300">
+        <div className="rounded-lg bg-zinc-800/50 border border-zinc-700 p-4">
+          <ul className="space-y-2 text-zinc-300">
             <li className="flex items-center gap-2">
-              <Check size={16} className="text-primary-400" />
+              <Check size={16} className="text-blue-400" />
               <strong>Attempt 1:</strong> Immediate
             </li>
             <li className="flex items-center gap-2">
-              <Check size={16} className="text-primary-400" />
+              <Check size={16} className="text-blue-400" />
               <strong>Attempt 2:</strong> After 1 minute
             </li>
             <li className="flex items-center gap-2">
-              <Check size={16} className="text-primary-400" />
+              <Check size={16} className="text-blue-400" />
               <strong>Attempt 3:</strong> After 5 minutes
             </li>
             <li className="flex items-center gap-2">
-              <Check size={16} className="text-primary-400" />
+              <Check size={16} className="text-blue-400" />
               <strong>Attempt 4:</strong> After 30 minutes
             </li>
             <li className="flex items-center gap-2">
-              <Check size={16} className="text-primary-400" />
+              <Check size={16} className="text-blue-400" />
               <strong>Attempt 5:</strong> After 2 hours (final)
             </li>
           </ul>
@@ -327,22 +327,22 @@ def handle_webhook(payload):
         </div>
       </section>
 
-      <section className="bg-slate-800/50 rounded-xl border border-slate-700 p-6">
+      <section className="bg-zinc-800/50 rounded-xl border border-zinc-700 p-6">
         <h2 className="text-lg font-bold text-white mb-4">Related</h2>
         <div className="grid md:grid-cols-2 gap-4">
           <Link
             href="/docs/api-reference"
-            className="p-4 rounded-lg bg-slate-900/50 border border-slate-700 hover:border-primary-500/50 transition-colors"
+            className="p-4 rounded-lg bg-zinc-900/50 border border-zinc-700 hover:border-blue-500/50 transition-colors"
           >
             <h3 className="font-medium text-white">API Reference</h3>
-            <p className="text-sm text-slate-400">Webhook management endpoints</p>
+            <p className="text-sm text-zinc-400">Webhook management endpoints</p>
           </Link>
           <Link
             href="/docs/detections"
-            className="p-4 rounded-lg bg-slate-900/50 border border-slate-700 hover:border-primary-500/50 transition-colors"
+            className="p-4 rounded-lg bg-zinc-900/50 border border-zinc-700 hover:border-blue-500/50 transition-colors"
           >
             <h3 className="font-medium text-white">Detections</h3>
-            <p className="text-sm text-slate-400">Understanding detection types and data</p>
+            <p className="text-sm text-zinc-400">Understanding detection types and data</p>
           </Link>
         </div>
       </section>
@@ -352,17 +352,17 @@ def handle_webhook(payload):
 
 function CodeBlock({ title, language, children }: { title: string; language: string; children: React.ReactNode }) {
   return (
-    <div className="rounded-lg bg-slate-900 border border-slate-700 overflow-hidden">
-      <div className="flex items-center justify-between px-4 py-2 border-b border-slate-700 bg-slate-800/50">
+    <div className="rounded-lg bg-zinc-900 border border-zinc-700 overflow-hidden">
+      <div className="flex items-center justify-between px-4 py-2 border-b border-zinc-700 bg-zinc-800/50">
         <div className="flex items-center gap-2">
-          <Terminal size={14} className="text-slate-400" />
-          <span className="text-sm text-slate-400">{title}</span>
+          <Terminal size={14} className="text-zinc-400" />
+          <span className="text-sm text-zinc-400">{title}</span>
         </div>
-        <button className="p-1 text-slate-400 hover:text-white transition-colors" aria-label="Copy code">
+        <button className="p-1 text-zinc-400 hover:text-white transition-colors" aria-label="Copy code">
           <Copy size={14} />
         </button>
       </div>
-      <pre className="p-4 text-sm text-slate-300 overflow-x-auto">
+      <pre className="p-4 text-sm text-zinc-300 overflow-x-auto">
         <code>{children}</code>
       </pre>
     </div>
@@ -371,18 +371,18 @@ function CodeBlock({ title, language, children }: { title: string; language: str
 
 function EventCard({ title, description }: { title: string; description: string }) {
   return (
-    <div className="p-4 rounded-lg bg-slate-800/50 border border-slate-700">
-      <code className="text-primary-400 text-sm">{title}</code>
-      <p className="text-sm text-slate-400 mt-1">{description}</p>
+    <div className="p-4 rounded-lg bg-zinc-800/50 border border-zinc-700">
+      <code className="text-blue-400 text-sm">{title}</code>
+      <p className="text-sm text-zinc-400 mt-1">{description}</p>
     </div>
   )
 }
 
 function IntegrationExample({ name, description, code }: { name: string; description: string; code: string }) {
   return (
-    <div className="rounded-lg bg-slate-800/30 border border-slate-700 p-4">
+    <div className="rounded-lg bg-zinc-800/30 border border-zinc-700 p-4">
       <h4 className="font-semibold text-white mb-1">{name}</h4>
-      <p className="text-sm text-slate-400 mb-3">{description}</p>
+      <p className="text-sm text-zinc-400 mb-3">{description}</p>
       <CodeBlock title={`${name} Example`} language="bash">
         {code}
       </CodeBlock>

@@ -14,14 +14,14 @@ export default function IntegrationPage() {
     <div>
       <div className="mb-8">
         <h1 className="text-3xl font-bold text-white mb-4">Integration Guide</h1>
-        <p className="text-lg text-slate-300">
+        <p className="text-lg text-zinc-300">
           Advanced configuration options for integrating Pisama with your multi-agent system.
         </p>
       </div>
 
       <section className="mb-10">
         <h2 className="text-xl font-bold text-white mb-4">SDK Configuration</h2>
-        <p className="text-slate-300 mb-4">
+        <p className="text-zinc-300 mb-4">
           The Pisama SDK accepts several configuration options:
         </p>
 
@@ -42,7 +42,7 @@ tracer = MAOTracer(
 
       <section className="mb-10">
         <h2 className="text-xl font-bold text-white mb-4">Custom Spans</h2>
-        <p className="text-slate-300 mb-4">
+        <p className="text-zinc-300 mb-4">
           Add custom spans to track specific operations within your agents:
         </p>
 
@@ -70,7 +70,7 @@ with tracer.trace("workflow") as session:
 
       <section className="mb-10">
         <h2 className="text-xl font-bold text-white mb-4">Adding Metadata</h2>
-        <p className="text-slate-300 mb-4">
+        <p className="text-zinc-300 mb-4">
           Attach metadata to traces for filtering and analysis:
         </p>
 
@@ -107,7 +107,7 @@ with tracer.trace("workflow") as session:
 
       <section className="mb-10">
         <h2 className="text-xl font-bold text-white mb-4">State Tracking</h2>
-        <p className="text-slate-300 mb-4">
+        <p className="text-zinc-300 mb-4">
           Capture agent state at specific points for debugging:
         </p>
 
@@ -136,7 +136,7 @@ with tracer.trace("workflow") as session:
 
       <section className="mb-10">
         <h2 className="text-xl font-bold text-white mb-4">Sampling & Filtering</h2>
-        <p className="text-slate-300 mb-4">
+        <p className="text-zinc-300 mb-4">
           Control which traces are sent to reduce volume and costs:
         </p>
 
@@ -210,7 +210,7 @@ result = crew.kickoff()`}
 
       <section className="mb-10">
         <h2 className="text-xl font-bold text-white mb-4">Error Handling</h2>
-        <p className="text-slate-300 mb-4">
+        <p className="text-zinc-300 mb-4">
           Handle tracing errors gracefully to avoid impacting your application:
         </p>
 
@@ -237,7 +237,7 @@ except TracingError as e:
             <div>
               <p className="text-amber-200 font-medium">Production Recommendation</p>
               <p className="text-amber-200/80 text-sm">
-                Use <code className="bg-slate-800 px-1 rounded">on_error=&quot;log&quot;</code> in production 
+                Use <code className="bg-zinc-800 px-1 rounded">on_error=&quot;log&quot;</code> in production 
                 to ensure tracing issues never affect your application.
               </p>
             </div>
@@ -245,7 +245,7 @@ except TracingError as e:
         </div>
       </section>
 
-      <section className="bg-slate-800/50 rounded-xl border border-slate-700 p-6">
+      <section className="bg-zinc-800/50 rounded-xl border border-zinc-700 p-6">
         <h3 className="font-semibold text-white mb-4">Performance Impact</h3>
         <div className="grid md:grid-cols-3 gap-4">
           <PerformanceMetric
@@ -271,17 +271,17 @@ except TracingError as e:
 
 function CodeBlock({ title, language, children }: { title: string; language: string; children: React.ReactNode }) {
   return (
-    <div className="rounded-lg bg-slate-900 border border-slate-700 overflow-hidden">
-      <div className="flex items-center justify-between px-4 py-2 border-b border-slate-700 bg-slate-800/50">
+    <div className="rounded-lg bg-zinc-900 border border-zinc-700 overflow-hidden">
+      <div className="flex items-center justify-between px-4 py-2 border-b border-zinc-700 bg-zinc-800/50">
         <div className="flex items-center gap-2">
-          <Terminal size={14} className="text-slate-400" />
-          <span className="text-sm text-slate-400">{title}</span>
+          <Terminal size={14} className="text-zinc-400" />
+          <span className="text-sm text-zinc-400">{title}</span>
         </div>
-        <button className="p-1 text-slate-400 hover:text-white transition-colors" aria-label="Copy code">
+        <button className="p-1 text-zinc-400 hover:text-white transition-colors" aria-label="Copy code">
           <Copy size={14} />
         </button>
       </div>
-      <pre className="p-4 text-sm text-slate-300 overflow-x-auto">
+      <pre className="p-4 text-sm text-zinc-300 overflow-x-auto">
         <code>{children}</code>
       </pre>
     </div>
@@ -298,12 +298,12 @@ function MetadataCard({
   description: string
 }) {
   return (
-    <div className="p-4 rounded-lg bg-slate-800/50 border border-slate-700">
+    <div className="p-4 rounded-lg bg-zinc-800/50 border border-zinc-700">
       <div className="flex items-center gap-2 mb-2">
-        <Icon size={16} className="text-primary-400" />
+        <Icon size={16} className="text-blue-400" />
         <span className="font-medium text-white">{title}</span>
       </div>
-      <p className="text-sm text-slate-400">{description}</p>
+      <p className="text-sm text-zinc-400">{description}</p>
     </div>
   )
 }
@@ -330,9 +330,9 @@ function PerformanceMetric({
 }) {
   return (
     <div className="text-center">
-      <div className="text-2xl font-bold text-primary-400">{value}</div>
+      <div className="text-2xl font-bold text-blue-400">{value}</div>
       <div className="font-medium text-white">{label}</div>
-      <div className="text-xs text-slate-400">{description}</div>
+      <div className="text-xs text-zinc-400">{description}</div>
     </div>
   )
 }

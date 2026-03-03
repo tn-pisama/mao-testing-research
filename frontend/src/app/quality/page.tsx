@@ -76,7 +76,7 @@ export default function QualityPage() {
               </div>
               <h1 className="text-2xl font-bold text-white">Quality Assessments</h1>
             </div>
-            <p className="text-slate-400">
+            <p className="text-zinc-400">
               Review quality scores and improvement suggestions for your workflows
             </p>
           </div>
@@ -85,8 +85,8 @@ export default function QualityPage() {
         {/* Filters */}
         <div className="flex items-center gap-3 mb-6 flex-wrap">
           <div className="flex items-center gap-2">
-            <Filter size={16} className="text-slate-400" />
-            <span className="text-sm text-slate-400">Health:</span>
+            <Filter size={16} className="text-zinc-400" />
+            <span className="text-sm text-zinc-400">Health:</span>
           </div>
           <div className="flex gap-2">
             <button
@@ -94,7 +94,7 @@ export default function QualityPage() {
               className={`px-3 py-1.5 rounded-lg text-sm transition-colors ${
                 gradeFilter === null
                   ? 'bg-blue-500/20 text-blue-400 border border-blue-500/50'
-                  : 'bg-slate-800 text-slate-400 border border-slate-700 hover:border-slate-600'
+                  : 'bg-zinc-800 text-zinc-400 border border-zinc-700 hover:border-zinc-600'
               }`}
             >
               All
@@ -106,7 +106,7 @@ export default function QualityPage() {
                 className={`px-3 py-1.5 rounded-lg text-sm transition-colors border ${
                   gradeFilter === tier.minGrade
                     ? tier.activeClass
-                    : 'bg-slate-800 text-slate-400 border-slate-700 hover:border-slate-600'
+                    : 'bg-zinc-800 text-zinc-400 border-zinc-700 hover:border-zinc-600'
                 }`}
               >
                 {tier.label}
@@ -137,9 +137,9 @@ export default function QualityPage() {
           ) : assessments.length === 0 ? (
             <Card>
               <div className="text-center py-12">
-                <Star className="w-12 h-12 text-slate-600 mx-auto mb-4" />
-                <p className="text-slate-400 mb-2">No quality assessments found</p>
-                <p className="text-slate-500 text-sm">
+                <Star className="w-12 h-12 text-zinc-600 mx-auto mb-4" />
+                <p className="text-zinc-400 mb-2">No quality assessments found</p>
+                <p className="text-zinc-500 text-sm">
                   Quality assessments are generated when workflows are analyzed
                 </p>
               </div>
@@ -147,7 +147,7 @@ export default function QualityPage() {
           ) : (
             assessments.map((assessment) => (
               <Link key={assessment.id} href={`/quality/${assessment.id}`}>
-                <Card className="hover:border-slate-600 transition-colors cursor-pointer">
+                <Card className="hover:border-zinc-600 transition-colors cursor-pointer">
                   <CardContent className="p-4">
                     <div className="flex items-center justify-between">
                       <div className="flex items-center gap-4">
@@ -156,7 +156,7 @@ export default function QualityPage() {
                           <h3 className="text-white font-medium mb-1">
                             {assessment.workflow_name}
                           </h3>
-                          <div className="flex items-center gap-3 text-sm text-slate-400">
+                          <div className="flex items-center gap-3 text-sm text-zinc-400">
                             <span className={getScoreColor(assessment.overall_score / 100)}>
                               {Math.round(assessment.overall_score)}% overall
                             </span>
@@ -182,7 +182,7 @@ export default function QualityPage() {
                             {assessment.total_issues} suggestions
                           </Badge>
                         )}
-                        <ChevronRight className="text-slate-500" size={20} />
+                        <ChevronRight className="text-zinc-500" size={20} />
                       </div>
                     </div>
                   </CardContent>
@@ -195,7 +195,7 @@ export default function QualityPage() {
         {/* Pagination */}
         {totalPages > 1 && (
           <div className="flex items-center justify-between mt-6">
-            <p className="text-sm text-slate-400">
+            <p className="text-sm text-zinc-400">
               Showing {(page - 1) * perPage + 1} - {Math.min(page * perPage, total)} of {total}
             </p>
             <div className="flex gap-2">

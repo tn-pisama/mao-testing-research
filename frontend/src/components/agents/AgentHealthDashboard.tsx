@@ -2,7 +2,7 @@
 
 import { Card } from '../ui/Card'
 import { HeartPulse, CheckCircle, AlertTriangle, XCircle } from 'lucide-react'
-import clsx from 'clsx'
+import { cn } from '@/lib/utils'
 import type { AgentInfo } from './index'
 
 interface AgentHealthDashboardProps {
@@ -45,9 +45,9 @@ function getLatencyHealth(latencyMs: number): HealthLevel {
 function HealthBar({ level, label, value }: { level: HealthLevel; label: string; value: string }) {
   return (
     <div className="flex items-center gap-2">
-      <div className={clsx('w-1.5 h-1.5 rounded-full flex-shrink-0', healthColors[level])} />
-      <span className="text-xs text-slate-500 w-14">{label}</span>
-      <span className={clsx('text-xs font-medium', healthTextColors[level])}>{value}</span>
+      <div className={cn('w-1.5 h-1.5 rounded-full flex-shrink-0', healthColors[level])} />
+      <span className="text-xs text-zinc-500 w-14">{label}</span>
+      <span className={cn('text-xs font-medium', healthTextColors[level])}>{value}</span>
     </div>
   )
 }
@@ -56,7 +56,7 @@ export function AgentHealthDashboard({ agents }: AgentHealthDashboardProps) {
   if (!agents || agents.length === 0) {
     return (
       <Card>
-        <div className="text-center py-12 text-slate-400">
+        <div className="text-center py-12 text-zinc-400">
           <HeartPulse size={32} className="mx-auto mb-3 opacity-50" />
           <p className="text-sm">No health data available</p>
           <p className="text-xs mt-1">Agent health metrics will appear here</p>
@@ -79,15 +79,15 @@ export function AgentHealthDashboard({ agents }: AgentHealthDashboardProps) {
       <Card>
         <div className="flex items-center justify-between">
           <div className="flex items-center gap-3">
-            <HeartPulse size={20} className={clsx(
+            <HeartPulse size={20} className={cn(
               healthScore >= 80 ? 'text-green-400' : healthScore >= 50 ? 'text-amber-400' : 'text-red-400'
             )} />
             <div>
               <div className="text-sm font-medium text-white">System Health</div>
-              <div className="text-xs text-slate-500">{healthyCount} of {agents.length} agents healthy</div>
+              <div className="text-xs text-zinc-500">{healthyCount} of {agents.length} agents healthy</div>
             </div>
           </div>
-          <div className={clsx(
+          <div className={cn(
             'text-2xl font-bold',
             healthScore >= 80 ? 'text-green-400' : healthScore >= 50 ? 'text-amber-400' : 'text-red-400'
           )}>
@@ -115,7 +115,7 @@ export function AgentHealthDashboard({ agents }: AgentHealthDashboardProps) {
                 <div className="flex items-center justify-between">
                   <div>
                     <div className="text-sm font-medium text-white">{agent.name}</div>
-                    <div className="text-xs text-slate-500 capitalize">{agent.type}</div>
+                    <div className="text-xs text-zinc-500 capitalize">{agent.type}</div>
                   </div>
                   <Icon size={16} className={healthTextColors[statusLevel]} />
                 </div>

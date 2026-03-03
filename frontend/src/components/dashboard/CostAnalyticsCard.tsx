@@ -14,7 +14,7 @@ export function CostAnalyticsCard({ data, isLoading }: CostAnalyticsCardProps) {
   if (isLoading) {
     return (
       <Card>
-        <div className="h-64 animate-pulse bg-slate-700 rounded-lg" />
+        <div className="h-64 animate-pulse bg-zinc-700 rounded-lg" />
       </Card>
     )
   }
@@ -26,7 +26,7 @@ export function CostAnalyticsCard({ data, isLoading }: CostAnalyticsCardProps) {
           <CardTitle>Cost Analytics</CardTitle>
         </CardHeader>
         <CardContent>
-          <div className="h-40 flex items-center justify-center text-slate-400">
+          <div className="h-40 flex items-center justify-center text-zinc-400">
             No data available
           </div>
         </CardContent>
@@ -48,7 +48,7 @@ export function CostAnalyticsCard({ data, isLoading }: CostAnalyticsCardProps) {
           <CardTitle>Cost Analytics</CardTitle>
           <div className="flex items-center gap-2 text-sm">
             <DollarSign size={16} className="text-green-400" />
-            <span className="text-slate-300">${totalCost.toFixed(2)} total</span>
+            <span className="text-zinc-300">${totalCost.toFixed(2)} total</span>
           </div>
         </div>
       </CardHeader>
@@ -63,10 +63,10 @@ export function CostAnalyticsCard({ data, isLoading }: CostAnalyticsCardProps) {
         <div className="mt-4 flex items-center justify-between text-sm">
           <div className="flex items-center gap-2">
             <Zap size={14} className="text-blue-400" />
-            <span className="text-slate-400">Total tokens:</span>
+            <span className="text-zinc-400">Total tokens:</span>
             <span className="font-medium text-blue-400">{data.total_tokens.toLocaleString()}</span>
           </div>
-          <span className="text-xs text-slate-500">Last 30 days</span>
+          <span className="text-xs text-zinc-500">Last 30 days</span>
         </div>
       </CardContent>
     </Card>

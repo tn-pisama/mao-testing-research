@@ -6,7 +6,7 @@ export default function CLIPage() {
     <div>
       <div className="mb-8">
         <h1 className="text-3xl font-bold text-white mb-4">CLI Reference</h1>
-        <p className="text-lg text-slate-300">
+        <p className="text-lg text-zinc-300">
           Command-line interface for importing traces, querying detections, and managing 
           your Pisama workspace.
         </p>
@@ -18,15 +18,15 @@ export default function CLIPage() {
           pip install mao-testing
         </CodeBlock>
         
-        <p className="mt-4 text-slate-300">
-          The CLI is included with the Python SDK. After installation, the <code className="bg-slate-800 px-1 rounded">mao</code> command 
+        <p className="mt-4 text-zinc-300">
+          The CLI is included with the Python SDK. After installation, the <code className="bg-zinc-800 px-1 rounded">mao</code> command 
           is available in your terminal.
         </p>
       </section>
 
       <section className="mb-10">
         <h2 className="text-xl font-bold text-white mb-4">Configuration</h2>
-        <p className="text-slate-300 mb-4">
+        <p className="text-zinc-300 mb-4">
           Set your API key before using CLI commands:
         </p>
 
@@ -75,7 +75,7 @@ mao import traces.json --dry-run`}
             </CodeBlock>
 
             <div className="mt-4">
-              <h4 className="text-sm font-semibold text-slate-400 mb-2">Options</h4>
+              <h4 className="text-sm font-semibold text-zinc-400 mb-2">Options</h4>
               <OptionTable options={[
                 { flag: "--framework", description: "Framework tag (langgraph, autogen, crewai, custom)" },
                 { flag: "--environment", description: "Environment tag (production, staging, development)" },
@@ -124,7 +124,7 @@ mao traces show <trace-id> --output trace.json`}
             </div>
 
             <div className="mt-4">
-              <h4 className="text-sm font-semibold text-slate-400 mb-2">Options</h4>
+              <h4 className="text-sm font-semibold text-zinc-400 mb-2">Options</h4>
               <OptionTable options={[
                 { flag: "--framework", description: "Filter by framework" },
                 { flag: "--status", description: "Filter by status (running, completed, error)" },
@@ -260,7 +260,7 @@ mao config reset`}
 
       <section className="mb-10">
         <h2 className="text-xl font-bold text-white mb-4">MCP Server Mode</h2>
-        <p className="text-slate-300 mb-4">
+        <p className="text-zinc-300 mb-4">
           Run Pisama as an MCP (Model Context Protocol) server for AI assistant integration:
         </p>
 
@@ -276,7 +276,7 @@ mao mcp install-claude`}
         </CodeBlock>
 
         <div className="mt-4 p-4 rounded-lg bg-blue-500/10 border border-zinc-800">
-          <p className="text-slate-300 text-sm">
+          <p className="text-zinc-300 text-sm">
             MCP mode allows AI assistants like Claude to query your traces and detections 
             directly, enabling intelligent debugging assistance.
           </p>
@@ -317,60 +317,60 @@ mao mcp install-claude`}
 
       <section className="mb-10">
         <h2 className="text-xl font-bold text-white mb-4">Exit Codes</h2>
-        <div className="rounded-lg bg-slate-900 border border-slate-700 overflow-hidden">
+        <div className="rounded-lg bg-zinc-900 border border-zinc-700 overflow-hidden">
           <table className="w-full text-sm">
-            <thead className="bg-slate-800/50 border-b border-slate-700">
+            <thead className="bg-zinc-800/50 border-b border-zinc-700">
               <tr>
-                <th className="px-4 py-3 text-left text-slate-300 font-medium">Code</th>
-                <th className="px-4 py-3 text-left text-slate-300 font-medium">Meaning</th>
+                <th className="px-4 py-3 text-left text-zinc-300 font-medium">Code</th>
+                <th className="px-4 py-3 text-left text-zinc-300 font-medium">Meaning</th>
               </tr>
             </thead>
-            <tbody className="divide-y divide-slate-700">
+            <tbody className="divide-y divide-zinc-700">
               <tr>
-                <td className="px-4 py-3 text-slate-300">0</td>
-                <td className="px-4 py-3 text-slate-400">Success</td>
+                <td className="px-4 py-3 text-zinc-300">0</td>
+                <td className="px-4 py-3 text-zinc-400">Success</td>
               </tr>
               <tr>
-                <td className="px-4 py-3 text-slate-300">1</td>
-                <td className="px-4 py-3 text-slate-400">General error</td>
+                <td className="px-4 py-3 text-zinc-300">1</td>
+                <td className="px-4 py-3 text-zinc-400">General error</td>
               </tr>
               <tr>
-                <td className="px-4 py-3 text-slate-300">2</td>
-                <td className="px-4 py-3 text-slate-400">Invalid arguments</td>
+                <td className="px-4 py-3 text-zinc-300">2</td>
+                <td className="px-4 py-3 text-zinc-400">Invalid arguments</td>
               </tr>
               <tr>
-                <td className="px-4 py-3 text-slate-300">3</td>
-                <td className="px-4 py-3 text-slate-400">Authentication failed</td>
+                <td className="px-4 py-3 text-zinc-300">3</td>
+                <td className="px-4 py-3 text-zinc-400">Authentication failed</td>
               </tr>
               <tr>
-                <td className="px-4 py-3 text-slate-300">4</td>
-                <td className="px-4 py-3 text-slate-400">Resource not found</td>
+                <td className="px-4 py-3 text-zinc-300">4</td>
+                <td className="px-4 py-3 text-zinc-400">Resource not found</td>
               </tr>
               <tr>
-                <td className="px-4 py-3 text-slate-300">5</td>
-                <td className="px-4 py-3 text-slate-400">API error</td>
+                <td className="px-4 py-3 text-zinc-300">5</td>
+                <td className="px-4 py-3 text-zinc-400">API error</td>
               </tr>
             </tbody>
           </table>
         </div>
       </section>
 
-      <section className="bg-slate-800/50 rounded-xl border border-slate-700 p-6">
+      <section className="bg-zinc-800/50 rounded-xl border border-zinc-700 p-6">
         <h2 className="text-lg font-bold text-white mb-4">Related</h2>
         <div className="grid md:grid-cols-2 gap-4">
           <Link
             href="/docs/sdk"
-            className="p-4 rounded-lg bg-slate-900/50 border border-slate-700 hover:border-zinc-700 transition-colors"
+            className="p-4 rounded-lg bg-zinc-900/50 border border-zinc-700 hover:border-zinc-700 transition-colors"
           >
             <h3 className="font-medium text-white">Python SDK</h3>
-            <p className="text-sm text-slate-400">Programmatic access for custom integrations</p>
+            <p className="text-sm text-zinc-400">Programmatic access for custom integrations</p>
           </Link>
           <Link
             href="/docs/api-reference"
-            className="p-4 rounded-lg bg-slate-900/50 border border-slate-700 hover:border-zinc-700 transition-colors"
+            className="p-4 rounded-lg bg-zinc-900/50 border border-zinc-700 hover:border-zinc-700 transition-colors"
           >
             <h3 className="font-medium text-white">REST API</h3>
-            <p className="text-sm text-slate-400">Direct HTTP API access</p>
+            <p className="text-sm text-zinc-400">Direct HTTP API access</p>
           </Link>
         </div>
       </section>
@@ -380,17 +380,17 @@ mao mcp install-claude`}
 
 function CodeBlock({ title, language, children }: { title: string; language: string; children: React.ReactNode }) {
   return (
-    <div className="rounded-lg bg-slate-900 border border-slate-700 overflow-hidden">
-      <div className="flex items-center justify-between px-4 py-2 border-b border-slate-700 bg-slate-800/50">
+    <div className="rounded-lg bg-zinc-900 border border-zinc-700 overflow-hidden">
+      <div className="flex items-center justify-between px-4 py-2 border-b border-zinc-700 bg-zinc-800/50">
         <div className="flex items-center gap-2">
-          <Terminal size={14} className="text-slate-400" />
-          <span className="text-sm text-slate-400">{title}</span>
+          <Terminal size={14} className="text-zinc-400" />
+          <span className="text-sm text-zinc-400">{title}</span>
         </div>
-        <button className="p-1 text-slate-400 hover:text-white transition-colors" aria-label="Copy code">
+        <button className="p-1 text-zinc-400 hover:text-white transition-colors" aria-label="Copy code">
           <Copy size={14} />
         </button>
       </div>
-      <pre className="p-4 text-sm text-slate-300 overflow-x-auto">
+      <pre className="p-4 text-sm text-zinc-300 overflow-x-auto">
         <code>{children}</code>
       </pre>
     </div>
@@ -409,14 +409,14 @@ function CommandSection({
   children: React.ReactNode
 }) {
   return (
-    <div className="rounded-xl bg-slate-800/30 border border-slate-700 p-6">
+    <div className="rounded-xl bg-zinc-800/30 border border-zinc-700 p-6">
       <div className="flex items-center gap-3 mb-4">
         <div className="p-2 rounded-lg bg-blue-500/10 text-blue-400">
           <Icon size={20} />
         </div>
         <div>
           <h3 className="text-lg font-bold text-white">{name}</h3>
-          <p className="text-sm text-slate-400">{description}</p>
+          <p className="text-sm text-zinc-400">{description}</p>
         </div>
       </div>
       {children}
@@ -426,15 +426,15 @@ function CommandSection({
 
 function OptionTable({ options }: { options: Array<{ flag: string; description: string }> }) {
   return (
-    <div className="rounded-lg bg-slate-900 border border-slate-700 overflow-hidden">
+    <div className="rounded-lg bg-zinc-900 border border-zinc-700 overflow-hidden">
       <table className="w-full text-sm">
-        <tbody className="divide-y divide-slate-700">
+        <tbody className="divide-y divide-zinc-700">
           {options.map((opt) => (
             <tr key={opt.flag}>
               <td className="px-4 py-2 w-40">
                 <code className="text-blue-400">{opt.flag}</code>
               </td>
-              <td className="px-4 py-2 text-slate-400">{opt.description}</td>
+              <td className="px-4 py-2 text-zinc-400">{opt.description}</td>
             </tr>
           ))}
         </tbody>
@@ -445,7 +445,7 @@ function OptionTable({ options }: { options: Array<{ flag: string; description: 
 
 function WorkflowExample({ title, steps }: { title: string; steps: string[] }) {
   return (
-    <div className="rounded-lg bg-slate-800/50 border border-slate-700 p-4">
+    <div className="rounded-lg bg-zinc-800/50 border border-zinc-700 p-4">
       <h4 className="font-semibold text-white mb-3">{title}</h4>
       <div className="space-y-2">
         {steps.map((step, i) => (
@@ -453,7 +453,7 @@ function WorkflowExample({ title, steps }: { title: string; steps: string[] }) {
             <span className="flex-shrink-0 w-6 h-6 rounded-full bg-blue-600/20 text-blue-400 text-xs flex items-center justify-center font-medium">
               {i + 1}
             </span>
-            <code className="text-sm text-slate-300 bg-slate-900 px-2 py-1 rounded">{step}</code>
+            <code className="text-sm text-zinc-300 bg-zinc-900 px-2 py-1 rounded">{step}</code>
           </div>
         ))}
       </div>

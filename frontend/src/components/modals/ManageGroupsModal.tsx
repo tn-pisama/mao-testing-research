@@ -94,13 +94,13 @@ export function ManageGroupsModal({ isOpen, onClose }: ManageGroupsModalProps) {
 
   return (
     <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50">
-      <div className="bg-slate-900 rounded-lg shadow-xl max-w-2xl w-full max-h-[80vh] overflow-hidden border border-slate-700">
+      <div className="bg-zinc-900 rounded-lg shadow-xl max-w-2xl w-full max-h-[80vh] overflow-hidden border border-zinc-700">
         {/* Header */}
-        <div className="flex items-center justify-between p-4 border-b border-slate-700">
+        <div className="flex items-center justify-between p-4 border-b border-zinc-700">
           <h2 className="text-xl font-bold text-white">Manage Workflow Groups</h2>
           <button
             onClick={onClose}
-            className="text-slate-400 hover:text-white transition-colors"
+            className="text-zinc-400 hover:text-white transition-colors"
           >
             <X size={20} />
           </button>
@@ -133,19 +133,19 @@ export function ManageGroupsModal({ isOpen, onClose }: ManageGroupsModalProps) {
 
           {/* Create Form */}
           {isCreating && (
-            <div className="mb-4 p-4 bg-slate-800 rounded-lg border border-slate-700">
+            <div className="mb-4 p-4 bg-zinc-800 rounded-lg border border-zinc-700">
               <input
                 type="text"
                 placeholder="Group Name"
                 value={formData.name || ''}
                 onChange={(e) => setFormData({ ...formData, name: e.target.value })}
-                className="w-full px-3 py-2 bg-slate-900 border border-slate-700 rounded text-white mb-2 focus:border-blue-500 focus:outline-none"
+                className="w-full px-3 py-2 bg-zinc-900 border border-zinc-700 rounded text-white mb-2 focus:border-blue-500 focus:outline-none"
               />
               <textarea
                 placeholder="Description (optional)"
                 value={formData.description || ''}
                 onChange={(e) => setFormData({ ...formData, description: e.target.value })}
-                className="w-full px-3 py-2 bg-slate-900 border border-slate-700 rounded text-white mb-2 focus:border-blue-500 focus:outline-none"
+                className="w-full px-3 py-2 bg-zinc-900 border border-zinc-700 rounded text-white mb-2 focus:border-blue-500 focus:outline-none"
                 rows={2}
               />
               <div className="flex gap-2">
@@ -171,7 +171,7 @@ export function ManageGroupsModal({ isOpen, onClose }: ManageGroupsModalProps) {
             {groups.map((group) => (
               <div
                 key={group.id}
-                className="p-3 bg-slate-800 rounded-lg border border-slate-700 hover:border-slate-600 transition-colors"
+                className="p-3 bg-zinc-800 rounded-lg border border-zinc-700 hover:border-zinc-600 transition-colors"
               >
                 {editingId === group.id ? (
                   // Edit Mode
@@ -180,14 +180,14 @@ export function ManageGroupsModal({ isOpen, onClose }: ManageGroupsModalProps) {
                       type="text"
                       value={formData.name || group.name}
                       onChange={(e) => setFormData({ ...formData, name: e.target.value })}
-                      className="w-full px-3 py-2 bg-slate-900 border border-slate-700 rounded text-white mb-2 focus:border-blue-500 focus:outline-none"
+                      className="w-full px-3 py-2 bg-zinc-900 border border-zinc-700 rounded text-white mb-2 focus:border-blue-500 focus:outline-none"
                     />
                     <textarea
                       value={formData.description || group.description || ''}
                       onChange={(e) =>
                         setFormData({ ...formData, description: e.target.value })
                       }
-                      className="w-full px-3 py-2 bg-slate-900 border border-slate-700 rounded text-white mb-2 focus:border-blue-500 focus:outline-none"
+                      className="w-full px-3 py-2 bg-zinc-900 border border-zinc-700 rounded text-white mb-2 focus:border-blue-500 focus:outline-none"
                       rows={2}
                     />
                     <div className="flex gap-2">
@@ -221,19 +221,19 @@ export function ManageGroupsModal({ isOpen, onClose }: ManageGroupsModalProps) {
                       <div>
                         <div className="font-medium text-white">{group.name}</div>
                         {group.description && (
-                          <div className="text-sm text-slate-400">
+                          <div className="text-sm text-zinc-400">
                             {group.description}
                           </div>
                         )}
                       </div>
                     </div>
                     <div className="flex items-center gap-2">
-                      <span className="text-sm text-slate-400">
+                      <span className="text-sm text-zinc-400">
                         {group.workflow_count || 0} workflows
                       </span>
                       <button
                         onClick={() => startEdit(group.id, group.name, group.description)}
-                        className="p-1 text-slate-400 hover:text-white transition-colors"
+                        className="p-1 text-zinc-400 hover:text-white transition-colors"
                         disabled={isSubmitting}
                       >
                         <Edit2 size={16} />
@@ -253,14 +253,14 @@ export function ManageGroupsModal({ isOpen, onClose }: ManageGroupsModalProps) {
           </div>
 
           {groups.length === 0 && !isCreating && (
-            <div className="text-center py-8 text-slate-400">
+            <div className="text-center py-8 text-zinc-400">
               No workflow groups yet. Create one to get started!
             </div>
           )}
         </div>
 
         {/* Footer */}
-        <div className="p-4 border-t border-slate-700 flex justify-end">
+        <div className="p-4 border-t border-zinc-700 flex justify-end">
           <Button onClick={onClose} variant="secondary">
             Close
           </Button>

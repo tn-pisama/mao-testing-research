@@ -101,7 +101,7 @@ function getStatusBadge(status: Tool['status']) {
       )
     case 'coming_soon':
       return (
-        <span className="px-2 py-0.5 text-xs rounded-full bg-slate-500/20 text-slate-400">
+        <span className="px-2 py-0.5 text-xs rounded-full bg-zinc-500/20 text-zinc-400">
           Coming Soon
         </span>
       )
@@ -120,7 +120,7 @@ export default function ToolsPage() {
               </div>
               <h1 className="text-2xl font-bold text-white">Testing Tools</h1>
             </div>
-            <p className="text-slate-400">
+            <p className="text-zinc-400">
               Powerful tools for debugging, testing, and analyzing your AI agents
             </p>
           </div>
@@ -138,19 +138,19 @@ export default function ToolsPage() {
                 href={isDisabled ? '#' : tool.href}
                 className={`block ${isDisabled ? 'cursor-not-allowed' : ''}`}
               >
-                <Card className={`h-full transition-all ${isDisabled ? 'opacity-60' : 'hover:border-slate-600 hover:bg-slate-800/50'}`}>
+                <Card className={`h-full transition-all ${isDisabled ? 'opacity-60' : 'hover:border-zinc-600 hover:bg-zinc-800/50'}`}>
                   <CardContent className="p-5">
                     <div className="flex items-start justify-between mb-3">
-                      <div className="p-2 bg-slate-700 rounded-lg">
-                        <Icon size={20} className="text-slate-300" />
+                      <div className="p-2 bg-zinc-700 rounded-lg">
+                        <Icon size={20} className="text-zinc-300" />
                       </div>
                       {getStatusBadge(tool.status)}
                     </div>
                     <h3 className="text-white font-semibold mb-1">{tool.name}</h3>
-                    <p className="text-sm text-slate-400 mb-3">{tool.description}</p>
+                    <p className="text-sm text-zinc-400 mb-3">{tool.description}</p>
                     <div className="flex items-center justify-between">
                       {tool.lastUsed ? (
-                        <span className="text-xs text-slate-500 flex items-center gap-1">
+                        <span className="text-xs text-zinc-500 flex items-center gap-1">
                           <Clock size={12} />
                           Used {tool.lastUsed}
                         </span>
@@ -158,7 +158,7 @@ export default function ToolsPage() {
                         <span />
                       )}
                       {!isDisabled && (
-                        <ArrowRight size={16} className="text-slate-500" />
+                        <ArrowRight size={16} className="text-zinc-500" />
                       )}
                     </div>
                   </CardContent>
@@ -169,34 +169,34 @@ export default function ToolsPage() {
         </div>
 
         {/* Documentation Section */}
-        <div className="mt-8 p-6 bg-slate-800/50 rounded-xl border border-slate-700">
+        <div className="mt-8 p-6 bg-zinc-800/50 rounded-xl border border-zinc-700">
           <h3 className="text-lg font-semibold text-white mb-4">Documentation</h3>
           <div className="grid md:grid-cols-2 gap-4">
             <Link
               href="/docs/cli"
-              className="flex items-center justify-between p-4 bg-slate-900 rounded-lg hover:bg-slate-800 transition-colors"
+              className="flex items-center justify-between p-4 bg-zinc-900 rounded-lg hover:bg-zinc-800 transition-colors"
             >
               <div className="flex items-center gap-3">
-                <Terminal size={20} className="text-slate-400" />
+                <Terminal size={20} className="text-zinc-400" />
                 <div>
                   <div className="text-sm font-medium text-white">CLI Reference</div>
-                  <div className="text-xs text-slate-400">Use tools from the command line</div>
+                  <div className="text-xs text-zinc-400">Use tools from the command line</div>
                 </div>
               </div>
-              <ExternalLink size={16} className="text-slate-500" />
+              <ExternalLink size={16} className="text-zinc-500" />
             </Link>
             <Link
               href="/docs/sdk"
-              className="flex items-center justify-between p-4 bg-slate-900 rounded-lg hover:bg-slate-800 transition-colors"
+              className="flex items-center justify-between p-4 bg-zinc-900 rounded-lg hover:bg-zinc-800 transition-colors"
             >
               <div className="flex items-center gap-3">
-                <FileJson size={20} className="text-slate-400" />
+                <FileJson size={20} className="text-zinc-400" />
                 <div>
                   <div className="text-sm font-medium text-white">SDK Integration</div>
-                  <div className="text-xs text-slate-400">Integrate tools into your codebase</div>
+                  <div className="text-xs text-zinc-400">Integrate tools into your codebase</div>
                 </div>
               </div>
-              <ExternalLink size={16} className="text-slate-500" />
+              <ExternalLink size={16} className="text-zinc-500" />
             </Link>
           </div>
         </div>

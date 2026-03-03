@@ -6,7 +6,7 @@ export default function GettingStartedPage() {
     <div>
       <div className="mb-8">
         <h1 className="text-3xl font-bold text-white mb-4">Getting Started</h1>
-        <p className="text-lg text-slate-300">
+        <p className="text-lg text-zinc-300">
           Get Pisama running with your multi-agent system in under 5 minutes.
         </p>
       </div>
@@ -22,7 +22,7 @@ export default function GettingStartedPage() {
 
       <section className="mb-10">
         <h2 className="text-xl font-bold text-white mb-4">Step 1: Install the SDK</h2>
-        <p className="text-slate-300 mb-4">
+        <p className="text-zinc-300 mb-4">
           Choose the installation method for your runtime:
         </p>
         
@@ -39,7 +39,7 @@ export default function GettingStartedPage() {
 
       <section className="mb-10">
         <h2 className="text-xl font-bold text-white mb-4">Step 2: Configure Your API Key</h2>
-        <p className="text-slate-300 mb-4">
+        <p className="text-zinc-300 mb-4">
           Set your API key as an environment variable:
         </p>
         
@@ -62,7 +62,7 @@ export default function GettingStartedPage() {
 
       <section className="mb-10">
         <h2 className="text-xl font-bold text-white mb-4">Step 3: Instrument Your Agents</h2>
-        <p className="text-slate-300 mb-4">
+        <p className="text-zinc-300 mb-4">
           Add the Pisama wrapper to your agent initialization:
         </p>
 
@@ -115,7 +115,7 @@ with tracer.trace("crew-execution"):
 
       <section className="mb-10">
         <h2 className="text-xl font-bold text-white mb-4">Step 4: Run Your Agents</h2>
-        <p className="text-slate-300 mb-4">
+        <p className="text-zinc-300 mb-4">
           Execute your agent workflow as normal. Pisama will automatically:
         </p>
         <ul className="space-y-2 mb-4">
@@ -127,20 +127,20 @@ with tracer.trace("crew-execution"):
 
       <section className="mb-10">
         <h2 className="text-xl font-bold text-white mb-4">Step 5: View Results</h2>
-        <p className="text-slate-300 mb-4">
+        <p className="text-zinc-300 mb-4">
           Open the Pisama dashboard to see your traces and any detected issues:
         </p>
         <div className="flex gap-4">
           <Link
             href="/dashboard"
-            className="inline-flex items-center gap-2 bg-primary-600 hover:bg-primary-700 text-white font-medium px-4 py-2 rounded-lg transition-colors"
+            className="inline-flex items-center gap-2 bg-blue-600 hover:bg-blue-700 text-white font-medium px-4 py-2 rounded-lg transition-colors"
           >
             Open Dashboard
             <ArrowRight size={16} />
           </Link>
           <Link
             href="/traces"
-            className="inline-flex items-center gap-2 bg-slate-700 hover:bg-slate-600 text-white font-medium px-4 py-2 rounded-lg transition-colors"
+            className="inline-flex items-center gap-2 bg-zinc-700 hover:bg-zinc-600 text-white font-medium px-4 py-2 rounded-lg transition-colors"
           >
             View Traces
           </Link>
@@ -149,7 +149,7 @@ with tracer.trace("crew-execution"):
 
       <section className="mb-10">
         <h2 className="text-xl font-bold text-white mb-4">Alternative: OTEL Export</h2>
-        <p className="text-slate-300 mb-4">
+        <p className="text-zinc-300 mb-4">
           If you prefer to use OpenTelemetry directly, configure your OTEL exporter to send traces to our endpoint:
         </p>
         
@@ -159,22 +159,22 @@ export OTEL_EXPORTER_OTLP_HEADERS="Authorization=Bearer $MAO_API_KEY"`}
         </CodeBlock>
       </section>
 
-      <section className="bg-slate-800/50 rounded-xl border border-slate-700 p-6">
+      <section className="bg-zinc-800/50 rounded-xl border border-zinc-700 p-6">
         <h2 className="text-lg font-bold text-white mb-2">Next Steps</h2>
         <div className="grid md:grid-cols-2 gap-4 mt-4">
           <Link
             href="/docs/detections"
-            className="p-4 rounded-lg bg-slate-900/50 border border-slate-700 hover:border-primary-500/50 transition-colors"
+            className="p-4 rounded-lg bg-zinc-900/50 border border-zinc-700 hover:border-blue-500/50 transition-colors"
           >
             <h3 className="font-medium text-white">Understanding Detections</h3>
-            <p className="text-sm text-slate-400">Learn about the types of failures we detect</p>
+            <p className="text-sm text-zinc-400">Learn about the types of failures we detect</p>
           </Link>
           <Link
             href="/docs/integration"
-            className="p-4 rounded-lg bg-slate-900/50 border border-slate-700 hover:border-primary-500/50 transition-colors"
+            className="p-4 rounded-lg bg-zinc-900/50 border border-zinc-700 hover:border-blue-500/50 transition-colors"
           >
             <h3 className="font-medium text-white">Advanced Integration</h3>
-            <p className="text-sm text-slate-400">Custom spans, metadata, and filtering</p>
+            <p className="text-sm text-zinc-400">Custom spans, metadata, and filtering</p>
           </Link>
         </div>
       </section>
@@ -184,7 +184,7 @@ export OTEL_EXPORTER_OTLP_HEADERS="Authorization=Bearer $MAO_API_KEY"`}
 
 function Prerequisite({ children }: { children: React.ReactNode }) {
   return (
-    <li className="flex items-center gap-2 text-slate-300">
+    <li className="flex items-center gap-2 text-zinc-300">
       <Check size={16} className="text-emerald-400" />
       {children}
     </li>
@@ -193,17 +193,17 @@ function Prerequisite({ children }: { children: React.ReactNode }) {
 
 function CodeBlock({ title, language, children }: { title: string; language: string; children: React.ReactNode }) {
   return (
-    <div className="rounded-lg bg-slate-900 border border-slate-700 overflow-hidden">
-      <div className="flex items-center justify-between px-4 py-2 border-b border-slate-700 bg-slate-800/50">
+    <div className="rounded-lg bg-zinc-900 border border-zinc-700 overflow-hidden">
+      <div className="flex items-center justify-between px-4 py-2 border-b border-zinc-700 bg-zinc-800/50">
         <div className="flex items-center gap-2">
-          <Terminal size={14} className="text-slate-400" />
-          <span className="text-sm text-slate-400">{title}</span>
+          <Terminal size={14} className="text-zinc-400" />
+          <span className="text-sm text-zinc-400">{title}</span>
         </div>
-        <button className="p-1 text-slate-400 hover:text-white transition-colors" aria-label="Copy code">
+        <button className="p-1 text-zinc-400 hover:text-white transition-colors" aria-label="Copy code">
           <Copy size={14} />
         </button>
       </div>
-      <pre className="p-4 text-sm text-slate-300 overflow-x-auto">
+      <pre className="p-4 text-sm text-zinc-300 overflow-x-auto">
         <code>{children}</code>
       </pre>
     </div>

@@ -1,7 +1,7 @@
 'use client'
 
 import { HTMLAttributes, forwardRef } from 'react'
-import clsx from 'clsx'
+import { cn } from '@/lib/utils'
 
 export interface QualityHealingStatusBadgeProps extends HTMLAttributes<HTMLSpanElement> {
   status: string
@@ -28,13 +28,13 @@ function statusConfig(status: string): { label: string; className: string } {
     case 'failed':
       return { label: 'Failed', className: 'bg-red-500/20 text-red-400 border-red-500/50' }
     case 'rolled_back':
-      return { label: 'Rolled Back', className: 'bg-slate-500/20 text-slate-400 border-slate-500/50' }
+      return { label: 'Rolled Back', className: 'bg-zinc-500/20 text-zinc-400 border-zinc-500/50' }
     case 'rejected':
-      return { label: 'Rejected', className: 'bg-slate-500/20 text-slate-400 border-slate-500/50' }
+      return { label: 'Rejected', className: 'bg-zinc-500/20 text-zinc-400 border-zinc-500/50' }
     case 'staged':
       return { label: 'Staged', className: 'bg-purple-500/20 text-purple-400 border-purple-500/50' }
     default:
-      return { label: status, className: 'bg-slate-500/20 text-slate-400 border-slate-500/50' }
+      return { label: status, className: 'bg-zinc-500/20 text-zinc-400 border-zinc-500/50' }
   }
 }
 
@@ -52,7 +52,7 @@ export const QualityHealingStatusBadge = forwardRef<HTMLSpanElement, QualityHeal
     return (
       <span
         ref={ref}
-        className={clsx(baseStyles, colorClass, sizes[size], className)}
+        className={cn(baseStyles, colorClass, sizes[size], className)}
         title={label}
         {...props}
       >

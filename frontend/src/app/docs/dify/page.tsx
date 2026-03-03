@@ -8,7 +8,7 @@ export default function DifyDocsPage() {
     <div>
       <div className="mb-8">
         <h1 className="text-3xl font-bold text-white mb-4">Dify Integration</h1>
-        <p className="text-lg text-slate-300">
+        <p className="text-lg text-zinc-300">
           Monitor AI workflows, chatbots, and agents built in Dify. Detect RAG poisoning,
           iteration escapes, model fallbacks, and more.
         </p>
@@ -16,7 +16,7 @@ export default function DifyDocsPage() {
 
       <section className="mb-10">
         <h2 className="text-xl font-bold text-white mb-4">Why Dify Integration?</h2>
-        <p className="text-slate-300 mb-4">
+        <p className="text-zinc-300 mb-4">
           Dify applications can exhibit complex failure patterns across workflows, RAG pipelines, and agent loops:
         </p>
         <div className="grid md:grid-cols-2 gap-4">
@@ -35,9 +35,9 @@ export default function DifyDocsPage() {
         <h2 className="text-xl font-bold text-white mb-4">Supported App Types</h2>
         <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
           {['Chatbot', 'Agent', 'Workflow', 'Chatflow'].map((type) => (
-            <div key={type} className="p-3 rounded-lg bg-slate-800/50 border border-slate-700 text-center">
+            <div key={type} className="p-3 rounded-lg bg-zinc-800/50 border border-zinc-700 text-center">
               <div className="font-medium text-white">{type}</div>
-              <code className="text-xs text-slate-400">{type.toLowerCase()}</code>
+              <code className="text-xs text-zinc-400">{type.toLowerCase()}</code>
             </div>
           ))}
         </div>
@@ -52,7 +52,7 @@ export default function DifyDocsPage() {
             pros={['Real-time detection', 'Works with Dify Cloud and self-hosted', 'No SDK needed']}
             cons={['Requires Dify webhook configuration']}
           >
-            <h4 className="text-sm font-semibold text-slate-400 mb-2 mt-4">Setup Steps</h4>
+            <h4 className="text-sm font-semibold text-zinc-400 mb-2 mt-4">Setup Steps</h4>
             <ol className="space-y-3">
               <SetupStep number={1} accentColor="bg-violet-600">
                 <strong>Register your Dify instance</strong> in Pisama dashboard or via API:
@@ -74,15 +74,15 @@ export default function DifyDocsPage() {
               </SetupStep>
               <SetupStep number={3} accentColor="bg-violet-600">
                 <strong>Configure the webhook</strong> in your Dify app to POST execution data:
-                <div className="mt-2 rounded-lg bg-slate-900 border border-slate-700 p-4">
+                <div className="mt-2 rounded-lg bg-zinc-900 border border-zinc-700 p-4">
                   <div className="grid gap-2 text-sm">
                     <div className="flex">
-                      <span className="w-32 text-slate-400">URL:</span>
-                      <code className="text-primary-400">https://api.mao-testing.com/api/v1/dify/webhook</code>
+                      <span className="w-32 text-zinc-400">URL:</span>
+                      <code className="text-blue-400">https://api.mao-testing.com/api/v1/dify/webhook</code>
                     </div>
                     <div className="flex">
-                      <span className="w-32 text-slate-400">Headers:</span>
-                      <code className="text-slate-300">X-MAO-API-Key: your_api_key</code>
+                      <span className="w-32 text-zinc-400">Headers:</span>
+                      <code className="text-zinc-300">X-MAO-API-Key: your_api_key</code>
                     </div>
                   </div>
                 </div>
@@ -117,7 +117,7 @@ results = await tracer.sync_runs(
 
       <section className="mb-10">
         <h2 className="text-xl font-bold text-white mb-4">Webhook Security</h2>
-        <p className="text-slate-300 mb-4">
+        <p className="text-zinc-300 mb-4">
           Enable HMAC signature verification for production webhook endpoints:
         </p>
         <CodeBlock title="Signed Webhook Headers" language="text">
@@ -146,7 +146,7 @@ X-MAO-Signature: sha256=<hmac-of-timestamp.body>`}
 
       <section className="mb-10">
         <h2 className="text-xl font-bold text-white mb-4">Data Mapping</h2>
-        <p className="text-slate-300 mb-4">
+        <p className="text-zinc-300 mb-4">
           Dify execution data is mapped to Pisama traces as follows:
         </p>
         <DataMappingTable sourceLabel="Dify" mappings={[

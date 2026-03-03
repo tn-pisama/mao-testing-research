@@ -19,7 +19,7 @@ const statusOptions = [
   { label: 'Success', value: 'success', activeClass: 'bg-green-500/20 text-green-400 border-green-500/50' },
   { label: 'Partial', value: 'partial_success', activeClass: 'bg-yellow-500/20 text-yellow-400 border-yellow-500/50' },
   { label: 'Failed', value: 'failed', activeClass: 'bg-red-500/20 text-red-400 border-red-500/50' },
-  { label: 'Rolled Back', value: 'rolled_back', activeClass: 'bg-slate-500/20 text-slate-400 border-slate-500/50' },
+  { label: 'Rolled Back', value: 'rolled_back', activeClass: 'bg-zinc-500/20 text-zinc-400 border-zinc-500/50' },
 ]
 
 export default function QualityHealingListPage() {
@@ -72,7 +72,7 @@ export default function QualityHealingListPage() {
               </div>
               <h1 className="text-2xl font-bold text-white">Quality Healing</h1>
             </div>
-            <p className="text-slate-400">
+            <p className="text-zinc-400">
               Review and manage quality healing records for your workflows
             </p>
           </div>
@@ -81,8 +81,8 @@ export default function QualityHealingListPage() {
         {/* Filters */}
         <div className="flex items-center gap-3 mb-6 flex-wrap">
           <div className="flex items-center gap-2">
-            <Filter size={16} className="text-slate-400" />
-            <span className="text-sm text-slate-400">Status:</span>
+            <Filter size={16} className="text-zinc-400" />
+            <span className="text-sm text-zinc-400">Status:</span>
           </div>
           <div className="flex gap-2">
             {statusOptions.map((opt) => (
@@ -95,7 +95,7 @@ export default function QualityHealingListPage() {
                 className={`px-3 py-1.5 rounded-lg text-sm transition-colors border ${
                   statusFilter === opt.value
                     ? opt.activeClass || 'bg-blue-500/20 text-blue-400 border-blue-500/50'
-                    : 'bg-slate-800 text-slate-400 border-slate-700 hover:border-slate-600'
+                    : 'bg-zinc-800 text-zinc-400 border-zinc-700 hover:border-zinc-600'
                 }`}
               >
                 {opt.label}
@@ -126,9 +126,9 @@ export default function QualityHealingListPage() {
           ) : healings.length === 0 ? (
             <Card>
               <div className="text-center py-12">
-                <Heart className="w-12 h-12 text-slate-600 mx-auto mb-4" />
-                <p className="text-slate-400 mb-2">No quality healing records found</p>
-                <p className="text-slate-500 text-sm">
+                <Heart className="w-12 h-12 text-zinc-600 mx-auto mb-4" />
+                <p className="text-zinc-400 mb-2">No quality healing records found</p>
+                <p className="text-zinc-500 text-sm">
                   Quality healing records are generated when healing is triggered on assessments
                 </p>
               </div>
@@ -136,7 +136,7 @@ export default function QualityHealingListPage() {
           ) : (
             healings.map((healing) => (
               <Link key={healing.id} href={`/quality/${healing.assessment_id || healing.id}`}>
-                <Card className="hover:border-slate-600 transition-colors cursor-pointer">
+                <Card className="hover:border-zinc-600 transition-colors cursor-pointer">
                   <CardContent className="p-4">
                     <div className="flex items-center justify-between">
                       <div className="flex items-center gap-4">
@@ -154,7 +154,7 @@ export default function QualityHealingListPage() {
                                         ? 'text-green-400'
                                         : healing.after_score < healing.before_score
                                         ? 'text-red-400'
-                                        : 'text-slate-400'
+                                        : 'text-zinc-400'
                                     }
                                   >
                                     {Math.round(healing.after_score)}%
@@ -168,7 +168,7 @@ export default function QualityHealingListPage() {
                               </span>
                             )}
                           </div>
-                          <div className="flex items-center gap-3 text-sm text-slate-400">
+                          <div className="flex items-center gap-3 text-sm text-zinc-400">
                             <span>{healing.dimensions_targeted.length} dimensions targeted</span>
                             <span>|</span>
                             <span>{healing.fix_suggestions_count} suggestions</span>
@@ -184,13 +184,13 @@ export default function QualityHealingListPage() {
                               {healing.dimensions_targeted.slice(0, 4).map((dim) => (
                                 <span
                                   key={dim}
-                                  className="px-2 py-0.5 text-xs bg-slate-800 text-slate-400 rounded capitalize"
+                                  className="px-2 py-0.5 text-xs bg-zinc-800 text-zinc-400 rounded capitalize"
                                 >
                                   {dim.replace(/_/g, ' ')}
                                 </span>
                               ))}
                               {healing.dimensions_targeted.length > 4 && (
-                                <span className="px-2 py-0.5 text-xs bg-slate-800 text-slate-500 rounded">
+                                <span className="px-2 py-0.5 text-xs bg-zinc-800 text-zinc-500 rounded">
                                   +{healing.dimensions_targeted.length - 4} more
                                 </span>
                               )}
@@ -198,7 +198,7 @@ export default function QualityHealingListPage() {
                           )}
                         </div>
                       </div>
-                      <ChevronRight className="text-slate-500" size={20} />
+                      <ChevronRight className="text-zinc-500" size={20} />
                     </div>
                   </CardContent>
                 </Card>
@@ -210,7 +210,7 @@ export default function QualityHealingListPage() {
         {/* Pagination */}
         {totalPages > 1 && (
           <div className="flex items-center justify-between mt-6">
-            <p className="text-sm text-slate-400">
+            <p className="text-sm text-zinc-400">
               Showing {(page - 1) * perPage + 1} - {Math.min(page * perPage, total)} of {total}
             </p>
             <div className="flex gap-2">

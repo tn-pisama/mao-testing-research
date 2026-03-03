@@ -130,7 +130,7 @@ export default function EvalsPage() {
             </div>
             <h1 className="text-2xl font-bold text-white">Evaluation Framework</h1>
           </div>
-          <p className="text-slate-400">
+          <p className="text-zinc-400">
             Evaluate LLM outputs for quality, safety, and relevance
           </p>
         </div>
@@ -139,8 +139,8 @@ export default function EvalsPage() {
           {/* Input Section */}
           <div className="space-y-4">
             {/* Eval Mode Selection */}
-            <div className="bg-slate-800 rounded-xl p-4 border border-slate-700">
-              <h3 className="text-sm font-medium text-slate-300 mb-3">Evaluation Mode</h3>
+            <div className="bg-zinc-800 rounded-xl p-4 border border-zinc-700">
+              <h3 className="text-sm font-medium text-zinc-300 mb-3">Evaluation Mode</h3>
               <div className="flex gap-2">
                 {[
                   { id: 'full', name: 'Full Eval', desc: 'Multiple criteria' },
@@ -153,59 +153,59 @@ export default function EvalsPage() {
                     className={`flex-1 p-3 rounded-lg border text-left transition-all ${
                       evalMode === mode.id
                         ? 'border-emerald-500 bg-emerald-500/10'
-                        : 'border-slate-600 bg-slate-700/50 hover:border-slate-500'
+                        : 'border-zinc-600 bg-zinc-700/50 hover:border-zinc-500'
                     }`}
                   >
                     <span className="text-white text-sm font-medium">{mode.name}</span>
-                    <p className="text-slate-500 text-xs mt-0.5">{mode.desc}</p>
+                    <p className="text-zinc-500 text-xs mt-0.5">{mode.desc}</p>
                   </button>
                 ))}
               </div>
             </div>
 
             {/* Output Input */}
-            <div className="bg-slate-800 rounded-xl p-4 border border-slate-700">
-              <label className="text-sm font-medium text-slate-300 block mb-2">
+            <div className="bg-zinc-800 rounded-xl p-4 border border-zinc-700">
+              <label className="text-sm font-medium text-zinc-300 block mb-2">
                 Output to Evaluate *
               </label>
               <textarea
                 value={output}
                 onChange={(e) => setOutput(e.target.value)}
                 placeholder="Paste the LLM output you want to evaluate..."
-                className="w-full h-32 bg-slate-900 border border-slate-600 rounded-lg p-3 text-white text-sm resize-none focus:border-emerald-500 focus:outline-none"
+                className="w-full h-32 bg-zinc-900 border border-zinc-600 rounded-lg p-3 text-white text-sm resize-none focus:border-emerald-500 focus:outline-none"
               />
             </div>
 
             {/* Context Input */}
-            <div className="bg-slate-800 rounded-xl p-4 border border-slate-700">
-              <label className="text-sm font-medium text-slate-300 block mb-2">
+            <div className="bg-zinc-800 rounded-xl p-4 border border-zinc-700">
+              <label className="text-sm font-medium text-zinc-300 block mb-2">
                 Context (Optional)
               </label>
               <textarea
                 value={context}
                 onChange={(e) => setContext(e.target.value)}
                 placeholder="Provide context for the evaluation..."
-                className="w-full h-24 bg-slate-900 border border-slate-600 rounded-lg p-3 text-white text-sm resize-none focus:border-emerald-500 focus:outline-none"
+                className="w-full h-24 bg-zinc-900 border border-zinc-600 rounded-lg p-3 text-white text-sm resize-none focus:border-emerald-500 focus:outline-none"
               />
             </div>
 
             {/* Expected Output */}
-            <div className="bg-slate-800 rounded-xl p-4 border border-slate-700">
-              <label className="text-sm font-medium text-slate-300 block mb-2">
+            <div className="bg-zinc-800 rounded-xl p-4 border border-zinc-700">
+              <label className="text-sm font-medium text-zinc-300 block mb-2">
                 Expected Output (Optional)
               </label>
               <textarea
                 value={expected}
                 onChange={(e) => setExpected(e.target.value)}
                 placeholder="What was the expected output?"
-                className="w-full h-24 bg-slate-900 border border-slate-600 rounded-lg p-3 text-white text-sm resize-none focus:border-emerald-500 focus:outline-none"
+                className="w-full h-24 bg-zinc-900 border border-zinc-600 rounded-lg p-3 text-white text-sm resize-none focus:border-emerald-500 focus:outline-none"
               />
             </div>
 
             {/* Eval Types Selection (for full mode) */}
             {evalMode === 'full' && (
-              <div className="bg-slate-800 rounded-xl p-4 border border-slate-700">
-                <h3 className="text-sm font-medium text-slate-300 mb-3">Evaluation Criteria</h3>
+              <div className="bg-zinc-800 rounded-xl p-4 border border-zinc-700">
+                <h3 className="text-sm font-medium text-zinc-300 mb-3">Evaluation Criteria</h3>
                 <div className="grid grid-cols-2 gap-2">
                   {EVAL_TYPES.map((type) => (
                     <button
@@ -214,36 +214,36 @@ export default function EvalsPage() {
                       className={`p-3 rounded-lg border text-left transition-all ${
                         selectedTypes.includes(type.id)
                           ? 'border-emerald-500 bg-emerald-500/10'
-                          : 'border-slate-600 bg-slate-700/50 hover:border-slate-500'
+                          : 'border-zinc-600 bg-zinc-700/50 hover:border-zinc-500'
                       }`}
                     >
                       <div className="flex items-center gap-2">
-                        <span className={selectedTypes.includes(type.id) ? 'text-emerald-400' : 'text-slate-400'}>
+                        <span className={selectedTypes.includes(type.id) ? 'text-emerald-400' : 'text-zinc-400'}>
                           {type.icon}
                         </span>
                         <span className="text-white text-sm">{type.name}</span>
                       </div>
-                      <p className="text-slate-500 text-xs mt-1">{type.description}</p>
+                      <p className="text-zinc-500 text-xs mt-1">{type.description}</p>
                     </button>
                   ))}
                 </div>
 
                 {/* LLM Judge toggle */}
-                <div className="mt-4 pt-4 border-t border-slate-700">
+                <div className="mt-4 pt-4 border-t border-zinc-700">
                   <label className="flex items-center gap-3 cursor-pointer">
                     <input
                       type="checkbox"
                       checked={useLlmJudge}
                       onChange={(e) => setUseLlmJudge(e.target.checked)}
-                      className="w-4 h-4 rounded border-slate-600 bg-slate-900 text-emerald-500 focus:ring-emerald-500"
+                      className="w-4 h-4 rounded border-zinc-600 bg-zinc-900 text-emerald-500 focus:ring-emerald-500"
                     />
-                    <span className="text-sm text-slate-300">Use LLM Judge for enhanced evaluation</span>
+                    <span className="text-sm text-zinc-300">Use LLM Judge for enhanced evaluation</span>
                   </label>
                 </div>
 
                 {/* Threshold slider */}
                 <div className="mt-4">
-                  <label className="text-sm text-slate-400 block mb-2">
+                  <label className="text-sm text-zinc-400 block mb-2">
                     Pass Threshold: {(threshold * 100).toFixed(0)}%
                   </label>
                   <input
@@ -292,7 +292,7 @@ export default function EvalsPage() {
           {/* Results Section */}
           <div>
             {result && (
-              <div className="bg-slate-800 rounded-xl p-6 border border-slate-700">
+              <div className="bg-zinc-800 rounded-xl p-6 border border-zinc-700">
                 <div className="flex items-center justify-between mb-4">
                   <h2 className="text-lg font-semibold text-white">Evaluation Results</h2>
                   <span className={`px-3 py-1 rounded-full text-sm font-medium ${
@@ -307,7 +307,7 @@ export default function EvalsPage() {
                 {/* Overall Score */}
                 <div className={`p-4 rounded-lg mb-4 ${getScoreBg(result.overall_score)}`}>
                   <div className="flex items-center justify-between">
-                    <span className="text-slate-300">Overall Score</span>
+                    <span className="text-zinc-300">Overall Score</span>
                     <span className={`text-2xl font-bold ${getScoreColor(result.overall_score)}`}>
                       {(result.overall_score * 100).toFixed(1)}%
                     </span>
@@ -317,13 +317,13 @@ export default function EvalsPage() {
                 {/* Individual Scores */}
                 <div className="space-y-3">
                   {Object.entries(result.scores).map(([key, score]) => (
-                    <div key={key} className="flex items-center justify-between p-3 bg-slate-700/50 rounded-lg">
+                    <div key={key} className="flex items-center justify-between p-3 bg-zinc-700/50 rounded-lg">
                       <div className="flex items-center gap-2">
                         {EVAL_TYPES.find(t => t.id === key)?.icon}
                         <span className="text-white capitalize">{key}</span>
                       </div>
                       <div className="flex items-center gap-2">
-                        <div className="w-24 bg-slate-600 rounded-full h-2">
+                        <div className="w-24 bg-zinc-600 rounded-full h-2">
                           <div
                             className={`h-2 rounded-full ${score >= 0.8 ? 'bg-emerald-400' : score >= 0.6 ? 'bg-amber-400' : 'bg-red-400'}`}
                             style={{ width: `${score * 100}%` }}
@@ -340,12 +340,12 @@ export default function EvalsPage() {
             )}
 
             {quickResult && (
-              <div className="bg-slate-800 rounded-xl p-6 border border-slate-700">
+              <div className="bg-zinc-800 rounded-xl p-6 border border-zinc-700">
                 <h2 className="text-lg font-semibold text-white mb-4">Quick Evaluation</h2>
 
                 <div className={`p-4 rounded-lg mb-4 ${getScoreBg(quickResult.overall)}`}>
                   <div className="flex items-center justify-between">
-                    <span className="text-slate-300">Overall Score</span>
+                    <span className="text-zinc-300">Overall Score</span>
                     <span className={`text-2xl font-bold ${getScoreColor(quickResult.overall)}`}>
                       {(quickResult.overall * 100).toFixed(1)}%
                     </span>
@@ -359,14 +359,14 @@ export default function EvalsPage() {
                     { key: 'helpfulness', score: quickResult.helpfulness },
                     { key: 'safety', score: quickResult.safety },
                   ].map(({ key, score }) => (
-                    <div key={key} className="p-3 bg-slate-700/50 rounded-lg">
+                    <div key={key} className="p-3 bg-zinc-700/50 rounded-lg">
                       <div className="flex items-center justify-between mb-2">
-                        <span className="text-slate-400 text-sm capitalize">{key}</span>
+                        <span className="text-zinc-400 text-sm capitalize">{key}</span>
                         <span className={`text-sm ${getScoreColor(score)}`}>
                           {(score * 100).toFixed(0)}%
                         </span>
                       </div>
-                      <div className="w-full bg-slate-600 rounded-full h-1.5">
+                      <div className="w-full bg-zinc-600 rounded-full h-1.5">
                         <div
                           className={`h-1.5 rounded-full ${score >= 0.8 ? 'bg-emerald-400' : score >= 0.6 ? 'bg-amber-400' : 'bg-red-400'}`}
                           style={{ width: `${score * 100}%` }}
@@ -379,7 +379,7 @@ export default function EvalsPage() {
             )}
 
             {llmResult && (
-              <div className="bg-slate-800 rounded-xl p-6 border border-slate-700">
+              <div className="bg-zinc-800 rounded-xl p-6 border border-zinc-700">
                 <div className="flex items-center justify-between mb-4">
                   <h2 className="text-lg font-semibold text-white">LLM Judge Result</h2>
                   <span className={`px-3 py-1 rounded-full text-sm font-medium ${
@@ -393,31 +393,31 @@ export default function EvalsPage() {
 
                 <div className={`p-4 rounded-lg mb-4 ${getScoreBg(llmResult.score)}`}>
                   <div className="flex items-center justify-between">
-                    <span className="text-slate-300">Score</span>
+                    <span className="text-zinc-300">Score</span>
                     <span className={`text-2xl font-bold ${getScoreColor(llmResult.score)}`}>
                       {(llmResult.score * 100).toFixed(1)}%
                     </span>
                   </div>
                 </div>
 
-                <div className="p-4 bg-slate-700/50 rounded-lg mb-4">
-                  <h4 className="text-sm font-medium text-slate-300 mb-2">Reasoning</h4>
-                  <p className="text-slate-400 text-sm">{llmResult.reasoning}</p>
+                <div className="p-4 bg-zinc-700/50 rounded-lg mb-4">
+                  <h4 className="text-sm font-medium text-zinc-300 mb-2">Reasoning</h4>
+                  <p className="text-zinc-400 text-sm">{llmResult.reasoning}</p>
                 </div>
 
                 <div className="grid grid-cols-2 gap-3 text-sm">
-                  <div className="p-3 bg-slate-700/50 rounded-lg">
-                    <span className="text-slate-500">Confidence</span>
+                  <div className="p-3 bg-zinc-700/50 rounded-lg">
+                    <span className="text-zinc-500">Confidence</span>
                     <p className={`${getScoreColor(llmResult.confidence)}`}>
                       {(llmResult.confidence * 100).toFixed(0)}%
                     </p>
                   </div>
-                  <div className="p-3 bg-slate-700/50 rounded-lg">
-                    <span className="text-slate-500">Model</span>
+                  <div className="p-3 bg-zinc-700/50 rounded-lg">
+                    <span className="text-zinc-500">Model</span>
                     <p className="text-white">{llmResult.model_used}</p>
                   </div>
-                  <div className="p-3 bg-slate-700/50 rounded-lg col-span-2">
-                    <span className="text-slate-500">Tokens Used</span>
+                  <div className="p-3 bg-zinc-700/50 rounded-lg col-span-2">
+                    <span className="text-zinc-500">Tokens Used</span>
                     <p className="text-white">{llmResult.tokens_used}</p>
                   </div>
                 </div>
@@ -425,8 +425,8 @@ export default function EvalsPage() {
             )}
 
             {!result && !quickResult && !llmResult && (
-              <div className="h-full flex items-center justify-center bg-slate-800/50 rounded-xl border border-slate-700 border-dashed p-8">
-                <div className="text-center text-slate-500">
+              <div className="h-full flex items-center justify-center bg-zinc-800/50 rounded-xl border border-zinc-700 border-dashed p-8">
+                <div className="text-center text-zinc-500">
                   <CheckSquare className="w-12 h-12 mx-auto mb-4 opacity-50" />
                   <p className="text-lg font-medium mb-2">No results yet</p>
                   <p className="text-sm">Enter output and run evaluation to see results</p>

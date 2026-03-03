@@ -67,10 +67,10 @@ export function WaitlistModal({ isOpen, onClose }: WaitlistModalProps) {
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center">
       <div className="absolute inset-0 bg-black/60" onClick={onClose} />
-      <div className="relative bg-slate-900 rounded-xl border border-slate-700 p-8 max-w-md w-full mx-4">
+      <div className="relative bg-zinc-900 rounded-xl border border-zinc-700 p-8 max-w-md w-full mx-4">
         <button
           onClick={onClose}
-          className="absolute top-4 right-4 text-slate-400 hover:text-white transition-colors"
+          className="absolute top-4 right-4 text-zinc-400 hover:text-white transition-colors"
         >
           <X size={20} />
         </button>
@@ -78,13 +78,13 @@ export function WaitlistModal({ isOpen, onClose }: WaitlistModalProps) {
         <h2 className="text-2xl font-bold text-white mb-2">
           Get Early Access
         </h2>
-        <p className="text-slate-400 mb-6">
+        <p className="text-zinc-400 mb-6">
           Join the waitlist and be first to test PISAMA when we launch Q1 2026.
         </p>
 
         <form onSubmit={handleSubmit} className="space-y-4">
           <div>
-            <label htmlFor="email" className="block text-sm font-medium text-slate-300 mb-2">
+            <label htmlFor="email" className="block text-sm font-medium text-zinc-300 mb-2">
               Email Address
             </label>
             <input
@@ -94,7 +94,7 @@ export function WaitlistModal({ isOpen, onClose }: WaitlistModalProps) {
               onChange={(e) => setEmail(e.target.value)}
               placeholder="your@email.com"
               disabled={status === 'loading' || status === 'success'}
-              className="w-full px-4 py-3 rounded-lg bg-slate-800 border border-slate-700 text-white placeholder-slate-500 focus:outline-none focus:ring-2 focus:ring-sky-500 focus:border-transparent disabled:opacity-50 disabled:cursor-not-allowed"
+              className="w-full px-4 py-3 rounded-lg bg-zinc-800 border border-zinc-700 text-white placeholder-zinc-500 focus:outline-none focus:ring-2 focus:ring-sky-500 focus:border-transparent disabled:opacity-50 disabled:cursor-not-allowed"
             />
           </div>
 
@@ -117,7 +117,7 @@ export function WaitlistModal({ isOpen, onClose }: WaitlistModalProps) {
           </Button>
         </form>
 
-        <p className="text-xs text-slate-500 mt-4 text-center">
+        <p className="text-xs text-zinc-500 mt-4 text-center">
           We'll send you launch updates and early access when ready. No spam, ever.
         </p>
       </div>

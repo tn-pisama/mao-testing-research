@@ -29,7 +29,7 @@ export function QualityScoreCard({ assessments = [], isLoading }: QualityScoreCa
   if (isLoading) {
     return (
       <Card>
-        <div className="h-40 animate-pulse bg-primary-500/20 rounded-lg" />
+        <div className="h-40 animate-pulse bg-blue-500/20 rounded-lg" />
       </Card>
     )
   }
@@ -55,7 +55,7 @@ export function QualityScoreCard({ assessments = [], isLoading }: QualityScoreCa
           </CardTitle>
           <Link
             href="/quality"
-            className="flex items-center gap-1 text-sm text-primary-500 hover:text-primary-400"
+            className="flex items-center gap-1 text-sm text-blue-500 hover:text-blue-400"
           >
             View details
             <ChevronRight size={16} />
@@ -65,10 +65,10 @@ export function QualityScoreCard({ assessments = [], isLoading }: QualityScoreCa
       <CardContent>
         {totalAssessments === 0 ? (
           <div className="text-center py-4">
-            <div className="text-primary-400 text-sm mb-2">No quality assessments yet</div>
+            <div className="text-blue-400 text-sm mb-2">No quality assessments yet</div>
             <Link
               href="/n8n"
-              className="text-sm text-primary-500 hover:text-primary-400"
+              className="text-sm text-blue-500 hover:text-blue-400"
             >
               Register a workflow to get started
             </Link>

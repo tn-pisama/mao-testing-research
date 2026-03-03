@@ -167,8 +167,8 @@ export default function RegressionPage() {
       case 'critical': return 'text-red-400 bg-red-400/10'
       case 'high': return 'text-orange-400 bg-orange-400/10'
       case 'medium': return 'text-amber-400 bg-amber-400/10'
-      case 'low': return 'text-slate-400 bg-slate-400/10'
-      default: return 'text-slate-400 bg-slate-400/10'
+      case 'low': return 'text-zinc-400 bg-zinc-400/10'
+      default: return 'text-zinc-400 bg-zinc-400/10'
     }
   }
 
@@ -185,7 +185,7 @@ export default function RegressionPage() {
               <GitBranch className="text-blue-400" />
               Model Regression Testing
             </h1>
-            <p className="text-slate-400 text-sm mt-1">
+            <p className="text-zinc-400 text-sm mt-1">
               Detect behavioral drift when models are updated
             </p>
           </div>
@@ -221,22 +221,22 @@ export default function RegressionPage() {
         )}
 
         <div className="grid lg:grid-cols-4 gap-4 mb-6">
-          <div className="bg-slate-800 rounded-xl p-4 border border-slate-700">
-            <div className="flex items-center gap-2 text-slate-400 text-sm mb-2">
+          <div className="bg-zinc-800 rounded-xl p-4 border border-zinc-700">
+            <div className="flex items-center gap-2 text-zinc-400 text-sm mb-2">
               <Database size={16} />
               Baselines
             </div>
             <span className="text-2xl font-bold text-white">{baselines.length}</span>
           </div>
-          <div className="bg-slate-800 rounded-xl p-4 border border-slate-700">
-            <div className="flex items-center gap-2 text-slate-400 text-sm mb-2">
+          <div className="bg-zinc-800 rounded-xl p-4 border border-zinc-700">
+            <div className="flex items-center gap-2 text-zinc-400 text-sm mb-2">
               <AlertTriangle size={16} />
               Active Alerts
             </div>
             <span className="text-2xl font-bold text-amber-400">{alerts.length}</span>
           </div>
-          <div className="bg-slate-800 rounded-xl p-4 border border-slate-700">
-            <div className="flex items-center gap-2 text-slate-400 text-sm mb-2">
+          <div className="bg-zinc-800 rounded-xl p-4 border border-zinc-700">
+            <div className="flex items-center gap-2 text-zinc-400 text-sm mb-2">
               <TrendingUp size={16} />
               Avg Similarity
             </div>
@@ -244,8 +244,8 @@ export default function RegressionPage() {
               {(avgSimilarity * 100).toFixed(1)}%
             </span>
           </div>
-          <div className="bg-slate-800 rounded-xl p-4 border border-slate-700">
-            <div className="flex items-center gap-2 text-slate-400 text-sm mb-2">
+          <div className="bg-zinc-800 rounded-xl p-4 border border-zinc-700">
+            <div className="flex items-center gap-2 text-zinc-400 text-sm mb-2">
               <Clock size={16} />
               Models Tracked
             </div>
@@ -260,7 +260,7 @@ export default function RegressionPage() {
         ) : (
           <div className="grid lg:grid-cols-3 gap-6 mb-6">
             <div className="lg:col-span-2">
-              <div className="bg-slate-800 rounded-xl p-6 border border-slate-700 mb-6">
+              <div className="bg-zinc-800 rounded-xl p-6 border border-zinc-700 mb-6">
                 <h2 className="text-lg font-semibold text-white mb-4">Baselines</h2>
                 <div className="space-y-2">
                   {baselines.map((baseline) => (
@@ -270,19 +270,19 @@ export default function RegressionPage() {
                       className={`w-full p-4 rounded-lg border text-left transition-all ${
                         selectedBaseline === baseline.id
                           ? 'border-blue-500 bg-blue-500/10'
-                          : 'border-slate-600 bg-slate-700/50 hover:border-slate-500'
+                          : 'border-zinc-600 bg-zinc-700/50 hover:border-zinc-500'
                       }`}
                     >
                       <div className="flex items-center justify-between">
                         <div>
                           <span className="text-white font-medium">{baseline.name}</span>
                           <div className="flex items-center gap-3 mt-1">
-                            <span className="text-slate-500 text-sm">{baseline.model}</span>
-                            <span className="text-slate-500 text-sm">{baseline.promptCount} prompts</span>
+                            <span className="text-zinc-500 text-sm">{baseline.model}</span>
+                            <span className="text-zinc-500 text-sm">{baseline.promptCount} prompts</span>
                           </div>
                         </div>
                         <div className="text-right text-sm">
-                          <div className="text-slate-400">Last tested</div>
+                          <div className="text-zinc-400">Last tested</div>
                           <div className="text-white">{baseline.lastTested}</div>
                         </div>
                       </div>
@@ -291,7 +291,7 @@ export default function RegressionPage() {
                 </div>
               </div>
 
-              <div className="bg-slate-800 rounded-xl p-6 border border-slate-700">
+              <div className="bg-zinc-800 rounded-xl p-6 border border-zinc-700">
                 <h2 className="text-lg font-semibold text-white mb-4 flex items-center gap-2">
                   <AlertTriangle className="text-amber-400" size={20} />
                   Drift Alerts
@@ -300,7 +300,7 @@ export default function RegressionPage() {
                   {alerts.map((alert) => (
                     <div
                       key={alert.id}
-                      className="p-4 rounded-lg border border-slate-600 bg-slate-700/30"
+                      className="p-4 rounded-lg border border-zinc-600 bg-zinc-700/30"
                     >
                       <div className="flex items-start justify-between">
                         <div className="flex items-start gap-3">
@@ -317,12 +317,12 @@ export default function RegressionPage() {
                                 {(alert.similarity * 100).toFixed(0)}% similar
                               </span>
                             </div>
-                            <p className="text-slate-400 text-sm mt-1 truncate max-w-md">
+                            <p className="text-zinc-400 text-sm mt-1 truncate max-w-md">
                               {alert.prompt}
                             </p>
                           </div>
                         </div>
-                        <span className="text-slate-500 text-sm">{alert.detectedAt}</span>
+                        <span className="text-zinc-500 text-sm">{alert.detectedAt}</span>
                       </div>
                     </div>
                   ))}
@@ -331,7 +331,7 @@ export default function RegressionPage() {
             </div>
 
             <div>
-              <div className="bg-slate-800 rounded-xl p-6 border border-slate-700">
+              <div className="bg-zinc-800 rounded-xl p-6 border border-zinc-700">
                 <div className="flex items-center justify-between mb-4">
                   <h2 className="text-lg font-semibold text-white">Model Fingerprints</h2>
                   <Button variant="ghost" size="sm" onClick={refreshFingerprints}>
@@ -342,7 +342,7 @@ export default function RegressionPage() {
                   {fingerprints.map((fp, idx) => (
                     <div
                       key={idx}
-                      className="p-3 rounded-lg bg-slate-700/50 border border-slate-600"
+                      className="p-3 rounded-lg bg-zinc-700/50 border border-zinc-600"
                     >
                       <div className="flex items-center justify-between mb-1">
                         <span className="text-white font-medium text-sm">{fp.model}</span>
@@ -355,8 +355,8 @@ export default function RegressionPage() {
                         </span>
                       </div>
                       <div className="flex items-center justify-between text-xs">
-                        <span className="text-slate-400">{fp.provider}</span>
-                        <span className="text-slate-500">{fp.version}</span>
+                        <span className="text-zinc-400">{fp.provider}</span>
+                        <span className="text-zinc-500">{fp.version}</span>
                       </div>
                     </div>
                   ))}
@@ -399,11 +399,11 @@ function CreateBaselineModal({ isCreating, onClose, onCreate }: CreateBaselineMo
 
   return (
     <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50">
-      <div className="bg-slate-800 rounded-xl p-6 border border-slate-700 w-full max-w-md">
+      <div className="bg-zinc-800 rounded-xl p-6 border border-zinc-700 w-full max-w-md">
         <h2 className="text-lg font-semibold text-white mb-4">Create Baseline</h2>
         <form onSubmit={handleSubmit} className="space-y-4">
           <div>
-            <label className="text-sm font-medium text-slate-300 block mb-2">
+            <label className="text-sm font-medium text-zinc-300 block mb-2">
               Baseline Name *
             </label>
             <input
@@ -411,19 +411,19 @@ function CreateBaselineModal({ isCreating, onClose, onCreate }: CreateBaselineMo
               value={name}
               onChange={(e) => setName(e.target.value)}
               placeholder="e.g., Production Prompts v3.0"
-              className="w-full bg-slate-900 border border-slate-600 rounded-lg p-3 text-white text-sm focus:border-blue-500 focus:outline-none"
+              className="w-full bg-zinc-900 border border-zinc-600 rounded-lg p-3 text-white text-sm focus:border-blue-500 focus:outline-none"
               required
             />
           </div>
 
           <div>
-            <label className="text-sm font-medium text-slate-300 block mb-2">
+            <label className="text-sm font-medium text-zinc-300 block mb-2">
               Model *
             </label>
             <select
               value={model}
               onChange={(e) => setModel(e.target.value)}
-              className="w-full bg-slate-900 border border-slate-600 rounded-lg p-3 text-white text-sm focus:border-blue-500 focus:outline-none"
+              className="w-full bg-zinc-900 border border-zinc-600 rounded-lg p-3 text-white text-sm focus:border-blue-500 focus:outline-none"
               required
             >
               <option value="">Select a model...</option>
@@ -438,7 +438,7 @@ function CreateBaselineModal({ isCreating, onClose, onCreate }: CreateBaselineMo
           </div>
 
           <div>
-            <label className="text-sm font-medium text-slate-300 block mb-2">
+            <label className="text-sm font-medium text-zinc-300 block mb-2">
               Description
             </label>
             <textarea
@@ -446,7 +446,7 @@ function CreateBaselineModal({ isCreating, onClose, onCreate }: CreateBaselineMo
               onChange={(e) => setDescription(e.target.value)}
               placeholder="Describe the purpose of this baseline..."
               rows={3}
-              className="w-full bg-slate-900 border border-slate-600 rounded-lg p-3 text-white text-sm focus:border-blue-500 focus:outline-none resize-none"
+              className="w-full bg-zinc-900 border border-zinc-600 rounded-lg p-3 text-white text-sm focus:border-blue-500 focus:outline-none resize-none"
             />
           </div>
 

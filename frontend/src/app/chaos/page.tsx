@@ -179,7 +179,7 @@ export default function ChaosPage() {
       case 'low': return 'text-emerald-400 bg-emerald-400/10'
       case 'medium': return 'text-amber-400 bg-amber-400/10'
       case 'high': return 'text-red-400 bg-red-400/10'
-      default: return 'text-slate-400 bg-slate-400/10'
+      default: return 'text-zinc-400 bg-zinc-400/10'
     }
   }
 
@@ -192,7 +192,7 @@ export default function ChaosPage() {
               <Zap className="text-amber-400" />
               Chaos Engineering
             </h1>
-            <p className="text-slate-400 text-sm mt-1">
+            <p className="text-zinc-400 text-sm mt-1">
               Test agent resilience with controlled failure injection
             </p>
           </div>
@@ -226,7 +226,7 @@ export default function ChaosPage() {
 
         <div className="grid lg:grid-cols-3 gap-6 mb-6">
           <div className="lg:col-span-2">
-            <div className="bg-slate-800 rounded-xl p-6 border border-slate-700">
+            <div className="bg-zinc-800 rounded-xl p-6 border border-zinc-700">
               <h2 className="text-lg font-semibold text-white mb-4">Experiment Types</h2>
               {isLoading ? (
                 <div className="flex items-center justify-center py-8">
@@ -241,8 +241,8 @@ export default function ChaosPage() {
                     disabled={isRunning}
                     className={`p-4 rounded-lg border text-left transition-all ${
                       selectedExperiment === exp.id
-                        ? 'border-primary-500 bg-primary-500/10'
-                        : 'border-slate-600 bg-slate-700/50 hover:border-slate-500'
+                        ? 'border-blue-500 bg-blue-500/10'
+                        : 'border-zinc-600 bg-zinc-700/50 hover:border-zinc-500'
                     } ${isRunning ? 'opacity-50 cursor-not-allowed' : ''}`}
                   >
                     <div className="flex items-start gap-3">
@@ -256,7 +256,7 @@ export default function ChaosPage() {
                             {exp.severity}
                           </span>
                         </div>
-                        <p className="text-slate-400 text-sm mt-1">{exp.description}</p>
+                        <p className="text-zinc-400 text-sm mt-1">{exp.description}</p>
                       </div>
                     </div>
                   </button>
@@ -267,11 +267,11 @@ export default function ChaosPage() {
           </div>
 
           <div className="space-y-6">
-            <div className="bg-slate-800 rounded-xl p-6 border border-slate-700">
+            <div className="bg-zinc-800 rounded-xl p-6 border border-zinc-700">
               <h2 className="text-lg font-semibold text-white mb-4">Blast Radius</h2>
               <div className="space-y-4">
                 <div>
-                  <label className="text-slate-400 text-sm block mb-2">
+                  <label className="text-zinc-400 text-sm block mb-2">
                     Target Percentage: {targetPercentage}%
                   </label>
                   <input
@@ -281,40 +281,40 @@ export default function ChaosPage() {
                     value={targetPercentage}
                     onChange={(e) => setTargetPercentage(Number(e.target.value))}
                     disabled={isRunning}
-                    className="w-full accent-primary-500"
+                    className="w-full accent-blue-500"
                   />
-                  <div className="flex justify-between text-xs text-slate-500 mt-1">
+                  <div className="flex justify-between text-xs text-zinc-500 mt-1">
                     <span>1%</span>
                     <span>50%</span>
                     <span>100%</span>
                   </div>
                 </div>
-                <div className="pt-4 border-t border-slate-700">
+                <div className="pt-4 border-t border-zinc-700">
                   <div className="flex justify-between text-sm mb-2">
-                    <span className="text-slate-400">Safety Threshold</span>
+                    <span className="text-zinc-400">Safety Threshold</span>
                     <span className="text-emerald-400">Active</span>
                   </div>
                   <div className="flex justify-between text-sm">
-                    <span className="text-slate-400">Auto-Abort</span>
+                    <span className="text-zinc-400">Auto-Abort</span>
                     <span className="text-emerald-400">Enabled</span>
                   </div>
                 </div>
               </div>
             </div>
 
-            <div className="bg-slate-800 rounded-xl p-6 border border-slate-700">
+            <div className="bg-zinc-800 rounded-xl p-6 border border-zinc-700">
               <h2 className="text-lg font-semibold text-white mb-4">Statistics</h2>
               <div className="space-y-3">
                 <div className="flex justify-between">
-                  <span className="text-slate-400">Total Sessions</span>
+                  <span className="text-zinc-400">Total Sessions</span>
                   <span className="text-white">{sessions.length}</span>
                 </div>
                 <div className="flex justify-between">
-                  <span className="text-slate-400">Completed</span>
+                  <span className="text-zinc-400">Completed</span>
                   <span className="text-emerald-400">{sessions.filter(s => s.status === 'completed').length}</span>
                 </div>
                 <div className="flex justify-between">
-                  <span className="text-slate-400">Aborted</span>
+                  <span className="text-zinc-400">Aborted</span>
                   <span className="text-red-400">{sessions.filter(s => s.status === 'aborted').length}</span>
                 </div>
               </div>
@@ -322,15 +322,15 @@ export default function ChaosPage() {
           </div>
         </div>
 
-        <div className="bg-slate-800 rounded-xl p-6 border border-slate-700">
+        <div className="bg-zinc-800 rounded-xl p-6 border border-zinc-700">
           <h2 className="text-lg font-semibold text-white mb-4">Recent Sessions</h2>
           <div className="space-y-2">
             {sessions.length === 0 ? (
-              <p className="text-slate-500 text-center py-4">No chaos sessions yet</p>
+              <p className="text-zinc-500 text-center py-4">No chaos sessions yet</p>
             ) : sessions.map((session) => (
               <div 
                 key={session.id}
-                className="flex items-center justify-between p-3 bg-slate-700/50 rounded-lg"
+                className="flex items-center justify-between p-3 bg-zinc-700/50 rounded-lg"
               >
                 <div className="flex items-center gap-4">
                   <span className={`w-2 h-2 rounded-full ${
@@ -339,14 +339,14 @@ export default function ChaosPage() {
                   }`} />
                   <div>
                     <span className="text-white">{session.experiment}</span>
-                    <span className="text-slate-500 text-sm ml-2">{session.startedAt}</span>
+                    <span className="text-zinc-500 text-sm ml-2">{session.startedAt}</span>
                   </div>
                 </div>
                 <div className="flex items-center gap-6 text-sm">
-                  <span className="text-slate-400">
+                  <span className="text-zinc-400">
                     {session.affectedAgents} agents
                   </span>
-                  <span className="text-slate-400">
+                  <span className="text-zinc-400">
                     {session.injections} injections
                   </span>
                   <span className={`px-2 py-0.5 rounded-full text-xs ${
