@@ -2,7 +2,7 @@
 
 import Link from 'next/link'
 import { usePathname } from 'next/navigation'
-import clsx from 'clsx'
+import { cn } from '@/lib/utils'
 import {
   LayoutDashboard,
   Activity,
@@ -32,7 +32,7 @@ interface NavItem {
   href: string
   icon: React.ElementType
   badge?: string
-  advancedOnly?: boolean  // Only show for developers or when developer mode is on
+  advancedOnly?: boolean
 }
 
 // n8n user sees simplified navigation with friendly terminology
@@ -101,19 +101,19 @@ export function Sidebar({ isCollapsed = false, onToggle }: SidebarProps) {
     return (
       <Link
         href={item.href}
-        className={clsx(
-          'flex items-center gap-3 px-3 py-2 rounded-lg transition-all duration-200',
+        className={cn(
+          'flex items-center gap-3 px-3 py-2 rounded-lg text-sm transition-colors duration-150',
           isActive
-            ? 'bg-primary-500/20 text-primary-500 shadow-glow-green border border-primary-500/50'
-            : 'text-primary-400 hover:bg-primary-500/10 hover:text-primary-500 hover:shadow-glow-green'
+            ? 'bg-blue-500/10 text-blue-400 border-l-2 border-blue-500 -ml-px'
+            : 'text-zinc-400 hover:bg-zinc-800 hover:text-zinc-200'
         )}
       >
-        <Icon size={20} />
+        <Icon size={18} />
         {!isCollapsed && (
           <>
             <span className="flex-1">{item.label}</span>
             {item.badge && (
-              <span className="px-2 py-0.5 text-xs bg-primary-500/20 text-primary-500 border border-primary-500/50 rounded-full">
+              <span className="px-1.5 py-0.5 text-xs bg-zinc-800 text-zinc-400 rounded">
                 {item.badge}
               </span>
             )}
@@ -124,15 +124,14 @@ export function Sidebar({ isCollapsed = false, onToggle }: SidebarProps) {
   }
 
   const NavSection = ({ title, items }: { title?: string; items: NavItem[] }) => {
-    // Filter out advanced-only items if user doesn't have access
     const filteredItems = items.filter(item => !item.advancedOnly || showAdvancedFeatures)
 
     if (filteredItems.length === 0) return null
 
     return (
-      <div className="space-y-1">
+      <div className="space-y-0.5">
         {title && !isCollapsed && (
-          <div className="px-3 py-2 text-xs font-semibold text-primary-400/70 uppercase tracking-wider">
+          <div className="px-3 py-2 text-xs font-medium text-zinc-500 uppercase tracking-wider">
             {title}
           </div>
         )}
@@ -143,40 +142,37 @@ export function Sidebar({ isCollapsed = false, onToggle }: SidebarProps) {
     )
   }
 
-  // Determine which navigation to show based on user type
   const isSimplifiedView = isN8nUser && !showAdvancedFeatures
 
   return (
     <aside
-      className={clsx(
-        'flex flex-col bg-[#0a0a0a] border-r border-primary-500/30 shadow-[0_0_10px_rgba(0,255,136,0.1)] transition-all duration-300',
-        isCollapsed ? 'w-16' : 'w-64'
+      className={cn(
+        'flex flex-col bg-zinc-950 border-r border-zinc-800 transition-all duration-300',
+        isCollapsed ? 'w-16' : 'w-60'
       )}
     >
       {/* Logo */}
-      <div className="flex items-center h-16 px-4 border-b border-primary-500/30">
-        <Link href="/" className="flex items-center gap-2">
-          <Shield className="h-8 w-8 text-primary-500 shadow-glow-green" />
+      <div className="flex items-center h-14 px-4 border-b border-zinc-800">
+        <Link href="/" className="flex items-center gap-2.5">
+          <Shield className="h-7 w-7 text-blue-500" />
           {!isCollapsed && (
-            <span className="text-xl font-bold text-primary-500 glow-text">
+            <span className="text-lg font-semibold text-white tracking-tight">
               {isSimplifiedView ? 'Workflow Guard' : 'Pisama'}
             </span>
           )}
         </Link>
       </div>
 
-      {/* Navigation - conditional based on user type */}
-      <nav className="flex-1 overflow-y-auto p-4 space-y-6">
+      {/* Navigation */}
+      <nav className="flex-1 overflow-y-auto p-3 space-y-5">
         {isSimplifiedView ? (
           <>
-            {/* Simplified n8n user navigation */}
             <NavSection title="Observe" items={n8nObserveItems} />
             <NavSection title="Improve" items={n8nImproveItems} />
             <NavSection title="Settings" items={n8nSettingsItems} />
           </>
         ) : (
           <>
-            {/* Full developer navigation */}
             <NavSection title="Observe" items={developerObserveItems} />
             <NavSection title="Improve" items={developerImproveItems} />
             <NavSection title="Configure" items={developerConfigureItems} />
@@ -186,17 +182,17 @@ export function Sidebar({ isCollapsed = false, onToggle }: SidebarProps) {
       </nav>
 
       {/* Footer */}
-      <div className="p-4 border-t border-primary-500/30">
+      <div className="p-4 border-t border-zinc-800">
         {!isCollapsed && (
-          <div className="text-xs text-primary-400">
+          <div className="text-xs text-zinc-500">
             {isSimplifiedView ? (
               <>
                 <div>Workflow Guard</div>
-                <div className="text-primary-500/60">Powered by Pisama</div>
+                <div className="text-zinc-600">Powered by Pisama</div>
               </>
             ) : (
               <>
-                <div>Pisama Platform</div>
+                <div className="text-zinc-400">Pisama Platform</div>
                 <div>v1.0.0</div>
               </>
             )}

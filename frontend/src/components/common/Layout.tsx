@@ -14,7 +14,7 @@ export function Layout({ children, title }: LayoutProps) {
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false)
 
   return (
-    <div className="flex h-screen bg-black">
+    <div className="flex h-screen bg-zinc-950">
       {/* Desktop Sidebar */}
       <div className="hidden lg:flex">
         <Sidebar
@@ -26,7 +26,7 @@ export function Layout({ children, title }: LayoutProps) {
       {/* Mobile Sidebar Overlay */}
       {mobileMenuOpen && (
         <div
-          className="fixed inset-0 z-40 bg-black/50 lg:hidden"
+          className="fixed inset-0 z-40 bg-black/60 backdrop-blur-sm lg:hidden"
           onClick={() => setMobileMenuOpen(false)}
         />
       )}
