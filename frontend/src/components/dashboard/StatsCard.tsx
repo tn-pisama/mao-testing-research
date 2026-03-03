@@ -19,20 +19,20 @@ const colorStyles = {
     iconColor: 'text-blue-400',
   },
   green: {
-    iconBg: 'bg-success-500/20 border border-success-500/30',
-    iconColor: 'text-success-500',
+    iconBg: 'bg-green-500/20 border border-green-500/30',
+    iconColor: 'text-green-500',
   },
   yellow: {
-    iconBg: 'bg-accent-500/20 border border-accent-500/30',
-    iconColor: 'text-accent-500',
+    iconBg: 'bg-violet-500/20 border border-violet-500/30',
+    iconColor: 'text-violet-500',
   },
   red: {
-    iconBg: 'bg-danger-500/20 border border-danger-500/30',
-    iconColor: 'text-danger-500',
+    iconBg: 'bg-red-500/20 border border-red-500/30',
+    iconColor: 'text-red-500',
   },
   purple: {
-    iconBg: 'bg-accent-500/20 border border-accent-500/30',
-    iconColor: 'text-accent-500',
+    iconBg: 'bg-violet-500/20 border border-violet-500/30',
+    iconColor: 'text-violet-500',
   },
 }
 
@@ -50,8 +50,8 @@ export function StatsCard({
   const trendColor = change === undefined
     ? 'text-white/60'
     : change >= 0
-      ? 'text-success-500'
-      : 'text-danger-500'
+      ? 'text-green-500'
+      : 'text-red-500'
 
   return (
     <Card>

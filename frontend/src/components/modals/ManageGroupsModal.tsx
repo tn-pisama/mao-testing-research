@@ -111,7 +111,7 @@ export function ManageGroupsModal({ isOpen, onClose }: ManageGroupsModalProps) {
         <div className="p-4 overflow-y-auto max-h-[60vh]">
           {/* Error Message */}
           {error && (
-            <div className="mb-4 p-3 bg-danger-500/20 border border-danger-500/50 rounded-lg text-danger-500 text-sm">
+            <div className="mb-4 p-3 bg-red-500/20 border border-red-500/50 rounded-lg text-red-500 text-sm">
               {error}
             </div>
           )}
@@ -241,7 +241,7 @@ export function ManageGroupsModal({ isOpen, onClose }: ManageGroupsModalProps) {
                       </button>
                       <button
                         onClick={() => handleDelete(group.id)}
-                        className="p-1 text-danger-500 hover:text-danger-400 transition-colors"
+                        className="p-1 text-red-500 hover:text-red-400 transition-colors"
                         disabled={isSubmitting}
                       >
                         <Trash2 size={16} />

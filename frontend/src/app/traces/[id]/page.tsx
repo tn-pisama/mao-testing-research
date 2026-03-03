@@ -1,14 +1,20 @@
 'use client'
 
 import { useState } from 'react'
+import dynamic from 'next/dynamic'
 import { useQuery } from '@tanstack/react-query'
 import { useParams } from 'next/navigation'
 import { Layout } from '@/components/common/Layout'
+import { Skeleton } from '@/components/ui/Skeleton'
 import { TraceViewer } from '@/components/traces/TraceViewer'
 import { WaterfallTimeline } from '@/components/traces/WaterfallTimeline'
-import { TraceFlowGraph } from '@/components/traces/TraceFlowGraph'
 import { FailureCard } from '@/components/detection/FailureCard'
 import { api } from '@/lib/api'
+
+const TraceFlowGraph = dynamic(
+  () => import('@/components/traces/TraceFlowGraph').then(mod => ({ default: mod.TraceFlowGraph })),
+  { ssr: false, loading: () => <Skeleton className="h-96 rounded-xl" /> }
+)
 
 type TraceTab = 'waterfall' | 'flow' | 'states'
 

@@ -3,10 +3,9 @@
 export const dynamic = 'force-dynamic'
 
 import { useState } from 'react'
+import nextDynamic from 'next/dynamic'
 import { Upload, Wifi, WifiOff, AlertTriangle } from 'lucide-react'
 import { Layout } from '@/components/common/Layout'
-import { LoopAnalyticsCard } from '@/components/dashboard/LoopAnalyticsCard'
-import { CostAnalyticsCard } from '@/components/dashboard/CostAnalyticsCard'
 import { RecentDetectionsCard } from '@/components/dashboard/RecentDetectionsCard'
 import { TraceStatusCard } from '@/components/traces/TraceStatusCard'
 import { WorkflowAttentionList } from '@/components/dashboard/WorkflowAttentionList'
@@ -18,6 +17,15 @@ import { Button } from '@/components/ui/Button'
 import { Skeleton } from '@/components/ui/Skeleton'
 import { FadeIn, StaggerContainer, StaggerItem } from '@/components/ui/Motion'
 import { ImportModal } from '@/components/import'
+
+const LoopAnalyticsCard = nextDynamic(
+  () => import('@/components/dashboard/LoopAnalyticsCard').then(mod => ({ default: mod.LoopAnalyticsCard })),
+  { ssr: false, loading: () => <Skeleton className="h-64 rounded-xl" /> }
+)
+const CostAnalyticsCard = nextDynamic(
+  () => import('@/components/dashboard/CostAnalyticsCard').then(mod => ({ default: mod.CostAnalyticsCard })),
+  { ssr: false, loading: () => <Skeleton className="h-64 rounded-xl" /> }
+)
 import { useApiWithFallback } from '@/hooks/useApiWithFallback'
 import { useUserPreferences } from '@/lib/user-preferences'
 

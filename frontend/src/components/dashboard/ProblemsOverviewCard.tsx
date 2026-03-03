@@ -40,7 +40,7 @@ export function ProblemsOverviewCard({ detections, isLoading }: ProblemsOverview
       <CardHeader>
         <div className="flex items-center justify-between">
           <CardTitle className="flex items-center gap-2">
-            <AlertCircle className="h-5 w-5 text-accent-500" />
+            <AlertCircle className="h-5 w-5 text-violet-500" />
             Problems Found
           </CardTitle>
           <Link
@@ -57,15 +57,15 @@ export function ProblemsOverviewCard({ detections, isLoading }: ProblemsOverview
           <div className="text-4xl font-bold text-white">
             {totalProblems}
           </div>
-          <div className={`flex items-center gap-1 text-sm ${trend === 'down' ? 'text-success-500' : 'text-danger-500'}`}>
+          <div className={`flex items-center gap-1 text-sm ${trend === 'down' ? 'text-green-500' : 'text-red-500'}`}>
             {trend === 'down' ? <TrendingDown size={16} /> : <TrendingUp size={16} />}
             {trendPercent}% this week
           </div>
         </div>
 
         {(criticalCount > 0 || highCount > 0) && (
-          <div className="p-3 bg-danger-500/10 border border-danger-500/30 rounded-lg">
-            <div className="text-sm text-danger-500">
+          <div className="p-3 bg-red-500/10 border border-red-500/30 rounded-lg">
+            <div className="text-sm text-red-500">
               {criticalCount > 0 && (
                 <span className="font-medium">{criticalCount} critical</span>
               )}
@@ -85,7 +85,7 @@ export function ProblemsOverviewCard({ detections, isLoading }: ProblemsOverview
         )}
 
         {totalProblems === 0 && (
-          <div className="text-sm text-success-500">
+          <div className="text-sm text-green-500">
             No problems detected - your workflows are healthy!
           </div>
         )}

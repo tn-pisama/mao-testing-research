@@ -13,17 +13,17 @@ interface QualitySuggestionsCardProps {
 }
 
 const severityConfig = {
-  critical: { icon: AlertCircle, color: 'text-danger-500', bg: 'bg-danger-500/20', label: 'Critical' },
-  high: { icon: AlertTriangle, color: 'text-accent-500', bg: 'bg-accent-500/20', label: 'High' },
-  medium: { icon: AlertTriangle, color: 'text-accent-500', bg: 'bg-accent-500/20', label: 'Medium' },
+  critical: { icon: AlertCircle, color: 'text-red-500', bg: 'bg-red-500/20', label: 'Critical' },
+  high: { icon: AlertTriangle, color: 'text-violet-500', bg: 'bg-violet-500/20', label: 'High' },
+  medium: { icon: AlertTriangle, color: 'text-violet-500', bg: 'bg-violet-500/20', label: 'Medium' },
   low: { icon: Info, color: 'text-white/60', bg: 'bg-white/10', label: 'Low' },
   info: { icon: Info, color: 'text-blue-400', bg: 'bg-blue-500/10', label: 'Info' },
 }
 
 const effortColors = {
-  low: 'text-success-500',
-  medium: 'text-accent-500',
-  high: 'text-danger-500',
+  low: 'text-green-500',
+  medium: 'text-violet-500',
+  high: 'text-red-500',
 }
 
 export function QualitySuggestionsCard({
@@ -55,7 +55,7 @@ export function QualitySuggestionsCard({
       <CardHeader>
         <div className="flex items-center justify-between">
           <CardTitle className="flex items-center gap-2">
-            <Lightbulb className="h-5 w-5 text-accent-500" />
+            <Lightbulb className="h-5 w-5 text-violet-500" />
             Improvement Suggestions
           </CardTitle>
           <Link
@@ -70,7 +70,7 @@ export function QualitySuggestionsCard({
       <CardContent>
         {suggestions.length === 0 ? (
           <div className="text-center py-6">
-            <div className="text-success-500 mb-2">All workflows are optimized!</div>
+            <div className="text-green-500 mb-2">All workflows are optimized!</div>
             <div className="text-sm text-white/60">
               No improvement suggestions at this time
             </div>

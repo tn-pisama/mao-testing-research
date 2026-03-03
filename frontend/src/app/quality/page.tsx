@@ -59,10 +59,10 @@ export default function QualityPage() {
   const totalPages = Math.ceil(total / perPage)
 
   const tierOptions = [
-    { label: 'Healthy',  minGrade: 'Healthy',  activeClass: 'bg-success-500/20 text-success-500 border-success-500/50' },
-    { label: 'Degraded', minGrade: 'Degraded', activeClass: 'bg-accent-500/20 text-accent-500 border-accent-500/50' },
+    { label: 'Healthy',  minGrade: 'Healthy',  activeClass: 'bg-green-500/20 text-green-500 border-green-500/50' },
+    { label: 'Degraded', minGrade: 'Degraded', activeClass: 'bg-violet-500/20 text-violet-500 border-violet-500/50' },
     { label: 'At Risk',  minGrade: 'At Risk',  activeClass: 'bg-orange-500/20 text-orange-400 border-orange-500/50' },
-    { label: 'Critical', minGrade: 'Critical', activeClass: 'bg-danger-500/20 text-danger-500 border-danger-500/50' },
+    { label: 'Critical', minGrade: 'Critical', activeClass: 'bg-red-500/20 text-red-500 border-red-500/50' },
   ]
 
   return (

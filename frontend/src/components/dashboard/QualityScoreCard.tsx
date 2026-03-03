@@ -88,21 +88,21 @@ export function QualityScoreCard({ assessments = [], isLoading }: QualityScoreCa
             </div>
 
             <div className="grid grid-cols-2 gap-3 mb-3">
-              <div className="bg-success-500/20 border border-success-500/30 rounded-lg p-3">
+              <div className="bg-green-500/20 border border-green-500/30 rounded-lg p-3">
                 <div className="flex items-center gap-2 mb-1">
-                  <TrendingUp size={14} className="text-success-500" />
+                  <TrendingUp size={14} className="text-green-500" />
                   <span className="text-xs text-white/60">Excellent</span>
                 </div>
-                <div className="text-lg font-semibold text-success-500 font-mono">
+                <div className="text-lg font-semibold text-green-500 font-mono">
                   {excellentCount}
                 </div>
               </div>
-              <div className="bg-accent-500/20 border border-accent-500/30 rounded-lg p-3">
+              <div className="bg-violet-500/20 border border-violet-500/30 rounded-lg p-3">
                 <div className="flex items-center gap-2 mb-1">
-                  <TrendingDown size={14} className="text-accent-500" />
+                  <TrendingDown size={14} className="text-violet-500" />
                   <span className="text-xs text-white/60">Needs Work</span>
                 </div>
-                <div className="text-lg font-semibold text-accent-500 font-mono">
+                <div className="text-lg font-semibold text-violet-500 font-mono">
                   {needsWorkCount}
                 </div>
               </div>
@@ -125,7 +125,7 @@ export function QualityScoreCard({ assessments = [], isLoading }: QualityScoreCa
             )}
 
             {totalIssues === 0 && (
-              <div className="text-sm text-success-500">
+              <div className="text-sm text-green-500">
                 All workflows are well configured!
               </div>
             )}

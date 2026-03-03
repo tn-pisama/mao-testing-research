@@ -2,10 +2,16 @@
 
 import { useParams, useRouter } from 'next/navigation'
 import { useState, useMemo, useRef } from 'react'
+import dynamic from 'next/dynamic'
 import Link from 'next/link'
 import { useApiWithFallback } from '@/hooks/useApiWithFallback'
-import { WorkflowGraphView } from '@/components/workflow/WorkflowGraphView'
+import { Skeleton } from '@/components/ui/Skeleton'
 import { WorkflowNodeDetails } from '@/components/workflow/WorkflowNodeDetails'
+
+const WorkflowGraphView = dynamic(
+  () => import('@/components/workflow/WorkflowGraphView').then(mod => ({ default: mod.WorkflowGraphView })),
+  { ssr: false, loading: () => <Skeleton className="h-[600px] rounded-xl" /> }
+)
 import { WorkflowEdgeDetails } from '@/components/workflow/WorkflowEdgeDetails'
 import { QualityGradeBadge } from '@/components/quality/QualityGradeBadge'
 import { exportReactFlowAsImage } from '@/lib/export-utils'

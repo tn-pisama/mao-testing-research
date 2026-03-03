@@ -83,8 +83,8 @@ export function RecentDetectionsCard({ detections, isLoading }: RecentDetections
                     <AlertTriangle
                       size={16}
                       className={
-                        severity === 'critical' ? 'text-danger-500' :
-                        severity === 'high' ? 'text-accent-500' :
+                        severity === 'critical' ? 'text-red-500' :
+                        severity === 'high' ? 'text-violet-500' :
                         severity === 'medium' ? 'text-blue-400' :
                         'text-white/60'
                       }

@@ -72,9 +72,9 @@ export function TraceStatusCard({ traces, isLoading }: TraceStatusCardProps) {
       <CardContent>
         {/* Status summary */}
         <div className="grid grid-cols-3 gap-4 mb-4">
-          <div className="text-center p-3 bg-success-500/20 rounded-lg border border-success-500/30">
-            <CheckCircle size={20} className="mx-auto text-success-500 mb-1" />
-            <div className="text-xl font-bold text-success-500 font-mono">{statusCounts.completed}</div>
+          <div className="text-center p-3 bg-green-500/20 rounded-lg border border-green-500/30">
+            <CheckCircle size={20} className="mx-auto text-green-500 mb-1" />
+            <div className="text-xl font-bold text-green-500 font-mono">{statusCounts.completed}</div>
             <div className="text-xs text-white/60">Completed</div>
           </div>
           <div className="text-center p-3 bg-blue-500/10 rounded-lg border border-zinc-700">
@@ -82,9 +82,9 @@ export function TraceStatusCard({ traces, isLoading }: TraceStatusCardProps) {
             <div className="text-xl font-bold text-blue-400 font-mono">{statusCounts.running}</div>
             <div className="text-xs text-white/60">Running</div>
           </div>
-          <div className="text-center p-3 bg-danger-500/20 rounded-lg border border-danger-500/30">
-            <AlertCircle size={20} className="mx-auto text-danger-500 mb-1" />
-            <div className="text-xl font-bold text-danger-500 font-mono">{statusCounts.failed}</div>
+          <div className="text-center p-3 bg-red-500/20 rounded-lg border border-red-500/30">
+            <AlertCircle size={20} className="mx-auto text-red-500 mb-1" />
+            <div className="text-xl font-bold text-red-500 font-mono">{statusCounts.failed}</div>
             <div className="text-xs text-white/60">Failed</div>
           </div>
         </div>
@@ -108,9 +108,9 @@ export function TraceStatusCard({ traces, isLoading }: TraceStatusCardProps) {
                 >
                   <div className="flex items-center gap-2">
                     <StatusIcon size={14} className={
-                      status === 'completed' ? 'text-success-500' :
+                      status === 'completed' ? 'text-green-500' :
                       status === 'running' ? 'text-blue-400' :
-                      'text-danger-500'
+                      'text-red-500'
                     } />
                     <span className="text-sm text-white font-mono">{trace.id.slice(0, 8)}...</span>
                     <Badge variant="default" size="sm">{trace.framework}</Badge>

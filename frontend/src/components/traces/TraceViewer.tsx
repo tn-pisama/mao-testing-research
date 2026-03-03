@@ -193,7 +193,7 @@ export function TraceViewer({ trace, states, isLoading }: TraceViewerProps) {
             </div>
             <div>
               <p className="text-xs text-white/40 font-mono mb-1">Issues Detected</p>
-              <p className={`text-sm font-mono ${trace.detection_count > 0 ? 'text-accent-500' : 'text-white'}`}>
+              <p className={`text-sm font-mono ${trace.detection_count > 0 ? 'text-violet-500' : 'text-white'}`}>
                 {trace.detection_count > 0 ? (
                   <span className="flex items-center gap-1">
                     <AlertTriangle size={14} />
