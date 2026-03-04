@@ -18,7 +18,7 @@ export function TraceSearch({
   onFrameworkChange,
 }: TraceSearchProps) {
   return (
-    <Card padding="compact">
+    <Card padding="xs">
       <div className="flex items-center gap-4">
         <input
           type="text"

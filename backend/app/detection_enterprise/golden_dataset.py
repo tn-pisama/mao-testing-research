@@ -8882,10 +8882,14 @@ def create_default_golden_dataset(assign_splits: bool = True) -> GoldenDataset:
     # Framework-specific expanded golden datasets.
     # Each dataset contains entries for ALL detector types, but only
     # framework-native types are well-calibrated. Load only those.
-    _oc_types = {dt for dt in DetectionType if dt.value.startswith("openclaw_")}
-    _dify_types = {dt for dt in DetectionType if dt.value.startswith("dify_")}
-    _lg_types = {dt for dt in DetectionType if dt.value.startswith("langgraph_")}
-    _n8n_types = {dt for dt in DetectionType if dt.value.startswith("n8n_")}
+    # Also load generic loop type from expanded datasets (250 entries).
+    # NOTE: Workflow is intentionally excluded — expanded workflow entries test
+    # semantic issues, not structural ones, and hurt the workflow detector.
+    _generic_types = {DetectionType.LOOP}
+    _oc_types = {dt for dt in DetectionType if dt.value.startswith("openclaw_")} | _generic_types
+    _dify_types = {dt for dt in DetectionType if dt.value.startswith("dify_")} | _generic_types
+    _lg_types = {dt for dt in DetectionType if dt.value.startswith("langgraph_")} | _generic_types
+    _n8n_types = {dt for dt in DetectionType if dt.value.startswith("n8n_")} | _generic_types
     data_dir = Path(__file__).parent.parent.parent / "data"
     _expanded_configs = [
         ("golden_dataset_openclaw_expanded.json", _oc_types),

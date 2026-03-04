@@ -1,54 +1,54 @@
 {
   "version": "2.1",
-  "generated_at": "2026-03-03T08:19:44.096866+00:00",
+  "generated_at": "2026-03-04T05:04:44.791021+00:00",
   "capabilities": {
     "loop": {
       "name": "Loop Detection",
       "tier": "icp",
       "status": "passing",
-      "readiness": "beta",
-      "eval_category": "capability",
+      "readiness": "production",
+      "eval_category": "regression",
       "module": "app.detection.loop",
-      "f1_score": 0.6522,
-      "precision": 0.5769,
-      "recall": 0.75,
+      "f1_score": 0.901,
+      "precision": 0.8545,
+      "recall": 0.9527,
       "optimal_threshold": 0.1,
-      "sample_count": 40,
-      "f1_ci_lower": 0.4737,
-      "f1_ci_upper": 0.8,
+      "sample_count": 290,
+      "f1_ci_lower": 0.8638,
+      "f1_ci_upper": 0.9338,
       "difficulty_breakdown": {
         "easy": {
-          "f1": 0.6667,
-          "precision": 0.5556,
-          "recall": 0.8333,
-          "n": 24,
-          "tp": 10,
-          "fp": 8,
+          "f1": 0.8421,
+          "precision": 0.7619,
+          "recall": 0.9412,
+          "n": 66,
+          "tp": 32,
+          "fp": 10,
           "fn": 2,
-          "tn": 4
+          "tn": 22
         },
         "hard": {
-          "f1": 0.6667,
-          "precision": 0.6667,
-          "recall": 0.6667,
-          "n": 4,
-          "tp": 2,
-          "fp": 1,
-          "fn": 1,
-          "tn": 0
+          "f1": 0.9231,
+          "precision": 0.9057,
+          "recall": 0.9412,
+          "n": 98,
+          "tp": 48,
+          "fp": 5,
+          "fn": 3,
+          "tn": 42
         },
         "medium": {
-          "f1": 0.6,
-          "precision": 0.6,
-          "recall": 0.6,
-          "n": 12,
-          "tp": 3,
-          "fp": 2,
+          "f1": 0.9173,
+          "precision": 0.8714,
+          "recall": 0.9683,
+          "n": 126,
+          "tp": 61,
+          "fp": 9,
           "fn": 2,
-          "tn": 5
+          "tn": 54
         }
       },
-      "last_calibrated": "2026-03-03T08:19:44.089936+00:00"
+      "last_calibrated": "2026-03-04T05:04:44.781435+00:00"
     },
     "persona_drift": {
       "name": "Persona Drift",
@@ -57,23 +57,23 @@
       "readiness": "production",
       "eval_category": "regression",
       "module": "app.detection.persona",
-      "f1_score": 0.8276,
-      "precision": 0.8,
-      "recall": 0.8571,
-      "optimal_threshold": 0.6,
+      "f1_score": 0.8125,
+      "precision": 0.7222,
+      "recall": 0.9286,
+      "optimal_threshold": 0.4,
       "sample_count": 30,
-      "f1_ci_lower": 0.6957,
-      "f1_ci_upper": 0.9697,
+      "f1_ci_lower": 0.6897,
+      "f1_ci_upper": 0.9677,
       "difficulty_breakdown": {
         "easy": {
-          "f1": 0.8421,
-          "precision": 0.8,
-          "recall": 0.8889,
+          "f1": 0.8571,
+          "precision": 0.75,
+          "recall": 1.0,
           "n": 19,
-          "tp": 8,
-          "fp": 2,
-          "fn": 1,
-          "tn": 8
+          "tp": 9,
+          "fp": 3,
+          "fn": 0,
+          "tn": 7
         },
         "hard": {
           "f1": 0.6667,
@@ -86,17 +86,17 @@
           "tn": 4
         },
         "medium": {
-          "f1": 1.0,
-          "precision": 1.0,
+          "f1": 0.8889,
+          "precision": 0.8,
           "recall": 1.0,
           "n": 5,
           "tp": 4,
-          "fp": 0,
+          "fp": 1,
           "fn": 0,
-          "tn": 1
+          "tn": 0
         }
       },
-      "last_calibrated": "2026-03-03T08:19:44.089936+00:00"
+      "last_calibrated": "2026-03-04T05:04:44.781435+00:00"
     },
     "hallucination": {
       "name": "Hallucination Detection",
@@ -105,22 +105,22 @@
       "readiness": "production",
       "eval_category": "regression",
       "module": "app.detection.hallucination",
-      "f1_score": 0.8571,
+      "f1_score": 0.8148,
       "precision": 1.0,
-      "recall": 0.75,
+      "recall": 0.6875,
       "optimal_threshold": 0.1,
       "sample_count": 30,
-      "f1_ci_lower": 0.6957,
-      "f1_ci_upper": 0.9655,
+      "f1_ci_lower": 0.6364,
+      "f1_ci_upper": 0.9474,
       "difficulty_breakdown": {
         "easy": {
-          "f1": 0.9091,
+          "f1": 0.8,
           "precision": 1.0,
-          "recall": 0.8333,
+          "recall": 0.6667,
           "n": 16,
-          "tp": 5,
+          "tp": 4,
           "fp": 0,
-          "fn": 1,
+          "fn": 2,
           "tn": 10
         },
         "hard": {
@@ -144,7 +144,7 @@
           "tn": 1
         }
       },
-      "last_calibrated": "2026-03-03T08:19:44.089936+00:00"
+      "last_calibrated": "2026-03-04T05:04:44.781435+00:00"
     },
     "injection": {
       "name": "Injection Detection",
@@ -192,7 +192,7 @@
           "tn": 3
         }
       },
-      "last_calibrated": "2026-03-03T08:19:44.089936+00:00"
+      "last_calibrated": "2026-03-04T05:04:44.781435+00:00"
     },
     "overflow": {
       "name": "Context Overflow",
@@ -240,7 +240,7 @@
           "tn": 1
         }
       },
-      "last_calibrated": "2026-03-03T08:19:44.089936+00:00"
+      "last_calibrated": "2026-03-04T05:04:44.781435+00:00"
     },
     "corruption": {
       "name": "State Corruption",
@@ -288,7 +288,7 @@
           "tn": 2
         }
       },
-      "last_calibrated": "2026-03-03T08:19:44.089936+00:00"
+      "last_calibrated": "2026-03-04T05:04:44.781435+00:00"
     },
     "coordination": {
       "name": "Coordination Analysis",
@@ -336,7 +336,7 @@
           "tn": 0
         }
       },
-      "last_calibrated": "2026-03-03T08:19:44.089936+00:00"
+      "last_calibrated": "2026-03-04T05:04:44.781435+00:00"
     },
     "communication": {
       "name": "Communication Breakdown",
@@ -384,7 +384,7 @@
           "tn": 0
         }
       },
-      "last_calibrated": "2026-03-03T08:19:44.089936+00:00"
+      "last_calibrated": "2026-03-04T05:04:44.781435+00:00"
     },
     "context": {
       "name": "Context Neglect",
@@ -432,7 +432,7 @@
           "tn": 0
         }
       },
-      "last_calibrated": "2026-03-03T08:19:44.089936+00:00"
+      "last_calibrated": "2026-03-04T05:04:44.781435+00:00"
     },
     "derailment": {
       "name": "Task Derailment",
@@ -441,10 +441,10 @@
       "readiness": "beta",
       "eval_category": "capability",
       "module": "app.detection.derailment",
-      "f1_score": 0.6667,
-      "precision": 0.5882,
-      "recall": 0.7692,
-      "optimal_threshold": 0.55,
+      "f1_score": 0.6875,
+      "precision": 0.5789,
+      "recall": 0.8462,
+      "optimal_threshold": 0.5,
       "sample_count": 30,
       "f1_ci_lower": 0.5217,
       "f1_ci_upper": 0.875,
@@ -480,7 +480,7 @@
           "tn": 0
         }
       },
-      "last_calibrated": "2026-03-03T08:19:44.089936+00:00"
+      "last_calibrated": "2026-03-04T05:04:44.781435+00:00"
     },
     "specification": {
       "name": "Specification Mismatch",
@@ -489,22 +489,22 @@
       "readiness": "production",
       "eval_category": "regression",
       "module": "app.detection.specification",
-      "f1_score": 0.8571,
-      "precision": 0.9231,
-      "recall": 0.8,
+      "f1_score": 0.8148,
+      "precision": 0.9167,
+      "recall": 0.7333,
       "optimal_threshold": 0.1,
       "sample_count": 30,
-      "f1_ci_lower": 0.6957,
-      "f1_ci_upper": 0.9677,
+      "f1_ci_lower": 0.6364,
+      "f1_ci_upper": 0.9524,
       "difficulty_breakdown": {
         "easy": {
-          "f1": 0.8889,
-          "precision": 0.8889,
-          "recall": 0.8889,
+          "f1": 0.8235,
+          "precision": 0.875,
+          "recall": 0.7778,
           "n": 22,
-          "tp": 8,
+          "tp": 7,
           "fp": 1,
-          "fn": 1,
+          "fn": 2,
           "tn": 12
         },
         "hard": {
@@ -528,7 +528,7 @@
           "tn": 0
         }
       },
-      "last_calibrated": "2026-03-03T08:19:44.089936+00:00"
+      "last_calibrated": "2026-03-04T05:04:44.781435+00:00"
     },
     "decomposition": {
       "name": "Task Decomposition",
@@ -576,7 +576,7 @@
           "tn": 0
         }
       },
-      "last_calibrated": "2026-03-03T08:19:44.089936+00:00"
+      "last_calibrated": "2026-03-04T05:04:44.781435+00:00"
     },
     "workflow": {
       "name": "Workflow Analysis",
@@ -624,7 +624,7 @@
           "tn": 3
         }
       },
-      "last_calibrated": "2026-03-03T08:19:44.089936+00:00"
+      "last_calibrated": "2026-03-04T05:04:44.781435+00:00"
     },
     "withholding": {
       "name": "Information Withholding",
@@ -672,7 +672,7 @@
           "tn": 0
         }
       },
-      "last_calibrated": "2026-03-03T08:19:44.089936+00:00"
+      "last_calibrated": "2026-03-04T05:04:44.781435+00:00"
     },
     "completion": {
       "name": "Completion Misjudgment",
@@ -720,7 +720,7 @@
           "tn": 0
         }
       },
-      "last_calibrated": "2026-03-03T08:19:44.089936+00:00"
+      "last_calibrated": "2026-03-04T05:04:44.781435+00:00"
     },
     "grounding": {
       "name": "Grounding Detection",
@@ -768,7 +768,7 @@
           "tn": 0
         }
       },
-      "last_calibrated": "2026-03-03T08:19:44.089936+00:00"
+      "last_calibrated": "2026-03-04T05:04:44.781435+00:00"
     },
     "retrieval_quality": {
       "name": "Retrieval Quality",
@@ -816,7 +816,7 @@
           "tn": 0
         }
       },
-      "last_calibrated": "2026-03-03T08:19:44.089936+00:00"
+      "last_calibrated": "2026-03-04T05:04:44.781435+00:00"
     },
     "n8n_schema": {
       "name": "N8N Schema Mismatch",
@@ -864,7 +864,7 @@
           "tn": 9
         }
       },
-      "last_calibrated": "2026-03-03T08:19:44.089936+00:00"
+      "last_calibrated": "2026-03-04T05:04:44.781435+00:00"
     },
     "n8n_cycle": {
       "name": "N8N Graph Cycle",
@@ -912,7 +912,7 @@
           "tn": 4
         }
       },
-      "last_calibrated": "2026-03-03T08:19:44.089936+00:00"
+      "last_calibrated": "2026-03-04T05:04:44.781435+00:00"
     },
     "n8n_complexity": {
       "name": "N8N Complexity",
@@ -960,7 +960,7 @@
           "tn": 12
         }
       },
-      "last_calibrated": "2026-03-03T08:19:44.089936+00:00"
+      "last_calibrated": "2026-03-04T05:04:44.781435+00:00"
     },
     "n8n_error": {
       "name": "N8N Error Handling",
@@ -1008,7 +1008,7 @@
           "tn": 2
         }
       },
-      "last_calibrated": "2026-03-03T08:19:44.089936+00:00"
+      "last_calibrated": "2026-03-04T05:04:44.781435+00:00"
     },
     "n8n_resource": {
       "name": "N8N Resource Limits",
@@ -1056,7 +1056,7 @@
           "tn": 19
         }
       },
-      "last_calibrated": "2026-03-03T08:19:44.089936+00:00"
+      "last_calibrated": "2026-03-04T05:04:44.781435+00:00"
     },
     "n8n_timeout": {
       "name": "N8N Timeout Protection",
@@ -1104,7 +1104,7 @@
           "tn": 20
         }
       },
-      "last_calibrated": "2026-03-03T08:19:44.089936+00:00"
+      "last_calibrated": "2026-03-04T05:04:44.781435+00:00"
     },
     "dify_rag_poisoning": {
       "name": "Dify RAG Poisoning",
@@ -1152,7 +1152,7 @@
           "tn": 17
         }
       },
-      "last_calibrated": "2026-03-03T08:19:44.089936+00:00"
+      "last_calibrated": "2026-03-04T05:04:44.781435+00:00"
     },
     "dify_iteration_escape": {
       "name": "Dify Iteration Escape",
@@ -1200,7 +1200,7 @@
           "tn": 13
         }
       },
-      "last_calibrated": "2026-03-03T08:19:44.089936+00:00"
+      "last_calibrated": "2026-03-04T05:04:44.781435+00:00"
     },
     "dify_model_fallback": {
       "name": "Dify Model Fallback",
@@ -1248,7 +1248,7 @@
           "tn": 19
         }
       },
-      "last_calibrated": "2026-03-03T08:19:44.089936+00:00"
+      "last_calibrated": "2026-03-04T05:04:44.781435+00:00"
     },
     "dify_variable_leak": {
       "name": "Dify Variable Leak",
@@ -1296,7 +1296,7 @@
           "tn": 8
         }
       },
-      "last_calibrated": "2026-03-03T08:19:44.089936+00:00"
+      "last_calibrated": "2026-03-04T05:04:44.781435+00:00"
     },
     "dify_classifier_drift": {
       "name": "Dify Classifier Drift",
@@ -1344,7 +1344,7 @@
           "tn": 15
         }
       },
-      "last_calibrated": "2026-03-03T08:19:44.089936+00:00"
+      "last_calibrated": "2026-03-04T05:04:44.781435+00:00"
     },
     "dify_tool_schema_mismatch": {
       "name": "Dify Tool Schema Mismatch",
@@ -1392,7 +1392,7 @@
           "tn": 15
         }
       },
-      "last_calibrated": "2026-03-03T08:19:44.089936+00:00"
+      "last_calibrated": "2026-03-04T05:04:44.781435+00:00"
     },
     "openclaw_session_loop": {
       "name": "OpenClaw Session Loop",
@@ -1440,7 +1440,7 @@
           "tn": 18
         }
       },
-      "last_calibrated": "2026-03-03T08:19:44.089936+00:00"
+      "last_calibrated": "2026-03-04T05:04:44.781435+00:00"
     },
     "openclaw_tool_abuse": {
       "name": "OpenClaw Tool Abuse",
@@ -1488,7 +1488,7 @@
           "tn": 13
         }
       },
-      "last_calibrated": "2026-03-03T08:19:44.089936+00:00"
+      "last_calibrated": "2026-03-04T05:04:44.781435+00:00"
     },
     "openclaw_elevated_risk": {
       "name": "OpenClaw Elevated Risk",
@@ -1536,7 +1536,7 @@
           "tn": 12
         }
       },
-      "last_calibrated": "2026-03-03T08:19:44.089936+00:00"
+      "last_calibrated": "2026-03-04T05:04:44.781435+00:00"
     },
     "openclaw_spawn_chain": {
       "name": "OpenClaw Spawn Chain",
@@ -1584,7 +1584,7 @@
           "tn": 16
         }
       },
-      "last_calibrated": "2026-03-03T08:19:44.089936+00:00"
+      "last_calibrated": "2026-03-04T05:04:44.781435+00:00"
     },
     "openclaw_channel_mismatch": {
       "name": "OpenClaw Channel Mismatch",
@@ -1632,7 +1632,7 @@
           "tn": 18
         }
       },
-      "last_calibrated": "2026-03-03T08:19:44.089936+00:00"
+      "last_calibrated": "2026-03-04T05:04:44.781435+00:00"
     },
     "openclaw_sandbox_escape": {
       "name": "OpenClaw Sandbox Escape",
@@ -1680,7 +1680,7 @@
           "tn": 9
         }
       },
-      "last_calibrated": "2026-03-03T08:19:44.089936+00:00"
+      "last_calibrated": "2026-03-04T05:04:44.781435+00:00"
     },
     "langgraph_recursion": {
       "name": "LangGraph Recursion",
@@ -1728,7 +1728,7 @@
           "tn": 19
         }
       },
-      "last_calibrated": "2026-03-03T08:19:44.089936+00:00"
+      "last_calibrated": "2026-03-04T05:04:44.781435+00:00"
     },
     "langgraph_state_corruption": {
       "name": "LangGraph State Corruption",
@@ -1776,7 +1776,7 @@
           "tn": 14
         }
       },
-      "last_calibrated": "2026-03-03T08:19:44.089936+00:00"
+      "last_calibrated": "2026-03-04T05:04:44.781435+00:00"
     },
     "langgraph_edge_misroute": {
       "name": "LangGraph Edge Misroute",
@@ -1824,7 +1824,7 @@
           "tn": 15
         }
       },
-      "last_calibrated": "2026-03-03T08:19:44.089936+00:00"
+      "last_calibrated": "2026-03-04T05:04:44.781435+00:00"
     },
     "langgraph_tool_failure": {
       "name": "LangGraph Tool Failure",
@@ -1872,7 +1872,7 @@
           "tn": 13
         }
       },
-      "last_calibrated": "2026-03-03T08:19:44.089936+00:00"
+      "last_calibrated": "2026-03-04T05:04:44.781435+00:00"
     },
     "langgraph_parallel_sync": {
       "name": "LangGraph Parallel Sync",
@@ -1920,7 +1920,7 @@
           "tn": 14
         }
       },
-      "last_calibrated": "2026-03-03T08:19:44.089936+00:00"
+      "last_calibrated": "2026-03-04T05:04:44.781435+00:00"
     },
     "langgraph_checkpoint_corruption": {
       "name": "LangGraph Checkpoint Corruption",
@@ -1968,13 +1968,13 @@
           "tn": 10
         }
       },
-      "last_calibrated": "2026-03-03T08:19:44.089936+00:00"
+      "last_calibrated": "2026-03-04T05:04:44.781435+00:00"
     }
   },
   "summary": {
     "total": 41,
-    "production": 29,
-    "beta": 12,
+    "production": 30,
+    "beta": 11,
     "experimental": 0,
     "failing": 0,
     "untested": 0,

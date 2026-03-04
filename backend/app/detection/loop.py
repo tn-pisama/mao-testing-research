@@ -284,7 +284,14 @@ class MultiLevelLoopDetector:
                 sim = self.embedder.similarity(current_emb, emb)
                 similarities.append((i, sim))
 
-            high_sim_matches = [(i, sim) for i, sim in similarities if sim > self.semantic_threshold]
+            # Filter: only flag high-similarity if there's no meaningful state progress
+            high_sim_matches = []
+            for i, sim in similarities:
+                if sim > self.semantic_threshold:
+                    # Check if state actually changed — batch processing / fan-out
+                    # produces high textual similarity but different state_delta values
+                    if not self._has_meaningful_progress(window[i], current):
+                        high_sim_matches.append((i, sim))
 
             # v1.2: If current state is a summary/recap, don't flag as loop
             if self._is_summary_or_progress(current.content):

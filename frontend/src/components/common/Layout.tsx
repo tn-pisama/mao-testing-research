@@ -14,7 +14,7 @@ export function Layout({ children, title }: LayoutProps) {
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false)
 
   return (
-    <div className="flex h-screen bg-zinc-950">
+    <div className="flex min-h-screen bg-zinc-950">
       {/* Desktop Sidebar */}
       <div className="hidden lg:flex">
         <Sidebar
@@ -46,7 +46,7 @@ export function Layout({ children, title }: LayoutProps) {
           title={title}
           onMenuClick={() => setMobileMenuOpen(!mobileMenuOpen)}
         />
-        <main className="flex-1 overflow-y-auto p-6">
+        <main className="flex-1 overflow-y-auto p-4 md:p-6">
           {children}
         </main>
       </div>
