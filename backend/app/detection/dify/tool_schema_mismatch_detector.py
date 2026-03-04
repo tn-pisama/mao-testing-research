@@ -82,7 +82,8 @@ class DifyToolSchemaMismatchDetector(TurnAwareDetector):
         if not nodes:
             return self._no_detection("No nodes in workflow run")
 
-        tool_nodes = [n for n in nodes if n.get("node_type") == "tool"]
+        _tool_like_types = {"tool", "http_request", "api_request", "webhook"}
+        tool_nodes = [n for n in nodes if n.get("node_type") in _tool_like_types]
         if not tool_nodes:
             return self._no_detection("No tool nodes found")
 
@@ -115,8 +116,9 @@ class DifyToolSchemaMismatchDetector(TurnAwareDetector):
                 affected_node_ids.append(node_id)
                 max_confidence = max(max_confidence, 0.7)
 
-            # Check 3: Failed status with schema-related error
-            if status == "failed":
+            # Check 3: Error message with schema-related keywords
+            error_msg = node.get("error", "") or node.get("error_message", "")
+            if status == "failed" or error_msg:
                 error_issue = self._check_error_message(node_id, node_title, node)
                 if error_issue:
                     issues.append(error_issue)

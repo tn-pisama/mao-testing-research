@@ -27,9 +27,9 @@ from app.detection.turn_aware._base import (
 logger = logging.getLogger(__name__)
 
 # Complexity thresholds
-DEFAULT_MAX_NODE_COUNT = 50
-DEFAULT_MAX_BRANCH_DEPTH = 10
-DEFAULT_MAX_CYCLOMATIC_COMPLEXITY = 20
+DEFAULT_MAX_NODE_COUNT = 25
+DEFAULT_MAX_BRANCH_DEPTH = 6
+DEFAULT_MAX_CYCLOMATIC_COMPLEXITY = 10
 DEFAULT_MAX_EXECUTION_TIME_MS = 300_000  # 5 minutes
 
 # Node types that indicate branching (increase cyclomatic complexity)
@@ -421,10 +421,9 @@ class N8NComplexityDetector(TurnAwareDetector):
 
         active_categories = {k: v for k, v in categories.items() if v}
 
-        # Production workflows commonly span 4-5 categories (fetch, transform,
-        # validate, notify, other).  Only flag when a workflow touches 6+
-        # distinct functional areas, which indicates it should be split.
-        if len(active_categories) >= 6:
+        # Flag when a workflow touches 5+ distinct functional areas,
+        # which indicates it should be decomposed or split.
+        if len(active_categories) >= 5:
             return {
                 "detected": True,
                 "type": "multiple_concerns",

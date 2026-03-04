@@ -583,20 +583,83 @@ def _build_detector_runners() -> Dict[DetectionType, Any]:
             raw_nodes = workflow_def.get("nodes", [])
             raw_connections = workflow_def.get("connections", [])
 
-            # Build incoming/outgoing maps from connections
+            # Build incoming/outgoing maps from connections.
+            # Formats vary by source:
+            #   N8N/OpenClaw: list of {"from": str, "to": str}
+            #   Dify: dict {src: [dst, ...]}
+            #   LangGraph: dict {src: [{target: dst, ...}, ...]}
             outgoing_map: Dict[str, List[str]] = {}
             incoming_map: Dict[str, List[str]] = {}
-            for conn in raw_connections:
-                src = conn["from"]
-                dst = conn["to"]
-                outgoing_map.setdefault(src, []).append(dst)
-                incoming_map.setdefault(dst, []).append(src)
+            if isinstance(raw_connections, dict):
+                for src, targets in raw_connections.items():
+                    for t in targets:
+                        dst = t["target"] if isinstance(t, dict) else str(t)
+                        outgoing_map.setdefault(src, []).append(dst)
+                        incoming_map.setdefault(dst, []).append(src)
+            else:
+                for conn in raw_connections:
+                    src = conn["from"]
+                    dst = conn["to"]
+                    outgoing_map.setdefault(src, []).append(dst)
+                    incoming_map.setdefault(dst, []).append(src)
 
-            # Construct WorkflowNode objects from node names + connection maps
+            # Construct WorkflowNode objects.
+            # Nodes can be plain strings or dicts with "id"/"node_id"/"name" keys.
+            all_names = []
+            name_meta: Dict[str, str] = {}  # name -> raw_type
+            for raw_node in raw_nodes:
+                if isinstance(raw_node, dict):
+                    name = raw_node.get("id", raw_node.get("node_id", raw_node.get("name", str(raw_node))))
+                    raw_type = raw_node.get("type", raw_node.get("node_type", ""))
+                else:
+                    name = str(raw_node)
+                    raw_type = ""
+                all_names.append(name)
+                name_meta[name] = raw_type
+
+            # Determine the primary entry point (first node or explicit start).
+            primary_start = all_names[0] if all_names else None
+
+            # Find the main terminal: the deepest reachable leaf from start.
+            leaf_nodes = {n for n in all_names if n not in outgoing_map}
+            main_terminal = None
+            if leaf_nodes and primary_start:
+                visited: Dict[str, int] = {}
+                stack = [(primary_start, 0)]
+                while stack:
+                    nid, depth = stack.pop()
+                    if nid in visited and visited[nid] >= depth:
+                        continue
+                    visited[nid] = depth
+                    for nb in outgoing_map.get(nid, []):
+                        stack.append((nb, depth + 1))
+                deepest_depth = -1
+                for leaf in leaf_nodes:
+                    d = visited.get(leaf, -1)
+                    if d > deepest_depth:
+                        deepest_depth = d
+                        main_terminal = leaf
+
             nodes = []
-            for name in raw_nodes:
-                node_type = "start" if name not in incoming_map else (
-                    "end" if name not in outgoing_map else "agent"
+            for name in all_names:
+                # Only the first node (or explicit starts) get type "start".
+                # Error handler nodes without incoming are also entry points.
+                if name == primary_start:
+                    node_type = "start"
+                elif name not in incoming_map and has_err:
+                    node_type = "start"  # error handler entry point
+                elif name not in incoming_map:
+                    node_type = "agent"
+                elif name not in outgoing_map:
+                    node_type = "end"
+                else:
+                    node_type = "agent"
+                name_lower = name.lower()
+                raw_type = name_meta.get(name, "")
+                has_err = (
+                    name_lower.startswith("error")
+                    or name_lower in ("error_handler", "error_trigger", "on_error")
+                    or "error" in raw_type.lower()
                 )
                 nodes.append(WorkflowNode(
                     id=name,
@@ -604,8 +667,8 @@ def _build_detector_runners() -> Dict[DetectionType, Any]:
                     node_type=node_type,
                     incoming=incoming_map.get(name, []),
                     outgoing=outgoing_map.get(name, []),
-                    has_error_handler="error" in name.lower(),
-                    is_terminal=name not in outgoing_map,
+                    has_error_handler=has_err,
+                    is_terminal=(name == main_terminal),
                 ))
 
             result = _workflow_detector.detect(nodes)
@@ -635,7 +698,10 @@ def _build_detector_runners() -> Dict[DetectionType, Any]:
 
             def _make_n8n_runner(det):
                 def _run(entry: GoldenDatasetEntry) -> Tuple[bool, float]:
-                    wf = entry.input_data.get("workflow_json", entry.input_data)
+                    wf = entry.input_data.get(
+                        "workflow_json",
+                        entry.input_data.get("workflow", entry.input_data),
+                    )
                     result = det.detect_workflow(wf)
                     return result.detected, result.confidence
                 return _run

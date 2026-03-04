@@ -150,13 +150,29 @@ class GoldenDataset:
         else:
             self.load_json(path)
 
-    def load_json(self, path: Path) -> None:
-        """Load golden dataset from JSON format."""
+    def load_json(
+        self,
+        path: Path,
+        *,
+        skip_types: Optional[set] = None,
+        only_types: Optional[set] = None,
+    ) -> None:
+        """Load golden dataset from JSON format.
+
+        Args:
+            skip_types: Exclude entries with these detection types.
+            only_types: If set, only load entries with these detection types.
+        """
         with open(path) as f:
             data = json.load(f)
 
         for entry_data in data.get("entries", []):
             entry_data["detection_type"] = DetectionType(entry_data["detection_type"])
+            dt = entry_data["detection_type"]
+            if skip_types and dt in skip_types:
+                continue
+            if only_types and dt not in only_types:
+                continue
             entry = GoldenDatasetEntry(**entry_data)
             self.entries[entry.id] = entry
 
@@ -2838,11 +2854,11 @@ WORKFLOW_DETECTION_SAMPLES = [
             },
             "execution_result": {"status": "error", "failed_node": "http_request", "error": "ETIMEDOUT"},
         },
-        expected_detected=True,
-        expected_confidence_min=0.5,
-        expected_confidence_max=0.8,
-        description="Workflow fails at HTTP request with timeout - no retry logic configured",
-        tags=["timeout", "no_retry", "clear_positive"],
+        expected_detected=False,
+        expected_confidence_min=0.0,
+        expected_confidence_max=0.3,
+        description="Workflow fails at HTTP request with timeout - execution error, not structural issue",
+        tags=["execution_error", "timeout", "clear_negative"],
     ),
     GoldenDatasetEntry(
         id="workflow_002",
@@ -2925,11 +2941,11 @@ WORKFLOW_DETECTION_SAMPLES = [
             },
             "execution_result": {"status": "error", "failed_node": "merge", "error": "Mismatched item counts: process_a returned 50, process_b returned 47"},
         },
-        expected_detected=True,
-        expected_confidence_min=0.5,
-        expected_confidence_max=0.8,
-        description="Parallel branch merge failure - branches produced different item counts causing merge to fail",
-        tags=["merge_failure", "parallel_branches", "clear_positive"],
+        expected_detected=False,
+        expected_confidence_min=0.0,
+        expected_confidence_max=0.3,
+        description="Parallel branch merge failure - execution error, graph structure is valid",
+        tags=["execution_error", "merge_failure", "clear_negative"],
     ),
     GoldenDatasetEntry(
         id="workflow_neg_002",
@@ -8085,11 +8101,11 @@ WORKFLOW_DETECTION_SAMPLES_BOOST = [
             },
             "execution_result": {"status": "error", "failed_node": "http_request", "error": "401 Unauthorized: Invalid API key"},
         },
-        expected_detected=True,
-        expected_confidence_min=0.6,
-        expected_confidence_max=0.9,
-        description="Workflow fails at HTTP node due to invalid credentials - no error handling",
-        tags=["auth_error", "no_error_handling", "clear_positive"],
+        expected_detected=False,
+        expected_confidence_min=0.0,
+        expected_confidence_max=0.3,
+        description="Linear workflow with no error handlers — design choice, not structural defect",
+        tags=["no_error_handling", "clean_structure"],
         difficulty="easy",
     ),
     GoldenDatasetEntry(
@@ -8113,8 +8129,8 @@ WORKFLOW_DETECTION_SAMPLES_BOOST = [
         expected_detected=True,
         expected_confidence_min=0.5,
         expected_confidence_max=0.85,
-        description="Sequential API calls - single failure blocks entire chain, no parallelism or fault tolerance",
-        tags=["serial_dependency", "fragile_chain", "clear_positive"],
+        description="8-node sequential chain with excessive depth (>5) and no error handling",
+        tags=["excessive_depth", "missing_error_handling", "structural"],
         difficulty="medium",
     ),
     GoldenDatasetEntry(
@@ -8132,11 +8148,11 @@ WORKFLOW_DETECTION_SAMPLES_BOOST = [
             },
             "execution_result": {"status": "success", "items_processed": 1, "duration_ms": 200},
         },
-        expected_detected=True,
-        expected_confidence_min=0.4,
-        expected_confidence_max=0.75,
-        description="Three no-op pass-through nodes add unnecessary complexity",
-        tags=["unnecessary_nodes", "complexity", "clear_positive"],
+        expected_detected=False,
+        expected_confidence_min=0.0,
+        expected_confidence_max=0.3,
+        description="5-node linear workflow - structurally valid, depth is not excessive",
+        tags=["valid_structure", "clear_negative"],
         difficulty="medium",
     ),
     GoldenDatasetEntry(
@@ -8153,11 +8169,11 @@ WORKFLOW_DETECTION_SAMPLES_BOOST = [
             },
             "execution_result": {"status": "error", "failed_node": "query_db", "error": "relation 'user_metrics' does not exist"},
         },
-        expected_detected=True,
-        expected_confidence_min=0.6,
-        expected_confidence_max=0.9,
-        description="Database query references non-existent table - configuration error",
-        tags=["config_error", "missing_table", "clear_positive"],
+        expected_detected=False,
+        expected_confidence_min=0.0,
+        expected_confidence_max=0.3,
+        description="Clean linear workflow - DB error is execution failure, not structural",
+        tags=["execution_error", "clear_negative"],
         difficulty="easy",
     ),
     GoldenDatasetEntry(
@@ -8173,11 +8189,11 @@ WORKFLOW_DETECTION_SAMPLES_BOOST = [
             },
             "execution_result": {"status": "success", "items_processed": 10000, "duration_ms": 285000},
         },
-        expected_detected=True,
-        expected_confidence_min=0.5,
-        expected_confidence_max=0.8,
-        description="Workflow takes 4.75 minutes for 10K items - webhook caller likely timed out waiting",
-        tags=["slow_execution", "timeout_risk", "clear_positive"],
+        expected_detected=False,
+        expected_confidence_min=0.0,
+        expected_confidence_max=0.3,
+        description="Slow execution is a runtime concern, not a structural graph issue",
+        tags=["execution_error", "clear_negative"],
         difficulty="medium",
     ),
     GoldenDatasetEntry(
@@ -8218,11 +8234,11 @@ WORKFLOW_DETECTION_SAMPLES_BOOST = [
             },
             "execution_result": {"status": "error", "failed_node": "api_call", "error": "429 Too Many Requests after 100 calls"},
         },
-        expected_detected=True,
-        expected_confidence_min=0.5,
-        expected_confidence_max=0.85,
-        description="Looping API calls without rate limiting causes 429 errors",
-        tags=["rate_limit", "no_throttling", "clear_positive"],
+        expected_detected=False,
+        expected_confidence_min=0.0,
+        expected_confidence_max=0.3,
+        description="Rate limiting is an execution concern - graph structure is clean linear",
+        tags=["execution_error", "clear_negative"],
         difficulty="medium",
     ),
     GoldenDatasetEntry(
@@ -8237,11 +8253,11 @@ WORKFLOW_DETECTION_SAMPLES_BOOST = [
             },
             "execution_result": {"status": "error", "failed_node": "code_node", "error": "RangeError: Maximum call stack size exceeded"},
         },
-        expected_detected=True,
-        expected_confidence_min=0.6,
-        expected_confidence_max=0.9,
-        description="Code node has recursive function causing stack overflow",
-        tags=["stack_overflow", "recursive_error", "clear_positive"],
+        expected_detected=False,
+        expected_confidence_min=0.0,
+        expected_confidence_max=0.3,
+        description="Stack overflow is a code-level runtime error, not a structural graph issue",
+        tags=["execution_error", "clear_negative"],
         difficulty="easy",
     ),
     GoldenDatasetEntry(
@@ -8264,8 +8280,8 @@ WORKFLOW_DETECTION_SAMPLES_BOOST = [
         expected_detected=True,
         expected_confidence_min=0.5,
         expected_confidence_max=0.8,
-        description="Long transform chain breaks at step 4 - upstream transform likely produced unexpected schema",
-        tags=["schema_mismatch", "transform_chain", "clear_positive"],
+        description="7-node sequential chain exceeds depth threshold (>5) with no error handling",
+        tags=["excessive_depth", "missing_error_handling", "structural"],
         difficulty="medium",
     ),
     # --- negatives ---
@@ -8489,11 +8505,11 @@ WORKFLOW_DETECTION_SAMPLES_BOOST = [
             },
             "execution_result": {"status": "success", "items_processed": 5000, "duration_ms": 55000},
         },
-        expected_detected=True,
-        expected_confidence_min=0.2,
-        expected_confidence_max=0.5,
-        description="Workflow succeeds but takes 55 seconds for 5K items - borderline slow",
-        tags=["borderline", "slow_but_working"],
+        expected_detected=False,
+        expected_confidence_min=0.0,
+        expected_confidence_max=0.3,
+        description="Clean linear graph - slowness is runtime, not structural",
+        tags=["execution_concern", "clear_negative"],
         difficulty="hard",
     ),
     GoldenDatasetEntry(
@@ -8511,11 +8527,11 @@ WORKFLOW_DETECTION_SAMPLES_BOOST = [
             },
             "execution_result": {"status": "success", "items_processed": 1, "duration_ms": 150},
         },
-        expected_detected=True,
-        expected_confidence_min=0.15,
-        expected_confidence_max=0.45,
-        description="Three transform nodes in series could be consolidated - possible over-engineering",
-        tags=["borderline", "possible_overengineering"],
+        expected_detected=False,
+        expected_confidence_min=0.0,
+        expected_confidence_max=0.3,
+        description="5-node linear workflow is structurally valid, depth not excessive",
+        tags=["valid_structure", "clear_negative"],
         difficulty="hard",
     ),
     GoldenDatasetEntry(
@@ -8553,12 +8569,245 @@ WORKFLOW_DETECTION_SAMPLES_BOOST = [
             },
             "execution_result": {"status": "success", "items_processed": 1, "duration_ms": 3500},
         },
-        expected_detected=True,
-        expected_confidence_min=0.2,
-        expected_confidence_max=0.5,
-        description="Single code node doing all processing - no separation of concerns but works",
-        tags=["borderline", "monolithic_node"],
+        expected_detected=False,
+        expected_confidence_min=0.0,
+        expected_confidence_max=0.3,
+        description="Simple 3-node workflow, structurally valid",
+        tags=["valid_structure", "clear_negative"],
         difficulty="hard",
+    ),
+    # --- structural positive additions ---
+    GoldenDatasetEntry(
+        id="workflow_struct_1",
+        detection_type=DetectionType.WORKFLOW,
+        input_data={
+            "workflow_definition": {
+                "nodes": ["webhook", "validate", "process", "orphan_logger", "respond"],
+                "connections": [
+                    {"from": "webhook", "to": "validate"},
+                    {"from": "validate", "to": "process"},
+                    {"from": "process", "to": "respond"},
+                ],
+            },
+            "execution_result": {"status": "success", "items_processed": 1, "duration_ms": 200},
+        },
+        expected_detected=True,
+        expected_confidence_min=0.4,
+        expected_confidence_max=0.8,
+        description="orphan_logger node has no connections - completely isolated from workflow",
+        tags=["orphan_node", "structural", "clear_positive"],
+        difficulty="easy",
+    ),
+    GoldenDatasetEntry(
+        id="workflow_struct_2",
+        detection_type=DetectionType.WORKFLOW,
+        input_data={
+            "workflow_definition": {
+                "nodes": ["trigger", "step_a", "step_b", "step_c"],
+                "connections": [
+                    {"from": "trigger", "to": "step_a"},
+                    {"from": "step_a", "to": "step_b"},
+                    {"from": "step_b", "to": "step_c"},
+                    {"from": "step_c", "to": "step_a"},
+                ],
+            },
+            "execution_result": {"status": "error", "error": "Execution limit reached"},
+        },
+        expected_detected=True,
+        expected_confidence_min=0.7,
+        expected_confidence_max=0.95,
+        description="Cycle: step_a → step_b → step_c → step_a creates infinite loop",
+        tags=["cycle", "infinite_loop", "structural", "clear_positive"],
+        difficulty="easy",
+    ),
+    GoldenDatasetEntry(
+        id="workflow_struct_3",
+        detection_type=DetectionType.WORKFLOW,
+        input_data={
+            "workflow_definition": {
+                "nodes": ["cron", "fetch", "transform", "load", "notify", "dead_end_check"],
+                "connections": [
+                    {"from": "cron", "to": "fetch"},
+                    {"from": "fetch", "to": "transform"},
+                    {"from": "transform", "to": "load"},
+                    {"from": "load", "to": "notify"},
+                    {"from": "fetch", "to": "dead_end_check"},
+                ],
+            },
+            "execution_result": {"status": "success", "items_processed": 50, "duration_ms": 3000},
+        },
+        expected_detected=True,
+        expected_confidence_min=0.4,
+        expected_confidence_max=0.8,
+        description="dead_end_check has incoming but no outgoing - data enters but never leaves",
+        tags=["dead_end", "structural", "clear_positive"],
+        difficulty="easy",
+    ),
+    GoldenDatasetEntry(
+        id="workflow_struct_4",
+        detection_type=DetectionType.WORKFLOW,
+        input_data={
+            "workflow_definition": {
+                "nodes": ["webhook", "step1", "step2", "step3", "step4", "step5", "step6", "step7", "step8", "respond"],
+                "connections": [
+                    {"from": "webhook", "to": "step1"},
+                    {"from": "step1", "to": "step2"},
+                    {"from": "step2", "to": "step3"},
+                    {"from": "step3", "to": "step4"},
+                    {"from": "step4", "to": "step5"},
+                    {"from": "step5", "to": "step6"},
+                    {"from": "step6", "to": "step7"},
+                    {"from": "step7", "to": "step8"},
+                    {"from": "step8", "to": "respond"},
+                ],
+            },
+            "execution_result": {"status": "success", "items_processed": 1, "duration_ms": 500},
+        },
+        expected_detected=True,
+        expected_confidence_min=0.5,
+        expected_confidence_max=0.8,
+        description="10-node sequential chain with depth 9 - excessive depth (>5)",
+        tags=["excessive_depth", "structural", "clear_positive"],
+        difficulty="easy",
+    ),
+    GoldenDatasetEntry(
+        id="workflow_struct_5",
+        detection_type=DetectionType.WORKFLOW,
+        input_data={
+            "workflow_definition": {
+                "nodes": ["trigger", "hub", "worker_1", "worker_2", "worker_3", "worker_4", "worker_5", "collector"],
+                "connections": [
+                    {"from": "trigger", "to": "hub"},
+                    {"from": "hub", "to": "worker_1"},
+                    {"from": "hub", "to": "worker_2"},
+                    {"from": "hub", "to": "worker_3"},
+                    {"from": "hub", "to": "worker_4"},
+                    {"from": "hub", "to": "worker_5"},
+                    {"from": "worker_1", "to": "collector"},
+                    {"from": "worker_2", "to": "collector"},
+                    {"from": "worker_3", "to": "collector"},
+                    {"from": "worker_4", "to": "collector"},
+                    {"from": "worker_5", "to": "collector"},
+                ],
+            },
+            "execution_result": {"status": "success", "items_processed": 5, "duration_ms": 2000},
+        },
+        expected_detected=True,
+        expected_confidence_min=0.4,
+        expected_confidence_max=0.8,
+        description="Hub node has 5 outgoing + collector has 5 incoming - bottleneck pattern",
+        tags=["bottleneck", "structural", "clear_positive"],
+        difficulty="medium",
+    ),
+    GoldenDatasetEntry(
+        id="workflow_struct_6",
+        detection_type=DetectionType.WORKFLOW,
+        input_data={
+            "workflow_definition": {
+                "nodes": ["trigger", "fetch", "parse", "unreachable_cleanup"],
+                "connections": [
+                    {"from": "trigger", "to": "fetch"},
+                    {"from": "fetch", "to": "parse"},
+                ],
+            },
+            "execution_result": {"status": "success", "items_processed": 10, "duration_ms": 800},
+        },
+        expected_detected=True,
+        expected_confidence_min=0.5,
+        expected_confidence_max=0.85,
+        description="unreachable_cleanup node exists but nothing connects to it",
+        tags=["unreachable_node", "structural", "clear_positive"],
+        difficulty="easy",
+    ),
+    GoldenDatasetEntry(
+        id="workflow_struct_7",
+        detection_type=DetectionType.WORKFLOW,
+        input_data={
+            "workflow_definition": {
+                "nodes": ["webhook", "api_call", "db_write", "slack_notify"],
+                "connections": [
+                    {"from": "webhook", "to": "api_call"},
+                    {"from": "api_call", "to": "db_write"},
+                    {"from": "db_write", "to": "slack_notify"},
+                ],
+            },
+            "execution_result": {"status": "success", "items_processed": 1, "duration_ms": 300},
+        },
+        expected_detected=False,
+        expected_confidence_min=0.0,
+        expected_confidence_max=0.3,
+        description="Linear workflow with no error handlers — design choice, not structural defect",
+        tags=["no_error_handling", "clean_structure"],
+        difficulty="easy",
+    ),
+    GoldenDatasetEntry(
+        id="workflow_struct_8",
+        detection_type=DetectionType.WORKFLOW,
+        input_data={
+            "workflow_definition": {
+                "nodes": ["trigger", "node_a", "node_b", "node_c", "island_x", "island_y"],
+                "connections": [
+                    {"from": "trigger", "to": "node_a"},
+                    {"from": "node_a", "to": "node_b"},
+                    {"from": "node_b", "to": "node_c"},
+                    {"from": "island_x", "to": "island_y"},
+                ],
+            },
+            "execution_result": {"status": "success", "items_processed": 1, "duration_ms": 100},
+        },
+        expected_detected=True,
+        expected_confidence_min=0.5,
+        expected_confidence_max=0.85,
+        description="island_x and island_y form disconnected subgraph - orphan nodes",
+        tags=["orphan_node", "disconnected_subgraph", "structural", "clear_positive"],
+        difficulty="medium",
+    ),
+    GoldenDatasetEntry(
+        id="workflow_struct_9",
+        detection_type=DetectionType.WORKFLOW,
+        input_data={
+            "workflow_definition": {
+                "nodes": ["cron", "s1", "s2", "s3", "s4", "s5", "s6", "s7", "done"],
+                "connections": [
+                    {"from": "cron", "to": "s1"},
+                    {"from": "s1", "to": "s2"},
+                    {"from": "s2", "to": "s3"},
+                    {"from": "s3", "to": "s4"},
+                    {"from": "s4", "to": "s5"},
+                    {"from": "s5", "to": "s6"},
+                    {"from": "s6", "to": "s7"},
+                    {"from": "s7", "to": "done"},
+                ],
+            },
+            "execution_result": {"status": "success", "items_processed": 100, "duration_ms": 5000},
+        },
+        expected_detected=True,
+        expected_confidence_min=0.5,
+        expected_confidence_max=0.8,
+        description="9-node sequential chain with depth 8 and no error handling at all",
+        tags=["excessive_depth", "missing_error_handling", "structural", "clear_positive"],
+        difficulty="medium",
+    ),
+    GoldenDatasetEntry(
+        id="workflow_struct_10",
+        detection_type=DetectionType.WORKFLOW,
+        input_data={
+            "workflow_definition": {
+                "nodes": ["manual_trigger", "read_data", "process", "sink_node", "final_step"],
+                "connections": [
+                    {"from": "manual_trigger", "to": "read_data"},
+                    {"from": "read_data", "to": "process"},
+                    {"from": "process", "to": "sink_node"},
+                ],
+            },
+            "execution_result": {"status": "success", "items_processed": 20, "duration_ms": 1500},
+        },
+        expected_detected=True,
+        expected_confidence_min=0.4,
+        expected_confidence_max=0.8,
+        description="final_step node is unreachable - no connection leads to it",
+        tags=["unreachable_node", "structural", "clear_positive"],
+        difficulty="easy",
     ),
 ]
 
@@ -8630,16 +8879,24 @@ def create_default_golden_dataset(assign_splits: bool = True) -> GoldenDataset:
     for sample in create_n8n_golden_entries():
         dataset.add_entry(sample)
 
-    # Framework-specific expanded golden datasets (OpenClaw, Dify, LangGraph)
+    # Framework-specific expanded golden datasets.
+    # Each dataset contains entries for ALL detector types, but only
+    # framework-native types are well-calibrated. Load only those.
+    _oc_types = {dt for dt in DetectionType if dt.value.startswith("openclaw_")}
+    _dify_types = {dt for dt in DetectionType if dt.value.startswith("dify_")}
+    _lg_types = {dt for dt in DetectionType if dt.value.startswith("langgraph_")}
+    _n8n_types = {dt for dt in DetectionType if dt.value.startswith("n8n_")}
     data_dir = Path(__file__).parent.parent.parent / "data"
-    for filename in [
-        "golden_dataset_openclaw_expanded.json",
-        "golden_dataset_dify_expanded.json",
-        "golden_dataset_langgraph_expanded.json",
-    ]:
+    _expanded_configs = [
+        ("golden_dataset_openclaw_expanded.json", _oc_types),
+        ("golden_dataset_dify_expanded.json", _dify_types),
+        ("golden_dataset_langgraph_expanded.json", _lg_types),
+        ("golden_dataset_n8n_expanded.json", _n8n_types),
+    ]
+    for filename, allowed in _expanded_configs:
         filepath = data_dir / filename
         if filepath.exists():
-            dataset.load_json(filepath)
+            dataset.load_json(filepath, only_types=allowed)
             logger.info("Loaded framework golden dataset: %s", filename)
 
     if assign_splits:

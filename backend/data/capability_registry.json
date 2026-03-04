@@ -1,198 +1,198 @@
 {
   "version": "2.1",
-  "generated_at": "2026-03-02T20:38:43.701537+00:00",
+  "generated_at": "2026-03-03T08:19:44.096866+00:00",
   "capabilities": {
     "loop": {
       "name": "Loop Detection",
       "tier": "icp",
       "status": "passing",
-      "readiness": "production",
-      "eval_category": "regression",
+      "readiness": "beta",
+      "eval_category": "capability",
       "module": "app.detection.loop",
-      "f1_score": 0.85,
-      "precision": 0.8095,
-      "recall": 0.8947,
-      "optimal_threshold": 0.8,
-      "sample_count": 188,
-      "f1_ci_lower": 0.7938,
-      "f1_ci_upper": 0.8972,
+      "f1_score": 0.6522,
+      "precision": 0.5769,
+      "recall": 0.75,
+      "optimal_threshold": 0.1,
+      "sample_count": 40,
+      "f1_ci_lower": 0.4737,
+      "f1_ci_upper": 0.8,
       "difficulty_breakdown": {
         "easy": {
-          "f1": 0.7778,
-          "precision": 0.6774,
-          "recall": 0.913,
-          "n": 46,
-          "tp": 21,
-          "fp": 10,
+          "f1": 0.6667,
+          "precision": 0.5556,
+          "recall": 0.8333,
+          "n": 24,
+          "tp": 10,
+          "fp": 8,
           "fn": 2,
-          "tn": 13
+          "tn": 4
         },
         "hard": {
-          "f1": 0.8889,
-          "precision": 0.9032,
-          "recall": 0.875,
-          "n": 61,
-          "tp": 28,
-          "fp": 3,
-          "fn": 4,
-          "tn": 26
+          "f1": 0.6667,
+          "precision": 0.6667,
+          "recall": 0.6667,
+          "n": 4,
+          "tp": 2,
+          "fp": 1,
+          "fn": 1,
+          "tn": 0
         },
         "medium": {
-          "f1": 0.8675,
-          "precision": 0.8372,
-          "recall": 0.9,
-          "n": 81,
-          "tp": 36,
-          "fp": 7,
-          "fn": 4,
-          "tn": 34
+          "f1": 0.6,
+          "precision": 0.6,
+          "recall": 0.6,
+          "n": 12,
+          "tp": 3,
+          "fp": 2,
+          "fn": 2,
+          "tn": 5
         }
       },
-      "last_calibrated": "2026-03-02T20:38:43.689239+00:00"
+      "last_calibrated": "2026-03-03T08:19:44.089936+00:00"
     },
     "persona_drift": {
       "name": "Persona Drift",
       "tier": "icp",
       "status": "passing",
-      "readiness": "beta",
-      "eval_category": "capability",
+      "readiness": "production",
+      "eval_category": "regression",
       "module": "app.detection.persona",
-      "f1_score": 0.6609,
-      "precision": 0.5468,
-      "recall": 0.8352,
-      "optimal_threshold": 0.35,
-      "sample_count": 180,
-      "f1_ci_lower": 0.6265,
-      "f1_ci_upper": 0.7509,
+      "f1_score": 0.8276,
+      "precision": 0.8,
+      "recall": 0.8571,
+      "optimal_threshold": 0.6,
+      "sample_count": 30,
+      "f1_ci_lower": 0.6957,
+      "f1_ci_upper": 0.9697,
       "difficulty_breakdown": {
         "easy": {
-          "f1": 0.6829,
-          "precision": 0.5185,
-          "recall": 1.0,
-          "n": 55,
-          "tp": 28,
-          "fp": 26,
-          "fn": 0,
-          "tn": 1
+          "f1": 0.8421,
+          "precision": 0.8,
+          "recall": 0.8889,
+          "n": 19,
+          "tp": 8,
+          "fp": 2,
+          "fn": 1,
+          "tn": 8
         },
         "hard": {
-          "f1": 0.6173,
-          "precision": 0.463,
-          "recall": 0.9259,
-          "n": 57,
-          "tp": 25,
-          "fp": 29,
-          "fn": 2,
-          "tn": 1
+          "f1": 0.6667,
+          "precision": 0.5,
+          "recall": 1.0,
+          "n": 6,
+          "tp": 1,
+          "fp": 1,
+          "fn": 0,
+          "tn": 4
         },
         "medium": {
-          "f1": 0.7609,
-          "precision": 0.625,
-          "recall": 0.9722,
-          "n": 68,
-          "tp": 35,
-          "fp": 21,
-          "fn": 1,
-          "tn": 11
+          "f1": 1.0,
+          "precision": 1.0,
+          "recall": 1.0,
+          "n": 5,
+          "tp": 4,
+          "fp": 0,
+          "fn": 0,
+          "tn": 1
         }
       },
-      "last_calibrated": "2026-03-02T20:38:43.689239+00:00"
+      "last_calibrated": "2026-03-03T08:19:44.089936+00:00"
     },
     "hallucination": {
       "name": "Hallucination Detection",
       "tier": "icp",
       "status": "passing",
-      "readiness": "beta",
-      "eval_category": "capability",
+      "readiness": "production",
+      "eval_category": "regression",
       "module": "app.detection.hallucination",
-      "f1_score": 0.6965,
-      "precision": 0.6422,
-      "recall": 0.7609,
+      "f1_score": 0.8571,
+      "precision": 1.0,
+      "recall": 0.75,
       "optimal_threshold": 0.1,
-      "sample_count": 180,
-      "f1_ci_lower": 0.6211,
-      "f1_ci_upper": 0.7602,
+      "sample_count": 30,
+      "f1_ci_lower": 0.6957,
+      "f1_ci_upper": 0.9655,
       "difficulty_breakdown": {
         "easy": {
-          "f1": 0.7273,
-          "precision": 0.7273,
-          "recall": 0.7273,
-          "n": 46,
-          "tp": 16,
-          "fp": 6,
-          "fn": 6,
-          "tn": 18
+          "f1": 0.9091,
+          "precision": 1.0,
+          "recall": 0.8333,
+          "n": 16,
+          "tp": 5,
+          "fp": 0,
+          "fn": 1,
+          "tn": 10
         },
         "hard": {
-          "f1": 0.6389,
-          "precision": 0.561,
-          "recall": 0.7419,
-          "n": 61,
-          "tp": 23,
-          "fp": 18,
-          "fn": 8,
-          "tn": 12
+          "f1": 0.8571,
+          "precision": 1.0,
+          "recall": 0.75,
+          "n": 7,
+          "tp": 3,
+          "fp": 0,
+          "fn": 1,
+          "tn": 3
         },
         "medium": {
-          "f1": 0.7294,
-          "precision": 0.6739,
-          "recall": 0.7949,
-          "n": 73,
-          "tp": 31,
-          "fp": 15,
-          "fn": 8,
-          "tn": 19
+          "f1": 0.8,
+          "precision": 1.0,
+          "recall": 0.6667,
+          "n": 7,
+          "tp": 4,
+          "fp": 0,
+          "fn": 2,
+          "tn": 1
         }
       },
-      "last_calibrated": "2026-03-02T20:38:43.689239+00:00"
+      "last_calibrated": "2026-03-03T08:19:44.089936+00:00"
     },
     "injection": {
       "name": "Injection Detection",
       "tier": "icp",
       "status": "passing",
-      "readiness": "experimental",
+      "readiness": "beta",
       "eval_category": "capability",
       "module": "app.detection.injection",
-      "f1_score": 0.5926,
-      "precision": 0.6857,
-      "recall": 0.5217,
-      "optimal_threshold": 0.1,
-      "sample_count": 180,
-      "f1_ci_lower": 0.5035,
-      "f1_ci_upper": 0.6824,
+      "f1_score": 0.6667,
+      "precision": 0.8,
+      "recall": 0.5714,
+      "optimal_threshold": 0.2,
+      "sample_count": 30,
+      "f1_ci_lower": 0.4762,
+      "f1_ci_upper": 0.88,
       "difficulty_breakdown": {
         "easy": {
-          "f1": 0.7895,
-          "precision": 0.8824,
-          "recall": 0.7143,
-          "n": 47,
-          "tp": 15,
-          "fp": 2,
-          "fn": 6,
-          "tn": 24
+          "f1": 1.0,
+          "precision": 1.0,
+          "recall": 1.0,
+          "n": 15,
+          "tp": 5,
+          "fp": 0,
+          "fn": 0,
+          "tn": 10
         },
         "hard": {
-          "f1": 0.4918,
-          "precision": 0.5769,
-          "recall": 0.4286,
-          "n": 65,
-          "tp": 15,
-          "fp": 11,
-          "fn": 20,
-          "tn": 19
+          "f1": 0.4444,
+          "precision": 0.5,
+          "recall": 0.4,
+          "n": 8,
+          "tp": 2,
+          "fp": 2,
+          "fn": 3,
+          "tn": 1
         },
         "medium": {
-          "f1": 0.5714,
-          "precision": 0.6667,
+          "f1": 0.6667,
+          "precision": 1.0,
           "recall": 0.5,
-          "n": 68,
-          "tp": 18,
-          "fp": 9,
-          "fn": 18,
-          "tn": 23
+          "n": 7,
+          "tp": 2,
+          "fp": 0,
+          "fn": 2,
+          "tn": 3
         }
       },
-      "last_calibrated": "2026-03-02T20:38:43.689239+00:00"
+      "last_calibrated": "2026-03-03T08:19:44.089936+00:00"
     },
     "overflow": {
       "name": "Context Overflow",
@@ -201,142 +201,142 @@
       "readiness": "beta",
       "eval_category": "capability",
       "module": "app.detection.overflow",
-      "f1_score": 0.7853,
-      "precision": 0.9697,
-      "recall": 0.6598,
+      "f1_score": 0.7059,
+      "precision": 1.0,
+      "recall": 0.5455,
       "optimal_threshold": 0.1,
-      "sample_count": 190,
-      "f1_ci_lower": 0.7101,
-      "f1_ci_upper": 0.8475,
+      "sample_count": 40,
+      "f1_ci_lower": 0.4848,
+      "f1_ci_upper": 0.8649,
       "difficulty_breakdown": {
         "easy": {
-          "f1": 0.6316,
+          "f1": 0.8421,
           "precision": 1.0,
-          "recall": 0.4615,
-          "n": 55,
-          "tp": 12,
+          "recall": 0.7273,
+          "n": 25,
+          "tp": 8,
           "fp": 0,
-          "fn": 14,
-          "tn": 29
+          "fn": 3,
+          "tn": 14
         },
         "hard": {
-          "f1": 0.8276,
-          "precision": 0.9231,
-          "recall": 0.75,
-          "n": 62,
-          "tp": 24,
-          "fp": 2,
-          "fn": 8,
-          "tn": 28
+          "f1": 0.75,
+          "precision": 1.0,
+          "recall": 0.6,
+          "n": 8,
+          "tp": 3,
+          "fp": 0,
+          "fn": 2,
+          "tn": 3
         },
         "medium": {
-          "f1": 0.8358,
+          "f1": 0.2857,
           "precision": 1.0,
-          "recall": 0.7179,
-          "n": 73,
-          "tp": 28,
+          "recall": 0.1667,
+          "n": 7,
+          "tp": 1,
           "fp": 0,
-          "fn": 11,
-          "tn": 34
+          "fn": 5,
+          "tn": 1
         }
       },
-      "last_calibrated": "2026-03-02T20:38:43.689239+00:00"
+      "last_calibrated": "2026-03-03T08:19:44.089936+00:00"
     },
     "corruption": {
       "name": "State Corruption",
       "tier": "icp",
       "status": "passing",
-      "readiness": "beta",
-      "eval_category": "capability",
+      "readiness": "production",
+      "eval_category": "regression",
       "module": "app.detection.corruption",
-      "f1_score": 0.6951,
-      "precision": 0.8769,
-      "recall": 0.5758,
-      "optimal_threshold": 0.15,
-      "sample_count": 191,
-      "f1_ci_lower": 0.6135,
-      "f1_ci_upper": 0.7709,
+      "f1_score": 0.9091,
+      "precision": 0.8696,
+      "recall": 0.9524,
+      "optimal_threshold": 0.1,
+      "sample_count": 40,
+      "f1_ci_lower": 0.8,
+      "f1_ci_upper": 0.9796,
       "difficulty_breakdown": {
         "easy": {
-          "f1": 0.8679,
-          "precision": 0.8519,
-          "recall": 0.8846,
-          "n": 55,
-          "tp": 23,
-          "fp": 4,
-          "fn": 3,
-          "tn": 25
+          "f1": 0.9231,
+          "precision": 0.8571,
+          "recall": 1.0,
+          "n": 27,
+          "tp": 12,
+          "fp": 2,
+          "fn": 0,
+          "tn": 13
         },
         "hard": {
-          "f1": 0.5714,
-          "precision": 0.9333,
-          "recall": 0.4118,
-          "n": 64,
-          "tp": 14,
-          "fp": 1,
-          "fn": 20,
-          "tn": 29
+          "f1": 1.0,
+          "precision": 1.0,
+          "recall": 1.0,
+          "n": 5,
+          "tp": 4,
+          "fp": 0,
+          "fn": 0,
+          "tn": 1
         },
         "medium": {
-          "f1": 0.6667,
-          "precision": 0.875,
-          "recall": 0.5385,
-          "n": 72,
-          "tp": 21,
-          "fp": 3,
-          "fn": 18,
-          "tn": 30
+          "f1": 0.8,
+          "precision": 0.8,
+          "recall": 0.8,
+          "n": 8,
+          "tp": 4,
+          "fp": 1,
+          "fn": 1,
+          "tn": 2
         }
       },
-      "last_calibrated": "2026-03-02T20:38:43.689239+00:00"
+      "last_calibrated": "2026-03-03T08:19:44.089936+00:00"
     },
     "coordination": {
       "name": "Coordination Analysis",
       "tier": "icp",
       "status": "passing",
-      "readiness": "experimental",
-      "eval_category": "capability",
+      "readiness": "production",
+      "eval_category": "regression",
       "module": "app.detection.coordination",
-      "f1_score": 0.6187,
-      "precision": 0.9149,
-      "recall": 0.4674,
+      "f1_score": 0.9143,
+      "precision": 0.8421,
+      "recall": 1.0,
       "optimal_threshold": 0.1,
-      "sample_count": 180,
-      "f1_ci_lower": 0.5138,
-      "f1_ci_upper": 0.7114,
+      "sample_count": 30,
+      "f1_ci_lower": 0.8,
+      "f1_ci_upper": 1.0,
       "difficulty_breakdown": {
         "easy": {
-          "f1": 0.6316,
-          "precision": 0.75,
-          "recall": 0.5455,
-          "n": 50,
-          "tp": 12,
-          "fp": 4,
-          "fn": 10,
-          "tn": 24
+          "f1": 0.8235,
+          "precision": 0.7,
+          "recall": 1.0,
+          "n": 20,
+          "tp": 7,
+          "fp": 3,
+          "fn": 0,
+          "tn": 10
         },
         "hard": {
-          "f1": 0.5238,
+          "f1": 1.0,
           "precision": 1.0,
-          "recall": 0.3548,
-          "n": 58,
-          "tp": 11,
+          "recall": 1.0,
+          "n": 4,
+          "tp": 3,
           "fp": 0,
-          "fn": 20,
-          "tn": 27
+          "fn": 0,
+          "tn": 1
         },
         "medium": {
-          "f1": 0.678,
+          "f1": 1.0,
           "precision": 1.0,
-          "recall": 0.5128,
-          "n": 72,
-          "tp": 20,
+          "recall": 1.0,
+          "n": 6,
+          "tp": 6,
           "fp": 0,
-          "fn": 19,
-          "tn": 33
+          "fn": 0,
+          "tn": 0
         }
       },
-      "last_calibrated": "2026-03-02T20:38:43.689239+00:00"
+      "last_calibrated": "2026-03-03T08:19:44.089936+00:00"
     },
     "communication": {
       "name": "Communication Breakdown",
@@ -345,46 +345,46 @@
       "readiness": "beta",
       "eval_category": "capability",
       "module": "app.detection.communication",
-      "f1_score": 0.6818,
-      "precision": 0.5769,
-      "recall": 0.8333,
-      "optimal_threshold": 0.35,
-      "sample_count": 177,
-      "f1_ci_lower": 0.6256,
-      "f1_ci_upper": 0.7593,
+      "f1_score": 0.6667,
+      "precision": 0.5714,
+      "recall": 0.8,
+      "optimal_threshold": 0.55,
+      "sample_count": 30,
+      "f1_ci_lower": 0.4667,
+      "f1_ci_upper": 0.8293,
       "difficulty_breakdown": {
         "easy": {
-          "f1": 0.7273,
-          "precision": 0.6154,
-          "recall": 0.8889,
-          "n": 55,
-          "tp": 24,
-          "fp": 15,
-          "fn": 3,
-          "tn": 13
+          "f1": 0.7143,
+          "precision": 0.5556,
+          "recall": 1.0,
+          "n": 23,
+          "tp": 10,
+          "fp": 8,
+          "fn": 0,
+          "tn": 5
         },
         "hard": {
-          "f1": 0.6562,
-          "precision": 0.5385,
-          "recall": 0.84,
-          "n": 50,
-          "tp": 21,
-          "fp": 18,
-          "fn": 4,
-          "tn": 7
+          "f1": 0.0,
+          "precision": 0.0,
+          "recall": 0.0,
+          "n": 4,
+          "tp": 0,
+          "fp": 1,
+          "fn": 2,
+          "tn": 1
         },
         "medium": {
-          "f1": 0.7021,
-          "precision": 0.5893,
-          "recall": 0.8684,
-          "n": 72,
-          "tp": 33,
-          "fp": 23,
-          "fn": 5,
-          "tn": 11
+          "f1": 0.8,
+          "precision": 1.0,
+          "recall": 0.6667,
+          "n": 3,
+          "tp": 2,
+          "fp": 0,
+          "fn": 1,
+          "tn": 0
         }
       },
-      "last_calibrated": "2026-03-02T20:38:43.689239+00:00"
+      "last_calibrated": "2026-03-03T08:19:44.089936+00:00"
     },
     "context": {
       "name": "Context Neglect",
@@ -393,238 +393,238 @@
       "readiness": "production",
       "eval_category": "regression",
       "module": "app.detection.context",
-      "f1_score": 0.8792,
-      "precision": 0.8053,
-      "recall": 0.9681,
+      "f1_score": 0.8649,
+      "precision": 0.7619,
+      "recall": 1.0,
       "optimal_threshold": 0.55,
-      "sample_count": 181,
-      "f1_ci_lower": 0.8333,
-      "f1_ci_upper": 0.9231,
+      "sample_count": 30,
+      "f1_ci_lower": 0.72,
+      "f1_ci_upper": 0.9697,
       "difficulty_breakdown": {
         "easy": {
-          "f1": 0.8788,
-          "precision": 0.8056,
-          "recall": 0.9667,
-          "n": 61,
-          "tp": 29,
-          "fp": 7,
-          "fn": 1,
-          "tn": 24
+          "f1": 0.8889,
+          "precision": 0.8,
+          "recall": 1.0,
+          "n": 19,
+          "tp": 8,
+          "fp": 2,
+          "fn": 0,
+          "tn": 9
         },
         "hard": {
-          "f1": 0.8254,
-          "precision": 0.7027,
+          "f1": 0.6667,
+          "precision": 0.5,
           "recall": 1.0,
-          "n": 51,
-          "tp": 26,
-          "fp": 11,
+          "n": 6,
+          "tp": 3,
+          "fp": 3,
           "fn": 0,
-          "tn": 14
+          "tn": 0
         },
         "medium": {
-          "f1": 0.9268,
-          "precision": 0.8636,
+          "f1": 1.0,
+          "precision": 1.0,
           "recall": 1.0,
-          "n": 69,
-          "tp": 38,
-          "fp": 6,
+          "n": 5,
+          "tp": 5,
+          "fp": 0,
           "fn": 0,
-          "tn": 25
+          "tn": 0
         }
       },
-      "last_calibrated": "2026-03-02T20:38:43.689239+00:00"
+      "last_calibrated": "2026-03-03T08:19:44.089936+00:00"
     },
     "derailment": {
       "name": "Task Derailment",
       "tier": "icp",
       "status": "passing",
-      "readiness": "experimental",
+      "readiness": "beta",
       "eval_category": "capability",
       "module": "app.detection.derailment",
-      "f1_score": 0.6154,
-      "precision": 0.5957,
-      "recall": 0.6364,
+      "f1_score": 0.6667,
+      "precision": 0.5882,
+      "recall": 0.7692,
       "optimal_threshold": 0.55,
-      "sample_count": 180,
-      "f1_ci_lower": 0.5517,
-      "f1_ci_upper": 0.7005,
+      "sample_count": 30,
+      "f1_ci_lower": 0.5217,
+      "f1_ci_upper": 0.875,
       "difficulty_breakdown": {
         "easy": {
-          "f1": 0.6441,
-          "precision": 0.5429,
-          "recall": 0.7917,
-          "n": 51,
-          "tp": 19,
-          "fp": 16,
-          "fn": 5,
-          "tn": 11
-        },
-        "hard": {
-          "f1": 0.56,
-          "precision": 0.4468,
-          "recall": 0.75,
-          "n": 60,
-          "tp": 21,
-          "fp": 26,
-          "fn": 7,
+          "f1": 0.6957,
+          "precision": 0.5714,
+          "recall": 0.8889,
+          "n": 21,
+          "tp": 8,
+          "fp": 6,
+          "fn": 1,
           "tn": 6
         },
+        "hard": {
+          "f1": 0.5,
+          "precision": 0.3333,
+          "recall": 1.0,
+          "n": 6,
+          "tp": 1,
+          "fp": 2,
+          "fn": 0,
+          "tn": 3
+        },
         "medium": {
-          "f1": 0.6923,
-          "precision": 0.6429,
-          "recall": 0.75,
-          "n": 69,
-          "tp": 27,
-          "fp": 15,
-          "fn": 9,
-          "tn": 18
+          "f1": 1.0,
+          "precision": 1.0,
+          "recall": 1.0,
+          "n": 3,
+          "tp": 3,
+          "fp": 0,
+          "fn": 0,
+          "tn": 0
         }
       },
-      "last_calibrated": "2026-03-02T20:38:43.689239+00:00"
+      "last_calibrated": "2026-03-03T08:19:44.089936+00:00"
     },
     "specification": {
       "name": "Specification Mismatch",
       "tier": "icp",
       "status": "passing",
-      "readiness": "beta",
-      "eval_category": "capability",
+      "readiness": "production",
+      "eval_category": "regression",
       "module": "app.detection.specification",
-      "f1_score": 0.7573,
-      "precision": 0.6724,
-      "recall": 0.8667,
+      "f1_score": 0.8571,
+      "precision": 0.9231,
+      "recall": 0.8,
       "optimal_threshold": 0.1,
-      "sample_count": 180,
-      "f1_ci_lower": 0.6872,
-      "f1_ci_upper": 0.819,
+      "sample_count": 30,
+      "f1_ci_lower": 0.6957,
+      "f1_ci_upper": 0.9677,
       "difficulty_breakdown": {
         "easy": {
-          "f1": 0.7547,
-          "precision": 0.6897,
-          "recall": 0.8333,
-          "n": 52,
-          "tp": 20,
-          "fp": 9,
-          "fn": 4,
-          "tn": 19
+          "f1": 0.8889,
+          "precision": 0.8889,
+          "recall": 0.8889,
+          "n": 22,
+          "tp": 8,
+          "fp": 1,
+          "fn": 1,
+          "tn": 12
         },
         "hard": {
-          "f1": 0.7385,
-          "precision": 0.6667,
-          "recall": 0.8276,
-          "n": 58,
-          "tp": 24,
-          "fp": 12,
-          "fn": 5,
-          "tn": 17
+          "f1": 0.0,
+          "precision": 0.0,
+          "recall": 0.0,
+          "n": 4,
+          "tp": 0,
+          "fp": 0,
+          "fn": 2,
+          "tn": 2
         },
         "medium": {
-          "f1": 0.7727,
-          "precision": 0.6667,
-          "recall": 0.9189,
-          "n": 70,
-          "tp": 34,
-          "fp": 17,
-          "fn": 3,
-          "tn": 16
+          "f1": 1.0,
+          "precision": 1.0,
+          "recall": 1.0,
+          "n": 4,
+          "tp": 4,
+          "fp": 0,
+          "fn": 0,
+          "tn": 0
         }
       },
-      "last_calibrated": "2026-03-02T20:38:43.689239+00:00"
+      "last_calibrated": "2026-03-03T08:19:44.089936+00:00"
     },
     "decomposition": {
       "name": "Task Decomposition",
       "tier": "icp",
       "status": "passing",
-      "readiness": "experimental",
-      "eval_category": "capability",
+      "readiness": "production",
+      "eval_category": "regression",
       "module": "app.detection.decomposition",
-      "f1_score": 0.589,
-      "precision": 0.6667,
-      "recall": 0.5275,
-      "optimal_threshold": 0.3,
-      "sample_count": 180,
-      "f1_ci_lower": 0.5035,
-      "f1_ci_upper": 0.6845,
+      "f1_score": 1.0,
+      "precision": 1.0,
+      "recall": 1.0,
+      "optimal_threshold": 0.1,
+      "sample_count": 30,
+      "f1_ci_lower": 1.0,
+      "f1_ci_upper": 1.0,
       "difficulty_breakdown": {
         "easy": {
-          "f1": 0.5263,
-          "precision": 0.625,
-          "recall": 0.4545,
-          "n": 48,
-          "tp": 10,
-          "fp": 6,
-          "fn": 12,
-          "tn": 20
+          "f1": 1.0,
+          "precision": 1.0,
+          "recall": 1.0,
+          "n": 18,
+          "tp": 6,
+          "fp": 0,
+          "fn": 0,
+          "tn": 12
         },
         "hard": {
-          "f1": 0.5818,
-          "precision": 0.6154,
-          "recall": 0.5517,
-          "n": 59,
-          "tp": 16,
-          "fp": 10,
-          "fn": 13,
-          "tn": 20
+          "f1": 1.0,
+          "precision": 1.0,
+          "recall": 1.0,
+          "n": 5,
+          "tp": 2,
+          "fp": 0,
+          "fn": 0,
+          "tn": 3
         },
         "medium": {
-          "f1": 0.6667,
-          "precision": 0.75,
-          "recall": 0.6,
-          "n": 73,
-          "tp": 24,
-          "fp": 8,
-          "fn": 16,
-          "tn": 25
+          "f1": 1.0,
+          "precision": 1.0,
+          "recall": 1.0,
+          "n": 7,
+          "tp": 7,
+          "fp": 0,
+          "fn": 0,
+          "tn": 0
         }
       },
-      "last_calibrated": "2026-03-02T20:38:43.689239+00:00"
+      "last_calibrated": "2026-03-03T08:19:44.089936+00:00"
     },
     "workflow": {
       "name": "Workflow Analysis",
       "tier": "icp",
-      "status": "failing",
-      "readiness": "failing",
-      "eval_category": "capability",
+      "status": "passing",
+      "readiness": "production",
+      "eval_category": "regression",
       "module": "app.detection.workflow",
-      "f1_score": 0.2459,
-      "precision": 0.5172,
-      "recall": 0.1613,
+      "f1_score": 0.9333,
+      "precision": 0.875,
+      "recall": 1.0,
       "optimal_threshold": 0.1,
-      "sample_count": 178,
-      "f1_ci_lower": 0.1368,
-      "f1_ci_upper": 0.3415,
+      "sample_count": 40,
+      "f1_ci_lower": 0.8148,
+      "f1_ci_upper": 1.0,
       "difficulty_breakdown": {
         "easy": {
-          "f1": 0.2979,
-          "precision": 0.35,
-          "recall": 0.2593,
-          "n": 53,
-          "tp": 7,
-          "fp": 13,
-          "fn": 20,
-          "tn": 13
+          "f1": 0.9,
+          "precision": 0.8182,
+          "recall": 1.0,
+          "n": 28,
+          "tp": 9,
+          "fp": 2,
+          "fn": 0,
+          "tn": 17
         },
         "hard": {
-          "f1": 0.1765,
-          "precision": 0.75,
-          "recall": 0.1,
-          "n": 58,
-          "tp": 3,
-          "fp": 1,
-          "fn": 27,
-          "tn": 27
+          "f1": 0.0,
+          "precision": 0.0,
+          "recall": 0.0,
+          "n": 4,
+          "tp": 0,
+          "fp": 0,
+          "fn": 0,
+          "tn": 4
         },
         "medium": {
-          "f1": 0.2439,
+          "f1": 1.0,
           "precision": 1.0,
-          "recall": 0.1389,
-          "n": 67,
+          "recall": 1.0,
+          "n": 8,
           "tp": 5,
           "fp": 0,
-          "fn": 31,
-          "tn": 31
+          "fn": 0,
+          "tn": 3
         }
       },
-      "last_calibrated": "2026-03-02T20:38:43.689239+00:00"
+      "last_calibrated": "2026-03-03T08:19:44.089936+00:00"
     },
     "withholding": {
       "name": "Information Withholding",
@@ -633,270 +633,126 @@
       "readiness": "beta",
       "eval_category": "capability",
       "module": "app.detection.withholding",
-      "f1_score": 0.75,
-      "precision": 0.6,
+      "f1_score": 0.8,
+      "precision": 0.6667,
       "recall": 1.0,
       "optimal_threshold": 0.1,
-      "sample_count": 164,
-      "f1_ci_lower": 0.6834,
-      "f1_ci_upper": 0.8103,
+      "sample_count": 30,
+      "f1_ci_lower": 0.6207,
+      "f1_ci_upper": 0.9231,
       "difficulty_breakdown": {
         "easy": {
-          "f1": 0.7606,
-          "precision": 0.6136,
-          "recall": 1.0,
-          "n": 55,
-          "tp": 27,
-          "fp": 17,
-          "fn": 0,
-          "tn": 11
-        },
-        "hard": {
           "f1": 0.75,
           "precision": 0.6,
           "recall": 1.0,
-          "n": 53,
-          "tp": 27,
-          "fp": 18,
+          "n": 23,
+          "tp": 9,
+          "fp": 6,
           "fn": 0,
           "tn": 8
         },
-        "medium": {
-          "f1": 0.7407,
-          "precision": 0.5882,
+        "hard": {
+          "f1": 0.8,
+          "precision": 0.6667,
           "recall": 1.0,
-          "n": 56,
-          "tp": 30,
-          "fp": 21,
+          "n": 4,
+          "tp": 2,
+          "fp": 1,
           "fn": 0,
-          "tn": 5
+          "tn": 1
+        },
+        "medium": {
+          "f1": 1.0,
+          "precision": 1.0,
+          "recall": 1.0,
+          "n": 3,
+          "tp": 3,
+          "fp": 0,
+          "fn": 0,
+          "tn": 0
         }
       },
-      "last_calibrated": "2026-03-02T20:38:43.689239+00:00"
+      "last_calibrated": "2026-03-03T08:19:44.089936+00:00"
     },
     "completion": {
       "name": "Completion Misjudgment",
       "tier": "icp",
       "status": "passing",
-      "readiness": "experimental",
+      "readiness": "beta",
       "eval_category": "capability",
       "module": "app.detection.completion",
-      "f1_score": 0.5778,
-      "precision": 0.5909,
-      "recall": 0.5652,
-      "optimal_threshold": 0.1,
-      "sample_count": 180,
-      "f1_ci_lower": 0.4886,
-      "f1_ci_upper": 0.6564,
-      "difficulty_breakdown": {
-        "easy": {
-          "f1": 0.6296,
-          "precision": 0.5862,
-          "recall": 0.68,
-          "n": 53,
-          "tp": 17,
-          "fp": 12,
-          "fn": 8,
-          "tn": 16
-        },
-        "hard": {
-          "f1": 0.5965,
-          "precision": 0.6538,
-          "recall": 0.5484,
-          "n": 58,
-          "tp": 17,
-          "fp": 9,
-          "fn": 14,
-          "tn": 18
-        },
-        "medium": {
-          "f1": 0.5217,
-          "precision": 0.5455,
-          "recall": 0.5,
-          "n": 69,
-          "tp": 18,
-          "fp": 15,
-          "fn": 18,
-          "tn": 18
-        }
-      },
-      "last_calibrated": "2026-03-02T20:38:43.689239+00:00"
-    },
-    "grounding": {
-      "name": "Grounding Detection",
-      "tier": "enterprise",
-      "status": "passing",
-      "readiness": "beta",
-      "eval_category": "capability",
-      "module": "app.detection_enterprise.grounding",
-      "f1_score": 0.6996,
-      "precision": 0.6047,
-      "recall": 0.8298,
-      "optimal_threshold": 0.1,
-      "sample_count": 180,
-      "f1_ci_lower": 0.622,
-      "f1_ci_upper": 0.7667,
-      "difficulty_breakdown": {
-        "easy": {
-          "f1": 0.7187,
-          "precision": 0.6216,
-          "recall": 0.8519,
-          "n": 55,
-          "tp": 23,
-          "fp": 14,
-          "fn": 4,
-          "tn": 14
-        },
-        "hard": {
-          "f1": 0.6329,
-          "precision": 0.5435,
-          "recall": 0.7576,
-          "n": 61,
-          "tp": 25,
-          "fp": 21,
-          "fn": 8,
-          "tn": 7
-        },
-        "medium": {
-          "f1": 0.75,
-          "precision": 0.6522,
-          "recall": 0.8824,
-          "n": 64,
-          "tp": 30,
-          "fp": 16,
-          "fn": 4,
-          "tn": 14
-        }
-      },
-      "last_calibrated": "2026-03-02T20:38:43.689239+00:00"
-    },
-    "retrieval_quality": {
-      "name": "Retrieval Quality",
-      "tier": "enterprise",
-      "status": "passing",
-      "readiness": "beta",
-      "eval_category": "capability",
-      "module": "app.detection_enterprise.retrieval_quality",
-      "f1_score": 0.6792,
-      "precision": 0.5172,
-      "recall": 0.989,
-      "optimal_threshold": 0.55,
-      "sample_count": 180,
-      "f1_ci_lower": 0.6104,
-      "f1_ci_upper": 0.7345,
+      "f1_score": 0.7027,
+      "precision": 0.619,
+      "recall": 0.8125,
+      "optimal_threshold": 0.25,
+      "sample_count": 30,
+      "f1_ci_lower": 0.6111,
+      "f1_ci_upper": 0.9048,
       "difficulty_breakdown": {
         "easy": {
           "f1": 0.6923,
           "precision": 0.5294,
           "recall": 1.0,
-          "n": 55,
-          "tp": 27,
-          "fp": 24,
+          "n": 23,
+          "tp": 9,
+          "fp": 8,
           "fn": 0,
-          "tn": 4
+          "tn": 6
         },
         "hard": {
-          "f1": 0.6582,
-          "precision": 0.5,
-          "recall": 0.963,
-          "n": 53,
-          "tp": 26,
-          "fp": 26,
+          "f1": 0.8571,
+          "precision": 1.0,
+          "recall": 0.75,
+          "n": 4,
+          "tp": 3,
+          "fp": 0,
           "fn": 1,
           "tn": 0
         },
         "medium": {
-          "f1": 0.6852,
-          "precision": 0.5211,
-          "recall": 1.0,
-          "n": 72,
-          "tp": 37,
-          "fp": 34,
-          "fn": 0,
-          "tn": 1
-        }
-      },
-      "last_calibrated": "2026-03-02T20:38:43.689239+00:00"
-    },
-    "n8n_schema": {
-      "name": "N8N Schema Mismatch",
-      "tier": "enterprise",
-      "status": "passing",
-      "readiness": "experimental",
-      "eval_category": "capability",
-      "module": "app.detection.n8n.schema_detector",
-      "f1_score": 0.6667,
-      "precision": 0.75,
-      "recall": 0.6,
-      "optimal_threshold": 0.8,
-      "sample_count": 10,
-      "f1_ci_lower": 0.3333,
-      "f1_ci_upper": 1.0,
-      "difficulty_breakdown": {
-        "easy": {
           "f1": 1.0,
           "precision": 1.0,
           "recall": 1.0,
-          "n": 5,
-          "tp": 2,
+          "n": 3,
+          "tp": 3,
           "fp": 0,
-          "fn": 0,
-          "tn": 3
-        },
-        "hard": {
-          "f1": 0.0,
-          "precision": 0.0,
-          "recall": 0.0,
-          "n": 1,
-          "tp": 0,
-          "fp": 0,
-          "fn": 1,
-          "tn": 0
-        },
-        "medium": {
-          "f1": 0.6667,
-          "precision": 0.5,
-          "recall": 1.0,
-          "n": 4,
-          "tp": 2,
-          "fp": 2,
           "fn": 0,
           "tn": 0
         }
       },
-      "last_calibrated": "2026-03-02T20:38:43.689239+00:00"
+      "last_calibrated": "2026-03-03T08:19:44.089936+00:00"
     },
-    "n8n_cycle": {
-      "name": "N8N Graph Cycle",
+    "grounding": {
+      "name": "Grounding Detection",
       "tier": "enterprise",
       "status": "passing",
-      "readiness": "experimental",
-      "eval_category": "capability",
-      "module": "app.detection.n8n.cycle_detector",
-      "f1_score": 0.9091,
-      "precision": 0.8333,
+      "readiness": "production",
+      "eval_category": "regression",
+      "module": "app.detection_enterprise.grounding",
+      "f1_score": 0.85,
+      "precision": 0.7391,
       "recall": 1.0,
       "optimal_threshold": 0.1,
-      "sample_count": 10,
-      "f1_ci_lower": 0.6667,
-      "f1_ci_upper": 1.0,
+      "sample_count": 30,
+      "f1_ci_lower": 0.7273,
+      "f1_ci_upper": 0.9524,
       "difficulty_breakdown": {
         "easy": {
-          "f1": 1.0,
-          "precision": 1.0,
+          "f1": 0.8148,
+          "precision": 0.6875,
           "recall": 1.0,
-          "n": 5,
-          "tp": 2,
-          "fp": 0,
+          "n": 23,
+          "tp": 11,
+          "fp": 5,
           "fn": 0,
-          "tn": 3
+          "tn": 7
         },
         "hard": {
-          "f1": 0.6667,
-          "precision": 0.5,
+          "f1": 0.8571,
+          "precision": 0.75,
           "recall": 1.0,
-          "n": 2,
-          "tp": 1,
+          "n": 4,
+          "tp": 3,
           "fp": 1,
           "fn": 0,
           "tn": 0
@@ -906,144 +762,46 @@
           "precision": 1.0,
           "recall": 1.0,
           "n": 3,
-          "tp": 2,
+          "tp": 3,
           "fp": 0,
           "fn": 0,
-          "tn": 1
+          "tn": 0
         }
       },
-      "last_calibrated": "2026-03-02T20:38:43.689239+00:00"
+      "last_calibrated": "2026-03-03T08:19:44.089936+00:00"
     },
-    "n8n_complexity": {
-      "name": "N8N Complexity",
+    "retrieval_quality": {
+      "name": "Retrieval Quality",
       "tier": "enterprise",
       "status": "passing",
-      "readiness": "experimental",
-      "eval_category": "saturated",
-      "module": "app.detection.n8n.complexity_detector",
-      "f1_score": 1.0,
-      "precision": 1.0,
+      "readiness": "beta",
+      "eval_category": "capability",
+      "module": "app.detection_enterprise.retrieval_quality",
+      "f1_score": 0.6977,
+      "precision": 0.5357,
       "recall": 1.0,
       "optimal_threshold": 0.1,
-      "sample_count": 10,
-      "f1_ci_lower": 1.0,
-      "f1_ci_upper": 1.0,
+      "sample_count": 30,
+      "f1_ci_lower": 0.5263,
+      "f1_ci_upper": 0.8333,
       "difficulty_breakdown": {
         "easy": {
-          "f1": 1.0,
-          "precision": 1.0,
+          "f1": 0.6452,
+          "precision": 0.4762,
           "recall": 1.0,
-          "n": 5,
-          "tp": 2,
-          "fp": 0,
-          "fn": 0,
-          "tn": 3
-        },
-        "hard": {
-          "f1": 1.0,
-          "precision": 1.0,
-          "recall": 1.0,
-          "n": 2,
-          "tp": 1,
-          "fp": 0,
-          "fn": 0,
-          "tn": 1
-        },
-        "medium": {
-          "f1": 1.0,
-          "precision": 1.0,
-          "recall": 1.0,
-          "n": 3,
-          "tp": 2,
-          "fp": 0,
-          "fn": 0,
-          "tn": 1
-        }
-      },
-      "last_calibrated": "2026-03-02T20:38:43.689239+00:00",
-      "saturation_warning": true
-    },
-    "n8n_error": {
-      "name": "N8N Error Handling",
-      "tier": "enterprise",
-      "status": "passing",
-      "readiness": "experimental",
-      "eval_category": "saturated",
-      "module": "app.detection.n8n.error_detector",
-      "f1_score": 1.0,
-      "precision": 1.0,
-      "recall": 1.0,
-      "optimal_threshold": 0.1,
-      "sample_count": 10,
-      "f1_ci_lower": 1.0,
-      "f1_ci_upper": 1.0,
-      "difficulty_breakdown": {
-        "easy": {
-          "f1": 1.0,
-          "precision": 1.0,
-          "recall": 1.0,
-          "n": 4,
-          "tp": 2,
-          "fp": 0,
+          "n": 23,
+          "tp": 10,
+          "fp": 11,
           "fn": 0,
           "tn": 2
         },
         "hard": {
-          "f1": 1.0,
-          "precision": 1.0,
-          "recall": 1.0,
-          "n": 2,
-          "tp": 1,
-          "fp": 0,
-          "fn": 0,
-          "tn": 1
-        },
-        "medium": {
-          "f1": 1.0,
-          "precision": 1.0,
+          "f1": 0.6667,
+          "precision": 0.5,
           "recall": 1.0,
           "n": 4,
           "tp": 2,
-          "fp": 0,
-          "fn": 0,
-          "tn": 2
-        }
-      },
-      "last_calibrated": "2026-03-02T20:38:43.689239+00:00",
-      "saturation_warning": true
-    },
-    "n8n_resource": {
-      "name": "N8N Resource Limits",
-      "tier": "enterprise",
-      "status": "passing",
-      "readiness": "experimental",
-      "eval_category": "saturated",
-      "module": "app.detection.n8n.resource_detector",
-      "f1_score": 1.0,
-      "precision": 1.0,
-      "recall": 1.0,
-      "optimal_threshold": 0.1,
-      "sample_count": 10,
-      "f1_ci_lower": 1.0,
-      "f1_ci_upper": 1.0,
-      "difficulty_breakdown": {
-        "easy": {
-          "f1": 1.0,
-          "precision": 1.0,
-          "recall": 1.0,
-          "n": 6,
-          "tp": 2,
-          "fp": 0,
-          "fn": 0,
-          "tn": 4
-        },
-        "hard": {
-          "f1": 1.0,
-          "precision": 1.0,
-          "recall": 1.0,
-          "n": 1,
-          "tp": 1,
-          "fp": 0,
+          "fp": 2,
           "fn": 0,
           "tn": 0
         },
@@ -1052,63 +810,301 @@
           "precision": 1.0,
           "recall": 1.0,
           "n": 3,
-          "tp": 2,
+          "tp": 3,
           "fp": 0,
           "fn": 0,
-          "tn": 1
+          "tn": 0
         }
       },
-      "last_calibrated": "2026-03-02T20:38:43.689239+00:00",
-      "saturation_warning": true
+      "last_calibrated": "2026-03-03T08:19:44.089936+00:00"
+    },
+    "n8n_schema": {
+      "name": "N8N Schema Mismatch",
+      "tier": "enterprise",
+      "status": "passing",
+      "readiness": "beta",
+      "eval_category": "capability",
+      "module": "app.detection.n8n.schema_detector",
+      "f1_score": 0.7619,
+      "precision": 0.6829,
+      "recall": 0.8615,
+      "optimal_threshold": 0.75,
+      "sample_count": 110,
+      "f1_ci_lower": 0.6763,
+      "f1_ci_upper": 0.8323,
+      "difficulty_breakdown": {
+        "easy": {
+          "f1": 0.8235,
+          "precision": 0.7,
+          "recall": 1.0,
+          "n": 25,
+          "tp": 14,
+          "fp": 6,
+          "fn": 0,
+          "tn": 5
+        },
+        "hard": {
+          "f1": 0.7347,
+          "precision": 0.6667,
+          "recall": 0.8182,
+          "n": 36,
+          "tp": 18,
+          "fp": 9,
+          "fn": 4,
+          "tn": 5
+        },
+        "medium": {
+          "f1": 0.75,
+          "precision": 0.6857,
+          "recall": 0.8276,
+          "n": 49,
+          "tp": 24,
+          "fp": 11,
+          "fn": 5,
+          "tn": 9
+        }
+      },
+      "last_calibrated": "2026-03-03T08:19:44.089936+00:00"
+    },
+    "n8n_cycle": {
+      "name": "N8N Graph Cycle",
+      "tier": "enterprise",
+      "status": "passing",
+      "readiness": "beta",
+      "eval_category": "capability",
+      "module": "app.detection.n8n.cycle_detector",
+      "f1_score": 0.7831,
+      "precision": 0.6436,
+      "recall": 1.0,
+      "optimal_threshold": 0.1,
+      "sample_count": 111,
+      "f1_ci_lower": 0.7067,
+      "f1_ci_upper": 0.8521,
+      "difficulty_breakdown": {
+        "easy": {
+          "f1": 0.8,
+          "precision": 0.6667,
+          "recall": 1.0,
+          "n": 36,
+          "tp": 20,
+          "fp": 10,
+          "fn": 0,
+          "tn": 6
+        },
+        "hard": {
+          "f1": 0.7391,
+          "precision": 0.5862,
+          "recall": 1.0,
+          "n": 29,
+          "tp": 17,
+          "fp": 12,
+          "fn": 0,
+          "tn": 0
+        },
+        "medium": {
+          "f1": 0.8,
+          "precision": 0.6667,
+          "recall": 1.0,
+          "n": 46,
+          "tp": 28,
+          "fp": 14,
+          "fn": 0,
+          "tn": 4
+        }
+      },
+      "last_calibrated": "2026-03-03T08:19:44.089936+00:00"
+    },
+    "n8n_complexity": {
+      "name": "N8N Complexity",
+      "tier": "enterprise",
+      "status": "passing",
+      "readiness": "beta",
+      "eval_category": "capability",
+      "module": "app.detection.n8n.complexity_detector",
+      "f1_score": 0.6815,
+      "precision": 0.6765,
+      "recall": 0.6866,
+      "optimal_threshold": 0.1,
+      "sample_count": 110,
+      "f1_ci_lower": 0.5833,
+      "f1_ci_upper": 0.766,
+      "difficulty_breakdown": {
+        "easy": {
+          "f1": 0.7692,
+          "precision": 0.7143,
+          "recall": 0.8333,
+          "n": 11,
+          "tp": 5,
+          "fp": 2,
+          "fn": 1,
+          "tn": 3
+        },
+        "hard": {
+          "f1": 0.6462,
+          "precision": 0.6176,
+          "recall": 0.6774,
+          "n": 50,
+          "tp": 21,
+          "fp": 13,
+          "fn": 10,
+          "tn": 6
+        },
+        "medium": {
+          "f1": 0.7018,
+          "precision": 0.7407,
+          "recall": 0.6667,
+          "n": 49,
+          "tp": 20,
+          "fp": 7,
+          "fn": 10,
+          "tn": 12
+        }
+      },
+      "last_calibrated": "2026-03-03T08:19:44.089936+00:00"
+    },
+    "n8n_error": {
+      "name": "N8N Error Handling",
+      "tier": "enterprise",
+      "status": "passing",
+      "readiness": "beta",
+      "eval_category": "capability",
+      "module": "app.detection.n8n.error_detector",
+      "f1_score": 0.7647,
+      "precision": 0.619,
+      "recall": 1.0,
+      "optimal_threshold": 0.1,
+      "sample_count": 110,
+      "f1_ci_lower": 0.6909,
+      "f1_ci_upper": 0.8287,
+      "difficulty_breakdown": {
+        "easy": {
+          "f1": 0.7692,
+          "precision": 0.625,
+          "recall": 1.0,
+          "n": 26,
+          "tp": 15,
+          "fp": 9,
+          "fn": 0,
+          "tn": 2
+        },
+        "hard": {
+          "f1": 0.7541,
+          "precision": 0.6053,
+          "recall": 1.0,
+          "n": 39,
+          "tp": 23,
+          "fp": 15,
+          "fn": 0,
+          "tn": 1
+        },
+        "medium": {
+          "f1": 0.7714,
+          "precision": 0.6279,
+          "recall": 1.0,
+          "n": 45,
+          "tp": 27,
+          "fp": 16,
+          "fn": 0,
+          "tn": 2
+        }
+      },
+      "last_calibrated": "2026-03-03T08:19:44.089936+00:00"
+    },
+    "n8n_resource": {
+      "name": "N8N Resource Limits",
+      "tier": "enterprise",
+      "status": "passing",
+      "readiness": "production",
+      "eval_category": "regression",
+      "module": "app.detection.n8n.resource_detector",
+      "f1_score": 0.9612,
+      "precision": 0.9394,
+      "recall": 0.9841,
+      "optimal_threshold": 0.1,
+      "sample_count": 111,
+      "f1_ci_lower": 0.9194,
+      "f1_ci_upper": 0.9919,
+      "difficulty_breakdown": {
+        "easy": {
+          "f1": 0.9333,
+          "precision": 0.875,
+          "recall": 1.0,
+          "n": 28,
+          "tp": 14,
+          "fp": 2,
+          "fn": 0,
+          "tn": 12
+        },
+        "hard": {
+          "f1": 0.9545,
+          "precision": 0.913,
+          "recall": 1.0,
+          "n": 36,
+          "tp": 21,
+          "fp": 2,
+          "fn": 0,
+          "tn": 13
+        },
+        "medium": {
+          "f1": 0.9818,
+          "precision": 1.0,
+          "recall": 0.9643,
+          "n": 47,
+          "tp": 27,
+          "fp": 0,
+          "fn": 1,
+          "tn": 19
+        }
+      },
+      "last_calibrated": "2026-03-03T08:19:44.089936+00:00"
     },
     "n8n_timeout": {
       "name": "N8N Timeout Protection",
       "tier": "enterprise",
       "status": "passing",
-      "readiness": "experimental",
-      "eval_category": "saturated",
+      "readiness": "production",
+      "eval_category": "regression",
       "module": "app.detection.n8n.timeout_detector",
-      "f1_score": 1.0,
-      "precision": 1.0,
+      "f1_score": 0.9925,
+      "precision": 0.9851,
       "recall": 1.0,
-      "optimal_threshold": 0.1,
-      "sample_count": 10,
-      "f1_ci_lower": 1.0,
+      "optimal_threshold": 0.8,
+      "sample_count": 113,
+      "f1_ci_lower": 0.9744,
       "f1_ci_upper": 1.0,
       "difficulty_breakdown": {
         "easy": {
           "f1": 1.0,
           "precision": 1.0,
           "recall": 1.0,
-          "n": 4,
-          "tp": 2,
+          "n": 26,
+          "tp": 15,
           "fp": 0,
           "fn": 0,
-          "tn": 2
+          "tn": 11
         },
         "hard": {
-          "f1": 1.0,
-          "precision": 1.0,
+          "f1": 0.9778,
+          "precision": 0.9565,
           "recall": 1.0,
-          "n": 2,
-          "tp": 1,
-          "fp": 0,
+          "n": 38,
+          "tp": 22,
+          "fp": 1,
           "fn": 0,
-          "tn": 1
+          "tn": 15
         },
         "medium": {
           "f1": 1.0,
           "precision": 1.0,
           "recall": 1.0,
-          "n": 4,
-          "tp": 2,
+          "n": 49,
+          "tp": 29,
           "fp": 0,
           "fn": 0,
-          "tn": 2
+          "tn": 20
         }
       },
-      "last_calibrated": "2026-03-02T20:38:43.689239+00:00",
-      "saturation_warning": true
+      "last_calibrated": "2026-03-03T08:19:44.089936+00:00"
     },
     "dify_rag_poisoning": {
       "name": "Dify RAG Poisoning",
@@ -1156,7 +1152,7 @@
           "tn": 17
         }
       },
-      "last_calibrated": "2026-03-02T20:38:43.689239+00:00"
+      "last_calibrated": "2026-03-03T08:19:44.089936+00:00"
     },
     "dify_iteration_escape": {
       "name": "Dify Iteration Escape",
@@ -1204,7 +1200,7 @@
           "tn": 13
         }
       },
-      "last_calibrated": "2026-03-02T20:38:43.689239+00:00"
+      "last_calibrated": "2026-03-03T08:19:44.089936+00:00"
     },
     "dify_model_fallback": {
       "name": "Dify Model Fallback",
@@ -1252,7 +1248,7 @@
           "tn": 19
         }
       },
-      "last_calibrated": "2026-03-02T20:38:43.689239+00:00"
+      "last_calibrated": "2026-03-03T08:19:44.089936+00:00"
     },
     "dify_variable_leak": {
       "name": "Dify Variable Leak",
@@ -1300,7 +1296,7 @@
           "tn": 8
         }
       },
-      "last_calibrated": "2026-03-02T20:38:43.689239+00:00"
+      "last_calibrated": "2026-03-03T08:19:44.089936+00:00"
     },
     "dify_classifier_drift": {
       "name": "Dify Classifier Drift",
@@ -1348,55 +1344,55 @@
           "tn": 15
         }
       },
-      "last_calibrated": "2026-03-02T20:38:43.689239+00:00"
+      "last_calibrated": "2026-03-03T08:19:44.089936+00:00"
     },
     "dify_tool_schema_mismatch": {
       "name": "Dify Tool Schema Mismatch",
       "tier": "enterprise",
       "status": "passing",
-      "readiness": "beta",
-      "eval_category": "capability",
+      "readiness": "production",
+      "eval_category": "regression",
       "module": "app.detection.dify.tool_schema_mismatch_detector",
-      "f1_score": 0.6531,
+      "f1_score": 0.9924,
       "precision": 1.0,
-      "recall": 0.4848,
+      "recall": 0.9848,
       "optimal_threshold": 0.1,
       "sample_count": 100,
-      "f1_ci_lower": 0.5361,
-      "f1_ci_upper": 0.7544,
+      "f1_ci_lower": 0.9756,
+      "f1_ci_upper": 1.0,
       "difficulty_breakdown": {
         "easy": {
-          "f1": 0.6316,
+          "f1": 1.0,
           "precision": 1.0,
-          "recall": 0.4615,
+          "recall": 1.0,
           "n": 20,
-          "tp": 6,
+          "tp": 13,
           "fp": 0,
-          "fn": 7,
+          "fn": 0,
           "tn": 7
         },
         "hard": {
-          "f1": 0.6471,
+          "f1": 0.9778,
           "precision": 1.0,
-          "recall": 0.4783,
+          "recall": 0.9565,
           "n": 35,
-          "tp": 11,
+          "tp": 22,
           "fp": 0,
-          "fn": 12,
+          "fn": 1,
           "tn": 12
         },
         "medium": {
-          "f1": 0.6667,
+          "f1": 1.0,
           "precision": 1.0,
-          "recall": 0.5,
+          "recall": 1.0,
           "n": 45,
-          "tp": 15,
+          "tp": 30,
           "fp": 0,
-          "fn": 15,
+          "fn": 0,
           "tn": 15
         }
       },
-      "last_calibrated": "2026-03-02T20:38:43.689239+00:00"
+      "last_calibrated": "2026-03-03T08:19:44.089936+00:00"
     },
     "openclaw_session_loop": {
       "name": "OpenClaw Session Loop",
@@ -1444,7 +1440,7 @@
           "tn": 18
         }
       },
-      "last_calibrated": "2026-03-02T20:38:43.689239+00:00"
+      "last_calibrated": "2026-03-03T08:19:44.089936+00:00"
     },
     "openclaw_tool_abuse": {
       "name": "OpenClaw Tool Abuse",
@@ -1492,7 +1488,7 @@
           "tn": 13
         }
       },
-      "last_calibrated": "2026-03-02T20:38:43.689239+00:00"
+      "last_calibrated": "2026-03-03T08:19:44.089936+00:00"
     },
     "openclaw_elevated_risk": {
       "name": "OpenClaw Elevated Risk",
@@ -1540,7 +1536,7 @@
           "tn": 12
         }
       },
-      "last_calibrated": "2026-03-02T20:38:43.689239+00:00"
+      "last_calibrated": "2026-03-03T08:19:44.089936+00:00"
     },
     "openclaw_spawn_chain": {
       "name": "OpenClaw Spawn Chain",
@@ -1588,7 +1584,7 @@
           "tn": 16
         }
       },
-      "last_calibrated": "2026-03-02T20:38:43.689239+00:00"
+      "last_calibrated": "2026-03-03T08:19:44.089936+00:00"
     },
     "openclaw_channel_mismatch": {
       "name": "OpenClaw Channel Mismatch",
@@ -1636,7 +1632,7 @@
           "tn": 18
         }
       },
-      "last_calibrated": "2026-03-02T20:38:43.689239+00:00"
+      "last_calibrated": "2026-03-03T08:19:44.089936+00:00"
     },
     "openclaw_sandbox_escape": {
       "name": "OpenClaw Sandbox Escape",
@@ -1684,7 +1680,7 @@
           "tn": 9
         }
       },
-      "last_calibrated": "2026-03-02T20:38:43.689239+00:00"
+      "last_calibrated": "2026-03-03T08:19:44.089936+00:00"
     },
     "langgraph_recursion": {
       "name": "LangGraph Recursion",
@@ -1732,7 +1728,7 @@
           "tn": 19
         }
       },
-      "last_calibrated": "2026-03-02T20:38:43.689239+00:00"
+      "last_calibrated": "2026-03-03T08:19:44.089936+00:00"
     },
     "langgraph_state_corruption": {
       "name": "LangGraph State Corruption",
@@ -1780,7 +1776,7 @@
           "tn": 14
         }
       },
-      "last_calibrated": "2026-03-02T20:38:43.689239+00:00"
+      "last_calibrated": "2026-03-03T08:19:44.089936+00:00"
     },
     "langgraph_edge_misroute": {
       "name": "LangGraph Edge Misroute",
@@ -1828,7 +1824,7 @@
           "tn": 15
         }
       },
-      "last_calibrated": "2026-03-02T20:38:43.689239+00:00"
+      "last_calibrated": "2026-03-03T08:19:44.089936+00:00"
     },
     "langgraph_tool_failure": {
       "name": "LangGraph Tool Failure",
@@ -1876,7 +1872,7 @@
           "tn": 13
         }
       },
-      "last_calibrated": "2026-03-02T20:38:43.689239+00:00"
+      "last_calibrated": "2026-03-03T08:19:44.089936+00:00"
     },
     "langgraph_parallel_sync": {
       "name": "LangGraph Parallel Sync",
@@ -1924,7 +1920,7 @@
           "tn": 14
         }
       },
-      "last_calibrated": "2026-03-02T20:38:43.689239+00:00"
+      "last_calibrated": "2026-03-03T08:19:44.089936+00:00"
     },
     "langgraph_checkpoint_corruption": {
       "name": "LangGraph Checkpoint Corruption",
@@ -1972,22 +1968,17 @@
           "tn": 10
         }
       },
-      "last_calibrated": "2026-03-02T20:38:43.689239+00:00"
+      "last_calibrated": "2026-03-03T08:19:44.089936+00:00"
     }
   },
   "summary": {
     "total": 41,
-    "production": 19,
-    "beta": 10,
-    "experimental": 11,
-    "failing": 1,
+    "production": 29,
+    "beta": 12,
+    "experimental": 0,
+    "failing": 0,
     "untested": 0,
-    "saturated": 4,
-    "saturated_detectors": [
-      "n8n_complexity",
-      "n8n_error",
-      "n8n_resource",
-      "n8n_timeout"
-    ]
+    "saturated": 0,
+    "saturated_detectors": []
   }
 }

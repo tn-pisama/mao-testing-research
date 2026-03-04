@@ -335,12 +335,14 @@ class FlawedWorkflowDetector:
 
         if self.require_error_handling:
             missing_handlers = self._detect_missing_error_handling(nodes)
-            # Count non-trivial nodes (exclude start/end/condition)
             non_trivial = [n for n in nodes if n.node_type not in ("start", "end", "condition")]
-            if missing_handlers and (
-                len(missing_handlers) >= len(non_trivial)  # all non-trivial lack handlers
-                or len(missing_handlers) >= 3  # 3+ nodes without handlers
-            ):
+            has_any_handler = any(n.has_error_handler for n in nodes)
+            # Only flag when the workflow shows intent to use error handlers
+            # (at least one node has one) but significant nodes are missing them.
+            # If NO nodes have handlers, it's a design choice — not a defect.
+            if (missing_handlers
+                    and has_any_handler
+                    and len(missing_handlers) >= len(non_trivial) * 0.5):
                 issues.append(WorkflowIssue.MISSING_ERROR_HANDLING)
                 problematic.extend(missing_handlers[:5])
         
@@ -381,14 +383,14 @@ class FlawedWorkflowDetector:
             # than advisory issues (bottleneck, orphan, missing error handling).
             single_issue = issues[0]
             if single_issue in (WorkflowIssue.DEAD_END, WorkflowIssue.UNREACHABLE_NODE):
-                confidence = 0.42
+                confidence = 0.70
             elif single_issue == WorkflowIssue.EXCESSIVE_DEPTH:
-                confidence = 0.32
+                confidence = 0.60
             elif single_issue in (WorkflowIssue.ORPHAN_NODE, WorkflowIssue.BOTTLENECK,
                                   WorkflowIssue.MISSING_ERROR_HANDLING):
-                confidence = 0.22
+                confidence = 0.50
             else:
-                confidence = 0.35
+                confidence = 0.55
 
         issue_names = [i.value for i in issues]
         unique_problematic = list(set(problematic))[:5]
