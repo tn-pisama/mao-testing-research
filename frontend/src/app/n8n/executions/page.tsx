@@ -159,9 +159,9 @@ export default function ExecutionsPage() {
   }
 
   const getStatusBadge = (status: string) => {
-    const variants: Record<string, 'success' | 'danger' | 'default'> = {
+    const variants: Record<string, 'success' | 'error' | 'default'> = {
       success: 'success',
-      error: 'danger',
+      error: 'error',
       running: 'default',
     }
     return (

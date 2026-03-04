@@ -1043,6 +1043,7 @@ export function createApiClient(token?: string | null, tenantId?: string | null)
       confidenceMax?: number;
       dateFrom?: string;
       dateTo?: string;
+      validated?: boolean;
     }) {
       const query = new URLSearchParams()
       if (params.page) query.set('page', String(params.page))
@@ -1053,6 +1054,7 @@ export function createApiClient(token?: string | null, tenantId?: string | null)
       if (params.confidenceMax !== undefined) query.set('confidence_max', String(params.confidenceMax))
       if (params.dateFrom) query.set('date_from', params.dateFrom)
       if (params.dateTo) query.set('date_to', params.dateTo)
+      if (params.validated !== undefined) query.set('validated', String(params.validated))
 
       return fetchApi<{ items: Detection[]; total: number; page: number; per_page: number }>(`/tenants/{tenant_id}/detections?${query}`, opts)
     },
@@ -1827,11 +1829,39 @@ export function createApiClient(token?: string | null, tenantId?: string | null)
       return fetchApi<ThresholdRecommendation[]>(`/tenants/{tenant_id}/feedback/recommendations`, opts)
     },
 
-    async submitFeedback(detectionId: string, isCorrect: boolean, notes?: string) {
+    async submitFeedback(
+      detectionId: string,
+      isCorrect: boolean,
+      options?: { reason?: string; severityRating?: number }
+    ) {
       return fetchApi<{ id: string; status: string }>(`/tenants/{tenant_id}/feedback`, {
         ...opts,
         method: 'POST',
-        body: { detection_id: detectionId, is_correct: isCorrect, notes },
+        body: {
+          detection_id: detectionId,
+          is_correct: isCorrect,
+          reason: options?.reason,
+          severity_rating: options?.severityRating,
+        },
+      })
+    },
+
+    async updateThresholds(config: {
+      global_thresholds?: { structural_threshold?: number; semantic_threshold?: number };
+      framework_thresholds?: Record<string, { structural_threshold?: number; semantic_threshold?: number }>;
+    }) {
+      return fetchApi(`/tenants/{tenant_id}/settings/thresholds`, {
+        ...opts,
+        method: 'PUT',
+        body: config,
+      })
+    },
+
+    async resetThresholds(framework?: string) {
+      const query = framework ? `?framework=${framework}` : ''
+      return fetchApi<{ message: string }>(`/tenants/{tenant_id}/settings/thresholds${query}`, {
+        ...opts,
+        method: 'DELETE',
       })
     },
 

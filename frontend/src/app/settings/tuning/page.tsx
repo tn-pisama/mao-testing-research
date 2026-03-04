@@ -4,21 +4,107 @@ import { useState } from 'react'
 import { Layout } from '@/components/common/Layout'
 import { Button } from '@/components/ui/Button'
 import { useThresholdTuning } from '@/hooks/useApiWithFallback'
+import { useSafeAuth as useAuth } from '@/hooks/useSafeAuth'
+import { useTenant } from '@/hooks/useTenant'
+import { createApiClient } from '@/lib/api'
 import {
   Sliders,
   Target,
   TrendingUp,
-  TrendingDown,
   AlertCircle,
   CheckCircle,
   RefreshCw,
   Info,
   WifiOff,
+  RotateCcw,
 } from 'lucide-react'
 
 export default function ThresholdTuningPage() {
   const { feedbackStats: stats, recommendations, isLoading: loading, isDemoMode } = useThresholdTuning()
-  const [selectedFramework, setSelectedFramework] = useState<string | null>(null)
+  const { getToken } = useAuth()
+  const { tenantId } = useTenant()
+  const [applyingFramework, setApplyingFramework] = useState<string | null>(null)
+  const [appliedFrameworks, setAppliedFrameworks] = useState<Set<string>>(new Set())
+  const [applyError, setApplyError] = useState<string | null>(null)
+  const [applyingAll, setApplyingAll] = useState(false)
+  const [showResetConfirm, setShowResetConfirm] = useState(false)
+  const [resetting, setResetting] = useState(false)
+
+  const handleApplyRecommendation = async (rec: any) => {
+    setApplyingFramework(rec.framework)
+    setApplyError(null)
+    try {
+      const token = await getToken()
+      const api = createApiClient(token, tenantId)
+      await api.updateThresholds({
+        framework_thresholds: {
+          [rec.framework]: {
+            structural_threshold: rec.recommended_structural_threshold,
+            semantic_threshold: rec.recommended_semantic_threshold,
+          },
+        },
+      })
+      setAppliedFrameworks(prev => new Set([...prev, rec.framework]))
+    } catch (err) {
+      console.error('Failed to apply recommendation:', err)
+      setApplyError(`Failed to apply ${rec.framework} thresholds`)
+    } finally {
+      setApplyingFramework(null)
+    }
+  }
+
+  const handleApplyAll = async () => {
+    const pendingRecs = recommendations.filter(rec => {
+      const structChange = rec.recommended_structural_threshold - rec.current_structural_threshold
+      const semChange = rec.recommended_semantic_threshold - rec.current_semantic_threshold
+      return (Math.abs(structChange) > 0.001 || Math.abs(semChange) > 0.001) && !appliedFrameworks.has(rec.framework)
+    })
+    if (pendingRecs.length === 0) return
+
+    setApplyingAll(true)
+    setApplyError(null)
+    try {
+      const token = await getToken()
+      const api = createApiClient(token, tenantId)
+      const frameworkThresholds: Record<string, { structural_threshold: number; semantic_threshold: number }> = {}
+      for (const rec of pendingRecs) {
+        frameworkThresholds[rec.framework] = {
+          structural_threshold: rec.recommended_structural_threshold,
+          semantic_threshold: rec.recommended_semantic_threshold,
+        }
+      }
+      await api.updateThresholds({ framework_thresholds: frameworkThresholds })
+      setAppliedFrameworks(prev => new Set([...prev, ...pendingRecs.map(r => r.framework)]))
+    } catch (err) {
+      console.error('Failed to apply all recommendations:', err)
+      setApplyError('Failed to apply recommendations')
+    } finally {
+      setApplyingAll(false)
+    }
+  }
+
+  const handleReset = async () => {
+    setResetting(true)
+    setApplyError(null)
+    try {
+      const token = await getToken()
+      const api = createApiClient(token, tenantId)
+      await api.resetThresholds()
+      setAppliedFrameworks(new Set())
+      setShowResetConfirm(false)
+    } catch (err) {
+      console.error('Failed to reset thresholds:', err)
+      setApplyError('Failed to reset thresholds')
+    } finally {
+      setResetting(false)
+    }
+  }
+
+  const pendingRecommendations = recommendations.filter(rec => {
+    const structChange = rec.recommended_structural_threshold - rec.current_structural_threshold
+    const semChange = rec.recommended_semantic_threshold - rec.current_semantic_threshold
+    return (Math.abs(structChange) > 0.001 || Math.abs(semChange) > 0.001) && !appliedFrameworks.has(rec.framework)
+  })
 
   if (loading) {
     return (
@@ -128,15 +214,45 @@ export default function ThresholdTuningPage() {
           </div>
         </div>
 
+        {/* Error banner */}
+        {applyError && (
+          <div className="mb-6 p-4 bg-red-500/10 border border-red-500/20 rounded-lg flex items-center gap-3">
+            <AlertCircle size={18} className="text-red-400 flex-shrink-0" />
+            <p className="text-sm text-red-300 flex-1">{applyError}</p>
+            <button onClick={() => setApplyError(null)} className="text-red-400 hover:text-red-300 text-sm">
+              Dismiss
+            </button>
+          </div>
+        )}
+
         {/* Threshold Recommendations */}
         <div className="bg-zinc-800 rounded-lg border border-zinc-700 overflow-hidden">
-          <div className="p-4 border-b border-zinc-700">
-            <h2 className="text-lg font-semibold text-white">Threshold Recommendations</h2>
-            <p className="text-sm text-zinc-400">Based on {stats?.total_feedback} feedback submissions</p>
+          <div className="p-4 border-b border-zinc-700 flex items-center justify-between">
+            <div>
+              <h2 className="text-lg font-semibold text-white">Threshold Recommendations</h2>
+              <p className="text-sm text-zinc-400">Based on {stats?.total_feedback} feedback submissions</p>
+            </div>
+            {pendingRecommendations.length > 0 && (
+              <Button
+                size="sm"
+                onClick={handleApplyAll}
+                loading={applyingAll}
+                disabled={applyingAll || isDemoMode}
+              >
+                Apply All ({pendingRecommendations.length})
+              </Button>
+            )}
           </div>
           <div className="divide-y divide-zinc-700">
             {recommendations.map((rec) => (
-              <RecommendationRow key={rec.framework} recommendation={rec} />
+              <RecommendationRow
+                key={rec.framework}
+                recommendation={rec}
+                onApply={() => handleApplyRecommendation(rec)}
+                isApplying={applyingFramework === rec.framework}
+                isApplied={appliedFrameworks.has(rec.framework)}
+                isDemoMode={isDemoMode}
+              />
             ))}
           </div>
           {recommendations.length === 0 && (
@@ -145,6 +261,31 @@ export default function ThresholdTuningPage() {
               <p>Not enough feedback data to generate recommendations.</p>
               <p className="text-sm">Submit at least 10 feedback items per framework.</p>
             </div>
+          )}
+        </div>
+
+        {/* Reset to defaults */}
+        <div className="mt-6 flex items-center justify-end gap-3">
+          {showResetConfirm ? (
+            <div className="flex items-center gap-3 bg-zinc-800 border border-zinc-700 rounded-lg p-3">
+              <span className="text-sm text-zinc-300">Reset all thresholds to factory defaults?</span>
+              <Button size="sm" variant="danger" onClick={handleReset} loading={resetting} disabled={resetting}>
+                Confirm Reset
+              </Button>
+              <Button size="sm" variant="ghost" onClick={() => setShowResetConfirm(false)} disabled={resetting}>
+                Cancel
+              </Button>
+            </div>
+          ) : (
+            <Button
+              size="sm"
+              variant="secondary"
+              leftIcon={<RotateCcw size={14} />}
+              onClick={() => setShowResetConfirm(true)}
+              disabled={isDemoMode}
+            >
+              Reset to Defaults
+            </Button>
           )}
         </div>
 
@@ -210,7 +351,19 @@ function StatCard({
   )
 }
 
-function RecommendationRow({ recommendation }: { recommendation: any }) {
+function RecommendationRow({
+  recommendation,
+  onApply,
+  isApplying,
+  isApplied,
+  isDemoMode,
+}: {
+  recommendation: any
+  onApply: () => void
+  isApplying: boolean
+  isApplied: boolean
+  isDemoMode: boolean
+}) {
   const structuralChange = recommendation.recommended_structural_threshold - recommendation.current_structural_threshold
   const semanticChange = recommendation.recommended_semantic_threshold - recommendation.current_semantic_threshold
   const hasChange = Math.abs(structuralChange) > 0.001 || Math.abs(semanticChange) > 0.001
@@ -222,14 +375,32 @@ function RecommendationRow({ recommendation }: { recommendation: any }) {
           <span className="text-white font-medium capitalize">{recommendation.framework}</span>
           <span className="text-zinc-500 text-sm ml-2">({recommendation.sample_size} samples)</span>
         </div>
-        <div className="flex items-center gap-2">
-          <div className="w-16 bg-zinc-700 rounded-full h-1.5">
-            <div
-              className="bg-purple-500 h-1.5 rounded-full"
-              style={{ width: `${recommendation.confidence * 100}%` }}
-            />
+        <div className="flex items-center gap-3">
+          <div className="flex items-center gap-2">
+            <div className="w-16 bg-zinc-700 rounded-full h-1.5">
+              <div
+                className="bg-purple-500 h-1.5 rounded-full"
+                style={{ width: `${recommendation.confidence * 100}%` }}
+              />
+            </div>
+            <span className="text-xs text-zinc-400">{(recommendation.confidence * 100).toFixed(0)}% conf</span>
           </div>
-          <span className="text-xs text-zinc-400">{(recommendation.confidence * 100).toFixed(0)}% conf</span>
+          {hasChange && !isApplied && (
+            <Button
+              size="sm"
+              onClick={onApply}
+              loading={isApplying}
+              disabled={isApplying || isDemoMode}
+            >
+              Apply
+            </Button>
+          )}
+          {isApplied && (
+            <span className="flex items-center gap-1 text-sm text-emerald-400">
+              <CheckCircle size={14} />
+              Applied
+            </span>
+          )}
         </div>
       </div>
 
@@ -238,11 +409,13 @@ function RecommendationRow({ recommendation }: { recommendation: any }) {
           label="Structural"
           current={recommendation.current_structural_threshold}
           recommended={recommendation.recommended_structural_threshold}
+          isApplied={isApplied}
         />
         <ThresholdCard
           label="Semantic"
           current={recommendation.current_semantic_threshold}
           recommended={recommendation.recommended_semantic_threshold}
+          isApplied={isApplied}
         />
       </div>
 
@@ -267,10 +440,12 @@ function ThresholdCard({
   label,
   current,
   recommended,
+  isApplied,
 }: {
   label: string
   current: number
   recommended: number
+  isApplied?: boolean
 }) {
   const change = recommended - current
   const hasChange = Math.abs(change) > 0.001
@@ -279,11 +454,13 @@ function ThresholdCard({
     <div className="bg-zinc-700/50 rounded-lg p-3">
       <div className="text-xs text-zinc-400 mb-1">{label} Threshold</div>
       <div className="flex items-center gap-2">
-        <span className="text-zinc-300">{(current * 100).toFixed(0)}%</span>
+        <span className={isApplied && hasChange ? 'text-zinc-500 line-through' : 'text-zinc-300'}>
+          {(current * 100).toFixed(0)}%
+        </span>
         {hasChange && (
           <>
-            <span className="text-zinc-500">→</span>
-            <span className={change > 0 ? 'text-amber-400' : 'text-emerald-400'}>
+            <span className="text-zinc-500">&rarr;</span>
+            <span className={isApplied ? 'text-emerald-400 font-medium' : change > 0 ? 'text-amber-400' : 'text-emerald-400'}>
               {(recommended * 100).toFixed(0)}%
             </span>
             <span className={`text-xs ${change > 0 ? 'text-amber-400' : 'text-emerald-400'}`}>

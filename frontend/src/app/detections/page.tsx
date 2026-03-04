@@ -23,12 +23,15 @@ import {
   ThumbsDown,
   ChevronRight,
   Wrench,
+  Loader2,
 } from 'lucide-react'
 import Link from 'next/link'
 import { generateDemoLoopAnalytics } from '@/lib/demo-data'
-import type { Detection } from '@/lib/api'
+import { createApiClient, type Detection } from '@/lib/api'
 import { useUserPreferences } from '@/lib/user-preferences'
 import { useDetections } from '@/hooks/useApiWithFallback'
+import { useSafeAuth as useAuth } from '@/hooks/useSafeAuth'
+import { useTenant } from '@/hooks/useTenant'
 
 type DetectionType = 'all' | 'loop' | 'state_corruption' | 'persona_drift' | 'coordination' | 'task_derailment' | 'context' | 'communication' | 'specification' | 'decomposition' | 'workflow' | 'hallucination' | 'injection' | 'context_overflow' | 'information_withholding' | 'completion_misjudgment' | 'tool_provision' | 'grounding_failure' | 'retrieval_quality' | 'cost'
 type Severity = 'all' | 'low' | 'medium' | 'high' | 'critical'
@@ -115,6 +118,29 @@ export default function DetectionsPage() {
   const [showValidated, setShowValidated] = useState(true)
   const [currentPage, setCurrentPage] = useState(1)
   const { isN8nUser, showAdvancedFeatures } = useUserPreferences()
+  const { getToken } = useAuth()
+  const { tenantId } = useTenant()
+  const [inlineValidated, setInlineValidated] = useState<Record<string, { validated: boolean; false_positive: boolean }>>({})
+  const [submittingId, setSubmittingId] = useState<string | null>(null)
+
+  const handleInlineValidate = async (e: React.MouseEvent, detectionId: string, isFalsePositive: boolean) => {
+    e.preventDefault()
+    e.stopPropagation()
+    if (submittingId) return
+    setSubmittingId(detectionId)
+    try {
+      const token = await getToken()
+      const api = createApiClient(token, tenantId)
+      await api.submitFeedback(detectionId, !isFalsePositive)
+      setInlineValidated(prev => ({ ...prev, [detectionId]: { validated: true, false_positive: isFalsePositive } }))
+    } catch (err: any) {
+      if (err?.status === 409) {
+        setInlineValidated(prev => ({ ...prev, [detectionId]: { validated: true, false_positive: isFalsePositive } }))
+      }
+    } finally {
+      setSubmittingId(null)
+    }
+  }
 
   // Fetch detections with server-side filtering
   const { detections, total, isLoading, isDemoMode } = useDetections({
@@ -453,24 +479,40 @@ export default function DetectionsPage() {
                                 {formatDistanceToNow(new Date(detection.created_at), { addSuffix: true })}
                               </div>
                               <div className="flex items-center gap-1">
-                                {!detection.validated && (
-                                  <>
-                                    <button
-                                      onClick={(e) => { e.preventDefault() }}
-                                      className="p-1.5 rounded hover:bg-emerald-500/20 text-zinc-400 hover:text-emerald-400 transition-colors"
-                                      title="Mark as valid"
-                                    >
-                                      <ThumbsUp size={14} />
-                                    </button>
-                                    <button
-                                      onClick={(e) => { e.preventDefault() }}
-                                      className="p-1.5 rounded hover:bg-red-500/20 text-zinc-400 hover:text-red-400 transition-colors"
-                                      title="Mark as false positive"
-                                    >
-                                      <ThumbsDown size={14} />
-                                    </button>
-                                  </>
-                                )}
+                                {(() => {
+                                  const effective = inlineValidated[detection.id] ?? { validated: detection.validated, false_positive: detection.false_positive }
+                                  if (effective.validated) {
+                                    return effective.false_positive ? (
+                                      <span className="flex items-center gap-1 text-xs text-zinc-400">
+                                        <XCircle size={14} /> FP
+                                      </span>
+                                    ) : (
+                                      <span className="flex items-center gap-1 text-xs text-emerald-400">
+                                        <CheckCircle size={14} />
+                                      </span>
+                                    )
+                                  }
+                                  return (
+                                    <>
+                                      <button
+                                        onClick={(e) => handleInlineValidate(e, detection.id, false)}
+                                        disabled={submittingId === detection.id}
+                                        className="p-1.5 rounded hover:bg-emerald-500/20 text-zinc-400 hover:text-emerald-400 transition-colors disabled:opacity-50"
+                                        title="Mark as valid"
+                                      >
+                                        {submittingId === detection.id ? <Loader2 size={14} className="animate-spin" /> : <ThumbsUp size={14} />}
+                                      </button>
+                                      <button
+                                        onClick={(e) => handleInlineValidate(e, detection.id, true)}
+                                        disabled={submittingId === detection.id}
+                                        className="p-1.5 rounded hover:bg-red-500/20 text-zinc-400 hover:text-red-400 transition-colors disabled:opacity-50"
+                                        title="Mark as false positive"
+                                      >
+                                        <ThumbsDown size={14} />
+                                      </button>
+                                    </>
+                                  )
+                                })()}
                                 <ChevronRight size={14} className="text-zinc-500" />
                               </div>
                             </>
