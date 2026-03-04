@@ -67,6 +67,10 @@ export default function DetectionDetailPage() {
   const [triggeringHealing, setTriggeringHealing] = useState(false)
   const [healingTriggered, setHealingTriggered] = useState(false)
   const [healingError, setHealingError] = useState<string | null>(null)
+  const [feedbackNotes, setFeedbackNotes] = useState('')
+  const [feedbackSeverity, setFeedbackSeverity] = useState<number | null>(null)
+  const [feedbackSubmitted, setFeedbackSubmitted] = useState(false)
+  const [feedbackError, setFeedbackError] = useState<string | null>(null)
 
   const detectionId = params.id as string
 
@@ -108,17 +112,28 @@ export default function DetectionDetailPage() {
   const handleValidate = async (isFalsePositive: boolean) => {
     if (!detection) return
     setValidating(true)
+    setFeedbackError(null)
     try {
       const token = await getToken()
       const api = createApiClient(token, tenantId)
-      await api.validateDetection(detection.id, { false_positive: isFalsePositive })
+      await api.submitFeedback(detection.id, !isFalsePositive, {
+        reason: feedbackNotes || undefined,
+        severityRating: feedbackSeverity ?? undefined,
+      })
       setDetection(prev => prev ? {
         ...prev,
         validated: true,
         false_positive: isFalsePositive,
       } : null)
-    } catch (err) {
-      console.error('Failed to validate detection:', err)
+      setFeedbackSubmitted(true)
+    } catch (err: any) {
+      if (err?.status === 409) {
+        setDetection(prev => prev ? { ...prev, validated: true, false_positive: isFalsePositive } : null)
+        setFeedbackSubmitted(true)
+      } else {
+        console.error('Failed to submit feedback:', err)
+        setFeedbackError('Failed to submit feedback. Try again.')
+      }
     }
     setValidating(false)
   }
@@ -323,45 +338,119 @@ export default function DetectionDetailPage() {
             </div>
           )}
 
-          {/* Actions */}
+          {/* Actions bar */}
           <Card>
             <CardContent className="p-4">
-              <div className="flex items-center justify-between">
-                <div className="flex items-center gap-4">
-                  <Link href={`/traces/${detection.trace_id}`}>
-                    <Button variant="secondary" leftIcon={<Activity size={16} />}>
-                      View Trace
-                    </Button>
-                  </Link>
-                  <Link href={`/healing?detection=${detection.id}`}>
-                    <Button variant="secondary" leftIcon={<Wrench size={16} />}>
-                      View Fixes
-                    </Button>
-                  </Link>
-                  <Button
-                    variant="primary"
-                    leftIcon={triggeringHealing ? <Loader2 size={16} className="animate-spin" /> : <Zap size={16} />}
-                    onClick={handleTriggerHealing}
-                    disabled={triggeringHealing || healingTriggered || detection.false_positive === true}
-                  >
-                    {healingTriggered ? 'Healing Triggered' : 'Trigger Healing'}
+              <div className="flex items-center gap-4 flex-wrap">
+                <Link href={`/traces/${detection.trace_id}`}>
+                  <Button variant="secondary" leftIcon={<Activity size={16} />}>
+                    View Trace
                   </Button>
-                </div>
+                </Link>
+                <Link href={`/healing?detection=${detection.id}`}>
+                  <Button variant="secondary" leftIcon={<Wrench size={16} />}>
+                    View Fixes
+                  </Button>
+                </Link>
+                <Button
+                  variant="primary"
+                  leftIcon={triggeringHealing ? <Loader2 size={16} className="animate-spin" /> : <Zap size={16} />}
+                  onClick={handleTriggerHealing}
+                  disabled={triggeringHealing || healingTriggered || detection.false_positive === true}
+                >
+                  {healingTriggered ? 'Healing Triggered' : 'Trigger Healing'}
+                </Button>
+              </div>
+            </CardContent>
+          </Card>
 
-                {!detection.validated && (
-                  <div className="flex items-center gap-2">
-                    <span className="text-sm text-zinc-400 mr-2">Was this helpful?</span>
+          {/* Feedback panel */}
+          <Card>
+            <CardHeader>
+              <CardTitle className="flex items-center gap-2">
+                <ThumbsUp size={18} className="text-blue-400" />
+                Human Feedback
+              </CardTitle>
+            </CardHeader>
+            <CardContent>
+              {detection.validated ? (
+                <div className="flex items-center gap-3 p-4 rounded-lg bg-zinc-700/30">
+                  {detection.false_positive ? (
+                    <>
+                      <XCircle size={20} className="text-red-400 flex-shrink-0" />
+                      <div>
+                        <p className="text-white font-medium">Marked as false positive</p>
+                        <p className="text-zinc-400 text-sm">This detection was reviewed and flagged as incorrect.</p>
+                      </div>
+                    </>
+                  ) : (
+                    <>
+                      <CheckCircle size={20} className="text-emerald-400 flex-shrink-0" />
+                      <div>
+                        <p className="text-white font-medium">Validated as correct</p>
+                        <p className="text-zinc-400 text-sm">This detection was reviewed and confirmed as a real issue.</p>
+                      </div>
+                    </>
+                  )}
+                </div>
+              ) : (
+                <div className="space-y-4">
+                  {/* Severity rating */}
+                  <div>
+                    <p className="text-sm text-zinc-400 mb-2">Severity rating (optional)</p>
+                    <div className="flex items-center gap-2 flex-wrap">
+                      {(['Minor', 'Low', 'Medium', 'High', 'Critical'] as const).map((label, i) => (
+                        <button
+                          key={i}
+                          onClick={() => setFeedbackSeverity(feedbackSeverity === i + 1 ? null : i + 1)}
+                          className={cn(
+                            'px-3 py-1.5 rounded-lg text-sm font-medium transition-colors',
+                            feedbackSeverity === i + 1
+                              ? 'bg-blue-500/20 text-blue-400 border border-blue-500/50'
+                              : 'bg-zinc-700/50 text-zinc-400 border border-zinc-600 hover:border-zinc-500'
+                          )}
+                        >
+                          {i + 1} - {label}
+                        </button>
+                      ))}
+                    </div>
+                  </div>
+
+                  {/* Notes */}
+                  <div>
+                    <p className="text-sm text-zinc-400 mb-2">Notes (optional)</p>
+                    <textarea
+                      value={feedbackNotes}
+                      onChange={(e) => setFeedbackNotes(e.target.value)}
+                      placeholder="Why is this correct or a false positive? Add context for threshold tuning..."
+                      rows={3}
+                      className="w-full px-3 py-2 bg-zinc-700/50 border border-zinc-600 rounded-lg text-white text-sm placeholder-zinc-500 focus:outline-none focus:ring-2 focus:ring-blue-500 resize-none"
+                    />
+                  </div>
+
+                  {/* Error */}
+                  {feedbackError && (
+                    <div className="p-3 bg-red-500/10 border border-red-500/20 rounded-lg flex items-center gap-2">
+                      <AlertTriangle size={14} className="text-red-400 flex-shrink-0" />
+                      <p className="text-sm text-red-300">{feedbackError}</p>
+                    </div>
+                  )}
+
+                  {/* Buttons */}
+                  <div className="flex items-center gap-3 pt-2">
+                    <p className="text-sm text-zinc-400 mr-1">Was this detection correct?</p>
                     <Button
-                      variant="secondary"
+                      variant="success"
                       size="sm"
                       onClick={() => handleValidate(false)}
                       disabled={validating}
+                      loading={validating}
                       leftIcon={<ThumbsUp size={14} />}
                     >
                       Valid
                     </Button>
                     <Button
-                      variant="secondary"
+                      variant="danger"
                       size="sm"
                       onClick={() => handleValidate(true)}
                       disabled={validating}
@@ -370,24 +459,8 @@ export default function DetectionDetailPage() {
                       False Positive
                     </Button>
                   </div>
-                )}
-
-                {detection.validated && (
-                  <div className="flex items-center gap-2 text-sm">
-                    {detection.false_positive ? (
-                      <>
-                        <XCircle size={16} className="text-zinc-400" />
-                        <span className="text-zinc-400">Marked as false positive</span>
-                      </>
-                    ) : (
-                      <>
-                        <CheckCircle size={16} className="text-emerald-400" />
-                        <span className="text-emerald-400">Validated as correct</span>
-                      </>
-                    )}
-                  </div>
-                )}
-              </div>
+                </div>
+              )}
             </CardContent>
           </Card>
         </div>
