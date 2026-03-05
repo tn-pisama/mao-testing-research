@@ -74,6 +74,12 @@ async def get_or_create_user_from_google(db: AsyncSession, claims: dict) -> User
     if not email:
         raise HTTPException(status_code=401, detail="Missing email in Google token")
 
+    # Email whitelist check
+    if settings.allowed_emails:
+        allowed = [e.strip() for e in settings.allowed_emails.split(",") if e.strip()]
+        if allowed and email not in allowed:
+            raise HTTPException(status_code=403, detail="Email not authorized. Contact admin for access.")
+
     # First try to find by google_user_id (new way)
     result = await db.execute(
         select(User).where(User.google_user_id == google_user_id)

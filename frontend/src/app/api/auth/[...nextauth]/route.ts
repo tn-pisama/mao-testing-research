@@ -11,6 +11,15 @@ export const authOptions: NextAuthOptions = {
     }),
   ],
   callbacks: {
+    async signIn({ account, profile }) {
+      if (account?.provider === 'google') {
+        const allowedEmails = (process.env.ALLOWED_EMAILS || '').split(',').map(e => e.trim()).filter(Boolean)
+        if (allowedEmails.length > 0 && !allowedEmails.includes(profile?.email || '')) {
+          return false
+        }
+      }
+      return true
+    },
     async jwt({ token, account, user }) {
       // Initial sign in
       if (account && user) {

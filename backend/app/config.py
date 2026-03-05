@@ -293,7 +293,8 @@ class Settings(BaseSettings):
     # Google OAuth settings
     google_client_id: str = ""
     google_client_secret: str = ""
-    
+    allowed_emails: str = ""  # Comma-separated list of allowed emails for Google OAuth
+
     rate_limit_requests: int = 100
     rate_limit_window_seconds: int = 60
     auth_rate_limit_requests: int = 10

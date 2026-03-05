@@ -20,3 +20,4 @@ numpy==1.26.3
 pgvector==0.2.4
 tiktoken==0.5.2
 apscheduler==3.10.4
+stripe>=8.0.0
