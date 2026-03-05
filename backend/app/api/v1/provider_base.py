@@ -102,7 +102,10 @@ async def verify_webhook_if_configured(
         db: Database session (for nonce storage)
     """
     if not webhook_secret:
-        return
+        raise HTTPException(
+            status_code=403,
+            detail="Webhook secret not configured. Configure a webhook secret for this integration before sending data.",
+        )
 
     if not signature or not timestamp:
         raise HTTPException(

@@ -321,8 +321,8 @@ class Settings(BaseSettings):
         for pattern in weak_patterns:
             if pattern in v_lower:
                 raise ValueError(f"JWT_SECRET contains weak pattern '{pattern}'. Use a secure random secret.")
-        if len(set(v)) < 8:
-            raise ValueError("JWT_SECRET has insufficient entropy. Use a more random value.")
+        if len(set(v)) < 16:
+            raise ValueError("JWT_SECRET has insufficient entropy (need 16+ unique characters). Use a more random value.")
         return v
 
     model_config = ConfigDict(

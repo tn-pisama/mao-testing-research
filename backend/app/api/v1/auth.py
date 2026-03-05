@@ -23,11 +23,25 @@ AUTH_RATE_LIMIT = 10
 AUTH_RATE_WINDOW = 60
 
 
+TENANT_CREATE_RATE_LIMIT = 5
+TENANT_CREATE_RATE_WINDOW = 3600  # 1 hour
+
+
 @router.post("/tenants", response_model=TenantResponse, status_code=status.HTTP_201_CREATED)
 async def create_tenant(
     request: TenantCreate,
+    http_request: Request,
     db: AsyncSession = Depends(get_db),
 ):
+    client_ip = http_request.client.host if http_request.client else "unknown"
+    rate_key = f"tenant_create_rate:{client_ip}"
+    allowed = await rate_limiter.check_rate_limit(rate_key, TENANT_CREATE_RATE_LIMIT, TENANT_CREATE_RATE_WINDOW)
+    if not allowed:
+        raise HTTPException(
+            status_code=status.HTTP_429_TOO_MANY_REQUESTS,
+            detail="Too many tenant creation requests. Please try again later."
+        )
+
     api_key = f"mao_{secrets.token_urlsafe(32)}"
     api_key_hash = hash_api_key(api_key)
     

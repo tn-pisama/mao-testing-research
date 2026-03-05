@@ -15,10 +15,9 @@ const protectedRoutes = [
   '/chaos',
   '/replay',
   '/regression',
-  '/terms',
 ]
 
-const publicRoutes = ['/', '/sign-in', '/sign-up']
+const publicRoutes = ['/', '/sign-in', '/sign-up', '/terms']
 
 function isProtectedRoute(pathname: string): boolean {
   return protectedRoutes.some(route => pathname.startsWith(route))
@@ -36,19 +35,6 @@ export async function middleware(req: NextRequest) {
       return NextResponse.next()
     }
 
-    // Full auth bypass for local development
-    if (process.env.DISABLE_AUTH === 'true') {
-      return NextResponse.next()
-    }
-
-    // Bypass auth for E2E tests (disabled in production for security)
-    // Note: This only works for automated tests, not manual testing
-    const testBypass = req.headers.get('x-test-bypass') === 'true'
-    const allowTestBypass = process.env.ALLOW_TEST_BYPASS === 'true' || process.env.NODE_ENV === 'development'
-    if (testBypass && allowTestBypass) {
-      return NextResponse.next()
-    }
-
     const token = await getToken({
       req,
       secret: process.env.NEXTAUTH_SECRET
@@ -62,7 +48,8 @@ export async function middleware(req: NextRequest) {
     return NextResponse.next()
   } catch (error) {
     console.error('Middleware auth error:', error)
-    return NextResponse.next()
+    const signInUrl = new URL('/sign-in', req.url)
+    return NextResponse.redirect(signInUrl)
   }
 }
 

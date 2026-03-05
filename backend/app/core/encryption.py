@@ -25,8 +25,13 @@ def _get_encryption_key() -> bytes:
     # Derive from SECRET_KEY
     secret_key = os.environ.get("SECRET_KEY", "development-secret-key-change-in-production")
 
-    # Use a fixed salt for derivation (in production, consider per-tenant salts)
-    salt = b"mao-testing-platform-salt"
+    # Read salt from environment; fall back to default only in development
+    salt_env = os.environ.get("ENCRYPTION_SALT")
+    if salt_env:
+        salt = salt_env.encode()
+    else:
+        logger.warning("ENCRYPTION_SALT not set — using default salt. Set ENCRYPTION_SALT in production.")
+        salt = b"mao-testing-platform-salt"
 
     kdf = PBKDF2HMAC(
         algorithm=hashes.SHA256(),

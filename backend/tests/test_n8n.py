@@ -255,7 +255,8 @@ class TestN8nWebhook:
         """Test that n8n webhook creates a trace successfully."""
         client, mock_db, mock_tenant = n8n_test_client
 
-        with patch('app.core.auth.verify_api_key', return_value=True):
+        with patch('app.core.auth.verify_api_key', return_value=True), \
+             patch('app.api.v1.n8n.verify_webhook_if_configured', new_callable=AsyncMock):
             payload = {
                 "executionId": "exec-123",
                 "workflowId": "wf-456",

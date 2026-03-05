@@ -29,13 +29,13 @@ router = APIRouter(prefix="/n8n", tags=["n8n"])
 
 
 class N8nWebhookPayload(BaseModel):
-    executionId: str = Field(..., min_length=1)
-    workflowId: str = Field(..., min_length=1)
-    workflowName: str = ""
-    mode: str = "manual"
-    startedAt: str
-    finishedAt: Optional[str] = None
-    status: str = "success"
+    executionId: str = Field(..., min_length=1, max_length=255)
+    workflowId: str = Field(..., min_length=1, max_length=255)
+    workflowName: str = Field(default="", max_length=500)
+    mode: str = Field(default="manual", max_length=50)
+    startedAt: str = Field(..., max_length=100)
+    finishedAt: Optional[str] = Field(None, max_length=100)
+    status: str = Field(default="success", max_length=50)
     data: dict = Field(default_factory=dict)
     # Optional workflow definition for quality assessment
     workflow: Optional[dict] = Field(default=None, description="Full workflow JSON for quality assessment")

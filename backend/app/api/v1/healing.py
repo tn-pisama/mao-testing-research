@@ -753,7 +753,8 @@ async def test_n8n_connection(
     except N8nApiError as e:
         connection.last_error = str(e)
         await db.commit()
-        raise HTTPException(status_code=502, detail=f"n8n API error: {e}")
+        logger.error("n8n API error during connection test: %s", e)
+        raise HTTPException(status_code=502, detail="Failed to connect to integration")
 
 
 # ============================================================================
@@ -996,9 +997,10 @@ async def apply_fix_to_n8n(
             )
 
     except N8nApiError as e:
+        logger.error("n8n API error during fix apply: %s", e.message)
         return ApplyFixToN8nResponse(
             status="failed",
-            error=f"n8n API error: {e.message}",
+            error="Failed to apply fix to integration",
         )
     except Exception as e:
         import traceback
@@ -1599,9 +1601,10 @@ async def verify_fix(
                     loop_detector=loop_detector,
                 )
         except N8nApiError as e:
+            logger.error("n8n API error during verification: %s", e.message)
             raise HTTPException(
                 status_code=502,
-                detail=f"n8n API error during verification: {e.message}"
+                detail="Failed to verify fix with integration"
             )
 
     # Store verification results on healing record

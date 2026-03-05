@@ -5,10 +5,10 @@ services:
     image: pgvector/pgvector:pg16
     environment:
       POSTGRES_USER: mao
-      POSTGRES_PASSWORD: mao
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-mao}
       POSTGRES_DB: mao
     ports:
-      - "5432:5432"
+      - "127.0.0.1:5432:5432"
     volumes:
       - postgres_data:/var/lib/postgresql/data
     healthcheck:
@@ -20,7 +20,7 @@ services:
   redis:
     image: redis:7-alpine
     ports:
-      - "6379:6379"
+      - "127.0.0.1:6379:6379"
     healthcheck:
       test: ["CMD", "redis-cli", "ping"]
       interval: 10s
@@ -32,7 +32,7 @@ services:
     ports:
       - "8000:8000"
     environment:
-      DATABASE_URL: postgresql+asyncpg://mao:mao@postgres:5432/mao
+      DATABASE_URL: postgresql+asyncpg://mao:${POSTGRES_PASSWORD:-mao}@postgres:5432/mao
       REDIS_URL: redis://redis:6379
       JWT_SECRET: dev-secret-change-in-production
     depends_on:

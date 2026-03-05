@@ -57,9 +57,9 @@ class DifyWebhookResponse(BaseModel):
 
 class DifyInstanceRegisterRequest(BaseModel):
     name: str = Field(..., min_length=1, max_length=255)
-    base_url: str = Field(..., min_length=1)
-    api_key: str = Field(..., min_length=1)
-    ingestion_mode: str = Field(default="full", pattern="^(full|trace_only)$")
+    base_url: str = Field(..., min_length=1, max_length=2000)
+    api_key: str = Field(..., min_length=1, max_length=500)
+    ingestion_mode: str = Field(default="full", max_length=20, pattern="^(full|trace_only)$")
 
 
 class DifyInstanceResponse(BaseModel):

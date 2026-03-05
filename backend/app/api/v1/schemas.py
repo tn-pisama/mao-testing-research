@@ -5,7 +5,7 @@ from uuid import UUID
 
 
 class TenantCreate(BaseModel):
-    name: str
+    name: str = Field(..., min_length=1, max_length=255)
 
 
 class TenantResponse(BaseModel):
@@ -16,7 +16,7 @@ class TenantResponse(BaseModel):
 
 
 class TokenRequest(BaseModel):
-    api_key: str
+    api_key: str = Field(..., min_length=1, max_length=500)
 
 
 class TokenResponse(BaseModel):

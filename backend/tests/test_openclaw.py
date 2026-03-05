@@ -236,7 +236,8 @@ class TestOpenClawWebhook:
         """OpenClaw webhook should create a trace successfully."""
         client, mock_db, mock_tenant = openclaw_webhook_client
 
-        with patch('app.core.auth.verify_api_key', return_value=True):
+        with patch('app.core.auth.verify_api_key', return_value=True), \
+             patch('app.api.v1.openclaw.verify_webhook_if_configured', new_callable=AsyncMock):
             payload = {
                 "session_id": "sess-123",
                 "instance_id": "inst-456",

@@ -1,7 +1,9 @@
 """Diagnostics endpoints for detector health and readiness."""
 
 from typing import Any, Dict, List
-from fastapi import APIRouter
+from fastapi import APIRouter, Depends
+
+from app.core.auth import get_current_tenant
 
 router = APIRouter(prefix="/diagnostics", tags=["diagnostics"])
 
@@ -18,7 +20,7 @@ def _confidence_tier(confidence_pct: float) -> str:
 
 
 @router.get("/detector-status")
-async def get_detector_status() -> Dict[str, Any]:
+async def get_detector_status(tenant_id: str = Depends(get_current_tenant)) -> Dict[str, Any]:
     """Return detector health and readiness based on latest calibration.
 
     Provides production/beta/experimental/failing status for each detector,

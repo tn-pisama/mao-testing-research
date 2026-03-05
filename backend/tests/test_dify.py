@@ -215,7 +215,8 @@ class TestDifyWebhook:
         """Dify webhook should create a trace successfully."""
         client, mock_db, mock_tenant = dify_webhook_client
 
-        with patch('app.core.auth.verify_api_key', return_value=True):
+        with patch('app.core.auth.verify_api_key', return_value=True), \
+             patch('app.api.v1.dify.verify_webhook_if_configured', new_callable=AsyncMock):
             payload = {
                 "workflow_run_id": "run-123",
                 "app_id": "app-456",

@@ -72,7 +72,13 @@ frontend/playwright/.cache/
 
 # macOS
 .DS_Store
+
+# Secrets and credentials
 *.pem
+*.key
+*.crt
+credentials.json
+*.secret
 
 # Node (frontend)
 node_modules/

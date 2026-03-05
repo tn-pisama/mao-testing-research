@@ -1,16 +1,17 @@
 """Metrics export API endpoints."""
 
-from fastapi import APIRouter, Response
+from fastapi import APIRouter, Depends, Response
 from fastapi.responses import PlainTextResponse
 
 from app.export.prometheus import prometheus_exporter, mao_metrics
 from app.export.datadog import datadog_exporter
+from app.core.auth import get_current_tenant
 
 router = APIRouter(tags=["metrics"])
 
 
 @router.get("/metrics", response_class=PlainTextResponse)
-async def prometheus_metrics():
+async def prometheus_metrics(tenant_id: str = Depends(get_current_tenant)):
     metrics_text = prometheus_exporter.export()
     return Response(
         content=metrics_text,
@@ -19,7 +20,7 @@ async def prometheus_metrics():
 
 
 @router.get("/metrics/json")
-async def metrics_json():
+async def metrics_json(tenant_id: str = Depends(get_current_tenant)):
     return {
         "traces": dict(mao_metrics.traces_total.get_all()),
         "detections": dict(mao_metrics.detections_total.get_all()),
@@ -33,11 +34,11 @@ async def metrics_json():
 
 
 @router.post("/metrics/datadog/flush")
-async def flush_datadog():
+async def flush_datadog(tenant_id: str = Depends(get_current_tenant)):
     success = await datadog_exporter.flush()
     return {"success": success}
 
 
 @router.get("/metrics/datadog/dashboard")
-async def get_datadog_dashboard():
+async def get_datadog_dashboard(tenant_id: str = Depends(get_current_tenant)):
     return datadog_exporter.get_dashboard_json()
