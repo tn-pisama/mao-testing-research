@@ -24,6 +24,8 @@ import {
   Workflow,
   Bot,
   Network,
+  Terminal,
+  MessageSquare,
 } from 'lucide-react'
 import { useUserPreferences } from '@/lib/user-preferences'
 
@@ -57,6 +59,8 @@ const developerObserveItems: NavItem[] = [
 
 const developerImproveItems: NavItem[] = [
   { label: 'Quality', href: '/quality', icon: Star },
+  { label: 'Custom Scorers', href: '/evals/scorers', icon: Sparkles },
+  { label: 'Conversations', href: '/conversation-evaluations', icon: MessageSquare },
   { label: 'Healing', href: '/healing', icon: Sparkles },
   { label: 'Replay', href: '/replay', icon: RotateCcw },
   { label: 'Benchmarks', href: '/benchmarks', icon: BarChart3, advancedOnly: true },
@@ -70,6 +74,7 @@ const developerConfigureItems: NavItem[] = [
   { label: 'OpenClaw', href: '/openclaw', icon: Bot },
   { label: 'LangGraph', href: '/langgraph', icon: Network },
   { label: 'Tools', href: '/tools', icon: Zap },
+  { label: 'Developer API', href: '/tools/developer-api', icon: Terminal },
 ]
 
 const n8nSettingsItems: NavItem[] = [

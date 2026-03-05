@@ -1006,6 +1006,85 @@ export interface ThresholdRecommendation {
   reasoning: string
 }
 
+// ============================================================================
+// Custom Scorers
+// ============================================================================
+
+export interface CustomScorer {
+  id: string
+  name: string
+  description: string
+  prompt_template: string
+  scoring_criteria: any[]
+  scoring_rubric?: string
+  model_key: string
+  is_active: boolean
+  created_at: string
+}
+
+export interface ScorerResult {
+  id: string
+  scorer_id: string
+  trace_id: string
+  score: number
+  confidence: number
+  verdict: string
+  reasoning: string
+  evidence: any[]
+  suggestions: any[]
+  cost_usd: number
+  created_at: string
+}
+
+export interface ScorerRunSummary {
+  scorer_id: string
+  traces_scored: number
+  avg_score: number
+  pass_count: number
+  warn_count: number
+  fail_count: number
+  total_cost_usd: number
+  results: ScorerResult[]
+}
+
+// ============================================================================
+// Conversation Evaluations
+// ============================================================================
+
+export interface ConversationEvaluation {
+  id: string
+  trace_id: string
+  overall_score: number
+  overall_grade: string
+  dimension_scores: any[]
+  summary?: string
+  turn_annotations: any[]
+  scoring_method: string
+  total_turns: number
+  eval_cost_usd: number
+  created_at: string
+}
+
+// ============================================================================
+// Source Fixes
+// ============================================================================
+
+export interface SourceFix {
+  id: string
+  detection_id: string
+  file_path: string
+  language: string
+  original_code: string
+  fixed_code: string
+  unified_diff: string
+  explanation: string
+  root_cause?: string
+  confidence: number
+  breaking_risk: string
+  status: string
+  created_at: string
+}
+
 export function createApiClient(token?: string | null, tenantId?: string | null) {
   const opts = { token, tenantId }
   
@@ -1942,6 +2021,117 @@ export function createApiClient(token?: string | null, tenantId?: string | null)
         calibrated_at: string
         readiness_criteria: Record<string, any>
       }>(`/diagnostics/detector-status`, opts)
+    },
+
+    // ========================================================================
+    // Custom Scorers endpoints
+    // ========================================================================
+
+    async createScorer(description: string, modelKey?: string) {
+      return fetchApi<CustomScorer>(`/tenants/{tenant_id}/scorers`, {
+        ...opts,
+        method: 'POST',
+        body: { description, model_key: modelKey },
+      })
+    },
+
+    async listScorers(activeOnly?: boolean) {
+      const query = new URLSearchParams()
+      if (activeOnly !== undefined) query.set('active_only', String(activeOnly))
+      return fetchApi<CustomScorer[]>(`/tenants/{tenant_id}/scorers?${query}`, opts)
+    },
+
+    async runScorer(scorerId: string, params: { latest_n?: number; framework?: string }) {
+      return fetchApi<ScorerRunSummary>(`/tenants/{tenant_id}/scorers/${scorerId}/run`, {
+        ...opts,
+        method: 'POST',
+        body: params,
+      })
+    },
+
+    async updateScorerPrompt(scorerId: string, promptTemplate: string) {
+      return fetchApi<CustomScorer>(`/tenants/{tenant_id}/scorers/${scorerId}`, {
+        ...opts,
+        method: 'PATCH',
+        body: { prompt_template: promptTemplate },
+      })
+    },
+
+    async deleteScorer(scorerId: string) {
+      return fetchApi<void>(`/tenants/{tenant_id}/scorers/${scorerId}`, {
+        ...opts,
+        method: 'DELETE',
+      })
+    },
+
+    // ========================================================================
+    // Conversation Evaluations endpoints
+    // ========================================================================
+
+    async evaluateConversation(traceId: string, useLlmJudge?: boolean) {
+      return fetchApi<ConversationEvaluation>(
+        `/tenants/{tenant_id}/conversation-evaluations`,
+        {
+          ...opts,
+          method: 'POST',
+          body: { trace_id: traceId, use_llm_judge: useLlmJudge },
+        }
+      )
+    },
+
+    async listConversationEvaluations(params?: { page?: number; per_page?: number; grade?: string }) {
+      const query = new URLSearchParams()
+      if (params?.page) query.set('page', String(params.page))
+      if (params?.per_page) query.set('per_page', String(params.per_page))
+      if (params?.grade) query.set('grade', params.grade)
+      return fetchApi<{ evaluations: ConversationEvaluation[]; total: number }>(
+        `/tenants/{tenant_id}/conversation-evaluations?${query}`,
+        opts
+      )
+    },
+
+    // ========================================================================
+    // Source Fixes endpoints
+    // ========================================================================
+
+    async generateSourceFix(
+      detectionId: string,
+      input: { file_path: string; file_content: string; language: string; framework?: string }
+    ) {
+      return fetchApi<SourceFix>(
+        `/tenants/{tenant_id}/source-fixes`,
+        {
+          ...opts,
+          method: 'POST',
+          body: { detection_id: detectionId, ...input },
+        }
+      )
+    },
+
+    async listSourceFixes(params?: { page?: number; per_page?: number; language?: string }) {
+      const query = new URLSearchParams()
+      if (params?.page) query.set('page', String(params.page))
+      if (params?.per_page) query.set('per_page', String(params.per_page))
+      if (params?.language) query.set('language', params.language)
+      return fetchApi<{ fixes: SourceFix[]; total: number }>(
+        `/tenants/{tenant_id}/source-fixes?${query}`,
+        opts
+      )
+    },
+
+    async applySourceFix(fixId: string) {
+      return fetchApi<{ success: boolean; git_patch: string; instructions: string }>(
+        `/tenants/{tenant_id}/source-fixes/${fixId}/apply`,
+        { ...opts, method: 'POST' }
+      )
+    },
+
+    // ========================================================================
+    // System Summary endpoint
+    // ========================================================================
+
+    async getSystemSummary() {
+      return fetchApi<any>(`/tenants/{tenant_id}/summary`, opts)
     },
   }
 }

@@ -1248,3 +1248,117 @@ class ReplayResult(Base):
         Index("idx_replay_results_bundle", "bundle_id"),
         Index("idx_replay_results_tenant", "tenant_id"),
     )
+
+
+class CustomScorer(Base):
+    __tablename__ = "custom_scorers"
+
+    id = Column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
+    tenant_id = Column(UUID(as_uuid=True), ForeignKey("tenants.id"), nullable=False)
+    name = Column(String(255), nullable=False)
+    description = Column(Text, nullable=False)
+    prompt_template = Column(Text, nullable=False)
+    scoring_criteria = Column(JSONB, default=list)
+    scoring_rubric = Column(Text, nullable=True)
+    model_key = Column(String(64), default="sonnet-4")
+    score_range_min = Column(Integer, default=1)
+    score_range_max = Column(Integer, default=5)
+    is_active = Column(Boolean, default=True)
+    created_at = Column(DateTime(timezone=True), server_default=func.now())
+
+    results = relationship("ScorerResult", back_populates="scorer", cascade="all, delete-orphan")
+
+    __table_args__ = (
+        Index("idx_custom_scorers_tenant", "tenant_id"),
+        Index("idx_custom_scorers_active", "tenant_id", "is_active"),
+    )
+
+
+class ScorerResult(Base):
+    __tablename__ = "scorer_results"
+
+    id = Column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
+    scorer_id = Column(UUID(as_uuid=True), ForeignKey("custom_scorers.id", ondelete="CASCADE"), nullable=False)
+    tenant_id = Column(UUID(as_uuid=True), ForeignKey("tenants.id"), nullable=False)
+    trace_id = Column(UUID(as_uuid=True), ForeignKey("traces.id", ondelete="CASCADE"), nullable=False)
+    score = Column(Integer, nullable=False)  # 1-5
+    confidence = Column(Integer, default=50)  # 0-100
+    verdict = Column(String(16), nullable=False)  # PASS, WARN, FAIL, UNCERTAIN
+    reasoning = Column(Text, nullable=True)
+    evidence = Column(JSONB, default=list)
+    suggestions = Column(JSONB, default=list)
+    model_used = Column(String(128), nullable=True)
+    tokens_used = Column(Integer, default=0)
+    cost_usd = Column(Integer, default=0)  # stored as microdollars (x100000)
+    latency_ms = Column(Integer, default=0)
+    created_at = Column(DateTime(timezone=True), server_default=func.now())
+
+    scorer = relationship("CustomScorer", back_populates="results")
+
+    __table_args__ = (
+        Index("idx_scorer_results_scorer", "scorer_id"),
+        Index("idx_scorer_results_tenant", "tenant_id"),
+        Index("idx_scorer_results_trace", "trace_id"),
+        Index("idx_scorer_results_verdict", "verdict"),
+    )
+
+
+class ConversationEvaluation(Base):
+    __tablename__ = "conversation_evaluations"
+
+    id = Column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
+    tenant_id = Column(UUID(as_uuid=True), ForeignKey("tenants.id"), nullable=False)
+    trace_id = Column(UUID(as_uuid=True), ForeignKey("traces.id", ondelete="CASCADE"), nullable=False)
+    overall_score = Column(Float, nullable=False)  # 0.0 - 1.0
+    overall_grade = Column(String(2), nullable=False)  # A, B, C, D, F
+    dimension_scores = Column(JSONB, nullable=False)
+    scoring_method = Column(String(32), nullable=False)  # heuristic, llm_judge, blended
+    summary = Column(Text, nullable=True)
+    turn_annotations = Column(JSONB, default=list)
+    total_turns = Column(Integer, default=0)
+    total_participants = Column(Integer, default=0)
+    conversation_duration_ms = Column(Integer, nullable=True)
+    eval_cost_usd = Column(Float, default=0.0)
+    eval_tokens_used = Column(Integer, default=0)
+    created_at = Column(DateTime(timezone=True), server_default=func.now())
+
+    __table_args__ = (
+        Index("idx_conv_eval_tenant", "tenant_id"),
+        Index("idx_conv_eval_trace", "trace_id"),
+        Index("idx_conv_eval_grade", "overall_grade"),
+        Index("idx_conv_eval_tenant_created", "tenant_id", "created_at"),
+    )
+
+
+class SourceFix(Base):
+    __tablename__ = "source_fixes"
+
+    id = Column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
+    tenant_id = Column(UUID(as_uuid=True), ForeignKey("tenants.id"), nullable=False)
+    detection_id = Column(UUID(as_uuid=True), ForeignKey("detections.id", ondelete="CASCADE"), nullable=False)
+    file_path = Column(String(512), nullable=False)
+    language = Column(String(32), nullable=False)
+    original_code = Column(Text, nullable=False)
+    fixed_code = Column(Text, nullable=False)
+    unified_diff = Column(Text, nullable=False)
+    explanation = Column(Text, nullable=False)
+    root_cause = Column(Text, nullable=True)
+    confidence = Column(Float, nullable=False)  # 0.0 - 1.0
+    breaking_risk = Column(String(16), default="low")  # low, medium, high
+    requires_testing = Column(Boolean, default=True)
+    framework_specific = Column(Boolean, default=False)
+    model_used = Column(String(128), nullable=True)
+    generation_cost_usd = Column(Float, default=0.0)
+    generation_tokens = Column(Integer, default=0)
+    status = Column(String(32), default="generated")  # generated, applied, rejected
+    applied_at = Column(DateTime(timezone=True), nullable=True)
+    applied_by = Column(String(128), nullable=True)
+    created_at = Column(DateTime(timezone=True), server_default=func.now())
+
+    __table_args__ = (
+        Index("idx_source_fix_tenant", "tenant_id"),
+        Index("idx_source_fix_detection", "detection_id"),
+        Index("idx_source_fix_status", "status"),
+        Index("idx_source_fix_language", "language"),
+        Index("idx_source_fix_created", "created_at"),
+    )
