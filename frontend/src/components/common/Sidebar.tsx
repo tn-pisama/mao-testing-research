@@ -26,6 +26,7 @@ import {
   Network,
   Terminal,
   MessageSquare,
+  Brain,
 } from 'lucide-react'
 import { useUserPreferences } from '@/lib/user-preferences'
 
@@ -61,6 +62,7 @@ const developerImproveItems: NavItem[] = [
   { label: 'Quality', href: '/quality', icon: Star },
   { label: 'Custom Scorers', href: '/evals/scorers', icon: Sparkles },
   { label: 'Conversations', href: '/conversation-evaluations', icon: MessageSquare },
+  { label: 'Memory', href: '/memory', icon: Brain },
   { label: 'Healing', href: '/healing', icon: Sparkles },
   { label: 'Replay', href: '/replay', icon: RotateCcw },
   { label: 'Benchmarks', href: '/benchmarks', icon: BarChart3, advancedOnly: true },

@@ -250,6 +250,10 @@ class FeatureFlags(BaseSettings):
         default=False,
         description="Quality assessment for n8n workflows and agents"
     )
+    cognitive_memory: bool = Field(
+        default=False,
+        description="Cognitive memory for detection intelligence (remember, recall, forget)"
+    )
 
     def is_enabled(self, feature: str) -> bool:
         """Check if a specific feature is enabled.
