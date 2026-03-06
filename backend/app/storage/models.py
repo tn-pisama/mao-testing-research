@@ -184,6 +184,7 @@ class Detection(Base):
     validated = Column(Boolean, default=False)
     validated_by = Column(String(128), nullable=True)
     false_positive = Column(Boolean, nullable=True)
+    recall_context = Column(JSONB, nullable=True)  # {memories_recalled: [...ids], confidence_adjustment: float}
     created_at = Column(DateTime(timezone=True), server_default=func.now())
 
     tenant = relationship("Tenant", back_populates="detections")
@@ -1361,4 +1362,129 @@ class SourceFix(Base):
         Index("idx_source_fix_status", "status"),
         Index("idx_source_fix_language", "language"),
         Index("idx_source_fix_created", "created_at"),
+    )
+
+
+# ---------------------------------------------------------------------------
+# Cognitive Memory
+# ---------------------------------------------------------------------------
+
+class CognitiveMemory(Base):
+    """Atomic memory unit for PISAMA's cognitive memory system.
+
+    Each memory is a single fact/pattern/insight with composite scoring
+    for intelligent recall. Encodes selectively, recalls with confidence,
+    forgets deliberately.
+    """
+    __tablename__ = "cognitive_memories"
+
+    id = Column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
+    tenant_id = Column(UUID(as_uuid=True), ForeignKey("tenants.id"), nullable=False)
+
+    # Classification
+    memory_type = Column(String(32), nullable=False)
+    domain = Column(String(64), nullable=False)
+
+    # Content
+    content = Column(Text, nullable=False)
+    content_hash = Column(String(64), nullable=False)
+    structured_data = Column(JSONB, default=dict)
+
+    # Source provenance
+    source_type = Column(String(32), nullable=False)
+    source_id = Column(UUID(as_uuid=True), nullable=True)
+    source_trace_id = Column(UUID(as_uuid=True), nullable=True)
+
+    # Composite scoring
+    importance = Column(Float, nullable=False, default=0.5)
+    confidence = Column(Float, nullable=False, default=0.5)
+    access_count = Column(Integer, default=0)
+    last_accessed_at = Column(DateTime(timezone=True), nullable=True)
+
+    # Contradiction chain
+    supersedes_id = Column(UUID(as_uuid=True), ForeignKey("cognitive_memories.id"), nullable=True)
+    superseded_by_id = Column(UUID(as_uuid=True), ForeignKey("cognitive_memories.id"), nullable=True)
+    is_active = Column(Boolean, default=True)
+
+    # Vector embedding (1024-dim e5-large-v2)
+    embedding = Column(Vector(1024), nullable=True)
+
+    # Filtering
+    tags = Column(JSONB, server_default="[]")
+    framework = Column(String(32), nullable=True)
+
+    # Timestamps
+    created_at = Column(DateTime(timezone=True), server_default=func.now())
+    updated_at = Column(DateTime(timezone=True), server_default=func.now(), onupdate=func.now())
+    expires_at = Column(DateTime(timezone=True), nullable=True)
+
+    __table_args__ = (
+        Index("idx_cm_tenant", "tenant_id"),
+        Index("idx_cm_type", "memory_type"),
+        Index("idx_cm_domain", "domain"),
+        Index("idx_cm_active", "is_active"),
+        Index("idx_cm_tenant_domain", "tenant_id", "domain"),
+        Index("idx_cm_tenant_type", "tenant_id", "memory_type"),
+        Index("idx_cm_importance", "importance"),
+        Index("idx_cm_created", "created_at"),
+        Index("idx_cm_tags", "tags", postgresql_using="gin"),
+        Index("idx_cm_framework", "framework"),
+        Index("idx_cm_content_hash", "tenant_id", "content_hash"),
+    )
+
+
+class MemoryRecallLog(Base):
+    """Audit log of memory recall operations."""
+    __tablename__ = "memory_recall_logs"
+
+    id = Column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
+    tenant_id = Column(UUID(as_uuid=True), ForeignKey("tenants.id"), nullable=False)
+
+    recall_context = Column(String(64), nullable=False)
+    recall_query = Column(Text, nullable=False)
+    domain_filter = Column(String(64), nullable=True)
+
+    memories_returned = Column(Integer, nullable=False, default=0)
+    top_memory_id = Column(UUID(as_uuid=True), ForeignKey("cognitive_memories.id"), nullable=True)
+    composite_scores = Column(JSONB, default=list)
+
+    was_useful = Column(Boolean, nullable=True)
+    latency_ms = Column(Integer, nullable=True)
+
+    created_at = Column(DateTime(timezone=True), server_default=func.now())
+
+    __table_args__ = (
+        Index("idx_mrl_tenant", "tenant_id"),
+        Index("idx_mrl_context", "recall_context"),
+        Index("idx_mrl_created", "created_at"),
+    )
+
+
+class MemoryExtractionJob(Base):
+    """Tracks atomic memory extraction from large analyses."""
+    __tablename__ = "memory_extraction_jobs"
+
+    id = Column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
+    tenant_id = Column(UUID(as_uuid=True), ForeignKey("tenants.id"), nullable=False)
+
+    source_type = Column(String(32), nullable=False)
+    source_id = Column(String(255), nullable=False)
+    source_text_length = Column(Integer, nullable=False)
+
+    status = Column(String(20), nullable=False, default="pending")
+    memories_extracted = Column(Integer, default=0)
+    memories_deduplicated = Column(Integer, default=0)
+    contradictions_found = Column(Integer, default=0)
+
+    llm_cost_usd = Column(Float, default=0.0)
+    llm_tokens_used = Column(Integer, default=0)
+
+    started_at = Column(DateTime(timezone=True), nullable=True)
+    completed_at = Column(DateTime(timezone=True), nullable=True)
+    created_at = Column(DateTime(timezone=True), server_default=func.now())
+    error_message = Column(Text, nullable=True)
+
+    __table_args__ = (
+        Index("idx_mej_tenant", "tenant_id"),
+        Index("idx_mej_status", "status"),
     )

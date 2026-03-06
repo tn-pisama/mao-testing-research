@@ -109,3 +109,4 @@ class Features:
     REGRESSION_TESTING = "regression_testing"
     ADVANCED_EVALS = "advanced_evals"
     AUDIT_LOGGING = "audit_logging"
+    COGNITIVE_MEMORY = "cognitive_memory"
