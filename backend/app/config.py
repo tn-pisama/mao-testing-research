@@ -303,6 +303,7 @@ class Settings(BaseSettings):
     rate_limit_window_seconds: int = 60
     auth_rate_limit_requests: int = 10
     auth_rate_limit_window_seconds: int = 60
+    tenant_tier_cache_ttl_seconds: int = 300  # Cache tenant plan tier for 5 minutes
     
     # BGE-M3: +2.5% MTEB over e5-large-v2, same 1024d, no prefix required
     embedding_model: str = "BAAI/bge-m3"
@@ -314,6 +315,11 @@ class Settings(BaseSettings):
     
     otel_service_name: str = "mao-platform"
     cors_origins: str = "http://localhost:3000,https://dashboard.mao-testing.com"
+
+    # AWS Marketplace
+    aws_marketplace_enabled: bool = Field(default=False, description="Enable AWS Marketplace SaaS integration")
+    aws_marketplace_product_code: str = Field(default="", description="AWS Marketplace product code")
+    aws_marketplace_region: str = Field(default="us-east-1", description="AWS region for Marketplace API calls")
     
     @field_validator('jwt_secret')
     @classmethod

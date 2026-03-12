@@ -1,0 +1,121 @@
+site_name: PISAMA Documentation
+site_description: Multi-agent failure detection & self-healing platform
+site_url: https://docs.pisama.com
+
+theme:
+  name: material
+  palette:
+    - scheme: default
+      primary: blue
+      accent: violet
+      toggle:
+        icon: material/brightness-7
+        name: Switch to dark mode
+    - scheme: slate
+      primary: blue
+      accent: violet
+      toggle:
+        icon: material/brightness-4
+        name: Switch to light mode
+  features:
+    - navigation.tabs
+    - navigation.tabs.sticky
+    - navigation.sections
+    - navigation.expand
+    - navigation.path
+    - navigation.top
+    - navigation.indexes
+    - navigation.footer
+    - search.suggest
+    - search.highlight
+    - search.share
+    - content.code.copy
+    - content.code.annotate
+    - content.tabs.link
+    - toc.follow
+  icon:
+    repo: fontawesome/brands/github
+  font:
+    text: Inter
+    code: JetBrains Mono
+
+repo_url: https://github.com/tn-pisama/mao-testing-research
+repo_name: tn-pisama/mao-testing-research
+
+plugins:
+  - search
+  - minify:
+      minify_html: true
+
+markdown_extensions:
+  - admonition
+  - pymdownx.details
+  - pymdownx.superfences:
+      custom_fences:
+        - name: mermaid
+          class: mermaid
+          format: !!python/name:pymdownx.superfences.fence_code_format
+  - pymdownx.highlight:
+      anchor_linenums: true
+      line_spans: __span
+      pygments_lang_class: true
+  - pymdownx.inlinehilite
+  - pymdownx.snippets
+  - pymdownx.tabbed:
+      alternate_style: true
+  - pymdownx.tasklist:
+      custom_checkbox: true
+  - pymdownx.emoji:
+      emoji_index: !!python/name:material.extensions.emoji.twemoji
+      emoji_generator: !!python/name:material.extensions.emoji.to_svg
+  - attr_list
+  - md_in_html
+  - tables
+  - toc:
+      permalink: true
+
+extra:
+  social:
+    - icon: fontawesome/brands/github
+      link: https://github.com/tn-pisama/mao-testing-research
+  generator: false
+
+copyright: Copyright &copy; 2026 PISAMA
+
+nav:
+  - Home: index.md
+  - Quickstart: quickstart.md
+  - Getting Started:
+    - Installation: getting-started/installation.md
+    - Configuration: getting-started/configuration.md
+    - Your First Trace: getting-started/first-trace.md
+  - Concepts:
+    - Architecture: concepts/architecture.md
+    - Failure Modes: concepts/failure-modes.md
+    - Detection Tiers: concepts/detection-tiers.md
+    - Self-Healing: concepts/self-healing.md
+  - Guides:
+    - Integrations:
+      - n8n: guides/integrations/n8n.md
+      - LangGraph: guides/integrations/langgraph.md
+      - Dify: guides/integrations/dify.md
+      - OpenClaw: guides/integrations/openclaw.md
+      - Claude Code: guides/integrations/claude-code.md
+    - Deployment:
+      - Docker Compose: guides/deployment/docker-compose.md
+      - Render: guides/deployment/render.md
+      - Fly.io: guides/deployment/fly-io.md
+  - API:
+    - Reference: api/reference.md
+    - Authentication: api/authentication.md
+  - Detection:
+    - Overview: detection/overview.md
+    - Failure Modes:
+      - Planning Failures: detection/failure-modes/planning.md
+      - Execution Failures: detection/failure-modes/execution.md
+      - Verification Failures: detection/failure-modes/verification.md
+      - Extended Detectors: detection/failure-modes/extended.md
+  - Pricing: pricing/index.md
+  - Contributing:
+    - Development Setup: contributing/development.md
+    - Adding Detectors: contributing/adding-detectors.md

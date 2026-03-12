@@ -13,6 +13,7 @@ from sqlalchemy import select, update, func
 
 from app.storage.models import Tenant, User, State
 from app.config import get_settings
+from app.core.rate_limit import rate_limiter
 from .constants import PlanTier, get_span_limit, get_stripe_price_id, PLANS
 from .schemas import CheckoutResponse, PortalResponse, BillingStatus, UsageInfo
 
@@ -253,6 +254,9 @@ class StripeService:
         )
         await db.commit()
 
+        # Invalidate rate limit tier cache so new limits apply immediately
+        await rate_limiter.invalidate_tenant_tier(tenant_id)
+
         logger.info(f"Updated tenant {tenant_id} subscription: plan={plan}, status={status}")
 
     async def cancel_subscription(
@@ -279,6 +283,8 @@ class StripeService:
             )
         )
         await db.commit()
+
+        await rate_limiter.invalidate_tenant_tier(tenant_id)
 
         logger.info(f"Reverted tenant {tenant_id} to free plan")
 

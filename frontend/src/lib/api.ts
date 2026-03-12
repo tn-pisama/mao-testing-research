@@ -2264,6 +2264,37 @@ export function createApiClient(token?: string | null, tenantId?: string | null)
         }
       )
     },
+
+    // --- Onboarding ---
+
+    async getOnboardingStatus() {
+      return fetchApi<{
+        has_traces: boolean
+        trace_count: number
+        first_trace_id: string | null
+        first_trace_at: string | null
+        has_detections: boolean
+        detection_count: number
+      }>(`/tenants/{tenant_id}/onboarding/status`, opts)
+    },
+
+    async runOnboardingDetection(traceId: string) {
+      return fetchApi<{
+        detections: Array<{
+          id: string
+          detection_type: string
+          confidence: number
+          description: string | null
+        }>
+        total: number
+        types: string[]
+        highest_confidence: number
+      }>(`/tenants/{tenant_id}/onboarding/run-detection`, {
+        ...opts,
+        method: 'POST',
+        body: { trace_id: traceId },
+      })
+    },
   }
 }
 

@@ -1,0 +1,138 @@
+# AWS Marketplace Listing Metadata
+# Used for preparing the AWS Marketplace listing submission.
+
+product:
+  name: "PISAMA - AI Agent Testing & Monitoring"
+  short_description: >
+    Detect and fix failures in LLM-powered agent systems. 21 failure mode detectors,
+    tiered detection (hash → embeddings → LLM), and AI-powered self-healing.
+  long_description: >
+    PISAMA is a testing and monitoring platform purpose-built for multi-agent AI systems.
+    It detects 21 categories of failure modes including infinite loops, state corruption,
+    hallucinations, prompt injection, persona drift, and coordination failures.
+
+    The tiered detection architecture starts with fast, cheap checks (hash comparison)
+    and only escalates to expensive methods (embeddings, LLM judge) when needed,
+    keeping the average cost under $0.05 per trace analyzed.
+
+    Key features:
+    - 21 failure mode detectors across planning, execution, and verification phases
+    - 5-tier detection: hash → state delta → embeddings → LLM → human review
+    - AI-powered self-healing with safe rollback and approval policies
+    - OpenTelemetry-native ingestion (OTLP/HTTP and OTLP/gRPC)
+    - Framework adapters for LangGraph, CrewAI, AutoGen, n8n, Dify
+    - Real-time dashboard with trace timeline and detection detail views
+    - CLI and Python SDK for CI/CD integration
+
+  category: "Developer Tools"
+  subcategory: "Machine Learning"
+  keywords:
+    - AI agent testing
+    - LLM monitoring
+    - multi-agent orchestration
+    - failure detection
+    - AI observability
+    - prompt injection detection
+    - agent self-healing
+    - OpenTelemetry
+
+  highlights:
+    - "21 failure mode detectors with 5-tier escalation architecture"
+    - "AI-powered self-healing with safe rollback capabilities"
+    - "Framework-agnostic: LangGraph, CrewAI, AutoGen, n8n, Dify support"
+
+  support:
+    url: "https://docs.pisama.ai"
+    email: "support@pisama.ai"
+
+pricing:
+  model: "SaaS Contract with Usage"
+  free_trial_days: 14
+
+  contract_dimensions:
+    - name: "startup_plan"
+      description: "Startup plan - up to 50,000 traces/month"
+      unit: "Units"
+      rate: 49.00
+      currency: "USD"
+      billing_period: "Monthly"
+
+    - name: "growth_plan"
+      description: "Growth plan - up to 500,000 traces/month, tiered detection"
+      unit: "Units"
+      rate: 199.00
+      currency: "USD"
+      billing_period: "Monthly"
+
+  usage_dimensions:
+    - name: "spans_ingested"
+      description: "Spans ingested (per 1,000)"
+      unit: "Spans/1000"
+      rate: 0.10
+      currency: "USD"
+
+    - name: "detections_generated"
+      description: "Detections generated (per 100)"
+      unit: "Detections/100"
+      rate: 0.50
+      currency: "USD"
+
+    - name: "fixes_applied"
+      description: "AI-powered fixes applied"
+      unit: "Fixes"
+      rate: 0.25
+      currency: "USD"
+
+fulfillment:
+  type: "SaaS"
+  redirect_url: "https://app.pisama.ai/marketplace/subscribe"
+  login_url: "https://app.pisama.ai/login"
+
+deployment:
+  cloudformation_template: "cloudformation.yaml"
+  regions:
+    - us-east-1
+    - us-west-2
+    - eu-west-1
+    - ap-southeast-1
+
+  architecture:
+    compute: "ECS Fargate (auto-scaling 2-10 tasks)"
+    database: "RDS PostgreSQL 16 with pgvector (Multi-AZ, encrypted)"
+    cache: "ElastiCache Redis 7 (encrypted, auto-failover)"
+    load_balancer: "Application Load Balancer with HTTPS"
+    monitoring: "CloudWatch Container Insights"
+
+required_assets:
+  # These must be created manually and uploaded to the listing
+  - type: "logo_small"
+    spec: "120x120 PNG, transparent background"
+    path: "assets/logo-120x120.png"
+
+  - type: "logo_large"
+    spec: "220x220 PNG, transparent background"
+    path: "assets/logo-220x220.png"
+
+  - type: "screenshot_dashboard"
+    spec: "1600x1200 PNG - Main dashboard with detection overview"
+    path: "assets/screenshot-dashboard.png"
+
+  - type: "screenshot_detection"
+    spec: "1600x1200 PNG - Detection detail view with confidence scores"
+    path: "assets/screenshot-detection.png"
+
+  - type: "screenshot_timeline"
+    spec: "1600x1200 PNG - Trace timeline with agent state visualization"
+    path: "assets/screenshot-timeline.png"
+
+  - type: "screenshot_healing"
+    spec: "1600x1200 PNG - Self-healing workflow with approval flow"
+    path: "assets/screenshot-healing.png"
+
+  - type: "architecture_diagram"
+    spec: "1600x1200 PNG - System architecture overview"
+    path: "assets/architecture-diagram.png"
+
+  - type: "eula"
+    spec: "PDF or text - End User License Agreement"
+    path: "assets/eula.pdf"

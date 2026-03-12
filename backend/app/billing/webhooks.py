@@ -13,6 +13,7 @@ from sqlalchemy import select
 from app.storage.models import Tenant, User
 from app.notifications.email import EmailNotifier
 from app.config import get_settings
+from app.core.rate_limit import rate_limiter
 from .service import stripe_service
 from .constants import SubscriptionStatus
 
@@ -60,6 +61,9 @@ async def handle_checkout_completed(
         current_period_end=current_period_end,
     )
 
+    # Invalidate rate limit tier cache so new limits take effect immediately
+    await rate_limiter.invalidate_tenant_tier(tenant_id)
+
     logger.info(f"Checkout completed for tenant {tenant_id}, plan {plan}")
 
 
@@ -104,6 +108,8 @@ async def handle_subscription_updated(
         current_period_end=current_period_end,
     )
 
+    await rate_limiter.invalidate_tenant_tier(str(tenant.id))
+
     logger.info(f"Subscription updated for tenant {tenant.id}: status={status}")
 
 
@@ -138,6 +144,8 @@ async def handle_subscription_deleted(
         db=db,
         tenant_id=str(tenant.id),
     )
+
+    await rate_limiter.invalidate_tenant_tier(str(tenant.id))
 
     logger.info(f"Subscription deleted for tenant {tenant.id}, reverted to free plan")
 

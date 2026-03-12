@@ -4,51 +4,29 @@ export const dynamic = 'force-dynamic'
 
 import { useState, useEffect } from 'react'
 import { Layout } from '@/components/common/Layout'
-import { AgentCard, AgentOrchestrationView, AgentActivityFeed, AgentMetricsPanel } from '@/components/agents'
+import { AgentMetricsPanel } from '@/components/agents'
 import { DemoControlsPanel } from '@/components/demo/DemoControlsPanel'
 import { DemoScenarioSelector } from '@/components/demo/DemoScenarioSelector'
 import { LiveDetectionFeed } from '@/components/demo/LiveDetectionFeed'
 import { LoopVisualization } from '@/components/demo/LoopVisualization'
 import { GuidedWalkthrough, WalkthroughTrigger } from '@/components/demo/GuidedWalkthrough'
 import { TraceUpload } from '@/components/demo/TraceUpload'
+import { allDemoScenarios, getDemoScenario } from '@/lib/demo-fixtures'
+import type { DemoScenario } from '@/lib/demo-fixtures'
 import { useDemoMode } from '@/hooks/useDemoMode'
 import { Button } from '@/components/ui/Button'
-import { Play, RotateCcw, Sparkles, AlertTriangle, TrendingUp, Upload } from 'lucide-react'
-
-type DemoScenario = 'healthy' | 'loop' | 'corruption' | 'deadlock'
-
-const scenarios: Record<DemoScenario, { title: string; description: string; icon: typeof Play }> = {
-  healthy: {
-    title: 'Healthy Workflow',
-    description: 'Normal multi-agent execution with no issues',
-    icon: TrendingUp,
-  },
-  loop: {
-    title: 'Infinite Loop',
-    description: 'Agents stuck in repetitive behavior pattern',
-    icon: RotateCcw,
-  },
-  corruption: {
-    title: 'State Corruption',
-    description: 'Semantic drift detected in agent state',
-    icon: AlertTriangle,
-  },
-  deadlock: {
-    title: 'Coordination Deadlock',
-    description: 'Agents waiting on each other indefinitely',
-    icon: AlertTriangle,
-  },
-}
+import { Play, RotateCcw, Sparkles, AlertTriangle, Link } from 'lucide-react'
 
 export default function DemoPage() {
-  const [activeScenario, setActiveScenario] = useState<DemoScenario>('healthy')
+  const [activeScenarioId, setActiveScenarioId] = useState<string>(allDemoScenarios[0]?.id || '')
   const [demoStep, setDemoStep] = useState(0)
-  const [showDetection, setShowDetection] = useState(false)
   const [showWalkthrough, setShowWalkthrough] = useState(false)
   const [hasSeenTour, setHasSeenTour] = useState(false)
   const demo = useDemoMode({ autoSimulate: false })
 
-  // Check if user has seen tour before
+  const activeScenario: DemoScenario | undefined = getDemoScenario(activeScenarioId)
+  const hasDetections = (activeScenario?.detections.length ?? 0) > 0
+
   useEffect(() => {
     const seen = localStorage.getItem('pisama_demo_tour_seen')
     if (!seen) {
@@ -58,22 +36,10 @@ export default function DemoPage() {
     }
   }, [])
 
-  useEffect(() => {
-    if (demo.isSimulating && activeScenario !== 'healthy') {
-      const timer = setTimeout(() => {
-        setShowDetection(true)
-      }, 5000)
-      return () => clearTimeout(timer)
-    } else {
-      setShowDetection(false)
-    }
-  }, [demo.isSimulating, activeScenario])
-
-  const handleScenarioChange = (scenario: DemoScenario) => {
-    setActiveScenario(scenario)
-    setShowDetection(false)
+  const handleScenarioChange = (id: string) => {
+    setActiveScenarioId(id)
     setDemoStep(0)
-    demo.refreshData()
+    demo.stopSimulation()
   }
 
   const handleStartDemo = () => {
@@ -83,7 +49,6 @@ export default function DemoPage() {
 
   const handleResetDemo = () => {
     setDemoStep(0)
-    setShowDetection(false)
     demo.stopSimulation()
     demo.refreshData()
   }
@@ -100,18 +65,16 @@ export default function DemoPage() {
     setHasSeenTour(true)
   }
 
-  const handleStartTour = () => {
-    setShowWalkthrough(true)
-  }
-
   if (!demo.isLoaded) {
     return (
       <Layout>
         <div className="p-6">
           <div className="animate-pulse space-y-6">
             <div className="h-10 w-64 bg-zinc-700 rounded" />
-            <div className="grid grid-cols-4 gap-4">
-              {[1,2,3,4].map(i => <div key={i} className="h-32 bg-zinc-700 rounded-xl" />)}
+            <div className="grid grid-cols-5 gap-3">
+              {[1, 2, 3, 4, 5].map((i) => (
+                <div key={i} className="h-28 bg-zinc-700 rounded-xl" />
+              ))}
             </div>
           </div>
         </div>
@@ -121,7 +84,6 @@ export default function DemoPage() {
 
   return (
     <Layout>
-      {/* Guided Walkthrough */}
       {showWalkthrough && (
         <GuidedWalkthrough
           onComplete={handleWalkthroughComplete}
@@ -130,6 +92,7 @@ export default function DemoPage() {
       )}
 
       <div className="p-6">
+        {/* Header */}
         <div className="mb-8">
           <div className="flex items-center justify-between">
             <div className="flex items-center gap-3 mb-2">
@@ -143,20 +106,40 @@ export default function DemoPage() {
                 </p>
               </div>
             </div>
-            {hasSeenTour && (
-              <WalkthroughTrigger onClick={handleStartTour} />
-            )}
+            <div className="flex items-center gap-2">
+              {hasSeenTour && <WalkthroughTrigger onClick={() => setShowWalkthrough(true)} />}
+              <Button
+                variant="secondary"
+                size="sm"
+                onClick={() => (window.location.href = '/onboarding')}
+              >
+                <Link size={14} className="mr-1" />
+                Connect Your Agent
+              </Button>
+            </div>
           </div>
         </div>
 
-        <div className="grid lg:grid-cols-4 gap-6 mb-6 scenario-selector">
+        {/* Demo mode banner */}
+        <div className="mb-6 px-4 py-3 rounded-lg bg-blue-500/5 border border-blue-500/20 flex items-center justify-between">
+          <div className="flex items-center gap-2">
+            <Sparkles size={14} className="text-blue-400" />
+            <span className="text-sm text-blue-300">
+              Demo Mode — Using curated scenarios. No backend connection required.
+            </span>
+          </div>
+        </div>
+
+        {/* Scenario selector */}
+        <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-5 gap-3 mb-6 scenario-selector">
           <DemoScenarioSelector
-            scenarios={scenarios}
-            activeScenario={activeScenario}
-            onSelectScenario={handleScenarioChange}
+            scenarios={allDemoScenarios}
+            activeScenarioId={activeScenarioId}
+            onSelect={handleScenarioChange}
           />
         </div>
 
+        {/* Controls */}
         <div className="flex items-center gap-4 mb-6">
           {demoStep === 0 ? (
             <Button onClick={handleStartDemo} leftIcon={<Play size={16} />} size="lg" className="demo-start-button">
@@ -175,81 +158,75 @@ export default function DemoPage() {
             </>
           )}
 
-          {demoStep > 0 && (
+          {demoStep > 0 && activeScenario && (
             <div className="flex items-center gap-2 px-4 py-2 rounded-lg bg-zinc-800/50 border border-zinc-700">
               <span className="text-sm text-zinc-400">Scenario:</span>
-              <span className="text-sm font-medium text-white">{scenarios[activeScenario].title}</span>
+              <span className="text-sm font-medium text-white">{activeScenario.title}</span>
+              {hasDetections && (
+                <span className="flex items-center gap-1 text-xs text-red-400">
+                  <AlertTriangle size={12} />
+                  {activeScenario.detections.length} issues
+                </span>
+              )}
             </div>
           )}
         </div>
 
-        {demoStep > 0 && (
+        {/* Running demo view */}
+        {demoStep > 0 && activeScenario && (
           <>
             <div className="metrics-panel">
               <AgentMetricsPanel metrics={demo.agentMetrics} />
             </div>
 
             <div className="mt-6 grid lg:grid-cols-3 gap-6">
+              {/* Main content: loop visualization or trace info */}
               <div className="lg:col-span-2">
                 <div className="mb-4 flex items-center justify-between">
-                  <h2 className="text-lg font-semibold text-white">Agent Orchestration</h2>
-                  {showDetection && (
-                    <div className="flex items-center gap-2 px-3 py-1.5 rounded-full bg-red-500/20 border border-red-500/30 animate-pulse">
-                      <AlertTriangle size={14} className="text-red-400" />
-                      <span className="text-xs font-medium text-red-400">Issue Detected</span>
-                    </div>
+                  <h2 className="text-lg font-semibold text-white">Agent State Timeline</h2>
+                  {activeScenario.highlights?.explanation && (
+                    <p className="text-xs text-zinc-500 max-w-sm text-right">
+                      {activeScenario.highlights.explanation}
+                    </p>
                   )}
                 </div>
-                
-                {activeScenario === 'loop' && showDetection ? (
-                  <LoopVisualization agents={demo.agents} />
-                ) : (
-                  <AgentOrchestrationView
-                    agents={demo.agents}
-                    messages={demo.messages}
-                  />
-                )}
+
+                <LoopVisualization
+                  states={activeScenario.traces[0]?.states || []}
+                />
               </div>
 
+              {/* Sidebar: detection feed */}
               <div className="space-y-6">
-                {showDetection && (
-                  <div className="detection-feed">
-                    <LiveDetectionFeed
-                      scenario={activeScenario}
-                      isActive={demo.isSimulating}
-                    />
-                  </div>
-                )}
-                <AgentActivityFeed
-                  events={demo.activityEvents}
-                  isLive={demo.isSimulating}
-                  maxHeight={showDetection ? '300px' : '560px'}
-                />
+                <div className="detection-feed">
+                  <LiveDetectionFeed
+                    detections={activeScenario.detections}
+                    isActive={demo.isSimulating}
+                  />
+                </div>
               </div>
             </div>
           </>
         )}
 
-        {demoStep === 0 && (
+        {/* Pre-start view */}
+        {demoStep === 0 && activeScenario && (
           <div className="mt-8 grid lg:grid-cols-3 gap-6">
-            {/* Main CTA */}
             <div className="lg:col-span-2 p-8 rounded-2xl border border-zinc-700 bg-gradient-to-br from-zinc-800/50 to-zinc-900/50 text-center">
               <div className="max-w-md mx-auto">
                 <div className="p-4 rounded-full bg-zinc-800 border border-zinc-700 w-16 h-16 mx-auto mb-4 flex items-center justify-center">
                   <Play size={24} className="text-blue-400" />
                 </div>
-                <h3 className="text-xl font-semibold text-white mb-2">Ready to Demo</h3>
-                <p className="text-zinc-400 mb-6">
-                  Select a scenario above and click Start Demo to see PISAMA in action.
-                  Watch as agents execute, metrics update in real-time, and failures are detected.
-                </p>
+                <h3 className="text-xl font-semibold text-white mb-2">
+                  {activeScenario.title}
+                </h3>
+                <p className="text-zinc-400 mb-6">{activeScenario.description}</p>
                 <Button onClick={handleStartDemo} size="lg" leftIcon={<Play size={16} />}>
                   Start Demo
                 </Button>
               </div>
             </div>
 
-            {/* Trace Upload */}
             <div className="trace-upload">
               <TraceUpload />
             </div>

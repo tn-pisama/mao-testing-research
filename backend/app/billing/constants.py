@@ -109,6 +109,20 @@ def get_span_limit(plan: str) -> int:
     return config.get("span_limit", 10_000)
 
 
+# Per-tier rate limits (requests per window)
+RATE_LIMITS: Dict[str, Dict[str, int]] = {
+    PlanTier.FREE: {"requests_per_minute": 100, "window_seconds": 60},
+    PlanTier.STARTUP: {"requests_per_minute": 500, "window_seconds": 60},
+    PlanTier.GROWTH: {"requests_per_minute": 2000, "window_seconds": 60},
+    PlanTier.ENTERPRISE: {"requests_per_minute": 10000, "window_seconds": 60},
+}
+
+
+def get_rate_limit(plan: str) -> Dict[str, int]:
+    """Get rate limit config for a plan tier. Defaults to FREE tier."""
+    return RATE_LIMITS.get(plan, RATE_LIMITS[PlanTier.FREE])
+
+
 def get_stripe_price_id(plan: str, env_vars: Dict[str, str]) -> str:
     """Get Stripe Price ID for a plan from environment variables."""
     if plan == PlanTier.STARTUP:

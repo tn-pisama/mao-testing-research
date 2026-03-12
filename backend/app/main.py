@@ -1,6 +1,6 @@
 from contextlib import asynccontextmanager
 import logging
-from fastapi import FastAPI, Request
+from fastapi import Depends, FastAPI, Request
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import JSONResponse
 try:
@@ -10,7 +10,9 @@ except ImportError:
     _OTEL_AVAILABLE = False
 
 from app.config import get_settings
-from app.core.rate_limit import rate_limiter
+from app.core.rate_limit import rate_limiter, check_tenant_rate_limit, RateLimitResult
+from app.core.dependencies import AuthContext, get_current_user_or_tenant
+from app.storage.database import get_db
 
 # ICP (Startup) routers - always loaded
 from app.api.v1 import (
@@ -37,6 +39,8 @@ from app.api.v1 import (
     billing,
     workflow_groups,
     diagnostics,
+    marketplace,
+    onboarding,
 )
 
 settings = get_settings()
@@ -62,14 +66,56 @@ def validate_cors_origins(origins: list[str], allow_credentials: bool) -> list[s
 
 @asynccontextmanager
 async def lifespan(app: FastAPI):
+    import asyncio as _asyncio
+
     # Start background scheduler for n8n sync
     from app.workers.scheduler import start_scheduler, stop_scheduler
     await start_scheduler()
 
+    # AWS Marketplace: RegisterUsage on startup + periodic metering
+    _metering_task = None
+    if settings.aws_marketplace_enabled:
+        try:
+            from app.billing.marketplace import get_marketplace_service
+            _mp_service = get_marketplace_service()
+
+            # RegisterUsage — required on each container start for SaaS contracts
+            try:
+                await _mp_service.register_usage()
+                _logger.info("AWS Marketplace RegisterUsage succeeded")
+            except Exception as e:
+                _logger.warning("AWS Marketplace RegisterUsage failed (non-fatal): %s", e)
+
+            # Periodic usage reporting
+            async def _metering_loop():
+                interval = _mp_service.config.metering_interval_minutes * 60
+                while True:
+                    await _asyncio.sleep(interval)
+                    try:
+                        stats = await _mp_service.report_usage()
+                        _logger.info("Marketplace metering report: %s", stats)
+                    except Exception as e:
+                        _logger.error("Marketplace metering report failed: %s", e)
+
+            _metering_task = _asyncio.create_task(_metering_loop())
+            _logger.info("AWS Marketplace metering scheduler started (every %d min)",
+                         _mp_service.config.metering_interval_minutes)
+        except Exception as e:
+            _logger.warning("Failed to initialize Marketplace metering: %s", e)
+
     # Embedding model is lazy-loaded on first use to speed up startup
+    from app.api.v1.health import mark_startup_complete
+    mark_startup_complete()
+
     yield
 
     # Cleanup
+    if _metering_task and not _metering_task.done():
+        _metering_task.cancel()
+        try:
+            await _metering_task
+        except _asyncio.CancelledError:
+            pass
     await stop_scheduler()
     await rate_limiter.close()
 
@@ -99,7 +145,7 @@ app.add_middleware(
 async def rate_limit_middleware(request: Request, call_next):
     if request.method == "OPTIONS":
         return await call_next(request)
-    if request.url.path in ["/health", "/api/v1/health", "/"]:
+    if request.url.path in ["/health", "/api/v1/health", "/api/v1/health/live", "/api/v1/health/ready", "/api/v1/health/startup", "/"]:
         return await call_next(request)
     
     client_ip = request.client.host if request.client else "unknown"
@@ -133,21 +179,52 @@ async def add_security_headers(request: Request, call_next):
     return response
 
 
+@app.middleware("http")
+async def add_rate_limit_headers(request: Request, call_next):
+    """Add X-RateLimit-* headers to responses for tenant-scoped requests."""
+    response = await call_next(request)
+    if hasattr(request.state, "rate_limit_result"):
+        rl: RateLimitResult = request.state.rate_limit_result
+        response.headers["X-RateLimit-Limit"] = str(rl.limit)
+        response.headers["X-RateLimit-Remaining"] = str(rl.remaining)
+        response.headers["X-RateLimit-Reset"] = str(rl.reset_at)
+    return response
+
+
+async def tenant_rate_limit_dependency(
+    request: Request,
+    auth: AuthContext = Depends(get_current_user_or_tenant),
+    db=Depends(get_db),
+) -> RateLimitResult:
+    """FastAPI dependency: enforce per-tenant rate limits based on subscription tier."""
+    result = await check_tenant_rate_limit(auth.tenant_id, db)
+    request.state.rate_limit_result = result
+    return result
+
+
 _logger = logging.getLogger(__name__)
 
 
 @app.exception_handler(Exception)
 async def global_exception_handler(request: Request, exc: Exception):
     _logger.error("Unhandled exception on %s %s: %s", request.method, request.url.path, exc, exc_info=True)
-    return JSONResponse(status_code=500, content={"detail": "Internal server error"})
+    origin = request.headers.get("origin", "")
+    headers = {}
+    if origin in cors_origins:
+        headers["Access-Control-Allow-Origin"] = origin
+        headers["Access-Control-Allow-Credentials"] = "true"
+    return JSONResponse(status_code=500, content={"detail": "Internal server error"}, headers=headers)
 
+
+# Per-tenant rate limit dependency for tenant-scoped routers
+_tenant_rate_deps = [Depends(tenant_rate_limit_dependency)]
 
 # ICP (Startup) routers - always included
 app.include_router(auth.router, prefix="/api/v1")
-app.include_router(traces.router, prefix="/api/v1/tenants/{tenant_id}")
-app.include_router(agents.router, prefix="/api/v1/tenants/{tenant_id}")
-app.include_router(detections.router, prefix="/api/v1/tenants/{tenant_id}")
-app.include_router(analytics.router, prefix="/api/v1/tenants/{tenant_id}")
+app.include_router(traces.router, prefix="/api/v1/tenants/{tenant_id}", dependencies=_tenant_rate_deps)
+app.include_router(agents.router, prefix="/api/v1/tenants/{tenant_id}", dependencies=_tenant_rate_deps)
+app.include_router(detections.router, prefix="/api/v1/tenants/{tenant_id}", dependencies=_tenant_rate_deps)
+app.include_router(analytics.router, prefix="/api/v1/tenants/{tenant_id}", dependencies=_tenant_rate_deps)
 app.include_router(import_jobs.router, prefix="/api/v1")
 app.include_router(health.router, prefix="/api/v1")
 app.include_router(webhooks.router, prefix="/api/v1")
@@ -159,13 +236,27 @@ app.include_router(security.router, prefix="/api/v1")
 app.include_router(metrics.router, prefix="/api/v1")
 app.include_router(benchmarks.router, prefix="/api/v1")  # Benchmark results
 app.include_router(claude_code.router, prefix="/api/v1")  # Claude Code trace ingestion
-app.include_router(conversations.router, prefix="/api/v1/tenants/{tenant_id}")  # Conversation traces
-app.include_router(feedback.router, prefix="/api/v1/tenants/{tenant_id}")  # Detection feedback
-app.include_router(healing.router, prefix="/api/v1/tenants/{tenant_id}")  # Self-healing operations
-app.include_router(settings_router.router, prefix="/api/v1/tenants/{tenant_id}")  # Tenant settings
+app.include_router(conversations.router, prefix="/api/v1/tenants/{tenant_id}", dependencies=_tenant_rate_deps)  # Conversation traces
+app.include_router(feedback.router, prefix="/api/v1/tenants/{tenant_id}", dependencies=_tenant_rate_deps)  # Detection feedback
+app.include_router(healing.router, prefix="/api/v1/tenants/{tenant_id}", dependencies=_tenant_rate_deps)  # Self-healing operations
+app.include_router(settings_router.router, prefix="/api/v1/tenants/{tenant_id}", dependencies=_tenant_rate_deps)  # Tenant settings
 app.include_router(billing.router, prefix="/api/v1")  # Stripe billing
-app.include_router(workflow_groups.router, prefix="/api/v1/tenants/{tenant_id}")  # Workflow grouping
+app.include_router(workflow_groups.router, prefix="/api/v1/tenants/{tenant_id}", dependencies=_tenant_rate_deps)  # Workflow grouping
 app.include_router(diagnostics.router, prefix="/api/v1")  # Detector diagnostics
+app.include_router(marketplace.router, prefix="/api/v1")  # AWS Marketplace integration
+app.include_router(onboarding.router, prefix="/api/v1/tenants/{tenant_id}", dependencies=_tenant_rate_deps)  # Onboarding wizard
+
+# AWS Marketplace usage tracking middleware (only when enabled)
+if settings.aws_marketplace_enabled:
+    try:
+        from app.billing.marketplace import get_marketplace_service
+        from app.billing.marketplace_middleware import UsageTrackingMiddleware
+
+        _marketplace_service = get_marketplace_service()
+        app.add_middleware(UsageTrackingMiddleware, metering_service=_marketplace_service)
+        logging.getLogger(__name__).info("AWS Marketplace usage tracking middleware enabled")
+    except Exception as e:
+        logging.getLogger(__name__).warning(f"Failed to initialize Marketplace middleware: {e}")
 
 # Enterprise routers - conditionally included based on feature flags
 if enterprise_routers_loaded:
