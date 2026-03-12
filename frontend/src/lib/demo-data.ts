@@ -1,4 +1,3 @@
-// @ts-nocheck
 import { AgentInfo, AgentStatus, ActivityEvent } from '@/components/agents'
 import {
   Trace,
@@ -124,7 +123,7 @@ export function generateDemoMessages(agents: AgentInfo[], count: number = 10): A
     }
 
     const template = randomChoice(messageTemplates)
-    let content = template.content
+    const content = template.content
       .replace('{{query}}', randomChoice(['What is AI?', 'Explain quantum computing', 'Summarize this article']))
       .replace('{{count}}', String(randomInt(1, 50)))
       .replace('{{agent}}', toAgent.name)
@@ -483,7 +482,7 @@ export function generateDemoQualityAssessments(count: number = 20): QualityAsses
     })
 
     const improvementCount = randomInt(2, 5)
-    const improvements: QualityImprovement[] = Array.from({ length: improvementCount }, (_, idx) => {
+    const improvements: QualityImprovement[] = Array.from({ length: improvementCount }, (_) => {
       const template = randomChoice(improvementTemplates)
       const severity = randomChoice(['info', 'low', 'medium', 'high', 'critical'] as const)
       return {
@@ -713,7 +712,7 @@ export type { EvalResult, QuickEvalResult, LLMJudgeResult }
 export function generateDemoEvalResult(): EvalResult {
   const evalTypes = ['relevance', 'coherence', 'helpfulness', 'safety']
   const scores: Record<string, number> = {}
-  const results: Array<Record<string, any>> = []
+  const results: Array<Record<string, string | number | boolean>> = []
 
   evalTypes.forEach((type) => {
     const score = randomInt(70, 95) / 100
@@ -938,10 +937,10 @@ export function generateDemoHallucinationCheck(): HallucinationCheckResult {
     confidence: detected ? randomInt(72, 95) / 100 : randomInt(88, 99) / 100,
     grounding_score: groundingScore,
     hallucination_type: detected ? randomChoice(['fabrication', 'misattribution', 'outdated_info']) : undefined,
-    ungrounded_claims: detected
+    evidence: detected
       ? [
-          { claim: 'The system was deployed in Q3 2024', source: 'not_found' },
-          { claim: 'Average response time is under 200ms', source: 'contradicts_docs' },
+          'The system was deployed in Q3 2024 (not found in sources)',
+          'Average response time is under 200ms (contradicts docs)',
         ]
       : [],
     details: {
@@ -973,7 +972,8 @@ export function generateDemoOverflowCheck(modelName: string = 'gpt-4'): Overflow
     context_window: contextWindow,
     remaining_tokens: remainingTokens,
     warnings: usagePercent >= 85 ? ['Approaching context window limit - consider summarization'] : [],
-    model: modelName,
+    suggestions: usagePercent >= 70 ? ['Consider summarizing older messages', 'Use a model with larger context window'] : [],
+    details: { model: modelName },
   }
 }
 
@@ -997,6 +997,7 @@ export function generateDemoCostCalculation(model: string = 'gpt-4'): CostCalcul
 
   return {
     total_cost_usd: Math.round(totalCost * 10000) / 10000,
+    total_cost_cents: Math.round(totalCost * 100 * 10000) / 10000,
     input_cost_usd: Math.round(inputCost * 10000) / 10000,
     output_cost_usd: Math.round(outputCost * 10000) / 10000,
     total_tokens: totalTokens,
@@ -1223,7 +1224,7 @@ export interface ChaosExperimentType {
   name: string
   description: string
   category: 'latency' | 'failure' | 'resource' | 'state'
-  parameters: Record<string, any>
+  parameters: Record<string, unknown>
 }
 
 export function generateDemoChaosExperimentTypes(): ChaosExperimentType[] {
@@ -1287,7 +1288,7 @@ export interface ChaosSession {
   duration_ms: number | null
   traces_affected: number
   detections_triggered: number
-  parameters: Record<string, any>
+  parameters: Record<string, unknown>
   results: {
     failures_injected: number
     failures_detected: number
@@ -1597,7 +1598,7 @@ export function generateDemoHandoffAnalysis(workflow: QualityAssessment): Handof
   }
 
   // Build handoff graph based on detected pattern
-  let handoff_graph: Record<string, string[]> = {}
+  const handoff_graph: Record<string, string[]> = {}
   
   if (pattern === 'sequential' || pattern === 'pipeline') {
     // Chain: A → B → C → D

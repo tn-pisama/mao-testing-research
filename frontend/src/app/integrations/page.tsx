@@ -2,45 +2,32 @@
 
 export const dynamic = 'force-dynamic'
 
-import { useState, useEffect, useCallback } from 'react'
+import { useState } from 'react'
 import { Layout } from '@/components/common/Layout'
-import { Card } from '@/components/ui/Card'
-import { Badge } from '@/components/ui/Badge'
 import { cn } from '@/lib/utils'
 import {
   GitBranch,
   Bot,
   Workflow,
   Network,
-  Plus,
   RefreshCw,
-  CheckCircle,
-  XCircle,
   Activity,
-  Globe,
-  Key,
 } from 'lucide-react'
-import { createApiClient } from '@/lib/api'
-import type {
-  N8nWorkflow,
-  OpenClawInstance,
-  OpenClawAgent,
-  DifyInstance,
-  DifyApp,
-  LangGraphDeployment,
-  LangGraphAssistant,
-} from '@/lib/api'
-import { useSafeAuth } from '@/hooks/useSafeAuth'
-import { useTenant } from '@/hooks/useTenant'
+import { useQueryClient } from '@tanstack/react-query'
 import {
-  generateDemoApiN8nWorkflows,
-  generateDemoOpenClawInstances,
-  generateDemoOpenClawAgents,
-  generateDemoDifyInstances,
-  generateDemoDifyApps,
-  generateDemoLangGraphDeployments,
-  generateDemoLangGraphAssistants,
-} from '@/lib/demo-data'
+  useN8nWorkflowsQuery,
+  useOpenClawInstancesQuery,
+  useOpenClawAgentsQuery,
+  useDifyInstancesQuery,
+  useDifyAppsQuery,
+  useLangGraphDeploymentsQuery,
+  useLangGraphAssistantsQuery,
+} from '@/hooks/useQueries'
+import { IntegrationOverviewTab } from '@/components/integrations/IntegrationOverviewTab'
+import { N8nIntegrationTab } from '@/components/integrations/N8nIntegrationTab'
+import { OpenClawIntegrationTab } from '@/components/integrations/OpenClawIntegrationTab'
+import { DifyIntegrationTab } from '@/components/integrations/DifyIntegrationTab'
+import { LangGraphIntegrationTab } from '@/components/integrations/LangGraphIntegrationTab'
 
 type TabId = 'overview' | 'n8n' | 'openclaw' | 'dify' | 'langgraph'
 
@@ -54,84 +41,27 @@ const tabs: { id: TabId; label: string; icon: React.ElementType }[] = [
 
 export default function IntegrationsPage() {
   const [activeTab, setActiveTab] = useState<TabId>('overview')
-  const { getToken } = useSafeAuth()
-  const { tenantId } = useTenant()
+  const queryClient = useQueryClient()
 
-  // n8n state
-  const [n8nWorkflows, setN8nWorkflows] = useState<N8nWorkflow[]>([])
-  // OpenClaw state
-  const [openclawInstances, setOpenclawInstances] = useState<OpenClawInstance[]>([])
-  const [openclawAgents, setOpenclawAgents] = useState<OpenClawAgent[]>([])
-  // Dify state
-  const [difyInstances, setDifyInstances] = useState<DifyInstance[]>([])
-  const [difyApps, setDifyApps] = useState<DifyApp[]>([])
-  // LangGraph state
-  const [langGraphDeployments, setLangGraphDeployments] = useState<LangGraphDeployment[]>([])
-  const [langGraphAssistants, setLangGraphAssistants] = useState<LangGraphAssistant[]>([])
+  const { workflows: n8nWorkflows, isLoading: n8nLoading } = useN8nWorkflowsQuery()
+  const { instances: openclawInstances, isLoading: ocInstLoading } = useOpenClawInstancesQuery()
+  const { agents: openclawAgents, isLoading: ocAgentLoading } = useOpenClawAgentsQuery()
+  const { instances: difyInstances, isLoading: difyInstLoading } = useDifyInstancesQuery()
+  const { apps: difyApps, isLoading: difyAppLoading } = useDifyAppsQuery()
+  const { deployments: langGraphDeployments, isLoading: lgDepLoading } = useLangGraphDeploymentsQuery()
+  const { assistants: langGraphAssistants, isLoading: lgAsstLoading } = useLangGraphAssistantsQuery()
 
-  const [isLoading, setIsLoading] = useState(true)
+  const isLoading = n8nLoading || ocInstLoading || ocAgentLoading || difyInstLoading || difyAppLoading || lgDepLoading || lgAsstLoading
 
-  const loadData = useCallback(async () => {
-    try {
-      setIsLoading(true)
-      const token = await getToken()
-      if (!token || !tenantId) {
-        // No auth — use demo data
-        setN8nWorkflows(generateDemoApiN8nWorkflows())
-        setOpenclawInstances(generateDemoOpenClawInstances())
-        setOpenclawAgents(generateDemoOpenClawAgents())
-        setDifyInstances(generateDemoDifyInstances())
-        setDifyApps(generateDemoDifyApps())
-        setLangGraphDeployments(generateDemoLangGraphDeployments())
-        setLangGraphAssistants(generateDemoLangGraphAssistants())
-        return
-      }
-      const api = createApiClient(token, tenantId)
-
-      const [workflows, instances, agents, dInstances, apps, lgDeploys, lgAssists] = await Promise.allSettled([
-        api.listN8nWorkflows(),
-        api.listOpenClawInstances(),
-        api.listOpenClawAgents(),
-        api.listDifyInstances(),
-        api.listDifyApps(),
-        api.listLangGraphDeployments(),
-        api.listLangGraphAssistants(),
-      ])
-
-      const wf = workflows.status === 'fulfilled' ? workflows.value : []
-      const oci = instances.status === 'fulfilled' ? instances.value : []
-      const oca = agents.status === 'fulfilled' ? agents.value : []
-      const di = dInstances.status === 'fulfilled' ? dInstances.value : []
-      const da = apps.status === 'fulfilled' ? apps.value : []
-      const lgd = lgDeploys.status === 'fulfilled' ? lgDeploys.value : []
-      const lga = lgAssists.status === 'fulfilled' ? lgAssists.value : []
-
-      // Use demo data as fallback when all API calls return empty
-      const allEmpty = wf.length === 0 && oci.length === 0 && di.length === 0 && lgd.length === 0
-      setN8nWorkflows(wf.length > 0 ? wf : allEmpty ? generateDemoApiN8nWorkflows() : wf)
-      setOpenclawInstances(oci.length > 0 ? oci : allEmpty ? generateDemoOpenClawInstances() : oci)
-      setOpenclawAgents(oca.length > 0 ? oca : allEmpty ? generateDemoOpenClawAgents() : oca)
-      setDifyInstances(di.length > 0 ? di : allEmpty ? generateDemoDifyInstances() : di)
-      setDifyApps(da.length > 0 ? da : allEmpty ? generateDemoDifyApps() : da)
-      setLangGraphDeployments(lgd.length > 0 ? lgd : allEmpty ? generateDemoLangGraphDeployments() : lgd)
-      setLangGraphAssistants(lga.length > 0 ? lga : allEmpty ? generateDemoLangGraphAssistants() : lga)
-    } catch {
-      // API error — fall back to demo data
-      setN8nWorkflows(generateDemoApiN8nWorkflows())
-      setOpenclawInstances(generateDemoOpenClawInstances())
-      setOpenclawAgents(generateDemoOpenClawAgents())
-      setDifyInstances(generateDemoDifyInstances())
-      setDifyApps(generateDemoDifyApps())
-      setLangGraphDeployments(generateDemoLangGraphDeployments())
-      setLangGraphAssistants(generateDemoLangGraphAssistants())
-    } finally {
-      setIsLoading(false)
-    }
-  }, [getToken, tenantId])
-
-  useEffect(() => {
-    loadData()
-  }, [loadData])
+  const handleRefresh = () => {
+    queryClient.invalidateQueries({ queryKey: ['n8nWorkflows'] })
+    queryClient.invalidateQueries({ queryKey: ['openClawInstances'] })
+    queryClient.invalidateQueries({ queryKey: ['openClawAgents'] })
+    queryClient.invalidateQueries({ queryKey: ['difyInstances'] })
+    queryClient.invalidateQueries({ queryKey: ['difyApps'] })
+    queryClient.invalidateQueries({ queryKey: ['langGraphDeployments'] })
+    queryClient.invalidateQueries({ queryKey: ['langGraphAssistants'] })
+  }
 
   return (
     <Layout>
@@ -144,7 +74,7 @@ export default function IntegrationsPage() {
             </p>
           </div>
           <button
-            onClick={loadData}
+            onClick={handleRefresh}
             className="flex items-center gap-2 px-4 py-2 bg-zinc-700 hover:bg-zinc-600 rounded-lg text-white text-sm transition-colors"
           >
             <RefreshCw size={14} />
@@ -184,7 +114,7 @@ export default function IntegrationsPage() {
         ) : (
           <>
             {activeTab === 'overview' && (
-              <OverviewTab
+              <IntegrationOverviewTab
                 n8nWorkflows={n8nWorkflows}
                 openclawInstances={openclawInstances}
                 openclawAgents={openclawAgents}
@@ -195,561 +125,17 @@ export default function IntegrationsPage() {
                 onTabChange={setActiveTab}
               />
             )}
-            {activeTab === 'n8n' && <N8nTab workflows={n8nWorkflows} />}
+            {activeTab === 'n8n' && <N8nIntegrationTab workflows={n8nWorkflows} />}
             {activeTab === 'openclaw' && (
-              <OpenClawTab instances={openclawInstances} agents={openclawAgents} />
+              <OpenClawIntegrationTab instances={openclawInstances} agents={openclawAgents} />
             )}
-            {activeTab === 'dify' && <DifyTab instances={difyInstances} apps={difyApps} />}
+            {activeTab === 'dify' && <DifyIntegrationTab instances={difyInstances} apps={difyApps} />}
             {activeTab === 'langgraph' && (
-              <LangGraphTab deployments={langGraphDeployments} assistants={langGraphAssistants} />
+              <LangGraphIntegrationTab deployments={langGraphDeployments} assistants={langGraphAssistants} />
             )}
           </>
         )}
       </div>
     </Layout>
-  )
-}
-
-// --- Overview Tab ---
-
-function OverviewTab({
-  n8nWorkflows,
-  openclawInstances,
-  openclawAgents,
-  difyInstances,
-  difyApps,
-  langGraphDeployments,
-  langGraphAssistants,
-  onTabChange,
-}: {
-  n8nWorkflows: N8nWorkflow[]
-  openclawInstances: OpenClawInstance[]
-  openclawAgents: OpenClawAgent[]
-  difyInstances: DifyInstance[]
-  difyApps: DifyApp[]
-  langGraphDeployments: LangGraphDeployment[]
-  langGraphAssistants: LangGraphAssistant[]
-  onTabChange: (tab: TabId) => void
-}) {
-  const providers = [
-    {
-      id: 'n8n' as TabId,
-      name: 'n8n',
-      icon: GitBranch,
-      color: 'text-orange-400',
-      bgColor: 'bg-orange-500/10',
-      borderColor: 'border-orange-500/30',
-      entityCount: n8nWorkflows.length,
-      entityLabel: 'workflows',
-      connected: n8nWorkflows.length > 0,
-    },
-    {
-      id: 'openclaw' as TabId,
-      name: 'OpenClaw',
-      icon: Bot,
-      color: 'text-cyan-400',
-      bgColor: 'bg-cyan-500/10',
-      borderColor: 'border-cyan-500/30',
-      entityCount: openclawInstances.length,
-      entityLabel: `instances, ${openclawAgents.length} agents`,
-      connected: openclawInstances.length > 0,
-    },
-    {
-      id: 'dify' as TabId,
-      name: 'Dify',
-      icon: Workflow,
-      color: 'text-violet-400',
-      bgColor: 'bg-violet-500/10',
-      borderColor: 'border-violet-500/30',
-      entityCount: difyInstances.length,
-      entityLabel: `instances, ${difyApps.length} apps`,
-      connected: difyInstances.length > 0,
-    },
-    {
-      id: 'langgraph' as TabId,
-      name: 'LangGraph',
-      icon: Network,
-      color: 'text-emerald-400',
-      bgColor: 'bg-emerald-500/10',
-      borderColor: 'border-emerald-500/30',
-      entityCount: langGraphDeployments.length,
-      entityLabel: `deployments, ${langGraphAssistants.length} assistants`,
-      connected: langGraphDeployments.length > 0,
-    },
-  ]
-
-  const totalEntities = n8nWorkflows.length + openclawInstances.length + difyInstances.length + langGraphDeployments.length
-  const connectedCount = providers.filter(p => p.connected).length
-
-  return (
-    <div className="space-y-8">
-      {/* Provider Cards */}
-      <div className="grid md:grid-cols-2 lg:grid-cols-4 gap-4">
-        {providers.map((p) => {
-          const Icon = p.icon
-          return (
-            <button
-              key={p.id}
-              onClick={() => onTabChange(p.id)}
-              className={cn(
-                'p-6 rounded-xl border text-left transition-all hover:scale-[1.02]',
-                p.bgColor,
-                p.borderColor
-              )}
-            >
-              <div className="flex items-center gap-3 mb-4">
-                <div className={cn('p-2 rounded-lg', p.bgColor)}>
-                  <Icon size={24} className={p.color} />
-                </div>
-                <div>
-                  <h3 className="text-lg font-semibold text-white">{p.name}</h3>
-                  <div className="flex items-center gap-1.5">
-                    {p.connected ? (
-                      <>
-                        <CheckCircle size={12} className="text-green-400" />
-                        <span className="text-xs text-green-400">Connected</span>
-                      </>
-                    ) : (
-                      <>
-                        <XCircle size={12} className="text-zinc-500" />
-                        <span className="text-xs text-zinc-500">Not configured</span>
-                      </>
-                    )}
-                  </div>
-                </div>
-              </div>
-              <div className="text-sm text-zinc-300">
-                {p.entityCount} {p.entityLabel}
-              </div>
-            </button>
-          )
-        })}
-      </div>
-
-      {/* Summary Stats */}
-      <div className="grid grid-cols-3 gap-4">
-        <div className="bg-zinc-800 border border-zinc-700 rounded-xl p-5">
-          <div className="text-sm text-zinc-400 mb-1">Connected Platforms</div>
-          <div className="text-2xl font-bold text-white">{connectedCount}<span className="text-zinc-500 text-base font-normal">/{providers.length}</span></div>
-        </div>
-        <div className="bg-zinc-800 border border-zinc-700 rounded-xl p-5">
-          <div className="text-sm text-zinc-400 mb-1">Total Resources</div>
-          <div className="text-2xl font-bold text-white">{totalEntities}</div>
-        </div>
-        <div className="bg-zinc-800 border border-zinc-700 rounded-xl p-5">
-          <div className="text-sm text-zinc-400 mb-1">Monitored Agents</div>
-          <div className="text-2xl font-bold text-white">{openclawAgents.length + langGraphAssistants.length + difyApps.length}</div>
-        </div>
-      </div>
-
-      {/* Quick Start */}
-      <div className="bg-zinc-800/50 border border-zinc-700 rounded-xl p-6">
-        <h3 className="text-base font-semibold text-white mb-4">Quick Start</h3>
-        <div className="grid md:grid-cols-2 gap-4">
-          <div className="flex items-start gap-3">
-            <div className="w-7 h-7 bg-blue-500/20 text-blue-400 rounded-full flex items-center justify-center text-xs font-medium flex-shrink-0 mt-0.5">1</div>
-            <div>
-              <p className="text-sm font-medium text-zinc-200">Connect a platform</p>
-              <p className="text-xs text-zinc-400 mt-0.5">Click any provider above to add your first integration</p>
-            </div>
-          </div>
-          <div className="flex items-start gap-3">
-            <div className="w-7 h-7 bg-blue-500/20 text-blue-400 rounded-full flex items-center justify-center text-xs font-medium flex-shrink-0 mt-0.5">2</div>
-            <div>
-              <p className="text-sm font-medium text-zinc-200">Configure webhook</p>
-              <p className="text-xs text-zinc-400 mt-0.5">Point your platform&apos;s callbacks to the Pisama webhook URL</p>
-            </div>
-          </div>
-          <div className="flex items-start gap-3">
-            <div className="w-7 h-7 bg-blue-500/20 text-blue-400 rounded-full flex items-center justify-center text-xs font-medium flex-shrink-0 mt-0.5">3</div>
-            <div>
-              <p className="text-sm font-medium text-zinc-200">Monitor traces</p>
-              <p className="text-xs text-zinc-400 mt-0.5">Traces appear automatically on your dashboard with failure detection</p>
-            </div>
-          </div>
-          <div className="flex items-start gap-3">
-            <div className="w-7 h-7 bg-blue-500/20 text-blue-400 rounded-full flex items-center justify-center text-xs font-medium flex-shrink-0 mt-0.5">4</div>
-            <div>
-              <p className="text-sm font-medium text-zinc-200">Get quality scores</p>
-              <p className="text-xs text-zinc-400 mt-0.5">Each workflow gets continuous quality grades with improvement suggestions</p>
-            </div>
-          </div>
-        </div>
-      </div>
-    </div>
-  )
-}
-
-// --- N8n Tab ---
-
-function N8nTab({ workflows }: { workflows: N8nWorkflow[] }) {
-  return (
-    <div className="space-y-4">
-      <div className="flex items-center justify-between">
-        <h2 className="text-lg font-semibold text-white">n8n Workflows</h2>
-        <a
-          href="/n8n"
-          className="flex items-center gap-2 px-4 py-2 bg-orange-600 hover:bg-orange-700 rounded-lg text-white text-sm transition-colors"
-        >
-          <Plus size={14} />
-          Manage Workflows
-        </a>
-      </div>
-
-      {workflows.length === 0 ? (
-        <EmptyState
-          icon={GitBranch}
-          title="No n8n workflows registered"
-          description="Register your n8n workflows to start monitoring executions."
-        />
-      ) : (
-        <Card>
-          <div className="divide-y divide-zinc-700">
-            {workflows.map((w) => (
-              <div key={w.id} className="p-4 flex items-center justify-between">
-                <div>
-                  <div className="text-white font-medium">
-                    {w.workflow_name || w.workflow_id}
-                  </div>
-                  <div className="text-xs text-zinc-400 mt-1 flex items-center gap-3">
-                    <span>ID: {w.workflow_id}</span>
-                    {w.ingestion_mode && (
-                      <Badge variant="default" size="sm">{w.ingestion_mode}</Badge>
-                    )}
-                  </div>
-                </div>
-                <div className="text-xs text-zinc-500 flex items-center gap-2">
-                  <Globe size={12} />
-                  {w.webhook_url}
-                </div>
-              </div>
-            ))}
-          </div>
-        </Card>
-      )}
-    </div>
-  )
-}
-
-// --- OpenClaw Tab ---
-
-function OpenClawTab({
-  instances,
-  agents,
-}: {
-  instances: OpenClawInstance[]
-  agents: OpenClawAgent[]
-}) {
-  return (
-    <div className="space-y-6">
-      {/* Instances */}
-      <div>
-        <h2 className="text-lg font-semibold text-white mb-4">OpenClaw Instances</h2>
-        {instances.length === 0 ? (
-          <EmptyState
-            icon={Bot}
-            title="No OpenClaw instances connected"
-            description="Register an OpenClaw instance to monitor agent sessions."
-          />
-        ) : (
-          <Card>
-            <div className="divide-y divide-zinc-700">
-              {instances.map((inst) => (
-                <div key={inst.id} className="p-4 flex items-center justify-between">
-                  <div>
-                    <div className="flex items-center gap-2">
-                      <span className="text-white font-medium">{inst.name}</span>
-                      {inst.is_active ? (
-                        <Badge variant="success" size="sm">Active</Badge>
-                      ) : (
-                        <Badge variant="default" size="sm">Inactive</Badge>
-                      )}
-                      {inst.otel_enabled && (
-                        <Badge variant="info" size="sm">OTEL</Badge>
-                      )}
-                    </div>
-                    <div className="text-xs text-zinc-400 mt-1 flex items-center gap-3">
-                      <span className="flex items-center gap-1">
-                        <Globe size={12} />
-                        {inst.gateway_url}
-                      </span>
-                      <Badge variant="default" size="sm">{inst.ingestion_mode}</Badge>
-                    </div>
-                  </div>
-                  <div className="text-xs text-zinc-500">
-                    {inst.channels_configured.length > 0
-                      ? inst.channels_configured.join(', ')
-                      : 'No channels'}
-                  </div>
-                </div>
-              ))}
-            </div>
-          </Card>
-        )}
-      </div>
-
-      {/* Agents */}
-      <div>
-        <h2 className="text-lg font-semibold text-white mb-4">Registered Agents</h2>
-        {agents.length === 0 ? (
-          <EmptyState
-            icon={Key}
-            title="No agents registered"
-            description="Register agents within your OpenClaw instances for monitoring."
-          />
-        ) : (
-          <Card>
-            <div className="divide-y divide-zinc-700">
-              {agents.map((agent) => (
-                <div key={agent.id} className="p-4 flex items-center justify-between">
-                  <div>
-                    <div className="flex items-center gap-2">
-                      <span className="text-white font-medium">
-                        {agent.agent_name || agent.agent_key}
-                      </span>
-                      {agent.monitoring_enabled ? (
-                        <Badge variant="success" size="sm">Monitoring</Badge>
-                      ) : (
-                        <Badge variant="default" size="sm">Paused</Badge>
-                      )}
-                    </div>
-                    <div className="text-xs text-zinc-400 mt-1 flex items-center gap-3">
-                      <span>Key: {agent.agent_key}</span>
-                      {agent.model && <span>Model: {agent.model}</span>}
-                    </div>
-                  </div>
-                  <div className="text-right text-xs text-zinc-400">
-                    <div>{agent.total_sessions} sessions</div>
-                    <div>{agent.total_messages} messages</div>
-                  </div>
-                </div>
-              ))}
-            </div>
-          </Card>
-        )}
-      </div>
-    </div>
-  )
-}
-
-// --- Dify Tab ---
-
-function DifyTab({
-  instances,
-  apps,
-}: {
-  instances: DifyInstance[]
-  apps: DifyApp[]
-}) {
-  return (
-    <div className="space-y-6">
-      {/* Instances */}
-      <div>
-        <h2 className="text-lg font-semibold text-white mb-4">Dify Instances</h2>
-        {instances.length === 0 ? (
-          <EmptyState
-            icon={Workflow}
-            title="No Dify instances connected"
-            description="Register a Dify instance to monitor workflow runs and app executions."
-          />
-        ) : (
-          <Card>
-            <div className="divide-y divide-zinc-700">
-              {instances.map((inst) => (
-                <div key={inst.id} className="p-4 flex items-center justify-between">
-                  <div>
-                    <div className="flex items-center gap-2">
-                      <span className="text-white font-medium">{inst.name}</span>
-                      {inst.is_active ? (
-                        <Badge variant="success" size="sm">Active</Badge>
-                      ) : (
-                        <Badge variant="default" size="sm">Inactive</Badge>
-                      )}
-                    </div>
-                    <div className="text-xs text-zinc-400 mt-1 flex items-center gap-3">
-                      <span className="flex items-center gap-1">
-                        <Globe size={12} />
-                        {inst.base_url}
-                      </span>
-                      <Badge variant="default" size="sm">{inst.ingestion_mode}</Badge>
-                    </div>
-                  </div>
-                  <div className="text-xs text-zinc-500">
-                    {inst.app_types_configured.length > 0
-                      ? inst.app_types_configured.join(', ')
-                      : 'No app types'}
-                  </div>
-                </div>
-              ))}
-            </div>
-          </Card>
-        )}
-      </div>
-
-      {/* Apps */}
-      <div>
-        <h2 className="text-lg font-semibold text-white mb-4">Registered Apps</h2>
-        {apps.length === 0 ? (
-          <EmptyState
-            icon={Key}
-            title="No apps registered"
-            description="Register Dify apps within your instances for monitoring."
-          />
-        ) : (
-          <Card>
-            <div className="divide-y divide-zinc-700">
-              {apps.map((app) => (
-                <div key={app.id} className="p-4 flex items-center justify-between">
-                  <div>
-                    <div className="flex items-center gap-2">
-                      <span className="text-white font-medium">
-                        {app.app_name || app.app_id}
-                      </span>
-                      <Badge variant="info" size="sm">{app.app_type}</Badge>
-                      {app.monitoring_enabled ? (
-                        <Badge variant="success" size="sm">Monitoring</Badge>
-                      ) : (
-                        <Badge variant="default" size="sm">Paused</Badge>
-                      )}
-                    </div>
-                    <div className="text-xs text-zinc-400 mt-1">
-                      App ID: {app.app_id}
-                    </div>
-                  </div>
-                  <div className="text-right text-xs text-zinc-400">
-                    <div>{app.total_runs} runs</div>
-                    <div>{app.total_tokens.toLocaleString()} tokens</div>
-                  </div>
-                </div>
-              ))}
-            </div>
-          </Card>
-        )}
-      </div>
-    </div>
-  )
-}
-
-// --- LangGraph Tab ---
-
-function LangGraphTab({
-  deployments,
-  assistants,
-}: {
-  deployments: LangGraphDeployment[]
-  assistants: LangGraphAssistant[]
-}) {
-  return (
-    <div className="space-y-6">
-      {/* Deployments */}
-      <div>
-        <div className="flex items-center justify-between mb-4">
-          <h2 className="text-lg font-semibold text-white">LangGraph Deployments</h2>
-          <a
-            href="/langgraph"
-            className="flex items-center gap-2 px-4 py-2 bg-emerald-600 hover:bg-emerald-700 rounded-lg text-white text-sm transition-colors"
-          >
-            <Plus size={14} />
-            Manage Deployments
-          </a>
-        </div>
-        {deployments.length === 0 ? (
-          <EmptyState
-            icon={Network}
-            title="No LangGraph deployments connected"
-            description="Register a LangGraph deployment to monitor graph runs."
-          />
-        ) : (
-          <Card>
-            <div className="divide-y divide-zinc-700">
-              {deployments.map((dep) => (
-                <div key={dep.id} className="p-4 flex items-center justify-between">
-                  <div>
-                    <div className="flex items-center gap-2">
-                      <span className="text-white font-medium">{dep.name}</span>
-                      {dep.is_active ? (
-                        <Badge variant="success" size="sm">Active</Badge>
-                      ) : (
-                        <Badge variant="default" size="sm">Inactive</Badge>
-                      )}
-                    </div>
-                    <div className="text-xs text-zinc-400 mt-1 flex items-center gap-3">
-                      <span className="flex items-center gap-1">
-                        <Globe size={12} />
-                        {dep.api_url}
-                      </span>
-                      {dep.graph_name && <span>Graph: {dep.graph_name}</span>}
-                      <Badge variant="default" size="sm">{dep.ingestion_mode}</Badge>
-                    </div>
-                  </div>
-                </div>
-              ))}
-            </div>
-          </Card>
-        )}
-      </div>
-
-      {/* Assistants */}
-      <div>
-        <h2 className="text-lg font-semibold text-white mb-4">Registered Assistants</h2>
-        {assistants.length === 0 ? (
-          <EmptyState
-            icon={Key}
-            title="No assistants registered"
-            description="Register assistants within your LangGraph deployments for monitoring."
-          />
-        ) : (
-          <Card>
-            <div className="divide-y divide-zinc-700">
-              {assistants.map((asst) => (
-                <div key={asst.id} className="p-4 flex items-center justify-between">
-                  <div>
-                    <div className="flex items-center gap-2">
-                      <span className="text-white font-medium">
-                        {asst.name || asst.assistant_id}
-                      </span>
-                      {asst.monitoring_enabled ? (
-                        <Badge variant="success" size="sm">Monitoring</Badge>
-                      ) : (
-                        <Badge variant="default" size="sm">Paused</Badge>
-                      )}
-                    </div>
-                    <div className="text-xs text-zinc-400 mt-1 flex items-center gap-3">
-                      <span>Graph: {asst.graph_id}</span>
-                      <span>ID: {asst.assistant_id}</span>
-                    </div>
-                  </div>
-                  <div className="text-right text-xs text-zinc-400">
-                    <div>{asst.total_runs} runs</div>
-                  </div>
-                </div>
-              ))}
-            </div>
-          </Card>
-        )}
-      </div>
-    </div>
-  )
-}
-
-// --- Shared ---
-
-function EmptyState({
-  icon: Icon,
-  title,
-  description,
-}: {
-  icon: React.ElementType
-  title: string
-  description: string
-}) {
-  return (
-    <Card>
-      <div className="text-center py-12 px-4">
-        <Icon size={40} className="mx-auto mb-4 text-zinc-600 opacity-50" />
-        <p className="text-zinc-300 mb-2 font-medium">{title}</p>
-        <p className="text-sm text-zinc-500">{description}</p>
-      </div>
-    </Card>
   )
 }

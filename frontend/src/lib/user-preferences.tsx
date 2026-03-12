@@ -36,6 +36,7 @@ export function UserPreferencesProvider({ children }: { children: ReactNode }) {
       const stored = localStorage.getItem(STORAGE_KEY)
       if (stored) {
         const parsed = JSON.parse(stored)
+        // eslint-disable-next-line react-hooks/set-state-in-effect -- one-time initialization from localStorage
         setPreferences({
           userType: parsed.userType || null,
           developerMode: parsed.developerMode || false,

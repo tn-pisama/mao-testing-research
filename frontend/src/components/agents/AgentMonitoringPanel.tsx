@@ -37,7 +37,7 @@ function formatRelativeTime(timestamp: string): string {
   return `${hours}h ago`
 }
 
-export function AgentMonitoringPanel({ agents, events, isLive }: AgentMonitoringPanelProps) {
+export function AgentMonitoringPanel({ agents, events: _events, isLive }: AgentMonitoringPanelProps) {
   if (!agents || agents.length === 0) {
     return (
       <Card>

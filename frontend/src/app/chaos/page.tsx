@@ -117,6 +117,7 @@ export default function ChaosPage() {
   }, [getToken, tenantId])
 
   useEffect(() => {
+    // eslint-disable-next-line react-hooks/set-state-in-effect -- data fetching pattern
     loadData()
   }, [loadData])
 

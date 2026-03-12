@@ -6,7 +6,7 @@ import { useState, useCallback } from 'react'
 import { useSafeAuth as useAuth } from '@/hooks/useSafeAuth'
 import { useTenant } from '@/hooks/useTenant'
 import {
-  BarChart3, Download, Copy, CheckCircle, Loader2,
+  BarChart3, Download, Copy, CheckCircle,
   Activity, TrendingUp, Clock
 } from 'lucide-react'
 import { Layout } from '@/components/common/Layout'

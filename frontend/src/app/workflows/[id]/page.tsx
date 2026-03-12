@@ -1,7 +1,7 @@
 'use client'
 
-import { useParams, useRouter } from 'next/navigation'
-import { useState, useMemo, useRef } from 'react'
+import { useParams } from 'next/navigation'
+import { useState, useRef } from 'react'
 import dynamic from 'next/dynamic'
 import Link from 'next/link'
 import { useQualityAssessmentsQuery } from '@/hooks/useQueries'
@@ -30,8 +30,7 @@ import { cn } from '@/lib/utils'
 
 export default function WorkflowPage() {
   const params = useParams()
-  const router = useRouter()
-  const workflowId = params.id as string
+  const _workflowId = params.id as string
 
   const [selectedNodeId, setSelectedNodeId] = useState<string | null>(null)
   const [selectedEdgeId, setSelectedEdgeId] = useState<string | null>(null)
@@ -104,7 +103,7 @@ export default function WorkflowPage() {
         <div className="text-center">
           <AlertCircle className="w-12 h-12 text-red-500 mx-auto mb-4" />
           <h1 className="text-xl font-bold text-white mb-2">Workflow Not Found</h1>
-          <p className="text-zinc-400 mb-4">The workflow you're looking for doesn't exist.</p>
+          <p className="text-zinc-400 mb-4">The workflow you&apos;re looking for doesn&apos;t exist.</p>
           <Link
             href="/dashboard"
             className="inline-flex items-center gap-2 text-blue-400 hover:text-blue-300"

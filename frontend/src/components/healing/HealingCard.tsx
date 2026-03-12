@@ -418,7 +418,7 @@ export function HealingCard({
                     isLoading={isRejecting}
                     leftIcon={<X size={14} />}
                   >
-                    Don't Apply
+                    Don&apos;t Apply
                   </Button>
                 </>
               )}

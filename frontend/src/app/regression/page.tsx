@@ -6,8 +6,8 @@ import { useState, useEffect, useCallback } from 'react'
 import { useSafeAuth as useAuth } from '@/hooks/useSafeAuth'
 import { useTenant } from '@/hooks/useTenant'
 import {
-  GitBranch, TrendingDown, TrendingUp, AlertTriangle,
-  CheckCircle, Clock, Database, RefreshCw, Plus
+  GitBranch, TrendingUp, AlertTriangle,
+  Clock, Database, RefreshCw, Plus
 } from 'lucide-react'
 import { Layout } from '@/components/common/Layout'
 import { Button } from '@/components/ui/Button'
@@ -108,6 +108,7 @@ export default function RegressionPage() {
   }, [getToken, tenantId])
 
   useEffect(() => {
+    // eslint-disable-next-line react-hooks/set-state-in-effect -- data fetching pattern
     loadData()
   }, [loadData])
 
@@ -120,7 +121,7 @@ export default function RegressionPage() {
       const api = createApiClient(token, tenantId)
 
       // Run the regression test
-      const result = await api.testBaseline(selectedBaseline, [])
+      const _result = await api.testBaseline(selectedBaseline, [])
 
       // Refresh alerts after test
       const alertsData = await api.getDriftAlerts(undefined, 20)

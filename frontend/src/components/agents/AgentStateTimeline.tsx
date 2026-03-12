@@ -3,7 +3,7 @@
 import { Card } from '../ui/Card'
 import { Clock } from 'lucide-react'
 
-export function AgentStateTimeline({ agent, events }: { agent?: unknown; events?: unknown[] }) {
+export function AgentStateTimeline({ agent: _agent, events: _events }: { agent?: unknown; events?: unknown[] }) {
   return (
     <Card>
       <div className="text-center py-12 text-zinc-400">

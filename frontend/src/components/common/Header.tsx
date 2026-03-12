@@ -2,7 +2,6 @@
 
 import { useState } from 'react'
 import { Bell, Search, Menu, User, WifiOff, Wifi } from 'lucide-react'
-import { cn } from '@/lib/utils'
 import { useDetectorStatusQuery } from '@/hooks/useQueries'
 import { WorkflowGroupFilter } from '@/components/filters/WorkflowGroupFilter'
 import { ManageGroupsModal } from '@/components/modals/ManageGroupsModal'

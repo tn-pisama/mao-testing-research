@@ -14,7 +14,6 @@ import {
   Clock,
   Filter,
   RefreshCw,
-  ChevronDown,
   ExternalLink,
   Loader2,
   AlertCircle,
@@ -24,8 +23,7 @@ import {
 import { Layout } from '@/components/common/Layout'
 import { Button } from '@/components/ui/Button'
 import { Badge } from '@/components/ui/Badge'
-import { createApiClient, Trace } from '@/lib/api'
-import { cn } from '@/lib/utils'
+import { createApiClient } from '@/lib/api'
 
 interface ExecutionDisplay {
   id: string

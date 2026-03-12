@@ -97,6 +97,7 @@ export default function ScorersPage() {
   }, [getToken, tenantId])
 
   useEffect(() => {
+    // eslint-disable-next-line react-hooks/set-state-in-effect -- data fetching pattern
     loadScorers()
   }, [loadScorers])
 

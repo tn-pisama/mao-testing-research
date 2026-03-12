@@ -6,7 +6,7 @@ import { useState, useCallback } from 'react'
 import { useSafeAuth as useAuth } from '@/hooks/useSafeAuth'
 import { useTenant } from '@/hooks/useTenant'
 import {
-  CheckSquare, Play, Loader2, AlertCircle,
+  CheckSquare, Play, AlertCircle,
   Sparkles, Target, Shield, MessageSquare
 } from 'lucide-react'
 import { Layout } from '@/components/common/Layout'

@@ -37,7 +37,7 @@ export function SocialProof() {
               className="bg-zinc-800/50 border border-zinc-700 rounded-xl p-6 hover:border-sky-500/50 transition-colors"
             >
               <div className="text-zinc-300 mb-4 leading-relaxed">
-                "{testimonial.quote}"
+                &quot;{testimonial.quote}&quot;
               </div>
               <div className="flex items-center gap-3">
                 <div className="w-10 h-10 rounded-full bg-zinc-700 flex items-center justify-center text-zinc-400 font-semibold">

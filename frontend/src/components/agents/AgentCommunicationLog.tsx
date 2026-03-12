@@ -10,7 +10,7 @@ interface AgentCommunicationLogProps {
   agents?: unknown[]
 }
 
-export function AgentCommunicationLog({ agent, agentId, messages, agents }: AgentCommunicationLogProps) {
+export function AgentCommunicationLog({ agent: _agent, agentId: _agentId, messages: _messages, agents: _agents }: AgentCommunicationLogProps) {
   return (
     <Card>
       <div className="text-center py-12 text-zinc-400">

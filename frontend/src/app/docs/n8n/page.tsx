@@ -2,7 +2,7 @@
 
 import Link from 'next/link'
 import { AlertTriangle, Boxes, Shield, Zap } from 'lucide-react'
-import { CodeBlock, FeatureCard, MethodCard, SetupStep, DetectionTable, DataMappingTable, SecurityNote, RelatedDocs } from '@/components/docs/SharedDocComponents'
+import { CodeBlock, FeatureCard, MethodCard, SetupStep } from '@/components/docs/SharedDocComponents'
 
 export default function N8nPage() {
   return (

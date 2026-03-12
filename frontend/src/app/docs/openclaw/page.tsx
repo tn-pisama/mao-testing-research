@@ -1,6 +1,6 @@
 'use client'
 
-import { AlertTriangle, MessageCircle, Shield, Users, Zap } from 'lucide-react'
+import { MessageCircle, Shield, Users, Zap } from 'lucide-react'
 import { CodeBlock, FeatureCard, MethodCard, SetupStep, DetectionTable, DataMappingTable, SecurityNote, RelatedDocs } from '@/components/docs/SharedDocComponents'
 
 export default function OpenClawDocsPage() {

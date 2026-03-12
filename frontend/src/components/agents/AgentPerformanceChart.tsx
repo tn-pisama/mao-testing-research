@@ -3,7 +3,7 @@
 import { Card } from '../ui/Card'
 import { Activity } from 'lucide-react'
 
-export function AgentPerformanceChart({ agent, data }: { agent?: unknown; data?: unknown }) {
+export function AgentPerformanceChart({ agent: _agent, data: _data }: { agent?: unknown; data?: unknown }) {
   return (
     <Card>
       <div className="text-center py-12 text-zinc-400">

@@ -5,14 +5,13 @@ import { useSafeAuth } from '@/hooks/useSafeAuth'
 import { useTenant } from '@/hooks/useTenant'
 import { User, Mail, Building2, LogOut, CreditCard } from 'lucide-react'
 import { useSession, signOut } from 'next-auth/react'
+import Image from 'next/image'
 import Link from 'next/link'
-import { useRouter } from 'next/navigation'
 
 export default function AccountPage() {
   const { isSignedIn } = useSafeAuth()
   const { tenantId } = useTenant()
   const { data: session } = useSession()
-  const router = useRouter()
 
   const handleSignOut = async () => {
     await signOut({ callbackUrl: '/' })
@@ -49,9 +48,11 @@ export default function AccountPage() {
             {/* Profile Image */}
             {user.image && (
               <div className="flex items-center gap-4">
-                <img
+                <Image
                   src={user.image}
                   alt={user.name || 'User'}
+                  width={64}
+                  height={64}
                   className="w-16 h-16 rounded-full border-2 border-zinc-600"
                 />
                 <div>

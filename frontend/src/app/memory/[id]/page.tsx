@@ -101,7 +101,11 @@ export default function MemoryDetailPage() {
       const token = await getToken()
       const api = createApiClient(token, tenantId)
       const data = await api.getMemory(memoryId)
-      setMemory(data as any)
+      setMemory(data as CognitiveMemoryItem & {
+        last_accessed_at?: string
+        supersedes?: string | null
+        superseded_by?: string | null
+      })
     } catch (err) {
       console.error('Failed to fetch memory, using demo:', err)
       setMemory({ ...DEMO_MEMORY, id: memoryId })

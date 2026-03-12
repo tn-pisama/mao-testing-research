@@ -78,6 +78,7 @@ export default function ImportPage() {
   }, [getToken, tenantId])
 
   useEffect(() => {
+    // eslint-disable-next-line react-hooks/set-state-in-effect -- data fetching pattern
     loadJobs()
   }, [loadJobs])
 
@@ -136,7 +137,7 @@ export default function ImportPage() {
             const parsed = JSON.parse(fileContent)
             traces = Array.isArray(parsed) ? parsed : [parsed]
           }
-        } catch (parseErr) {
+        } catch (_parseErr) {
           setError('Failed to parse file. Please ensure it contains valid JSON.')
           setIsCreating(false)
           return

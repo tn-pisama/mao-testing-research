@@ -1,6 +1,6 @@
 'use client'
 
-import { AlertTriangle, Database, RefreshCw, Shield, Workflow } from 'lucide-react'
+import { AlertTriangle, Database, RefreshCw, Shield } from 'lucide-react'
 import { CodeBlock, FeatureCard, MethodCard, SetupStep, DetectionTable, DataMappingTable, SecurityNote, RelatedDocs } from '@/components/docs/SharedDocComponents'
 
 export default function DifyDocsPage() {

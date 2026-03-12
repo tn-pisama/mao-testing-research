@@ -30,8 +30,10 @@ export default function DemoPage() {
   useEffect(() => {
     const seen = localStorage.getItem('pisama_demo_tour_seen')
     if (!seen) {
+      // eslint-disable-next-line react-hooks/set-state-in-effect -- one-time initialization from localStorage
       setShowWalkthrough(true)
     } else {
+      // eslint-disable-next-line react-hooks/set-state-in-effect -- one-time initialization from localStorage
       setHasSeenTour(true)
     }
   }, [])

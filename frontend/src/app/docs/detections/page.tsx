@@ -1,13 +1,12 @@
-import { 
-  AlertTriangle, 
-  RefreshCw, 
-  Shield, 
-  Eye, 
-  Zap, 
+import {
+  AlertTriangle,
+  RefreshCw,
+  Shield,
+  Eye,
+  Zap,
   CheckCircle,
   XCircle,
   HelpCircle,
-  TrendingUp,
 } from 'lucide-react'
 
 export default function DetectionsPage() {

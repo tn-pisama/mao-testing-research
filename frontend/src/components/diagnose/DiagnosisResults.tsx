@@ -256,7 +256,7 @@ export function DiagnosisResults({ result, onApplyAutoFix }: DiagnosisResultsPro
                   <p className="text-sm text-zinc-300 mb-2">{result.auto_fix_preview.description}</p>
                   <div className="flex items-center gap-4 text-xs">
                     <span className="text-zinc-500">
-                      What we'll do: <span className="text-zinc-300">{result.auto_fix_preview.action}</span>
+                      What we&apos;ll do: <span className="text-zinc-300">{result.auto_fix_preview.action}</span>
                     </span>
                     <TermTooltip term="confidence">
                       <span className="text-zinc-500">

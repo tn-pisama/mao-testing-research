@@ -26,7 +26,6 @@ import {
   Loader2,
 } from 'lucide-react'
 import Link from 'next/link'
-import { type Detection } from '@/lib/api'
 import { useUserPreferences } from '@/lib/user-preferences'
 import { useDetectionsQuery, useSubmitFeedbackMutation } from '@/hooks/useQueries'
 
@@ -147,6 +146,7 @@ export default function DetectionsPage() {
   })
 
   // Reset to page 1 when filters change
+  // eslint-disable-next-line react-hooks/set-state-in-effect -- intentional state sync on filter change
   useEffect(() => { setCurrentPage(1) }, [typeFilter, severityFilter])
 
   // n8n users see simplified view with friendly terminology

@@ -243,7 +243,7 @@ export default function DifyPage() {
           ) : (
             <div className="divide-y divide-zinc-700">
               {instances.map((inst) => {
-                const instanceApps = apps.filter((a) => true) // In demo mode, show all apps
+                const instanceApps = apps.filter((_a) => true) // In demo mode, show all apps
                 return (
                   <div key={inst.id} className="p-4">
                     <div className="flex items-start justify-between">

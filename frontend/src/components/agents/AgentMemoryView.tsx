@@ -3,7 +3,7 @@
 import { Card } from '../ui/Card'
 import { Brain } from 'lucide-react'
 
-export function AgentMemoryView({ agent, memory }: { agent?: unknown; memory?: unknown }) {
+export function AgentMemoryView({ agent: _agent, memory: _memory }: { agent?: unknown; memory?: unknown }) {
   return (
     <Card>
       <div className="text-center py-12 text-zinc-400">

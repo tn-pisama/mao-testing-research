@@ -1,6 +1,5 @@
 'use client'
 
-import { useState } from 'react'
 import Link from 'next/link'
 import type { QualityAssessment } from '@/lib/api'
 import { QualityGradeBadge } from '@/components/quality/QualityGradeBadge'

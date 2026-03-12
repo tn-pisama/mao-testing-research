@@ -1,9 +1,8 @@
 'use client'
 
-import { useState } from 'react'
 import {
-  Users, TrendingUp, Clock, Shield, ChevronRight,
-  CheckCircle, AlertTriangle, Zap, BarChart3, Quote,
+  Users, TrendingUp, Clock, Shield,
+  CheckCircle, Zap, BarChart3, Quote,
   Terminal, ExternalLink, ArrowRight
 } from 'lucide-react'
 import { Layout } from '@/components/common/Layout'
@@ -168,7 +167,7 @@ function CaseStudyCard({ study }: { study: CaseStudy }) {
           <div className="flex gap-3">
             <Quote size={20} className="text-zinc-600 flex-shrink-0 mt-1" />
             <div>
-              <p className="text-zinc-300 text-sm italic mb-2">"{study.quote.text}"</p>
+              <p className="text-zinc-300 text-sm italic mb-2">&quot;{study.quote.text}&quot;</p>
               <p className="text-xs text-zinc-500">
                 — {study.quote.author}, {study.quote.role}
               </p>

@@ -64,6 +64,7 @@ export default function TestingPage() {
   }, [getToken])
 
   useEffect(() => {
+    // eslint-disable-next-line react-hooks/set-state-in-effect -- data fetching pattern
     loadData()
   }, [loadData])
 

@@ -4,7 +4,7 @@ import { useState } from 'react'
 import {
   BarChart3, CheckCircle, AlertTriangle, Info,
   TrendingUp, Target, Zap, Shield, FileText,
-  ChevronDown, ChevronUp, ExternalLink
+  ChevronDown, ChevronUp
 } from 'lucide-react'
 import { Layout } from '@/components/common/Layout'
 
@@ -85,7 +85,7 @@ function ProgressBar({ value, max = 100, color = 'indigo' }: { value: number; ma
   )
 }
 
-function TierBadge({ tier }: { tier: 1 | 2 | 3 }) {
+function _TierBadge({ tier }: { tier: 1 | 2 | 3 }) {
   const styles = {
     1: 'bg-emerald-500/20 text-emerald-400 border-emerald-500/30',
     2: 'bg-amber-500/20 text-amber-400 border-amber-500/30',
@@ -124,7 +124,7 @@ function CategoryBadge({ category }: { category: 'content' | 'structural' | 'rag
 }
 
 export default function BenchmarksPage() {
-  const [expandedMode, setExpandedMode] = useState<string | null>(null)
+  const [_expandedMode, _setExpandedMode] = useState<string | null>(null)
   const [showMethodology, setShowMethodology] = useState(false)
 
   const tier1Modes = FAILURE_MODES.filter(m => m.tier === 1)

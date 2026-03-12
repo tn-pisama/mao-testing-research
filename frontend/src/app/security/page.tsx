@@ -7,7 +7,7 @@ import { useSafeAuth as useAuth } from '@/hooks/useSafeAuth'
 import { useTenant } from '@/hooks/useTenant'
 import {
   Shield, AlertTriangle, CheckCircle, XCircle,
-  Search, Brain, Database, DollarSign, Loader2, WifiOff
+  Search, Brain, Database, DollarSign, WifiOff
 } from 'lucide-react'
 import { Layout } from '@/components/common/Layout'
 import { Button } from '@/components/ui/Button'

@@ -21,15 +21,15 @@ function makeWorkflow(overrides: Partial<QualityAssessment> = {}): QualityAssess
     agent_quality_score: 0.88,
     orchestration_quality_score: 0.82,
     agent_scores: [
-      { agent_id: 'a1', overall_score: 0.9, dimensions: {}, issues: [] } as any,
-      { agent_id: 'a2', overall_score: 0.85, dimensions: {}, issues: [] } as any,
+      { agent_id: 'a1', overall_score: 0.9, dimensions: {}, issues: [] } as unknown as QualityAssessment['agent_scores'][number],
+      { agent_id: 'a2', overall_score: 0.85, dimensions: {}, issues: [] } as unknown as QualityAssessment['agent_scores'][number],
     ],
     orchestration_score: {
       overall_score: 0.82,
       detected_pattern: 'sequential',
       dimensions: {},
       issues: [],
-    } as any,
+    } as unknown as QualityAssessment['orchestration_score'],
     improvements: [],
     total_issues: 3,
     critical_issues_count: 1,

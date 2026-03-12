@@ -3,7 +3,7 @@
 import { Card } from '../ui/Card'
 import { Wrench } from 'lucide-react'
 
-export function AgentToolUsage({ agent, tools }: { agent?: unknown; tools?: unknown[] }) {
+export function AgentToolUsage({ agent: _agent, tools: _tools }: { agent?: unknown; tools?: unknown[] }) {
   return (
     <Card>
       <div className="text-center py-12 text-zinc-400">

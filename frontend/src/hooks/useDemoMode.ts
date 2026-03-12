@@ -85,6 +85,7 @@ export function useDemoMode(options: UseDemoModeOptions = {}) {
   const [demoState, setDemoState] = useState<DemoState>(emptyState)
 
   useEffect(() => {
+    // eslint-disable-next-line react-hooks/set-state-in-effect -- one-time initialization
     setDemoState(createInitialState())
     setIsLoaded(true)
   }, [])

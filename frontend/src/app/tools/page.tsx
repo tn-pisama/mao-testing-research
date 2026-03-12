@@ -2,14 +2,12 @@
 
 export const dynamic = 'force-dynamic'
 
-import { useState } from 'react'
 import Link from 'next/link'
 import { Layout } from '@/components/common/Layout'
-import { Card, CardHeader, CardTitle, CardContent } from '@/components/ui/Card'
+import { Card, CardContent } from '@/components/ui/Card'
 import {
   Zap,
   Play,
-  RefreshCw,
   Shield,
   Bug,
   GitCompare,

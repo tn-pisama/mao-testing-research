@@ -17,9 +17,10 @@ export function StepFirstTrace({ apiClient, onTraceReceived, onSkipToDemo }: Ste
   const [traceInfo, setTraceInfo] = useState<{ id: string; count: number; at: string } | null>(null)
   const [showTroubleshoot, setShowTroubleshoot] = useState(false)
   const pollRef = useRef<NodeJS.Timeout | null>(null)
-  const startRef = useRef(Date.now())
+  const startRef = useRef(0)
 
   useEffect(() => {
+    startRef.current = Date.now()
     const poll = async () => {
       try {
         const data = await apiClient.getOnboardingStatus()

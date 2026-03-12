@@ -17,6 +17,7 @@ export function LiveDetectionFeed({ detections, isActive }: LiveDetectionFeedPro
   const timerRef = useRef<NodeJS.Timeout | null>(null)
 
   useEffect(() => {
+    // eslint-disable-next-line react-hooks/set-state-in-effect -- reset count when detections change
     setVisibleCount(0)
     if (timerRef.current) clearInterval(timerRef.current)
 

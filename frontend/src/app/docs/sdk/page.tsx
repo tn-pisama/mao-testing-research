@@ -1,5 +1,5 @@
 import Link from 'next/link'
-import { Terminal, Copy, Check, AlertTriangle, Package, Zap, Shield, Settings } from 'lucide-react'
+import { Terminal, Copy, Check } from 'lucide-react'
 
 export default function SDKPage() {
   return (
@@ -393,7 +393,7 @@ tracer = MAOTracer(on_error="ignore")`}
   )
 }
 
-function CodeBlock({ title, language, children }: { title: string; language: string; children: React.ReactNode }) {
+function CodeBlock({ title, language: _language, children }: { title: string; language: string; children: React.ReactNode }) {
   return (
     <div className="rounded-lg bg-zinc-900 border border-zinc-700 overflow-hidden">
       <div className="flex items-center justify-between px-4 py-2 border-b border-zinc-700 bg-zinc-800/50">
@@ -413,7 +413,7 @@ function CodeBlock({ title, language, children }: { title: string; language: str
 }
 
 function APIMethod({
-  name,
+  name: _name,
   signature,
   description,
   params,

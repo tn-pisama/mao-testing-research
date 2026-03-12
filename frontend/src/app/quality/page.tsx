@@ -7,7 +7,7 @@ import { useSafeAuth as useAuth } from '@/hooks/useSafeAuth'
 import { useTenant } from '@/hooks/useTenant'
 import { Star, ChevronRight, Filter, Loader2, AlertTriangle } from 'lucide-react'
 import { Layout } from '@/components/common/Layout'
-import { Card, CardHeader, CardTitle, CardContent } from '@/components/ui/Card'
+import { Card, CardContent } from '@/components/ui/Card'
 import { Button } from '@/components/ui/Button'
 import { Badge } from '@/components/ui/Badge'
 import { QualityGradeBadge, getScoreColor } from '@/components/quality/QualityGradeBadge'
@@ -53,6 +53,7 @@ export default function QualityPage() {
   }, [getToken, tenantId, page, perPage, gradeFilter, filterPreferences.workflowGroupId])
 
   useEffect(() => {
+    // eslint-disable-next-line react-hooks/set-state-in-effect -- data fetching pattern
     loadAssessments()
   }, [loadAssessments])
 

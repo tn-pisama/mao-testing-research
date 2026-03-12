@@ -8,7 +8,6 @@ import {
   FileText,
   AlertTriangle,
   ArrowRight,
-  ExternalLink,
 } from 'lucide-react'
 
 export default function MethodologyPage() {

@@ -22,7 +22,6 @@ import {
   Activity,
   Layers,
   Globe,
-  Loader2,
 } from 'lucide-react'
 
 // ---------------------------------------------------------------------------
@@ -151,7 +150,7 @@ export default function MemoryPage() {
   const [expandedTypes, setExpandedTypes] = useState<Set<string>>(new Set())
   const [expandedDomains, setExpandedDomains] = useState<Set<string>>(new Set())
 
-  const useDemoMode = useCallback(() => {
+  const loadDemoData = useCallback(() => {
     setMemories(DEMO_MEMORIES)
     setStats(DEMO_STATS)
     setTree(DEMO_TREE)
@@ -171,7 +170,7 @@ export default function MemoryPage() {
       ])
 
       if (!statsRes && !treeRes) {
-        useDemoMode()
+        loadDemoData()
       } else {
         setStats(statsRes || DEMO_STATS)
         setTree(treeRes || DEMO_TREE)
@@ -187,11 +186,11 @@ export default function MemoryPage() {
       }
     } catch (err) {
       console.error('Failed to fetch memory data:', err)
-      useDemoMode()
+      loadDemoData()
     } finally {
       setIsLoading(false)
     }
-  }, [tenantId, getToken, useDemoMode])
+  }, [tenantId, getToken, loadDemoData])
 
   useEffect(() => {
     fetchData()

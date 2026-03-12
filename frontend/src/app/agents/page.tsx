@@ -58,6 +58,7 @@ export default function AgentsPage() {
   }, [getToken, tenantId, refreshDataWithAgents])
 
   useEffect(() => {
+    // eslint-disable-next-line react-hooks/set-state-in-effect -- data fetching pattern
     loadAgents()
   }, [loadAgents])
 

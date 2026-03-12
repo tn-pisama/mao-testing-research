@@ -19,6 +19,7 @@ import type {
   FixSuggestionSummary,
   FeedbackStats,
   ThresholdRecommendation,
+  N8nWorkflow,
   DifyInstance,
   DifyApp,
   LangGraphDeployment,
@@ -390,10 +391,10 @@ export function useThresholdRecommendationsQuery() {
 }
 
 export function useN8nWorkflowsQuery() {
-  const result = useQueryWithFallback<unknown[]>({
+  const result = useQueryWithFallback<N8nWorkflow[]>({
     queryKey: queryKeys.n8nWorkflows(),
     queryFn: (api) => api.listN8nWorkflows(),
-    fallbackFn: () => demoDataStore.getN8nWorkflows(),
+    fallbackFn: () => demoDataStore.getN8nWorkflows() as unknown as N8nWorkflow[],
   })
 
   return {

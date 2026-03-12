@@ -6,9 +6,9 @@ import { useState, useEffect, useCallback } from 'react'
 import { useSafeAuth as useAuth } from '@/hooks/useSafeAuth'
 import { useTenant } from '@/hooks/useTenant'
 import {
-  Play, Pause, SkipForward, RotateCcw,
+  Play, RotateCcw,
   GitCompare, Download, Upload, Clock,
-  CheckCircle, XCircle, AlertCircle
+  CheckCircle, AlertCircle
 } from 'lucide-react'
 import { Layout } from '@/components/common/Layout'
 import { Button } from '@/components/ui/Button'
@@ -90,6 +90,7 @@ export default function ReplayPage() {
   }, [getToken, tenantId])
 
   useEffect(() => {
+    // eslint-disable-next-line react-hooks/set-state-in-effect -- data fetching pattern
     loadBundles()
   }, [loadBundles])
 

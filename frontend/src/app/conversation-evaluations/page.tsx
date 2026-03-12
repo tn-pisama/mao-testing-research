@@ -153,6 +153,7 @@ export default function ConversationEvaluationsPage() {
   }, [getToken, tenantId, page, perPage, gradeFilter])
 
   useEffect(() => {
+    // eslint-disable-next-line react-hooks/set-state-in-effect -- data fetching pattern
     loadEvaluations()
   }, [loadEvaluations])
 

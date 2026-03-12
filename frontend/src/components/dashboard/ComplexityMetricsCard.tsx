@@ -1,6 +1,6 @@
 'use client'
 
-import { Network, AlertCircle, TrendingUp, Info } from 'lucide-react'
+import { Network, Info } from 'lucide-react'
 import { Card, CardHeader, CardTitle, CardContent } from '../ui/Card'
 import type { QualityAssessment, ComplexityMetrics } from '@/lib/api'
 import { cn } from '@/lib/utils'

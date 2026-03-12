@@ -8,7 +8,7 @@ import { WorkflowGraphView } from '@/components/workflow/WorkflowGraphView'
 import { WorkflowNodeDetails } from '@/components/workflow/WorkflowNodeDetails'
 import { WorkflowEdgeDetails } from '@/components/workflow/WorkflowEdgeDetails'
 import { useHandoffAnalysis } from '@/hooks/useHandoffAnalysis'
-import { X, ChevronDown, ChevronUp, AlertCircle, Info, TrendingUp, GitBranch, Activity } from 'lucide-react'
+import { X, ChevronDown, ChevronUp, AlertCircle, TrendingUp, GitBranch, Activity } from 'lucide-react'
 import { cn } from '@/lib/utils'
 
 interface WorkflowDetailPanelProps {

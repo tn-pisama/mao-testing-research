@@ -22,7 +22,6 @@ import {
   Eye,
   EyeOff,
   Check,
-  Zap,
   RefreshCw,
   Sliders,
   ExternalLink,

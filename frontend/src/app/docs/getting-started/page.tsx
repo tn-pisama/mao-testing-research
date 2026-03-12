@@ -191,7 +191,7 @@ function Prerequisite({ children }: { children: React.ReactNode }) {
   )
 }
 
-function CodeBlock({ title, language, children }: { title: string; language: string; children: React.ReactNode }) {
+function CodeBlock({ title, language: _language, children }: { title: string; language: string; children: React.ReactNode }) {
   return (
     <div className="rounded-lg bg-zinc-900 border border-zinc-700 overflow-hidden">
       <div className="flex items-center justify-between px-4 py-2 border-b border-zinc-700 bg-zinc-800/50">

@@ -1,9 +1,5 @@
-import { 
-  Terminal, 
+import {
   Copy,
-  Check,
-  ArrowRight,
-  Code,
 } from 'lucide-react'
 
 export default function ApiReferencePage() {

@@ -69,7 +69,7 @@ export default function DetectionDetailPage() {
   const [healingError, setHealingError] = useState<string | null>(null)
   const [feedbackNotes, setFeedbackNotes] = useState('')
   const [feedbackSeverity, setFeedbackSeverity] = useState<number | null>(null)
-  const [feedbackSubmitted, setFeedbackSubmitted] = useState(false)
+  const [_feedbackSubmitted, setFeedbackSubmitted] = useState(false)
   const [feedbackError, setFeedbackError] = useState<string | null>(null)
 
   const detectionId = params.id as string
@@ -90,6 +90,7 @@ export default function DetectionDetailPage() {
   }, [getToken, tenantId, detectionId])
 
   useEffect(() => {
+    // eslint-disable-next-line react-hooks/set-state-in-effect -- data fetching pattern
     loadDetection()
   }, [loadDetection])
 

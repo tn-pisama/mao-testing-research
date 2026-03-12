@@ -2,9 +2,7 @@ import Link from 'next/link'
 import {
   Rocket,
   AlertTriangle,
-  Workflow,
   Plug,
-  Code,
   ArrowRight,
   Zap,
   Shield,

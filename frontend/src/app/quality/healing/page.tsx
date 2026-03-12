@@ -56,6 +56,7 @@ export default function QualityHealingListPage() {
   }, [getToken, tenantId, page, perPage, statusFilter])
 
   useEffect(() => {
+    // eslint-disable-next-line react-hooks/set-state-in-effect -- data fetching pattern
     loadHealings()
   }, [loadHealings])
 

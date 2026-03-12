@@ -1,4 +1,4 @@
-import { useEffect, useState, useCallback } from 'react'
+import { useEffect, useState, useRef, useCallback } from 'react'
 import { useSafeAuth } from './useSafeAuth'
 import { useTenant } from './useTenant'
 
@@ -43,15 +43,28 @@ export function useExecutionStream({ onExecution, enabled = true }: UseExecution
   const [isConnected, setIsConnected] = useState(false)
   const [error, setError] = useState<string | null>(null)
 
-  const connect = useCallback(async () => {
-    if (!tenantId || !enabled) {
-      return
-    }
+  // Use refs to keep latest values accessible without re-triggering the effect
+  const onExecutionRef = useRef(onExecution)
+  useEffect(() => {
+    onExecutionRef.current = onExecution
+  }, [onExecution])
+
+  const getTokenRef = useRef(getToken)
+  useEffect(() => {
+    getTokenRef.current = getToken
+  }, [getToken])
+
+  const connect = useCallback(async (
+    cancelled: { current: boolean },
+    setEventSource: (es: EventSource | null) => void,
+    scheduleReconnect: () => void,
+  ) => {
+    if (cancelled.current) return
 
     try {
-      const token = await getToken()
-      if (!token) {
-        setError('No authentication token')
+      const token = await getTokenRef.current()
+      if (!token || cancelled.current) {
+        if (!cancelled.current) setError('No authentication token')
         return
       }
 
@@ -63,25 +76,29 @@ export function useExecutionStream({ onExecution, enabled = true }: UseExecution
       const eventSource = new EventSource(url, {
         withCredentials: true,
       })
+      setEventSource(eventSource)
 
       eventSource.onopen = () => {
         console.log('[SSE] Connection opened')
-        setIsConnected(true)
-        setError(null)
+        if (!cancelled.current) {
+          setIsConnected(true)
+          setError(null)
+        }
       }
 
       eventSource.onerror = (err) => {
         console.error('[SSE] Connection error:', err)
-        setIsConnected(false)
-        setError('Connection lost')
+        if (!cancelled.current) {
+          setIsConnected(false)
+          setError('Connection lost')
+        }
         eventSource.close()
+        setEventSource(null)
 
         // Attempt reconnect after 3 seconds
-        setTimeout(() => {
-          if (enabled) {
-            connect()
-          }
-        }, 3000)
+        if (!cancelled.current) {
+          scheduleReconnect()
+        }
       }
 
       eventSource.onmessage = (event) => {
@@ -93,42 +110,56 @@ export function useExecutionStream({ onExecution, enabled = true }: UseExecution
             console.log('[SSE] Subscribed to channel:', data.channel)
           } else if (data.type === 'error') {
             console.error('[SSE] Server error:', data.message)
-            setError(data.message)
+            if (!cancelled.current) setError(data.message)
           } else if (data.type === 'execution.created') {
             // Call the callback with the execution event
-            onExecution(data as ExecutionEvent)
+            onExecutionRef.current(data as ExecutionEvent)
           }
         } catch (err) {
           console.error('[SSE] Failed to parse event data:', err)
         }
       }
-
-      // Return cleanup function
-      return () => {
-        console.log('[SSE] Closing connection')
-        eventSource.close()
-      }
     } catch (err) {
       console.error('[SSE] Failed to connect:', err)
-      setError('Failed to connect')
-      setIsConnected(false)
+      if (!cancelled.current) {
+        setError('Failed to connect')
+        setIsConnected(false)
+      }
     }
-  }, [tenantId, enabled, getToken, onExecution])
+  }, [])
 
   useEffect(() => {
-    if (!enabled) {
+    if (!tenantId || !enabled) {
+      // eslint-disable-next-line react-hooks/set-state-in-effect -- intentional state reset when disabled
       setIsConnected(false)
       return
     }
 
-    const cleanup = connect()
+    const cancelled = { current: false }
+    let eventSource: EventSource | null = null
+    let reconnectTimer: NodeJS.Timeout | null = null
+
+    const setEventSource = (es: EventSource | null) => {
+      eventSource = es
+    }
+
+    const scheduleReconnect = () => {
+      reconnectTimer = setTimeout(() => {
+        connect(cancelled, setEventSource, scheduleReconnect)
+      }, 3000)
+    }
+
+    connect(cancelled, setEventSource, scheduleReconnect)
 
     return () => {
-      if (cleanup) {
-        cleanup.then(fn => fn?.())
+      cancelled.current = true
+      if (reconnectTimer) clearTimeout(reconnectTimer)
+      if (eventSource) {
+        console.log('[SSE] Closing connection')
+        eventSource.close()
       }
     }
-  }, [connect, enabled])
+  }, [tenantId, enabled, connect])
 
   return { isConnected, error }
 }

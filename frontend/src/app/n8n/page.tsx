@@ -2,7 +2,7 @@
 
 export const dynamic = 'force-dynamic'
 
-import { useState, useEffect, useCallback } from 'react'
+import { useState, useEffect } from 'react'
 import { useSafeAuth as useAuth } from '@/hooks/useSafeAuth'
 import { useTenant } from '@/hooks/useTenant'
 import {
@@ -11,7 +11,7 @@ import {
 import { Layout } from '@/components/common/Layout'
 import { Button } from '@/components/ui/Button'
 import { QualityGradeBadge } from '@/components/quality/QualityGradeBadge'
-import { createApiClient, N8nWorkflow, N8nConnection, QualityAssessment } from '@/lib/api'
+import { createApiClient, N8nWorkflow, QualityAssessment } from '@/lib/api'
 import { useN8nWorkflowsQuery, useQualityAssessmentsQuery, useN8nConnectionsQuery } from '@/hooks/useQueries'
 
 interface DisplayWorkflow {
@@ -59,12 +59,12 @@ export default function N8nPage() {
   const [isSyncing, setIsSyncing] = useState(false)
   const [syncResult, setSyncResult] = useState<{ synced: number; errors: string[] } | null>(null)
   const [n8nInstanceUrl, setN8nInstanceUrl] = useState<string>('https://pisama.app.n8n.cloud')
-  const [shouldRefresh, setShouldRefresh] = useState(0)
+  const [_shouldRefresh, setShouldRefresh] = useState(0)
 
   const isLoading = workflowsLoading || assessmentsLoading || connectionsLoading
 
   // Build unified workflow list: registered webhooks first, then unregistered quality assessments
-  const fromRegistered = workflowsData.map(w => mapWorkflow(w as any, assessments))
+  const fromRegistered = workflowsData.map(w => mapWorkflow(w as N8nWorkflow, assessments))
   const registeredNames = new Set(fromRegistered.map(w => w.workflowName))
   const fromAssessments: DisplayWorkflow[] = assessments
     .filter(a => !registeredNames.has(a.workflow_name))
@@ -85,6 +85,7 @@ export default function N8nPage() {
   useEffect(() => {
     const activeConnection = connections.find(conn => conn.is_active)
     if (activeConnection?.instance_url) {
+      // eslint-disable-next-line react-hooks/set-state-in-effect -- sync derived state from connections
       setN8nInstanceUrl(activeConnection.instance_url)
     }
   }, [connections])

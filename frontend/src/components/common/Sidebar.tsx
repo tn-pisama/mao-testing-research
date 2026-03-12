@@ -91,63 +91,63 @@ const developerSettingsItems: NavItem[] = [
   { label: 'Settings', href: '/settings', icon: Settings },
 ]
 
+function NavLink({ item, pathname, isCollapsed }: { item: NavItem; pathname: string | null; isCollapsed: boolean }) {
+  const isActive = pathname === item.href ||
+    (item.href !== '/settings' && pathname?.startsWith(item.href + '/'))
+  const Icon = item.icon
+
+  return (
+    <Link
+      href={item.href}
+      className={cn(
+        'flex items-center gap-3 px-3 py-2 rounded-lg text-sm transition-colors duration-150',
+        isActive
+          ? 'bg-blue-500/10 text-blue-400 border-l-2 border-blue-500 -ml-px'
+          : 'text-zinc-400 hover:bg-zinc-800 hover:text-zinc-200'
+      )}
+    >
+      <Icon size={18} />
+      {!isCollapsed && (
+        <>
+          <span className="flex-1">{item.label}</span>
+          {item.badge && (
+            <span className="px-1.5 py-0.5 text-xs bg-zinc-800 text-zinc-400 rounded">
+              {item.badge}
+            </span>
+          )}
+        </>
+      )}
+    </Link>
+  )
+}
+
+function NavSection({ title, items, pathname, isCollapsed, showAdvancedFeatures }: { title?: string; items: NavItem[]; pathname: string | null; isCollapsed: boolean; showAdvancedFeatures: boolean }) {
+  const filteredItems = items.filter(item => !item.advancedOnly || showAdvancedFeatures)
+
+  if (filteredItems.length === 0) return null
+
+  return (
+    <div className="space-y-0.5">
+      {title && !isCollapsed && (
+        <div className="px-3 py-2 text-xs font-medium text-zinc-400 uppercase tracking-wider">
+          {title}
+        </div>
+      )}
+      {filteredItems.map((item) => (
+        <NavLink key={item.href} item={item} pathname={pathname} isCollapsed={isCollapsed} />
+      ))}
+    </div>
+  )
+}
+
 interface SidebarProps {
   isCollapsed?: boolean
   onToggle?: () => void
 }
 
-export function Sidebar({ isCollapsed = false, onToggle }: SidebarProps) {
+export function Sidebar({ isCollapsed = false, onToggle: _onToggle }: SidebarProps) {
   const pathname = usePathname()
-  const { isN8nUser, showAdvancedFeatures, preferences } = useUserPreferences()
-
-  const NavLink = ({ item }: { item: NavItem }) => {
-    const isActive = pathname === item.href ||
-      (item.href !== '/settings' && pathname?.startsWith(item.href + '/'))
-    const Icon = item.icon
-
-    return (
-      <Link
-        href={item.href}
-        className={cn(
-          'flex items-center gap-3 px-3 py-2 rounded-lg text-sm transition-colors duration-150',
-          isActive
-            ? 'bg-blue-500/10 text-blue-400 border-l-2 border-blue-500 -ml-px'
-            : 'text-zinc-400 hover:bg-zinc-800 hover:text-zinc-200'
-        )}
-      >
-        <Icon size={18} />
-        {!isCollapsed && (
-          <>
-            <span className="flex-1">{item.label}</span>
-            {item.badge && (
-              <span className="px-1.5 py-0.5 text-xs bg-zinc-800 text-zinc-400 rounded">
-                {item.badge}
-              </span>
-            )}
-          </>
-        )}
-      </Link>
-    )
-  }
-
-  const NavSection = ({ title, items }: { title?: string; items: NavItem[] }) => {
-    const filteredItems = items.filter(item => !item.advancedOnly || showAdvancedFeatures)
-
-    if (filteredItems.length === 0) return null
-
-    return (
-      <div className="space-y-0.5">
-        {title && !isCollapsed && (
-          <div className="px-3 py-2 text-xs font-medium text-zinc-400 uppercase tracking-wider">
-            {title}
-          </div>
-        )}
-        {filteredItems.map((item) => (
-          <NavLink key={item.href} item={item} />
-        ))}
-      </div>
-    )
-  }
+  const { isN8nUser, showAdvancedFeatures, preferences: _preferences } = useUserPreferences()
 
   const isSimplifiedView = isN8nUser && !showAdvancedFeatures
 
@@ -174,16 +174,16 @@ export function Sidebar({ isCollapsed = false, onToggle }: SidebarProps) {
       <nav className="flex-1 overflow-y-auto p-3 space-y-5 relative [mask-image:linear-gradient(to_bottom,black_calc(100%-2rem),transparent)]">
         {isSimplifiedView ? (
           <>
-            <NavSection title="Observe" items={n8nObserveItems} />
-            <NavSection title="Improve" items={n8nImproveItems} />
-            <NavSection title="Settings" items={n8nSettingsItems} />
+            <NavSection title="Observe" items={n8nObserveItems} pathname={pathname} isCollapsed={isCollapsed} showAdvancedFeatures={showAdvancedFeatures} />
+            <NavSection title="Improve" items={n8nImproveItems} pathname={pathname} isCollapsed={isCollapsed} showAdvancedFeatures={showAdvancedFeatures} />
+            <NavSection title="Settings" items={n8nSettingsItems} pathname={pathname} isCollapsed={isCollapsed} showAdvancedFeatures={showAdvancedFeatures} />
           </>
         ) : (
           <>
-            <NavSection title="Observe" items={developerObserveItems} />
-            <NavSection title="Improve" items={developerImproveItems} />
-            <NavSection title="Configure" items={developerConfigureItems} />
-            <NavSection title="Settings" items={developerSettingsItems} />
+            <NavSection title="Observe" items={developerObserveItems} pathname={pathname} isCollapsed={isCollapsed} showAdvancedFeatures={showAdvancedFeatures} />
+            <NavSection title="Improve" items={developerImproveItems} pathname={pathname} isCollapsed={isCollapsed} showAdvancedFeatures={showAdvancedFeatures} />
+            <NavSection title="Configure" items={developerConfigureItems} pathname={pathname} isCollapsed={isCollapsed} showAdvancedFeatures={showAdvancedFeatures} />
+            <NavSection title="Settings" items={developerSettingsItems} pathname={pathname} isCollapsed={isCollapsed} showAdvancedFeatures={showAdvancedFeatures} />
           </>
         )}
       </nav>

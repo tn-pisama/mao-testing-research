@@ -119,7 +119,7 @@ export function WaitlistModal({ isOpen, onClose }: WaitlistModalProps) {
         </form>
 
         <p className="text-xs text-zinc-500 mt-4 text-center">
-          We'll send you launch updates and early access when ready. No spam, ever.
+          We&apos;ll send you launch updates and early access when ready. No spam, ever.
         </p>
       </div>
     </div>

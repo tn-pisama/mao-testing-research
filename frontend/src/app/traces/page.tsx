@@ -14,7 +14,7 @@ export default function TracesPage() {
   const [statusFilter, setStatusFilter] = useState<string | undefined>()
   const [frameworkFilter, setFrameworkFilter] = useState<string | undefined>()
 
-  const { traces: allTraces, total, isLoading, isDemoMode } = useTracesQuery({
+  const { traces: allTraces, total: _total, isLoading, isDemoMode } = useTracesQuery({
     page,
     perPage: 50,
     status: statusFilter,

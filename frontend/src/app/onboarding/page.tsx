@@ -14,7 +14,7 @@ import { createApiClient } from '@/lib/api'
 
 export default function OnboardingPage() {
   const router = useRouter()
-  const { getToken } = useSafeAuth()
+  const { getToken: _getToken } = useSafeAuth()
   const { tenantId } = useTenant()
   // API client will be created lazily when needed (getToken is async)
   // For onboarding steps that need the API, we pass a factory
