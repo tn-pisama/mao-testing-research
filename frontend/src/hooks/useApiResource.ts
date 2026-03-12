@@ -23,7 +23,7 @@ type ApiClient = ReturnType<typeof createApiClient>
 export function useApiResource<T>(
   fetcher: (api: ApiClient) => Promise<T>,
   fallback: () => T,
-  deps: any[] = [],
+  deps: unknown[] = [],
 ): { data: T | null; isLoading: boolean; isDemoMode: boolean } {
   const { getToken } = useAuth()
   const { tenantId } = useTenant()

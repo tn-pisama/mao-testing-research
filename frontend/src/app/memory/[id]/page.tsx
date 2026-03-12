@@ -124,8 +124,8 @@ export default function MemoryDetailPage() {
       const api = createApiClient(token, tenantId)
       await api.forgetMemory(memoryId)
       window.location.href = '/memory'
-    } catch (err: any) {
-      setError(err.message || 'Failed to delete memory')
+    } catch (err) {
+      setError((err as Error).message || 'Failed to delete memory')
     } finally {
       setIsDeleting(false)
     }

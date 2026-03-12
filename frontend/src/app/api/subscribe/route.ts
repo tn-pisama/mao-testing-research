@@ -43,9 +43,9 @@ export async function POST(request: NextRequest) {
         email,
         audienceId,
       })
-    } catch (resendError: any) {
+    } catch (resendError) {
       // If contact already exists, that's ok
-      if (resendError?.message?.includes('already exists')) {
+      if ((resendError as Error)?.message?.includes('already exists')) {
         return NextResponse.json({
           success: true,
           message: 'You\'re already on the list!',

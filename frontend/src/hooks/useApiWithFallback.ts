@@ -250,7 +250,7 @@ export function useN8nConnections() {
 }
 
 export function useN8nWorkflows() {
-  const { data, isLoading, isDemoMode } = useApiResource<any[]>(
+  const { data, isLoading, isDemoMode } = useApiResource<unknown[]>(
     (api) => api.listN8nWorkflows(),
     () => demoDataStore.getN8nWorkflows(),
   )
@@ -309,7 +309,7 @@ export function useLangGraphAssistants(deploymentId?: string) {
 }
 
 export function useReplayBundles() {
-  const { data, isLoading, isDemoMode } = useApiResource<any[]>(
+  const { data, isLoading, isDemoMode } = useApiResource<unknown[]>(
     (api) => api.getReplayBundles(),
     () => demoDataStore.getReplayBundles(),
   )
@@ -330,7 +330,7 @@ interface DetectorStatusData {
   }>
   summary: Record<string, number>
   calibrated_at: string
-  readiness_criteria: Record<string, any>
+  readiness_criteria: Record<string, unknown>
 }
 
 export function useDetectorStatus() {
@@ -351,7 +351,7 @@ export function useDetectorStatus() {
 // ============================================================================
 
 export function useThresholdTuning() {
-  const { data, isLoading, isDemoMode } = useApiResource<{ feedbackStats: any; recommendations: any[] }>(
+  const { data, isLoading, isDemoMode } = useApiResource<{ feedbackStats: unknown; recommendations: unknown[] }>(
     async (api) => {
       const [stats, recs] = await Promise.all([
         api.getFeedbackStats(),
@@ -373,7 +373,7 @@ export function useThresholdTuning() {
 }
 
 export function useChaosExperiments() {
-  const { data, isLoading, isDemoMode } = useApiResource<{ sessions: any[]; experimentTypes: any[] }>(
+  const { data, isLoading, isDemoMode } = useApiResource<{ sessions: unknown[]; experimentTypes: unknown[] }>(
     async (api) => {
       const [sessionData, types] = await Promise.all([
         api.listChaosSessions(),
@@ -395,7 +395,7 @@ export function useChaosExperiments() {
 }
 
 export function useTestingDashboard() {
-  const { data, isLoading, isDemoMode } = useApiResource<{ accuracyMetrics: any[]; integrationStatus: any[] }>(
+  const { data, isLoading, isDemoMode } = useApiResource<{ accuracyMetrics: unknown[]; integrationStatus: unknown[] }>(
     async (api) => {
       const [metrics, status] = await Promise.all([
         api.getAccuracyMetrics(),
@@ -474,10 +474,10 @@ export function useEvaluation(mode: 'standard' | 'quick' | 'llm-judge' = 'standa
 export function useSecurityChecks(messageInput?: string) {
   const { getToken } = useAuth()
   const { tenantId } = useTenant()
-  const [injectionCheck, setInjectionCheck] = useState<any | null>(null)
-  const [hallucinationCheck, setHallucinationCheck] = useState<any | null>(null)
-  const [overflowCheck, setOverflowCheck] = useState<any | null>(null)
-  const [costCalc, setCostCalc] = useState<any | null>(null)
+  const [injectionCheck, setInjectionCheck] = useState<unknown | null>(null)
+  const [hallucinationCheck, setHallucinationCheck] = useState<unknown | null>(null)
+  const [overflowCheck, setOverflowCheck] = useState<unknown | null>(null)
+  const [costCalc, setCostCalc] = useState<unknown | null>(null)
   const [isLoading, setIsLoading] = useState(false)
   const [isDemoMode, setIsDemoMode] = useState(false)
 
@@ -527,7 +527,7 @@ export function useTraceDetail(traceId: string) {
   const { getToken } = useAuth()
   const { tenantId } = useTenant()
   const [trace, setTrace] = useState<Trace | null>(null)
-  const [states, setStates] = useState<any[]>([])
+  const [states, setStates] = useState<unknown[]>([])
   const [detections, setDetections] = useState<Detection[]>([])
   const [isLoading, setIsLoading] = useState(true)
   const [isDemoMode, setIsDemoMode] = useState(false)

@@ -62,9 +62,9 @@ export function useHandoffAnalysis(workflow?: QualityAssessment): UseHandoffAnal
         setHandoffAnalysis(analysis)
         setHandoffMetrics(metrics)
         setIsDemoMode(false)
-      } catch (err: any) {
+      } catch (err) {
         // Graceful fallback to demo data
-        console.warn('API failed, using demo data:', err?.message || err)
+        console.warn('API failed, using demo data:', (err as Error)?.message || err)
         const demoAnalysis = generateDemoHandoffAnalysis(workflow!)
         const demoMetrics = generateHandoffMetrics(
           demoAnalysis.handoff_graph,

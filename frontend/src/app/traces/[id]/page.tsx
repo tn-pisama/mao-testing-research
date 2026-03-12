@@ -81,7 +81,7 @@ export default function TraceDetailPage() {
           <div className="mb-6">
             <h2 className="text-lg font-semibold text-white mb-3">Detected Issues</h2>
             <div className="grid gap-4">
-              {detections.map((d: any) => (
+              {detections.map((d) => (
                 <FailureCard key={d.id} detection={d} />
               ))}
             </div>

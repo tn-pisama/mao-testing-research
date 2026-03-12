@@ -4,9 +4,10 @@ import { useState, useEffect, useRef } from 'react'
 import { CheckCircle2, Loader2, AlertCircle, Play } from 'lucide-react'
 import { Button } from '@/components/ui/Button'
 import { Card, CardContent } from '@/components/ui/Card'
+import type { createApiClient } from '@/lib/api'
 
 interface StepFirstTraceProps {
-  apiClient: any
+  apiClient: ReturnType<typeof createApiClient>
   onTraceReceived: (traceId: string) => void
   onSkipToDemo: () => void
 }

@@ -126,8 +126,8 @@ export default function DetectionDetailPage() {
         false_positive: isFalsePositive,
       } : null)
       setFeedbackSubmitted(true)
-    } catch (err: any) {
-      if (err?.status === 409) {
+    } catch (err) {
+      if ((err as Error & { status?: number })?.status === 409) {
         setDetection(prev => prev ? { ...prev, validated: true, false_positive: isFalsePositive } : null)
         setFeedbackSubmitted(true)
       } else {

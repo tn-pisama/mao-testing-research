@@ -122,10 +122,8 @@ export interface QualityHealingRecord {
   dimensions_targeted: string[]
   fix_suggestions_count: number
   fix_suggestions?: FixSuggestionSummary[]
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  applied_fixes: any[]
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  validation_results: any[]
+  applied_fixes: unknown[]
+  validation_results: unknown[]
   validation_status?: string | null
   rollback_available?: boolean
   is_successful: boolean

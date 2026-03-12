@@ -5,6 +5,7 @@ import { CheckCircle2, Loader2, ShieldCheck, ArrowRight } from 'lucide-react'
 import { Card, CardContent } from '@/components/ui/Card'
 import { Button } from '@/components/ui/Button'
 import { Badge } from '@/components/ui/Badge'
+import type { createApiClient } from '@/lib/api'
 
 interface Detection {
   id: string
@@ -14,7 +15,7 @@ interface Detection {
 }
 
 interface StepFirstDetectionProps {
-  apiClient: any
+  apiClient: ReturnType<typeof createApiClient>
   traceId: string
   onComplete: () => void
 }
@@ -29,8 +30,8 @@ export function StepFirstDetection({ apiClient, traceId, onComplete }: StepFirst
       try {
         const result = await apiClient.runOnboardingDetection(traceId)
         setDetections(result.detections)
-      } catch (e: any) {
-        setError(e.message || 'Failed to run detection')
+      } catch (e) {
+        setError((e as Error).message || 'Failed to run detection')
       } finally {
         setLoading(false)
       }

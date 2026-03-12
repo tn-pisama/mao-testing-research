@@ -110,9 +110,9 @@ export default function ScorersPage() {
       const scorer = await api.createScorer(description.trim())
       setScorers((prev) => [scorer, ...prev])
       setDescription('')
-    } catch (err: any) {
+    } catch (err) {
       console.warn('Failed to create scorer:', err)
-      setCreateError(err.message || 'Failed to create scorer. Please try again.')
+      setCreateError((err as Error).message || 'Failed to create scorer. Please try again.')
     }
     setIsCreating(false)
   }
@@ -125,9 +125,9 @@ export default function ScorersPage() {
       const summary = await api.runScorer(scorerId, { latest_n: 10 })
       setResults((prev) => ({ ...prev, [scorerId]: summary }))
       setExpandedScorer(scorerId)
-    } catch (err: any) {
+    } catch (err) {
       console.warn('Failed to run scorer:', err)
-      setError(`Failed to run scorer: ${err.message || 'Unknown error'}`)
+      setError(`Failed to run scorer: ${(err as Error).message || 'Unknown error'}`)
     }
     setRunningScorerId(null)
   }
@@ -143,9 +143,9 @@ export default function ScorersPage() {
         delete next[scorerId]
         return next
       })
-    } catch (err: any) {
+    } catch (err) {
       console.warn('Failed to delete scorer:', err)
-      setError(`Failed to delete scorer: ${err.message || 'Unknown error'}`)
+      setError(`Failed to delete scorer: ${(err as Error).message || 'Unknown error'}`)
     }
   }
 
@@ -342,8 +342,8 @@ export default function ScorersPage() {
                                   <div className="mt-2">
                                     <p className="text-xs text-zinc-500 mb-1">Suggestions:</p>
                                     <ul className="list-disc list-inside text-xs text-zinc-400 space-y-0.5">
-                                      {result.suggestions.map((s: any, i: number) => (
-                                        <li key={i}>{typeof s === 'string' ? s : s.text || JSON.stringify(s)}</li>
+                                      {result.suggestions.map((s: unknown, i: number) => (
+                                        <li key={i}>{typeof s === 'string' ? s : (s as Record<string, unknown>)?.text as string || JSON.stringify(s)}</li>
                                       ))}
                                     </ul>
                                   </div>

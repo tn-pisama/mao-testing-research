@@ -17,7 +17,7 @@ interface Column {
   filterable: boolean
   defaultVisible: boolean
   width?: string
-  render?: (value: any, row: QualityAssessment) => React.ReactNode
+  render?: (value: unknown, row: QualityAssessment) => React.ReactNode
 }
 
 const COLUMNS: Column[] = [
@@ -28,11 +28,14 @@ const COLUMNS: Column[] = [
     filterable: true,
     defaultVisible: true,
     width: '250px',
-    render: (value) => (
-      <div className="font-medium text-white truncate max-w-[230px]" title={value}>
-        {value}
-      </div>
-    ),
+    render: (value) => {
+      const v = value as string
+      return (
+        <div className="font-medium text-white truncate max-w-[230px]" title={v}>
+          {v}
+        </div>
+      )
+    },
   },
   {
     key: 'overall_grade',
@@ -41,7 +44,7 @@ const COLUMNS: Column[] = [
     filterable: true,
     defaultVisible: true,
     width: '100px',
-    render: (value) => <QualityGradeBadge grade={value} size="sm" />,
+    render: (value) => <QualityGradeBadge grade={value as string} size="sm" />,
   },
   {
     key: 'overall_score',
@@ -52,7 +55,7 @@ const COLUMNS: Column[] = [
     width: '100px',
     render: (value) => {
       // Value is already 0-100 from database
-      const percent = Math.round(value)
+      const percent = Math.round(value as number)
       const color =
         percent >= 90 ? 'text-green-400' :
         percent >= 80 ? 'text-blue-400' :
@@ -68,13 +71,14 @@ const COLUMNS: Column[] = [
     filterable: true,
     defaultVisible: true,
     width: '100px',
-    render: (value) => (
-      value > 0 ? (
-        <Badge variant="error">{value}</Badge>
+    render: (value) => {
+      const v = value as number
+      return v > 0 ? (
+        <Badge variant="error">{v}</Badge>
       ) : (
         <span className="text-zinc-500 text-sm">—</span>
       )
-    ),
+    },
   },
   {
     key: 'total_issues',
@@ -84,7 +88,7 @@ const COLUMNS: Column[] = [
     defaultVisible: true,
     width: '90px',
     render: (value) => (
-      <span className="text-zinc-300">{value}</span>
+      <span className="text-zinc-300">{String(value)}</span>
     ),
   },
   {
@@ -122,7 +126,7 @@ const COLUMNS: Column[] = [
     defaultVisible: true,
     width: '140px',
     render: (value) => {
-      const date = new Date(value)
+      const date = new Date(value as string)
       const now = new Date()
       const diffMs = now.getTime() - date.getTime()
       const diffMins = Math.floor(diffMs / 60000)
@@ -142,11 +146,14 @@ const COLUMNS: Column[] = [
     filterable: true,
     defaultVisible: false,
     width: '160px',
-    render: (value) => (
-      <span className="font-mono text-xs text-zinc-400" title={value}>
-        {value.slice(0, 8)}...
-      </span>
-    ),
+    render: (value) => {
+      const v = value as string
+      return (
+        <span className="font-mono text-xs text-zinc-400" title={v}>
+          {v.slice(0, 8)}...
+        </span>
+      )
+    },
   },
   {
     key: 'agent_quality_score',
@@ -156,7 +163,7 @@ const COLUMNS: Column[] = [
     defaultVisible: false,
     width: '120px',
     render: (value) => (
-      <span className="font-mono text-zinc-300">{Math.round(value * 100)}%</span>
+      <span className="font-mono text-zinc-300">{Math.round((value as number) * 100)}%</span>
     ),
   },
   {
@@ -167,7 +174,7 @@ const COLUMNS: Column[] = [
     defaultVisible: false,
     width: '120px',
     render: (value) => (
-      <span className="font-mono text-zinc-300">{Math.round(value * 100)}%</span>
+      <span className="font-mono text-zinc-300">{Math.round((value as number) * 100)}%</span>
     ),
   },
   {
@@ -178,7 +185,7 @@ const COLUMNS: Column[] = [
     defaultVisible: false,
     width: '100px',
     render: (value) => (
-      <span className="text-zinc-400 text-sm capitalize">{value}</span>
+      <span className="text-zinc-400 text-sm capitalize">{String(value)}</span>
     ),
   },
 ]
@@ -211,7 +218,7 @@ export function WorkflowDataTable({
 
       if (aVal === bVal) return 0
 
-      const comparison = aVal > bVal ? 1 : -1
+      const comparison = (aVal as string | number) > (bVal as string | number) ? 1 : -1
       return sortConfig.direction === 'asc' ? comparison : -comparison
     })
   }, [workflows, sortConfig])
@@ -378,7 +385,7 @@ export function WorkflowDataTable({
                     <td key={column.key} className="px-4 py-3 text-sm">
                       {column.render
                         ? column.render(getNestedValue(workflow, column.key), workflow)
-                        : getNestedValue(workflow, column.key)}
+                        : String(getNestedValue(workflow, column.key) ?? '')}
                     </td>
                   ))}
                 </tr>
@@ -402,7 +409,7 @@ export function WorkflowDataTable({
   )
 }
 
-function getNestedValue(obj: any, path: string): any {
+function getNestedValue(obj: QualityAssessment, path: string): unknown {
   // Handle nested paths and derived values
   if (path === 'pattern') {
     return obj.orchestration_score?.detected_pattern || 'unknown'
@@ -410,5 +417,5 @@ function getNestedValue(obj: any, path: string): any {
   if (path === 'agent_count') {
     return obj.agent_scores.length
   }
-  return obj[path]
+  return obj[path as keyof QualityAssessment]
 }

@@ -2,65 +2,58 @@
 
 export const dynamic = 'force-dynamic'
 
-import { useState, useEffect, useCallback } from 'react'
+import { useState, useEffect } from 'react'
 import { Layout } from '@/components/common/Layout'
-import { useSafeAuth as useAuth } from '@/hooks/useSafeAuth'
-import { useTenant } from '@/hooks/useTenant'
 import { Tabs, TabsList, TabsTrigger, TabsContent } from '@/components/ui/Tabs'
 import { HealingDashboard } from '@/components/healing/HealingDashboard'
 import { ApprovalQueue } from '@/components/healing/ApprovalQueue'
 import { VersionHistory } from '@/components/healing/VersionHistory'
 import { RollbackConfirmModal } from '@/components/healing/RollbackConfirmModal'
-import {
-  createApiClient,
-  HealingRecord,
-  N8nConnection,
-  WorkflowVersion,
-  VerificationMetrics
-} from '@/lib/api'
+import { ConnectionsManager } from '@/components/healing/ConnectionsManager'
 import { toast } from 'sonner'
 import {
   Sparkles,
   Settings,
   GitBranch,
   AlertTriangle,
-  Plus,
-  Trash2,
-  CheckCircle2,
-  XCircle,
-  Loader2,
   RefreshCw,
-  ExternalLink,
   Wrench,
-  ShieldCheck
+  ShieldCheck,
 } from 'lucide-react'
 import { Button } from '@/components/ui/Button'
-import { Card, CardHeader, CardTitle, CardContent } from '@/components/ui/Card'
-import { Badge } from '@/components/ui/Badge'
+import { Card, CardContent } from '@/components/ui/Card'
 import { useUserPreferences } from '@/lib/user-preferences'
+import {
+  useHealingRecordsQuery,
+  useN8nConnectionsQuery,
+  useVerificationMetricsQuery,
+  useWorkflowVersionsQuery,
+  usePromoteHealingMutation,
+  useRejectHealingMutation,
+  useVerifyHealingMutation,
+  useRollbackHealingMutation,
+  useApproveHealingMutation,
+  useRestoreVersionMutation,
+} from '@/hooks/useQueries'
 
 export default function HealingPage() {
-  const { getToken } = useAuth()
-  const { tenantId } = useTenant()
   const { isN8nUser, showAdvancedFeatures } = useUserPreferences()
-
-  // n8n users see simplified view with friendly terminology
   const showSimplifiedView = isN8nUser && !showAdvancedFeatures
 
   const [activeTab, setActiveTab] = useState('healings')
-  const [isLoading, setIsLoading] = useState(true)
-  const [error, setError] = useState<string | null>(null)
 
-  // Data
-  const [healings, setHealings] = useState<HealingRecord[]>([])
-  const [connections, setConnections] = useState<N8nConnection[]>([])
-  const [versions, setVersions] = useState<WorkflowVersion[]>([])
-  const [selectedWorkflowId, setSelectedWorkflowId] = useState<string>('')
-  const [selectedConnectionId, setSelectedConnectionId] = useState<string>('')
-  const [verificationMetrics, setVerificationMetrics] = useState<VerificationMetrics | null>(null)
+  // --- Data fetching via TanStack Query ---
+  const { records: healings, isLoading, isDemoMode, refetch: refetchHealings } =
+    useHealingRecordsQuery({ perPage: 50 })
+  const { connections } = useN8nConnectionsQuery()
+  const { data: verificationMetrics } = useVerificationMetricsQuery()
 
-  // Modals
-  const [showAddConnection, setShowAddConnection] = useState(false)
+  // Version history
+  const [selectedWorkflowId, setSelectedWorkflowId] = useState('')
+  const [selectedConnectionId, setSelectedConnectionId] = useState('')
+  const { versions } = useWorkflowVersionsQuery(selectedWorkflowId, selectedConnectionId)
+
+  // Rollback modal
   const [rollbackModal, setRollbackModal] = useState<{
     isOpen: boolean
     healingId: string
@@ -68,99 +61,29 @@ export default function HealingPage() {
     fixType?: string
   }>({ isOpen: false, healingId: '' })
 
-  // Form state for add connection
-  const [newConnection, setNewConnection] = useState({
-    name: '',
-    instance_url: '',
-    api_key: ''
-  })
-  const [isAddingConnection, setIsAddingConnection] = useState(false)
-  const [testingConnection, setTestingConnection] = useState<string | null>(null)
-  const [deletingConnection, setDeletingConnection] = useState<string | null>(null)
-
-  const fetchData = useCallback(async () => {
-    if (!tenantId) return
-
-    setIsLoading(true)
-    setError(null)
-
-    try {
-      const token = await getToken()
-      const api = createApiClient(token, tenantId)
-
-      const [healingsRes, connectionsRes, metricsRes] = await Promise.all([
-        api.listHealingRecords({ perPage: 50 }).catch((err) => {
-          console.error('Failed to fetch healings:', err)
-          toast.error('Could not load healing records')
-          return { items: [], total: 0, page: 1, per_page: 50 }
-        }),
-        api.listN8nConnections().catch((err) => {
-          console.error('Failed to fetch connections:', err)
-          toast.error('Could not load n8n connections')
-          return { items: [], total: 0 }
-        }),
-        api.getVerificationMetrics().catch(() => null),
-      ])
-
-      setHealings(healingsRes.items || [])
-      setConnections(connectionsRes.items || [])
-      setVerificationMetrics(metricsRes)
-    } catch (err) {
-      console.error('Failed to fetch healing data:', err)
-      setError('Failed to load healing data')
-    } finally {
-      setIsLoading(false)
-    }
-  }, [tenantId, getToken])
-
+  // Auto-poll when active healings exist
+  const hasActive = healings.some(
+    h => h.status === 'in_progress' || h.deployment_stage === 'staged'
+  )
   useEffect(() => {
-    fetchData()
-  }, [fetchData])
-
-  // Auto-poll every 15s when there are active healings
-  useEffect(() => {
-    const hasActive = healings.some(
-      h => h.status === 'in_progress' || h.deployment_stage === 'staged'
-    )
     if (!hasActive) return
-    const interval = setInterval(fetchData, 15_000)
+    const interval = setInterval(() => refetchHealings(), 15_000)
     return () => clearInterval(interval)
-  }, [healings, fetchData])
+  }, [hasActive, refetchHealings])
 
-  const fetchVersions = useCallback(async () => {
-    if (!tenantId || !selectedWorkflowId || !selectedConnectionId) {
-      setVersions([])
-      return
-    }
+  // --- Mutations ---
+  const promoteMutation = usePromoteHealingMutation()
+  const rejectMutation = useRejectHealingMutation()
+  const verifyMutation = useVerifyHealingMutation()
+  const rollbackMutation = useRollbackHealingMutation()
+  const approveMutation = useApproveHealingMutation()
+  const restoreVersionMutation = useRestoreVersionMutation()
 
-    try {
-      const token = await getToken()
-      const api = createApiClient(token, tenantId)
-      const res = await api.getWorkflowVersions(selectedWorkflowId, selectedConnectionId)
-      setVersions(res.versions || [])
-    } catch (err) {
-      console.error('Failed to fetch versions:', err)
-      setVersions([])
-    }
-  }, [tenantId, selectedWorkflowId, selectedConnectionId, getToken])
-
-  useEffect(() => {
-    if (activeTab === 'history') {
-      fetchVersions()
-    }
-  }, [activeTab, fetchVersions])
-
-  // Healing actions
+  // --- Handlers ---
   const handlePromote = async (healingId: string) => {
-    if (!tenantId) return
     try {
-      const token = await getToken()
-      const api = createApiClient(token, tenantId)
-      await api.promoteHealing(healingId)
-      toast.success('Fix promoted', {
-        description: 'The fix is now live in your workflow.',
-      })
-      await fetchData()
+      await promoteMutation.mutateAsync(healingId)
+      toast.success('Fix promoted', { description: 'The fix is now live in your workflow.' })
     } catch (err) {
       const e = err as Error & { status?: number }
       if (e.status === 400 && e.message?.includes('erification')) {
@@ -168,53 +91,36 @@ export default function HealingPage() {
           description: 'Please verify the fix before promoting it to production.',
         })
       } else {
-        toast.error('Promotion failed', {
-          description: e.message || 'Failed to promote the fix.',
-        })
+        toast.error('Promotion failed', { description: e.message || 'Failed to promote the fix.' })
       }
     }
   }
 
   const handleReject = async (healingId: string) => {
-    if (!tenantId) return
     if (!window.confirm('Reject this fix? The original workflow will be restored.')) return
     try {
-      const token = await getToken()
-      const api = createApiClient(token, tenantId)
-      await api.rejectHealing(healingId)
-      toast.success('Fix rejected', {
-        description: 'The staged fix has been rejected.',
-      })
-      await fetchData()
+      await rejectMutation.mutateAsync(healingId)
+      toast.success('Fix rejected', { description: 'The staged fix has been rejected.' })
     } catch (err) {
-      const e = err as Error
-      toast.error('Rejection failed', {
-        description: e.message || 'Failed to reject the fix.',
-      })
+      toast.error('Rejection failed', { description: (err as Error).message })
     }
   }
 
   const handleVerify = async (healingId: string, level: number = 1) => {
-    if (!tenantId) return
     try {
-      const token = await getToken()
-      const api = createApiClient(token, tenantId)
-      const result = await api.verifyHealing(healingId, level)
-      if (result.passed) {
+      const result = await verifyMutation.mutateAsync({ healingId, level })
+      const r = result as { passed: boolean; level: number; confidence_reduction: number; error?: string; config_checks: Array<{ success: boolean }> }
+      if (r.passed) {
         toast.success('Verification passed', {
-          description: `Level ${result.level} checks passed. Confidence reduced by ${(result.confidence_reduction * 100).toFixed(0)}%.`,
+          description: `Level ${r.level} checks passed. Confidence reduced by ${(r.confidence_reduction * 100).toFixed(0)}%.`,
         })
       } else {
         toast.error('Verification failed', {
-          description: result.error || `${result.config_checks.filter((c: { success: boolean }) => !c.success).length} check(s) did not pass.`,
+          description: r.error || `${r.config_checks.filter(c => !c.success).length} check(s) did not pass.`,
         })
       }
-      await fetchData()
     } catch (err) {
-      const e = err as Error
-      toast.error('Verification error', {
-        description: e.message || 'Failed to verify the fix.',
-      })
+      toast.error('Verification error', { description: (err as Error).message })
     }
   }
 
@@ -224,64 +130,46 @@ export default function HealingPage() {
       isOpen: true,
       healingId,
       workflowId: healing?.workflow_id,
-      fixType: healing?.fix_type
+      fixType: healing?.fix_type,
     })
   }
 
   const confirmRollback = async () => {
-    if (!tenantId) return
     try {
-      const token = await getToken()
-      const api = createApiClient(token, tenantId)
-      await api.rollbackHealing(rollbackModal.healingId)
-      toast.success('Fix rolled back', {
-        description: 'The original workflow has been restored.',
-      })
+      await rollbackMutation.mutateAsync(rollbackModal.healingId)
+      toast.success('Fix rolled back', { description: 'The original workflow has been restored.' })
       setRollbackModal({ isOpen: false, healingId: '' })
-      await fetchData()
     } catch (err) {
-      const e = err as Error
-      toast.error('Rollback failed', {
-        description: e.message || 'Failed to roll back the fix.',
-      })
+      toast.error('Rollback failed', { description: (err as Error).message })
     }
   }
 
-  // Approval actions
   const handleApproveHealing = async (healingId: string, notes: string) => {
-    if (!tenantId) return
     try {
-      const token = await getToken()
-      const api = createApiClient(token, tenantId)
-      await api.approveHealing(healingId, { approved: true, notes: notes || undefined })
-      toast.success('Healing approved', {
-        description: 'The fix has been approved and healing has started.',
-      })
-      await fetchData()
+      await approveMutation.mutateAsync({ healingId, approved: true, notes: notes || undefined })
+      toast.success('Healing approved', { description: 'The fix has been approved and healing has started.' })
     } catch (err) {
-      const e = err as Error
-      toast.error('Approval failed', {
-        description: e.message || 'Failed to approve healing.',
-      })
+      toast.error('Approval failed', { description: (err as Error).message })
     }
   }
 
   const handleRejectHealing = async (healingId: string, notes: string) => {
-    if (!tenantId) return
     if (!window.confirm('Reject this healing request?')) return
     try {
-      const token = await getToken()
-      const api = createApiClient(token, tenantId)
-      await api.approveHealing(healingId, { approved: false, notes: notes || undefined })
-      toast.success('Healing rejected', {
-        description: 'The healing request has been rejected.',
-      })
-      await fetchData()
+      await approveMutation.mutateAsync({ healingId, approved: false, notes: notes || undefined })
+      toast.success('Healing rejected', { description: 'The healing request has been rejected.' })
     } catch (err) {
-      const e = err as Error
-      toast.error('Rejection failed', {
-        description: e.message || 'Failed to reject healing.',
-      })
+      toast.error('Rejection failed', { description: (err as Error).message })
+    }
+  }
+
+  const handleRestoreVersion = async (versionId: string) => {
+    if (!window.confirm('Restore this version? The current workflow will be overwritten.')) return
+    try {
+      await restoreVersionMutation.mutateAsync(versionId)
+      toast.success('Version restored', { description: 'Workflow has been restored to the selected version.' })
+    } catch (err) {
+      toast.error('Restore failed', { description: (err as Error).message })
     }
   }
 
@@ -289,93 +177,6 @@ export default function HealingPage() {
     h => h.approval_required && h.status === 'pending'
   ).length
 
-  const handleRestoreVersion = async (versionId: string) => {
-    if (!tenantId) return
-    if (!window.confirm('Restore this version? The current workflow will be overwritten.')) return
-    try {
-      const token = await getToken()
-      const api = createApiClient(token, tenantId)
-      await api.restoreVersion(versionId)
-      toast.success('Version restored', {
-        description: 'Workflow has been restored to the selected version.',
-      })
-      await fetchVersions()
-      await fetchData()
-    } catch (err) {
-      const e = err as Error
-      toast.error('Restore failed', {
-        description: e.message || 'Failed to restore version.',
-      })
-    }
-  }
-
-  // Connection actions
-  const handleAddConnection = async () => {
-    if (!tenantId || !newConnection.name || !newConnection.instance_url || !newConnection.api_key) return
-
-    setIsAddingConnection(true)
-    try {
-      const token = await getToken()
-      const api = createApiClient(token, tenantId)
-      await api.createN8nConnection(newConnection)
-      toast.success('Connection added', {
-        description: `${newConnection.name} has been configured.`,
-      })
-      setNewConnection({ name: '', instance_url: '', api_key: '' })
-      setShowAddConnection(false)
-      await fetchData()
-    } catch (err) {
-      const e = err as Error
-      toast.error('Failed to add connection', {
-        description: e.message || 'Check the URL and API key.',
-      })
-    } finally {
-      setIsAddingConnection(false)
-    }
-  }
-
-  const handleTestConnection = async (connectionId: string) => {
-    if (!tenantId) return
-    setTestingConnection(connectionId)
-    try {
-      const token = await getToken()
-      const api = createApiClient(token, tenantId)
-      await api.testN8nConnection(connectionId)
-      toast.success('Connection verified', {
-        description: 'Your n8n instance is reachable.',
-      })
-      await fetchData()
-    } catch (err) {
-      const e = err as Error
-      toast.error('Connection test failed', {
-        description: e.message || 'Unable to connect to n8n instance.',
-      })
-    } finally {
-      setTestingConnection(null)
-    }
-  }
-
-  const handleDeleteConnection = async (connectionId: string) => {
-    if (!tenantId) return
-    if (!window.confirm('Delete this connection?')) return
-    setDeletingConnection(connectionId)
-    try {
-      const token = await getToken()
-      const api = createApiClient(token, tenantId)
-      await api.deleteN8nConnection(connectionId)
-      toast.success('Connection deleted')
-      await fetchData()
-    } catch (err) {
-      const e = err as Error
-      toast.error('Failed to delete connection', {
-        description: e.message || 'Could not delete the connection.',
-      })
-    } finally {
-      setDeletingConnection(null)
-    }
-  }
-
-  // Get unique workflow IDs from healings for version history
   const workflowIds = [...new Set(healings.filter(h => h.workflow_id).map(h => h.workflow_id!))]
 
   return (
@@ -404,18 +205,20 @@ export default function HealingPage() {
           </div>
           <Button
             variant="ghost"
-            onClick={fetchData}
+            onClick={() => refetchHealings()}
             leftIcon={<RefreshCw size={16} />}
           >
             Refresh
           </Button>
         </div>
 
-        {/* Error Banner */}
-        {error && (
-          <div className="mb-6 p-4 bg-red-500/10 border border-red-500/20 rounded-xl flex items-center gap-3">
-            <AlertTriangle size={20} className="text-red-400" />
-            <p className="text-sm text-red-300">{error}</p>
+        {/* Demo Mode Banner */}
+        {isDemoMode && (
+          <div className="mb-6 p-4 bg-amber-500/10 border border-amber-500/30 rounded-xl flex items-center gap-3">
+            <AlertTriangle size={20} className="text-amber-400" />
+            <p className="text-sm text-amber-300">
+              Demo mode — API unavailable. Showing sample data.
+            </p>
           </div>
         )}
 
@@ -454,12 +257,12 @@ export default function HealingPage() {
             <HealingDashboard
               healings={healings}
               isLoading={isLoading}
-              verificationMetrics={verificationMetrics}
+              verificationMetrics={verificationMetrics ?? null}
               onPromote={handlePromote}
               onReject={handleReject}
               onRollback={handleRollback}
               onVerify={handleVerify}
-              onRefresh={fetchData}
+              onRefresh={() => refetchHealings()}
             />
           </TabsContent>
 
@@ -475,161 +278,10 @@ export default function HealingPage() {
 
           {/* Connections Tab */}
           <TabsContent value="connections">
-            <div className="space-y-4">
-              <div className="flex items-center justify-between">
-                <h2 className="text-lg font-semibold text-white">n8n Connections</h2>
-                <Button
-                  variant="primary"
-                  size="sm"
-                  onClick={() => setShowAddConnection(true)}
-                  leftIcon={<Plus size={14} />}
-                >
-                  Add Connection
-                </Button>
-              </div>
-
-              {isLoading ? (
-                <Card>
-                  <CardContent className="p-4">
-                    <div className="animate-pulse space-y-3">
-                      {[1, 2].map(i => (
-                        <div key={i} className="h-16 bg-zinc-700 rounded-lg" />
-                      ))}
-                    </div>
-                  </CardContent>
-                </Card>
-              ) : connections.length === 0 ? (
-                <Card>
-                  <CardContent className="p-8 text-center text-zinc-400">
-                    <Settings size={32} className="mx-auto mb-3 opacity-50" />
-                    <p className="text-sm">No n8n connections configured</p>
-                    <p className="text-xs text-zinc-500 mt-1">
-                      Add a connection to apply fixes to your n8n workflows
-                    </p>
-                    <Button
-                      variant="primary"
-                      size="sm"
-                      className="mt-4"
-                      onClick={() => setShowAddConnection(true)}
-                      leftIcon={<Plus size={14} />}
-                    >
-                      Add Connection
-                    </Button>
-                  </CardContent>
-                </Card>
-              ) : (
-                <div className="space-y-3">
-                  {connections.map(conn => (
-                    <Card key={conn.id}>
-                      <CardContent className="p-4">
-                        <div className="flex items-center justify-between">
-                          <div className="flex items-center gap-3">
-                            <div className={`p-2 rounded-lg ${conn.is_active ? 'bg-green-500/20' : 'bg-zinc-500/20'}`}>
-                              {conn.is_active
-                                ? <CheckCircle2 size={20} className="text-green-400" />
-                                : <XCircle size={20} className="text-zinc-400" />
-                              }
-                            </div>
-                            <div>
-                              <p className="text-sm font-medium text-white">{conn.name}</p>
-                              <p className="text-xs text-zinc-400">{conn.instance_url}</p>
-                              {conn.last_error && (
-                                <p className="text-xs text-red-400 mt-1">{conn.last_error}</p>
-                              )}
-                            </div>
-                          </div>
-                          <div className="flex items-center gap-2">
-                            <Badge variant={conn.is_active ? 'success' : 'default'} size="sm">
-                              {conn.is_active ? 'Active' : 'Inactive'}
-                            </Badge>
-                            <Button
-                              variant="ghost"
-                              size="sm"
-                              onClick={() => handleTestConnection(conn.id)}
-                              isLoading={testingConnection === conn.id}
-                            >
-                              Test
-                            </Button>
-                            <Button
-                              variant="ghost"
-                              size="sm"
-                              onClick={() => window.open(conn.instance_url, '_blank')}
-                              leftIcon={<ExternalLink size={14} />}
-                            >
-                              Open
-                            </Button>
-                            <Button
-                              variant="danger"
-                              size="sm"
-                              onClick={() => handleDeleteConnection(conn.id)}
-                              isLoading={deletingConnection === conn.id}
-                              leftIcon={<Trash2 size={14} />}
-                            >
-                              Delete
-                            </Button>
-                          </div>
-                        </div>
-                      </CardContent>
-                    </Card>
-                  ))}
-                </div>
-              )}
-
-              {/* Add Connection Modal */}
-              {showAddConnection && (
-                <div className="fixed inset-0 z-50 flex items-center justify-center">
-                  <div className="absolute inset-0 bg-black/60" onClick={() => setShowAddConnection(false)} />
-                  <div className="relative bg-zinc-900 border border-zinc-700 rounded-xl p-6 w-full max-w-md">
-                    <h3 className="text-lg font-semibold text-white mb-4">Add n8n Connection</h3>
-                    <div className="space-y-4">
-                      <div>
-                        <label className="text-sm text-zinc-400 mb-1 block">Name</label>
-                        <input
-                          type="text"
-                          value={newConnection.name}
-                          onChange={(e) => setNewConnection({ ...newConnection, name: e.target.value })}
-                          placeholder="Production n8n"
-                          className="w-full px-3 py-2 bg-zinc-800 border border-zinc-700 rounded-lg text-white text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
-                        />
-                      </div>
-                      <div>
-                        <label className="text-sm text-zinc-400 mb-1 block">Instance URL</label>
-                        <input
-                          type="text"
-                          value={newConnection.instance_url}
-                          onChange={(e) => setNewConnection({ ...newConnection, instance_url: e.target.value })}
-                          placeholder="https://your-instance.app.n8n.cloud"
-                          className="w-full px-3 py-2 bg-zinc-800 border border-zinc-700 rounded-lg text-white text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
-                        />
-                      </div>
-                      <div>
-                        <label className="text-sm text-zinc-400 mb-1 block">API Key</label>
-                        <input
-                          type="password"
-                          value={newConnection.api_key}
-                          onChange={(e) => setNewConnection({ ...newConnection, api_key: e.target.value })}
-                          placeholder="n8n_api_..."
-                          className="w-full px-3 py-2 bg-zinc-800 border border-zinc-700 rounded-lg text-white text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
-                        />
-                      </div>
-                    </div>
-                    <div className="flex justify-end gap-2 mt-6">
-                      <Button variant="ghost" onClick={() => setShowAddConnection(false)}>
-                        Cancel
-                      </Button>
-                      <Button
-                        variant="primary"
-                        onClick={handleAddConnection}
-                        isLoading={isAddingConnection}
-                        disabled={!newConnection.name || !newConnection.instance_url || !newConnection.api_key}
-                      >
-                        Add Connection
-                      </Button>
-                    </div>
-                  </div>
-                </div>
-              )}
-            </div>
+            <ConnectionsManager
+              connections={connections}
+              isLoading={isLoading}
+            />
           </TabsContent>
 
           {/* Version History Tab */}

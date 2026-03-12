@@ -90,9 +90,9 @@ export function SourceFixPanel({ detectionId, className = '' }: SourceFixPanelPr
         framework: framework.trim() || undefined,
       })
       setFix(result)
-    } catch (err: any) {
+    } catch (err) {
       console.warn('Failed to generate source fix:', err)
-      setError(err.message || 'Failed to generate fix. Please try again.')
+      setError((err as Error).message || 'Failed to generate fix. Please try again.')
     }
     setIsGenerating(false)
   }

@@ -122,7 +122,7 @@ export default function ImportPage() {
       // Handle file upload for JSON/JSONL
       if ((selectedSource === 'json' || selectedSource === 'jsonl') && selectedFile) {
         const fileContent = await selectedFile.text()
-        let traces: any[] = []
+        let traces: unknown[] = []
 
         try {
           if (selectedSource === 'jsonl') {
@@ -146,7 +146,7 @@ export default function ImportPage() {
         await api.createImportJob(selectedSource, { traces, filename: selectedFile.name })
       } else {
         // Handle LangSmith/OTEL imports
-        const config: Record<string, any> = {}
+        const config: Record<string, string> = {}
         if (configUrl) config.url = configUrl
         if (configApiKey) config.api_key = configApiKey
         await api.createImportJob(selectedSource, config)

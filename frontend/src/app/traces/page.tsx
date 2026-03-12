@@ -7,14 +7,14 @@ import { Wifi, WifiOff } from 'lucide-react'
 import { Layout } from '@/components/common/Layout'
 import { TraceList } from '@/components/traces/TraceList'
 import { TraceSearch } from '@/components/traces/TraceSearch'
-import { useTraces } from '@/hooks/useApiWithFallback'
+import { useTracesQuery } from '@/hooks/useQueries'
 
 export default function TracesPage() {
   const [page, setPage] = useState(1)
   const [statusFilter, setStatusFilter] = useState<string | undefined>()
   const [frameworkFilter, setFrameworkFilter] = useState<string | undefined>()
 
-  const { traces: allTraces, total, isLoading, isDemoMode } = useTraces({
+  const { traces: allTraces, total, isLoading, isDemoMode } = useTracesQuery({
     page,
     perPage: 50,
     status: statusFilter,

@@ -49,8 +49,8 @@ function SubscribeContent() {
         const data: SubscribeResult = await resp.json()
         setResult(data)
         setStatus('success')
-      } catch (e: any) {
-        setError(e.message || 'Failed to resolve marketplace subscription')
+      } catch (e) {
+        setError((e as Error).message || 'Failed to resolve marketplace subscription')
         setStatus('error')
       }
     }

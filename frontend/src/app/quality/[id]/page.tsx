@@ -350,8 +350,8 @@ export default function QualityDetailPage() {
           // Will appear on next reload
         }
       }
-    } catch (err: any) {
-      setHealingError(err?.message || 'Failed to trigger healing. Please try again.')
+    } catch (err) {
+      setHealingError((err as Error)?.message || 'Failed to trigger healing. Please try again.')
     }
     setIsTriggeringHealing(false)
   }, [getToken, tenantId, assessment, assessmentId])
@@ -363,8 +363,8 @@ export default function QualityDetailPage() {
       const api = createApiClient(token, tenantId)
       await api.approveQualityHealing(healingRecord.id, [fixId])
       await loadHealingData()
-    } catch (err: any) {
-      setHealingError(err?.message || 'Failed to apply fix.')
+    } catch (err) {
+      setHealingError((err as Error)?.message || 'Failed to apply fix.')
     }
   }, [getToken, tenantId, healingRecord, loadHealingData])
 
@@ -376,8 +376,8 @@ export default function QualityDetailPage() {
       const api = createApiClient(token, tenantId)
       await api.approveQualityHealing(healingRecord.id, allFixIds)
       await loadHealingData()
-    } catch (err: any) {
-      setHealingError(err?.message || 'Failed to apply fixes.')
+    } catch (err) {
+      setHealingError((err as Error)?.message || 'Failed to apply fixes.')
     }
   }, [getToken, tenantId, healingRecord, healingSuggestions, loadHealingData])
 
@@ -388,8 +388,8 @@ export default function QualityDetailPage() {
       const api = createApiClient(token, tenantId)
       await api.rollbackQualityHealing(healingRecord.id)
       await loadHealingData()
-    } catch (err: any) {
-      setHealingError(err?.message || 'Failed to rollback healing.')
+    } catch (err) {
+      setHealingError((err as Error)?.message || 'Failed to rollback healing.')
     }
   }, [getToken, tenantId, healingRecord, loadHealingData])
 

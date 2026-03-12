@@ -9,6 +9,7 @@ import {
   useUpdateThresholdsMutation,
   useResetThresholdsMutation,
 } from '@/hooks/useQueries'
+import type { ThresholdRecommendation } from '@/lib/api'
 import {
   Sliders,
   Target,
@@ -35,7 +36,7 @@ export default function ThresholdTuningPage() {
   const [applyingAll, setApplyingAll] = useState(false)
   const [showResetConfirm, setShowResetConfirm] = useState(false)
 
-  const handleApplyRecommendation = async (rec: any) => {
+  const handleApplyRecommendation = async (rec: ThresholdRecommendation) => {
     setApplyingFramework(rec.framework)
     setApplyError(null)
     try {
@@ -191,7 +192,7 @@ export default function ThresholdTuningPage() {
           <div className="bg-zinc-800 rounded-lg p-6 border border-zinc-700">
             <h2 className="text-lg font-semibold text-white mb-4">Accuracy by Framework</h2>
             <div className="space-y-3">
-              {Object.entries(stats?.by_framework || {}).map(([fw, data]: [string, any]) => {
+              {Object.entries(stats?.by_framework || {}).map(([fw, data]) => {
                 const accuracy = data.total > 0 ? (data.correct / data.total) * 100 : 0
                 return (
                   <div key={fw} className="flex items-center gap-3">
@@ -289,7 +290,7 @@ export default function ThresholdTuningPage() {
         <div className="mt-8 bg-zinc-800 rounded-lg p-6 border border-zinc-700">
           <h2 className="text-lg font-semibold text-white mb-4">Accuracy by Detection Method</h2>
           <div className="grid md:grid-cols-3 gap-4">
-            {Object.entries(stats?.by_method || {}).map(([method, data]: [string, any]) => {
+            {Object.entries(stats?.by_method || {}).map(([method, data]) => {
               const accuracy = data.total > 0 ? (data.correct / data.total) * 100 : 0
               const fpRate = data.total > 0 ? (data.incorrect / data.total) * 100 : 0
               return (
@@ -354,7 +355,7 @@ function RecommendationRow({
   isApplied,
   isDemoMode,
 }: {
-  recommendation: any
+  recommendation: ThresholdRecommendation
   onApply: () => void
   isApplying: boolean
   isApplied: boolean

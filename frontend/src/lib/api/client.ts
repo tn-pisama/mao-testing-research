@@ -2,8 +2,7 @@ export const API_BASE = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:800
 
 export interface FetchOptions {
   method?: string
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  body?: any
+  body?: unknown
   headers?: Record<string, string>
   token?: string | null
   tenantId?: string | null

@@ -26,12 +26,9 @@ import {
   Loader2,
 } from 'lucide-react'
 import Link from 'next/link'
-import { generateDemoLoopAnalytics } from '@/lib/demo-data'
-import { createApiClient, type Detection } from '@/lib/api'
+import { type Detection } from '@/lib/api'
 import { useUserPreferences } from '@/lib/user-preferences'
-import { useDetections } from '@/hooks/useApiWithFallback'
-import { useSafeAuth as useAuth } from '@/hooks/useSafeAuth'
-import { useTenant } from '@/hooks/useTenant'
+import { useDetectionsQuery, useSubmitFeedbackMutation } from '@/hooks/useQueries'
 
 type DetectionType = 'all' | 'loop' | 'state_corruption' | 'persona_drift' | 'coordination' | 'task_derailment' | 'context' | 'communication' | 'specification' | 'decomposition' | 'workflow' | 'hallucination' | 'injection' | 'context_overflow' | 'information_withholding' | 'completion_misjudgment' | 'tool_provision' | 'grounding_failure' | 'retrieval_quality' | 'cost'
 type Severity = 'all' | 'low' | 'medium' | 'high' | 'critical'
@@ -118,32 +115,32 @@ export default function DetectionsPage() {
   const [showValidated, setShowValidated] = useState(true)
   const [currentPage, setCurrentPage] = useState(1)
   const { isN8nUser, showAdvancedFeatures } = useUserPreferences()
-  const { getToken } = useAuth()
-  const { tenantId } = useTenant()
   const [inlineValidated, setInlineValidated] = useState<Record<string, { validated: boolean; false_positive: boolean }>>({})
-  const [submittingId, setSubmittingId] = useState<string | null>(null)
 
-  const handleInlineValidate = async (e: React.MouseEvent, detectionId: string, isFalsePositive: boolean) => {
+  const feedbackMutation = useSubmitFeedbackMutation()
+  const submittingId = feedbackMutation.isPending ? feedbackMutation.variables?.detectionId ?? null : null
+
+  const handleInlineValidate = (e: React.MouseEvent, detectionId: string, isFalsePositive: boolean) => {
     e.preventDefault()
     e.stopPropagation()
-    if (submittingId) return
-    setSubmittingId(detectionId)
-    try {
-      const token = await getToken()
-      const api = createApiClient(token, tenantId)
-      await api.submitFeedback(detectionId, !isFalsePositive)
-      setInlineValidated(prev => ({ ...prev, [detectionId]: { validated: true, false_positive: isFalsePositive } }))
-    } catch (err: any) {
-      if (err?.status === 409) {
-        setInlineValidated(prev => ({ ...prev, [detectionId]: { validated: true, false_positive: isFalsePositive } }))
+    if (feedbackMutation.isPending) return
+    feedbackMutation.mutate(
+      { detectionId, isValid: !isFalsePositive },
+      {
+        onSuccess: () => {
+          setInlineValidated(prev => ({ ...prev, [detectionId]: { validated: true, false_positive: isFalsePositive } }))
+        },
+        onError: (err) => {
+          if ((err as Error & { status?: number })?.status === 409) {
+            setInlineValidated(prev => ({ ...prev, [detectionId]: { validated: true, false_positive: isFalsePositive } }))
+          }
+        },
       }
-    } finally {
-      setSubmittingId(null)
-    }
+    )
   }
 
-  // Fetch detections with server-side filtering
-  const { detections, total, isLoading, isDemoMode } = useDetections({
+  // Fetch detections with server-side filtering via TanStack Query
+  const { detections, total, isLoading, isDemoMode } = useDetectionsQuery({
     page: currentPage,
     perPage: 20,
     type: typeFilter !== 'all' ? typeFilter : undefined,

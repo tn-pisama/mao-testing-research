@@ -295,16 +295,19 @@ export default function ConversationEvaluationsPage() {
                       <div className="flex items-center gap-3">
                         {/* Dimension mini-scores */}
                         <div className="hidden sm:flex items-center gap-2">
-                          {evaluation.dimension_scores.slice(0, 3).map((dim: any, i: number) => (
-                            <div key={i} className="text-center">
-                              <div className={`text-xs font-medium ${
-                                dim.score >= 0.8 ? 'text-green-400' : dim.score >= 0.6 ? 'text-amber-400' : 'text-red-400'
-                              }`}>
-                                {(dim.score * 100).toFixed(0)}%
+                          {evaluation.dimension_scores.slice(0, 3).map((dim: unknown, i: number) => {
+                            const d = dim as { name: string; score: number }
+                            return (
+                              <div key={i} className="text-center">
+                                <div className={`text-xs font-medium ${
+                                  d.score >= 0.8 ? 'text-green-400' : d.score >= 0.6 ? 'text-amber-400' : 'text-red-400'
+                                }`}>
+                                  {(d.score * 100).toFixed(0)}%
+                                </div>
+                                <div className="text-[10px] text-zinc-600 capitalize">{d.name}</div>
                               </div>
-                              <div className="text-[10px] text-zinc-600 capitalize">{dim.name}</div>
-                            </div>
-                          ))}
+                            )
+                          })}
                         </div>
                         <ChevronRight className="text-zinc-500" size={20} />
                       </div>

@@ -302,7 +302,7 @@ export function HealingCard({
                 </div>
                 {healing.validation_results.config_checks && (
                   <div className="mt-2 flex items-center gap-2 flex-wrap">
-                    {healing.validation_results.config_checks.map((check: any, i: number) => (
+                    {healing.validation_results.config_checks.map((check: { success: boolean; validation_type: string }, i: number) => (
                       <span
                         key={i}
                         className={`inline-flex items-center gap-1 px-2 py-0.5 rounded text-xs ${

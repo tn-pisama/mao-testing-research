@@ -130,8 +130,8 @@ export default function ReviewPage() {
           setCurrentIndex(i => i + 1)
         }
       }, 500)
-    } catch (err: any) {
-      if (err?.status === 409) {
+    } catch (err) {
+      if ((err as Error & { status?: number })?.status === 409) {
         // Already reviewed — silently advance
         setReviewed(r => r + 1)
         setShowFeedback('Already reviewed')
