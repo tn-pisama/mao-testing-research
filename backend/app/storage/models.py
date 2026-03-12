@@ -97,6 +97,27 @@ class AuthAudit(Base):
     )
 
 
+class ApiAudit(Base):
+    __tablename__ = "api_audit"
+
+    id = Column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
+    tenant_id = Column(UUID(as_uuid=True), ForeignKey("tenants.id"), nullable=True)
+    user_id = Column(UUID(as_uuid=True), ForeignKey("users.id"), nullable=True)
+    method = Column(String(10), nullable=False)
+    path = Column(String(500), nullable=False)
+    status_code = Column(Integer, nullable=False)
+    correlation_id = Column(String(64), nullable=True)
+    ip_address = Column(String(45), nullable=True)
+    duration_ms = Column(Float, nullable=True)
+    created_at = Column(DateTime(timezone=True), server_default=func.now())
+
+    __table_args__ = (
+        Index("idx_api_audit_tenant", "tenant_id"),
+        Index("idx_api_audit_created", "created_at"),
+        Index("idx_api_audit_method", "method"),
+    )
+
+
 class Trace(Base):
     __tablename__ = "traces"
 

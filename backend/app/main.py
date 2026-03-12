@@ -6,6 +6,7 @@ from fastapi.responses import JSONResponse
 
 from app.core.logging_config import setup_logging
 from app.core.correlation import CorrelationIdMiddleware, get_correlation_id
+from app.core.audit import APIAuditMiddleware
 
 setup_logging()
 try:
@@ -46,6 +47,7 @@ from app.api.v1 import (
     diagnostics,
     marketplace,
     onboarding,
+    admin,
 )
 
 settings = get_settings()
@@ -147,6 +149,7 @@ app.add_middleware(
 )
 
 app.add_middleware(CorrelationIdMiddleware)
+app.add_middleware(APIAuditMiddleware)
 
 
 @app.middleware("http")
@@ -260,6 +263,7 @@ app.include_router(workflow_groups.router, prefix="/api/v1/tenants/{tenant_id}",
 app.include_router(diagnostics.router, prefix="/api/v1")  # Detector diagnostics
 app.include_router(marketplace.router, prefix="/api/v1")  # AWS Marketplace integration
 app.include_router(onboarding.router, prefix="/api/v1/tenants/{tenant_id}", dependencies=_tenant_rate_deps)  # Onboarding wizard
+app.include_router(admin.router, prefix="/api/v1/tenants/{tenant_id}", dependencies=_tenant_rate_deps)  # Admin audit log
 
 # AWS Marketplace usage tracking middleware (only when enabled)
 if settings.aws_marketplace_enabled:
