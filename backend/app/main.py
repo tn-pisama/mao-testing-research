@@ -3,6 +3,11 @@ import logging
 from fastapi import Depends, FastAPI, Request
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import JSONResponse
+
+from app.core.logging_config import setup_logging
+from app.core.correlation import CorrelationIdMiddleware, get_correlation_id
+
+setup_logging()
 try:
     from opentelemetry.instrumentation.fastapi import FastAPIInstrumentor
     _OTEL_AVAILABLE = True
@@ -136,9 +141,12 @@ app.add_middleware(
     allow_origins=cors_origins,
     allow_credentials=True,
     allow_methods=["GET", "POST", "PUT", "DELETE", "OPTIONS"],
-    allow_headers=["Authorization", "Content-Type", "Accept", "Accept-Language", "Content-Language", "X-Requested-With", "X-MAO-API-Key", "X-MAO-Signature", "X-MAO-Timestamp", "X-MAO-Nonce"],
+    allow_headers=["Authorization", "Content-Type", "Accept", "Accept-Language", "Content-Language", "X-Requested-With", "X-MAO-API-Key", "X-MAO-Signature", "X-MAO-Timestamp", "X-MAO-Nonce", "X-Request-ID"],
+    expose_headers=["X-Request-ID"],
     max_age=3600,
 )
+
+app.add_middleware(CorrelationIdMiddleware)
 
 
 @app.middleware("http")
@@ -213,7 +221,14 @@ async def global_exception_handler(request: Request, exc: Exception):
     if origin in cors_origins:
         headers["Access-Control-Allow-Origin"] = origin
         headers["Access-Control-Allow-Credentials"] = "true"
-    return JSONResponse(status_code=500, content={"detail": "Internal server error"}, headers=headers)
+    correlation_id = get_correlation_id()
+    if correlation_id:
+        headers["X-Request-ID"] = correlation_id
+    return JSONResponse(
+        status_code=500,
+        content={"detail": "Internal server error", "request_id": correlation_id},
+        headers=headers,
+    )
 
 
 # Per-tenant rate limit dependency for tenant-scoped routers

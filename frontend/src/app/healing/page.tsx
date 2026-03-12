@@ -161,14 +161,15 @@ export default function HealingPage() {
         description: 'The fix is now live in your workflow.',
       })
       await fetchData()
-    } catch (err: any) {
-      if (err.status === 400 && err.message?.includes('erification')) {
+    } catch (err) {
+      const e = err as Error & { status?: number }
+      if (e.status === 400 && e.message?.includes('erification')) {
         toast.warning('Verification required', {
           description: 'Please verify the fix before promoting it to production.',
         })
       } else {
         toast.error('Promotion failed', {
-          description: err.message || 'Failed to promote the fix.',
+          description: e.message || 'Failed to promote the fix.',
         })
       }
     }
@@ -185,9 +186,10 @@ export default function HealingPage() {
         description: 'The staged fix has been rejected.',
       })
       await fetchData()
-    } catch (err: any) {
+    } catch (err) {
+      const e = err as Error
       toast.error('Rejection failed', {
-        description: err.message || 'Failed to reject the fix.',
+        description: e.message || 'Failed to reject the fix.',
       })
     }
   }
@@ -204,13 +206,14 @@ export default function HealingPage() {
         })
       } else {
         toast.error('Verification failed', {
-          description: result.error || `${result.config_checks.filter((c: any) => !c.success).length} check(s) did not pass.`,
+          description: result.error || `${result.config_checks.filter((c: { success: boolean }) => !c.success).length} check(s) did not pass.`,
         })
       }
       await fetchData()
-    } catch (err: any) {
+    } catch (err) {
+      const e = err as Error
       toast.error('Verification error', {
-        description: err.message || 'Failed to verify the fix.',
+        description: e.message || 'Failed to verify the fix.',
       })
     }
   }
@@ -236,9 +239,10 @@ export default function HealingPage() {
       })
       setRollbackModal({ isOpen: false, healingId: '' })
       await fetchData()
-    } catch (err: any) {
+    } catch (err) {
+      const e = err as Error
       toast.error('Rollback failed', {
-        description: err.message || 'Failed to roll back the fix.',
+        description: e.message || 'Failed to roll back the fix.',
       })
     }
   }
@@ -254,9 +258,10 @@ export default function HealingPage() {
         description: 'The fix has been approved and healing has started.',
       })
       await fetchData()
-    } catch (err: any) {
+    } catch (err) {
+      const e = err as Error
       toast.error('Approval failed', {
-        description: err.message || 'Failed to approve healing.',
+        description: e.message || 'Failed to approve healing.',
       })
     }
   }
@@ -272,9 +277,10 @@ export default function HealingPage() {
         description: 'The healing request has been rejected.',
       })
       await fetchData()
-    } catch (err: any) {
+    } catch (err) {
+      const e = err as Error
       toast.error('Rejection failed', {
-        description: err.message || 'Failed to reject healing.',
+        description: e.message || 'Failed to reject healing.',
       })
     }
   }
@@ -295,9 +301,10 @@ export default function HealingPage() {
       })
       await fetchVersions()
       await fetchData()
-    } catch (err: any) {
+    } catch (err) {
+      const e = err as Error
       toast.error('Restore failed', {
-        description: err.message || 'Failed to restore version.',
+        description: e.message || 'Failed to restore version.',
       })
     }
   }
@@ -317,9 +324,10 @@ export default function HealingPage() {
       setNewConnection({ name: '', instance_url: '', api_key: '' })
       setShowAddConnection(false)
       await fetchData()
-    } catch (err: any) {
+    } catch (err) {
+      const e = err as Error
       toast.error('Failed to add connection', {
-        description: err.message || 'Check the URL and API key.',
+        description: e.message || 'Check the URL and API key.',
       })
     } finally {
       setIsAddingConnection(false)
@@ -337,9 +345,10 @@ export default function HealingPage() {
         description: 'Your n8n instance is reachable.',
       })
       await fetchData()
-    } catch (err: any) {
+    } catch (err) {
+      const e = err as Error
       toast.error('Connection test failed', {
-        description: err.message || 'Unable to connect to n8n instance.',
+        description: e.message || 'Unable to connect to n8n instance.',
       })
     } finally {
       setTestingConnection(null)
@@ -356,9 +365,10 @@ export default function HealingPage() {
       await api.deleteN8nConnection(connectionId)
       toast.success('Connection deleted')
       await fetchData()
-    } catch (err: any) {
+    } catch (err) {
+      const e = err as Error
       toast.error('Failed to delete connection', {
-        description: err.message || 'Could not delete the connection.',
+        description: e.message || 'Could not delete the connection.',
       })
     } finally {
       setDeletingConnection(null)
