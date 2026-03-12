@@ -148,8 +148,8 @@ app.add_middleware(
     max_age=3600,
 )
 
-app.add_middleware(CorrelationIdMiddleware)
 app.add_middleware(APIAuditMiddleware)
+app.add_middleware(CorrelationIdMiddleware)
 
 
 @app.middleware("http")
