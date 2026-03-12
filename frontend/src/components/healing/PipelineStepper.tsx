@@ -1,6 +1,6 @@
 'use client'
 
-import { CheckCircle2, Circle, XCircle, Loader2 } from 'lucide-react'
+import { CheckCircle2, Circle, XCircle } from 'lucide-react'
 import type { HealingRecord } from '@/lib/api'
 
 type StepState = 'completed' | 'current' | 'pending' | 'failed'

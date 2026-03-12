@@ -13,7 +13,7 @@ import {
 } from 'lucide-react'
 import { Card, CardContent } from '../ui/Card'
 import { Button } from '../ui/Button'
-import { Tabs, TabsList, TabsTrigger, TabsContent } from '../ui/Tabs'
+import { Tabs, TabsList, TabsTrigger } from '../ui/Tabs'
 import { HealingCard } from './HealingCard'
 import { StagedFixBanner } from './StagedFixBanner'
 import type { HealingRecord, VerificationMetrics } from '@/lib/api'

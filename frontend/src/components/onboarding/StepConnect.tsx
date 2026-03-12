@@ -4,9 +4,11 @@ import { useState } from 'react'
 import { GitBranch, Users, Zap, Workflow, Blocks, Bot, Copy, Check, ArrowRight } from 'lucide-react'
 import { Card, CardContent } from '@/components/ui/Card'
 import { Button } from '@/components/ui/Button'
-import { FRAMEWORKS, type FrameworkSetup } from '@/hooks/useOnboarding'
+import { FRAMEWORKS } from '@/hooks/useOnboarding'
 
-const ICON_MAP: Record<string, any> = {
+import type { LucideIcon } from 'lucide-react'
+
+const ICON_MAP: Record<string, LucideIcon> = {
   GitBranch, Users, Zap, Workflow, Blocks, Bot,
 }
 

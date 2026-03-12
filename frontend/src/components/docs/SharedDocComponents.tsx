@@ -3,7 +3,7 @@
 import { Terminal, Copy, Check, AlertTriangle } from 'lucide-react'
 import { useState } from 'react'
 
-export function CodeBlock({ title, language, children }: { title: string; language: string; children: React.ReactNode }) {
+export function CodeBlock({ title, language: _language, children }: { title: string; language: string; children: React.ReactNode }) {
   const [copied, setCopied] = useState(false)
 
   const handleCopy = () => {

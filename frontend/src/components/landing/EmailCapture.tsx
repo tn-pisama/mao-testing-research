@@ -42,7 +42,7 @@ export function EmailCapture() {
         setMessage(data.error || 'Something went wrong. Please try again.')
         analytics.emailSubmit('error', 'inline')
       }
-    } catch (error) {
+    } catch {
       setStatus('error')
       setMessage('Network error. Please try again.')
       analytics.emailSubmit('error', 'inline')

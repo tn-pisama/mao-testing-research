@@ -19,7 +19,7 @@ import {
 import { Card, CardContent } from '../ui/Card'
 import { Badge } from '../ui/Badge'
 import { Button } from '../ui/Button'
-import { TermTooltip, getPlainEnglishStatus } from '../ui/Tooltip'
+import { TermTooltip } from '../ui/Tooltip'
 import { PipelineStepper } from './PipelineStepper'
 import type { HealingRecord } from '@/lib/api'
 

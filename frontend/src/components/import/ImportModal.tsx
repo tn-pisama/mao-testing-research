@@ -42,7 +42,7 @@ export function ImportModal({ isOpen, onClose, onImportComplete }: ImportModalPr
         setFile(null)
         setStatus('idle')
       }, 1500)
-    } catch (err) {
+    } catch {
       setStatus('error')
       setError('Failed to import file. Please try again.')
     }

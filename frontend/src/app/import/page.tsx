@@ -137,7 +137,7 @@ export default function ImportPage() {
             const parsed = JSON.parse(fileContent)
             traces = Array.isArray(parsed) ? parsed : [parsed]
           }
-        } catch (_parseErr) {
+        } catch {
           setError('Failed to parse file. Please ensure it contains valid JSON.')
           setIsCreating(false)
           return

@@ -58,7 +58,7 @@ export function WaitlistModal({ isOpen, onClose }: WaitlistModalProps) {
         setMessage(data.error || 'Something went wrong. Please try again.')
         analytics.emailSubmit('error', 'modal')
       }
-    } catch (error) {
+    } catch {
       setStatus('error')
       setMessage('Network error. Please try again.')
     }

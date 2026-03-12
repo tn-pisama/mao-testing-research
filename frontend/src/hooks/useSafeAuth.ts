@@ -16,7 +16,7 @@ export function useSafeAuth() {
   const { data: session, status } = useSession()
 
   // Type assertion for extended session
-  const extendedSession = session as any
+  const extendedSession = session as (typeof session & { idToken?: string; user?: { id?: string } }) | null
 
   // Memoize the extracted ID token to prevent unnecessary re-renders
   // Only changes when the actual token value changes, not when session object reference changes

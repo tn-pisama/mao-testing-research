@@ -17,7 +17,7 @@ export function TracePasteInput({
   format,
   onFormatChange,
   disabled,
-  onSubmit,
+  onSubmit: _onSubmit,
 }: TracePasteInputProps) {
   return (
     <Card>

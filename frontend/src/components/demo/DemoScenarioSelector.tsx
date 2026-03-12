@@ -4,7 +4,9 @@ import { Card, CardContent } from '../ui/Card'
 import { RefreshCw, AlertTriangle, Brain, CheckCircle, Shield } from 'lucide-react'
 import type { DemoScenario } from '@/lib/demo-fixtures'
 
-const ICON_MAP: Record<string, any> = {
+import type { LucideIcon } from 'lucide-react'
+
+const ICON_MAP: Record<string, LucideIcon> = {
   RefreshCw,
   AlertTriangle,
   Brain,

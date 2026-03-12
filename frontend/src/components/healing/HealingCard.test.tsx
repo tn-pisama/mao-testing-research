@@ -1,4 +1,4 @@
-import { render, screen, within } from '@testing-library/react'
+import { render, screen } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { describe, it, expect, vi } from 'vitest'
 import { HealingCard } from './HealingCard'
@@ -6,7 +6,7 @@ import type { HealingRecord } from '@/lib/api'
 
 // Mock the PipelineStepper since it's a child component with its own rendering logic
 vi.mock('./PipelineStepper', () => ({
-  PipelineStepper: ({ healing }: { healing: any }) => (
+  PipelineStepper: ({ healing }: { healing: HealingRecord }) => (
     <div data-testid="pipeline-stepper">Pipeline for {healing.id}</div>
   ),
 }))
@@ -101,7 +101,7 @@ describe('HealingCard', () => {
   })
 
   it('shows promote and reject buttons for staged healing when expanded', async () => {
-    const user = userEvent.setup()
+    const _user = userEvent.setup()
     const onPromote = vi.fn()
     const onReject = vi.fn()
     render(

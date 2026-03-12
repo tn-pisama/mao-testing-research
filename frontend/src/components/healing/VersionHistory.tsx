@@ -9,7 +9,6 @@ import {
   Upload,
   GitBranch,
   Loader2,
-  ExternalLink,
   Copy
 } from 'lucide-react'
 import { Card, CardHeader, CardTitle, CardContent } from '../ui/Card'

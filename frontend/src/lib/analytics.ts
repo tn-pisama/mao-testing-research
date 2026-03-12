@@ -11,7 +11,7 @@ declare global {
     gtag?: (
       command: 'event' | 'config' | 'set',
       targetId: string,
-      config?: Record<string, any>
+      config?: Record<string, unknown>
     ) => void
   }
 }
@@ -23,7 +23,7 @@ export const GA_MEASUREMENT_ID = process.env.NEXT_PUBLIC_GA_MEASUREMENT_ID
  */
 export const trackEvent = (
   eventName: string,
-  eventParams?: Record<string, any>
+  eventParams?: Record<string, unknown>
 ) => {
   if (typeof window !== 'undefined' && window.gtag && GA_MEASUREMENT_ID) {
     window.gtag('event', eventName, {

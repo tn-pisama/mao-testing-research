@@ -15,6 +15,7 @@ from app.storage.models import (
     WorkflowQualityAssessment,
 )
 from app.core.auth import get_current_tenant
+from app.core.dependencies import AuthContext, get_current_user_or_tenant
 
 router = APIRouter(prefix="/workflow-groups", tags=["workflow-groups"])
 
@@ -84,7 +85,7 @@ class AutoDetectResponse(BaseModel):
 async def list_groups(
     tenant_id: str = Depends(get_current_tenant),
     db: AsyncSession = Depends(get_db),
-    user_id: Optional[str] = None,  # TODO: Get from auth context when available
+    auth: AuthContext = Depends(get_current_user_or_tenant),
 ):
     """
     List all workflow groups for current tenant.
@@ -101,12 +102,12 @@ async def list_groups(
     )
     groups = result.scalars().all()
 
-    # Load user preferences if user_id provided
+    # Load user preferences if user_id available
     user_prefs = {}
-    if user_id:
+    if auth.user_id:
         prefs_result = await db.execute(
             select(UserGroupPreference).where(
-                UserGroupPreference.user_id == UUID(user_id)
+                UserGroupPreference.user_id == UUID(auth.user_id)
             )
         )
         for pref in prefs_result.scalars().all():
@@ -151,7 +152,7 @@ async def create_group(
     data: CreateGroupRequest,
     tenant_id: str = Depends(get_current_tenant),
     db: AsyncSession = Depends(get_db),
-    user_id: Optional[str] = None,  # TODO: Get from auth context when available
+    auth: AuthContext = Depends(get_current_user_or_tenant),
 ):
     """Create a new workflow group."""
     await set_tenant_context(db, tenant_id)
@@ -174,7 +175,7 @@ async def create_group(
         color=data.color,
         icon=data.icon,
         auto_detect_rules=data.auto_detect_rules.dict() if data.auto_detect_rules else None,
-        created_by=UUID(user_id) if user_id else None,
+        created_by=UUID(auth.user_id) if auth.user_id else None,
     )
     db.add(group)
     await db.commit()
@@ -298,7 +299,7 @@ async def assign_workflows(
     data: AssignWorkflowsRequest,
     tenant_id: str = Depends(get_current_tenant),
     db: AsyncSession = Depends(get_db),
-    user_id: Optional[str] = None,  # TODO: Get from auth context when available
+    auth: AuthContext = Depends(get_current_user_or_tenant),
 ):
     """Manually assign workflows to a group."""
     await set_tenant_context(db, tenant_id)
@@ -321,13 +322,13 @@ async def assign_workflows(
             workflow_id=workflow_id,
             group_id=UUID(group_id),
             assignment_type="manual",
-            assigned_by=UUID(user_id) if user_id else None,
+            assigned_by=UUID(auth.user_id) if auth.user_id else None,
         )
         stmt = stmt.on_conflict_do_update(
             index_elements=["workflow_id", "group_id"],
             set_={
                 "assignment_type": "manual",
-                "assigned_by": UUID(user_id) if user_id else None,
+                "assigned_by": UUID(auth.user_id) if auth.user_id else None,
                 "assigned_at": datetime.utcnow(),
             },
         )

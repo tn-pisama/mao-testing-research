@@ -3,7 +3,7 @@
 import { Card } from '../ui/Card'
 import { Upload } from 'lucide-react'
 
-export function TraceUpload({ onUpload }: { onUpload?: (file: File) => void }) {
+export function TraceUpload({ onUpload: _onUpload }: { onUpload?: (file: File) => void }) {
   return (
     <Card>
       <div className="text-center py-12 text-white/60 font-mono">

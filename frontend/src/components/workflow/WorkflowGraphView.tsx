@@ -97,8 +97,8 @@ export function WorkflowGraphView({
     }
   }, [workflow, handoffGraph, handoffMetrics])
 
-  const [nodes, setNodes, onNodesChange] = useNodesState(initialNodes)
-  const [edges, setEdges, onEdgesChange] = useEdgesState(initialEdges)
+  const [nodes, _setNodes, onNodesChange] = useNodesState(initialNodes)
+  const [edges, _setEdges, onEdgesChange] = useEdgesState(initialEdges)
 
   const handleNodeClick = useCallback(
     (_event: React.MouseEvent, node: Node) => {
@@ -169,7 +169,7 @@ export function WorkflowGraphView({
           className="bg-zinc-800 border border-zinc-700 rounded"
           nodeColor={(node) => {
             if (node.type === 'startEnd') return '#475569'
-            const score = (node.data as any).score || 0
+            const score = (node.data as Record<string, number>).score || 0
             if (score >= 0.9) return '#22c55e'
             if (score >= 0.8) return '#3b82f6'
             if (score >= 0.6) return '#f59e0b'

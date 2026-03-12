@@ -25,9 +25,10 @@ export function useTenant() {
   const [isLoading, setIsLoading] = useState(true)
 
   // Extract the idToken value to prevent re-fetches when session object reference changes
+  const sessionIdToken = (session as (typeof session & { idToken?: string }) | null)?.idToken
   const idToken = useMemo(() => {
-    return (session as any)?.idToken || null
-  }, [(session as any)?.idToken])
+    return sessionIdToken || null
+  }, [sessionIdToken])
 
   useEffect(() => {
     async function fetchTenant() {

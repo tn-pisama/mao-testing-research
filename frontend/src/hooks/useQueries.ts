@@ -16,7 +16,6 @@ import type {
   QualityAssessment,
   QualityHealingRecord,
   QualityHealingListResponse,
-  FixSuggestionSummary,
   FeedbackStats,
   ThresholdRecommendation,
   N8nWorkflow,

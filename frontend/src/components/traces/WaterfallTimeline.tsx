@@ -1,7 +1,7 @@
 'use client'
 
 import { useState, useMemo } from 'react'
-import { Clock, Cpu, Zap } from 'lucide-react'
+import { Clock, Cpu } from 'lucide-react'
 import { Card, CardHeader, CardTitle, CardContent } from '../ui/Card'
 import type { State } from '@/lib/api'
 
@@ -30,7 +30,7 @@ function formatDuration(ms: number): string {
 export function WaterfallTimeline({ states, onStateClick, selectedStateId }: WaterfallTimelineProps) {
   const [hoveredStateId, setHoveredStateId] = useState<string | null>(null)
 
-  const { swimlanes, timeRange, agentColorMap, timeMarkers } = useMemo(() => {
+  const { swimlanes, timeRange, agentColorMap: _agentColorMap, timeMarkers } = useMemo(() => {
     if (!states || states.length === 0) {
       return { swimlanes: [], timeRange: { start: 0, end: 0, duration: 0 }, agentColorMap: new Map(), timeMarkers: [] }
     }

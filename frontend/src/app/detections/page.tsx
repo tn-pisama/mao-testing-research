@@ -4,108 +4,23 @@ export const dynamic = 'force-dynamic'
 
 import { useState, useEffect, useMemo } from 'react'
 import { Layout } from '@/components/common/Layout'
-import { formatDistanceToNow } from 'date-fns'
-import { cn } from '@/lib/utils'
 import {
   AlertTriangle,
   AlertCircle,
-  CheckCircle,
-  XCircle,
-  Filter,
-  Search,
-  RefreshCw,
-  TrendingUp,
-  Activity,
-  Shield,
-  Zap,
   Eye,
-  ThumbsUp,
   ThumbsDown,
-  ChevronRight,
+  Shield,
   Wrench,
-  Loader2,
+  RefreshCw,
+  Search,
 } from 'lucide-react'
-import Link from 'next/link'
 import { useUserPreferences } from '@/lib/user-preferences'
 import { useDetectionsQuery, useSubmitFeedbackMutation } from '@/hooks/useQueries'
 
-type DetectionType = 'all' | 'loop' | 'state_corruption' | 'persona_drift' | 'coordination' | 'task_derailment' | 'context' | 'communication' | 'specification' | 'decomposition' | 'workflow' | 'hallucination' | 'injection' | 'context_overflow' | 'information_withholding' | 'completion_misjudgment' | 'tool_provision' | 'grounding_failure' | 'retrieval_quality' | 'cost'
-type Severity = 'all' | 'low' | 'medium' | 'high' | 'critical'
-
-const detectionTypeConfig: Record<string, { label: string; color: string; icon: typeof AlertTriangle; category: string }> = {
-  // Backend-aligned detection type keys
-  loop: { label: 'Infinite Loop', color: 'text-red-400', icon: RefreshCw, category: 'Inter-Agent' },
-  state_corruption: { label: 'State Corruption', color: 'text-orange-400', icon: AlertTriangle, category: 'System' },
-  persona_drift: { label: 'Persona Drift', color: 'text-purple-400', icon: Activity, category: 'Inter-Agent' },
-  coordination: { label: 'Coordination Failure', color: 'text-amber-400', icon: Zap, category: 'Inter-Agent' },
-  task_derailment: { label: 'Task Derailment', color: 'text-pink-400', icon: TrendingUp, category: 'Inter-Agent' },
-  context: { label: 'Context Neglect', color: 'text-cyan-400', icon: Eye, category: 'Inter-Agent' },
-  communication: { label: 'Communication Breakdown', color: 'text-rose-400', icon: AlertTriangle, category: 'Inter-Agent' },
-  specification: { label: 'Spec Mismatch', color: 'text-blue-400', icon: Shield, category: 'System' },
-  decomposition: { label: 'Poor Decomposition', color: 'text-indigo-400', icon: Activity, category: 'System' },
-  workflow: { label: 'Flawed Workflow', color: 'text-violet-400', icon: Zap, category: 'System' },
-  hallucination: { label: 'Hallucination', color: 'text-yellow-400', icon: AlertCircle, category: 'System' },
-  injection: { label: 'Prompt Injection', color: 'text-red-500', icon: Shield, category: 'System' },
-  context_overflow: { label: 'Context Overflow', color: 'text-orange-500', icon: AlertTriangle, category: 'System' },
-  information_withholding: { label: 'Info Withholding', color: 'text-teal-400', icon: Eye, category: 'Inter-Agent' },
-  completion_misjudgment: { label: 'Completion Issue', color: 'text-lime-400', icon: CheckCircle, category: 'System' },
-  tool_provision: { label: 'Tool Provision', color: 'text-sky-400', icon: Zap, category: 'System' },
-  grounding_failure: { label: 'Grounding Failure', color: 'text-amber-500', icon: AlertCircle, category: 'System' },
-  retrieval_quality: { label: 'Retrieval Quality', color: 'text-fuchsia-400', icon: Eye, category: 'System' },
-  cost: { label: 'Cost Overrun', color: 'text-emerald-400', icon: TrendingUp, category: 'System' },
-  // Legacy aliases for backwards compatibility with existing DB data
-  infinite_loop: { label: 'Infinite Loop', color: 'text-red-400', icon: RefreshCw, category: 'Inter-Agent' },
-  overflow: { label: 'Context Overflow', color: 'text-orange-500', icon: AlertTriangle, category: 'System' },
-  withholding: { label: 'Info Withholding', color: 'text-teal-400', icon: Eye, category: 'Inter-Agent' },
-  completion: { label: 'Completion Issue', color: 'text-lime-400', icon: CheckCircle, category: 'System' },
-  coordination_deadlock: { label: 'Coordination Failure', color: 'text-amber-400', icon: Zap, category: 'Inter-Agent' },
-  context_neglect: { label: 'Context Neglect', color: 'text-cyan-400', icon: Eye, category: 'Inter-Agent' },
-  communication_breakdown: { label: 'Communication Breakdown', color: 'text-rose-400', icon: AlertTriangle, category: 'Inter-Agent' },
-  specification_mismatch: { label: 'Spec Mismatch', color: 'text-blue-400', icon: Shield, category: 'System' },
-  poor_decomposition: { label: 'Poor Decomposition', color: 'text-indigo-400', icon: Activity, category: 'System' },
-  flawed_workflow: { label: 'Flawed Workflow', color: 'text-violet-400', icon: Zap, category: 'System' },
-}
-
-const severityConfig: Record<string, { label: string; color: string; bg: string }> = {
-  low: { label: 'Low', color: 'text-zinc-400', bg: 'bg-zinc-500/20' },
-  medium: { label: 'Medium', color: 'text-amber-400', bg: 'bg-amber-500/20' },
-  high: { label: 'High', color: 'text-orange-400', bg: 'bg-orange-500/20' },
-  critical: { label: 'Critical', color: 'text-red-400', bg: 'bg-red-500/20' },
-}
-
-// Plain-English labels for n8n users (backend-aligned keys + legacy aliases)
-const plainEnglishLabels: Record<string, string> = {
-  loop: 'Stuck in a loop',
-  state_corruption: 'Data got corrupted',
-  persona_drift: 'Unexpected behavior',
-  coordination: 'System stuck',
-  task_derailment: 'Got off track',
-  context: 'Lost context',
-  communication: 'Communication issue',
-  specification: 'Wrong output format',
-  decomposition: 'Bad task split',
-  workflow: 'Workflow problem',
-  hallucination: 'Made up facts',
-  injection: 'Security threat detected',
-  context_overflow: 'Too much data for AI',
-  information_withholding: 'Missing information',
-  completion_misjudgment: 'Finished too early',
-  tool_provision: 'Wrong tools provided',
-  grounding_failure: 'Not backed by sources',
-  retrieval_quality: 'Wrong documents retrieved',
-  cost: 'Over budget',
-  // Legacy aliases
-  infinite_loop: 'Stuck in a loop',
-  overflow: 'Too much data for AI',
-  withholding: 'Missing information',
-  completion: 'Finished too early',
-  coordination_deadlock: 'System stuck',
-  context_neglect: 'Lost context',
-  communication_breakdown: 'Communication issue',
-  specification_mismatch: 'Wrong output format',
-  poor_decomposition: 'Bad task split',
-  flawed_workflow: 'Workflow problem',
-}
+import { DetectionFilters } from '@/components/detections/DetectionFilters'
+import { DetectionListItem } from '@/components/detections/DetectionListItem'
+import { StatCard } from '@/components/detections/StatCard'
+import type { DetectionType, Severity } from '@/components/detections/DetectionTypeConfig'
 
 export default function DetectionsPage() {
   const [typeFilter, setTypeFilter] = useState<DetectionType>('all')
@@ -280,94 +195,15 @@ export default function DetectionsPage() {
         </div>
 
         <div className="grid lg:grid-cols-4 gap-6">
-          <div className="lg:col-span-1 space-y-4">
-            <div className="p-4 rounded-xl bg-zinc-800/50 border border-zinc-700">
-              <h3 className="text-sm font-semibold text-white mb-3 flex items-center gap-2">
-                <Filter size={14} />
-                Filters
-              </h3>
-
-              <div className="space-y-4">
-                <div>
-                  <label className="text-xs text-zinc-400 mb-2 block">Detection Type</label>
-                  <select
-                    value={typeFilter}
-                    onChange={(e) => setTypeFilter(e.target.value as DetectionType)}
-                    className="w-full px-3 py-2 rounded-lg bg-zinc-900 border border-zinc-700 text-white text-sm focus:outline-none focus:border-blue-500"
-                  >
-                    <option value="all">All Types</option>
-                    <optgroup label="System Design">
-                      <option value="specification_mismatch">Spec Mismatch (F1)</option>
-                      <option value="poor_decomposition">Poor Decomposition (F2)</option>
-                      <option value="state_corruption">State Corruption (F3/F4)</option>
-                      <option value="flawed_workflow">Flawed Workflow (F5)</option>
-                    </optgroup>
-                    <optgroup label="Inter-Agent">
-                      <option value="task_derailment">Task Derailment (F6)</option>
-                      <option value="context_neglect">Context Neglect (F7)</option>
-                      <option value="infinite_loop">Infinite Loop (F8/F9)</option>
-                      <option value="communication_breakdown">Communication Breakdown (F10)</option>
-                      <option value="persona_drift">Persona Drift (F11)</option>
-                    </optgroup>
-                    <optgroup label="Coordination">
-                      <option value="coordination_deadlock">Deadlock (F12-F14)</option>
-                    </optgroup>
-                  </select>
-                </div>
-
-                <div>
-                  <label className="text-xs text-zinc-400 mb-2 block">Severity</label>
-                  <select
-                    value={severityFilter}
-                    onChange={(e) => setSeverityFilter(e.target.value as Severity)}
-                    className="w-full px-3 py-2 rounded-lg bg-zinc-900 border border-zinc-700 text-white text-sm focus:outline-none focus:border-blue-500"
-                  >
-                    <option value="all">All Severities</option>
-                    <option value="critical">Critical</option>
-                    <option value="high">High</option>
-                    <option value="medium">Medium</option>
-                    <option value="low">Low</option>
-                  </select>
-                </div>
-
-                <label className="flex items-center gap-2 cursor-pointer">
-                  <input
-                    type="checkbox"
-                    checked={showValidated}
-                    onChange={(e) => setShowValidated(e.target.checked)}
-                    className="rounded border-zinc-600 bg-zinc-900 text-blue-500 focus:ring-blue-500"
-                  />
-                  <span className="text-sm text-zinc-300">Show Validated</span>
-                </label>
-              </div>
-            </div>
-
-            <div className="p-4 rounded-xl bg-zinc-800/50 border border-zinc-700">
-              <h3 className="text-sm font-semibold text-white mb-3">By Type</h3>
-              <div className="space-y-2">
-                {Object.entries(stats.byType).map(([type, count]) => {
-                  const config = detectionTypeConfig[type]
-                  const Icon = config.icon
-                  return (
-                    <button
-                      key={type}
-                      onClick={() => setTypeFilter(type as DetectionType)}
-                      className={cn(
-                        'w-full flex items-center justify-between p-2 rounded-lg transition-colors',
-                        typeFilter === type ? 'bg-zinc-700' : 'hover:bg-zinc-700/50'
-                      )}
-                    >
-                      <div className="flex items-center gap-2">
-                        <Icon size={14} className={config.color} />
-                        <span className="text-sm text-zinc-300">{config.label}</span>
-                      </div>
-                      <span className="text-sm font-medium text-white">{count}</span>
-                    </button>
-                  )
-                })}
-              </div>
-            </div>
-          </div>
+          <DetectionFilters
+            typeFilter={typeFilter}
+            setTypeFilter={setTypeFilter}
+            severityFilter={severityFilter}
+            setSeverityFilter={setSeverityFilter}
+            showValidated={showValidated}
+            setShowValidated={setShowValidated}
+            stats={stats}
+          />
 
           <div className="lg:col-span-3">
             <div className="rounded-xl bg-zinc-800/50 border border-zinc-700 overflow-hidden">
@@ -405,119 +241,16 @@ export default function DetectionsPage() {
                     </p>
                   </div>
                 ) : (
-                  filteredDetections.map((detection) => {
-                    const typeConfig = detectionTypeConfig[detection.detection_type] || detectionTypeConfig.infinite_loop
-                    const severity = severityConfig[detection.details?.severity || 'medium']
-                    const TypeIcon = typeConfig.icon
-                    const displayLabel = showSimplifiedView
-                      ? (plainEnglishLabels[detection.detection_type] || typeConfig.label)
-                      : typeConfig.label
-
-                    return (
-                      <Link
-                        key={detection.id}
-                        href={showSimplifiedView ? `/healing?detection=${detection.id}` : `/traces/${detection.trace_id}`}
-                        className="flex items-center gap-4 p-4 hover:bg-zinc-700/30 transition-colors"
-                      >
-                        <div className={cn('p-2 rounded-lg', severity.bg)}>
-                          <TypeIcon size={16} className={typeConfig.color} />
-                        </div>
-
-                        <div className="flex-1 min-w-0">
-                          <div className="flex items-center gap-2 mb-1">
-                            <span className="font-medium text-white">{displayLabel}</span>
-                            <span className={cn('text-xs px-2 py-0.5 rounded-full', severity.bg, severity.color)}>
-                              {severity.label}
-                            </span>
-                            {detection.validated && (
-                              <span className="text-xs px-2 py-0.5 rounded-full bg-emerald-500/20 text-emerald-400">
-                                {showSimplifiedView ? 'Confirmed' : 'Validated'}
-                              </span>
-                            )}
-                            {detection.false_positive && (
-                              <span className="text-xs px-2 py-0.5 rounded-full bg-zinc-500/20 text-zinc-400">
-                                {showSimplifiedView ? 'Not an Issue' : 'False Positive'}
-                              </span>
-                            )}
-                          </div>
-                          <div className="flex items-center gap-4 text-xs text-zinc-400">
-                            {showSimplifiedView ? (
-                              <>
-                                <span>{formatDistanceToNow(new Date(detection.created_at), { addSuffix: true })}</span>
-                                {severity.label !== 'Low' && (
-                                  <span className="text-amber-400">Recommended to fix</span>
-                                )}
-                              </>
-                            ) : (
-                              <>
-                                <span>{Math.round(detection.confidence)}% confidence</span>
-                                <span>via {detection.method.replace('_', ' ')}</span>
-                                <span>{detection.details?.affected_agents} agents affected</span>
-                              </>
-                            )}
-                          </div>
-                        </div>
-
-                        <div className="text-right">
-                          {showSimplifiedView ? (
-                            <div className="flex items-center gap-2">
-                              <Link
-                                href={`/healing?detection=${detection.id}`}
-                                onClick={(e) => e.stopPropagation()}
-                                className="flex items-center gap-1 px-3 py-1.5 text-sm bg-purple-600 hover:bg-purple-700 text-white rounded-lg transition-colors"
-                              >
-                                <Wrench size={14} />
-                                Fix
-                              </Link>
-                            </div>
-                          ) : (
-                            <>
-                              <div className="text-xs text-zinc-400 mb-1">
-                                {formatDistanceToNow(new Date(detection.created_at), { addSuffix: true })}
-                              </div>
-                              <div className="flex items-center gap-1">
-                                {(() => {
-                                  const effective = inlineValidated[detection.id] ?? { validated: detection.validated, false_positive: detection.false_positive }
-                                  if (effective.validated) {
-                                    return effective.false_positive ? (
-                                      <span className="flex items-center gap-1 text-xs text-zinc-400">
-                                        <XCircle size={14} /> FP
-                                      </span>
-                                    ) : (
-                                      <span className="flex items-center gap-1 text-xs text-emerald-400">
-                                        <CheckCircle size={14} />
-                                      </span>
-                                    )
-                                  }
-                                  return (
-                                    <>
-                                      <button
-                                        onClick={(e) => handleInlineValidate(e, detection.id, false)}
-                                        disabled={submittingId === detection.id}
-                                        className="p-1.5 rounded hover:bg-emerald-500/20 text-zinc-400 hover:text-emerald-400 transition-colors disabled:opacity-50"
-                                        title="Mark as valid"
-                                      >
-                                        {submittingId === detection.id ? <Loader2 size={14} className="animate-spin" /> : <ThumbsUp size={14} />}
-                                      </button>
-                                      <button
-                                        onClick={(e) => handleInlineValidate(e, detection.id, true)}
-                                        disabled={submittingId === detection.id}
-                                        className="p-1.5 rounded hover:bg-red-500/20 text-zinc-400 hover:text-red-400 transition-colors disabled:opacity-50"
-                                        title="Mark as false positive"
-                                      >
-                                        <ThumbsDown size={14} />
-                                      </button>
-                                    </>
-                                  )
-                                })()}
-                                <ChevronRight size={14} className="text-zinc-500" />
-                              </div>
-                            </>
-                          )}
-                        </div>
-                      </Link>
-                    )
-                  })
+                  filteredDetections.map((detection) => (
+                    <DetectionListItem
+                      key={detection.id}
+                      detection={detection}
+                      showSimplifiedView={showSimplifiedView}
+                      inlineValidated={inlineValidated}
+                      submittingId={submittingId}
+                      onInlineValidate={handleInlineValidate}
+                    />
+                  ))
                 )}
               </div>
 
@@ -550,29 +283,5 @@ export default function DetectionsPage() {
         </div>
       </div>
     </Layout>
-  )
-}
-
-interface StatCardProps {
-  icon: typeof AlertTriangle
-  label: string
-  value: string | number
-  color: string
-  bgColor: string
-}
-
-function StatCard({ icon: Icon, label, value, color, bgColor }: StatCardProps) {
-  return (
-    <div className="p-4 rounded-xl bg-zinc-800/50 border border-zinc-700">
-      <div className="flex items-center gap-3">
-        <div className={cn('p-2 rounded-lg', bgColor)}>
-          <Icon size={18} className={color} />
-        </div>
-        <div>
-          <div className="text-2xl font-bold text-white">{value}</div>
-          <div className="text-xs text-zinc-400">{label}</div>
-        </div>
-      </div>
-    </div>
   )
 }

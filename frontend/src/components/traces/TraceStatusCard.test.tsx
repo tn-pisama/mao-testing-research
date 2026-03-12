@@ -5,7 +5,7 @@ import type { Trace } from '@/lib/api'
 
 // Mock next/link to render as a plain anchor
 vi.mock('next/link', () => ({
-  default: ({ href, children, ...props }: any) => (
+  default: ({ href, children, ...props }: { href: string; children: React.ReactNode; [key: string]: unknown }) => (
     <a href={href} {...props}>{children}</a>
   ),
 }))

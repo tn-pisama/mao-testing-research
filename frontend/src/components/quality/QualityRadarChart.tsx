@@ -10,7 +10,7 @@ const AGENT_COLORS = ['#3b82f6', '#8b5cf6', '#ec4899', '#f59e0b', '#22c55e']
 
 export function QualityRadarChart({ agentScores }: { agentScores: AgentQualityScore[] }) {
   const radarData = agentScores[0]?.dimensions.map((dim, i) => {
-    const point: Record<string, any> = { dimension: dim.dimension.replace(/_/g, ' ') }
+    const point: Record<string, string | number> = { dimension: dim.dimension.replace(/_/g, ' ') }
     agentScores.forEach(agent => {
       point[agent.agent_name] = Math.round((agent.dimensions[i]?.score || 0) * 100)
     })

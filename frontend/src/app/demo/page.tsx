@@ -33,7 +33,6 @@ export default function DemoPage() {
       // eslint-disable-next-line react-hooks/set-state-in-effect -- one-time initialization from localStorage
       setShowWalkthrough(true)
     } else {
-      // eslint-disable-next-line react-hooks/set-state-in-effect -- one-time initialization from localStorage
       setHasSeenTour(true)
     }
   }, [])

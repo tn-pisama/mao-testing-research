@@ -1,7 +1,7 @@
 'use client'
 
 import { useMemo } from 'react'
-import type { AgentQualityScore, QualityAssessment } from '@/lib/api'
+import type { QualityAssessment } from '@/lib/api'
 import { QualityGradeBadge } from '@/components/quality/QualityGradeBadge'
 import { X, AlertCircle, TrendingUp, Clock, Coins, Zap } from 'lucide-react'
 import { cn } from '@/lib/utils'

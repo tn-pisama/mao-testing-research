@@ -20,7 +20,7 @@ interface DetectorStatusData {
   detectors: DetectorInfo[]
   summary: Record<string, number>
   calibrated_at: string
-  readiness_criteria: Record<string, any>
+  readiness_criteria: Record<string, unknown>
 }
 
 const readinessConfig: Record<string, { label: string; color: string; bg: string; icon: typeof Shield }> = {

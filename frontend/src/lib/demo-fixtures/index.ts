@@ -9,8 +9,8 @@ export interface DemoState extends State {
   trace_id: string
   step_index: number
   action: string
-  input_data: Record<string, any>
-  output_data: Record<string, any>
+  input_data: Record<string, unknown>
+  output_data: Record<string, unknown>
 }
 
 export interface DemoScenario {

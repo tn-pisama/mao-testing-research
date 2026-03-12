@@ -11,7 +11,7 @@ interface DemoControlsPanelProps {
 }
 
 export function DemoControlsPanel({
-  onAction,
+  onAction: _onAction,
   isSimulating,
   onToggleSimulation,
   onRefresh,

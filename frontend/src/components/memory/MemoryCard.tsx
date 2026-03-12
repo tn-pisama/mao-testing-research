@@ -29,7 +29,7 @@ export function MemoryCard({
   memory_type,
   domain,
   importance,
-  confidence,
+  confidence: _confidence,
   tags,
   framework,
   created_at,

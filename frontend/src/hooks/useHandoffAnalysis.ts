@@ -81,7 +81,7 @@ export function useHandoffAnalysis(workflow?: QualityAssessment): UseHandoffAnal
     }
 
     loadHandoffData()
-  }, [workflow, getToken])
+  }, [workflow, getToken, tenantId])
 
   return { handoffAnalysis, handoffMetrics, isLoading, isDemoMode, error }
 }

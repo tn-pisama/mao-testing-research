@@ -5,7 +5,6 @@ import { useSafeAuth as useAuth } from '@/hooks/useSafeAuth'
 import { useTenant } from '@/hooks/useTenant'
 import {
   FileCode,
-  Loader2,
   AlertTriangle,
   Copy,
   Check,

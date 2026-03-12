@@ -8,7 +8,7 @@ export interface SwitchProps extends Omit<InputHTMLAttributes<HTMLInputElement>,
 }
 
 export const Switch = forwardRef<HTMLInputElement, SwitchProps>(
-  ({ className, checked, onCheckedChange, onChange, ...props }, ref) => {
+  ({ className, checked, onCheckedChange, onChange: _onChange, ...props }, _ref) => {
     return (
       <button
         role="switch"
@@ -21,7 +21,7 @@ export const Switch = forwardRef<HTMLInputElement, SwitchProps>(
           className
         )}
         onClick={() => onCheckedChange?.(!checked)}
-        {...(props as any)}
+        {...(props as Omit<React.ButtonHTMLAttributes<HTMLButtonElement>, 'onClick'>)}
       >
         <span
           className={cn(

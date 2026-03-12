@@ -11,7 +11,7 @@ interface TraceStatusCardProps {
   isLoading?: boolean
 }
 
-const statusStyles = {
+const _statusStyles = {
   completed: 'success',
   running: 'info',
   failed: 'error',
