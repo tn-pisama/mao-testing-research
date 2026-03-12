@@ -3,7 +3,7 @@
 import { useState } from 'react'
 import { Bell, Search, Menu, User, WifiOff, Wifi } from 'lucide-react'
 import { cn } from '@/lib/utils'
-import { useApiWithFallback } from '@/hooks/useApiWithFallback'
+import { useDetectorStatusQuery } from '@/hooks/useQueries'
 import { WorkflowGroupFilter } from '@/components/filters/WorkflowGroupFilter'
 import { ManageGroupsModal } from '@/components/modals/ManageGroupsModal'
 
@@ -14,7 +14,7 @@ interface HeaderProps {
 }
 
 export function Header({ onMenuClick, title, notificationCount = 0 }: HeaderProps) {
-  const { isDemoMode } = useApiWithFallback()
+  const { isDemoMode } = useDetectorStatusQuery()
   const [isManageModalOpen, setIsManageModalOpen] = useState(false)
 
   return (

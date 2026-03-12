@@ -4,7 +4,7 @@ import { useParams, useRouter } from 'next/navigation'
 import { useState, useMemo, useRef } from 'react'
 import dynamic from 'next/dynamic'
 import Link from 'next/link'
-import { useApiWithFallback } from '@/hooks/useApiWithFallback'
+import { useQualityAssessmentsQuery } from '@/hooks/useQueries'
 import { Skeleton } from '@/components/ui/Skeleton'
 import { WorkflowNodeDetails } from '@/components/workflow/WorkflowNodeDetails'
 
@@ -40,7 +40,7 @@ export default function WorkflowPage() {
   const reactFlowRef = useRef<HTMLDivElement>(null)
 
   // Fetch workflow data
-  const { qualityAssessments: workflows = [], isLoading } = useApiWithFallback()
+  const { assessments: workflows, isLoading } = useQualityAssessmentsQuery()
 
   const workflow = workflows[0]
 

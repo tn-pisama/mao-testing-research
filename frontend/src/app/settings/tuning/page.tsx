@@ -3,10 +3,12 @@
 import { useState } from 'react'
 import { Layout } from '@/components/common/Layout'
 import { Button } from '@/components/ui/Button'
-import { useThresholdTuning } from '@/hooks/useApiWithFallback'
-import { useSafeAuth as useAuth } from '@/hooks/useSafeAuth'
-import { useTenant } from '@/hooks/useTenant'
-import { createApiClient } from '@/lib/api'
+import {
+  useFeedbackStatsQuery,
+  useThresholdRecommendationsQuery,
+  useUpdateThresholdsMutation,
+  useResetThresholdsMutation,
+} from '@/hooks/useQueries'
 import {
   Sliders,
   Target,
@@ -20,23 +22,24 @@ import {
 } from 'lucide-react'
 
 export default function ThresholdTuningPage() {
-  const { feedbackStats: stats, recommendations, isLoading: loading, isDemoMode } = useThresholdTuning()
-  const { getToken } = useAuth()
-  const { tenantId } = useTenant()
+  const { data: stats, isLoading: statsLoading, isDemoMode } = useFeedbackStatsQuery()
+  const { data: recommendations, isLoading: recsLoading } = useThresholdRecommendationsQuery()
+  const loading = statsLoading || recsLoading
+  const recs = recommendations ?? []
+  const updateMutation = useUpdateThresholdsMutation()
+  const resetMutation = useResetThresholdsMutation()
+
   const [applyingFramework, setApplyingFramework] = useState<string | null>(null)
   const [appliedFrameworks, setAppliedFrameworks] = useState<Set<string>>(new Set())
   const [applyError, setApplyError] = useState<string | null>(null)
   const [applyingAll, setApplyingAll] = useState(false)
   const [showResetConfirm, setShowResetConfirm] = useState(false)
-  const [resetting, setResetting] = useState(false)
 
   const handleApplyRecommendation = async (rec: any) => {
     setApplyingFramework(rec.framework)
     setApplyError(null)
     try {
-      const token = await getToken()
-      const api = createApiClient(token, tenantId)
-      await api.updateThresholds({
+      await updateMutation.mutateAsync({
         framework_thresholds: {
           [rec.framework]: {
             structural_threshold: rec.recommended_structural_threshold,
@@ -54,7 +57,7 @@ export default function ThresholdTuningPage() {
   }
 
   const handleApplyAll = async () => {
-    const pendingRecs = recommendations.filter(rec => {
+    const pendingRecs = recs.filter(rec => {
       const structChange = rec.recommended_structural_threshold - rec.current_structural_threshold
       const semChange = rec.recommended_semantic_threshold - rec.current_semantic_threshold
       return (Math.abs(structChange) > 0.001 || Math.abs(semChange) > 0.001) && !appliedFrameworks.has(rec.framework)
@@ -64,8 +67,6 @@ export default function ThresholdTuningPage() {
     setApplyingAll(true)
     setApplyError(null)
     try {
-      const token = await getToken()
-      const api = createApiClient(token, tenantId)
       const frameworkThresholds: Record<string, { structural_threshold: number; semantic_threshold: number }> = {}
       for (const rec of pendingRecs) {
         frameworkThresholds[rec.framework] = {
@@ -73,7 +74,7 @@ export default function ThresholdTuningPage() {
           semantic_threshold: rec.recommended_semantic_threshold,
         }
       }
-      await api.updateThresholds({ framework_thresholds: frameworkThresholds })
+      await updateMutation.mutateAsync({ framework_thresholds: frameworkThresholds })
       setAppliedFrameworks(prev => new Set([...prev, ...pendingRecs.map(r => r.framework)]))
     } catch (err) {
       console.error('Failed to apply all recommendations:', err)
@@ -84,23 +85,18 @@ export default function ThresholdTuningPage() {
   }
 
   const handleReset = async () => {
-    setResetting(true)
     setApplyError(null)
     try {
-      const token = await getToken()
-      const api = createApiClient(token, tenantId)
-      await api.resetThresholds()
+      await resetMutation.mutateAsync()
       setAppliedFrameworks(new Set())
       setShowResetConfirm(false)
     } catch (err) {
       console.error('Failed to reset thresholds:', err)
       setApplyError('Failed to reset thresholds')
-    } finally {
-      setResetting(false)
     }
   }
 
-  const pendingRecommendations = recommendations.filter(rec => {
+  const pendingRecommendations = recs.filter(rec => {
     const structChange = rec.recommended_structural_threshold - rec.current_structural_threshold
     const semChange = rec.recommended_semantic_threshold - rec.current_semantic_threshold
     return (Math.abs(structChange) > 0.001 || Math.abs(semChange) > 0.001) && !appliedFrameworks.has(rec.framework)
@@ -244,7 +240,7 @@ export default function ThresholdTuningPage() {
             )}
           </div>
           <div className="divide-y divide-zinc-700">
-            {recommendations.map((rec) => (
+            {recs.map((rec) => (
               <RecommendationRow
                 key={rec.framework}
                 recommendation={rec}
@@ -255,7 +251,7 @@ export default function ThresholdTuningPage() {
               />
             ))}
           </div>
-          {recommendations.length === 0 && (
+          {recs.length === 0 && (
             <div className="p-8 text-center text-zinc-400">
               <Info size={32} className="mx-auto mb-2 opacity-50" />
               <p>Not enough feedback data to generate recommendations.</p>
@@ -269,10 +265,10 @@ export default function ThresholdTuningPage() {
           {showResetConfirm ? (
             <div className="flex items-center gap-3 bg-zinc-800 border border-zinc-700 rounded-lg p-3">
               <span className="text-sm text-zinc-300">Reset all thresholds to factory defaults?</span>
-              <Button size="sm" variant="danger" onClick={handleReset} loading={resetting} disabled={resetting}>
+              <Button size="sm" variant="danger" onClick={handleReset} loading={resetMutation.isPending} disabled={resetMutation.isPending}>
                 Confirm Reset
               </Button>
-              <Button size="sm" variant="ghost" onClick={() => setShowResetConfirm(false)} disabled={resetting}>
+              <Button size="sm" variant="ghost" onClick={() => setShowResetConfirm(false)} disabled={resetMutation.isPending}>
                 Cancel
               </Button>
             </div>

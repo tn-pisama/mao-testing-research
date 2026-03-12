@@ -12,14 +12,14 @@ import { Layout } from '@/components/common/Layout'
 import { Button } from '@/components/ui/Button'
 import { Badge } from '@/components/ui/Badge'
 import { createApiClient } from '@/lib/api'
-import { useDifyInstances, useDifyApps } from '@/hooks/useApiWithFallback'
+import { useDifyInstancesQuery, useDifyAppsQuery } from '@/hooks/useQueries'
 
 export default function DifyPage() {
   const { getToken } = useAuth()
   const { tenantId } = useTenant()
 
-  const { instances, isLoading: instancesLoading, isDemoMode } = useDifyInstances()
-  const { apps, isLoading: appsLoading } = useDifyApps()
+  const { instances, isLoading: instancesLoading, isDemoMode } = useDifyInstancesQuery()
+  const { apps, isLoading: appsLoading } = useDifyAppsQuery()
 
   const [showInstanceForm, setShowInstanceForm] = useState(false)
   const [showAppForm, setShowAppForm] = useState(false)

@@ -2,10 +2,10 @@
 
 import { Layout } from '@/components/common/Layout'
 import { DetectorStatusDashboard } from '@/components/detection'
-import { useDetectorStatus } from '@/hooks/useApiWithFallback'
+import { useDetectorStatusQuery } from '@/hooks/useQueries'
 
 export default function DetectorStatusPage() {
-  const { data, isLoading } = useDetectorStatus()
+  const { data, isLoading } = useDetectorStatusQuery()
 
   return (
     <Layout>

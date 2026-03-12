@@ -4,7 +4,7 @@ export const dynamic = 'force-dynamic'
 
 import { useState } from 'react'
 import nextDynamic from 'next/dynamic'
-import { Upload, Wifi, WifiOff, AlertTriangle } from 'lucide-react'
+import { Upload, Wifi, WifiOff } from 'lucide-react'
 import { Layout } from '@/components/common/Layout'
 import { RecentDetectionsCard } from '@/components/dashboard/RecentDetectionsCard'
 import { TraceStatusCard } from '@/components/traces/TraceStatusCard'
@@ -26,21 +26,41 @@ const CostAnalyticsCard = nextDynamic(
   () => import('@/components/dashboard/CostAnalyticsCard').then(mod => ({ default: mod.CostAnalyticsCard })),
   { ssr: false, loading: () => <Skeleton className="h-64 rounded-xl" /> }
 )
-import { useApiWithFallback } from '@/hooks/useApiWithFallback'
+import {
+  useLoopAnalyticsQuery,
+  useCostAnalyticsQuery,
+  useDetectionsQuery,
+  useTracesQuery,
+  useQualityAssessmentsQuery,
+} from '@/hooks/useQueries'
+import { useQueryClient } from '@tanstack/react-query'
 import { useUserPreferences } from '@/lib/user-preferences'
+import { useUIStore } from '@/stores/uiStore'
 
 export default function DashboardPage() {
-  const {
-    isLoading,
-    isDemoMode,
-    error,
-    loopAnalytics,
-    costAnalytics,
-    detections,
-    traces,
-    qualityAssessments,
-    refresh,
-  } = useApiWithFallback()
+  const queryClient = useQueryClient()
+  const { filterPreferences } = useUIStore()
+
+  const groupId = filterPreferences.workflowGroupId && filterPreferences.workflowGroupId !== 'all'
+    ? filterPreferences.workflowGroupId
+    : undefined
+
+  const loopQ = useLoopAnalyticsQuery(30)
+  const costQ = useCostAnalyticsQuery(30)
+  const detectionsQ = useDetectionsQuery({ perPage: 10 })
+  const tracesQ = useTracesQuery({ perPage: 10 })
+  const qualityQ = useQualityAssessmentsQuery({ pageSize: 20, groupId })
+
+  const isLoading = loopQ.isLoading || costQ.isLoading || detectionsQ.isLoading || tracesQ.isLoading || qualityQ.isLoading
+  const isDemoMode = loopQ.isDemoMode || costQ.isDemoMode || detectionsQ.isDemoMode || tracesQ.isDemoMode || qualityQ.isDemoMode
+  const loopAnalytics = loopQ.data ?? undefined
+  const costAnalytics = costQ.data ?? undefined
+  const detections = detectionsQ.detections
+  const traces = tracesQ.traces
+  const qualityAssessments = qualityQ.assessments
+
+  const refresh = () => queryClient.invalidateQueries()
+
   const [showImportModal, setShowImportModal] = useState(false)
   const [selectedWorkflowId, setSelectedWorkflowId] = useState<string | null>(null)
   const { isN8nUser, showAdvancedFeatures } = useUserPreferences()
@@ -110,18 +130,6 @@ export default function DashboardPage() {
             </div>
           </div>
         </FadeIn>
-
-        {error && (
-          <FadeIn>
-            <div className="mb-6 p-4 bg-red-500/10 border border-red-500/20 rounded-xl flex items-center gap-3">
-              <AlertTriangle size={20} className="text-red-400 flex-shrink-0" />
-              <p className="text-sm text-red-300 flex-1">{error}</p>
-              <Button variant="ghost" size="sm" onClick={refresh}>
-                Retry
-              </Button>
-            </div>
-          </FadeIn>
-        )}
 
         {showSimplifiedDashboard ? (
           <StaggerContainer stagger={0.06}>

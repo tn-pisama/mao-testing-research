@@ -12,7 +12,7 @@ import { Layout } from '@/components/common/Layout'
 import { Button } from '@/components/ui/Button'
 import { QualityGradeBadge } from '@/components/quality/QualityGradeBadge'
 import { createApiClient, N8nWorkflow, N8nConnection, QualityAssessment } from '@/lib/api'
-import { useN8nWorkflows, useQualityAssessments, useN8nConnections } from '@/hooks/useApiWithFallback'
+import { useN8nWorkflowsQuery, useQualityAssessmentsQuery, useN8nConnectionsQuery } from '@/hooks/useQueries'
 
 interface DisplayWorkflow {
   id: string
@@ -46,9 +46,9 @@ export default function N8nPage() {
   const { tenantId } = useTenant()
 
   // Use hooks with demo fallback
-  const { workflows: workflowsData, isLoading: workflowsLoading, isDemoMode: workflowsDemoMode } = useN8nWorkflows()
-  const { assessments, isLoading: assessmentsLoading } = useQualityAssessments({ pageSize: 100 })
-  const { connections, isLoading: connectionsLoading } = useN8nConnections()
+  const { workflows: workflowsData, isLoading: workflowsLoading, isDemoMode: workflowsDemoMode } = useN8nWorkflowsQuery()
+  const { assessments, isLoading: assessmentsLoading } = useQualityAssessmentsQuery({ pageSize: 100 })
+  const { connections, isLoading: connectionsLoading } = useN8nConnectionsQuery()
 
   const [isRegistering, setIsRegistering] = useState(false)
   const [showRegisterForm, setShowRegisterForm] = useState(false)

@@ -12,14 +12,14 @@ import { Layout } from '@/components/common/Layout'
 import { Button } from '@/components/ui/Button'
 import { Badge } from '@/components/ui/Badge'
 import { createApiClient } from '@/lib/api'
-import { useLangGraphDeployments, useLangGraphAssistants } from '@/hooks/useApiWithFallback'
+import { useLangGraphDeploymentsQuery, useLangGraphAssistantsQuery } from '@/hooks/useQueries'
 
 export default function LangGraphPage() {
   const { getToken } = useAuth()
   const { tenantId } = useTenant()
 
-  const { deployments, isLoading: deploymentsLoading, isDemoMode } = useLangGraphDeployments()
-  const { assistants, isLoading: assistantsLoading } = useLangGraphAssistants()
+  const { deployments, isLoading: deploymentsLoading, isDemoMode } = useLangGraphDeploymentsQuery()
+  const { assistants, isLoading: assistantsLoading } = useLangGraphAssistantsQuery()
 
   const [showDeploymentForm, setShowDeploymentForm] = useState(false)
   const [showAssistantForm, setShowAssistantForm] = useState(false)

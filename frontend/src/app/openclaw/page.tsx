@@ -12,14 +12,14 @@ import { Layout } from '@/components/common/Layout'
 import { Button } from '@/components/ui/Button'
 import { Badge } from '@/components/ui/Badge'
 import { createApiClient } from '@/lib/api'
-import { useOpenClawInstances, useOpenClawAgents } from '@/hooks/useApiWithFallback'
+import { useOpenClawInstancesQuery, useOpenClawAgentsQuery } from '@/hooks/useQueries'
 
 export default function OpenClawPage() {
   const { getToken } = useAuth()
   const { tenantId } = useTenant()
 
-  const { instances, isLoading: instancesLoading, isDemoMode } = useOpenClawInstances()
-  const { agents, isLoading: agentsLoading } = useOpenClawAgents()
+  const { instances, isLoading: instancesLoading, isDemoMode } = useOpenClawInstancesQuery()
+  const { agents, isLoading: agentsLoading } = useOpenClawAgentsQuery()
 
   const [showInstanceForm, setShowInstanceForm] = useState(false)
   const [showAgentForm, setShowAgentForm] = useState(false)

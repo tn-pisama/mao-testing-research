@@ -5,7 +5,7 @@ export const dynamic = 'force-dynamic'
 import { useState, useEffect, useCallback } from 'react'
 import { useSafeAuth as useAuth } from '@/hooks/useSafeAuth'
 import { useTenant } from '@/hooks/useTenant'
-import { useThresholdTuning } from '@/hooks/useApiWithFallback'
+import { useFeedbackStatsQuery } from '@/hooks/useQueries'
 import { CheckCircle2, XCircle, HelpCircle, SkipForward, ChevronLeft, ChevronRight, AlertCircle, Target, TrendingUp } from 'lucide-react'
 import { Layout } from '@/components/common/Layout'
 import { Button } from '@/components/ui/Button'
@@ -37,7 +37,7 @@ const SEVERITY_LABELS = ['Minor', 'Low', 'Medium', 'High', 'Critical']
 export default function ReviewPage() {
   const { getToken } = useAuth()
   const { tenantId } = useTenant()
-  const { feedbackStats: stats } = useThresholdTuning()
+  const { data: stats } = useFeedbackStatsQuery()
   const [detections, setDetections] = useState<Detection[]>([])
   const [currentIndex, setCurrentIndex] = useState(0)
   const [filter, setFilter] = useState('all')
