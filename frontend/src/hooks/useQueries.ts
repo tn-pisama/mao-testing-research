@@ -14,6 +14,9 @@ import type {
   LoopAnalytics,
   CostAnalytics,
   QualityAssessment,
+  QualityHealingRecord,
+  QualityHealingListResponse,
+  FixSuggestionSummary,
   FeedbackStats,
   ThresholdRecommendation,
   DifyInstance,
@@ -115,6 +118,8 @@ export const queryKeys = {
   loopAnalytics: (days?: number) => ['loopAnalytics', days] as const,
   costAnalytics: (days?: number) => ['costAnalytics', days] as const,
   qualityAssessments: (params?: Record<string, unknown>) => ['qualityAssessments', params] as const,
+  qualityAssessment: (id: string) => ['qualityAssessment', id] as const,
+  qualityHealings: (assessmentId?: string) => ['qualityHealings', assessmentId] as const,
   n8nWorkflows: () => ['n8nWorkflows'] as const,
   difyInstances: () => ['difyInstances'] as const,
   difyApps: (instanceId?: string) => ['difyApps', instanceId] as const,
@@ -643,6 +648,101 @@ export function useSubmitFeedbackMutation() {
     },
   })
 }
+
+// ---------------------------------------------------------------------------
+// Quality assessment detail + healing hooks
+// ---------------------------------------------------------------------------
+
+export function useQualityAssessmentDetailQuery(assessmentId: string) {
+  const result = useQueryWithFallback<QualityAssessment | null>({
+    queryKey: queryKeys.qualityAssessment(assessmentId),
+    queryFn: (api) => api.getQualityAssessment(assessmentId),
+    fallbackFn: () => {
+      const all = demoDataStore.getQualityAssessments()
+      return all.find(a => a.id === assessmentId) ?? all[0] ?? null
+    },
+    enabled: !!assessmentId,
+  })
+  return {
+    assessment: result.data ?? null,
+    isLoading: result.isLoading,
+    isDemoMode: result.isDemoMode,
+    refetch: result.refetch,
+  }
+}
+
+export function useQualityHealingsQuery(assessmentId?: string) {
+  const result = useQueryWithFallback<QualityHealingListResponse>({
+    queryKey: queryKeys.qualityHealings(assessmentId),
+    queryFn: (api) => api.listQualityHealings({ page: 1, page_size: 50 }),
+    fallbackFn: () => ({ items: [], total: 0 }),
+    enabled: !!assessmentId,
+  })
+
+  const matching = result.data?.items.find(
+    (h: QualityHealingRecord) => h.assessment_id === assessmentId || h.id === assessmentId
+  ) ?? null
+
+  return {
+    healingRecord: matching,
+    allHealings: result.data?.items ?? [],
+    isLoading: result.isLoading,
+    refetch: result.refetch,
+  }
+}
+
+export function useTriggerQualityHealingMutation() {
+  const getApi = useApiClient()
+  const queryClient = useQueryClient()
+
+  return useMutation({
+    mutationFn: async (params: {
+      workflow: Record<string, unknown>
+      options?: { threshold?: number; auto_apply?: boolean }
+    }) => {
+      const api = await getApi()
+      return api.triggerQualityHealing(params.workflow, params.options)
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['qualityHealings'] })
+      queryClient.invalidateQueries({ queryKey: ['qualityAssessment'] })
+    },
+  })
+}
+
+export function useApproveQualityHealingMutation() {
+  const getApi = useApiClient()
+  const queryClient = useQueryClient()
+
+  return useMutation({
+    mutationFn: async (params: { healingId: string; fixIds: string[] }) => {
+      const api = await getApi()
+      return api.approveQualityHealing(params.healingId, params.fixIds)
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['qualityHealings'] })
+    },
+  })
+}
+
+export function useRollbackQualityHealingMutation() {
+  const getApi = useApiClient()
+  const queryClient = useQueryClient()
+
+  return useMutation({
+    mutationFn: async (healingId: string) => {
+      const api = await getApi()
+      return api.rollbackQualityHealing(healingId)
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['qualityHealings'] })
+    },
+  })
+}
+
+// ---------------------------------------------------------------------------
+// Threshold mutations
+// ---------------------------------------------------------------------------
 
 export function useUpdateThresholdsMutation() {
   const getApi = useApiClient()
