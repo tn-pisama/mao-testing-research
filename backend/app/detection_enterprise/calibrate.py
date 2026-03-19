@@ -1621,6 +1621,7 @@ def calibrate_all(
         DetectionType.DECOMPOSITION,
         DetectionType.WITHHOLDING,
         DetectionType.WORKFLOW,
+        DetectionType.CONVERGENCE,
         # OpenClaw framework-specific detectors
         DetectionType.OPENCLAW_SESSION_LOOP,
         DetectionType.OPENCLAW_TOOL_ABUSE,
