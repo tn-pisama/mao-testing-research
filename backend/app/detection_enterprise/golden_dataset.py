@@ -8874,6 +8874,11 @@ def create_default_golden_dataset(assign_splits: bool = True) -> GoldenDataset:
         for sample in sample_list:
             dataset.add_entry(sample)
 
+    # Convergence detector entries (100 total: 50 pos, 50 neg)
+    from app.detection_enterprise.convergence_golden_entries import create_convergence_golden_entries
+    for sample in create_convergence_golden_entries():
+        dataset.add_entry(sample)
+
     # n8n structural detector entries (60 total: 10 per detector)
     from app.detection_enterprise.n8n_golden_entries import create_n8n_golden_entries
     for sample in create_n8n_golden_entries():

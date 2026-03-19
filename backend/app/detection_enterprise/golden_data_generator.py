@@ -373,6 +373,30 @@ TYPE_PROMPTS: Dict[str, Dict[str, str]] = {
             '"execution_result": {"status": "<success|error>", ...}}'
         ),
     },
+    "convergence": {
+        "description": (
+            "Convergence detection identifies when an iterative agent system exhibits "
+            "metric-related problems: plateau (improvement stalls), regression (metric "
+            "worsens past best), thrashing (oscillation without trend), or divergence "
+            "(consistent wrong direction). Used for autonomous research and optimization agents."
+        ),
+        "positive_desc": (
+            "The metric sequence shows a convergence problem. Examples: loss stuck at 0.65 "
+            "for 10 steps (plateau), accuracy dropping from 0.9 to 0.7 (regression), "
+            "loss alternating 0.64/0.68 every step (thrashing), or loss monotonically "
+            "increasing (divergence)."
+        ),
+        "negative_desc": (
+            "The metric sequence shows healthy improvement. Examples: monotonic decrease "
+            "in loss, slow but steady accuracy gains, brief plateau followed by breakthrough, "
+            "or normal noisy improvement with overall downward trend."
+        ),
+        "schema": (
+            '{"metrics": [{"step": <int>, "value": <float>}, ...], '
+            '"direction": "<minimize|maximize>", '
+            '"metric_name": "<string e.g. val_bpb, loss, accuracy>"}'
+        ),
+    },
 }
 
 
