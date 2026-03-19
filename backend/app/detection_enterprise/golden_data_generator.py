@@ -405,7 +405,11 @@ TYPE_PROMPTS: Dict[str, Dict[str, str]] = {
 # ---------------------------------------------------------------------------
 
 def _parse_json(text: str) -> Any:
-    """Extract JSON from LLM text that may include markdown fences."""
+    """Extract JSON from LLM text that may include markdown fences.
+
+    Handles: direct JSON, markdown-fenced JSON, JSON preceded/followed by
+    commentary, and truncated arrays (attempts to repair by closing brackets).
+    """
     # Try direct parse first
     try:
         return json.loads(text)
@@ -439,6 +443,57 @@ def _parse_json(text: str) -> Any:
                 return json.loads(text[start : end + 1])
             except json.JSONDecodeError:
                 pass
+
+    # Repair truncated arrays: find first [ and try closing with ]
+    start = text.find("[")
+    if start >= 0:
+        candidate = text[start:]
+        # Try progressively shorter substrings ending at the last }
+        for i in range(len(candidate) - 1, 0, -1):
+            if candidate[i] == "}":
+                attempt = candidate[: i + 1] + "]"
+                try:
+                    return json.loads(attempt)
+                except json.JSONDecodeError:
+                    continue
+
+    # Last resort: extract individual JSON objects from the text
+    # and return them as a list
+    objects = []
+    depth = 0
+    obj_start = -1
+    in_string = False
+    escape_next = False
+    for i, ch in enumerate(text):
+        if escape_next:
+            escape_next = False
+            continue
+        if ch == "\\":
+            escape_next = True
+            continue
+        if ch == '"' and not escape_next:
+            in_string = not in_string
+            continue
+        if in_string:
+            continue
+        if ch == "{":
+            if depth == 0:
+                obj_start = i
+            depth += 1
+        elif ch == "}":
+            depth -= 1
+            if depth == 0 and obj_start >= 0:
+                try:
+                    obj = json.loads(text[obj_start : i + 1])
+                    if isinstance(obj, dict) and "input_data" in obj:
+                        objects.append(obj)
+                except json.JSONDecodeError:
+                    pass
+                obj_start = -1
+
+    if objects:
+        return objects
+
     return None
 
 
