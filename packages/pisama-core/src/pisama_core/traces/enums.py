@@ -14,6 +14,7 @@ class Platform(str, Enum):
     OPENCLAW = "openclaw"
     DIFY = "dify"
     MOLTBOT = "moltbot"
+    AUTORESEARCH = "autoresearch"
     GENERIC = "generic"
 
     def __str__(self) -> str:

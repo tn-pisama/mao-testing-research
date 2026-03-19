@@ -788,6 +788,25 @@ def _build_detector_runners() -> Dict[DetectionType, Any]:
         except Exception as exc:
             logger.warning("Could not import LangGraph detector %s: %s", det_type.value, exc)
 
+    # --- CONVERGENCE (metric-aware detection) ---
+    try:
+        from app.detection.convergence import ConvergenceDetector
+
+        _convergence_detector = ConvergenceDetector()
+
+        def _run_convergence(entry: GoldenDatasetEntry) -> Tuple[bool, float]:
+            metrics = entry.input_data.get("metrics", [])
+            direction = entry.input_data.get("direction", "minimize")
+            window_size = entry.input_data.get("window_size", None)
+            result = _convergence_detector.detect_convergence_issues(
+                metrics=metrics, direction=direction, window_size=window_size,
+            )
+            return result.detected, result.confidence
+
+        runners[DetectionType.CONVERGENCE] = _run_convergence
+    except Exception as exc:
+        logger.warning("Could not import convergence detector: %s", exc)
+
     return runners
 
 
@@ -833,6 +852,10 @@ def _entry_to_llm_prompt(entry: GoldenDatasetEntry, det_type: str,
         text = f"Internal state (what agent knows): {d.get('internal_state', '')}\nAgent output (what agent shared): {d.get('agent_output', '')}"
     elif det_type == "retrieval_quality":
         text = f"Query: {d.get('query', '')}\nRetrieved docs: {str(d.get('retrieved_documents', ''))[:400]}\nOutput: {d.get('agent_output', '')}"
+    elif det_type == "convergence":
+        metrics = d.get("metrics", [])
+        vals = [f"{m.get('step', i)}: {m['value']}" for i, m in enumerate(metrics)]
+        text = f"Metrics ({d.get('direction', 'minimize')}): {', '.join(vals[:20])}"
     elif det_type.startswith("n8n_"):
         wf = d.get("workflow_json", d)
         nodes_str = str(wf.get("nodes", []))[:600]

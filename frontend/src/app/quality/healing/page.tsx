@@ -136,7 +136,7 @@ export default function QualityHealingListPage() {
             </Card>
           ) : (
             healings.map((healing) => (
-              <Link key={healing.id} href={`/quality/${healing.assessment_id || healing.id}`}>
+              <Link key={healing.id} href={`/quality/healing/${healing.id}`}>
                 <Card className="hover:border-zinc-600 transition-colors cursor-pointer">
                   <CardContent className="p-4">
                     <div className="flex items-center justify-between">

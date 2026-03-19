@@ -55,6 +55,14 @@ from .completion import (
     CompletionSeverity,
     CompletionIssueType,
 )
+from .convergence import (
+    convergence_detector,
+    ConvergenceDetector,
+    ConvergenceResult,
+    ConvergenceIssue,
+    ConvergenceFailureType,
+    ConvergenceSeverity,
+)
 from .validation import DetectionValidator, ValidationMetrics
 
 # Create singleton instances for convenience
@@ -151,6 +159,13 @@ __all__ = [
     "CompletionIssue",
     "CompletionSeverity",
     "CompletionIssueType",
+    # Convergence detection
+    "convergence_detector",
+    "ConvergenceDetector",
+    "ConvergenceResult",
+    "ConvergenceIssue",
+    "ConvergenceFailureType",
+    "ConvergenceSeverity",
     # Validation
     "DetectionValidator",
     "ValidationMetrics",

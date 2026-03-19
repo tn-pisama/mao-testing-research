@@ -18,6 +18,7 @@ from .workflow_fixes import WorkflowFixGenerator
 from .withholding_fixes import WithholdingFixGenerator
 from .completion_fixes import CompletionFixGenerator
 from .cost_fixes import CostFixGenerator
+from .convergence_fixes import ConvergenceFixGenerator
 
 __all__ = [
     "FixSuggestion",
@@ -41,4 +42,5 @@ __all__ = [
     "WithholdingFixGenerator",
     "CompletionFixGenerator",
     "CostFixGenerator",
+    "ConvergenceFixGenerator",
 ]

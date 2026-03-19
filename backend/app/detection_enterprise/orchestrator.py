@@ -30,6 +30,7 @@ from app.detection.decomposition import TaskDecompositionDetector
 from app.detection.context import ContextNeglectDetector
 from app.detection.coordination import CoordinationAnalyzer
 from app.detection.workflow import FlawedWorkflowDetector
+from app.detection.convergence import ConvergenceDetector
 from app.detection_enterprise.tool_provision import ToolProvisionDetector
 from app.detection_enterprise.grounding import GroundingDetector, GroundingSeverity
 from app.detection_enterprise.retrieval_quality import RetrievalQualityDetector, RetrievalSeverity
@@ -82,6 +83,7 @@ class DetectionCategory(str, Enum):
     CONTEXT_NEGLECT = "context"
     COORDINATION_FAILURE = "coordination"
     FLAWED_WORKFLOW = "workflow"
+    CONVERGENCE = "convergence"
     # n8n framework-specific
     N8N_CYCLE = "n8n_cycle"
     N8N_SCHEMA = "n8n_schema"
@@ -310,6 +312,7 @@ class DetectionOrchestrator:
         self._context_detector: Optional[ContextNeglectDetector] = None
         self._coordination_detector: Optional[CoordinationAnalyzer] = None
         self._workflow_detector: Optional[FlawedWorkflowDetector] = None
+        self._convergence_detector: Optional[ConvergenceDetector] = None
 
     @property
     def loop_detector(self) -> MultiLevelLoopDetector:
@@ -406,6 +409,12 @@ class DetectionOrchestrator:
         if self._workflow_detector is None:
             self._workflow_detector = FlawedWorkflowDetector()
         return self._workflow_detector
+
+    @property
+    def convergence_detector(self) -> ConvergenceDetector:
+        if self._convergence_detector is None:
+            self._convergence_detector = ConvergenceDetector()
+        return self._convergence_detector
 
     @staticmethod
     def _convert_turn_aware_result(
@@ -659,6 +668,12 @@ class DetectionOrchestrator:
         if workflow_result:
             all_detections.append(workflow_result)
             result.detectors_run.append("workflow")
+
+        # Run convergence issue detection (metric-aware)
+        convergence_result = self._detect_convergence(trace)
+        if convergence_result:
+            all_detections.append(convergence_result)
+            result.detectors_run.append("convergence")
 
         # Run grounding failure detection (F15: OfficeQA-inspired)
         if DetectionCategory.GROUNDING_FAILURE not in self.DISABLED_DETECTORS:
@@ -1819,6 +1834,75 @@ class DetectionOrchestrator:
 
         return None
 
+    def _detect_convergence(self, trace: UniversalTrace) -> Optional[DetectionResult]:
+        """Detect convergence issues in iterative agent metric sequences."""
+        # Extract numeric metrics from trace spans
+        metrics = []
+        for i, span in enumerate(trace.spans):
+            meta = span.metadata or {}
+            # Look for metric values in span metadata
+            value = None
+            metric_name = None
+            for key in ("val_bpb", "val_loss", "train_loss", "accuracy",
+                        "f1_score", "metric_value", "score", "loss"):
+                if key in meta:
+                    try:
+                        value = float(meta[key])
+                        metric_name = key
+                        break
+                    except (ValueError, TypeError):
+                        continue
+
+            if value is not None:
+                metrics.append({
+                    "step": i,
+                    "value": value,
+                    "label": span.agent_name or span.name or f"step_{i}",
+                })
+
+        if len(metrics) < 3:
+            return None
+
+        # Determine direction from metric name
+        direction = "minimize"
+        if metric_name and metric_name in ("accuracy", "f1_score", "score"):
+            direction = "maximize"
+
+        try:
+            result = self.convergence_detector.detect_convergence_issues(
+                metrics=metrics,
+                direction=direction,
+            )
+
+            if result.detected and result.confidence > 0.4:
+                severity = Severity.MEDIUM
+                if result.severity.value in ("critical", "severe"):
+                    severity = Severity.HIGH
+                elif result.severity.value == "minor":
+                    severity = Severity.LOW
+
+                description = (
+                    f"Convergence issue ({result.failure_type}): "
+                    f"best={result.best_value:.4f}, current={result.current_value:.4f}, "
+                    f"{result.steps_since_best} steps since best."
+                )
+
+                return DetectionResult(
+                    category=DetectionCategory.CONVERGENCE,
+                    detected=True,
+                    confidence=result.confidence,
+                    severity=severity,
+                    title=f"Convergence Issue: {result.failure_type.title()}",
+                    description=description,
+                    evidence=[result.evidence] if result.evidence else [],
+                    suggested_fix=f"Review iteration strategy. {result.failure_type} detected in metric sequence.",
+                    raw_result=result,
+                )
+        except Exception as e:
+            logger.warning("Convergence detector failed: %s", e)
+
+        return None
+
     def _generate_explanation(self, primary: DetectionResult, trace: UniversalTrace) -> str:
         """Generate a human-readable root cause explanation.
 
@@ -1906,6 +1990,11 @@ class DetectionOrchestrator:
                 f"Workflow structure has issues. {primary.description} "
                 "This indicates problems in the overall execution flow such as "
                 "disconnected nodes, missing error handling, or inefficient routing."
+            ),
+            DetectionCategory.CONVERGENCE: (
+                f"Convergence issue detected in iterative agent metrics. {primary.description} "
+                "This indicates the agent's iterative process is not making meaningful "
+                "progress — metrics may be stagnating, regressing, oscillating, or diverging."
             ),
         }
 

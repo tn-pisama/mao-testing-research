@@ -1969,12 +1969,28 @@
         }
       },
       "last_calibrated": "2026-03-05T00:39:38.787035+00:00"
+    },
+    "convergence": {
+      "name": "Convergence Detection",
+      "tier": "icp",
+      "status": "untested",
+      "readiness": "beta",
+      "eval_category": "capability",
+      "module": "app.detection.convergence",
+      "f1_score": 0.0,
+      "precision": 0.0,
+      "recall": 0.0,
+      "optimal_threshold": 0.5,
+      "sample_count": 0,
+      "f1_ci_lower": 0.0,
+      "f1_ci_upper": 0.0,
+      "last_calibrated": null
     }
   },
   "summary": {
-    "total": 41,
+    "total": 42,
     "production": 30,
-    "beta": 11,
+    "beta": 12,
     "experimental": 0,
     "failing": 0,
     "untested": 0,

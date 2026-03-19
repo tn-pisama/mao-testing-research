@@ -81,6 +81,8 @@ def _detection_type_to_category(detection_type: str) -> FailureCategory:
         "completion_misjudgment": FailureCategory.COMPLETION_MISJUDGMENT,
         "cost": FailureCategory.COST_OVERRUN,
         "cost_overrun": FailureCategory.COST_OVERRUN,
+        "convergence": FailureCategory.CONVERGENCE_FAILURE,
+        "convergence_failure": FailureCategory.CONVERGENCE_FAILURE,
     }
     return mapping.get(detection_type, FailureCategory.API_FAILURE)
 
@@ -647,12 +649,31 @@ class VerificationOrchestrator:
             verified_at=datetime.utcnow().isoformat(),
         )
 
+    async def _redetect_convergence_generic(self, execution_result: Dict[str, Any]) -> float:
+        """Re-run convergence detection on execution metric data."""
+        metrics = []
+        for key in ("steps", "nodes", "events"):
+            for item in execution_result.get(key, []):
+                if isinstance(item, dict):
+                    for metric_key in ("metric_value", "score", "val_bpb", "loss", "accuracy"):
+                        if metric_key in item:
+                            try:
+                                metrics.append({"value": float(item[metric_key])})
+                            except (ValueError, TypeError):
+                                continue
+                            break
+        if len(metrics) < 3:
+            return 0.0
+        from app.detection.convergence import ConvergenceDetector
+        result = ConvergenceDetector().detect_convergence_issues(metrics)
+        return result.confidence if result.detected else 0.0
+
     def _get_redetector_for_framework(self, detection_type: str, framework: str):
         """Return the appropriate re-detection coroutine for a framework detection type.
 
         Universal redetectors (overflow, hallucination, injection, corruption,
-        coordination) work for all frameworks. Framework-specific redetectors
-        handle recursion/loop/iteration types.
+        coordination, convergence) work for all frameworks. Framework-specific
+        redetectors handle recursion/loop/iteration types.
 
         Returns a callable(execution_result) -> float, or None.
         """
@@ -666,6 +687,8 @@ class VerificationOrchestrator:
             "corruption": self._redetect_corruption_generic,
             "coordination_deadlock": self._redetect_coordination_generic,
             "coordination_failure": self._redetect_coordination_generic,
+            "convergence": self._redetect_convergence_generic,
+            "convergence_failure": self._redetect_convergence_generic,
         }
         if detection_type in universal:
             return universal[detection_type]
@@ -873,6 +896,8 @@ class VerificationOrchestrator:
             "state_corruption": self._redetect_corruption,
             "coordination_deadlock": self._redetect_coordination,
             "coordination_failure": self._redetect_coordination,
+            "convergence": self._redetect_convergence_generic,
+            "convergence_failure": self._redetect_convergence_generic,
         }
         return redetectors.get(detection_type)
 

@@ -9,5 +9,11 @@ from pisama_core.adapters.base import (
     InjectionResult,
     InjectionMethod,
 )
+from pisama_core.adapters.autoresearch import AutoresearchAdapter
 
-__all__ = ["PlatformAdapter", "InjectionResult", "InjectionMethod"]
+__all__ = [
+    "PlatformAdapter",
+    "InjectionResult",
+    "InjectionMethod",
+    "AutoresearchAdapter",
+]

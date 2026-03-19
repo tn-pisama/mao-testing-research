@@ -53,6 +53,8 @@ class DetectionType(Enum):
     LANGGRAPH_TOOL_FAILURE = "langgraph_tool_failure"  # Uncaught tool errors
     LANGGRAPH_PARALLEL_SYNC = "langgraph_parallel_sync"  # Parallel branch sync issues
     LANGGRAPH_CHECKPOINT_CORRUPTION = "langgraph_checkpoint_corruption"  # Checkpoint/resume corruption
+    # Convergence detection (metric-aware)
+    CONVERGENCE = "convergence"  # Metric plateau, regression, thrashing, divergence
 
 
 @dataclass

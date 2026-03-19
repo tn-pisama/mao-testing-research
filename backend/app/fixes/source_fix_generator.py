@@ -261,6 +261,19 @@ DETECTION_FIX_PROMPTS: Dict[str, str] = {
         "- Retrieved chunks are too short to provide sufficient context, causing "
         "the model to hallucinate missing details"
     ),
+    "convergence": (
+        "Common source-level causes of convergence issues in iterative agent systems:\n"
+        "- No metric tracking between iterations — the agent cannot measure whether "
+        "it is improving, plateauing, or regressing\n"
+        "- Missing best-checkpoint saving — the system does not snapshot the best-so-far "
+        "state, making it impossible to revert after regression\n"
+        "- Fixed exploration strategy — the agent uses the same approach every iteration "
+        "instead of switching strategy when progress stalls\n"
+        "- No early stopping condition — the agent continues iterating even when metrics "
+        "have clearly plateaued or started diverging\n"
+        "- Oscillating hyperparameters — the agent alternates between two configurations "
+        "without converging, creating thrashing behavior"
+    ),
 }
 
 # ---------------------------------------------------------------------------

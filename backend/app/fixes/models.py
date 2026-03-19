@@ -59,6 +59,12 @@ class FixType(Enum):
     BUDGET_LIMITER = "budget_limiter"
     COST_MONITOR = "cost_monitor"
     TOKEN_OPTIMIZER = "token_optimizer"
+    # Convergence
+    STRATEGY_SWITCH = "strategy_switch"
+    REGRESSION_GUARD = "regression_guard"
+    DIRECTION_LOCK = "direction_lock"
+    EMERGENCY_STOP = "emergency_stop"
+    EXPLORATION_TEMPERATURE = "exploration_temperature"
     # Shared
     PROGRESS_MONITORING = "progress_monitoring"
 

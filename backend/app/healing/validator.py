@@ -34,6 +34,7 @@ class FixValidator:
         self._validators.append(CompletionValidator())
         self._validators.append(CostValidator())
         self._validators.append(RegressionValidator())
+        self._validators.append(ConvergenceValidator())
     
     async def validate(
         self,
@@ -841,4 +842,57 @@ class RegressionValidator(ValidationStrategy):
             validation_type=self.name,
             details=preserved,
             error_message=None if all_preserved else "Fix modified existing workflow structure",
+        )
+
+
+class ConvergenceValidator(ValidationStrategy):
+    """Validates convergence-related fixes."""
+
+    @property
+    def name(self) -> str:
+        return "convergence_validation"
+
+    def applies_to(self, category: FailureCategory, fix: AppliedFix) -> bool:
+        return category == FailureCategory.CONVERGENCE_FAILURE
+
+    async def validate(
+        self,
+        applied_fix: AppliedFix,
+        workflow_runner: Optional[Callable],
+        test_input: Optional[Dict[str, Any]],
+    ) -> ValidationResult:
+        modified = applied_fix.modified_state
+        settings = modified.get("settings", {})
+        checks_passed = 0
+        total_checks = 4
+
+        # Check for checkpoint saving
+        if settings.get("checkpoint_saving", {}).get("enabled"):
+            checks_passed += 1
+
+        # Check for early stopping
+        if settings.get("early_stopping", {}).get("enabled"):
+            checks_passed += 1
+
+        # Check for strategy switching
+        if settings.get("strategy_switching", {}).get("enabled"):
+            checks_passed += 1
+
+        # Check for regression guard
+        if settings.get("regression_guard", {}).get("enabled"):
+            checks_passed += 1
+
+        success = checks_passed >= 2  # At least 2 of 4 mechanisms
+        return ValidationResult(
+            success=success,
+            validation_type=self.name,
+            details={
+                "checks_passed": checks_passed,
+                "total_checks": total_checks,
+                "checkpoint_saving": bool(settings.get("checkpoint_saving", {}).get("enabled")),
+                "early_stopping": bool(settings.get("early_stopping", {}).get("enabled")),
+                "strategy_switching": bool(settings.get("strategy_switching", {}).get("enabled")),
+                "regression_guard": bool(settings.get("regression_guard", {}).get("enabled")),
+            },
+            error_message=None if success else f"Only {checks_passed}/{total_checks} convergence protection mechanisms found",
         )

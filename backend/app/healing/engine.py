@@ -38,6 +38,7 @@ from ..fixes.workflow_fixes import WorkflowFixGenerator
 from ..fixes.withholding_fixes import WithholdingFixGenerator
 from ..fixes.completion_fixes import CompletionFixGenerator
 from ..fixes.cost_fixes import CostFixGenerator
+from ..fixes.convergence_fixes import ConvergenceFixGenerator
 
 logger = logging.getLogger(__name__)
 
@@ -113,6 +114,7 @@ class SelfHealingEngine:
         self.fix_generator.register(WithholdingFixGenerator())
         self.fix_generator.register(CompletionFixGenerator())
         self.fix_generator.register(CostFixGenerator())
+        self.fix_generator.register(ConvergenceFixGenerator())
         # Framework-specific fix generators
         from app.fixes.framework_fixes import (
             N8nFixGenerator, OpenClawFixGenerator, DifyFixGenerator, LangGraphFixGenerator,

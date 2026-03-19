@@ -67,6 +67,12 @@ FIX_RISK_MAP: Dict[str, "FixRiskLevel"] = {
     "completeness_check": FixRiskLevel.DANGEROUS,
     "task_anchoring": FixRiskLevel.DANGEROUS,
     "goal_tracking": FixRiskLevel.DANGEROUS,
+    # Convergence
+    "emergency_stop": FixRiskLevel.SAFE,
+    "strategy_switch": FixRiskLevel.MEDIUM,
+    "regression_guard": FixRiskLevel.MEDIUM,
+    "direction_lock": FixRiskLevel.MEDIUM,
+    "exploration_temperature": FixRiskLevel.MEDIUM,
 }
 
 
@@ -96,6 +102,7 @@ class FailureCategory(Enum):
     INFORMATION_WITHHOLDING = "information_withholding"
     COMPLETION_MISJUDGMENT = "completion_misjudgment"
     COST_OVERRUN = "cost_overrun"
+    CONVERGENCE_FAILURE = "convergence_failure"
 
 
 @dataclass
