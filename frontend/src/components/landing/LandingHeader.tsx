@@ -12,11 +12,11 @@ export function LandingHeader() {
         <span className="text-sm font-semibold text-white">Pisama</span>
       </Link>
       <div className="flex items-center gap-2">
-        <Link href="/docs/getting-started">
-          <Button variant="secondary" size="sm">Docs</Button>
+        <Link href="/sign-in">
+          <Button variant="ghost" size="sm">Login</Button>
         </Link>
-        <Link href="/dashboard">
-          <Button variant="primary" size="sm">Dashboard</Button>
+        <Link href="/sign-up">
+          <Button variant="primary" size="sm">Join Waitlist</Button>
         </Link>
       </div>
     </header>
