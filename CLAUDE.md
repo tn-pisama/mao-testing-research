@@ -34,10 +34,10 @@ Multi-Agent Orchestration Testing Platform - Failure detection for LLM agent sys
 ## Tech Stack
 
 - **Backend**: FastAPI, SQLAlchemy, PostgreSQL, pgvector, Alembic
-- **Frontend**: Next.js 14, React, TailwindCSS, Clerk Auth
-- **SDK**: Python package with LangGraph/AutoGen/CrewAI/n8n integrations
+- **Frontend**: Next.js 16 (App Router), React 18, TailwindCSS, NextAuth (Google OAuth)
+- **SDK**: Python package with LangGraph/AutoGen/CrewAI/n8n/Dify/OpenClaw integrations
 - **CLI**: Click-based CLI with MCP server support
-- **Infrastructure**: Docker, Terraform, AWS ECS
+- **Infrastructure**: Fly.io (backend), Vercel (frontend + docs), PostgreSQL 16 + pgvector
 
 ## Key Directories
 
@@ -80,6 +80,7 @@ Multi-Agent Orchestration Testing Platform - Failure detection for LLM agent sys
 | withholding | Information withholding |
 | completion | Premature/delayed task completion |
 | cost | Token/cost budget tracking |
+| convergence | Metric plateau, regression, thrashing, divergence |
 
 ### Enterprise Tier (Feature Flags Required)
 - `ml_detection` flag: ML-based detection (ml_detector_v4), tiered escalation, LLM judge
@@ -95,10 +96,11 @@ Multi-Agent Orchestration Testing Platform - Failure detection for LLM agent sys
 
 ## Testing
 
-- Test files: `test_*.py` in `backend/tests/`
-- Golden datasets: `backend/tests/fixtures/golden/`
+- Test files: `test_*.py` in `backend/tests/` (104 files)
+- Golden datasets: `backend/tests/fixtures/golden/` + `backend/data/golden_dataset_expanded.json`
 - Run tests: `pytest backend/tests/`
 - Test organization: unit, integration, e2e, detection_enterprise
+- Calibration: 42 detectors, 31 production (F1 ≥ 0.70), 11 beta
 - E2E strategy: See `docs/E2E_TESTING_STRATEGY.md`
 
 ## Architecture Principles
@@ -108,6 +110,35 @@ Multi-Agent Orchestration Testing Platform - Failure detection for LLM agent sys
 3. **Framework-Agnostic Core**: No LangGraph/CrewAI/AutoGen imports in core - use adapters in packages/
 4. **Cost-Aware**: Track tokens, compute time, $ cost per detection (target: $0.05/trace)
 5. **Safety-First Healing**: Require checkpoints, rollback capability, approval policies for high-risk fixes
+
+## Deployment
+
+### Production Topology
+- **Backend**: Fly.io (`mao-api.fly.dev`), 2 machines, auto-scale, config in `backend/fly.toml`
+- **Frontend**: Vercel (`pisama.ai`), auto-deploy on push to main
+- **Docs**: Vercel (`docs.pisama.com`), MkDocs Material, auto-deploy on push
+- **CI/CD**: GitHub Actions (`.github/workflows/deploy.yml`) — tests then deploys to Fly.io
+
+### Deployment Checklist (Lessons Learned)
+1. **Backend (Fly.io)**: `cd backend && flyctl deploy --remote-only` — requires `.dockerignore` to exclude golden datasets and ML models (otherwise 1GB+ upload)
+2. **Frontend (Vercel)**: `cd frontend && vercel --prod` — or auto-deploys on push. **Must pass `npm run build` locally first** — Vercel won't deploy if build fails
+3. **Always verify component variants match**: Button supports `primary|secondary|ghost|danger|success|warning`. Badge supports `default|success|warning|error|info`. Using wrong variants breaks the TypeScript build
+4. **CI JWT_SECRET must not contain "secret"**: The startup validation rejects weak secrets. Use a random string like `xK9mPqL2vN7wR4tY8uJ3hB6gF5dC0aZS`
+5. **Sentry frontend incompatible**: `@sentry/nextjs` v9 has peer dep conflicts with Next.js 16. Backend sentry-sdk works fine
+6. **Dockerfile uses `requirements-prod.txt`**, not `requirements.txt` — any new production dependency must be added to both
+7. **`mark_startup_complete()`** must exist in `app.api.v1.health` — the lifespan imports it
+
+### Deploying Changes
+```bash
+# Backend
+cd backend && flyctl deploy --remote-only
+
+# Frontend (if Vercel auto-deploy isn't working)
+cd frontend && npm run build && vercel --prod
+
+# Set GitHub secret for CI deploy
+gh secret set FLY_API_TOKEN --body "$(grep access_token ~/.fly/config.yml | sed 's/access_token: //')"
+```
 
 ## Development Guidelines
 
@@ -141,7 +172,7 @@ Multi-Agent Orchestration Testing Platform - Failure detection for LLM agent sys
 - All interactive components use `'use client'` directive
 - UI components use CVA (class-variance-authority) + `cn()` from `@/lib/utils`
 - API client factory: `createApiClient(token, tenantId)`
-- Demo mode fallback for graceful API failures
+- Demo mode fallback only when `NEXT_PUBLIC_DEMO_MODE=true` or `?demo=true` URL param (not on every API error)
 - Protected routes require authentication (middleware.ts)
 
 ### State Management
