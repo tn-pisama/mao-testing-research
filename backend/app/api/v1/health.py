@@ -10,6 +10,13 @@ from app.api.v1.schemas import HealthResponse
 router = APIRouter(tags=["health"])
 settings = get_settings()
 
+_startup_complete = False
+
+
+def mark_startup_complete():
+    global _startup_complete
+    _startup_complete = True
+
 
 @router.get("/health", response_model=HealthResponse)
 async def health_check(db: AsyncSession = Depends(get_db)):
