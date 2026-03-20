@@ -41,7 +41,8 @@ jobs:
       - name: Run backend tests
         env:
           DATABASE_URL: postgresql+asyncpg://mao:mao@localhost:5432/mao
-          JWT_SECRET: test-secret-for-ci-only-32chars-long
+          JWT_SECRET: xK9mPqL2vN7wR4tY8uJ3hB6gF5dC0aZS
+          TESTING: "1"
         run: |
           cd backend
           pytest tests/ -v --tb=short
