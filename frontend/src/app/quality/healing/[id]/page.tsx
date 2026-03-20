@@ -211,7 +211,7 @@ export default function QualityHealingDetailPage() {
             <CardContent>
               <div className="flex gap-2 flex-wrap">
                 {healing.dimensions_targeted.map((dim) => (
-                  <Badge key={dim} variant="secondary" className="capitalize">
+                  <Badge key={dim} variant="default" className="capitalize">
                     {dim.replace(/_/g, ' ')}
                   </Badge>
                 ))}
@@ -239,8 +239,8 @@ export default function QualityHealingDetailPage() {
                     <div className="flex items-center gap-3">
                       <h4 className="text-white font-medium text-sm">{fix.title}</h4>
                       <Badge variant={
-                        fix.confidence === 'high' ? 'default' :
-                        fix.confidence === 'medium' ? 'secondary' : 'outline'
+                        fix.confidence === 'high' ? 'success' :
+                        fix.confidence === 'medium' ? 'info' : 'default'
                       }>
                         {fix.confidence}
                       </Badge>
