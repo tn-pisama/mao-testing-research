@@ -49,14 +49,14 @@ export function ComparisonTable() {
       return <X className="w-5 h-5 text-zinc-600 mx-auto" />
     }
     if (value === 'partial') {
-      return <span className="text-amber-400 text-sm">Varies</span>
+      return <span className="text-amber-400 text-sm block text-center">Varies</span>
     }
     return <span className="text-zinc-400 text-xs">{value}</span>
   }
 
   return (
     <section className="py-20 px-4 bg-zinc-900/30">
-      <div className="max-w-4xl mx-auto">
+      <div className="max-w-2xl mx-auto">
         <div className="text-center mb-12">
           <h2 className="text-3xl md:text-4xl font-bold text-white mb-4">
             Purpose-Built for Agent Failure Detection
@@ -71,18 +71,18 @@ export function ComparisonTable() {
           <table className="w-full border-collapse">
             <thead>
               <tr className="border-b border-zinc-700">
-                <th className="text-left py-4 px-4 text-zinc-400 font-medium">Capability</th>
-                <th className="text-center py-4 px-4">
+                <th className="text-left py-3 px-3 text-zinc-400 font-medium">Capability</th>
+                <th className="text-center py-3 px-3">
                   <div className="text-white font-semibold">PISAMA</div>
                 </th>
-                <th className="text-center py-4 px-4 text-zinc-400 font-medium">General observability</th>
+                <th className="text-center py-3 px-3 text-zinc-400 font-medium">General observability</th>
               </tr>
             </thead>
             <tbody>
               {features.map((category, catIndex) => (
                 <Fragment key={`cat-${catIndex}`}>
                   <tr>
-                    <td colSpan={3} className="py-4 px-4">
+                    <td colSpan={3} className="py-3 px-3">
                       <div className="text-white font-semibold text-sm uppercase tracking-wider">
                         {category.category}
                       </div>
@@ -93,9 +93,9 @@ export function ComparisonTable() {
                       key={`${catIndex}-${rowIndex}`}
                       className="border-b border-zinc-800 hover:bg-zinc-800/30"
                     >
-                      <td className="py-3 px-4 text-zinc-300">{row.name}</td>
-                      <td className="py-3 px-4 bg-blue-500/5">{renderCell(row.pisama)}</td>
-                      <td className="py-3 px-4">{renderCell(row.others)}</td>
+                      <td className="py-2.5 px-3 text-zinc-300">{row.name}</td>
+                      <td className="py-2.5 px-3 bg-blue-500/5">{renderCell(row.pisama)}</td>
+                      <td className="py-2.5 px-3">{renderCell(row.others)}</td>
                     </tr>
                   ))}
                 </Fragment>
