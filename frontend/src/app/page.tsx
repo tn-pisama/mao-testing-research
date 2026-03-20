@@ -6,10 +6,12 @@ import {
   HeroSection,
   FeatureCards,
   ComparisonTable,
+  WaitlistModal,
 } from '@/components/landing'
 
 export default function Home() {
   const [mounted, setMounted] = useState(false)
+  const [showWaitlist, setShowWaitlist] = useState(false)
 
   useEffect(() => {
     // eslint-disable-next-line react-hooks/set-state-in-effect -- one-time hydration guard
@@ -26,10 +28,11 @@ export default function Home() {
 
   return (
     <main className="min-h-screen bg-zinc-950">
-      <LandingHeader />
+      <LandingHeader onJoinWaitlist={() => setShowWaitlist(true)} />
       <HeroSection />
       <FeatureCards />
       <ComparisonTable />
+      <WaitlistModal isOpen={showWaitlist} onClose={() => setShowWaitlist(false)} />
     </main>
   )
 }
