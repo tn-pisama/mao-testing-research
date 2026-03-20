@@ -1,8 +1,30 @@
 import { NextRequest, NextResponse } from 'next/server'
-import { SignJWT, importPKCS8 } from 'jose'
+import crypto from 'crypto'
 
 const NOTIFY_EMAIL = 'tuomo@pisama.ai'
 const SENDER_EMAIL = 'tuomo@pisama.ai'
+
+function base64url(data: string | Buffer): string {
+  return Buffer.from(data).toString('base64url')
+}
+
+function createJWT(sa: { client_email: string; private_key: string }): string {
+  const header = base64url(JSON.stringify({ alg: 'RS256', typ: 'JWT' }))
+  const now = Math.floor(Date.now() / 1000)
+  const payload = base64url(JSON.stringify({
+    iss: sa.client_email,
+    sub: SENDER_EMAIL,
+    scope: 'https://www.googleapis.com/auth/gmail.send',
+    aud: 'https://oauth2.googleapis.com/token',
+    iat: now,
+    exp: now + 3600,
+  }))
+
+  const signInput = `${header}.${payload}`
+  const signature = crypto.sign('RSA-SHA256', Buffer.from(signInput), sa.private_key)
+
+  return `${signInput}.${base64url(signature)}`
+}
 
 async function getGmailAccessToken(): Promise<string | null> {
   const saKey = process.env.GOOGLE_SA_KEY
@@ -10,44 +32,39 @@ async function getGmailAccessToken(): Promise<string | null> {
 
   try {
     const sa = JSON.parse(saKey)
-    const privateKey = await importPKCS8(sa.private_key, 'RS256')
+    const jwt = createJWT(sa)
 
-    const now = Math.floor(Date.now() / 1000)
-    const jwt = await new SignJWT({
-      iss: sa.client_email,
-      sub: SENDER_EMAIL,
-      scope: 'https://www.googleapis.com/auth/gmail.send',
-      aud: 'https://oauth2.googleapis.com/token',
-      iat: now,
-      exp: now + 3600,
-    })
-      .setProtectedHeader({ alg: 'RS256', typ: 'JWT' })
-      .sign(privateKey)
-
-    const tokenRes = await fetch('https://oauth2.googleapis.com/token', {
+    const res = await fetch('https://oauth2.googleapis.com/token', {
       method: 'POST',
       headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
       body: `grant_type=urn:ietf:params:oauth:grant-type:jwt-bearer&assertion=${jwt}`,
     })
 
-    const tokenData = await tokenRes.json()
-    return tokenData.access_token || null
+    const data = await res.json()
+    if (!res.ok) {
+      console.error('[WAITLIST] Token error:', JSON.stringify(data))
+      return null
+    }
+    return data.access_token || null
   } catch (err) {
-    console.error('[WAITLIST] Failed to get Gmail token:', err)
+    console.error('[WAITLIST] JWT error:', err)
     return null
   }
 }
 
-async function sendGmail(accessToken: string, to: string, subject: string, body: string) {
-  const raw = btoa(
-    `From: Pisama <${SENDER_EMAIL}>\r\n` +
-    `To: ${to}\r\n` +
-    `Subject: ${subject}\r\n` +
-    `Content-Type: text/plain; charset=utf-8\r\n\r\n` +
-    body
-  ).replace(/\+/g, '-').replace(/\//g, '_').replace(/=+$/, '')
+async function sendGmail(accessToken: string, to: string, subject: string, body: string): Promise<boolean> {
+  const message = [
+    `From: Pisama <${SENDER_EMAIL}>`,
+    `To: ${to}`,
+    `Subject: ${subject}`,
+    'Content-Type: text/plain; charset=utf-8',
+    '',
+    body,
+  ].join('\r\n')
 
-  await fetch('https://gmail.googleapis.com/gmail/v1/users/me/messages/send', {
+  const raw = Buffer.from(message).toString('base64url')
+
+  const res = await fetch('https://gmail.googleapis.com/gmail/v1/users/me/messages/send', {
     method: 'POST',
     headers: {
       Authorization: `Bearer ${accessToken}`,
@@ -55,6 +72,13 @@ async function sendGmail(accessToken: string, to: string, subject: string, body:
     },
     body: JSON.stringify({ raw }),
   })
+
+  if (!res.ok) {
+    const err = await res.text()
+    console.error('[WAITLIST] Gmail send error:', err)
+    return false
+  }
+  return true
 }
 
 export async function POST(request: NextRequest) {
@@ -67,48 +91,27 @@ export async function POST(request: NextRequest) {
 
     console.log(`[WAITLIST] ${new Date().toISOString()} — ${email}`)
 
-    // Try Gmail API via service account
     const accessToken = await getGmailAccessToken()
     if (accessToken) {
-      // Notify admin
-      await sendGmail(
+      const notifySent = await sendGmail(
         accessToken,
         NOTIFY_EMAIL,
         `Waitlist signup: ${email}`,
         `New waitlist signup:\n\nEmail: ${email}\nTime: ${new Date().toISOString()}`
       )
 
-      // Confirm to user
-      await sendGmail(
+      const confirmSent = await sendGmail(
         accessToken,
         email,
         'Welcome to the Pisama waitlist',
         `Thanks for joining the Pisama waitlist!\n\nWe'll let you know when we're ready for you.\n\n— The Pisama Team`
       )
 
+      console.log(`[WAITLIST] Notify: ${notifySent}, Confirm: ${confirmSent}`)
       return NextResponse.json({ success: true })
     }
 
-    // Fallback: try Resend
-    const resendKey = process.env.RESEND_API_KEY
-    if (resendKey) {
-      await fetch('https://api.resend.com/emails', {
-        method: 'POST',
-        headers: {
-          Authorization: `Bearer ${resendKey}`,
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify({
-          from: 'Pisama <noreply@pisama.ai>',
-          to: NOTIFY_EMAIL,
-          subject: `Waitlist signup: ${email}`,
-          text: `New waitlist signup:\n\nEmail: ${email}\nTime: ${new Date().toISOString()}`,
-        }),
-      })
-      return NextResponse.json({ success: true })
-    }
-
-    // No email service — still return success (logged above)
+    console.log('[WAITLIST] No email service configured, signup logged only')
     return NextResponse.json({ success: true })
   } catch (err) {
     console.error('[WAITLIST] Error:', err)
