@@ -6,8 +6,6 @@ import {
   HeroSection,
   DemoVideo,
   FeatureCards,
-  SocialProof,
-  QuickStart,
   ComparisonTable,
   FAQSection,
   PlatformCTA,
@@ -38,8 +36,6 @@ export default function Home() {
       <HeroSection />
       <DemoVideo />
       <FeatureCards />
-      <SocialProof />
-      <QuickStart />
       <ComparisonTable />
       <FAQSection />
       <PlatformCTA onJoinWaitlist={() => setShowWaitlist(true)} />
