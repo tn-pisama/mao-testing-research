@@ -1,0 +1,49 @@
+# Pisama
+
+> Multi-agent failure detection and self-healing platform for AI systems.
+
+Pisama detects 42 failure modes in LLM agent systems, including infinite loops, state corruption, persona drift, hallucination, prompt injection, convergence issues, and coordination breakdowns. It provides AI-powered fix suggestions with automatic rollback.
+
+## Capabilities
+
+- 42 failure mode detectors (31 production-grade, F1 > 0.70)
+- Self-healing with approval policies and rollback
+- Root cause analysis for multi-agent traces
+- Quality scoring and regression detection
+- OpenTelemetry-based trace ingestion
+
+## Supported Frameworks
+
+- LangGraph
+- CrewAI
+- AutoGen
+- n8n
+- Dify
+- OpenClaw
+- Claude Code
+- Any framework via OpenTelemetry
+
+## API
+
+Base URL: https://mao-api.fly.dev/api/v1
+Authentication: Bearer token or API key (X-MAO-API-Key header)
+Documentation: https://docs.pisama.com
+API Reference: https://mao-api.fly.dev/docs
+
+## Key Endpoints
+
+- POST /traces - Ingest agent traces
+- GET /detections - List detected failures
+- POST /healing/trigger/{detection_id} - Trigger self-healing
+- GET /health - Health check
+
+## Links
+
+- Website: https://pisama.ai
+- Documentation: https://docs.pisama.com
+- API Docs: https://mao-api.fly.dev/docs
+- GitHub: https://github.com/tn-pisama/mao-testing-research
+
+## License
+
+MIT
