@@ -55,10 +55,10 @@ export function ComparisonTable() {
   }
 
   return (
-    <section className="py-20 px-4 bg-zinc-900/30">
+    <section className="py-14 px-4 bg-zinc-900/30">
       <div className="max-w-2xl mx-auto">
-        <div className="text-center mb-12">
-          <h2 className="text-3xl md:text-4xl font-bold text-white mb-4">
+        <div className="text-center mb-8">
+          <h2 className="text-3xl md:text-4xl font-bold text-white mb-3">
             Purpose-Built for Agent Failure Detection
           </h2>
           <p className="text-zinc-400 text-lg">
@@ -82,7 +82,7 @@ export function ComparisonTable() {
               {features.map((category, catIndex) => (
                 <Fragment key={`cat-${catIndex}`}>
                   <tr>
-                    <td colSpan={3} className="py-3 px-3">
+                    <td colSpan={3} className="pt-3 pb-1 px-3">
                       <div className="text-white font-semibold text-sm uppercase tracking-wider">
                         {category.category}
                       </div>
@@ -93,9 +93,9 @@ export function ComparisonTable() {
                       key={`${catIndex}-${rowIndex}`}
                       className="border-b border-zinc-800 hover:bg-zinc-800/30"
                     >
-                      <td className="py-2.5 px-3 text-zinc-300">{row.name}</td>
-                      <td className="py-2.5 px-3 bg-blue-500/5">{renderCell(row.pisama)}</td>
-                      <td className="py-2.5 px-3">{renderCell(row.others)}</td>
+                      <td className="py-2 px-3 text-zinc-300">{row.name}</td>
+                      <td className="py-2 px-3 bg-blue-500/5">{renderCell(row.pisama)}</td>
+                      <td className="py-2 px-3">{renderCell(row.others)}</td>
                     </tr>
                   ))}
                 </Fragment>
@@ -105,11 +105,11 @@ export function ComparisonTable() {
         </div>
 
         {/* Mobile Cards */}
-        <div className="lg:hidden space-y-6">
+        <div className="lg:hidden space-y-4">
           {features.map((category, catIndex) => (
-            <div key={catIndex} className="bg-zinc-800/50 rounded-xl p-6 border border-zinc-700">
-              <h3 className="text-white font-semibold mb-4">{category.category}</h3>
-              <div className="space-y-3">
+            <div key={catIndex} className="bg-zinc-800/50 rounded-xl p-4 border border-zinc-700">
+              <h3 className="text-white font-semibold mb-3">{category.category}</h3>
+              <div className="space-y-2">
                 {category.rows.map((row, rowIndex) => (
                   <div key={rowIndex} className="flex justify-between items-center">
                     <span className="text-zinc-300 text-sm">{row.name}</span>
@@ -122,7 +122,7 @@ export function ComparisonTable() {
         </div>
 
         {/* Legend */}
-        <div className="mt-8 flex flex-wrap gap-6 justify-center text-sm text-zinc-400">
+        <div className="mt-6 flex flex-wrap gap-6 justify-center text-sm text-zinc-400">
           <div className="flex items-center gap-2">
             <Check className="w-4 h-4 text-green-400" />
             <span>Supported</span>
