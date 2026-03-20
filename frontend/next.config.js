@@ -1,5 +1,3 @@
-const { withSentryConfig } = require('@sentry/nextjs')
-
 /** @type {import('next').NextConfig} */
 const nextConfig = {
   reactStrictMode: true,
@@ -39,10 +37,4 @@ const nextConfig = {
   },
 }
 
-module.exports = process.env.NEXT_PUBLIC_SENTRY_DSN
-  ? withSentryConfig(nextConfig, {
-      silent: true,
-      disableServerWebpackPlugin: true,
-      disableClientWebpackPlugin: true,
-    })
-  : nextConfig
+module.exports = nextConfig
