@@ -93,11 +93,11 @@ export function ManageGroupsModal({ isOpen, onClose }: ManageGroupsModalProps) {
   }
 
   return (
-    <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50">
+    <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50" role="dialog" aria-modal="true" aria-labelledby="manage-groups-title">
       <div className="bg-zinc-900 rounded-lg shadow-xl max-w-2xl w-full max-h-[80vh] overflow-hidden border border-zinc-700">
         {/* Header */}
         <div className="flex items-center justify-between p-4 border-b border-zinc-700">
-          <h2 className="text-xl font-bold text-white">Manage Workflow Groups</h2>
+          <h2 id="manage-groups-title" className="text-xl font-bold text-white">Manage Workflow Groups</h2>
           <button
             onClick={onClose}
             className="text-zinc-400 hover:text-white transition-colors"
@@ -236,6 +236,7 @@ export function ManageGroupsModal({ isOpen, onClose }: ManageGroupsModalProps) {
                         onClick={() => startEdit(group.id, group.name, group.description)}
                         className="p-1 text-zinc-400 hover:text-white transition-colors"
                         disabled={isSubmitting}
+                        aria-label={`Edit group ${group.name}`}
                       >
                         <Edit2 size={16} />
                       </button>
@@ -243,6 +244,7 @@ export function ManageGroupsModal({ isOpen, onClose }: ManageGroupsModalProps) {
                         onClick={() => handleDelete(group.id)}
                         className="p-1 text-red-500 hover:text-red-400 transition-colors"
                         disabled={isSubmitting}
+                        aria-label={`Delete group ${group.name}`}
                       >
                         <Trash2 size={16} />
                       </button>

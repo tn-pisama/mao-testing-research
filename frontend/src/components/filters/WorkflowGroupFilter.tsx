@@ -54,6 +54,9 @@ export function WorkflowGroupFilter({ onManageGroups }: WorkflowGroupFilterProps
       <button
         onClick={() => setIsOpen(!isOpen)}
         className="flex items-center gap-2 px-3 py-1.5 bg-zinc-900 border border-zinc-700 rounded-lg text-white text-sm hover:border-zinc-600 transition-colors"
+        aria-expanded={isOpen}
+        aria-haspopup="listbox"
+        aria-label={`Filter by workflow group: ${displayName}`}
       >
         <Folder size={16} className="text-blue-500" />
         <span>{displayName}</span>

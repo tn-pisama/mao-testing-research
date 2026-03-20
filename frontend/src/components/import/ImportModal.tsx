@@ -49,7 +49,7 @@ export function ImportModal({ isOpen, onClose, onImportComplete }: ImportModalPr
   }
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center">
+    <div className="fixed inset-0 z-50 flex items-center justify-center" role="dialog" aria-modal="true" aria-labelledby="import-modal-title">
       {/* Backdrop */}
       <div
         className="absolute inset-0 bg-black/60 backdrop-blur-sm"
@@ -60,7 +60,7 @@ export function ImportModal({ isOpen, onClose, onImportComplete }: ImportModalPr
       <div className="relative bg-zinc-900 rounded-xl border border-zinc-700 shadow-2xl w-full max-w-md mx-4">
         {/* Header */}
         <div className="flex items-center justify-between p-4 border-b border-zinc-700">
-          <h2 className="text-lg font-semibold text-white">Import Historical Data</h2>
+          <h2 id="import-modal-title" className="text-lg font-semibold text-white">Import Historical Data</h2>
           <button
             onClick={onClose}
             className="p-1 text-zinc-400 hover:text-white rounded-lg hover:bg-zinc-800"

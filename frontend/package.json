@@ -25,6 +25,7 @@
   },
   "dependencies": {
     "@next/third-parties": "^16.1.6",
+    "@sentry/nextjs": "^9.0.0",
     "@tanstack/react-query": "^5.17.9",
     "@types/dagre": "^0.7.53",
     "@vercel/analytics": "^1.6.1",

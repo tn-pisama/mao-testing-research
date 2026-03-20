@@ -65,7 +65,7 @@ export function WaitlistModal({ isOpen, onClose }: WaitlistModalProps) {
   }
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center">
+    <div className="fixed inset-0 z-50 flex items-center justify-center" role="dialog" aria-modal="true" aria-labelledby="waitlist-modal-title">
       <div className="absolute inset-0 bg-black/60" onClick={onClose} />
       <div className="relative bg-zinc-900 rounded-xl border border-zinc-700 p-8 max-w-md w-full mx-4">
         <button
@@ -76,7 +76,7 @@ export function WaitlistModal({ isOpen, onClose }: WaitlistModalProps) {
           <X size={20} />
         </button>
 
-        <h2 className="text-2xl font-bold text-white mb-2">
+        <h2 id="waitlist-modal-title" className="text-2xl font-bold text-white mb-2">
           Get Early Access
         </h2>
         <p className="text-zinc-400 mb-6">

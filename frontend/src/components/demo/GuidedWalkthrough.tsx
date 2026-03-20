@@ -73,6 +73,7 @@ export function GuidedWalkthrough({ onComplete, onSkip }: GuidedWalkthroughProps
         <button
           onClick={onSkip}
           className="absolute top-3 right-3 p-1 text-zinc-500 hover:text-zinc-300 transition-colors"
+          aria-label="Skip walkthrough"
         >
           <X size={16} />
         </button>

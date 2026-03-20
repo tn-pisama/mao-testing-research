@@ -53,11 +53,12 @@ export function Header({ onMenuClick, title, notificationCount = 0 }: HeaderProp
         <button className="md:hidden p-2 min-h-[44px] min-w-[44px] flex items-center justify-center text-zinc-400 hover:text-white hover:bg-zinc-800 rounded-lg" aria-label="Search">
           <Search size={18} />
         </button>
-        <div className="hidden md:flex items-center gap-2 px-3 py-1.5 bg-zinc-900 border border-zinc-800 rounded-lg">
-          <Search size={16} className="text-zinc-500" />
+        <div className="hidden md:flex items-center gap-2 px-3 py-1.5 bg-zinc-900 border border-zinc-800 rounded-lg" role="search">
+          <Search size={16} className="text-zinc-500" aria-hidden="true" />
           <input
             type="text"
             placeholder="Search..."
+            aria-label="Search"
             className="bg-transparent border-none outline-none text-sm text-zinc-300 placeholder-zinc-600 w-32 lg:w-44"
           />
           <kbd className="hidden lg:inline-flex px-1.5 py-0.5 text-[10px] text-zinc-500 bg-zinc-800 border border-zinc-700 rounded">

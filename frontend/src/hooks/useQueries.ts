@@ -55,9 +55,29 @@ function useApiClient(): () => Promise<ApiClient> {
 }
 
 /**
- * Wraps TanStack Query with automatic demo-data fallback on API failure.
- * Demo mode state is stored alongside the data in the query cache so it
- * survives cache hits without extra useState.
+ * Returns true when demo mode is explicitly enabled via:
+ *  - NEXT_PUBLIC_DEMO_MODE=true environment variable
+ *  - ?demo=true URL query parameter
+ *
+ * This prevents accidental demo-data fallback on transient API errors
+ * that would otherwise silently show synthetic data to users who expect
+ * real data.
+ */
+function isDemoModeEnabled(): boolean {
+  if (process.env.NEXT_PUBLIC_DEMO_MODE === 'true') return true
+  if (typeof window !== 'undefined') {
+    const params = new URLSearchParams(window.location.search)
+    if (params.get('demo') === 'true') return true
+  }
+  return false
+}
+
+/**
+ * Wraps TanStack Query with demo-data fallback that only activates when
+ * demo mode is explicitly enabled (env var or URL param).
+ *
+ * When demo mode is OFF and the API fails, the error propagates so the UI
+ * can show proper error states instead of silently displaying fake data.
  */
 function useQueryWithFallback<T>({
   queryKey,
@@ -81,8 +101,11 @@ function useQueryWithFallback<T>({
         const api = await getApi()
         const data = await queryFn(api)
         return { data, isDemoMode: false }
-      } catch {
-        return { data: fallbackFn(), isDemoMode: true }
+      } catch (error) {
+        if (isDemoModeEnabled()) {
+          return { data: fallbackFn(), isDemoMode: true }
+        }
+        throw error
       }
     },
     enabled,
@@ -93,6 +116,8 @@ function useQueryWithFallback<T>({
     data: query.data?.data,
     isLoading: query.isLoading,
     isDemoMode: query.data?.isDemoMode ?? false,
+    isError: query.isError,
+    error: query.error,
     refetch: query.refetch,
   }
 }

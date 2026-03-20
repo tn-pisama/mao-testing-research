@@ -313,6 +313,7 @@ export function WorkflowDetailPanel({ workflow, onClose }: WorkflowDetailPanelPr
             <button
               onClick={() => setShowAgentDetails(!showAgentDetails)}
               className="flex items-center justify-between w-full text-lg font-semibold text-white mb-4 hover:text-blue-400 transition-colors"
+              aria-expanded={showAgentDetails}
             >
               <span>Agent Details ({workflow.agent_scores.length})</span>
               {showAgentDetails ? <ChevronUp size={20} /> : <ChevronDown size={20} />}

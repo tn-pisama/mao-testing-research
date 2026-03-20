@@ -316,6 +316,9 @@ class Settings(BaseSettings):
     otel_service_name: str = "mao-platform"
     cors_origins: str = "http://localhost:3000,https://dashboard.mao-testing.com"
 
+    # Sentry
+    sentry_dsn: str = ""
+
     # AWS Marketplace
     aws_marketplace_enabled: bool = Field(default=False, description="Enable AWS Marketplace SaaS integration")
     aws_marketplace_product_code: str = Field(default="", description="AWS Marketplace product code")

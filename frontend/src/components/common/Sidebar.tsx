@@ -153,6 +153,7 @@ export function Sidebar({ isCollapsed = false, onToggle: _onToggle }: SidebarPro
 
   return (
     <aside
+      aria-label="Sidebar"
       className={cn(
         'flex flex-col bg-zinc-950 border-r border-zinc-800 transition-all duration-300',
         isCollapsed ? 'w-16' : 'w-60'
@@ -171,7 +172,7 @@ export function Sidebar({ isCollapsed = false, onToggle: _onToggle }: SidebarPro
       </div>
 
       {/* Navigation */}
-      <nav className="flex-1 overflow-y-auto p-3 space-y-5 relative [mask-image:linear-gradient(to_bottom,black_calc(100%-2rem),transparent)]">
+      <nav aria-label="Main navigation" className="flex-1 overflow-y-auto p-3 space-y-5 relative [mask-image:linear-gradient(to_bottom,black_calc(100%-2rem),transparent)]">
         {isSimplifiedView ? (
           <>
             <NavSection title="Observe" items={n8nObserveItems} pathname={pathname} isCollapsed={isCollapsed} showAdvancedFeatures={showAdvancedFeatures} />

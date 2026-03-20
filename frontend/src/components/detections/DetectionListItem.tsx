@@ -129,6 +129,7 @@ export function DetectionListItem({
                       disabled={submittingId === detection.id}
                       className="p-1.5 rounded hover:bg-emerald-500/20 text-zinc-400 hover:text-emerald-400 transition-colors disabled:opacity-50"
                       title="Mark as valid"
+                      aria-label="Mark detection as valid"
                     >
                       {submittingId === detection.id ? <Loader2 size={14} className="animate-spin" /> : <ThumbsUp size={14} />}
                     </button>
@@ -137,6 +138,7 @@ export function DetectionListItem({
                       disabled={submittingId === detection.id}
                       className="p-1.5 rounded hover:bg-red-500/20 text-zinc-400 hover:text-red-400 transition-colors disabled:opacity-50"
                       title="Mark as false positive"
+                      aria-label="Mark detection as false positive"
                     >
                       <ThumbsDown size={14} />
                     </button>

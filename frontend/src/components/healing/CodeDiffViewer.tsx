@@ -30,12 +30,14 @@ export function CodeDiffViewer({ diff, language = 'python', collapsed = false }:
             onClick={handleCopy}
             className="text-zinc-400 hover:text-white transition-colors p-1"
             title="Copy to clipboard"
+            aria-label="Copy code to clipboard"
           >
             {copied ? <Check size={14} className="text-green-400" /> : <Copy size={14} />}
           </button>
           <button
             onClick={() => setIsCollapsed(!isCollapsed)}
             className="text-zinc-400 hover:text-white transition-colors p-1"
+            aria-label={isCollapsed ? 'Expand code' : 'Collapse code'}
           >
             {isCollapsed ? <ChevronDown size={14} /> : <ChevronUp size={14} />}
           </button>

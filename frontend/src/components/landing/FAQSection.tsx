@@ -70,6 +70,7 @@ export function FAQSection() {
                   }
                 }}
                 className="w-full flex items-center justify-between p-6 text-left"
+                aria-expanded={openIndex === index}
               >
                 <span className="text-white font-medium pr-8">
                   {faq.question}
