@@ -6,8 +6,6 @@ import {
   HeroSection,
   FeatureCards,
   ComparisonTable,
-  FAQSection,
-  Footer,
 } from '@/components/landing'
 
 export default function Home() {
@@ -32,8 +30,6 @@ export default function Home() {
       <HeroSection />
       <FeatureCards />
       <ComparisonTable />
-      <FAQSection />
-      <Footer />
     </main>
   )
 }
