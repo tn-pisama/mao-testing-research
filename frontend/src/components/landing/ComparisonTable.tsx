@@ -121,20 +121,11 @@ export function ComparisonTable() {
           ))}
         </div>
 
-        {/* Legend */}
-        <div className="mt-6 flex flex-wrap gap-6 justify-center text-sm text-zinc-400">
-          <div className="flex items-center gap-2">
-            <Check className="w-4 h-4 text-green-400" />
-            <span>Supported</span>
-          </div>
-          <div className="flex items-center gap-2">
-            <span className="text-amber-400">Varies</span>
-            <span>Depends on tool</span>
-          </div>
-          <div className="flex items-center gap-2">
-            <X className="w-4 h-4 text-zinc-600" />
-            <span>Not available</span>
-          </div>
+        {/* Copyright */}
+        <div className="mt-10 pt-6 border-t border-zinc-800 text-center">
+          <p className="text-xs text-zinc-600">
+            &copy; {new Date().getFullYear()} Pisama. All rights reserved.
+          </p>
         </div>
       </div>
     </section>
