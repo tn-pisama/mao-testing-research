@@ -1,7 +1,6 @@
 'use client'
 
-import Link from 'next/link'
-import { ArrowRight, Shield } from 'lucide-react'
+import { Shield } from 'lucide-react'
 
 export function HeroSection() {
   return (
@@ -20,18 +19,10 @@ export function HeroSection() {
           <span className="text-blue-400">AI agent failed</span>
         </h1>
 
-        <p className="text-lg sm:text-xl text-zinc-400 max-w-2xl mx-auto mb-7 leading-relaxed">
+        <p className="text-lg sm:text-xl text-zinc-400 max-w-2xl mx-auto leading-relaxed">
           Self-healing diagnostics for multi-agent systems. Detect infinite loops,
           state corruption, and persona drift — then fix them automatically.
         </p>
-
-        <Link
-          href="/dashboard"
-          className="inline-flex items-center gap-2 px-6 py-3 bg-blue-600 hover:bg-blue-700 text-white font-medium rounded-lg transition-colors"
-        >
-          Get Started Free
-          <ArrowRight size={16} />
-        </Link>
       </div>
     </section>
   )
