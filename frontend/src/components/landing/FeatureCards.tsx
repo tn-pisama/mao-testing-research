@@ -35,9 +35,9 @@ const features = [
 
 export function FeatureCards() {
   return (
-    <section className="py-14 px-6">
+    <section className="py-10 px-6">
       <div className="max-w-5xl mx-auto">
-        <div className="text-center mb-10">
+        <div className="text-center mb-6">
           <h2 className="text-3xl font-bold text-white mb-3">
             Everything you need to ship reliable agents
           </h2>
