@@ -5,7 +5,7 @@ import { ArrowRight, Shield } from 'lucide-react'
 
 export function HeroSection() {
   return (
-    <section className="relative py-24 sm:py-32 overflow-hidden">
+    <section className="relative py-16 sm:py-20 overflow-hidden">
       {/* Subtle gradient background */}
       <div className="absolute inset-0 bg-gradient-to-b from-blue-600/5 via-transparent to-transparent" />
 

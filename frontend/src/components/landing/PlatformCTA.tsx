@@ -5,7 +5,7 @@ import { Button } from '../ui/Button'
 
 export function PlatformCTA() {
   return (
-    <section className="py-16 text-center">
+    <section className="py-12 text-center">
       <h2 className="text-3xl font-bold text-white mb-4">Get Started</h2>
       <div className="flex justify-center gap-4">
         <Link href="/dashboard">

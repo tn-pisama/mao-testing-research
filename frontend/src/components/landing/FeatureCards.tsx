@@ -49,7 +49,7 @@ const features = [
 
 export function FeatureCards() {
   return (
-    <section className="py-20 px-6">
+    <section className="py-14 px-6">
       <div className="max-w-5xl mx-auto">
         <div className="text-center mb-14">
           <h2 className="text-3xl font-bold text-white mb-3">
