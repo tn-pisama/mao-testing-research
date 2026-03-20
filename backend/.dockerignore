@@ -1,0 +1,42 @@
+# Test data and fixtures
+tests/
+fixtures/
+data/golden_dataset*.json
+data/error_analysis*.json
+data/mast_*.json
+
+# ML models (downloaded at runtime)
+*.pkl
+*.joblib
+*.pt
+*.bin
+*.onnx
+
+# Development files
+__pycache__/
+*.pyc
+.pytest_cache/
+.coverage
+htmlcov/
+.env
+.env.*
+!.env.example
+
+# IDE and tools
+.vscode/
+.idea/
+*.swp
+*.swo
+
+# Git
+.git/
+.gitignore
+
+# Docs
+*.md
+!requirements*.txt
+
+# Large data
+n8n-workflows/
+scripts/
+alembic/

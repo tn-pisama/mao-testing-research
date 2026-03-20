@@ -1,4 +1,4 @@
-app = 'pisama-api'
+app = 'mao-api'
 primary_region = 'iad'
 
 [build]

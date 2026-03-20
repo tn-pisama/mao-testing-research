@@ -75,13 +75,14 @@ jobs:
     steps:
       - uses: actions/checkout@v4
 
-      - name: Deploy to Fly.io
+      - name: Set up Fly.io CLI
         uses: superfly/flyctl-actions/setup-flyctl@master
 
-      - name: flyctl deploy
+      - name: Deploy backend to Fly.io
         run: cd backend && flyctl deploy --remote-only
         env:
           FLY_API_TOKEN: ${{ secrets.FLY_API_TOKEN }}
+          FLY_APP: mao-api
 
   # Frontend auto-deploys via Vercel on push to main
   # Docs site auto-deploys via Vercel on push to main

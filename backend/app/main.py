@@ -5,14 +5,17 @@ from fastapi import Depends, FastAPI, Request
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import JSONResponse
 
-import sentry_sdk
-if os.environ.get("SENTRY_DSN"):
-    sentry_sdk.init(
-        dsn=os.environ["SENTRY_DSN"],
-        traces_sample_rate=0.1,
-        profiles_sample_rate=0.1,
-        environment=os.environ.get("ENVIRONMENT", "production"),
-    )
+try:
+    import sentry_sdk
+    if os.environ.get("SENTRY_DSN"):
+        sentry_sdk.init(
+            dsn=os.environ["SENTRY_DSN"],
+            traces_sample_rate=0.1,
+            profiles_sample_rate=0.1,
+            environment=os.environ.get("ENVIRONMENT", "production"),
+        )
+except ImportError:
+    pass
 
 from app.core.logging_config import setup_logging
 from app.core.correlation import CorrelationIdMiddleware, get_correlation_id
