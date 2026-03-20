@@ -9,28 +9,32 @@ export function FAQSection() {
 
   const faqs = [
     {
-      question: 'How is Pisama different from LangSmith or Langfuse?',
-      answer: 'LangSmith and Langfuse are general-purpose observability tools for LLM applications. Pisama is purpose-built for multi-agent failure detection — it identifies 42 specific failure modes like infinite loops, state corruption, persona drift, and convergence issues that general observability tools don\'t detect.',
+      question: 'What problems does Pisama solve?',
+      answer: 'AI agents fail silently — a coding agent loops for 40 minutes burning tokens, a research agent hallucinates citations, a support agent drifts from its role. Pisama detects these failures automatically and suggests fixes before they reach production.',
     },
     {
-      question: 'What frameworks does Pisama support?',
-      answer: 'Pisama has native integrations for LangGraph, CrewAI, AutoGen, n8n, Dify, OpenClaw, and Claude Code. Any framework that emits OpenTelemetry traces with gen_ai.* semantic conventions works out of the box.',
+      question: 'How do I get started?',
+      answer: 'Sign up, connect your agent framework, and send your first trace. Pisama starts detecting failures immediately — no training data or configuration required. Most teams are up and running in under 5 minutes.',
     },
     {
-      question: 'What\'s the performance overhead?',
-      answer: 'Minimal. Tier 1 detection (hash-based) adds <5ms. Tier 2 (state delta) adds ~10ms. Tier 3 (embeddings) adds ~100ms. You control which tiers run via configuration.',
+      question: 'What frameworks are supported?',
+      answer: 'LangGraph, CrewAI, AutoGen, n8n, Dify, OpenClaw, and Claude Code all have native integrations. Any framework that supports OpenTelemetry also works out of the box.',
     },
     {
-      question: 'Can I self-host Pisama?',
-      answer: 'Yes. The core detection engine is open source under the MIT license. Deploy with Docker Compose or Fly.io — see the deployment guide in our docs.',
+      question: 'How is this different from LangSmith or Langfuse?',
+      answer: 'Those tools are general-purpose observability — they show you what happened. Pisama tells you what went wrong and how to fix it. It detects 42 specific failure modes across multi-agent systems that general logging tools miss.',
     },
     {
-      question: 'What does self-healing do?',
-      answer: 'When Pisama detects a failure, it generates AI-powered fix suggestions with code changes. Safe fixes (config changes, retry limits) can auto-apply. Risky fixes (prompt modifications) require manual approval. All fixes include rollback capability.',
+      question: 'What happens when a failure is detected?',
+      answer: 'Pisama identifies the root cause, generates a fix suggestion with actual code changes, and can auto-apply safe fixes like retry limits or circuit breakers. Fixes that modify prompts or core logic require your approval first. Everything is reversible.',
     },
     {
-      question: 'How accurate are the detectors?',
-      answer: '31 of 42 detectors are production-grade with F1 scores above 0.70. The top detectors (decomposition, loop, corruption) achieve F1 > 0.90. All detectors are calibrated against golden datasets with cross-validation.',
+      question: 'Can I self-host it?',
+      answer: 'Yes. Pisama is open source under the MIT license. You can deploy it with Docker Compose or on Fly.io. Full control over your data.',
+    },
+    {
+      question: 'Will it slow down my agents?',
+      answer: 'No. Detection runs on your traces after the fact, not inline with your agent execution. There is zero performance impact on your running agents.',
     },
   ]
 
@@ -41,9 +45,6 @@ export function FAQSection() {
           <h2 className="text-3xl md:text-4xl font-bold text-white mb-3">
             Frequently Asked Questions
           </h2>
-          <p className="text-zinc-400">
-            Everything you need to know about Pisama
-          </p>
         </div>
 
         <div className="space-y-3">
