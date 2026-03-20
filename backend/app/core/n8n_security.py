@@ -7,5 +7,5 @@ from app.core.webhook_security import (  # noqa: F401 — explicit re-exports
     validate_n8n_url,
     redact_sensitive_data,
     compute_state_hash,
-    encrypt_api_key,
+    hash_api_key,
 )

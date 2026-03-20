@@ -145,7 +145,7 @@ export default function QualityHealingDetailPage() {
             ) : null}
             {healing.rollback_available && (
               <Button
-                variant="destructive"
+                variant="danger"
                 onClick={handleRollback}
                 disabled={actionLoading === 'rollback'}
               >

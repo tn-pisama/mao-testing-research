@@ -230,7 +230,7 @@ async def register_deployment(
     db: AsyncSession = Depends(get_db),
 ):
     """Register a LangGraph deployment for monitoring."""
-    from app.core.webhook_security import encrypt_api_key
+    from app.core.webhook_security import hash_api_key
 
     await set_tenant_context(db, tenant_id)
 
@@ -238,7 +238,7 @@ async def register_deployment(
         tenant_id=UUID(tenant_id),
         name=request_data.name,
         api_url=request_data.api_url,
-        api_key_encrypted=encrypt_api_key(request_data.api_key),
+        api_key_encrypted=hash_api_key(request_data.api_key),
         deployment_id=request_data.deployment_id,
         graph_name=request_data.graph_name,
         ingestion_mode=request_data.ingestion_mode,

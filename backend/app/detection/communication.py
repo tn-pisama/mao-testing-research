@@ -100,7 +100,7 @@ class CommunicationBreakdownDetector:
                     try:
                         json.loads(json_match.group())
                         return True, "JSON found in response"
-                    except:
+                    except (json.JSONDecodeError, ValueError):
                         pass
                 return False, "Expected JSON but response is not valid JSON"
         

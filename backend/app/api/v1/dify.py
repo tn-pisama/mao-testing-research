@@ -228,7 +228,7 @@ async def register_instance(
     db: AsyncSession = Depends(get_db),
 ):
     """Register a Dify instance for monitoring."""
-    from app.core.webhook_security import encrypt_api_key
+    from app.core.webhook_security import hash_api_key
 
     await set_tenant_context(db, tenant_id)
 
@@ -236,7 +236,7 @@ async def register_instance(
         tenant_id=UUID(tenant_id),
         name=request_data.name,
         base_url=request_data.base_url,
-        api_key_encrypted=encrypt_api_key(request_data.api_key),
+        api_key_encrypted=hash_api_key(request_data.api_key),
         ingestion_mode=request_data.ingestion_mode,
     )
     db.add(instance)

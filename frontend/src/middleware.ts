@@ -7,17 +7,33 @@ const protectedRoutes = [
   '/agents',
   '/traces',
   '/detections',
+  '/healing',
+  '/quality',
   '/settings',
-  '/demo',
-  '/review',
+  '/account',
+  '/evals',
   '/testing',
-  '/docs',
   '/chaos',
   '/replay',
   '/regression',
+  '/security',
+  '/memory',
+  '/integrations',
+  '/n8n',
+  '/dify',
+  '/langgraph',
+  '/openclaw',
+  '/diagnose',
+  '/import',
+  '/metrics',
+  '/benchmarks',
+  '/tools',
+  '/review',
+  '/detector-status',
+  '/conversation-evaluations',
 ]
 
-const publicRoutes = ['/', '/sign-in', '/sign-up', '/terms']
+const publicRoutes = ['/', '/sign-in', '/sign-up', '/login', '/terms', '/docs', '/case-studies', '/onboarding', '/demo']
 
 function isProtectedRoute(pathname: string): boolean {
   return protectedRoutes.some(route => pathname.startsWith(route))

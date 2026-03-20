@@ -242,7 +242,7 @@ async def register_instance(
     db: AsyncSession = Depends(get_db),
 ):
     """Register an OpenClaw instance for monitoring."""
-    from app.core.webhook_security import encrypt_api_key
+    from app.core.webhook_security import hash_api_key
 
     await set_tenant_context(db, tenant_id)
 
@@ -250,7 +250,7 @@ async def register_instance(
         tenant_id=UUID(tenant_id),
         name=request_data.name,
         gateway_url=request_data.gateway_url,
-        api_key_encrypted=encrypt_api_key(request_data.api_key),
+        api_key_encrypted=hash_api_key(request_data.api_key),
         otel_endpoint=request_data.otel_endpoint,
         otel_enabled=request_data.otel_enabled,
         ingestion_mode=request_data.ingestion_mode,

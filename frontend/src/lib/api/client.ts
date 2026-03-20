@@ -43,6 +43,13 @@ export async function fetchApi<T>(endpoint: string, options: FetchOptions = {}):
     } catch {
       // non-JSON response, keep status-only message
     }
+
+    // Handle auth errors with redirect
+    if (response.status === 401 && typeof window !== 'undefined') {
+      console.warn('Unauthorized — redirecting to login')
+      window.location.href = '/login'
+    }
+
     const err = new Error(detail) as ApiError
     err.status = response.status
     throw err

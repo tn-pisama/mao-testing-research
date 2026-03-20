@@ -73,6 +73,10 @@ frontend/playwright/.cache/
 # macOS
 .DS_Store
 
+# Secrets - never commit
+deployment-env-vars.md
+frontend/.env.local
+
 # Secrets and credentials
 *.pem
 *.key

@@ -44,7 +44,7 @@ jobs:
           JWT_SECRET: test-secret-for-ci-only-32chars-long
         run: |
           cd backend
-          pytest tests/ -v --tb=short || true
+          pytest tests/ -v --tb=short
       
       - name: Set up Node.js
         uses: actions/setup-node@v4
@@ -61,7 +61,7 @@ jobs:
       - name: Lint frontend
         run: |
           cd frontend
-          npm run lint || true
+          npm run lint
       
       - name: Build frontend
         run: |

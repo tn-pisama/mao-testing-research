@@ -1,7 +1,7 @@
 """Tests for webhook security utilities (webhook_security.py).
 
 Covers: HMAC signature verification, instance URL validation (SSRF protection),
-sensitive data redaction, state hash computation, API key encryption.
+sensitive data redaction, state hash computation, API key hashing.
 """
 import hashlib
 import hmac as hmac_mod
@@ -16,7 +16,7 @@ from app.core.webhook_security import (
     validate_instance_url,
     redact_sensitive_data,
     compute_state_hash,
-    encrypt_api_key,
+    hash_api_key,
 )
 
 
@@ -207,16 +207,16 @@ class TestComputeStateHash:
 
 
 # ===================================================================
-# encrypt_api_key
+# hash_api_key
 # ===================================================================
 
-class TestEncryptApiKey:
+class TestHashApiKey:
 
     def test_returns_sha256_hex_digest(self):
         key = "my-secret-api-key"
         expected = hashlib.sha256(key.encode()).hexdigest()
-        assert encrypt_api_key(key) == expected
+        assert hash_api_key(key) == expected
 
     def test_deterministic(self):
-        assert encrypt_api_key("same") == encrypt_api_key("same")
-        assert encrypt_api_key("a") != encrypt_api_key("b")
+        assert hash_api_key("same") == hash_api_key("same")
+        assert hash_api_key("a") != hash_api_key("b")

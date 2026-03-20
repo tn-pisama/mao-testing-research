@@ -2,10 +2,13 @@
 
 import json
 import hashlib
+import logging
 from typing import Iterator, Dict, Any, Optional, Tuple
 from dataclasses import dataclass
 from datetime import datetime
 from abc import ABC, abstractmethod
+
+logger = logging.getLogger(__name__)
 
 
 @dataclass
@@ -309,7 +312,8 @@ def count_records(content: str, format_type: str) -> int:
             data = json.loads(content)
             traces = data.get("traces", [data] if "observations" in data else [])
             return sum(len(t.get("observations", [])) for t in traces)
-        except:
+        except Exception as e:
+            logger.warning("Parse error: %s", e)
             return 0
     else:
         return len([l for l in content.strip().split('\n') if l.strip()])

@@ -164,8 +164,9 @@ class HandoffExtractor:
                 if isinstance(receiver_start, str):
                     receiver_start = datetime.fromisoformat(receiver_start.replace("Z", "+00:00"))
                 latency = int((receiver_start - sender_end).total_seconds() * 1000)
-            except:
-                pass
+            except Exception as e:
+                logger.warning("Failed to parse handoff timestamps: %s", e)
+
         
         fields_expected = list(context_passed.keys())
         fields_received = list(context_received.keys())

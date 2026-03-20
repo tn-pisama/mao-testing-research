@@ -2,7 +2,7 @@
 
 ## Generated Secrets
 
-**NEXTAUTH_SECRET**: `O1a7nYdTSgevRPB1ATSjYwf77eR+BmGmW7HyLktS37M=`
+**NEXTAUTH_SECRET**: `<SET_IN_DASHBOARD>`
 
 **NEXTAUTH_URL**: `https://pisama.ai`
 

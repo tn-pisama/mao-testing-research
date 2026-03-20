@@ -14,14 +14,14 @@ services:
         generateValue: true
       - key: ENVIRONMENT
         value: production
-      - key: CLERK_PUBLISHABLE_KEY
+      - key: GOOGLE_CLIENT_ID
         sync: false
-      - key: CLERK_SECRET_KEY
+      - key: GOOGLE_CLIENT_SECRET
         sync: false
-      - key: CLERK_WEBHOOK_SECRET
+      - key: NEXTAUTH_SECRET
         sync: false
-      - key: CLERK_JWT_ISSUER
-        sync: false
+      - key: NEXTAUTH_URL
+        value: https://pisama.ai
       - key: REDIS_URL
         sync: false
       - key: CORS_ORIGINS

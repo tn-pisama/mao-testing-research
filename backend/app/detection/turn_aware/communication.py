@@ -266,7 +266,7 @@ class TurnAwareCommunicationBreakdownDetector(TurnAwareDetector):
             try:
                 json_lib.loads(receiver_content)
                 return None  # Valid JSON
-            except:
+            except (json_lib.JSONDecodeError, ValueError, KeyError):
                 # Check for embedded JSON
                 if re.search(r'\{[^{}]+\}', receiver_content):
                     return None  # Has JSON-like content

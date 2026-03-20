@@ -1,6 +1,9 @@
 """Fix generators for coordination deadlock detections."""
 
+import logging
 from typing import List, Dict, Any
+
+logger = logging.getLogger(__name__)
 
 from .generator import BaseFixGenerator
 from .models import FixSuggestion, FixType, FixConfidence, CodeChange
@@ -233,8 +236,9 @@ def acquire_ordered(resources: list[str], agent: str, manager: PriorityResourceM
                 raise DeadlockPreventionError(f"Could not acquire {{resource}}")
             acquired.append(resource)
         return True
-    except:
+    except (ValueError, TypeError, KeyError) as e:
         # Rollback on failure
+        logger.warning(f"Resource acquisition failed: {{e}}")
         for resource in reversed(acquired):
             manager.release(resource, agent)
         raise'''

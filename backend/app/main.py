@@ -75,6 +75,9 @@ def validate_cors_origins(origins: list[str], allow_credentials: bool) -> list[s
 async def lifespan(app: FastAPI):
     import asyncio as _asyncio
 
+    # Validate configuration early — fail fast on bad config
+    get_settings()
+
     # Start background scheduler for n8n sync
     from app.workers.scheduler import start_scheduler, stop_scheduler
     await start_scheduler()
@@ -185,6 +188,7 @@ async def add_security_headers(request: Request, call_next):
     response.headers["X-Frame-Options"] = "DENY"
     response.headers["X-XSS-Protection"] = "1; mode=block"
     response.headers["Referrer-Policy"] = "strict-origin-when-cross-origin"
+    response.headers["Permissions-Policy"] = "camera=(), microphone=(), geolocation=()"
     if request.url.scheme == "https":
         response.headers["Strict-Transport-Security"] = "max-age=31536000; includeSubDomains"
     return response

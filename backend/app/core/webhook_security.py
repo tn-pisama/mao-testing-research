@@ -5,7 +5,7 @@ Shared by all provider integrations (n8n, OpenClaw, Dify) for:
 - Sensitive data redaction
 - State hash computation
 - Instance URL validation
-- API key encryption
+- API key hashing
 """
 
 import hmac
@@ -142,6 +142,10 @@ def compute_state_hash(state_delta: dict) -> str:
     return hashlib.sha256(normalized.encode()).hexdigest()[:16]
 
 
-def encrypt_api_key(api_key: str) -> str:
-    """Encrypt an API key for storage. Uses SHA-256 hash for now."""
+def hash_api_key(api_key: str) -> str:
+    """Hash an API key for storage. Uses SHA-256 hash."""
     return hashlib.sha256(api_key.encode()).hexdigest()
+
+
+# Backward-compat alias
+encrypt_api_key = hash_api_key
