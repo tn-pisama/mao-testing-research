@@ -8,12 +8,10 @@ import {
   ComparisonTable,
   FAQSection,
   PlatformCTA,
-  WaitlistModal,
   Footer,
 } from '@/components/landing'
 
 export default function Home() {
-  const [showWaitlist, setShowWaitlist] = useState(false)
   const [mounted, setMounted] = useState(false)
 
   useEffect(() => {
@@ -31,18 +29,13 @@ export default function Home() {
 
   return (
     <main className="min-h-screen bg-zinc-950">
-      <LandingHeader onJoinWaitlist={() => setShowWaitlist(true)} />
+      <LandingHeader />
       <HeroSection />
       <FeatureCards />
       <ComparisonTable />
       <FAQSection />
-      <PlatformCTA onJoinWaitlist={() => setShowWaitlist(true)} />
+      <PlatformCTA />
       <Footer />
-
-      <WaitlistModal
-        isOpen={showWaitlist}
-        onClose={() => setShowWaitlist(false)}
-      />
     </main>
   )
 }

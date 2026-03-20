@@ -10,7 +10,7 @@ import { SessionWrapper } from '../components/SessionWrapper'
 const inter = Inter({ subsets: ['latin'], variable: '--font-inter' })
 
 export const metadata: Metadata = {
-  title: 'PISAMA - Agent Forensics',
+  title: 'Pisama - Agent Forensics',
   description: 'Find out why your AI agent failed and how to fix it. Self-healing AI agent diagnostics with root cause analysis.',
 }
 

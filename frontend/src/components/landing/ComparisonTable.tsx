@@ -62,7 +62,7 @@ export function ComparisonTable() {
             Purpose-Built for Agent Failure Detection
           </h2>
           <p className="text-zinc-400 text-lg">
-            General observability tools track LLM calls. PISAMA detects when multi-agent systems fail.
+            General observability tools track LLM calls. Pisama detects when multi-agent systems fail.
           </p>
         </div>
 
@@ -73,7 +73,7 @@ export function ComparisonTable() {
               <tr className="border-b border-zinc-700">
                 <th className="text-left py-3 px-3 text-zinc-400 font-medium">Capability</th>
                 <th className="text-center py-3 px-3">
-                  <div className="text-white font-semibold">PISAMA</div>
+                  <div className="text-white font-semibold">Pisama</div>
                 </th>
                 <th className="text-center py-3 px-3 text-zinc-400 font-medium">General observability</th>
               </tr>

@@ -56,7 +56,7 @@ export function FeatureCards() {
             Everything you need to ship reliable agents
           </h2>
           <p className="text-zinc-400 text-lg max-w-2xl mx-auto">
-            From detection to remediation, PISAMA handles the full lifecycle of agent failure management.
+            From detection to remediation, Pisama handles the full lifecycle of agent failure management.
           </p>
         </div>
 

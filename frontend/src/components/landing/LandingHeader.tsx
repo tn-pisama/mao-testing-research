@@ -10,15 +10,13 @@ interface LandingHeaderProps {
 export function LandingHeader({ onJoinWaitlist }: LandingHeaderProps) {
   return (
     <header className="flex items-center justify-between py-2 px-4 border-b border-zinc-800 bg-zinc-950">
-      <div className="text-sm font-semibold text-white">{'[PISAMA]'}</div>
+      <div className="text-sm font-semibold text-white">Pisama</div>
       <div className="flex items-center gap-2">
-        {onJoinWaitlist && (
-          <Button variant="primary" onClick={onJoinWaitlist} size="sm">
-            WAITLIST
-          </Button>
-        )}
+        <Link href="/docs/getting-started">
+          <Button variant="secondary" size="sm">Docs</Button>
+        </Link>
         <Link href="/dashboard">
-          <Button variant="secondary" size="sm">DASHBOARD</Button>
+          <Button variant="primary" size="sm">Dashboard</Button>
         </Link>
       </div>
     </header>

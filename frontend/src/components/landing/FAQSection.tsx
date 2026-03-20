@@ -9,67 +9,58 @@ export function FAQSection() {
 
   const faqs = [
     {
-      question: 'How is PISAMA different from LangSmith?',
-      answer: 'LangSmith is great for observability and debugging in production. PISAMA is designed for *testing* before production—it\'s optimized for CI/CD and detects multi-agent-specific failure modes. Use both: PISAMA in testing, LangSmith in production.',
+      question: 'How is Pisama different from LangSmith or Langfuse?',
+      answer: 'LangSmith and Langfuse are general-purpose observability tools for LLM applications. Pisama is purpose-built for multi-agent failure detection — it identifies 42 specific failure modes like infinite loops, state corruption, persona drift, and convergence issues that general observability tools don\'t detect.',
     },
     {
-      question: 'Does PISAMA work with my custom agent framework?',
-      answer: 'Yes! If your framework can emit OpenTelemetry traces with `gen_ai.*` semantic conventions, PISAMA can analyze it. We have native integrations for LangGraph, CrewAI, AutoGen, and n8n.',
+      question: 'What frameworks does Pisama support?',
+      answer: 'Pisama has native integrations for LangGraph, CrewAI, AutoGen, n8n, Dify, OpenClaw, and Claude Code. Any framework that emits OpenTelemetry traces with gen_ai.* semantic conventions works out of the box.',
     },
     {
       question: 'What\'s the performance overhead?',
-      answer: 'Minimal. Tier 1 detection adds <5ms latency. Tier 3 (embeddings) adds ~100ms. You control which tiers run via configuration. Most users run Tier 1-2 in CI, Tier 3-4 only on critical workflows.',
+      answer: 'Minimal. Tier 1 detection (hash-based) adds <5ms. Tier 2 (state delta) adds ~10ms. Tier 3 (embeddings) adds ~100ms. You control which tiers run via configuration.',
     },
     {
-      question: 'Can I self-host PISAMA?',
-      answer: 'Yes! Core detection engine is open source (MIT license). Self-hosting guide in the docs. Enterprise plan includes support for self-hosted deployments.',
+      question: 'Can I self-host Pisama?',
+      answer: 'Yes. The core detection engine is open source under the MIT license. Deploy with Docker Compose or Fly.io — see the deployment guide in our docs.',
     },
     {
-      question: 'How do you handle my trace data?',
-      answer: 'Traces are encrypted in transit and at rest. We never train on your data. Enterprise customers can self-host for complete data control.',
+      question: 'What does self-healing do?',
+      answer: 'When Pisama detects a failure, it generates AI-powered fix suggestions with code changes. Safe fixes (config changes, retry limits) can auto-apply. Risky fixes (prompt modifications) require manual approval. All fixes include rollback capability.',
     },
     {
-      question: 'What if I hit my trace limit?',
-      answer: 'We\'ll email you at 80% and 100% usage. After hitting your limit, you can upgrade or wait until next month. We don\'t cut you off mid-test—current tests complete normally.',
-    },
-    {
-      question: 'Do you offer educational discounts?',
-      answer: 'Yes! Students and educators get the Startup plan free. Email support@pisama.ai with your .edu address.',
-    },
-    {
-      question: 'What\'s your refund policy?',
-      answer: '30-day money-back guarantee on paid plans, no questions asked.',
+      question: 'How accurate are the detectors?',
+      answer: '31 of 42 detectors are production-grade with F1 scores above 0.70. The top detectors (decomposition, loop, corruption) achieve F1 > 0.90. All detectors are calibrated against golden datasets with cross-validation.',
     },
   ]
 
   return (
-    <section className="py-20 px-4">
+    <section className="py-16 px-4">
       <div className="max-w-3xl mx-auto">
-        <div className="text-center mb-12">
-          <h2 className="text-3xl md:text-4xl font-bold text-white mb-4">
+        <div className="text-center mb-10">
+          <h2 className="text-3xl md:text-4xl font-bold text-white mb-3">
             Frequently Asked Questions
           </h2>
           <p className="text-zinc-400">
-            Everything you need to know about PISAMA
+            Everything you need to know about Pisama
           </p>
         </div>
 
-        <div className="space-y-4">
+        <div className="space-y-3">
           {faqs.map((faq, index) => (
             <div
               key={index}
-              className="bg-zinc-800/50 border border-zinc-700 rounded-lg overflow-hidden hover:border-sky-500/50 transition-colors"
+              className="bg-zinc-800/50 border border-zinc-700 rounded-lg overflow-hidden hover:border-zinc-600 transition-colors"
             >
               <button
                 onClick={() => {
                   const newIndex = openIndex === index ? null : index
                   setOpenIndex(newIndex)
-                  // Track when opening (not closing)
                   if (newIndex === index) {
                     analytics.faqOpen(faq.question)
                   }
                 }}
-                className="w-full flex items-center justify-between p-6 text-left"
+                className="w-full flex items-center justify-between p-5 text-left"
                 aria-expanded={openIndex === index}
               >
                 <span className="text-white font-medium pr-8">
@@ -83,7 +74,7 @@ export function FAQSection() {
               </button>
 
               {openIndex === index && (
-                <div className="px-6 pb-6">
+                <div className="px-5 pb-5">
                   <p className="text-zinc-400 leading-relaxed">
                     {faq.answer}
                   </p>
@@ -91,19 +82,6 @@ export function FAQSection() {
               )}
             </div>
           ))}
-        </div>
-
-        {/* Contact CTA */}
-        <div className="mt-12 text-center">
-          <p className="text-zinc-400 mb-4">
-            Still have questions?
-          </p>
-          <a
-            href="mailto:support@pisama.ai"
-            className="inline-flex items-center gap-2 text-sky-400 hover:text-sky-300 font-medium transition-colors"
-          >
-            Contact Support →
-          </a>
         </div>
       </div>
     </section>
