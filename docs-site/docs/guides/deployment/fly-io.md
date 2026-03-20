@@ -54,7 +54,7 @@ Fly.io does not provide managed PostgreSQL with pgvector. Options:
 | Supabase | Hobby / Startup | Pre-installed |
 | Neon | Serverless workloads | Available |
 | AWS RDS | Enterprise | Manual enable |
-| Render PostgreSQL | Simple setup | Available |
+| Fly Postgres | Simple setup | Manual enable |
 
 Ensure you enable the pgvector extension:
 

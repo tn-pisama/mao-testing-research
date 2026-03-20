@@ -117,7 +117,7 @@ backend/tests/
 GitHub Actions workflows:
 
 - **`.github/workflows/ci.yml`**: Runs on PRs -- smoke tests, backend tests (with Postgres/Redis), calibration gate, frontend build, lint, security scan
-- **`.github/workflows/deploy.yml`**: Auto-deploys on push to main via Render/Vercel
+- **`.github/workflows/deploy.yml`**: Auto-deploys on push to main via Fly.io/Vercel
 
 ## Useful Commands
 

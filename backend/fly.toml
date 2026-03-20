@@ -1,7 +1,13 @@
-app = 'mao-api'
-primary_region = 'sjc'
+app = 'pisama-api'
+primary_region = 'iad'
 
 [build]
+  dockerfile = "Dockerfile"
+
+[env]
+  PORT = "8000"
+  ENVIRONMENT = "production"
+  DEBUG = "false"
 
 [http_service]
   internal_port = 8000
@@ -11,7 +17,19 @@ primary_region = 'sjc'
   min_machines_running = 1
   processes = ['app']
 
+  [http_service.concurrency]
+    type = "requests"
+    hard_limit = 250
+    soft_limit = 200
+
+[[http_service.checks]]
+  interval = "15s"
+  timeout = "5s"
+  grace_period = "30s"
+  method = "GET"
+  path = "/health"
+
 [[vm]]
   memory = '2gb'
   cpu_kind = 'shared'
-  cpus = 1
+  cpus = 2

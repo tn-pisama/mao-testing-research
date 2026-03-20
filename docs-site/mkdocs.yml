@@ -103,7 +103,6 @@ nav:
       - Claude Code: guides/integrations/claude-code.md
     - Deployment:
       - Docker Compose: guides/deployment/docker-compose.md
-      - Render: guides/deployment/render.md
       - Fly.io: guides/deployment/fly-io.md
   - API:
     - Reference: api/reference.md

@@ -74,10 +74,9 @@ GOOGLE_CLIENT_SECRET=GOCSPX-your-client-secret
 2. Add the variables listed above
 3. Redeploy
 
-**Render/Railway (Backend)**:
-1. Go to Environment → Environment Variables
-2. Add `GOOGLE_CLIENT_ID` and `GOOGLE_CLIENT_SECRET`
-3. Redeploy
+**Fly.io (Backend)**:
+1. Set secrets: `fly secrets set GOOGLE_CLIENT_ID=... GOOGLE_CLIENT_SECRET=...`
+2. Redeploy: `fly deploy`
 
 ---
 
@@ -94,10 +93,9 @@ alembic upgrade head
 
 ### Production
 
-**Render**:
+**Fly.io**:
 ```bash
-# SSH into your instance or run via dashboard
-alembic upgrade head
+fly ssh console --app pisama-api -C "cd /app && alembic upgrade head"
 ```
 
 **Railway**:

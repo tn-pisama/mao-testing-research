@@ -8,7 +8,7 @@ on:
 jobs:
   test:
     runs-on: ubuntu-latest
-    
+
     services:
       postgres:
         image: pgvector/pgvector:pg16
@@ -26,18 +26,18 @@ jobs:
 
     steps:
       - uses: actions/checkout@v4
-      
+
       - name: Set up Python
         uses: actions/setup-python@v5
         with:
           python-version: '3.11'
           cache: 'pip'
-      
+
       - name: Install backend dependencies
         run: |
           cd backend
           pip install -r requirements-ci.txt
-      
+
       - name: Run backend tests
         env:
           DATABASE_URL: postgresql+asyncpg://mao:mao@localhost:5432/mao
@@ -45,28 +45,43 @@ jobs:
         run: |
           cd backend
           pytest tests/ -v --tb=short
-      
+
       - name: Set up Node.js
         uses: actions/setup-node@v4
         with:
           node-version: '20'
           cache: 'npm'
           cache-dependency-path: frontend/package-lock.json
-      
+
       - name: Install frontend dependencies
         run: |
           cd frontend
           npm ci
-      
+
       - name: Lint frontend
         run: |
           cd frontend
           npm run lint
-      
+
       - name: Build frontend
         run: |
           cd frontend
           npm run build
 
-  # Backend auto-deploys via Render on push to main
+  deploy-backend:
+    needs: test
+    runs-on: ubuntu-latest
+    if: github.ref == 'refs/heads/main'
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Deploy to Fly.io
+        uses: superfly/flyctl-actions/setup-flyctl@master
+
+      - name: flyctl deploy
+        run: cd backend && flyctl deploy --remote-only
+        env:
+          FLY_API_TOKEN: ${{ secrets.FLY_API_TOKEN }}
+
   # Frontend auto-deploys via Vercel on push to main
+  # Docs site auto-deploys via Vercel on push to main
