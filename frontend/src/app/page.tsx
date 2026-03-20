@@ -7,7 +7,6 @@ import {
   FeatureCards,
   ComparisonTable,
   FAQSection,
-  PlatformCTA,
   Footer,
 } from '@/components/landing'
 
@@ -34,7 +33,6 @@ export default function Home() {
       <FeatureCards />
       <ComparisonTable />
       <FAQSection />
-      <PlatformCTA />
       <Footer />
     </main>
   )

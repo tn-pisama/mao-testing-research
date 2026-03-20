@@ -6,7 +6,6 @@ import { ArrowRight, Shield } from 'lucide-react'
 export function HeroSection() {
   return (
     <section className="relative py-16 sm:py-20 overflow-hidden">
-      {/* Subtle gradient background */}
       <div className="absolute inset-0 bg-gradient-to-b from-blue-600/5 via-transparent to-transparent" />
 
       <div className="relative max-w-4xl mx-auto px-6 text-center">
@@ -26,25 +25,13 @@ export function HeroSection() {
           state corruption, and persona drift — then fix them automatically.
         </p>
 
-        <div className="flex flex-col sm:flex-row items-center justify-center gap-4">
-          <Link
-            href="/dashboard"
-            className="inline-flex items-center gap-2 px-6 py-3 bg-blue-600 hover:bg-blue-700 text-white font-medium rounded-lg transition-colors"
-          >
-            Get Started Free
-            <ArrowRight size={16} />
-          </Link>
-          <Link
-            href="/demo"
-            className="inline-flex items-center gap-2 px-6 py-3 border border-zinc-700 hover:border-zinc-600 text-zinc-300 hover:text-white font-medium rounded-lg transition-colors"
-          >
-            See Demo
-          </Link>
-        </div>
-
-        <p className="mt-6 text-sm text-zinc-500">
-          No credit card required. Works with LangGraph, CrewAI, AutoGen, n8n, and Dify.
-        </p>
+        <Link
+          href="/dashboard"
+          className="inline-flex items-center gap-2 px-6 py-3 bg-blue-600 hover:bg-blue-700 text-white font-medium rounded-lg transition-colors"
+        >
+          Get Started Free
+          <ArrowRight size={16} />
+        </Link>
       </div>
     </section>
   )
