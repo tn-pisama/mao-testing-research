@@ -4,7 +4,6 @@ import { useState, useEffect } from 'react'
 import {
   LandingHeader,
   HeroSection,
-  DemoVideo,
   FeatureCards,
   ComparisonTable,
   FAQSection,
@@ -34,7 +33,6 @@ export default function Home() {
     <main className="min-h-screen bg-zinc-950">
       <LandingHeader onJoinWaitlist={() => setShowWaitlist(true)} />
       <HeroSection />
-      <DemoVideo />
       <FeatureCards />
       <ComparisonTable />
       <FAQSection />
