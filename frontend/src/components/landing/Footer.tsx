@@ -3,19 +3,10 @@
 import Link from 'next/link'
 import { Shield } from 'lucide-react'
 
-const productLinks = [
-  { label: 'Dashboard', href: '/dashboard' },
-  { label: 'Detections', href: '/detections' },
-  { label: 'Quality', href: '/quality' },
-  { label: 'Healing', href: '/healing' },
-  { label: 'Demo', href: '/demo' },
-]
-
 const resourceLinks = [
   { label: 'Documentation', href: '/docs' },
   { label: 'API Reference', href: '/docs/api-reference' },
   { label: 'Getting Started', href: '/docs/getting-started' },
-  { label: 'CLI Guide', href: '/docs/cli' },
   { label: 'Failure Modes', href: '/docs/failure-modes' },
 ]
 
@@ -30,10 +21,10 @@ const integrationLinks = [
 export function Footer() {
   return (
     <footer className="border-t border-zinc-800">
-      <div className="max-w-5xl mx-auto px-6 py-12">
-        <div className="grid grid-cols-2 md:grid-cols-4 gap-8 mb-10">
+      <div className="max-w-5xl mx-auto px-6 py-10">
+        <div className="grid grid-cols-2 md:grid-cols-3 gap-8 mb-8">
           {/* Brand */}
-          <div className="col-span-2 md:col-span-1">
+          <div>
             <div className="flex items-center gap-2 mb-3">
               <Shield size={20} className="text-blue-500" />
               <span className="font-semibold text-white">Pisama</span>
@@ -41,20 +32,6 @@ export function Footer() {
             <p className="text-sm text-zinc-500 leading-relaxed">
               Agent forensics for teams building with AI.
             </p>
-          </div>
-
-          {/* Product */}
-          <div>
-            <h4 className="text-sm font-medium text-zinc-300 mb-3">Product</h4>
-            <ul className="space-y-2">
-              {productLinks.map((link) => (
-                <li key={link.href}>
-                  <Link href={link.href} className="text-sm text-zinc-500 hover:text-zinc-300 transition-colors">
-                    {link.label}
-                  </Link>
-                </li>
-              ))}
-            </ul>
           </div>
 
           {/* Resources */}
