@@ -175,6 +175,70 @@ alembic upgrade head
 
 ---
 
+## Database Migrations
+
+All schema changes use Alembic. Migrations live in `backend/alembic/versions/`.
+
+### Common Commands
+
+```bash
+cd backend
+
+# Apply all pending migrations
+alembic upgrade head
+
+# Check current migration version
+alembic current
+
+# Rollback one migration
+alembic downgrade -1
+
+# Rollback to a specific revision
+alembic downgrade <revision_id>
+
+# View migration history
+alembic history --verbose
+
+# Generate a new migration from model changes
+alembic revision --autogenerate -m "description of change"
+```
+
+### Pre-Deployment Checklist
+
+1. **Backup the database** before any migration:
+   ```bash
+   pg_dump -U mao -h localhost mao > backup_$(date +%Y%m%d_%H%M%S).sql
+   ```
+2. **Test the migration on staging** — run `alembic upgrade head` against a staging DB first.
+3. **Review the generated SQL** — run `alembic upgrade head --sql` to inspect without applying.
+4. **Run the migration** on production.
+5. **Verify** — check `alembic current` matches the expected head revision.
+6. **Smoke test** — hit `/health` and run a few API calls to confirm the app works.
+
+### Rollback Plan
+
+If a migration fails or causes issues:
+
+```bash
+# Rollback the last migration
+alembic downgrade -1
+
+# Restore from backup if needed
+psql -U mao -h localhost mao < backup_YYYYMMDD_HHMMSS.sql
+```
+
+### Common Issues
+
+| Problem | Solution |
+|---------|----------|
+| `FAILED: Target database is not up to date` | Run `alembic upgrade head` before generating new migrations |
+| `FAILED: Can't locate revision` | Check `alembic history`; you may have divergent heads — run `alembic merge heads` |
+| Migration hangs | Another connection holds a lock — check `pg_stat_activity` and terminate idle transactions |
+| `relation already exists` | Migration was partially applied — check `alembic current`, manually fix or stamp: `alembic stamp <revision>` |
+| pgvector extension missing | Run `CREATE EXTENSION IF NOT EXISTS vector;` before the migration |
+
+---
+
 ## Redis Setup
 
 Redis is used for rate limiting and caching. Options:
