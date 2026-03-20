@@ -1,3 +1,4 @@
+import type { Metadata } from 'next'
 import {
   AlertTriangle,
   RefreshCw,
@@ -8,6 +9,11 @@ import {
   XCircle,
   HelpCircle,
 } from 'lucide-react'
+
+export const metadata: Metadata = {
+  title: 'Detection Modes',
+  description: '42 failure mode detectors for multi-agent systems. Loop, corruption, drift, hallucination, injection, and more.',
+}
 
 export default function DetectionsPage() {
   return (

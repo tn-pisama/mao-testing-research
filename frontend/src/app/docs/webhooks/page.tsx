@@ -1,5 +1,11 @@
+import type { Metadata } from 'next'
 import Link from 'next/link'
 import { Terminal, Copy, AlertTriangle, Check } from 'lucide-react'
+
+export const metadata: Metadata = {
+  title: 'Webhooks',
+  description: 'Set up Pisama webhooks for real-time failure notifications and CI/CD integration.',
+}
 
 export default function WebhooksPage() {
   return (

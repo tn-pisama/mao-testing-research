@@ -1,3 +1,4 @@
+import type { Metadata } from 'next'
 import Link from 'next/link'
 import {
   Database,
@@ -9,6 +10,11 @@ import {
   AlertTriangle,
   ArrowRight,
 } from 'lucide-react'
+
+export const metadata: Metadata = {
+  title: 'Detection Methodology',
+  description: 'How Pisama detects agent failures. Tiered detection from hash matching to LLM-as-Judge verification.',
+}
 
 export default function MethodologyPage() {
   return (

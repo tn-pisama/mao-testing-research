@@ -1,5 +1,11 @@
+import type { Metadata } from 'next'
 import Link from 'next/link'
 import { Terminal, Copy, AlertTriangle, Download, Upload, Search, Eye } from 'lucide-react'
+
+export const metadata: Metadata = {
+  title: 'CLI Guide',
+  description: 'Pisama CLI reference — ingest traces, run detections, and manage your agent testing from the command line.',
+}
 
 export default function CLIPage() {
   return (

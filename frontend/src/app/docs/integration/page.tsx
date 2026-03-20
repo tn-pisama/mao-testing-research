@@ -1,3 +1,4 @@
+import type { Metadata } from 'next'
 import {
   Terminal,
   Copy,
@@ -5,6 +6,11 @@ import {
   Settings,
   Tag,
 } from 'lucide-react'
+
+export const metadata: Metadata = {
+  title: 'Integration Guide',
+  description: 'Integrate Pisama with your agent framework. Supports LangGraph, CrewAI, AutoGen, n8n, Dify, OpenClaw.',
+}
 
 export default function IntegrationPage() {
   return (

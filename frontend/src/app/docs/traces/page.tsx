@@ -1,7 +1,8 @@
-import { 
-  Workflow, 
-  Clock, 
-  Layers, 
+import type { Metadata } from 'next'
+import {
+  Workflow,
+  Clock,
+  Layers,
   GitBranch,
   Zap,
   DollarSign,
@@ -10,6 +11,11 @@ import {
   Loader2,
   Eye,
 } from 'lucide-react'
+
+export const metadata: Metadata = {
+  title: 'Trace Format',
+  description: 'Pisama trace format and OpenTelemetry ingestion. gen_ai.* semantic conventions and universal trace model.',
+}
 
 export default function TracesPage() {
   return (

@@ -1,3 +1,4 @@
+import type { Metadata } from 'next'
 import Link from 'next/link'
 import {
   Rocket,
@@ -8,6 +9,11 @@ import {
   Shield,
   Eye,
 } from 'lucide-react'
+
+export const metadata: Metadata = {
+  title: 'Documentation',
+  description: 'Pisama documentation — getting started, API reference, framework integrations, and failure mode detection guides.',
+}
 
 export default function DocsPage() {
   return (

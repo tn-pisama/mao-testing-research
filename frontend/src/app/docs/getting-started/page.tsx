@@ -1,5 +1,11 @@
+import type { Metadata } from 'next'
 import Link from 'next/link'
 import { ArrowRight, Check, Copy, Terminal, AlertTriangle } from 'lucide-react'
+
+export const metadata: Metadata = {
+  title: 'Getting Started',
+  description: 'Get started with Pisama in 5 minutes. Install, connect your agent framework, and detect failures.',
+}
 
 export default function GettingStartedPage() {
   return (

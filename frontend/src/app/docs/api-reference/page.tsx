@@ -1,6 +1,12 @@
+import type { Metadata } from 'next'
 import {
   Copy,
 } from 'lucide-react'
+
+export const metadata: Metadata = {
+  title: 'API Reference',
+  description: 'Complete REST API reference for Pisama. Traces, detections, healing, analytics endpoints.',
+}
 
 export default function ApiReferencePage() {
   return (

@@ -1,5 +1,11 @@
+import type { Metadata } from 'next'
 import Link from 'next/link'
 import { Terminal, Copy, Check } from 'lucide-react'
+
+export const metadata: Metadata = {
+  title: 'Python SDK',
+  description: 'Pisama Python SDK documentation. Instrument LangGraph, CrewAI, AutoGen, and custom agent frameworks.',
+}
 
 export default function SDKPage() {
   return (
