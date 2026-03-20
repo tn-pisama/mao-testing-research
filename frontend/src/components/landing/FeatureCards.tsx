@@ -37,15 +37,6 @@ export function FeatureCards() {
   return (
     <section className="py-10 px-6">
       <div className="max-w-5xl mx-auto">
-        <div className="text-center mb-6">
-          <h2 className="text-3xl font-bold text-white mb-3">
-            Everything you need to ship reliable agents
-          </h2>
-          <p className="text-zinc-400 text-lg max-w-2xl mx-auto">
-            From detection to remediation, Pisama handles the full lifecycle of agent failure management.
-          </p>
-        </div>
-
         <div className="grid sm:grid-cols-2 lg:grid-cols-3 gap-4">
           {features.map((feature) => (
             <div
