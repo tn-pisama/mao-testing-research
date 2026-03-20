@@ -8,35 +8,35 @@ export function ComparisonTable() {
     {
       category: 'Failure Detection',
       rows: [
-        { name: 'Infinite Loop Detection', pisama: true, langsmith: false, langfuse: false, agentops: 'partial' },
-        { name: 'State Corruption Detection', pisama: true, langsmith: false, langfuse: false, agentops: false },
-        { name: 'Persona Drift Detection', pisama: true, langsmith: false, langfuse: false, agentops: false },
-        { name: 'Deadlock Detection', pisama: true, langsmith: false, langfuse: false, agentops: true },
+        { name: '42 failure mode detectors', pisama: true, others: false },
+        { name: 'Loop, corruption, drift, deadlock', pisama: true, others: false },
+        { name: 'Convergence & metric tracking', pisama: true, others: false },
+        { name: 'Prompt injection detection', pisama: true, others: false },
       ],
     },
     {
       category: 'Remediation',
       rows: [
-        { name: 'AI-Powered Fix Suggestions', pisama: true, langsmith: false, langfuse: false, agentops: false },
-        { name: 'Self-Healing (Coming Soon)', pisama: 'soon', langsmith: false, langfuse: false, agentops: false },
-        { name: 'Root Cause Analysis', pisama: true, langsmith: 'partial', langfuse: 'partial', agentops: true },
+        { name: 'AI-powered fix suggestions', pisama: true, others: false },
+        { name: 'Self-healing with rollback', pisama: true, others: false },
+        { name: 'Root cause analysis', pisama: true, others: 'partial' },
       ],
     },
     {
       category: 'Framework Support',
       rows: [
-        { name: 'LangGraph', pisama: true, langsmith: true, langfuse: true, agentops: 'partial' },
-        { name: 'CrewAI', pisama: true, langsmith: 'partial', langfuse: true, agentops: true },
-        { name: 'AutoGen', pisama: true, langsmith: 'partial', langfuse: true, agentops: true },
-        { name: 'Custom Frameworks', pisama: true, langsmith: 'partial', langfuse: true, agentops: 'partial' },
+        { name: 'LangGraph', pisama: true, others: 'partial' },
+        { name: 'CrewAI / AutoGen', pisama: true, others: 'partial' },
+        { name: 'n8n / Dify / OpenClaw', pisama: true, others: false },
+        { name: 'Any framework via OTEL', pisama: true, others: 'partial' },
       ],
     },
     {
-      category: 'Deployment & Pricing',
+      category: 'Platform',
       rows: [
-        { name: 'Open Source', pisama: true, langsmith: false, langfuse: true, agentops: false },
-        { name: 'Self-Hosted', pisama: true, langsmith: 'paid', langfuse: true, agentops: false },
-        { name: 'Free Tier', pisama: '10K spans', langsmith: '5K traces', langfuse: '50K events', agentops: '1K agents' },
+        { name: 'Open source (MIT)', pisama: true, others: 'partial' },
+        { name: 'Self-hosted option', pisama: true, others: 'partial' },
+        { name: 'Production-grade (31 detectors F1 > 0.70)', pisama: true, others: false },
       ],
     },
   ]
@@ -49,26 +49,20 @@ export function ComparisonTable() {
       return <X className="w-5 h-5 text-zinc-600 mx-auto" />
     }
     if (value === 'partial') {
-      return <span className="text-amber-400 text-sm">⚠️</span>
-    }
-    if (value === 'paid') {
-      return <span className="text-amber-400 text-xs">💰 Paid</span>
-    }
-    if (value === 'soon') {
-      return <span className="text-sky-400 text-xs">Coming</span>
+      return <span className="text-amber-400 text-sm">Varies</span>
     }
     return <span className="text-zinc-400 text-xs">{value}</span>
   }
 
   return (
     <section className="py-20 px-4 bg-zinc-900/30">
-      <div className="max-w-7xl mx-auto">
+      <div className="max-w-4xl mx-auto">
         <div className="text-center mb-12">
           <h2 className="text-3xl md:text-4xl font-bold text-white mb-4">
-            How PISAMA Compares
+            Purpose-Built for Agent Failure Detection
           </h2>
           <p className="text-zinc-400 text-lg">
-            The only platform built specifically for multi-agent failure detection
+            General observability tools track LLM calls. PISAMA detects when multi-agent systems fail.
           </p>
         </div>
 
@@ -77,21 +71,18 @@ export function ComparisonTable() {
           <table className="w-full border-collapse">
             <thead>
               <tr className="border-b border-zinc-700">
-                <th className="text-left py-4 px-4 text-zinc-400 font-medium">Feature</th>
+                <th className="text-left py-4 px-4 text-zinc-400 font-medium">Capability</th>
                 <th className="text-center py-4 px-4">
-                  <div className="text-white font-semibold mb-1">PISAMA</div>
-                  <div className="text-sky-400 text-xs">You are here</div>
+                  <div className="text-white font-semibold">PISAMA</div>
                 </th>
-                <th className="text-center py-4 px-4 text-zinc-300 font-medium">LangSmith</th>
-                <th className="text-center py-4 px-4 text-zinc-300 font-medium">Langfuse</th>
-                <th className="text-center py-4 px-4 text-zinc-300 font-medium">AgentOps</th>
+                <th className="text-center py-4 px-4 text-zinc-400 font-medium">General observability</th>
               </tr>
             </thead>
             <tbody>
               {features.map((category, catIndex) => (
                 <Fragment key={`cat-${catIndex}`}>
                   <tr>
-                    <td colSpan={5} className="py-4 px-4">
+                    <td colSpan={3} className="py-4 px-4">
                       <div className="text-white font-semibold text-sm uppercase tracking-wider">
                         {category.category}
                       </div>
@@ -103,10 +94,8 @@ export function ComparisonTable() {
                       className="border-b border-zinc-800 hover:bg-zinc-800/30"
                     >
                       <td className="py-3 px-4 text-zinc-300">{row.name}</td>
-                      <td className="py-3 px-4 bg-sky-500/10">{renderCell(row.pisama)}</td>
-                      <td className="py-3 px-4">{renderCell(row.langsmith)}</td>
-                      <td className="py-3 px-4">{renderCell(row.langfuse)}</td>
-                      <td className="py-3 px-4">{renderCell(row.agentops)}</td>
+                      <td className="py-3 px-4 bg-blue-500/5">{renderCell(row.pisama)}</td>
+                      <td className="py-3 px-4">{renderCell(row.others)}</td>
                     </tr>
                   ))}
                 </Fragment>
@@ -124,10 +113,7 @@ export function ComparisonTable() {
                 {category.rows.map((row, rowIndex) => (
                   <div key={rowIndex} className="flex justify-between items-center">
                     <span className="text-zinc-300 text-sm">{row.name}</span>
-                    <div className="flex gap-2 items-center">
-                      <span className="text-xs text-zinc-500">PISAMA:</span>
-                      {renderCell(row.pisama)}
-                    </div>
+                    {renderCell(row.pisama)}
                   </div>
                 ))}
               </div>
@@ -139,15 +125,15 @@ export function ComparisonTable() {
         <div className="mt-8 flex flex-wrap gap-6 justify-center text-sm text-zinc-400">
           <div className="flex items-center gap-2">
             <Check className="w-4 h-4 text-green-400" />
-            <span>Full Support</span>
+            <span>Supported</span>
           </div>
           <div className="flex items-center gap-2">
-            <span className="text-amber-400">⚠️</span>
-            <span>Partial Support</span>
+            <span className="text-amber-400">Varies</span>
+            <span>Depends on tool</span>
           </div>
           <div className="flex items-center gap-2">
             <X className="w-4 h-4 text-zinc-600" />
-            <span>Not Available</span>
+            <span>Not available</span>
           </div>
         </div>
       </div>
