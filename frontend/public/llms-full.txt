@@ -1,0 +1,760 @@
+# Pisama - Agent Forensics Platform
+
+> Multi-agent failure detection and self-healing platform for AI systems.
+
+Pisama detects 42 failure modes in LLM agent systems, including infinite loops, state corruption, persona drift, hallucination, prompt injection, convergence issues, and coordination breakdowns. It provides AI-powered fix suggestions with automatic rollback and safety-first healing.
+
+## Overview
+
+Pisama is an open-source platform for detecting and fixing failures in multi-agent AI systems. It uses a tiered detection approach (hash-based, state delta, embeddings, LLM judge, human review) to minimize cost while maximizing accuracy. The platform ingests OpenTelemetry traces and provides real-time detection, root cause analysis, and self-healing capabilities.
+
+## Architecture
+
+- **Backend**: FastAPI, SQLAlchemy, PostgreSQL with pgvector, Alembic migrations
+- **Frontend**: Next.js (App Router), React, TailwindCSS, NextAuth (Google OAuth)
+- **SDK**: Python packages (pisama-core, pisama-agent-sdk, pisama-claude-code)
+- **CLI**: Click-based CLI with MCP server support
+- **Infrastructure**: Fly.io (backend), Vercel (frontend), PostgreSQL 16 + pgvector
+
+## Supported Frameworks
+
+- LangGraph
+- CrewAI
+- AutoGen
+- n8n
+- Dify
+- OpenClaw
+- Claude Code
+- Any framework via OpenTelemetry
+
+---
+
+## API Reference
+
+Base URL: https://mao-api.fly.dev/api/v1
+Authentication: Bearer token or API key (X-MAO-API-Key header)
+Interactive Docs: https://mao-api.fly.dev/docs
+
+### Authentication
+
+#### POST /auth/tenants
+Create a new tenant account. Returns tenant ID and API key.
+- Rate limited: 5 requests per hour per IP.
+- Request: `{ "name": "My Organization" }`
+- Response: `{ "id": "<uuid>", "name": "My Organization", "api_key": "mao_...", "created_at": "..." }`
+
+#### POST /auth/token
+Exchange API key for a JWT bearer token.
+- Request: `{ "api_key": "mao_..." }`
+- Response: `{ "access_token": "eyJ...", "token_type": "bearer" }`
+
+#### POST /auth/api-keys
+Create a named API key for programmatic access.
+- Requires: Bearer token
+- Request: `{ "name": "production-key" }`
+- Response: `{ "id": "<uuid>", "name": "production-key", "key": "mao_...", "key_prefix": "mao_abc", "created_at": "..." }`
+
+#### GET /auth/api-keys
+List all API keys for the current tenant.
+
+#### DELETE /auth/api-keys/{key_id}
+Revoke an API key.
+
+#### GET /auth/me
+Get current user information.
+
+### Trace Ingestion
+
+#### POST /traces/ingest
+Ingest agent traces in OpenTelemetry format. Backpressure-aware with automatic load shedding.
+- Status: 202 Accepted (async processing)
+- Request body: `{ "resourceSpans": [...] }` (OTEL format)
+- Automatic detection runs after ingestion.
+
+#### GET /traces
+List traces with pagination and filtering.
+- Query params: `page`, `per_page`, `framework`, `status`, `date_from`, `date_to`
+- Response: `{ "traces": [...], "total": 100, "page": 1, "per_page": 20 }`
+
+#### GET /traces/{trace_id}
+Get trace details including state timeline and detection results.
+
+#### GET /traces/{trace_id}/states
+Get all state snapshots for a trace, ordered by sequence number.
+
+### Framework-Specific Ingestion
+
+#### POST /n8n/webhook
+Receive n8n workflow execution data. Auto-parses n8n node execution format.
+- Request: `{ "executionId": "...", "workflowId": "...", "workflowName": "...", "mode": "manual", "startedAt": "...", "status": "success", "data": {...} }`
+- Response: `{ "success": true, "trace_id": "...", "states_created": 5, "quality_assessment_triggered": false }`
+
+#### POST /n8n/workflows
+Register an n8n workflow for monitoring.
+
+#### GET /n8n/workflows
+List registered n8n workflows.
+
+#### POST /langgraph/webhook
+Receive LangGraph run data with step-by-step state tracking.
+- Request: `{ "run_id": "...", "assistant_id": "...", "thread_id": "...", "graph_id": "...", "started_at": "...", "status": "completed", "steps": [...] }`
+- Response: `{ "success": true, "trace_id": "...", "states_created": 8 }`
+
+#### POST /langgraph/deployments
+Register a LangGraph deployment.
+
+#### GET /langgraph/deployments
+List registered LangGraph deployments.
+
+#### POST /dify/webhook
+Receive Dify workflow execution data.
+- Request: `{ "workflow_run_id": "...", "app_id": "...", "app_type": "workflow", "started_at": "...", "status": "succeeded", "nodes": [...] }`
+- Response: `{ "success": true, "trace_id": "...", "states_created": 6 }`
+
+#### POST /dify/instances
+Register a Dify instance.
+
+#### GET /dify/instances
+List registered Dify instances.
+
+#### POST /openclaw/webhook
+Receive OpenClaw session data including multi-agent events.
+- Request: `{ "session_id": "...", "instance_id": "...", "agent_name": "...", "channel": "whatsapp", "started_at": "...", "events": [...] }`
+- Response: `{ "success": true, "trace_id": "...", "states_created": 12 }`
+
+#### POST /openclaw/instances
+Register an OpenClaw instance.
+
+#### GET /openclaw/instances
+List registered OpenClaw instances.
+
+#### POST /traces/claude-code/ingest
+Ingest Claude Code traces with tool use, reasoning, and cost data.
+- Request: `{ "source": "claude-code", "version": "0.1.0", "uploaded_at": "...", "trace_count": 10, "traces": [...] }`
+- Response: `{ "success": true, "traces_received": 10, "traces_stored": 10, "session_ids": [...] }`
+
+### Conversation Traces
+
+#### POST /conversations/ingest
+Ingest multi-turn conversation traces. Supports MAST-Data, OpenAI messages, Claude conversation, and generic turn-based formats. Format is auto-detected.
+
+#### GET /conversations
+List conversation traces with pagination.
+
+#### GET /conversations/{conversation_id}
+Get conversation detail with turns and analysis.
+
+#### POST /conversations/{conversation_id}/analyze
+Run turn-aware detection analysis on a conversation.
+
+### Detections
+
+#### GET /detections
+List detected failures with filtering and pagination.
+- Query params: `page`, `per_page`, `detection_type`, `validated`, `confidence_min`, `confidence_max`, `trace_id`, `date_from`, `date_to`
+- Response includes: `explanation` (human-readable), `business_impact`, `suggested_action`, `confidence_tier` (HIGH/LIKELY/POSSIBLE/LOW)
+
+#### GET /detections/{detection_id}
+Get detection details with explanation and fix suggestions.
+
+#### PUT /detections/{detection_id}/validate
+Mark a detection as validated or false positive.
+- Request: `{ "false_positive": true, "notes": "This was expected behavior" }`
+
+#### GET /detections/{detection_id}/fixes
+Get AI-generated fix suggestions for a detection.
+
+#### POST /detections/{detection_id}/fixes/{fix_id}/apply
+Apply a fix suggestion (triggers healing workflow).
+
+### Healing (Self-Repair)
+
+#### POST /healing/trigger/{detection_id}
+Trigger self-healing for a detected failure. Supports approval policies.
+- Request: `{ "fix_id": "optional-specific-fix", "approval_required": false }`
+- Response: `{ "healing_id": "...", "detection_id": "...", "status": "pending" }`
+- Status transitions: pending -> in_progress -> applied/staged/failed, staged -> applied/rolled_back/rejected, applied -> rolled_back
+
+#### GET /healing
+List healing records with status tracking.
+
+#### GET /healing/{healing_id}
+Get healing record details.
+
+#### POST /healing/{healing_id}/approve
+Approve a staged healing action.
+
+#### POST /healing/{healing_id}/rollback
+Roll back an applied healing action.
+
+### Agents
+
+#### GET /agents
+List agents derived from trace state data. Returns token usage, latency, step counts, and activity status.
+
+### Analytics
+
+#### GET /analytics/loops
+Get loop detection analytics over time.
+- Query params: `days` (1-365, default 30)
+- Response: time series, loops by method, top affected agents
+
+#### GET /analytics/costs
+Get cost analytics (token usage, dollar costs).
+
+#### GET /analytics/quality
+Get workflow quality analytics with daily scores and issue counts.
+
+### Feedback
+
+#### POST /feedback
+Submit feedback on detection accuracy for threshold tuning.
+- Request: `{ "detection_id": "<uuid>", "is_correct": true, "reason": "...", "severity_rating": 3 }`
+
+#### GET /feedback
+List submitted feedback.
+
+#### GET /feedback/stats
+Get aggregated feedback statistics (precision, recall, F1 by framework/type/method).
+
+#### GET /feedback/recommendations
+Get threshold adjustment recommendations based on feedback data.
+
+### Benchmarks
+
+#### GET /benchmarks
+Get complete benchmark results for all MAST failure modes with methodology transparency.
+
+#### GET /benchmarks/summary
+Get benchmark summary only (lighter endpoint).
+
+#### GET /benchmarks/modes
+Get failure modes, optionally filtered by tier or category.
+- Query params: `tier` (1/2/3), `category` (content/structural/rag)
+
+#### GET /benchmarks/methodology
+Get benchmark methodology information (dataset size, sources, approaches).
+
+### Diagnostics
+
+#### GET /diagnostics/detector-status
+Get detector health and readiness. Returns production/beta/experimental/failing status for each detector with F1 scores.
+
+### Metrics
+
+#### GET /metrics
+Prometheus-format metrics export (text/plain).
+
+#### GET /metrics/json
+JSON metrics export (traces, detections, tokens, cost, detector F1/threshold/ECE).
+
+#### POST /metrics/datadog/flush
+Flush metrics to Datadog.
+
+#### GET /metrics/datadog/dashboard
+Get Datadog dashboard configuration.
+
+### Settings
+
+#### GET /settings/thresholds
+Get current detection thresholds (global and per-framework).
+
+#### PUT /settings/thresholds
+Update detection thresholds.
+- Request: `{ "global_thresholds": { "structural_threshold": 0.85, "semantic_threshold": 0.80 }, "framework_thresholds": { "langgraph": { "loop_detection_window": 8 } } }`
+
+### Workflow Groups
+
+#### POST /workflow-groups
+Create a workflow group with optional auto-detect rules.
+
+#### GET /workflow-groups
+List workflow groups.
+
+#### PUT /workflow-groups/{group_id}
+Update a workflow group.
+
+#### DELETE /workflow-groups/{group_id}
+Delete a workflow group.
+
+#### POST /workflow-groups/{group_id}/assign
+Assign workflows to a group.
+
+### Onboarding
+
+#### GET /onboarding/status
+Check onboarding progress (has traces, has detections).
+
+#### POST /onboarding/demo
+Load demo data for onboarding.
+
+### Health
+
+#### GET /health
+Health check endpoint. Returns database, Redis, and overall status.
+- Response: `{ "status": "healthy", "database": "healthy", "redis": "healthy", "version": "0.1.0" }`
+
+---
+
+## All 42 Detectors
+
+### Core Detectors (ICP Tier - Always Available)
+
+1. **loop** - Loop Detection: Detects infinite loops, repetitive patterns, and cycling behavior in agent execution. Uses exact hash matching, structural comparison, and semantic similarity. Tiered: hash (T1) -> state delta (T2) -> embeddings (T3) -> LLM judge (T4).
+
+2. **persona_drift** - Persona Drift: Detects when an agent deviates from its assigned persona, role, or behavioral constraints. Identifies role confusion and persona blending in multi-agent systems.
+
+3. **hallucination** - Hallucination Detection: Identifies factual inaccuracies, fabricated information, and unsupported claims in agent outputs. Compares outputs against source documents and known facts.
+
+4. **injection** - Injection Detection: Detects prompt injection attempts, jailbreak patterns, and adversarial inputs targeting agent systems.
+
+5. **overflow** - Context Overflow: Detects context window exhaustion, token budget violations, and memory pressure issues in agent conversations.
+
+6. **corruption** - State Corruption: Identifies invalid state transitions, data corruption between agent steps, and state inconsistencies. Compares current state against previous state snapshots.
+
+7. **coordination** - Coordination Analysis: Detects coordination failures between agents including handoff errors, message loss, race conditions, and deadlocks in multi-agent systems.
+
+8. **communication** - Communication Breakdown: Identifies inter-agent communication failures including message format mismatches, missing acknowledgments, and semantic misunderstandings.
+
+9. **context** - Context Neglect: Detects when agents ignore or fail to use provided context, instructions, or relevant information in their responses.
+
+10. **derailment** - Task Derailment: Identifies when agents go off-topic, lose focus on the assigned task, or pursue tangential goals.
+
+11. **specification** - Specification Mismatch: Detects when agent output does not match the specified requirements, format constraints, or expected behavior defined in the task specification.
+
+12. **decomposition** - Task Decomposition: Identifies failures in task breakdown including incorrect subtask ordering, missing dependencies, incomplete decomposition, and granularity issues.
+
+13. **workflow** - Workflow Analysis: Detects structural issues in workflow execution including missing steps, incorrect ordering, parallel execution failures, and dependency violations.
+
+14. **withholding** - Information Withholding: Detects when agents omit critical information from their responses that is available in their internal state or context.
+
+15. **completion** - Completion Misjudgment: Identifies premature task completion (declaring done when incomplete) or delayed completion (continuing when task is finished).
+
+16. **cost** - Cost Tracking: Monitors token usage and cost budgets. Detects budget overruns, cost spikes, and inefficient token usage patterns.
+
+17. **convergence** - Convergence Detection: Detects metric plateau, regression, thrashing, and divergence in iterative agent processes.
+
+### Enterprise Detectors (Feature Flag Required)
+
+18. **grounding** - Grounding Detection: Verifies that agent claims are supported by source documents. Uses word overlap and citation checking.
+
+19. **retrieval_quality** - Retrieval Quality: Evaluates the quality and relevance of retrieved documents in RAG pipelines.
+
+### n8n-Specific Detectors
+
+20. **n8n_schema** - N8N Schema Mismatch: Detects data schema mismatches between connected n8n nodes (type conflicts, missing fields, format errors).
+
+21. **n8n_cycle** - N8N Graph Cycle: Identifies cycles in n8n workflow graphs that could cause infinite execution.
+
+22. **n8n_complexity** - N8N Complexity: Flags overly complex n8n workflows (high node count, deep nesting, excessive branching).
+
+23. **n8n_error** - N8N Error Handling: Detects missing or inadequate error handling in n8n workflows.
+
+24. **n8n_resource** - N8N Resource Limits: Monitors resource consumption and detects workflows approaching memory, CPU, or execution limits.
+
+25. **n8n_timeout** - N8N Timeout Protection: Detects workflows at risk of timeout due to long-running operations or external API dependencies.
+
+### Dify-Specific Detectors
+
+26. **dify_rag_poisoning** - Dify RAG Poisoning: Detects adversarial or corrupted documents injected into Dify knowledge bases.
+
+27. **dify_iteration_escape** - Dify Iteration Escape: Identifies iteration nodes that fail to terminate or exceed configured limits.
+
+28. **dify_model_fallback** - Dify Model Fallback: Detects silent model fallback events where the primary model fails and a weaker model is substituted.
+
+29. **dify_variable_leak** - Dify Variable Leak: Identifies variable leakage between Dify workflow branches or conversation contexts.
+
+30. **dify_classifier_drift** - Dify Classifier Drift: Detects intent classifier degradation over time in Dify chatbot applications.
+
+31. **dify_tool_schema_mismatch** - Dify Tool Schema Mismatch: Identifies mismatches between tool definitions and actual tool call parameters.
+
+### OpenClaw-Specific Detectors
+
+32. **openclaw_session_loop** - OpenClaw Session Loop: Detects session-level loops in OpenClaw conversations across messaging channels.
+
+33. **openclaw_tool_abuse** - OpenClaw Tool Abuse: Identifies excessive or inappropriate tool usage patterns by OpenClaw agents.
+
+34. **openclaw_elevated_risk** - OpenClaw Elevated Risk: Flags sessions running in elevated mode without proper safeguards.
+
+35. **openclaw_spawn_chain** - OpenClaw Spawn Chain: Detects unbounded agent spawning chains in multi-agent OpenClaw configurations.
+
+36. **openclaw_channel_mismatch** - OpenClaw Channel Mismatch: Identifies responses formatted incorrectly for the target messaging channel (WhatsApp, Telegram, Slack, Discord).
+
+37. **openclaw_sandbox_escape** - OpenClaw Sandbox Escape: Detects attempts to escape sandbox restrictions in OpenClaw agent execution.
+
+### LangGraph-Specific Detectors
+
+38. **langgraph_recursion** - LangGraph Recursion: Detects recursive graph execution that exceeds configured depth limits.
+
+39. **langgraph_state_corruption** - LangGraph State Corruption: Identifies state corruption in LangGraph's state management, including reducer conflicts and partial updates.
+
+40. **langgraph_edge_misroute** - LangGraph Edge Misroute: Detects conditional edge routing errors where execution follows unexpected paths.
+
+41. **langgraph_tool_failure** - LangGraph Tool Failure: Identifies tool node failures including timeout, schema validation errors, and retry exhaustion.
+
+42. **langgraph_parallel_sync** - LangGraph Parallel Sync: Detects synchronization issues in parallel graph execution branches.
+
+---
+
+## MAST Failure Taxonomy (Benchmark Results)
+
+### Tier 1: High Detection (>95%)
+| Code | Name | Detection Rate | Description |
+|------|------|---------------|-------------|
+| F1 | Specification Mismatch | 98.0% | Output doesn't match what was requested |
+| F2 | Poor Task Decomposition | 100.0% | Tasks broken down incorrectly |
+| F5 | Flawed Workflow Design | 100.0% | Workflow has structural issues |
+| F6 | Task Derailment | 100.0% | Agent goes off-topic |
+| F7 | Context Neglect | 100.0% | Agent ignores provided context |
+| F8 | Information Withholding | 100.0% | Agent omits critical info |
+| F11 | Coordination Failure | 100.0% | Agents fail to coordinate |
+| F13 | Quality Gate Bypass | 96.0% | Skips quality checks |
+
+### Tier 2: Good Detection (60-95%)
+| Code | Name | Detection Rate | Description |
+|------|------|---------------|-------------|
+| F14 | Completion Misjudgment | 84.0% | Declares done when incomplete |
+| F3 | Resource Misallocation | 66.7% | Compute/time allocated poorly |
+| F4 | Inadequate Tool Provision | 66.7% | Wrong tools used for task |
+| F9 | Role Usurpation | 66.7% | Agent exceeds its role boundaries |
+| F12 | Output Validation Failure | 66.7% | Output not validated properly |
+| F10 | Communication Breakdown | 64.0% | Inter-agent comms fail |
+
+### Tier 3: RAG/Grounding
+| Code | Name | Description |
+|------|------|-------------|
+| F15 | Grounding Failure | Claims not supported by sources |
+| F16 | Retrieval Quality Failure | Retrieves wrong/irrelevant docs |
+
+### Methodology
+- Dataset: 207MB, 20,575 traces
+- Sources: HuggingFace, GitHub, Anthropic, Research Papers
+- Frameworks tested: LangChain, LangGraph, AutoGen, CrewAI, OpenAI, Anthropic
+- Overall detection rate: 82.4% (13.7% improvement from baseline)
+
+---
+
+## SDK Usage
+
+### pisama-core (Python)
+
+The core detection, scoring, and healing engine.
+
+```python
+pip install pisama-core
+```
+
+```python
+from pisama_core import DetectionOrchestrator, ScoringEngine, Trace
+
+# Initialize
+orchestrator = DetectionOrchestrator()
+scoring = ScoringEngine()
+
+# Analyze a trace
+result = await orchestrator.analyze(trace)
+severity = scoring.calculate_severity([result])
+```
+
+#### Key Classes
+
+- `Trace`, `Span`, `Event`, `TraceMetadata` - Trace data models
+- `DetectionOrchestrator` - Runs all registered detectors against a trace
+- `DetectorRegistry` - Registry of available detectors
+- `BaseDetector` - Base class for implementing custom detectors
+- `DetectionResult`, `Evidence`, `FixRecommendation` - Detection output models
+- `ScoringEngine` - Calculates severity scores from detection results
+- `Thresholds`, `SeverityLevel` - Configurable detection thresholds
+- `HealingEngine` - Orchestrates fix application
+- `HealingPlan`, `FixContext`, `FixResult` - Healing data models
+- `BaseFix` - Base class for implementing custom fixes
+- `FixInjectionProtocol` - Protocol for injecting fixes into agent execution
+- `EnforcementEngine`, `EnforcementLevel` - Fix enforcement configuration
+- `AuditLogger`, `AuditEvent` - Audit trail for all detection and healing actions
+- `PisamaConfig`, `DetectionConfig`, `HealingConfig` - Configuration models
+- `PlatformAdapter` - Base adapter for framework integrations
+- `PIIDetector`, `Tokenizer`, `TokenVault` - PII detection and tokenization
+
+### pisama-agent-sdk (Python)
+
+Hooks for Claude Agent SDK with real-time failure prevention.
+
+```python
+pip install pisama-agent-sdk
+```
+
+```python
+from pisama_agent_sdk import pre_tool_use_hook, post_tool_use_hook
+from pisama_agent_sdk import configure_bridge
+
+# Optional: customize configuration
+configure_bridge(
+    warning_threshold=40,
+    block_threshold=60,
+    timeout_ms=80,
+)
+
+# Register hooks with Agent SDK
+agent.hooks.pre_tool_use = pre_tool_use_hook
+agent.hooks.post_tool_use = post_tool_use_hook
+```
+
+#### Advanced Usage
+
+```python
+from pisama_agent_sdk import DetectionBridge, BridgeConfig
+from pisama_agent_sdk.hooks import PreToolUseHook, PostToolUseHook
+
+# Custom configuration
+config = BridgeConfig(
+    warning_threshold=30,
+    block_threshold=50,
+    detection_timeout_ms=60,
+)
+bridge = DetectionBridge(config=config)
+
+# Custom hooks with matchers
+pre_hook = PreToolUseHook(bridge=bridge)
+post_hook = PostToolUseHook(bridge=bridge)
+
+agent.hooks.pre_tool_use = pre_hook
+agent.hooks.post_tool_use = post_hook
+```
+
+#### Tool Matchers
+
+```python
+from pisama_agent_sdk import (
+    ALL_TOOLS,        # Match all tool calls
+    FILE_TOOLS,       # Match file read/write/edit tools
+    SHELL_TOOLS,      # Match bash/shell tools
+    DANGEROUS_COMMANDS,# Match rm, git reset, etc.
+    AGENT_TOOLS,      # Match agent/subagent tools
+    create_matcher,    # Create custom matchers
+)
+```
+
+### pisama-claude-code (Python)
+
+Claude Code integration with trace capture and guardian hooks.
+
+```python
+pip install pisama-claude-code
+```
+
+```python
+from pisama_claude_code import install
+
+# Install hooks into Claude Code
+install()
+```
+
+---
+
+## Integration Examples
+
+### n8n Integration
+
+Add a webhook node at the end of your n8n workflow:
+
+```
+POST https://mao-api.fly.dev/api/v1/n8n/webhook
+Headers:
+  X-MAO-API-Key: your-api-key
+  Content-Type: application/json
+
+Body:
+{
+  "executionId": "{{ $execution.id }}",
+  "workflowId": "{{ $workflow.id }}",
+  "workflowName": "{{ $workflow.name }}",
+  "mode": "{{ $execution.mode }}",
+  "startedAt": "{{ $execution.startedAt }}",
+  "status": "success",
+  "data": {{ JSON.stringify($input.all()) }}
+}
+```
+
+### LangGraph Integration
+
+```python
+import httpx
+from langgraph.graph import StateGraph
+
+PISAMA_API_KEY = "your-api-key"
+PISAMA_URL = "https://mao-api.fly.dev/api/v1/langgraph/webhook"
+
+async def send_to_pisama(run_data: dict):
+    async with httpx.AsyncClient() as client:
+        await client.post(
+            PISAMA_URL,
+            json=run_data,
+            headers={"X-MAO-API-Key": PISAMA_API_KEY},
+        )
+
+# After graph execution
+await send_to_pisama({
+    "run_id": run_id,
+    "assistant_id": assistant_id,
+    "thread_id": thread_id,
+    "graph_id": graph_id,
+    "started_at": started_at,
+    "finished_at": finished_at,
+    "status": "completed",
+    "total_tokens": total_tokens,
+    "total_steps": len(steps),
+    "steps": steps,
+})
+```
+
+### OpenTelemetry Integration (Any Framework)
+
+```python
+from opentelemetry import trace
+from opentelemetry.sdk.trace import TracerProvider
+from opentelemetry.sdk.trace.export import BatchSpanProcessor
+from opentelemetry.exporter.otlp.proto.http.trace_exporter import OTLPSpanExporter
+
+# Configure OTEL to send to Pisama
+exporter = OTLPSpanExporter(
+    endpoint="https://mao-api.fly.dev/api/v1/traces/ingest",
+    headers={"X-MAO-API-Key": "your-api-key"},
+)
+
+provider = TracerProvider()
+provider.add_span_processor(BatchSpanProcessor(exporter))
+trace.set_tracer_provider(provider)
+
+tracer = trace.get_tracer("my-agent")
+
+with tracer.start_as_current_span("agent-step") as span:
+    span.set_attribute("gen_ai.agent_id", "planner")
+    span.set_attribute("gen_ai.token_count", 1500)
+    # ... agent logic
+```
+
+### Dify Integration
+
+Configure a webhook in your Dify app's post-execution hook:
+
+```
+POST https://mao-api.fly.dev/api/v1/dify/webhook
+Headers:
+  X-MAO-API-Key: your-api-key
+
+Body:
+{
+  "workflow_run_id": "run-id",
+  "app_id": "app-id",
+  "app_name": "My Dify App",
+  "app_type": "workflow",
+  "started_at": "2025-01-01T00:00:00Z",
+  "status": "succeeded",
+  "total_tokens": 2500,
+  "nodes": [...]
+}
+```
+
+### OpenClaw Integration
+
+```
+POST https://mao-api.fly.dev/api/v1/openclaw/webhook
+Headers:
+  X-MAO-API-Key: your-api-key
+
+Body:
+{
+  "session_id": "session-id",
+  "instance_id": "instance-id",
+  "agent_name": "support-bot",
+  "channel": "whatsapp",
+  "started_at": "2025-01-01T00:00:00Z",
+  "status": "completed",
+  "message_count": 15,
+  "events": [...]
+}
+```
+
+---
+
+## Detection Configuration
+
+### Confidence Tiers
+- **HIGH** (>=80%): Strong signal, likely a real failure
+- **LIKELY** (60-79%): Probable failure, review recommended
+- **POSSIBLE** (40-59%): Potential issue, may be expected behavior
+- **LOW** (<40%): Weak signal, informational only
+
+### Threshold Customization
+
+```python
+import httpx
+
+# Update detection thresholds
+httpx.put(
+    "https://mao-api.fly.dev/api/v1/settings/thresholds",
+    json={
+        "global_thresholds": {
+            "structural_threshold": 0.85,
+            "semantic_threshold": 0.80,
+            "loop_detection_window": 8,
+            "min_matches_for_loop": 3,
+            "confidence_scaling": 1.0,
+        },
+        "framework_thresholds": {
+            "langgraph": {
+                "loop_detection_window": 10,
+                "semantic_threshold": 0.75,
+            },
+        },
+    },
+    headers={"Authorization": "Bearer <token>"},
+)
+```
+
+### Readiness Tiers
+- **Production**: F1 >= 0.80, Precision >= 0.70, 30+ samples
+- **Beta**: F1 >= 0.65, 15+ samples
+- **Experimental**: F1 >= 0.40, 8+ samples
+
+---
+
+## Healing Workflow
+
+1. Detection triggers fix suggestion generation
+2. Fix generators produce framework-specific remediation code
+3. Approval policy determines if auto-apply or human review
+4. Status transitions: pending -> in_progress -> applied/staged/failed
+5. Applied fixes can be rolled back at any time
+6. Verification orchestrator confirms fix effectiveness
+
+### Available Fix Generators
+- Loop fixes (break loop, add exit conditions)
+- Corruption fixes (state rollback, validation)
+- Persona fixes (re-anchor persona, add constraints)
+- Deadlock fixes (timeout, priority adjustment)
+- Hallucination fixes (add grounding, source checking)
+- Injection fixes (input sanitization, guardrails)
+- Overflow fixes (context pruning, summarization)
+- Derailment fixes (task re-focusing, guardrails)
+- Context neglect fixes (context injection, attention)
+- Communication fixes (message format, protocol)
+- Specification fixes (output validation, constraints)
+- Decomposition fixes (re-planning, dependency ordering)
+- Workflow fixes (step insertion, reordering)
+- Withholding fixes (completeness checking)
+- Completion fixes (progress tracking, criteria)
+- Cost fixes (budget enforcement, optimization)
+
+---
+
+## Links
+
+- Website: https://pisama.ai
+- Documentation: https://docs.pisama.com
+- API Docs: https://mao-api.fly.dev/docs
+- GitHub: https://github.com/tn-pisama/mao-testing-research
+
+## License
+
+MIT
