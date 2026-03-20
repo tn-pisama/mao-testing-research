@@ -59,10 +59,7 @@ export default function QualityHealingDetailPage() {
     try {
       const token = await getToken()
       const api = createApiClient(token, tenantId)
-      await api.approveQualityHealing(healing.id, {
-        approved: true,
-        fix_ids: fixId ? [fixId] : undefined,
-      })
+      await api.approveQualityHealing(healing.id, fixId ? [fixId] : [])
       await loadHealing()
     } catch (err) {
       console.warn('Failed to approve:', err)
