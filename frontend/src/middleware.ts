@@ -44,13 +44,14 @@ function isPublicRoute(pathname: string): boolean {
 }
 
 export async function middleware(req: NextRequest) {
+  const { pathname } = req.nextUrl
+
+  // Public routes always pass through — no auth check needed
+  if (isPublicRoute(pathname)) {
+    return NextResponse.next()
+  }
+
   try {
-    const { pathname } = req.nextUrl
-
-    if (isPublicRoute(pathname)) {
-      return NextResponse.next()
-    }
-
     const token = await getToken({
       req,
       secret: process.env.NEXTAUTH_SECRET
@@ -64,8 +65,12 @@ export async function middleware(req: NextRequest) {
     return NextResponse.next()
   } catch (error) {
     console.error('Middleware auth error:', error)
-    const signInUrl = new URL('/sign-in', req.url)
-    return NextResponse.redirect(signInUrl)
+    // Don't redirect to sign-in if we're already on a non-protected route
+    if (isProtectedRoute(pathname)) {
+      const signInUrl = new URL('/sign-in', req.url)
+      return NextResponse.redirect(signInUrl)
+    }
+    return NextResponse.next()
   }
 }
 
