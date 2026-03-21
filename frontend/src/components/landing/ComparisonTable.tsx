@@ -104,21 +104,37 @@ export function ComparisonTable() {
           </table>
         </div>
 
-        {/* Mobile Cards */}
-        <div className="lg:hidden space-y-4">
-          {features.map((category, catIndex) => (
-            <div key={catIndex} className="bg-zinc-800/50 rounded-xl p-4 border border-zinc-700">
-              <h3 className="text-white font-semibold mb-3">{category.category}</h3>
-              <div className="space-y-2">
-                {category.rows.map((row, rowIndex) => (
-                  <div key={rowIndex} className="flex justify-between items-center">
-                    <span className="text-zinc-300 text-sm">{row.name}</span>
-                    {renderCell(row.pisama)}
-                  </div>
-                ))}
-              </div>
-            </div>
-          ))}
+        {/* Mobile Table */}
+        <div className="lg:hidden overflow-x-auto">
+          <table className="w-full border-collapse text-sm">
+            <thead>
+              <tr className="border-b border-zinc-700">
+                <th className="text-left py-2 px-2 text-zinc-400 font-medium"></th>
+                <th className="text-center py-2 px-2 text-white font-semibold w-16">Pisama</th>
+                <th className="text-center py-2 px-2 text-zinc-400 font-medium w-16">Others</th>
+              </tr>
+            </thead>
+            <tbody>
+              {features.map((category, catIndex) => (
+                <Fragment key={`m-${catIndex}`}>
+                  <tr>
+                    <td colSpan={3} className="pt-3 pb-1 px-2">
+                      <div className="text-white font-semibold text-xs uppercase tracking-wider">
+                        {category.category}
+                      </div>
+                    </td>
+                  </tr>
+                  {category.rows.map((row, rowIndex) => (
+                    <tr key={`m-${catIndex}-${rowIndex}`} className="border-b border-zinc-800/50">
+                      <td className="py-1.5 px-2 text-zinc-300">{row.name}</td>
+                      <td className="py-1.5 px-2">{renderCell(row.pisama)}</td>
+                      <td className="py-1.5 px-2">{renderCell(row.others)}</td>
+                    </tr>
+                  ))}
+                </Fragment>
+              ))}
+            </tbody>
+          </table>
         </div>
 
         {/* Copyright */}
