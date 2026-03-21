@@ -21,7 +21,7 @@ export default function SignInPage() {
 
       <div className="bg-zinc-800 border border-zinc-700 shadow-xl rounded-lg p-8 w-full max-w-md">
         <div className="text-center mb-8">
-          <h1 className="text-2xl font-bold text-white mb-2">Welcome to PISAMA</h1>
+          <h1 className="text-2xl font-bold text-white mb-2">Welcome to Pisama</h1>
           <p className="text-zinc-400">Sign in to access your agent diagnostics</p>
         </div>
 
