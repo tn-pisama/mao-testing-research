@@ -20,13 +20,11 @@ export const metadata: Metadata = {
     siteName: 'Pisama',
     type: 'website',
     locale: 'en_US',
-    images: [{ url: '/og-image.svg', width: 1200, height: 630, alt: 'Pisama - Agent Forensics Platform' }],
   },
   twitter: {
     card: 'summary_large_image',
     title: 'Pisama - Agent Forensics',
     description: 'Detect and fix failures in multi-agent AI systems.',
-    images: ['/og-image.svg'],
   },
   robots: { index: true, follow: true },
   keywords: ['AI agent testing', 'multi-agent failure detection', 'LLM observability', 'agent forensics', 'self-healing AI', 'LangGraph', 'CrewAI', 'AutoGen'],
@@ -47,17 +45,38 @@ export default function RootLayout({
         <script
           type="application/ld+json"
           dangerouslySetInnerHTML={{
-            __html: JSON.stringify({
-              '@context': 'https://schema.org',
-              '@type': 'SoftwareApplication',
-              name: 'Pisama',
-              description: 'Multi-agent failure detection and self-healing platform for AI systems.',
-              applicationCategory: 'DeveloperApplication',
-              operatingSystem: 'Web',
-              url: 'https://pisama.ai',
-              offers: { '@type': 'Offer', price: '0', priceCurrency: 'USD' },
-              author: { '@type': 'Organization', name: 'Pisama', url: 'https://pisama.ai' },
-            }),
+            __html: JSON.stringify([
+              {
+                '@context': 'https://schema.org',
+                '@type': 'SoftwareApplication',
+                name: 'Pisama',
+                description: 'Multi-agent failure detection and self-healing platform for AI systems.',
+                applicationCategory: 'DeveloperApplication',
+                operatingSystem: 'Web',
+                url: 'https://pisama.ai',
+                offers: { '@type': 'Offer', price: '0', priceCurrency: 'USD' },
+                author: { '@type': 'Organization', name: 'Pisama', url: 'https://pisama.ai' },
+              },
+              {
+                '@context': 'https://schema.org',
+                '@type': 'WebSite',
+                name: 'Pisama',
+                url: 'https://pisama.ai',
+                potentialAction: {
+                  '@type': 'SearchAction',
+                  target: 'https://docs.pisama.com/search?q={search_term_string}',
+                  'query-input': 'required name=search_term_string',
+                },
+              },
+              {
+                '@context': 'https://schema.org',
+                '@type': 'Organization',
+                name: 'Pisama',
+                url: 'https://pisama.ai',
+                logo: 'https://pisama.ai/icon.svg',
+                sameAs: ['https://github.com/tn-pisama/mao-testing-research'],
+              },
+            ]),
           }}
         />
         <SessionWrapper>
