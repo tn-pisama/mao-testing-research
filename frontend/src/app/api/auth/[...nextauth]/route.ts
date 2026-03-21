@@ -21,8 +21,28 @@ export const authOptions: NextAuthOptions = {
       return true
     },
     async jwt({ token, account, user }) {
-      // Initial sign in
+      // Initial sign in — exchange Google token for long-lived backend JWT
       if (account && user) {
+        const backendUrl = process.env.NEXT_PUBLIC_API_URL || 'https://mao-api.fly.dev/api/v1'
+
+        try {
+          const res = await fetch(`${backendUrl}/auth/exchange-google-token`, {
+            method: 'POST',
+            headers: { Authorization: `Bearer ${account.id_token}` },
+          })
+          if (res.ok) {
+            const data = await res.json()
+            return {
+              ...token,
+              idToken: data.access_token, // Backend JWT (24h TTL)
+              googleId: account.providerAccountId,
+              tenantId: data.tenant_id,
+            }
+          }
+        } catch {
+          // Backend unavailable — fall back to Google token
+        }
+
         return {
           ...token,
           idToken: account.id_token,

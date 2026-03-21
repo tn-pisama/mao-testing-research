@@ -3,80 +3,64 @@
 import { useSession, signOut as nextAuthSignOut } from 'next-auth/react'
 import { useCallback, useMemo } from 'react'
 
-// Global cache for dev token (shared across all component instances)
-let globalDevToken: string | null = null
-let tokenExpiresAt: number | null = null
+// Global cache for backend token (shared across all component instances)
+let cachedBackendToken: string | null = null
+let backendTokenExpiresAt: number | null = null
+
+const API_BASE = process.env.NEXT_PUBLIC_API_URL || 'https://mao-api.fly.dev/api/v1'
 
 /**
  * Wrapper around NextAuth's useSession hook for compatibility.
- *
- * Provides a consistent API similar to the previous Clerk implementation.
  */
 export function useSafeAuth() {
   const { data: session, status } = useSession()
 
-  // Type assertion for extended session
   const extendedSession = session as (typeof session & { idToken?: string; user?: { id?: string } }) | null
 
-  // Memoize the extracted ID token to prevent unnecessary re-renders
-  // Only changes when the actual token value changes, not when session object reference changes
   const idToken = useMemo(() => {
     return extendedSession?.idToken || null
   }, [extendedSession?.idToken])
 
-  // Memoize getToken to prevent infinite re-renders in dependent hooks
   const getToken = useCallback(async () => {
-    // Development mode: use API key if available
+    // Development mode: use API key
     if (process.env.NODE_ENV === 'development' && process.env.NEXT_PUBLIC_DEV_API_KEY) {
-      // Return cached token if available and not expired
       const now = Date.now()
-      if (globalDevToken && tokenExpiresAt && tokenExpiresAt > now) {
-        return globalDevToken
+      if (cachedBackendToken && backendTokenExpiresAt && backendTokenExpiresAt > now) {
+        return cachedBackendToken
       }
 
-      // Exchange API key for JWT
       try {
-        const response = await fetch('http://localhost:8000/api/v1/auth/token', {
+        const response = await fetch(`${API_BASE}/auth/token`, {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({ api_key: process.env.NEXT_PUBLIC_DEV_API_KEY })
         })
 
-        if (!response.ok) {
-          console.error('Failed to exchange API key for token:', response.status)
-          // If we have a cached token even if expired, use it
-          if (globalDevToken) {
-            console.warn('Using expired token due to rate limit')
-            return globalDevToken
-          }
-          return idToken // Fall back to NextAuth token
+        if (response.ok) {
+          const data = await response.json()
+          cachedBackendToken = data.access_token
+          backendTokenExpiresAt = now + (23 * 60 * 60 * 1000)
+          return data.access_token
         }
-
-        const data = await response.json()
-        globalDevToken = data.access_token
-        // Cache token for 23 hours (tokens expire in 24h)
-        tokenExpiresAt = now + (23 * 60 * 60 * 1000)
-        return data.access_token
       } catch (error) {
         console.error('Error exchanging API key:', error)
-        // If we have a cached token, use it
-        if (globalDevToken) {
-          return globalDevToken
-        }
-        return idToken // Fall back to NextAuth token
       }
+
+      if (cachedBackendToken) return cachedBackendToken
+      return idToken
     }
 
-    // Production: use NextAuth session token
+    // Production: return the Google ID token directly
+    // The backend accepts Google ID tokens via get_current_user_or_tenant
     return idToken
   }, [idToken])
 
-  // Memoize signOut to prevent unnecessary re-renders
   const signOut = useCallback(async () => {
+    cachedBackendToken = null
+    backendTokenExpiresAt = null
     await nextAuthSignOut({ callbackUrl: '/' })
   }, [])
 
-  // In development with dev API key, mark as signed in
   const isDevMode = process.env.NODE_ENV === 'development' && !!process.env.NEXT_PUBLIC_DEV_API_KEY
 
   return {
@@ -86,7 +70,6 @@ export function useSafeAuth() {
     sessionId: session ? 'nextauth-session' : (isDevMode ? 'dev-session' : null),
     getToken,
     signOut,
-    // Legacy compatibility fields (not used with Google OAuth)
     orgId: null,
     orgRole: null,
     orgSlug: null,

@@ -250,6 +250,18 @@ async def get_current_user(
     )
 
 
+@router.post("/exchange-google-token")
+async def exchange_google_token(
+    auth: AuthContext = Depends(get_current_user_or_tenant),
+):
+    """Exchange a Google ID token for a long-lived backend JWT.
+    Called once at login from the NextAuth JWT callback."""
+    if not auth.tenant_id:
+        raise HTTPException(status_code=403, detail="No tenant")
+    token = create_access_token(auth.tenant_id)
+    return {"access_token": token, "tenant_id": auth.tenant_id}
+
+
 @router.get("/tenant-by-email")
 async def get_tenant_by_email(
     email: str,
