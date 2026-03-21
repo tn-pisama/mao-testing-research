@@ -49,6 +49,7 @@ class UserResponse(BaseModel):
     email: str
     name: Optional[str]
     role: str
+    tenant_id: Optional[UUID] = None
     created_at: datetime
 
 

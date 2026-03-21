@@ -223,7 +223,7 @@ async def get_current_user(
     auth: AuthContext = Depends(get_current_user_or_tenant),
     db: AsyncSession = Depends(get_db),
 ):
-    if auth.source != "clerk" or not auth.user_id:
+    if auth.source not in ("clerk", "google") or not auth.user_id:
         raise HTTPException(
             status_code=status.HTTP_403_FORBIDDEN,
             detail="Dashboard login required"
@@ -245,5 +245,6 @@ async def get_current_user(
         email=user.email,
         name=user.name,
         role=user.role,
+        tenant_id=user.tenant_id,
         created_at=user.created_at,
     )
