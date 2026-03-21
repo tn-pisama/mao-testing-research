@@ -248,3 +248,17 @@ async def get_current_user(
         tenant_id=user.tenant_id,
         created_at=user.created_at,
     )
+
+
+@router.get("/tenant-by-email")
+async def get_tenant_by_email(
+    email: str,
+    db: AsyncSession = Depends(get_db),
+):
+    """Server-to-server endpoint for tenant lookup by email.
+    Called by the Next.js /api/user/tenant route."""
+    result = await db.execute(select(User).where(User.email == email))
+    user = result.scalar_one_or_none()
+    if user and user.tenant_id:
+        return {"tenant_id": str(user.tenant_id)}
+    return {"tenant_id": "default"}
