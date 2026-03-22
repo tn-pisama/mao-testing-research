@@ -83,6 +83,18 @@ parser.add_argument(
     "--hard-count", type=int, default=10, metavar="N",
     help="Number of hard samples to generate per saturated detector (default: 10)",
 )
+parser.add_argument(
+    "--correlations", action="store_true",
+    help="Compute and display cross-detector correlation matrix (Phi coefficient)",
+)
+parser.add_argument(
+    "--generate-contrastive", action="store_true",
+    help="Generate contrastive samples from FP/FN error analysis (requires --error-analysis)",
+)
+parser.add_argument(
+    "--alert-webhook", type=str, metavar="URL", default=None,
+    help="Slack webhook URL for regression alerts (fires when a detector crosses a gate threshold)",
+)
 args = parser.parse_args()
 
 logging.basicConfig(
@@ -263,6 +275,54 @@ if db_session:
 if args.error_analysis:
     generate_error_report(report)
 
+# --- Contrastive sample generation (requires error analysis data) ---
+if args.generate_contrastive:
+    sample_preds = report.get("sample_predictions", [])
+    if not sample_preds:
+        print("  WARNING: No sample predictions — run without --no-history first")
+    else:
+        from app.detection_enterprise.golden_data_generator import GoldenDataGenerator
+        from app.detection.validation import DetectionType
+        gen = GoldenDataGenerator()
+        if gen.is_available:
+            # Group FP/FN by detector type
+            from collections import defaultdict
+            fps_by_type = defaultdict(list)
+            fns_by_type = defaultdict(list)
+            for sp in sample_preds:
+                cls = sp.get("classification", "")
+                dt = sp.get("detection_type", "")
+                if cls == "FP":
+                    fps_by_type[dt].append(sp)
+                elif cls == "FN":
+                    fns_by_type[dt].append(sp)
+            # Generate for types with errors
+            all_contrastive = []
+            for dt_name in sorted(set(fps_by_type) | set(fns_by_type)):
+                try:
+                    dt = DetectionType(dt_name)
+                except ValueError:
+                    continue
+                fps = fps_by_type.get(dt_name, [])
+                fns = fns_by_type.get(dt_name, [])
+                if not fps and not fns:
+                    continue
+                print(f"  Generating contrastive samples for {dt_name} ({len(fps)} FP, {len(fns)} FN)...")
+                entries = gen.generate_contrastive(dt, fps, fns, count=5)
+                all_contrastive.extend(entries)
+                print(f"    Generated {len(entries)} contrastive samples")
+            if all_contrastive:
+                from app.detection_enterprise.golden_dataset import create_default_golden_dataset
+                dataset = create_default_golden_dataset()
+                for e in all_contrastive:
+                    dataset.add_entry(e)
+                save_path = Path(__file__).parent.parent.parent / "data" / "golden_dataset_expanded.json"
+                dataset.save(save_path)
+                print(f"  Total contrastive samples: {len(all_contrastive)}")
+                print(f"  Dataset saved to: {save_path}")
+        else:
+            print("  WARNING: Anthropic SDK not available — skipping contrastive generation")
+
 # Pretty-print summary to stdout.
 print("\n" + "=" * 72)
 print("  DETECTION THRESHOLD CALIBRATION REPORT")
@@ -405,6 +465,57 @@ if not args.dry_run:
                 f"{s['experimental']} experimental, {s['failing']} failing, {s['untested']} untested")
     except Exception:
         pass  # Progress logging is non-critical
+
+# --- Cross-detector correlation analysis ---
+if args.correlations:
+    from app.detection_enterprise.calibrate import compute_correlation_matrix
+    corr = compute_correlation_matrix(report)
+    pairs = corr.get("pairs", [])
+    if pairs:
+        print(f"\n{'='*70}")
+        print("CROSS-DETECTOR CORRELATIONS (|phi| > 0.3)")
+        print(f"{'='*70}")
+        for p in pairs[:20]:
+            print(f"  {p['a']:30s} ↔ {p['b']:30s}  phi={p['phi']:+.4f}")
+    else:
+        print("\n  No strong cross-detector correlations found (all |phi| <= 0.3)")
+
+# --- Regression alerting ---
+if args.alert_webhook:
+    from app.detection_enterprise.calibration_history import CalibrationHistory
+    history = CalibrationHistory()
+    recent = history.load_recent(n=2)
+    if len(recent) >= 2:
+        current, previous = recent[0], recent[1]
+        comparison = current.compare(previous)
+        regressions = []
+        for dt, delta in comparison.get("detector_deltas", {}).items():
+            if delta["delta"] < -0.05:
+                regressions.append(delta | {"detector": dt})
+        if regressions:
+            import urllib.request
+            payload = json.dumps({
+                "text": f"⚠️ PISAMA Calibration Regression Alert\n"
+                        + "\n".join(
+                            f"  • {r['detector']}: {r['previous_f1']:.3f} → {r['current_f1']:.3f} (Δ{r['delta']:+.4f})"
+                            for r in regressions
+                        ),
+            }).encode()
+            try:
+                req = urllib.request.Request(
+                    args.alert_webhook,
+                    data=payload,
+                    headers={"Content-Type": "application/json"},
+                    method="POST",
+                )
+                urllib.request.urlopen(req, timeout=10)
+                print(f"\n  Regression alert sent to webhook ({len(regressions)} detectors)")
+            except Exception as e:
+                print(f"\n  WARNING: Failed to send alert: {e}")
+        else:
+            print("\n  No regressions detected — no alert sent")
+    else:
+        print("\n  Not enough history for regression comparison — skipping alert")
 
 print()
 

@@ -715,6 +715,106 @@ class GoldenDataGenerator:
             difficulty=difficulty,
         )
 
+    def generate_contrastive(
+        self,
+        detection_type: DetectionType,
+        false_positives: List[Dict[str, Any]],
+        false_negatives: List[Dict[str, Any]],
+        count: int = 10,
+    ) -> List[GoldenDatasetEntry]:
+        """Generate contrastive samples targeting specific detector weaknesses.
+
+        For each false positive, generates a minimal perturbation that should
+        be a true negative (slightly more clearly benign). For each false
+        negative, generates a perturbation that should be a true positive
+        (slightly more clearly a failure).
+
+        Args:
+            detection_type: The detection type to generate for.
+            false_positives: FP sample dicts from error analysis.
+            false_negatives: FN sample dicts from error analysis.
+            count: Max total entries to generate.
+
+        Returns:
+            List of contrastive entries tagged with source="contrastive".
+        """
+        if not self.is_available:
+            logger.warning("Anthropic SDK not available — skipping contrastive generation")
+            return []
+
+        dt_name = detection_type.value
+        type_info = TYPE_PROMPTS.get(dt_name)
+        if not type_info:
+            logger.warning("No prompt template for %s — skipping contrastive generation", dt_name)
+            return []
+
+        # Build contrastive prompt
+        fp_examples = json.dumps(
+            [{"input_data": fp.get("input_data_summary", ""), "expected": False, "was_predicted": True}
+             for fp in false_positives[:3]],
+            indent=2,
+        )
+        fn_examples = json.dumps(
+            [{"input_data": fn.get("input_data_summary", ""), "expected": True, "was_predicted": False}
+             for fn in false_negatives[:3]],
+            indent=2,
+        )
+
+        prompt = f"""You are generating contrastive test data for a {dt_name} detector.
+
+Detection type: {type_info['description']}
+
+The detector makes two kinds of errors:
+
+FALSE POSITIVES (detector says failure, but it's actually benign):
+{fp_examples}
+
+FALSE NEGATIVES (detector misses actual failures):
+{fn_examples}
+
+Generate {count} NEW examples that are near the decision boundary:
+- For each FP-inspired example: create a clearly benign case that superficially resembles the failure pattern (expected_detected: false)
+- For each FN-inspired example: create a subtle but real failure that the detector should catch (expected_detected: true)
+- Mix roughly 50/50 positive and negative
+
+Each entry must match this JSON schema for input_data: {type_info['schema']}
+
+Respond with a JSON array of objects, each with:
+- "input_data": the test case matching the schema above
+- "expected_detected": boolean
+- "description": one-line description of why this is tricky
+"""
+
+        try:
+            response = self.client.messages.create(
+                model=self.model,
+                max_tokens=4096,
+                temperature=0.8,
+                messages=[{"role": "user", "content": prompt}],
+            )
+            raw_text = response.content[0].text
+            entries_data = self._parse_json_response(raw_text)
+
+            results = []
+            for item in entries_data[:count]:
+                entry_id = f"contrastive_{dt_name}_{uuid.uuid4().hex[:8]}"
+                entry = GoldenDatasetEntry(
+                    id=entry_id,
+                    detection_type=detection_type,
+                    input_data=item.get("input_data", {}),
+                    expected_detected=item.get("expected_detected", False),
+                    description=item.get("description", "contrastive sample"),
+                    source="contrastive",
+                    difficulty="hard",
+                    tags=["contrastive", "auto-generated"],
+                    human_verified=False,
+                )
+                results.append(entry)
+            return results
+        except Exception as e:
+            logger.error("Contrastive generation failed for %s: %s", dt_name, e)
+            return []
+
     # ------------------------------------------------------------------
     # Internal helpers
     # ------------------------------------------------------------------

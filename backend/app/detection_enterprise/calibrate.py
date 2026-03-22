@@ -68,6 +68,7 @@ class CalibrationResult:
     false_positives: int
     false_negatives: int
     ece: float = 0.0
+    calibrated_ece: float = 0.0
     f1_ci_lower: float = 0.0
     f1_ci_upper: float = 0.0
 
@@ -452,6 +453,72 @@ def _stratified_split(
     return splits
 
 
+def _isotonic_calibrate(
+    confidences: List[float],
+    correct: List[bool],
+) -> List[Tuple[float, float]]:
+    """Pool Adjacent Violators Algorithm (PAVA) for isotonic regression.
+
+    Fits a non-decreasing mapping from raw confidence to calibrated probability.
+    Returns a list of (raw_confidence, calibrated_probability) breakpoints
+    sorted by raw_confidence.
+
+    Only useful when len(confidences) >= 20.
+    """
+    if not confidences:
+        return []
+    # Sort by confidence
+    pairs = sorted(zip(confidences, [float(c) for c in correct]))
+    n = len(pairs)
+    # Initialize blocks: each sample is its own block
+    block_sums = [p[1] for p in pairs]  # sum of correct in block
+    block_counts = [1] * n
+    block_confs = [p[0] for p in pairs]  # representative confidence
+
+    # Pool adjacent violators
+    i = 0
+    while i < len(block_sums) - 1:
+        mean_i = block_sums[i] / block_counts[i]
+        mean_j = block_sums[i + 1] / block_counts[i + 1]
+        if mean_i > mean_j:
+            # Merge block i and i+1
+            block_sums[i] += block_sums[i + 1]
+            block_counts[i] += block_counts[i + 1]
+            block_confs[i] = (block_confs[i] + block_confs[i + 1]) / 2
+            del block_sums[i + 1]
+            del block_counts[i + 1]
+            del block_confs[i + 1]
+            # Step back to check previous pair
+            if i > 0:
+                i -= 1
+        else:
+            i += 1
+
+    # Build breakpoint list
+    return [(block_confs[i], block_sums[i] / block_counts[i])
+            for i in range(len(block_sums))]
+
+
+def _apply_isotonic(raw_conf: float, breakpoints: List[Tuple[float, float]]) -> float:
+    """Map a raw confidence through isotonic calibration breakpoints."""
+    if not breakpoints:
+        return raw_conf
+    if raw_conf <= breakpoints[0][0]:
+        return breakpoints[0][1]
+    if raw_conf >= breakpoints[-1][0]:
+        return breakpoints[-1][1]
+    # Linear interpolation between breakpoints
+    for i in range(len(breakpoints) - 1):
+        x0, y0 = breakpoints[i]
+        x1, y1 = breakpoints[i + 1]
+        if x0 <= raw_conf <= x1:
+            if x1 == x0:
+                return y0
+            t = (raw_conf - x0) / (x1 - x0)
+            return y0 + t * (y1 - y0)
+    return breakpoints[-1][1]
+
+
 def _compute_ece(
     predictions: List[Tuple[bool, float]],
     ground_truths: List[bool],
@@ -684,6 +751,24 @@ def calibrate_single(
         full_ece = _compute_ece(predictions, ground_truths, avg_threshold)
         ece = avg_fold_ece  # Use fold-averaged ECE as primary
 
+        # Post-hoc confidence calibration via isotonic regression (PAVA).
+        # Only apply when we have enough samples to avoid overfitting.
+        calibrated_ece = ece
+        if len(entries) >= 20:
+            confs = [c for _, c in predictions]
+            corrects = [
+                (detected and c >= avg_threshold) == gt
+                for (detected, c), gt in zip(predictions, ground_truths)
+            ]
+            breakpoints = _isotonic_calibrate(confs, corrects)
+            if breakpoints:
+                # Re-compute ECE with calibrated confidences
+                cal_preds = [
+                    (det, _apply_isotonic(c, breakpoints))
+                    for det, c in predictions
+                ]
+                calibrated_ece = _compute_ece(cal_preds, ground_truths, avg_threshold)
+
         logger.info(
             "CV calibration for %s: threshold=%.2f  P=%.3f  R=%.3f  F1=%.3f  "
             "ECE=%.4f (fold-avg) / %.4f (full)  (fold thresholds=%s)",
@@ -713,6 +798,7 @@ def calibrate_single(
             false_positives=fold_fp,
             false_negatives=fold_fn,
             ece=ece,
+            calibrated_ece=calibrated_ece,
             f1_ci_lower=ci_lower,
             f1_ci_upper=ci_upper,
         )
@@ -989,6 +1075,84 @@ def calibrate_all(
         },
     }
     return report
+
+
+def compute_correlation_matrix(
+    report: Dict[str, Any],
+) -> Dict[str, Any]:
+    """Compute pairwise Phi coefficient between detector predictions.
+
+    Uses the sample_predictions from a calibration report to find
+    detectors that co-fire on the same samples, indicating potential
+    redundancy.
+
+    Returns a dict with ``pairs`` (sorted by |phi| descending) and
+    ``matrix`` (full detector x detector phi values).
+    """
+    from collections import defaultdict
+    import math
+
+    sample_preds = report.get("sample_predictions", [])
+    if not sample_preds:
+        return {"pairs": [], "matrix": {}}
+
+    # Group predictions by sample entry_id
+    by_sample: Dict[str, Dict[str, bool]] = defaultdict(dict)
+    for sp in sample_preds:
+        entry_id = sp.get("entry_id", sp.get("sample_id", ""))
+        det_type = sp.get("detection_type", "")
+        predicted = sp.get("predicted", False)
+        by_sample[entry_id][det_type] = predicted
+
+    # Get all detector types that appear in predictions
+    all_types = sorted({
+        sp.get("detection_type", "")
+        for sp in sample_preds
+        if sp.get("detection_type")
+    })
+
+    if len(all_types) < 2:
+        return {"pairs": [], "matrix": {}}
+
+    # Compute Phi coefficient for each pair
+    def _phi(type_a: str, type_b: str) -> float:
+        n11 = n10 = n01 = n00 = 0
+        for preds in by_sample.values():
+            a = preds.get(type_a)
+            b = preds.get(type_b)
+            if a is None or b is None:
+                continue
+            if a and b:
+                n11 += 1
+            elif a and not b:
+                n10 += 1
+            elif not a and b:
+                n01 += 1
+            else:
+                n00 += 1
+        denom = math.sqrt((n11 + n10) * (n01 + n00) * (n11 + n01) * (n10 + n00))
+        if denom == 0:
+            return 0.0
+        return (n11 * n00 - n10 * n01) / denom
+
+    matrix: Dict[str, Dict[str, float]] = {}
+    pairs: List[Dict[str, Any]] = []
+
+    for i, a in enumerate(all_types):
+        matrix[a] = {}
+        for j, b in enumerate(all_types):
+            if i == j:
+                matrix[a][b] = 1.0
+            elif j < i:
+                matrix[a][b] = matrix[b][a]
+            else:
+                phi = round(_phi(a, b), 4)
+                matrix[a][b] = phi
+                if abs(phi) > 0.3:
+                    pairs.append({"a": a, "b": b, "phi": phi})
+
+    pairs.sort(key=lambda p: abs(p["phi"]), reverse=True)
+    return {"pairs": pairs, "matrix": matrix}
 
 
 def calibrate_multi_trial(
