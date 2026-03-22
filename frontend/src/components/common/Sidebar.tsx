@@ -55,7 +55,7 @@ const n8nImproveItems: NavItem[] = [
 // Developer sees full navigation
 const developerObserveItems: NavItem[] = [
   { label: 'Dashboard', href: '/dashboard', icon: LayoutDashboard },
-  { label: 'Traces', href: '/traces', icon: Activity },
+  { label: 'Runs', href: '/traces', icon: Activity },
   { label: 'Detections', href: '/detections', icon: AlertTriangle },
 ]
 
