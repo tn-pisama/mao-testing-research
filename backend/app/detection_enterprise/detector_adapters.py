@@ -62,11 +62,9 @@ def _build_detector_runners() -> Dict[DetectionType, Any]:
             )
             output = entry.input_data["output"]
             result = persona_scorer.score_consistency(agent, output)
-            # drift_detected requires recent_outputs (not in golden data),
-            # so use `not consistent` which checks the score threshold.
-            drift = not result.consistent
-            confidence = 1.0 - result.score if drift else result.score
-            return drift, confidence
+            # drift_detected now falls back to score-based detection when
+            # recent_outputs is not available, so it's safe to use directly.
+            return result.drift_detected, result.confidence
 
         runners[DetectionType.PERSONA_DRIFT] = _run_persona
     except Exception as exc:

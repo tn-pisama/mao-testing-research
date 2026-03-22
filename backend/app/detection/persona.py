@@ -123,20 +123,14 @@ class PersonaConsistencyScorer:
         signal_factor = signal_count / 3
 
         if drift_detected:
-            # Drift detected → return LOW score so 1-score gives HIGH drift confidence
-            # v1.1: Scale by how far below threshold — strong drift gets lower score
-            if semantic_sim < 0.3:
-                # Strong drift — high confidence
-                base_confidence = 0.15 + (signal_factor * 0.05)
-            elif semantic_sim < 0.5:
-                # Clear drift — moderate-high confidence
-                base_confidence = 0.25 + (signal_factor * 0.08)
-            else:
-                # Borderline drift — moderate confidence
-                base_confidence = 0.35 + (signal_factor * 0.10)
+            # Drift detected → confidence of drift = 1 - weighted_score
+            # Lower score → more confident it's drift
+            base_confidence = 1.0 - (
+                semantic_sim * 0.6 + lexical_overlap * 0.2 + tone_score * 0.2
+            )
         else:
-            # Consistent → return HIGH score so 1-score gives LOW drift confidence
-            base_confidence = 0.7 + (semantic_sim * 0.15) + (length_factor * 0.05) + (signal_factor * 0.1)
+            # Consistent → confidence of drift is low (= score itself)
+            base_confidence = semantic_sim * 0.6 + lexical_overlap * 0.2 + tone_score * 0.2
 
         calibrated = min(0.99, base_confidence * self.confidence_scaling)
         return round(calibrated, 4)
@@ -238,19 +232,23 @@ class PersonaConsistencyScorer:
         
         drift_detected = False
         drift_magnitude = None
-        
+
         if recent_outputs and len(recent_outputs) >= 3:
             recent_embeddings = self.embedder.encode(recent_outputs)
             avg_recent = np.mean(recent_embeddings, axis=0)
             output_embedding = self.embedder.encode(output)
             drift_magnitude = float(1 - self.embedder.similarity(avg_recent, output_embedding))
-            
+
             adjusted_drift_threshold = drift_threshold
             if role_type == RoleType.CREATIVE:
                 adjusted_drift_threshold *= 1.3
-            
+
             drift_detected = drift_magnitude > adjusted_drift_threshold
             factors["drift_magnitude"] = round(drift_magnitude, 4)
+        else:
+            # Without recent_outputs, fall back to score-based drift detection
+            # so that drift_detected is consistent with the `consistent` flag.
+            drift_detected = weighted_score <= consistency_threshold
         
         confidence = self._calibrate_confidence(
             semantic_sim=semantic_sim,
@@ -283,7 +281,10 @@ class PersonaConsistencyScorer:
         if weighted_score < consistency_threshold:
             issues.append(f"Output deviates from persona (score: {weighted_score:.2f}, threshold: {consistency_threshold:.2f})")
         if drift_detected:
-            issues.append(f"Persona drift detected (magnitude: {drift_magnitude:.2f})")
+            if drift_magnitude is not None:
+                issues.append(f"Persona drift detected (magnitude: {drift_magnitude:.2f})")
+            else:
+                issues.append(f"Persona drift detected (score below threshold: {weighted_score:.2f})")
         
         return PersonaConsistencyResult(
             consistent=weighted_score > consistency_threshold and not drift_detected,
