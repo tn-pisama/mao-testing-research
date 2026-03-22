@@ -13,7 +13,6 @@ engine = create_async_engine(
     pool_recycle=3600,
     pool_pre_ping=True,
     echo=settings.debug,
-    connect_args={"server_settings": {"statement_timeout": "30000"}},  # 30s query timeout
 )
 
 async_session_maker = async_sessionmaker(
@@ -37,5 +36,5 @@ UUID_PATTERN = re.compile(r'^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-
 async def set_tenant_context(session: AsyncSession, tenant_id: str):
     if not tenant_id or not UUID_PATTERN.match(tenant_id):
         raise ValueError(f"Invalid tenant_id format: {tenant_id}")
-    # SET requires literal value; tenant_id is UUID-validated above
-    await session.execute(text("SET app.current_tenant = :tid"), {"tid": tenant_id})
+    # SET doesn't support parameterized queries; tenant_id is UUID-validated above
+    await session.execute(text(f"SET app.current_tenant = '{tenant_id}'"))
