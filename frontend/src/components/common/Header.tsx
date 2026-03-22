@@ -77,13 +77,6 @@ export function Header({ onMenuClick, title, notificationCount = 0 }: HeaderProp
           )}
         </button>
 
-        {/* User Menu */}
-        <button
-          className="flex items-center gap-2 p-2 min-h-[44px] min-w-[44px] justify-center text-zinc-400 hover:text-white hover:bg-zinc-800 rounded-lg"
-          aria-label="User menu"
-        >
-          <User size={18} />
-        </button>
       </div>
 
       <ManageGroupsModal
