@@ -40,3 +40,7 @@ htmlcov/
 n8n-workflows/
 scripts/
 alembic/
+data/
+benchmark/
+ml_model*.pkl
+*.json.bak
