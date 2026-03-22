@@ -2,11 +2,23 @@
 Golden Dataset Test Harness
 ============================
 
+.. deprecated::
+    This module is superseded by ``app.detection_enterprise.calibrate``
+    which covers all 42+ detectors with cross-validation, difficulty
+    breakdown, and cost tracking. Use ``calibrate_all()`` instead.
+
 Test harness for running PISAMA detectors against the golden dataset and
 computing validation metrics (F1, precision, recall, accuracy).
 """
 
 import time
+import warnings
+
+warnings.warn(
+    "golden_test_harness is deprecated — use app.detection_enterprise.calibrate instead",
+    DeprecationWarning,
+    stacklevel=2,
+)
 from dataclasses import dataclass, field
 from typing import Dict, List, Optional, Any, Callable
 from pathlib import Path

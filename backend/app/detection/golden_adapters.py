@@ -2,12 +2,26 @@
 Golden Dataset Adapters
 ========================
 
+.. deprecated::
+    This module is superseded by the detector runners in
+    ``app.detection_enterprise.calibrate._build_detector_runners()``
+    which cover all 42+ detectors. Use ``DETECTOR_RUNNERS`` from
+    ``app.detection_enterprise.calibrate`` instead.
+
 Adapters to convert n8n workflow samples from the golden dataset into
 detector-specific input formats.
 
 Each adapter transforms the generic workflow structure (nodes, parameters)
 into the format expected by individual detectors.
 """
+
+import warnings
+
+warnings.warn(
+    "golden_adapters is deprecated — use app.detection_enterprise.calibrate.DETECTOR_RUNNERS instead",
+    DeprecationWarning,
+    stacklevel=2,
+)
 
 from abc import ABC, abstractmethod
 from dataclasses import dataclass

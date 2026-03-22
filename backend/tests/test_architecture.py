@@ -22,7 +22,7 @@ BACKEND_ROOT = Path(__file__).parent.parent / "app"
 # Files allowed to break layer rules (test harnesses that bridge layers by design)
 ALLOWED_EXCEPTIONS = {
     "detection": {
-        "golden_test_harness.py",       # Test harness bridges detection ↔ detection_enterprise
+        "golden_test_harness.py",       # Deprecated — bridges detection ↔ detection_enterprise
         "golden_test_harness_otel.py",  # OTEL test harness bridges detection ↔ detection_enterprise
     },
 }
