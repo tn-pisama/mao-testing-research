@@ -57,28 +57,17 @@ const developerObserveItems: NavItem[] = [
   { label: 'Dashboard', href: '/dashboard', icon: LayoutDashboard },
   { label: 'Traces', href: '/traces', icon: Activity },
   { label: 'Detections', href: '/detections', icon: AlertTriangle },
-  { label: 'Detector Status', href: '/detector-status', icon: Shield },
 ]
 
 const developerImproveItems: NavItem[] = [
   { label: 'Quality', href: '/quality', icon: Star },
-  { label: 'Custom Scorers', href: '/evals/scorers', icon: Sparkles },
-  { label: 'Conversations', href: '/conversation-evaluations', icon: MessageSquare },
-  { label: 'Memory', href: '/memory', icon: Brain },
   { label: 'Healing', href: '/healing', icon: Sparkles },
   { label: 'Replay', href: '/replay', icon: RotateCcw },
-  { label: 'Benchmarks', href: '/benchmarks', icon: BarChart3, advancedOnly: true },
 ]
 
 const developerConfigureItems: NavItem[] = [
   { label: 'Integrations', href: '/integrations', icon: Box },
-  { label: 'Agents', href: '/agents', icon: Users },
-  { label: 'n8n Workflows', href: '/n8n', icon: GitBranch },
-  { label: 'Dify Apps', href: '/dify', icon: Workflow },
-  { label: 'OpenClaw', href: '/openclaw', icon: Bot },
-  { label: 'LangGraph', href: '/langgraph', icon: Network },
-  { label: 'Tools', href: '/tools', icon: Zap },
-  { label: 'Developer API', href: '/tools/developer-api', icon: Terminal },
+  { label: 'API Keys', href: '/settings/api-keys', icon: Code2 },
 ]
 
 const n8nSettingsItems: NavItem[] = [
@@ -87,9 +76,6 @@ const n8nSettingsItems: NavItem[] = [
 ]
 
 const developerSettingsItems: NavItem[] = [
-  { label: 'Account', href: '/account', icon: User },
-  { label: 'API Keys', href: '/settings/api-keys', icon: Code2 },
-  { label: 'Integrations', href: '/settings/integrations', icon: Box },
   { label: 'Settings', href: '/settings', icon: Settings },
 ]
 
