@@ -8,7 +8,7 @@ import hashlib
 import json
 import logging
 import sys
-from dataclasses import dataclass, asdict
+from dataclasses import dataclass, asdict, field
 from pathlib import Path
 from typing import Dict, List, Any, Optional, Tuple
 from datetime import datetime, timezone
@@ -224,12 +224,9 @@ def _build_detector_runners() -> Dict[DetectionType, Any]:
             )
             output = entry.input_data["output"]
             result = persona_scorer.score_consistency(agent, output)
-            # Persona scorer returns "consistent" flag; drift is the opposite.
-            drift_detected = not result.consistent
-            # Use 1 - score as confidence of drift (lower consistency -> higher
-            # confidence of drift).
-            confidence = 1.0 - result.score if drift_detected else result.score
-            return drift_detected, confidence
+            # PersonaConsistencyResult already provides drift_detected and
+            # confidence — no manual inversion needed.
+            return result.drift_detected, result.confidence
 
         runners[DetectionType.PERSONA_DRIFT] = _run_persona
     except Exception as exc:
@@ -387,68 +384,9 @@ def _build_detector_runners() -> Dict[DetectionType, Any]:
         def _run_completion(entry: GoldenDatasetEntry) -> Tuple[bool, float]:
             task = entry.input_data.get("task", "")
             agent_output = entry.input_data.get("agent_output", "")
-
-            # Convert subtask names to dict format expected by the detector.
-            # Golden data stores subtasks as plain strings (names); the detector
-            # expects List[Dict] with 'name' and 'status' keys.
-            # v1.3: Infer subtask status from agent_output instead of
-            # hardcoding "pending" (which caused 100% FP rate on negatives).
-            # v1.4: Split compound names on _ and -, lower len threshold to >=3,
-            # add minimal stemming so "validation" matches "validated" etc.
-            import re as _re
-
-            _STEM_SUFFIXES = ("tion", "ing", "ment", "ness", "ity", "ed", "er",
-                              "es", "ly", "al", "ous", "ive", "ful", "ize", "ise")
-
-            def _infer_subtask_stem(word: str) -> str:
-                """Minimal suffix strip for subtask inference matching."""
-                # Strip plural 's' first so "notifications" → "notification" → "notifica"
-                if word.endswith("s") and len(word) >= 4:
-                    word = word[:-1]
-                for sfx in _STEM_SUFFIXES:
-                    if word.endswith(sfx) and len(word) - len(sfx) >= 3:
-                        return word[:-len(sfx)]
-                return word
-
-            raw_subtasks = entry.input_data.get("subtasks", None)
-            subtasks = None
-            if raw_subtasks:
-                output_lower = agent_output.lower()
-                # Pre-stem output words for faster matching
-                output_words = set(_re.findall(r'[a-z]{3,}', output_lower))
-                output_stems = {_infer_subtask_stem(w) for w in output_words}
-                subtasks = []
-                for s in raw_subtasks:
-                    if isinstance(s, dict):
-                        subtasks.append(s)
-                        continue
-                    # Split compound names (underscores, hyphens, camelCase)
-                    name_lower = s.lower()
-                    parts = _re.split(r'[_\s\-]+', name_lower)
-                    name_words = {w for w in parts if len(w) >= 3}
-                    # Match via substring OR stem overlap
-                    overlap = 0
-                    for w in name_words:
-                        if w in output_lower:
-                            overlap += 1
-                        elif _infer_subtask_stem(w) in output_stems:
-                            overlap += 1
-                    ratio = overlap / max(len(name_words), 1)
-                    # v1.4: If words match but appear near negation
-                    # ("not yet", "not configurable"), keep as pending
-                    status = "completed" if ratio >= 0.5 else "pending"
-                    if status == "completed" and ratio > 0:
-                        # Check if subtask words appear near negation
-                        for w in name_words:
-                            pos = output_lower.find(w)
-                            if pos >= 0:
-                                ctx_start = max(0, pos - 20)
-                                ctx = output_lower[ctx_start:pos]
-                                if _re.search(r'\bnot\s+(?:yet|currently)?\b', ctx):
-                                    status = "pending"
-                                    break
-                    subtasks.append({"name": s, "status": status})
-
+            # The detector now handles string subtask names natively via
+            # infer_subtask_status() — no adapter-level conversion needed.
+            subtasks = entry.input_data.get("subtasks", None)
             success_criteria = entry.input_data.get("success_criteria", None)
 
             result = completion_detector.detect(
@@ -963,17 +901,30 @@ Respond ONLY with a JSON object:
 Where score=1.0 means clear failure, score=0.0 means clearly no failure, score=0.5 means ambiguous."""
 
 
-# Module-level LLM cost tracking (populated by _apply_tiered_runners, read by calibrate_all)
-_tiered_escalation_counts: Dict[str, int] = {}
-_tiered_llm_cost: Dict[str, float] = {}
-_tiered_llm_tokens: Dict[str, int] = {}
+# ---------------------------------------------------------------------------
+# Calibration context — holds mutable state for a single calibration run.
+# Replaces former module-level globals for thread safety.
+# ---------------------------------------------------------------------------
 
-# Multi-trial seed — incremented per trial for variance measurement.
-# When >0, appended to LLM cache keys so each trial gets fresh LLM calls.
-_TRIAL_SEED: int = 0
+@dataclass
+class CalibrationContext:
+    """Mutable state for a single calibration run (thread-safe replacement for module globals)."""
+    escalation_counts: Dict[str, int] = field(default_factory=dict)
+    llm_cost: Dict[str, float] = field(default_factory=dict)
+    llm_tokens: Dict[str, int] = field(default_factory=dict)
+    trial_seed: int = 0
+
+    def reset_cost_trackers(self) -> None:
+        self.escalation_counts.clear()
+        self.llm_cost.clear()
+        self.llm_tokens.clear()
 
 
-def _apply_tiered_runners() -> None:
+# Default context (used when no explicit context is provided)
+_default_ctx = CalibrationContext()
+
+
+def _apply_tiered_runners(ctx: Optional[CalibrationContext] = None) -> None:
     """Wrap existing runners with LLM judge escalation for gray-zone cases.
 
     This preserves the original runner's structured data handling and only
@@ -981,6 +932,8 @@ def _apply_tiered_runners() -> None:
     Unlike the previous approach, this doesn't replace the rule-based detector
     with a text-based adapter — it wraps the existing runner.
     """
+    if ctx is None:
+        ctx = _default_ctx
     import json as _json
 
     try:
@@ -1058,10 +1011,8 @@ def _apply_tiered_runners() -> None:
 
     # Cache LLM results by (entry_key, det_type) to avoid duplicate calls across CV folds
     _llm_cache: Dict[str, Tuple[bool, float]] = {}
-    # Reset module-level cost trackers
-    _tiered_escalation_counts.clear()
-    _tiered_llm_cost.clear()
-    _tiered_llm_tokens.clear()
+    # Reset cost trackers on context
+    ctx.reset_cost_trackers()
 
     for det_type, (gz_lo, gz_hi) in gray_zones.items():
         if det_type not in original_runners:
@@ -1069,9 +1020,9 @@ def _apply_tiered_runners() -> None:
 
         original_runner = original_runners[det_type]
         det_name = det_type.value
-        _tiered_escalation_counts[det_name] = 0
+        ctx.escalation_counts[det_name] = 0
 
-        def _make_wrapper(orig_fn, dt_name, lo, hi):
+        def _make_wrapper(orig_fn, dt_name, lo, hi, _ctx=ctx):
             def _wrapped(entry: GoldenDatasetEntry) -> Tuple[bool, float]:
                 detected, confidence = orig_fn(entry)
 
@@ -1080,7 +1031,7 @@ def _apply_tiered_runners() -> None:
                 if detected:
                     # Rule says failure — escalate gray-zone cases to LLM.
                     if lo <= confidence <= hi:
-                        cache_key = f"{entry.id}:{dt_name}:boost:{_TRIAL_SEED}"
+                        cache_key = f"{entry.id}:{dt_name}:boost:{_ctx.trial_seed}"
                         if cache_key in _llm_cache:
                             return _llm_cache[cache_key]
                         try:
@@ -1088,9 +1039,9 @@ def _apply_tiered_runners() -> None:
                             result = judge.judge(
                                 eval_type=EvalType.SAFETY, output="", custom_prompt=prompt,
                             )
-                            _tiered_escalation_counts[dt_name] = _tiered_escalation_counts.get(dt_name, 0) + 1
-                            _tiered_llm_cost[dt_name] = _tiered_llm_cost.get(dt_name, 0.0) + getattr(result, "cost_usd", 0.0)
-                            _tiered_llm_tokens[dt_name] = _tiered_llm_tokens.get(dt_name, 0) + getattr(result, "tokens_used", 0)
+                            _ctx.escalation_counts[dt_name] = _ctx.escalation_counts.get(dt_name, 0) + 1
+                            _ctx.llm_cost[dt_name] = _ctx.llm_cost.get(dt_name, 0.0) + getattr(result, "cost_usd", 0.0)
+                            _ctx.llm_tokens[dt_name] = _ctx.llm_tokens.get(dt_name, 0) + getattr(result, "tokens_used", 0)
                             if "Error" not in result.reasoning and "Could not parse" not in result.reasoning:
                                 if result.score > 0.5:
                                     # LLM agrees → boost confidence
@@ -1113,7 +1064,7 @@ def _apply_tiered_runners() -> None:
                 # Rule says no failure. Check if LLM finds something the rule missed.
                 # Only escalate if there's SOME signal (confidence not zero).
                 if confidence > 0.05:
-                    cache_key = f"{entry.id}:{dt_name}:upgrade:{_TRIAL_SEED}"
+                    cache_key = f"{entry.id}:{dt_name}:upgrade:{_ctx.trial_seed}"
                     if cache_key in _llm_cache:
                         return _llm_cache[cache_key]
                     try:
@@ -1121,9 +1072,9 @@ def _apply_tiered_runners() -> None:
                         result = judge.judge(
                             eval_type=EvalType.SAFETY, output="", custom_prompt=prompt,
                         )
-                        _tiered_escalation_counts[dt_name] = _tiered_escalation_counts.get(dt_name, 0) + 1
-                        _tiered_llm_cost[dt_name] = _tiered_llm_cost.get(dt_name, 0.0) + getattr(result, "cost_usd", 0.0)
-                        _tiered_llm_tokens[dt_name] = _tiered_llm_tokens.get(dt_name, 0) + getattr(result, "tokens_used", 0)
+                        _ctx.escalation_counts[dt_name] = _ctx.escalation_counts.get(dt_name, 0) + 1
+                        _ctx.llm_cost[dt_name] = _ctx.llm_cost.get(dt_name, 0.0) + getattr(result, "cost_usd", 0.0)
+                        _ctx.llm_tokens[dt_name] = _ctx.llm_tokens.get(dt_name, 0) + getattr(result, "tokens_used", 0)
                         if "Error" not in result.reasoning and "Could not parse" not in result.reasoning:
                             if result.score > 0.6:
                                 # LLM found a failure the rule missed
@@ -1564,6 +1515,7 @@ def calibrate_all(
     phoenix_tracer: Optional[Any] = None,
     splits: Optional[List[str]] = None,
     db_session=None,
+    ctx: Optional[CalibrationContext] = None,
 ) -> Dict[str, Any]:
     """Run calibration across all detector types using the golden dataset.
 
@@ -1573,6 +1525,8 @@ def calibrate_all(
         splits: If provided, only use entries from these splits (e.g.
             ``["train", "val"]``).  When ``None``, uses all entries
             (backward-compatible).
+        ctx: Optional CalibrationContext for thread-safe cost tracking.
+            When ``None``, uses the module-level default context.
 
     Returns:
         A dict with the structure::
@@ -1598,6 +1552,8 @@ def calibrate_all(
                 },
             }
     """
+    if ctx is None:
+        ctx = _default_ctx
     dataset = _get_golden_dataset(db_session)
     results: Dict[str, Any] = {}
     skipped: List[str] = []
@@ -1699,9 +1655,9 @@ def calibrate_all(
             result_dict["latency_stats"] = getattr(cal, "latency_stats", {})
             dt_name = cal.detection_type
             result_dict["llm_cost"] = {
-                "escalations": _tiered_escalation_counts.get(dt_name, 0),
-                "cost_usd": round(_tiered_llm_cost.get(dt_name, 0.0), 6),
-                "tokens": _tiered_llm_tokens.get(dt_name, 0),
+                "escalations": ctx.escalation_counts.get(dt_name, 0),
+                "cost_usd": round(ctx.llm_cost.get(dt_name, 0.0), 6),
+                "tokens": ctx.llm_tokens.get(dt_name, 0),
             }
             results[cal.detection_type] = result_dict
             all_sample_predictions.extend(
@@ -1732,9 +1688,16 @@ def calibrate_all(
             pass
 
     # Compute LLM cost totals across all detectors
-    total_llm_cost = sum(_tiered_llm_cost.values())
-    total_llm_tokens = sum(_tiered_llm_tokens.values())
-    total_escalations = sum(_tiered_escalation_counts.values())
+    total_llm_cost = sum(ctx.llm_cost.values())
+    total_llm_tokens = sum(ctx.llm_tokens.values())
+    total_escalations = sum(ctx.escalation_counts.values())
+
+    # Include dataset content hash for reproducibility
+    dataset_content_hash = None
+    try:
+        dataset_content_hash = dataset.compute_content_hash()
+    except Exception:
+        pass
 
     report = {
         "calibrated_at": datetime.now(timezone.utc).isoformat(),
@@ -1743,6 +1706,7 @@ def calibrate_all(
         "splits_used": splits,
         "results": results,
         "sample_predictions": [asdict(sp) for sp in all_sample_predictions],
+        "dataset_content_hash": dataset_content_hash,
         "llm_cost_summary": {
             "total_cost_usd": round(total_llm_cost, 4),
             "total_tokens": total_llm_tokens,
@@ -1769,19 +1733,16 @@ def calibrate_multi_trial(
     Returns:
         Dict with per-detector variance stats and raw trial data.
     """
-    global _TRIAL_SEED
     trial_results = []
+    ctx = CalibrationContext()
 
     for trial in range(n_trials):
-        _TRIAL_SEED = trial + 1
-        # Reset cost trackers per trial
-        _tiered_escalation_counts.clear()
-        _tiered_llm_cost.clear()
-        _tiered_llm_tokens.clear()
-        result = calibrate_all(**kwargs)
+        ctx.trial_seed = trial + 1
+        ctx.reset_cost_trackers()
+        result = calibrate_all(ctx=ctx, **kwargs)
         trial_results.append(result)
 
-    _TRIAL_SEED = 0  # Reset
+    ctx.trial_seed = 0  # Reset
 
     # Aggregate per-detector variance
     variance_report: Dict[str, Any] = {}
@@ -2023,6 +1984,7 @@ def generate_capability_registry(
                 easy_metrics.get("f1", 0) >= 0.95
                 and hard_metrics.get("n", 0) < 5
                 and f1 >= 0.95
+                and sample_count >= 20  # avoid false saturation on small datasets
             )
             eval_category = (
                 "saturated" if is_saturated else

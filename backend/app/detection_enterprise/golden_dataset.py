@@ -123,6 +123,71 @@ class GoldenDataset:
                 else:
                     entry.split = "test"
     
+    def validate_splits(self) -> List[str]:
+        """Check for content-identical entries across different splits.
+
+        Returns a list of warning strings for each duplicate pair found.
+        An empty list means no contamination detected.
+        """
+        from collections import defaultdict
+        # Group entries by content hash
+        content_hashes: Dict[str, List[GoldenDatasetEntry]] = defaultdict(list)
+        for entry in self.entries.values():
+            h = hashlib.sha256(
+                json.dumps(entry.input_data, sort_keys=True).encode()
+            ).hexdigest()[:16]
+            content_hashes[h].append(entry)
+
+        warnings_list: List[str] = []
+        for h, entries in content_hashes.items():
+            if len(entries) < 2:
+                continue
+            splits_seen = {e.split for e in entries}
+            if len(splits_seen) > 1:
+                ids = [e.id for e in entries]
+                warnings_list.append(
+                    f"Content-identical entries across splits {splits_seen}: {ids}"
+                )
+        return warnings_list
+
+    def compute_content_hash(self) -> str:
+        """Compute a SHA-256 hash of all entry content for versioning.
+
+        Hashes sorted (id, detection_type, expected_detected, input_data_hash)
+        tuples so the hash changes when any entry content changes, even if
+        counts stay the same.
+        """
+        items = []
+        for entry in sorted(self.entries.values(), key=lambda e: e.id):
+            input_hash = hashlib.sha256(
+                json.dumps(entry.input_data, sort_keys=True).encode()
+            ).hexdigest()[:16]
+            items.append(f"{entry.id}:{entry.detection_type.value}:{entry.expected_detected}:{input_hash}")
+        combined = "\n".join(items)
+        return hashlib.sha256(combined.encode()).hexdigest()[:32]
+
+    def generate_manifest(self) -> Dict[str, Any]:
+        """Generate a dataset manifest for reproducibility tracking.
+
+        Returns a dict with version info, entry counts, content hash,
+        and split distribution.
+        """
+        by_type: Dict[str, int] = {}
+        by_split: Dict[str, int] = {}
+        for entry in self.entries.values():
+            dt = entry.detection_type.value
+            by_type[dt] = by_type.get(dt, 0) + 1
+            by_split[entry.split] = by_split.get(entry.split, 0) + 1
+
+        return {
+            "version": "1.0",
+            "total_entries": len(self.entries),
+            "content_hash": self.compute_content_hash(),
+            "entries_by_type": dict(sorted(by_type.items())),
+            "entries_by_split": dict(sorted(by_split.items())),
+            "generated_at": datetime.now(timezone.utc).isoformat(),
+        }
+
     def save(self, path: Optional[Path] = None) -> None:
         save_path = path or self.dataset_path
         if not save_path:

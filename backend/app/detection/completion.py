@@ -685,11 +685,74 @@ class CompletionMisjudgmentDetector:
 
         return issues
 
+    # -----------------------------------------------------------------
+    # Subtask name → status inference
+    # -----------------------------------------------------------------
+    _STEM_SUFFIXES = (
+        "tion", "ing", "ment", "ness", "ity", "ed", "er",
+        "es", "ly", "al", "ous", "ive", "ful", "ize", "ise",
+    )
+
+    @staticmethod
+    def _stem_word(word: str) -> str:
+        """Minimal suffix strip for subtask inference matching."""
+        if word.endswith("s") and len(word) >= 4:
+            word = word[:-1]
+        for sfx in CompletionMisjudgmentDetector._STEM_SUFFIXES:
+            if word.endswith(sfx) and len(word) - len(sfx) >= 3:
+                return word[:-len(sfx)]
+        return word
+
+    @staticmethod
+    def infer_subtask_status(
+        subtask_names: List[str],
+        agent_output: str,
+    ) -> List[Dict[str, Any]]:
+        """Convert string subtask names to dicts with inferred status.
+
+        Infers whether each subtask was completed by checking the agent
+        output for matching words (via substring and stem overlap), with
+        negation-context detection to avoid false completions.
+
+        Args:
+            subtask_names: Plain string subtask names.
+            agent_output: The agent's response to check against.
+
+        Returns:
+            List of ``{"name": ..., "status": "completed"|"pending"}`` dicts.
+        """
+        output_lower = agent_output.lower()
+        output_words = set(re.findall(r'[a-z]{3,}', output_lower))
+        stem = CompletionMisjudgmentDetector._stem_word
+        output_stems = {stem(w) for w in output_words}
+
+        result: List[Dict[str, Any]] = []
+        for name in subtask_names:
+            parts = re.split(r'[_\s\-]+', name.lower())
+            name_words = {w for w in parts if len(w) >= 3}
+            overlap = sum(
+                1 for w in name_words
+                if w in output_lower or stem(w) in output_stems
+            )
+            ratio = overlap / max(len(name_words), 1)
+            status = "completed" if ratio >= 0.5 else "pending"
+            # Check for negation near matched words
+            if status == "completed" and overlap > 0:
+                for w in name_words:
+                    pos = output_lower.find(w)
+                    if pos >= 0:
+                        ctx = output_lower[max(0, pos - 20):pos]
+                        if re.search(r'\bnot\s+(?:yet|currently)?\b', ctx):
+                            status = "pending"
+                            break
+            result.append({"name": name, "status": status})
+        return result
+
     def detect(
         self,
         task: str,
         agent_output: str,
-        subtasks: Optional[List[Dict[str, Any]]] = None,
+        subtasks: Optional[List[Any]] = None,
         success_criteria: Optional[List[str]] = None,
         expected_outputs: Optional[List[str]] = None,
         context: Optional[str] = None,
@@ -700,7 +763,8 @@ class CompletionMisjudgmentDetector:
         Args:
             task: The task the agent was asked to perform
             agent_output: The agent's response/output
-            subtasks: List of subtasks with completion status
+            subtasks: List of subtasks — either dicts with 'name'/'status'
+                keys, or plain strings (auto-inferred via agent_output)
             success_criteria: List of success criteria to check
             expected_outputs: List of expected output elements
             context: Additional context
@@ -708,6 +772,13 @@ class CompletionMisjudgmentDetector:
         Returns:
             CompletionResult with detection outcome
         """
+        # Auto-convert string subtask names to dicts
+        if subtasks:
+            string_names = [s for s in subtasks if isinstance(s, str)]
+            if string_names:
+                dict_items = [s for s in subtasks if isinstance(s, dict)]
+                inferred = self.infer_subtask_status(string_names, agent_output)
+                subtasks = dict_items + inferred
         issues = []
 
         # Check if agent claims completion (explicit or implicit)

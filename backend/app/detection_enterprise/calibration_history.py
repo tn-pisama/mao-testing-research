@@ -107,6 +107,7 @@ def create_experiment_from_report(report: Dict[str, Any]) -> CalibrationExperime
             "python_version": f"{sys.version_info.major}.{sys.version_info.minor}.{sys.version_info.micro}",
             "skipped": report.get("skipped", []),
             "llm_cost_summary": report.get("llm_cost_summary", {}),
+            "dataset_content_hash": report.get("dataset_content_hash"),
         },
     )
 

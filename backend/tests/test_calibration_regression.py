@@ -6,12 +6,15 @@ eval separation per "Demystifying Evals for AI Agents" recommendations.
 Run with: pytest tests/test_calibration_regression.py -m slow -v
 """
 
+from pathlib import Path
+
 import pytest
 
 from app.detection_enterprise.calibrate import (
     calibrate_all,
     generate_capability_registry,
 )
+from app.detection_enterprise.golden_dataset import create_default_golden_dataset
 
 
 # -----------------------------------------------------------------------
@@ -296,3 +299,92 @@ def test_capability_registry_has_eval_categories():
         assert entry["eval_category"] in valid_categories, (
             f"{name}: invalid eval_category '{entry['eval_category']}'"
         )
+
+
+# -----------------------------------------------------------------------
+# ECE (Expected Calibration Error) quality gate
+# -----------------------------------------------------------------------
+MAX_AVERAGE_ECE = 0.30   # System-wide average ECE ceiling
+ECE_WARNING_THRESHOLD = 0.35  # Per-detector warning level
+
+
+@pytest.mark.slow
+def test_average_ece_below_threshold():
+    """Average ECE across all detectors must stay below ceiling.
+
+    Poorly calibrated confidence scores mislead downstream consumers.
+    """
+    report = calibrate_all()
+    results = report["results"]
+
+    ece_values = [m.get("ece", 0.0) for m in results.values()]
+    assert ece_values, "No ECE values found in calibration results"
+
+    avg_ece = sum(ece_values) / len(ece_values)
+
+    # Per-detector warnings (informational, not gated)
+    high_ece = {
+        name: m.get("ece", 0.0)
+        for name, m in results.items()
+        if m.get("ece", 0.0) > ECE_WARNING_THRESHOLD
+    }
+    if high_ece:
+        import warnings
+        warnings.warn(
+            f"Detectors with high ECE (>{ECE_WARNING_THRESHOLD}): "
+            + ", ".join(f"{n}={e:.4f}" for n, e in high_ece.items()),
+            stacklevel=1,
+        )
+
+    assert avg_ece <= MAX_AVERAGE_ECE, (
+        f"Average ECE ({avg_ece:.4f}) exceeds ceiling ({MAX_AVERAGE_ECE})"
+    )
+
+
+# -----------------------------------------------------------------------
+# Flaky detector detection (multi-trial variance)
+# -----------------------------------------------------------------------
+MAX_F1_STD = 0.10  # Max acceptable F1 standard deviation across trials
+VARIANCE_DATA_PATH = Path(__file__).parent.parent / "data" / "multi_trial_variance.json"
+
+
+@pytest.mark.slow
+def test_no_flaky_detectors():
+    """No detector should have high F1 variance across multi-trial runs.
+
+    Reads cached variance data from the last --trials run.
+    Skips if no variance data is available.
+    """
+    if not VARIANCE_DATA_PATH.exists():
+        pytest.skip("No multi-trial variance data available (run calibrate --trials N first)")
+
+    import json
+    variance_data = json.loads(VARIANCE_DATA_PATH.read_text())
+    variance = variance_data.get("variance", {})
+
+    flaky = []
+    for det_type, stats in variance.items():
+        std = stats.get("std_f1", 0.0)
+        if std > MAX_F1_STD:
+            flaky.append(f"{det_type}: std_f1={std:.4f}")
+
+    assert not flaky, (
+        f"Flaky detectors (F1 std > {MAX_F1_STD}): {flaky}"
+    )
+
+
+# -----------------------------------------------------------------------
+# Cross-split contamination check
+# -----------------------------------------------------------------------
+
+@pytest.mark.slow
+def test_no_split_contamination():
+    """No content-identical entries should appear in different splits.
+
+    Contamination between train/val/test invalidates holdout evaluation.
+    """
+    dataset = create_default_golden_dataset()
+    warnings = dataset.validate_splits()
+    assert not warnings, (
+        f"Cross-split contamination detected:\n" + "\n".join(warnings)
+    )
