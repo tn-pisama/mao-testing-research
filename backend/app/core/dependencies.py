@@ -135,7 +135,7 @@ async def get_current_user_or_tenant(
     user_agent = request.headers.get("user-agent", "")
 
     try:
-        unverified = jwt.decode(token, options={"verify_signature": False})
+        unverified = jwt.decode(token, "", options={"verify_signature": False})
         issuer = unverified.get("iss", "")
     except JWTError:
         issuer = ""
