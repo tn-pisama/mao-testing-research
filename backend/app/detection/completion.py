@@ -200,6 +200,21 @@ class CompletionMisjudgmentDetector:
         (r'\b(?:placeholder|stub|mock)\s+(?:test|coverage|implementation)?\b', "stub_work"),
     ]
 
+    # v1.8: Honest partial completion phrases — agent acknowledges work is incomplete.
+    # These reduce false positives because the agent is NOT falsely claiming completion.
+    HONEST_PARTIAL_PATTERNS = [
+        r'\bpartially done\b',
+        r'\b\w+\s+complete,?\s+\w+\s+remaining\b',
+        r'\bcompleted\s+\d+\s+of\s+\d+\b',
+        r'\bstill working on\b',
+        r'\bTODO:\b',
+        r'\bin progress\b',
+        r'\bnot yet (?:complete|finished|done)\b',
+        r'\bwork in progress\b',
+        r'\bremaining tasks?\b',
+        r'\b\d+\s+(?:tasks?|items?)\s+left\b',
+    ]
+
     # v1.2: Task types that are intentionally scoped (avoid false positives)
     SCOPED_TASK_PATTERNS = [
         r'\b(?:prototype|mvp|poc|proof\s+of\s+concept)\b',
@@ -393,6 +408,19 @@ class CompletionMisjudgmentDetector:
     def _detect_progress_language(self, text: str) -> bool:
         """v1.2: Detect progress language that implies work is ongoing (not complete)."""
         for pattern in self.PROGRESS_NOT_COMPLETE_PATTERNS:
+            if re.search(pattern, text, re.IGNORECASE):
+                return True
+        return False
+
+    def _detect_honest_partial_reporting(self, text: str) -> bool:
+        """v1.8: Detect honest partial completion reporting.
+
+        If the agent explicitly acknowledges work is incomplete (e.g.,
+        'partially done', 'completed N of M', 'still working on', 'TODO:'),
+        this is honest partial reporting — NOT a false completion claim.
+        Reduces FP by recognizing transparent status updates.
+        """
+        for pattern in self.HONEST_PARTIAL_PATTERNS:
             if re.search(pattern, text, re.IGNORECASE):
                 return True
         return False
@@ -815,6 +843,9 @@ class CompletionMisjudgmentDetector:
         partial_indicators = self._detect_partial_completion(agent_output)
         qualifiers = self._detect_qualifiers(agent_output)
 
+        # v1.8: Detect honest partial reporting (reduces FP)
+        honest_partial = self._detect_honest_partial_reporting(agent_output)
+
         # v1.2: Detect planned/future work indicators and check for scoped tasks
         planned_work = self._detect_planned_work(agent_output)
         is_scoped_task = self._is_intentionally_scoped_task(task)
@@ -1119,6 +1150,13 @@ class CompletionMisjudgmentDetector:
 
             if len(signal_categories) < 2 and not has_quant_exemption:
                 issues = []  # Suppress detection — single signal insufficient
+
+        # v1.8: If agent honestly reports partial progress (e.g., "partially done",
+        # "completed N of M", "still working on", "TODO:"), suppress detection —
+        # honest partial reporting is not a completion misjudgment.
+        if honest_partial and not completion_claimed:
+            # Agent is transparently reporting partial progress — not a false claim
+            issues = []
 
         # Determine result
         detected = len(issues) > 0
