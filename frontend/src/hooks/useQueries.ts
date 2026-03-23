@@ -197,6 +197,9 @@ export function useDashboardQuery(days: number = 30, initialData?: DashboardData
     },
     initialData: initialData || undefined,
     enabled: tenantLoaded,
+    staleTime: 5 * 60 * 1000,          // 5 min — matches backend Redis cache TTL
+    refetchInterval: 60 * 1000,         // 60s — near-realtime refresh when page is open
+    refetchIntervalInBackground: false,  // Don't waste requests when tab is hidden
   })
 
   // In TanStack Query v5, isLoading = isPending && isFetching.

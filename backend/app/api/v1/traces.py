@@ -9,6 +9,7 @@ from app.storage.database import get_db, set_tenant_context
 from app.storage.models import Trace, State, Detection
 from app.core.auth import get_current_tenant
 from app.core.rate_limit import check_rate_limit
+from app.api.v1.dashboard import invalidate_dashboard_cache
 from app.ingestion.otel import otel_parser
 from app.ingestion.buffer import AsyncBuffer, BufferConfig, BackpressureController
 from app.detection.loop import loop_detector, StateSnapshot
@@ -99,7 +100,10 @@ async def ingest_traces(
     
     await db.commit()
     backpressure.record_processed(len(parsed_states))
-    
+
+    # Invalidate dashboard cache so next load shows fresh data
+    await invalidate_dashboard_cache(tenant_id)
+
     return {"accepted": len(parsed_states), "traces": len(traces_created)}
 
 

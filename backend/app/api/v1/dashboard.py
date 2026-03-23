@@ -1,6 +1,8 @@
 """Combined dashboard endpoint — returns all dashboard data in a single request."""
 
 import asyncio
+import json
+import logging
 from fastapi import APIRouter, Depends, Query
 from pydantic import BaseModel
 from sqlalchemy.ext.asyncio import AsyncSession
@@ -13,7 +15,12 @@ from sqlalchemy.sql.expression import literal_column
 from app.storage.database import get_db, set_tenant_context
 from app.storage.models import Detection, Trace, State, WorkflowQualityAssessment
 from app.core.auth import get_current_tenant
+from app.core.rate_limit import rate_limiter
 from app.api.v1.detections import detection_to_response
+
+logger = logging.getLogger(__name__)
+
+DASHBOARD_CACHE_TTL = 300  # 5 minutes
 
 router = APIRouter(prefix="/dashboard", tags=["dashboard"])
 
@@ -238,13 +245,61 @@ async def _quality_assessments(db: AsyncSession, tid: UUID, limit: int = 20) -> 
     }
 
 
+async def _get_cached_dashboard(tenant_id: str, days: int) -> dict | None:
+    """Read dashboard from Redis cache."""
+    try:
+        await rate_limiter.connect()
+        if rate_limiter._redis:
+            cached = await rate_limiter._redis.get(f"dashboard:{tenant_id}:{days}")
+            if cached:
+                return json.loads(cached)
+    except Exception:
+        pass
+    return None
+
+
+async def _set_cached_dashboard(tenant_id: str, days: int, data: dict) -> None:
+    """Write dashboard to Redis cache with TTL."""
+    try:
+        await rate_limiter.connect()
+        if rate_limiter._redis:
+            await rate_limiter._redis.setex(
+                f"dashboard:{tenant_id}:{days}",
+                DASHBOARD_CACHE_TTL,
+                json.dumps(data, default=str),
+            )
+    except Exception:
+        pass
+
+
+async def invalidate_dashboard_cache(tenant_id: str) -> None:
+    """Invalidate dashboard cache for a tenant. Call after trace/detection ingest."""
+    try:
+        await rate_limiter.connect()
+        if rate_limiter._redis:
+            # Delete all dashboard cache keys for this tenant
+            keys = []
+            async for key in rate_limiter._redis.scan_iter(f"dashboard:{tenant_id}:*"):
+                keys.append(key)
+            if keys:
+                await rate_limiter._redis.delete(*keys)
+    except Exception:
+        pass
+
+
 @router.get("", response_model=DashboardResponse)
 async def get_dashboard(
     days: int = Query(30, ge=1, le=365),
     tenant_id: str = Depends(get_current_tenant),
     db: AsyncSession = Depends(get_db),
 ):
-    """Return all dashboard data in a single request."""
+    """Return all dashboard data in a single request. Cached in Redis for 5 minutes."""
+    # Try Redis cache first
+    cached = await _get_cached_dashboard(tenant_id, days)
+    if cached:
+        return DashboardResponse(**cached)
+
+    # Cache miss — run DB queries
     await set_tenant_context(db, tenant_id)
     tid = UUID(tenant_id)
     start_date = datetime.utcnow() - timedelta(days=days)
@@ -255,13 +310,11 @@ async def get_dashboard(
     empty_traces = {"traces": [], "total": 0, "page": 1, "per_page": 10}
     empty_assessments = {"assessments": [], "total": 0, "page": 1, "page_size": 20}
 
-    # Run each query independently so one failure doesn't crash the whole dashboard
     async def safe(fn, *args, fallback=None):
         try:
             return await fn(*args)
         except Exception as e:
-            import logging
-            logging.warning(f"Dashboard query {fn.__name__} failed: {e}")
+            logger.warning(f"Dashboard query {fn.__name__} failed: {e}")
             return fallback
 
     loop, cost, detections, traces, assessments = await asyncio.gather(
@@ -272,10 +325,15 @@ async def get_dashboard(
         safe(_quality_assessments, db, tid, fallback=empty_assessments),
     )
 
-    return DashboardResponse(
+    result = DashboardResponse(
         loop_analytics=loop,
         cost_analytics=cost,
         detections=detections,
         traces=traces,
         quality_assessments=assessments,
     )
+
+    # Cache the result in Redis (fire-and-forget)
+    await _set_cached_dashboard(tenant_id, days, result.model_dump())
+
+    return result
