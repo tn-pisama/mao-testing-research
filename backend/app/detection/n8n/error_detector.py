@@ -502,7 +502,9 @@ class N8NErrorDetector(TurnAwareDetector):
                 ),
             })
 
-        if unprotected_nodes:
+        # Only flag unprotected_nodes for workflows with >= 8 nodes.
+        # Small workflows don't need error handling on every node.
+        if unprotected_nodes and len(nodes) >= 8:
             issues.append({
                 "detected": True,
                 "type": "unprotected_nodes",
@@ -610,8 +612,16 @@ class N8NErrorDetector(TurnAwareDetector):
         else:
             severity = TurnAwareSeverity.MINOR
 
-        # Confidence scales with number of distinct issue types found
-        confidence = min(0.95, 0.70 + len(issues) * 0.08)
+        # Confidence scales with number of distinct issue types found.
+        # For unprotected_nodes alone (without AI nodes), require 3+ distinct
+        # issue types to reach the default detection threshold.
+        issue_types = {i["type"] for i in issues}
+        if issue_types == {"unprotected_nodes"}:
+            confidence = 0.45  # Below default threshold — not flagged alone
+        elif len(issue_types) < 3 and "unprotected_ai_nodes" not in issue_types:
+            confidence = min(0.65, 0.50 + len(issues) * 0.08)
+        else:
+            confidence = min(0.95, 0.70 + len(issues) * 0.08)
 
         explanations = [issue["explanation"] for issue in issues]
         full_explanation = "; ".join(explanations)
