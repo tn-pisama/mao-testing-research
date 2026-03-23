@@ -31,6 +31,7 @@ import {
 } from 'lucide-react'
 import { useUserPreferences } from '@/lib/user-preferences'
 import { signOut } from 'next-auth/react'
+import { clearAllCaches } from '@/hooks/useSafeAuth'
 
 interface NavItem {
   label: string
@@ -149,7 +150,7 @@ export function Sidebar({ isCollapsed = false, onToggle: _onToggle }: SidebarPro
     >
       {/* Logo */}
       <div className="flex items-center h-14 px-4 border-b border-zinc-800">
-        <Link href="/" className="flex items-center gap-2.5">
+        <Link href="/dashboard" className="flex items-center gap-2.5">
           <Shield className="h-7 w-7 text-blue-500" />
           {!isCollapsed && (
             <span className="text-lg font-semibold text-white tracking-tight">
@@ -180,7 +181,7 @@ export function Sidebar({ isCollapsed = false, onToggle: _onToggle }: SidebarPro
       {/* Footer */}
       <div className="p-3 border-t border-zinc-800">
         <button
-          onClick={() => signOut({ callbackUrl: '/' })}
+          onClick={() => { clearAllCaches(); signOut({ callbackUrl: '/' }) }}
           className="flex items-center gap-2 w-full px-3 py-2 text-sm text-zinc-400 hover:text-white hover:bg-zinc-800 rounded-lg transition-colors"
           aria-label="Sign out"
         >

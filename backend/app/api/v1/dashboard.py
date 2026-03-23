@@ -337,3 +337,55 @@ async def get_dashboard(
     await _set_cached_dashboard(tenant_id, days, result.model_dump())
 
     return result
+
+
+@router.get("/quality-assessments")
+async def list_quality_assessments_lightweight(
+    page: int = Query(1, ge=1),
+    page_size: int = Query(20, ge=1, le=100),
+    tenant_id: str = Depends(get_current_tenant),
+    db: AsyncSession = Depends(get_db),
+):
+    """Lightweight quality assessments list — no heavy enterprise imports."""
+    await set_tenant_context(db, tenant_id)
+    tid = UUID(tenant_id)
+    offset = (page - 1) * page_size
+
+    count_result = await db.execute(
+        select(func.count()).where(WorkflowQualityAssessment.tenant_id == tid)
+    )
+    total = count_result.scalar() or 0
+
+    result = await db.execute(
+        select(WorkflowQualityAssessment).where(WorkflowQualityAssessment.tenant_id == tid)
+        .order_by(WorkflowQualityAssessment.created_at.desc())
+        .offset(offset).limit(page_size)
+    )
+    assessments = result.scalars().all()
+
+    return {
+        "assessments": [
+            {
+                "id": str(a.id),
+                "workflow_id": a.workflow_id,
+                "workflow_name": a.workflow_name,
+                "trace_id": str(a.trace_id) if a.trace_id else None,
+                "overall_score": a.overall_score,
+                "overall_grade": a.overall_grade,
+                "agent_scores": a.agent_scores or [],
+                "orchestration_score": a.orchestration_score or {},
+                "improvements": a.improvements or [],
+                "complexity_metrics": a.complexity_metrics or {},
+                "total_issues": a.total_issues,
+                "critical_issues_count": a.critical_issues_count,
+                "source": a.source,
+                "assessment_time_ms": a.assessment_time_ms,
+                "summary": a.summary,
+                "created_at": a.created_at.isoformat() if a.created_at else None,
+            }
+            for a in assessments
+        ],
+        "total": total,
+        "page": page,
+        "page_size": page_size,
+    }
