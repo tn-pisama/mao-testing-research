@@ -42,7 +42,7 @@ MAST_F_TO_DETECTION = {
     "F9": DetectionType.PERSONA_DRIFT,      # Role Usurpation
     "F10": DetectionType.COMMUNICATION,     # Communication Breakdown
     "F11": DetectionType.COORDINATION,      # Coordination Failure
-    "F12": DetectionType.OVERFLOW,          # Output Validation Failure -> overflow proxy
+    # F12 removed: MAST traces don't have token counts needed by the overflow detector
     "F14": DetectionType.COMPLETION,        # Completion Misjudgment
 }
 
@@ -102,12 +102,81 @@ def _extract_task_from_mast(row: dict) -> str:
     return trajectory[:200].strip()
 
 
+def _extract_last_agent_message(agent_turns: list, trajectory_text: str) -> str:
+    """Extract the last substantive agent message from the trajectory.
+
+    Walks the parsed turns in reverse and returns the first turn with
+    meaningful content (>30 chars, role == agent). Falls back to
+    the last paragraph of the raw trajectory text.
+    """
+    # Walk backwards through parsed turns looking for agent content
+    for turn in reversed(agent_turns):
+        role = turn.get("role", "")
+        content = (turn.get("content", "") or "").strip()
+        if role in ("agent", "tool") and len(content) > 30:
+            return content
+
+    # Fallback: last non-empty paragraph from the raw trajectory
+    import re as _re
+    paragraphs = [p.strip() for p in _re.split(r"\n\n+", trajectory_text) if p.strip()]
+    for p in reversed(paragraphs):
+        if len(p) > 30:
+            return p
+
+    return trajectory_text[-3000:] if trajectory_text else ""
+
+
+def _extract_subtask_list(agent_turns: list, trajectory_text: str, framework: str) -> str:
+    """Parse trajectory to extract a structured subtask / step list.
+
+    Looks for role changes and phase boundaries in agent turns to
+    identify individual steps. Produces a newline-separated numbered
+    list suitable for the decomposition detector.
+    """
+    steps: list[str] = []
+
+    if agent_turns:
+        prev_role = None
+        for turn in agent_turns:
+            pid = turn.get("participant_id", "unknown")
+            content = (turn.get("content", "") or "").strip()
+            summary = content[:200].split("\n")[0].strip()  # first line, max 200 chars
+
+            # New step on role change or explicit phase marker
+            if pid != prev_role and summary:
+                steps.append(f"Step {len(steps)+1} ({pid}): {summary}")
+                prev_role = pid
+            elif summary and len(steps) > 0:
+                # Same agent continuing — only add if content looks like a new action
+                if any(kw in summary.lower() for kw in ("next", "then", "now", "step", "phase", "finally")):
+                    steps.append(f"Step {len(steps)+1} ({pid}): {summary}")
+
+    # Fallback: split trajectory by common delimiters
+    if len(steps) < 2:
+        import re as _re
+        # Try numbered list, markdown headers, or dashes
+        items = _re.findall(
+            r"(?:^|\n)\s*(?:\d+[\.\)]\s+|[-*]\s+|#{1,3}\s+)(.+)",
+            trajectory_text,
+        )
+        if items:
+            steps = [f"Step {i+1}: {item.strip()[:200]}" for i, item in enumerate(items[:30])]
+
+    # Ultra-fallback: paragraph boundaries
+    if len(steps) < 2:
+        paragraphs = [p.strip() for p in trajectory_text.split("\n\n") if len(p.strip()) > 30]
+        steps = [f"Step {i+1}: {p[:200]}" for i, p in enumerate(paragraphs[:20])]
+
+    return "\n".join(steps) if steps else trajectory_text[:3000]
+
+
 def _build_input_data(detection_type: DetectionType, task: str, trajectory_text: str,
                       framework: str, agent_turns: list) -> dict:
     """Build detector-specific input_data from a MAST trace.
 
     Maps the extracted trace data to the format each Pisama detector expects.
     """
+    task_raw = task  # preserve untruncated version for detectors that need full context
     task = _truncate(task, 2000)
     traj_short = _truncate(trajectory_text, 3000)
 
@@ -126,6 +195,8 @@ def _build_input_data(detection_type: DetectionType, task: str, trajectory_text:
 
     elif detection_type == DetectionType.COORDINATION:
         # Coordination: {"messages": [...], "agent_ids": [...]}
+        # IMPORTANT: timestamps must be Unix floats — the detector does float arithmetic
+        base_ts = datetime(2026, 1, 1, tzinfo=timezone.utc).timestamp()
         messages = []
         agent_ids = set()
         for turn in agent_turns[:20]:
@@ -135,10 +206,10 @@ def _build_input_data(detection_type: DetectionType, task: str, trajectory_text:
                 "from_agent": pid,
                 "to_agent": "system",
                 "content": _truncate(turn.get("content", ""), 1000),
-                "timestamp": f"2026-01-01T00:00:{len(messages):02d}Z",
+                "timestamp": base_ts + float(len(messages)),
             })
         if not messages:
-            messages = [{"from_agent": "agent", "to_agent": "system", "content": traj_short, "timestamp": "2026-01-01T00:00:00Z"}]
+            messages = [{"from_agent": "agent", "to_agent": "system", "content": traj_short, "timestamp": base_ts}]
             agent_ids = {"agent"}
         return {"messages": messages, "agent_ids": sorted(agent_ids)}
 
@@ -155,10 +226,16 @@ def _build_input_data(detection_type: DetectionType, task: str, trajectory_text:
         }
 
     elif detection_type == DetectionType.CONTEXT:
-        return {"context": task, "output": traj_short}
+        # context = FULL original task (not truncated — critical markers must survive)
+        # output  = last substantive agent message (not the full trajectory log)
+        last_output = _extract_last_agent_message(agent_turns, trajectory_text)
+        return {"context": _truncate(task_raw, 4000), "output": _truncate(last_output, 3000)}
 
     elif detection_type == DetectionType.DERAILMENT:
-        return {"task": task, "output": traj_short}
+        # task = full original task description (not truncated)
+        # output = final agent output / last meaningful response (not system logs)
+        last_output = _extract_last_agent_message(agent_turns, trajectory_text)
+        return {"task": _truncate(task_raw, 4000), "output": _truncate(last_output, 3000)}
 
     elif detection_type == DetectionType.COMPLETION:
         return {
@@ -191,10 +268,15 @@ def _build_input_data(detection_type: DetectionType, task: str, trajectory_text:
         }
 
     elif detection_type == DetectionType.OVERFLOW:
-        return {"context": traj_short, "output": traj_short}
+        # Should not be reached — MAST traces lack token counts required by overflow detector.
+        # Return empty dict to avoid silent errors if mapping is accidentally re-added.
+        return {}
 
     elif detection_type == DetectionType.DECOMPOSITION:
-        return {"task_description": task, "decomposition": traj_short}
+        # task_description = original MAST task (full)
+        # decomposition = structured subtask list extracted from the trajectory
+        subtasks = _extract_subtask_list(agent_turns, trajectory_text, framework)
+        return {"task_description": _truncate(task_raw, 4000), "decomposition": subtasks}
 
     else:
         # Fallback for any unmapped type
