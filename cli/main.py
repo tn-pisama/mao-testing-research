@@ -34,7 +34,11 @@ app = typer.Typer(
 console = Console()
 
 from .commands.quality import quality_app
+from .commands.detect import detect_app
+from .commands.import_cmd import import_app
 app.add_typer(quality_app)
+app.add_typer(detect_app, name="detect")
+app.add_typer(import_app, name="import")
 
 
 @app.command()
