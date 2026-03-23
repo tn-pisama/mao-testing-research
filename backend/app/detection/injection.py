@@ -164,7 +164,8 @@ class InjectionDetector:
     @property
     def embedder(self):
         if self._embedder is None:
-            self._embedder = SentenceTransformer(settings.embedding_model)
+            from app.detection.shared_embedder import get_shared_embedder
+            self._embedder = get_shared_embedder(settings.embedding_model)
         return self._embedder
     
     @property

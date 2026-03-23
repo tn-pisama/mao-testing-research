@@ -1024,6 +1024,10 @@ def calibrate_all(
 
         cal = calibrate_single(dt, entries)
 
+        # Free memory between detectors to prevent OOM during full calibration
+        import gc
+        gc.collect()
+
         if cal is None:
             skipped.append(dt.value)
         else:

@@ -97,8 +97,8 @@ class GroundingDetector:
     def embedder(self):
         if self._embedder is None:
             try:
-                from app.core.embeddings import get_embedder
-                self._embedder = get_embedder()
+                from app.detection.shared_embedder import get_shared_embedder
+                self._embedder = get_shared_embedder()
             except Exception:
                 pass
         return self._embedder
