@@ -1,6 +1,6 @@
 {
   "version": "2.1",
-  "generated_at": "2026-03-19T19:37:17.696584+00:00",
+  "generated_at": "2026-03-23T04:47:12.832362+00:00",
   "capabilities": {
     "loop": {
       "name": "Loop Detection",
@@ -1969,27 +1969,11 @@
         }
       },
       "last_calibrated": "2026-03-19T19:37:01.439950+00:00"
-    },
-    "convergence": {
-      "name": "Convergence Detection",
-      "tier": "icp",
-      "status": "passing",
-      "readiness": "production",
-      "eval_category": "capability",
-      "module": "app.detection.convergence",
-      "f1_score": 0.969,
-      "precision": 1.0,
-      "recall": 0.94,
-      "optimal_threshold": 0.1,
-      "sample_count": 100,
-      "f1_ci_lower": 0.93,
-      "f1_ci_upper": 1.0,
-      "last_calibrated": "2026-03-19T12:36:59+00:00"
     }
   },
   "summary": {
-    "total": 42,
-    "production": 31,
+    "total": 41,
+    "production": 30,
     "beta": 11,
     "experimental": 0,
     "failing": 0,
