@@ -591,6 +591,76 @@ class SpecificationMismatchDetector:
         
         return ambiguities
 
+    # v2.2: Expansion phrases that indicate scope was explicitly expanded
+    EXPANSION_PHRASES = [
+        "also added", "additionally", "in addition to", "as a bonus",
+        "plus", "on top of", "beyond what was asked", "extra feature",
+        "i also", "we also", "also included", "also implemented",
+    ]
+
+    def _count_distinct_requirements(self, text: str) -> int:
+        """Count distinct requirements using bullet points, numbered items,
+        and 'and' conjunctions as delimiters."""
+        count = 0
+        # Count bullet points and numbered items
+        bullet_count = len(re.findall(r'(?:^|\n)\s*(?:\d+[\.\/\)]\s|[-*\u2022]\s)', text))
+        if bullet_count > 0:
+            count = bullet_count
+        else:
+            # Count sentences that look like requirements (imperative or "must/should")
+            sentences = re.split(r'[.!?]\s+|\n+', text)
+            req_sentences = [
+                s for s in sentences
+                if len(s.strip()) > 10 and re.search(
+                    r'\b(?:must|should|need|create|build|implement|add|set up|configure|ensure|include)\b',
+                    s, re.IGNORECASE,
+                )
+            ]
+            count = len(req_sentences)
+
+        # Count "and" conjunctions joining distinct actions
+        and_actions = re.findall(
+            r'\b(?:and|,)\s+(?:also\s+)?(?:create|build|implement|add|set up|configure|ensure|include)\b',
+            text, re.IGNORECASE,
+        )
+        count += len(and_actions)
+
+        return max(1, count)
+
+    def _detect_scope_expansion(self, user_intent: str, task_specification: str) -> Optional[str]:
+        """v2.2: Detect when spec has 2x+ more requirements than intent (scope expansion).
+
+        Also checks for explicit expansion phrases like 'also added', 'additionally', etc.
+
+        Returns a description string if expansion detected, None otherwise.
+        """
+        # Check for explicit expansion phrases
+        spec_lower = task_specification.lower()
+        expansion_found = [
+            phrase for phrase in self.EXPANSION_PHRASES
+            if phrase in spec_lower
+        ]
+
+        # Count requirements in both
+        intent_reqs = self._count_distinct_requirements(user_intent)
+        spec_reqs = self._count_distinct_requirements(task_specification)
+
+        # If spec has 2x+ more requirements than intent, flag as scope expansion
+        if spec_reqs >= intent_reqs * 2 and spec_reqs >= 4:
+            return (
+                f"scope_expansion: spec has {spec_reqs} requirements vs "
+                f"{intent_reqs} in intent ({spec_reqs/intent_reqs:.1f}x expansion)"
+            )
+
+        # If explicit expansion phrases found AND spec has more requirements
+        if expansion_found and spec_reqs > intent_reqs:
+            return (
+                f"scope_expansion: expansion phrases found ({', '.join(expansion_found[:3])}) "
+                f"with {spec_reqs} spec requirements vs {intent_reqs} in intent"
+            )
+
+        return None
+
     # Synonym groups for requirement matching.
     # Each key maps to a set of semantically equivalent words.
     _SYNONYMS: dict[str, set[str]] = {
@@ -836,6 +906,15 @@ class SpecificationMismatchDetector:
                 missing.extend(f"key phrase: {p}" for p in missing_phrases[:3])
                 # Set coverage to reflect the key phrase gap
                 coverage = min(coverage, 1.0 - phrase_fraction)
+
+        # v2.2: Scope expansion detection — spec has many more requirements
+        # than user intent, indicating the spec added unasked-for scope.
+        if not detected:
+            scope_expansion = self._detect_scope_expansion(user_intent, task_specification)
+            if scope_expansion:
+                detected = True
+                mismatch_type = MismatchType.SCOPE_DRIFT
+                missing.append(scope_expansion)
 
         if not detected:
             return SpecificationMismatchResult(
