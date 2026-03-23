@@ -574,8 +574,46 @@ class SemanticCorruptionDetector:
                             severity="high",
                         ))
 
+            # Boolean state change detection (security-relevant fields)
+            elif isinstance(prev_val, bool) and isinstance(curr_val, bool):
+                if prev_val != curr_val:
+                    security_booleans = {
+                        "authenticated", "enabled", "active", "verified", "locked",
+                        "authorized", "valid", "approved", "is_admin", "is_active",
+                        "is_verified", "is_enabled", "is_locked", "is_authorized",
+                        "has_access", "is_valid", "confirmed", "is_confirmed",
+                    }
+                    key_lower = key.lower()
+                    is_security = key_lower in security_booleans or any(
+                        sb in key_lower for sb in security_booleans
+                    )
+                    if is_security:
+                        issues.append(CorruptionIssue(
+                            issue_type="security_boolean_flip",
+                            field=key,
+                            message=f"Security-relevant boolean flipped: {prev_val} → {curr_val}",
+                            severity="high",
+                        ))
+
             # String anomalies
             elif isinstance(prev_val, str) and isinstance(curr_val, str):
+                # String cleared (non-empty → empty)
+                if len(prev_val) > 5 and len(curr_val) == 0:
+                    issues.append(CorruptionIssue(
+                        issue_type="string_cleared",
+                        field=key,
+                        message=f"Non-empty string cleared: '{prev_val[:50]}...' → ''",
+                        severity="high",
+                    ))
+                # String drastically truncated (>80% shorter)
+                elif len(prev_val) > 20 and len(curr_val) > 0 and len(curr_val) < len(prev_val) * 0.2:
+                    issues.append(CorruptionIssue(
+                        issue_type="string_truncated",
+                        field=key,
+                        message=f"String drastically truncated: {len(prev_val)} → {len(curr_val)} chars",
+                        severity="medium",
+                    ))
+
                 if len(prev_val) > 5 and len(curr_val) > 5:
                     prev_words = set(prev_val.lower().split())
                     curr_words = set(curr_val.lower().split())
