@@ -586,6 +586,25 @@ def _build_detector_runners() -> Dict[DetectionType, Any]:
     except Exception as exc:
         logger.warning("Could not import convergence detector: %s", exc)
 
+    # --- DELEGATION ---
+    try:
+        from app.detection.delegation import DelegationQualityDetector
+
+        _delegation_detector = DelegationQualityDetector()
+
+        def _run_delegation(entry: GoldenDatasetEntry) -> Tuple[bool, float]:
+            result = _delegation_detector.detect(
+                delegator_instruction=entry.input_data.get("delegator_instruction", ""),
+                task_context=entry.input_data.get("task_context", ""),
+                success_criteria=entry.input_data.get("success_criteria", ""),
+                delegatee_capabilities=entry.input_data.get("delegatee_capabilities", ""),
+            )
+            return result.detected, result.confidence
+
+        runners[DetectionType.DELEGATION] = _run_delegation
+    except Exception as exc:
+        logger.warning("Could not import delegation detector: %s", exc)
+
     return runners
 
 
