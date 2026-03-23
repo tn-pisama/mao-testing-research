@@ -18,3 +18,6 @@ htmlcov/
 # ML models (too large for git)
 *.pkl
 mast_ml_model.pkl
+
+# Downloaded HuggingFace datasets (re-downloadable via scripts/download_datasets.py)
+data/external/
