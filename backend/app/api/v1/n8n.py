@@ -226,9 +226,9 @@ async def receive_n8n_webhook(
             framework="n8n",
         )
 
-    # Trigger quality assessment if workflow definition is provided and feature is enabled
+    # Trigger quality assessment if workflow definition is provided
     quality_assessment_triggered = False
-    if payload.workflow and settings.features.is_enabled("quality_assessment"):
+    if payload.workflow:
         background_tasks.add_task(
             assess_workflow_quality_task,
             tenant_id=tenant_id,

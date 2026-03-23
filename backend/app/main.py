@@ -61,6 +61,7 @@ from app.api.v1 import (
     marketplace,
     onboarding,
     admin,
+    dashboard,
 )
 
 settings = get_settings()
@@ -260,6 +261,7 @@ app.include_router(traces.router, prefix="/api/v1/tenants/{tenant_id}", dependen
 app.include_router(agents.router, prefix="/api/v1/tenants/{tenant_id}", dependencies=_tenant_rate_deps)
 app.include_router(detections.router, prefix="/api/v1/tenants/{tenant_id}", dependencies=_tenant_rate_deps)
 app.include_router(analytics.router, prefix="/api/v1/tenants/{tenant_id}", dependencies=_tenant_rate_deps)
+app.include_router(dashboard.router, prefix="/api/v1/tenants/{tenant_id}", dependencies=_tenant_rate_deps)
 app.include_router(import_jobs.router, prefix="/api/v1")
 app.include_router(health.router, prefix="/api/v1")
 app.include_router(webhooks.router, prefix="/api/v1")
@@ -307,9 +309,9 @@ if enterprise_routers_loaded:
         app.include_router(replay.router, prefix="/api/v1/tenants/{tenant_id}", tags=["enterprise"])
     if settings.features.is_enabled("ml_detection"):
         app.include_router(diagnose.router, prefix="/api/v1", tags=["enterprise"])  # Agent Forensics
-    if settings.features.is_enabled("quality_assessment"):
-        app.include_router(quality.router, prefix="/api/v1", tags=["enterprise"])  # Quality Assessment
-        app.include_router(quality_healing.router, prefix="/api/v1", tags=["enterprise"])  # Quality Healing
+    # Quality assessment — always enabled (no feature flag)
+    app.include_router(quality.router, prefix="/api/v1", tags=["enterprise"])
+    app.include_router(quality_healing.router, prefix="/api/v1", tags=["enterprise"])
 
 if _OTEL_AVAILABLE:
     FastAPIInstrumentor.instrument_app(app)

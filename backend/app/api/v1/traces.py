@@ -1,15 +1,20 @@
-from fastapi import APIRouter, Depends, HTTPException, status, Query
+from fastapi import APIRouter, BackgroundTasks, Depends, HTTPException, status, Query
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy import select, func, case
 from sqlalchemy.orm import selectinload
 from typing import List
 from uuid import UUID
 
-from app.storage.database import get_db, set_tenant_context
-from app.storage.models import Trace, State, Detection
+import logging
+import time
+
+from app.storage.database import get_db, set_tenant_context, async_session_maker
+from app.storage.models import Trace, State, Detection, WorkflowQualityAssessment
 from app.core.auth import get_current_tenant
 from app.core.rate_limit import check_rate_limit
 from app.api.v1.dashboard import invalidate_dashboard_cache
+
+logger = logging.getLogger(__name__)
 from app.ingestion.otel import otel_parser
 from app.ingestion.buffer import AsyncBuffer, BufferConfig, BackpressureController
 from app.detection.loop import loop_detector, StateSnapshot
@@ -30,9 +35,81 @@ router = APIRouter(prefix="/traces", tags=["traces"])
 backpressure = BackpressureController()
 
 
+async def _auto_assess_trace(tenant_id: str, trace_id: str, session_id: str, agent_ids: list[str], state_count: int, token_count: int):
+    """Background task: create a quality assessment from trace data."""
+    try:
+        start = time.time()
+        async with async_session_maker() as db:
+            await set_tenant_context(db, tenant_id)
+            tid = UUID(tenant_id)
+
+            # Count detections for this trace
+            det_result = await db.execute(
+                select(func.count()).where(Detection.trace_id == UUID(trace_id))
+            )
+            detection_count = det_result.scalar() or 0
+
+            # Score: start at 100, deduct for issues
+            score = 100
+            issues = []
+            critical = 0
+
+            if detection_count > 0:
+                score -= min(detection_count * 10, 40)  # Up to -40 for detections
+                issues.append({"category": "detections", "severity": "warning", "description": f"{detection_count} failure(s) detected during execution"})
+                if detection_count >= 3:
+                    critical += 1
+
+            if state_count < 2:
+                score -= 15
+                issues.append({"category": "completeness", "severity": "info", "description": "Very short execution (fewer than 2 steps)"})
+
+            if len(agent_ids) == 0:
+                score -= 10
+                issues.append({"category": "agents", "severity": "info", "description": "No agents identified in trace"})
+
+            score = max(score, 0)
+
+            # Grade
+            if score >= 90: grade = "Healthy"
+            elif score >= 70: grade = "Degraded"
+            elif score >= 50: grade = "At Risk"
+            else: grade = "Critical"
+
+            # Build agent scores
+            agent_scores = [
+                {"agent_id": aid, "agent_name": aid, "overall_score": score, "grade": grade, "dimensions": [], "issues_count": 0, "critical_issues": 0}
+                for aid in (agent_ids or ["unknown"])
+            ]
+
+            assessment = WorkflowQualityAssessment(
+                tenant_id=tid,
+                trace_id=UUID(trace_id),
+                workflow_id=session_id,
+                workflow_name=f"Run {session_id[:8]}",
+                overall_score=score,
+                overall_grade=grade,
+                agent_scores=agent_scores,
+                orchestration_score={"score": score / 100, "dimensions": [], "complexity_metrics": {"agent_count": len(agent_ids), "state_count": state_count}},
+                improvements=[i for i in issues],
+                complexity_metrics={"agent_count": len(agent_ids), "state_count": state_count, "token_count": token_count},
+                total_issues=len(issues),
+                critical_issues_count=critical,
+                source="auto",
+                assessment_time_ms=int((time.time() - start) * 1000),
+                summary=f"Auto-assessed run with {state_count} steps, {len(agent_ids)} agent(s), {detection_count} detection(s)",
+            )
+            db.add(assessment)
+            await db.commit()
+            logger.info(f"Auto-assessment for trace {trace_id}: score={score}, grade={grade}")
+    except Exception as e:
+        logger.warning(f"Auto-assessment failed for trace {trace_id}: {e}")
+
+
 @router.post("/ingest", status_code=status.HTTP_202_ACCEPTED)
 async def ingest_traces(
     request: TraceIngestRequest,
+    background_tasks: "BackgroundTasks",
     tenant_id: str = Depends(get_current_tenant),
     db: AsyncSession = Depends(get_db),
 ):
@@ -103,6 +180,24 @@ async def ingest_traces(
 
     # Invalidate dashboard cache so next load shows fresh data
     await invalidate_dashboard_cache(tenant_id)
+
+    # Auto-assess each new trace in the background
+    agent_ids = list({p.agent_id for p in parsed_states if p.agent_id})
+    for trace_session_id in traces_created:
+        trace_result = await db.execute(
+            select(Trace).where(Trace.session_id == trace_session_id, Trace.tenant_id == UUID(tenant_id))
+        )
+        t = trace_result.scalar_one_or_none()
+        if t:
+            background_tasks.add_task(
+                _auto_assess_trace,
+                tenant_id=tenant_id,
+                trace_id=str(t.id),
+                session_id=trace_session_id,
+                agent_ids=agent_ids,
+                state_count=len([p for p in parsed_states if p.trace_id == trace_session_id]),
+                token_count=t.total_tokens or 0,
+            )
 
     return {"accepted": len(parsed_states), "traces": len(traces_created)}
 
