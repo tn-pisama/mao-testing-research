@@ -86,12 +86,14 @@ function useQueryWithFallback<T>({
   fallbackFn,
   enabled = true,
   refetchInterval,
+  initialData,
 }: {
   queryKey: readonly unknown[]
   queryFn: (api: ApiClient) => Promise<T>
   fallbackFn: () => T
   enabled?: boolean
   refetchInterval?: number | false
+  initialData?: T | null
 }) {
   const { getApi, tenantId, tenantLoaded } = useApiClient()
 
@@ -109,13 +111,16 @@ function useQueryWithFallback<T>({
         throw error
       }
     },
+    initialData: initialData ? { data: initialData, isDemoMode: false } : undefined,
     enabled: enabled && tenantLoaded,
     refetchInterval,
   })
 
+  const isActuallyLoading = query.isLoading || (query.isPending && !query.data)
+
   return {
     data: query.data?.data,
-    isLoading: query.isLoading,
+    isLoading: isActuallyLoading,
     isDemoMode: query.data?.isDemoMode ?? false,
     isError: query.isError,
     error: query.error,
@@ -230,7 +235,7 @@ export function useTracesQuery(params?: {
   page?: number
   perPage?: number
   status?: string
-}) {
+}, initialData?: { traces: Trace[]; total: number } | null) {
   const result = useQueryWithFallback<{ traces: Trace[]; total: number }>({
     queryKey: queryKeys.traces(params as Record<string, unknown>),
     queryFn: (api) => api.getTraces(params ?? {}),
@@ -241,6 +246,7 @@ export function useTracesQuery(params?: {
         total: allTraces.length,
       }
     },
+    initialData: initialData,
   })
 
   return {
@@ -279,7 +285,7 @@ export function useDetectionsQuery(params?: {
   confidenceMax?: number
   dateFrom?: string
   dateTo?: string
-}) {
+}, initialData?: { items: Detection[]; total: number; page: number; per_page: number } | null) {
   const result = useQueryWithFallback<{
     items: Detection[]
     total: number
@@ -298,6 +304,7 @@ export function useDetectionsQuery(params?: {
         per_page: perPage,
       }
     },
+    initialData: initialData,
   })
 
   return {
