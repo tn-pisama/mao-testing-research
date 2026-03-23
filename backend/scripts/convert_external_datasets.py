@@ -473,8 +473,9 @@ TRAIL_TO_PISAMA = {
     "Instruction Non-compliance": "derailment", "Instruction Non-Compliance": "derailment",
     "Instruction non complience": "derailment",
     "Goal Deviation": "derailment", "Goal deviation": "derailment",
-    "Resource Abuse": "overflow", "Resource Exhaustion": "overflow",
-    "Resource Not Found": "overflow", "Timeout Issues": "overflow",
+    # Resource/overflow removed — TRAIL has no token count data for overflow detection
+    # "Resource Abuse": "overflow", "Resource Exhaustion": "overflow",
+    # "Resource Not Found": "overflow", "Timeout Issues": "overflow",
     "Tool-related": "coordination", "Tool Selection Errors": "coordination",
     "Tool Selection": "coordination", "Tool Definition Issues": "coordination",
     "Tool Output Misinterpretation": "hallucination",
@@ -571,6 +572,12 @@ def convert_trail(trail_path: str) -> list[GoldenDatasetEntry]:
                 elif pisama_type == "retrieval_quality":
                     input_data = {"query": task[:200], "retrieved_documents": [agent_output[:500]],
                                   "agent_output": desc[:300]}
+                elif pisama_type == "corruption":
+                    # Corruption needs prev_state/current_state as dicts
+                    input_data = {
+                        "prev_state": {"task": task[:200], "status": "in_progress", "output": ""},
+                        "current_state": {"task": task[:200], "status": "error", "output": desc[:300]},
+                    }
                 else:
                     input_data = {"context": agent_output[:500], "output": desc[:300]}
 
@@ -624,15 +631,21 @@ def convert_gaia(gaia_path: str) -> list[GoldenDatasetEntry]:
             ))
 
             # L2/L3: derailment negative (agent stays on topic)
+            # Use annotator metadata steps as output to show clear on-topic work
             if level >= 2:
+                metadata = row.get("Annotator Metadata", {}) or {}
+                steps = metadata.get("Steps", "") if isinstance(metadata, dict) else ""
+                if steps and len(steps) > 50:
+                    output_text = f"I followed these steps to answer the question: {steps[:400]} The final answer is: {answer[:100]}"
+                else:
+                    output_text = f"To answer '{question[:100]}', I searched for relevant information, analyzed the data, and determined the answer is: {answer[:100]}"
                 entries.append(GoldenDatasetEntry(
                     id=f"gaia_{task_id}_derail_neg",
                     detection_type=DetectionType.DERAILMENT,
-                    input_data={"task": question[:300],
-                                "output": f"The answer is {answer[:100]}. I analyzed the relevant information."},
+                    input_data={"task": question[:300], "output": output_text[:500]},
                     expected_detected=False,
                     expected_confidence_min=0.0, expected_confidence_max=0.5,
-                    description=f"GAIA L{level}: on-topic answer",
+                    description=f"GAIA L{level}: on-topic answer with steps",
                     source="gaia_real", difficulty=difficulty, split="test",
                     tags=["real_trace", "gaia"],
                 ))

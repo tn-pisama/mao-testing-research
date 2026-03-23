@@ -77,7 +77,10 @@ def _build_detector_runners() -> Dict[DetectionType, Any]:
         def _run_hallucination(entry: GoldenDatasetEntry) -> Tuple[bool, float]:
             raw_sources = entry.input_data.get("sources", [])
             sources = [
-                SourceDocument(content=s["content"], metadata=s.get("metadata", {}))
+                SourceDocument(
+                    content=s if isinstance(s, str) else s.get("content", ""),
+                    metadata=s.get("metadata", {}) if isinstance(s, dict) else {},
+                )
                 for s in raw_sources
             ]
             output = entry.input_data["output"]
