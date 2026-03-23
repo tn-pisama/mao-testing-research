@@ -50,10 +50,14 @@ export const authOptions: NextAuthOptions = {
         const expiresIn = expiry - Date.now()
         if (expiresIn < 60 * 60 * 1000) {
           try {
+            const ctrl = new AbortController()
+            const t = setTimeout(() => ctrl.abort(), 3000)
             const res = await fetch(`${BACKEND_URL}/auth/refresh`, {
               method: 'POST',
               headers: { Authorization: `Bearer ${token.accessToken}` },
+              signal: ctrl.signal,
             })
+            clearTimeout(t)
             if (res.ok) {
               const data = await res.json()
               token.accessToken = data.access_token
