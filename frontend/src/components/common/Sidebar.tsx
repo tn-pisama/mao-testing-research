@@ -62,8 +62,8 @@ const developerObserveItems: NavItem[] = [
 
 const developerImproveItems: NavItem[] = [
   { label: 'Workflows', href: '/quality', icon: Star },
-  { label: 'Healing', href: '/healing', icon: Sparkles },
-  { label: 'Replay', href: '/replay', icon: RotateCcw },
+  { label: 'Agents', href: '/agents', icon: Bot },
+  { label: 'Healing', href: '/healing', icon: Wrench },
 ]
 
 const developerConfigureItems: NavItem[] = [

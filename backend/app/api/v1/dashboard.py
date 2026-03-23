@@ -389,3 +389,60 @@ async def list_quality_assessments_lightweight(
         "page": page,
         "page_size": page_size,
     }
+
+
+@router.get("/agent-quality")
+async def get_agent_quality(
+    tenant_id: str = Depends(get_current_tenant),
+    db: AsyncSession = Depends(get_db),
+):
+    """Aggregate agent quality scores across all assessments."""
+    await set_tenant_context(db, tenant_id)
+    tid = UUID(tenant_id)
+
+    result = await db.execute(
+        select(WorkflowQualityAssessment).where(WorkflowQualityAssessment.tenant_id == tid)
+        .order_by(WorkflowQualityAssessment.created_at.desc())
+    )
+    assessments = result.scalars().all()
+
+    # Aggregate per agent_id across all assessments
+    agent_map: dict = {}
+    for a in assessments:
+        for agent in (a.agent_scores or []):
+            aid = agent.get("agent_id", "unknown")
+            if aid not in agent_map:
+                agent_map[aid] = {
+                    "agent_id": aid,
+                    "agent_name": agent.get("agent_name", aid),
+                    "agent_type": agent.get("agent_type", ""),
+                    "scores": [],
+                    "total_runs": 0,
+                    "issues_count": 0,
+                }
+            agent_map[aid]["scores"].append(agent.get("overall_score", 0))
+            agent_map[aid]["total_runs"] += 1
+            agent_map[aid]["issues_count"] += agent.get("issues_count", 0)
+
+    agents = []
+    for aid, data in agent_map.items():
+        scores = data["scores"]
+        avg_score = sum(scores) / len(scores) if scores else 0
+        if avg_score >= 90: grade = "Healthy"
+        elif avg_score >= 70: grade = "Degraded"
+        elif avg_score >= 50: grade = "At Risk"
+        else: grade = "Critical"
+        agents.append({
+            "agent_id": data["agent_id"],
+            "agent_name": data["agent_name"],
+            "agent_type": data["agent_type"],
+            "avg_score": round(avg_score, 1),
+            "grade": grade,
+            "total_runs": data["total_runs"],
+            "issues_count": data["issues_count"],
+            "min_score": min(scores) if scores else 0,
+            "max_score": max(scores) if scores else 0,
+        })
+
+    agents.sort(key=lambda a: a["avg_score"])
+    return {"agents": agents, "total": len(agents)}
