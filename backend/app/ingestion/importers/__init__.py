@@ -21,6 +21,8 @@ from .base import BaseImporter
 from .raw_json import RawJSONImporter
 from .conversation import ConversationImporter
 from .mast import MASTImporter
+from .langfuse import LangfuseImporter
+from .phoenix import PhoenixImporter
 
 
 # Registry of available importers (ICP only by default)
@@ -31,6 +33,9 @@ IMPORTERS: Dict[str, Type[BaseImporter]] = {
     "conversation": ConversationImporter,
     "mast": MASTImporter,
     "mast-data": MASTImporter,
+    "langfuse": LangfuseImporter,
+    "phoenix": PhoenixImporter,
+    "arize": PhoenixImporter,
 }
 
 # ICP exports
@@ -39,6 +44,8 @@ __all__ = [
     "RawJSONImporter",
     "ConversationImporter",
     "MASTImporter",
+    "LangfuseImporter",
+    "PhoenixImporter",
     "get_importer",
     "detect_format",
     "import_trace",

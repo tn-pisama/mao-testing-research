@@ -45,6 +45,7 @@ class AutoApplyConfig:
 class NotificationsConfig:
     """Notification settings."""
     discord_webhook: str = ""
+    slack_webhook: str = ""
     email_smtp_host: str = "smtp.gmail.com"
     email_smtp_port: int = 587
     email_smtp_user: str = ""
@@ -104,6 +105,7 @@ class HealerConfig:
             ),
             notifications=NotificationsConfig(
                 discord_webhook=notifications_data.get("discord_webhook", ""),
+                slack_webhook=notifications_data.get("slack_webhook", ""),
                 email_smtp_host=notifications_data.get("email", {}).get("smtp_host", "smtp.gmail.com"),
                 email_smtp_port=notifications_data.get("email", {}).get("smtp_port", 587),
                 email_smtp_user=notifications_data.get("email", {}).get("smtp_user", ""),
@@ -135,6 +137,7 @@ class HealerConfig:
             },
             "notifications": {
                 "discord_webhook": self.notifications.discord_webhook,
+                "slack_webhook": self.notifications.slack_webhook,
                 "email": {
                     "smtp_host": self.notifications.email_smtp_host,
                     "smtp_port": self.notifications.email_smtp_port,
@@ -201,6 +204,8 @@ auto_apply:
 notifications:
   # Discord webhook URL (right-click channel > Edit Channel > Integrations > Webhooks)
   discord_webhook: ""
+  # Slack webhook URL (Apps > Incoming Webhooks > Add New Webhook)
+  slack_webhook: ""
   # Email settings (optional)
   email:
     smtp_host: "smtp.gmail.com"

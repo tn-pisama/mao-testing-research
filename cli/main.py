@@ -93,9 +93,10 @@ def start(
         f"Auto-apply: {'enabled' if config.auto_apply.enabled else 'disabled'}\n"
         f"Git backup: {'enabled' if config.auto_apply.git_backup else 'disabled'}\n"
         f"Discord: {'configured' if config.notifications.discord_webhook else 'not configured'}\n"
+        f"Slack: {'configured' if config.notifications.slack_webhook else 'not configured'}\n"
         f"Email: {'configured' if config.notifications.email_to else 'not configured'}\n\n"
         f"[dim]Webhook URL: http://localhost:{server_port}/webhook/n8n[/dim]",
-        title="MAO Healer",
+        title="Pisama Healer",
     ))
 
     # Start server
@@ -134,8 +135,9 @@ def status(
         f"Git repo: {config.auto_apply.git_repo}\n\n"
         f"[bold]Notifications[/bold]\n"
         f"Discord: {'configured' if config.notifications.discord_webhook else 'not configured'}\n"
+        f"Slack: {'configured' if config.notifications.slack_webhook else 'not configured'}\n"
         f"Email: {'configured' if config.notifications.email_to else 'not configured'}",
-        title="MAO Healer Status",
+        title="Pisama Healer Status",
     ))
 
     # Try to get server status
@@ -207,6 +209,7 @@ def test(
 
         notify_config = NotifyConfig(
             discord_webhook=config.notifications.discord_webhook or None,
+            slack_webhook=config.notifications.slack_webhook or None,
             email_enabled=bool(config.notifications.email_to),
             email_smtp_host=config.notifications.email_smtp_host,
             email_smtp_port=config.notifications.email_smtp_port,

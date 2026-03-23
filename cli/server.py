@@ -257,6 +257,7 @@ async def initialize_services(config: HealerConfig) -> None:
 
     notify_config = NotifyConfig(
         discord_webhook=config.notifications.discord_webhook or None,
+        slack_webhook=config.notifications.slack_webhook or None,
         email_enabled=bool(config.notifications.email_to),
         email_smtp_host=config.notifications.email_smtp_host,
         email_smtp_port=config.notifications.email_smtp_port,

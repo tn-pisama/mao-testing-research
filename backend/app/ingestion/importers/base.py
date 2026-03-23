@@ -84,6 +84,12 @@ class BaseImporter(ABC):
             if "resourceSpans" in sample_item or "traceId" in sample_item:
                 return "otel"
 
+            # Check for Phoenix format markers (OTEL with Phoenix attributes)
+            if "span_kind" in sample_item or "context" in sample_item:
+                attrs = sample_item.get("attributes", {})
+                if isinstance(attrs, dict) and any(k.startswith(("openinference.", "phoenix.")) for k in attrs):
+                    return "phoenix"
+
             # Check for n8n format markers
             if "executionId" in sample_item or "workflowId" in sample_item:
                 return "n8n"

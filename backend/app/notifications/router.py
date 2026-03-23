@@ -9,6 +9,7 @@ from typing import Any, Dict, List, Optional
 
 from .discord import DiscordNotifier
 from .email import EmailNotifier, EmailConfig
+from .slack import SlackNotifier
 
 logger = logging.getLogger(__name__)
 
@@ -18,7 +19,10 @@ class NotifyConfig:
     """Configuration for notification routing."""
     # Discord settings
     discord_webhook: Optional[str] = None
-    discord_username: str = "MAO Healer"
+    discord_username: str = "Pisama"
+
+    # Slack settings
+    slack_webhook: Optional[str] = None
 
     # Email settings
     email_enabled: bool = False
@@ -40,7 +44,8 @@ class NotifyConfig:
         """Create config from dictionary."""
         return cls(
             discord_webhook=config.get("discord_webhook"),
-            discord_username=config.get("discord_username", "MAO Healer"),
+            discord_username=config.get("discord_username", "Pisama"),
+            slack_webhook=config.get("slack_webhook"),
             email_enabled=config.get("email", {}).get("enabled", False),
             email_smtp_host=config.get("email", {}).get("smtp_host", "smtp.gmail.com"),
             email_smtp_port=config.get("email", {}).get("smtp_port", 587),
@@ -81,6 +86,7 @@ class NotificationRouter:
     def __init__(self, config: NotifyConfig):
         self.config = config
         self._discord: Optional[DiscordNotifier] = None
+        self._slack: Optional[SlackNotifier] = None
         self._email: Optional[EmailNotifier] = None
 
         # Initialize notifiers
@@ -89,6 +95,9 @@ class NotificationRouter:
                 webhook_url=config.discord_webhook,
                 username=config.discord_username,
             )
+
+        if config.slack_webhook:
+            self._slack = SlackNotifier(webhook_url=config.slack_webhook)
 
         if config.email_enabled and config.email_to:
             email_config = EmailConfig(
@@ -154,6 +163,16 @@ class NotificationRouter:
                 logger.error(f"Discord notification failed: {e}")
                 results["discord"] = False
 
+        # Send to Slack
+        if self._slack:
+            try:
+                results["slack"] = await self._slack.send_healing_result(
+                    result, workflow_name
+                )
+            except Exception as e:
+                logger.error(f"Slack notification failed: {e}")
+                results["slack"] = False
+
         # Send to Email
         if self._email:
             try:
@@ -195,6 +214,16 @@ class NotificationRouter:
             except Exception as e:
                 logger.error(f"Discord notification failed: {e}")
                 results["discord"] = False
+
+        # Send to Slack
+        if self._slack:
+            try:
+                results["slack"] = await self._slack.send_detection_alert(
+                    detection, workflow_name
+                )
+            except Exception as e:
+                logger.error(f"Slack notification failed: {e}")
+                results["slack"] = False
 
         # Send to Email
         if self._email:
@@ -248,10 +277,23 @@ class NotificationRouter:
                 logger.error(f"Discord notification failed: {e}")
                 results["discord"] = False
 
+        # Send to Slack
+        if self._slack:
+            try:
+                level_emoji = {"info": ":information_source:", "warning": ":warning:", "error": ":x:"}.get(level, ":grey_question:")
+                blocks = [
+                    {"type": "header", "text": {"type": "plain_text", "text": f"{level_emoji} {title}"}},
+                    {"type": "section", "text": {"type": "mrkdwn", "text": message}},
+                ]
+                results["slack"] = await self._slack.send(blocks=blocks, text=title)
+            except Exception as e:
+                logger.error(f"Slack notification failed: {e}")
+                results["slack"] = False
+
         # Send to Email
         if self._email:
             try:
-                subject = f"[MAO Healer] {title}"
+                subject = f"[Pisama] {title}"
                 results["email"] = await self._email.send(
                     subject=subject,
                     body=message,
@@ -271,7 +313,7 @@ class NotificationRouter:
         """
         return await self.notify_custom(
             title="Test Notification",
-            message="This is a test notification from MAO Healer. If you see this, notifications are working correctly!",
+            message="This is a test notification from Pisama. If you see this, notifications are working correctly!",
             level="info",
         )
 
@@ -279,10 +321,13 @@ class NotificationRouter:
         """Close all notifier connections."""
         if self._discord:
             await self._discord.close()
+        if self._slack:
+            await self._slack.close()
 
 
 def create_notification_router(
     discord_webhook: Optional[str] = None,
+    slack_webhook: Optional[str] = None,
     email_config: Optional[Dict[str, Any]] = None,
 ) -> NotificationRouter:
     """
@@ -290,6 +335,7 @@ def create_notification_router(
 
     Args:
         discord_webhook: Discord webhook URL
+        slack_webhook: Slack webhook URL
         email_config: Email configuration dict
 
     Returns:
@@ -297,6 +343,7 @@ def create_notification_router(
     """
     config = NotifyConfig(
         discord_webhook=discord_webhook,
+        slack_webhook=slack_webhook,
     )
 
     if email_config:
