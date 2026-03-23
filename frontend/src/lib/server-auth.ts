@@ -40,10 +40,14 @@ export async function serverFetch<T>(path: string, auth: { token: string; tenant
     : `/tenants/${auth.tenantId}${path}`
   const url = `${API}${fullPath}`
   try {
+    const controller = new AbortController()
+    const timeout = setTimeout(() => controller.abort(), 5000)
     const res = await fetch(url, {
       headers: { Authorization: `Bearer ${auth.token}` },
       cache: 'no-store',
+      signal: controller.signal,
     })
+    clearTimeout(timeout)
     if (res.ok) return res.json()
 
     if (res.status === 401 && auth.email && process.env.SERVER_AUTH_SECRET) {
