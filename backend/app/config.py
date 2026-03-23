@@ -286,7 +286,8 @@ class Settings(BaseSettings):
     jwt_secret: str = Field(..., min_length=32, description="JWT signing secret (required)")
     jwt_algorithm: str = "HS256"
     jwt_expiration_hours: int = 24
-    
+    server_auth_secret: str = ""
+
     clerk_publishable_key: str = ""
     clerk_secret_key: str = ""
     clerk_webhook_secret: str = ""

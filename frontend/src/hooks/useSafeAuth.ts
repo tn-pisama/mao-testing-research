@@ -116,12 +116,15 @@ export function useSafeAuth() {
   }, [extendedSession?.idToken])
 
   // If NextAuth JWT callback already exchanged the token, cache it
+  // But don't blindly set a fresh TTL — the token might already be expired
   const sessionAccessToken = extendedSession?.accessToken
   const sessionTenantId = extendedSession?.tenantId
   if (sessionAccessToken && !cachedBackendToken) {
     cachedBackendToken = sessionAccessToken
-    backendTokenExpiresAt = Date.now() + 23 * 60 * 60 * 1000
     if (sessionTenantId) cachedTenantId = sessionTenantId
+    // Don't assume the token is fresh — set a short TTL so getToken() verifies quickly
+    // If the token works, the API call succeeds. If not, the refresh path kicks in.
+    backendTokenExpiresAt = Date.now() + 5 * 60 * 1000 // 5 min check
     persistToken(sessionAccessToken, backendTokenExpiresAt, sessionTenantId)
   }
 

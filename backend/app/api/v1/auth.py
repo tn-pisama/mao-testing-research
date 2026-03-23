@@ -296,6 +296,29 @@ async def refresh_token(
             raise HTTPException(status_code=401, detail="Invalid token")
 
 
+@router.post("/server-token")
+async def create_server_token(
+    request: Request,
+    db: AsyncSession = Depends(get_db),
+):
+    """Create a JWT for a verified user via server-to-server auth.
+    Used by the Vercel SSR when the NextAuth token chain is broken."""
+    settings = get_settings()
+    secret = request.headers.get("x-server-secret")
+    if not settings.server_auth_secret or not secret or secret != settings.server_auth_secret:
+        raise HTTPException(status_code=403, detail="Forbidden")
+    body = await request.json()
+    email = body.get("email")
+    if not email:
+        raise HTTPException(status_code=400, detail="Missing email")
+    result = await db.execute(select(User).where(User.email == email))
+    user = result.scalar_one_or_none()
+    if not user or not user.tenant_id:
+        raise HTTPException(status_code=404, detail="User not found")
+    token = create_access_token(str(user.tenant_id))
+    return {"access_token": token, "tenant_id": str(user.tenant_id)}
+
+
 @router.get("/tenant-by-email")
 async def get_tenant_by_email(
     email: str,
