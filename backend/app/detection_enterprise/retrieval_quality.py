@@ -429,16 +429,32 @@ class RetrievalQualityDetector:
         # Calculate query-document alignment
         query_doc_alignment = self._compute_query_alignment(query, retrieved_documents)
 
+        # Check if any retrieved document has high relevance (> 0.7).
+        # If at least one good doc exists, retrieval isn't broken — suppress.
+        has_good_doc = any(score > 0.7 for score in relevance_scores)
+
+        # Count how many quality dimensions fail
+        failing_dimensions = sum([
+            relevance_score < self.relevance_threshold,
+            precision < self.precision_threshold,
+            coverage_score < self.coverage_threshold,
+        ])
+
         # Determine if failure detected
         # v1.1: Require multiple gaps OR high-severity gap (not just any gap)
+        # v1.2: Require 2+ quality dimensions to fail. If any doc has
+        # relevance > 0.7, suppress — at least one good doc means retrieval
+        # isn't fundamentally broken.
         high_severity_gaps = [g for g in coverage_gaps if g.severity == "high"]
         has_significant_gaps = len(coverage_gaps) >= 2 or len(high_severity_gaps) > 0
-        detected = (
-            relevance_score < self.relevance_threshold or
-            precision < self.precision_threshold or
-            coverage_score < self.coverage_threshold or
-            has_significant_gaps
-        )
+
+        if has_good_doc:
+            # At least one good doc — only flag if 2+ dimensions fail AND
+            # there are significant coverage gaps
+            detected = failing_dimensions >= 2 and has_significant_gaps
+        else:
+            # No good docs — require 2+ failing dimensions
+            detected = failing_dimensions >= 2 or has_significant_gaps
 
         # Calculate severity
         severity = self._determine_severity(
