@@ -9,6 +9,7 @@ const TOKEN_STORAGE_KEY = 'pisama_backend_token'
 let cachedBackendToken: string | null = null
 let backendTokenExpiresAt: number | null = null
 let exchangePromise: Promise<string | null> | null = null
+let refreshPromise: Promise<string | null> | null = null
 let cachedTenantId: string | null = null
 
 // Rehydrate from sessionStorage on module init (client only)
@@ -45,6 +46,7 @@ export function clearAllCaches(): void {
   cachedBackendToken = null
   backendTokenExpiresAt = null
   exchangePromise = null
+  refreshPromise = null
   cachedTenantId = null
   if (typeof window !== 'undefined') {
     try {
@@ -70,6 +72,30 @@ function persistToken(token: string, expiresAt: number, tenantId?: string): void
       tenantId: tenantId || null,
     }))
   } catch {}
+}
+
+/**
+ * Refresh the backend JWT via server-side route.
+ * Has server-token fallback that works even without an existing backend JWT.
+ * Uses a singleton promise to prevent duplicate refreshes.
+ */
+async function doRefreshToken(): Promise<string | null> {
+  try {
+    const res = await fetch('/api/auth/refresh-token', { method: 'POST' })
+    if (res.ok) {
+      const data = await res.json()
+      cachedBackendToken = data.access_token
+      if (data.tenant_id) cachedTenantId = data.tenant_id
+      backendTokenExpiresAt = Date.now() + 23 * 60 * 60 * 1000
+      persistToken(data.access_token, backendTokenExpiresAt, data.tenant_id)
+      return data.access_token
+    }
+    return null
+  } catch {
+    return null
+  } finally {
+    refreshPromise = null
+  }
 }
 
 /**
@@ -162,31 +188,20 @@ export function useSafeAuth() {
       return cachedBackendToken
     }
 
-    // Try refreshing an expired backend token first (works even if Google ID token expired)
-    if (cachedBackendToken) {
-      try {
-        const refreshRes = await fetch('/api/auth/refresh-token', { method: 'POST' })
-        if (refreshRes.ok) {
-          const data = await refreshRes.json()
-          cachedBackendToken = data.access_token
-          if (data.tenant_id) cachedTenantId = data.tenant_id
-          backendTokenExpiresAt = Date.now() + 23 * 60 * 60 * 1000
-          persistToken(data.access_token, backendTokenExpiresAt, data.tenant_id)
-          return data.access_token
-        }
-      } catch {}
+    // Try refresh-token route — has server-token fallback that works via email
+    // even when there's no existing backend JWT to refresh
+    if (!refreshPromise) {
+      refreshPromise = doRefreshToken()
     }
+    const refreshed = await refreshPromise
+    if (refreshed) return refreshed
 
-    // Production: exchange Google ID token for backend JWT
+    // Last resort: exchange Google ID token for backend JWT
     if (!idToken) return null
-
-    // Exchange token (deduplicate concurrent calls)
     if (!exchangePromise) {
       exchangePromise = exchangeToken()
     }
     const backendToken = await exchangePromise
-
-    // If exchange succeeded, use backend JWT; otherwise fall back to Google token
     return backendToken || idToken
   }, [idToken])
 
