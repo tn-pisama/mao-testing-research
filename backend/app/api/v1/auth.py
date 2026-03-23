@@ -1,15 +1,18 @@
 from typing import List
 from uuid import UUID
-from datetime import datetime
+from datetime import datetime, timedelta
 
 from fastapi import APIRouter, Depends, HTTPException, status, Request
+from fastapi.security import HTTPAuthorizationCredentials
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy import select
 import secrets
+from jose import JWTError, jwt as jose_jwt
 
 from app.storage.database import get_db
 from app.storage.models import Tenant, ApiKey, User
-from app.core.auth import hash_api_key, verify_api_key, create_access_token
+from app.core.auth import hash_api_key, verify_api_key, create_access_token, security
+from app.config import get_settings
 from app.core.dependencies import AuthContext, get_current_user_or_tenant
 from app.core.rate_limit import rate_limiter
 from app.api.v1.schemas import (
@@ -260,6 +263,37 @@ async def exchange_google_token(
         raise HTTPException(status_code=403, detail="No tenant")
     token = create_access_token(auth.tenant_id)
     return {"access_token": token, "tenant_id": auth.tenant_id}
+
+
+@router.post("/refresh")
+async def refresh_token(
+    credentials: HTTPAuthorizationCredentials = Depends(security),
+):
+    """Refresh an expired backend JWT. Accepts tokens expired within 30 days."""
+    settings = get_settings()
+    token = credentials.credentials
+    try:
+        # Try normal decode first (token still valid)
+        from app.core.auth import decode_access_token
+        token_data = decode_access_token(token)
+        new_token = create_access_token(token_data.tenant_id)
+        return {"access_token": new_token, "tenant_id": token_data.tenant_id}
+    except HTTPException:
+        # Token expired — decode without expiry check, validate signature
+        try:
+            payload = jose_jwt.decode(
+                token, settings.jwt_secret,
+                algorithms=[settings.jwt_algorithm],
+                options={"verify_exp": False}
+            )
+            exp = datetime.utcfromtimestamp(payload["exp"])
+            if datetime.utcnow() - exp > timedelta(days=30):
+                raise HTTPException(status_code=401, detail="Token too old to refresh")
+            tenant_id = payload["tenant_id"]
+            new_token = create_access_token(tenant_id)
+            return {"access_token": new_token, "tenant_id": tenant_id}
+        except (JWTError, KeyError):
+            raise HTTPException(status_code=401, detail="Invalid token")
 
 
 @router.get("/tenant-by-email")

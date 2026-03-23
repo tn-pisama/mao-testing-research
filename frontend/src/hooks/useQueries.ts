@@ -44,14 +44,15 @@ import {
 
 type ApiClient = ReturnType<typeof createApiClient>
 
-/** Returns a memoisation-safe API client builder */
-function useApiClient(): () => Promise<ApiClient> {
+/** Returns a memoisation-safe API client builder + tenant state */
+function useApiClient() {
   const { getToken } = useAuth()
-  const { tenantId } = useTenant()
-  return async () => {
+  const { tenantId, isLoaded: tenantLoaded } = useTenant()
+  const getApi = async () => {
     const token = await getToken()
     return createApiClient(token, tenantId)
   }
+  return { getApi, tenantId, tenantLoaded }
 }
 
 /**
@@ -92,10 +93,10 @@ function useQueryWithFallback<T>({
   enabled?: boolean
   refetchInterval?: number | false
 }) {
-  const getApi = useApiClient()
+  const { getApi, tenantId, tenantLoaded } = useApiClient()
 
   const query = useQuery({
-    queryKey,
+    queryKey: [...queryKey, tenantId],
     queryFn: async (): Promise<{ data: T; isDemoMode: boolean }> => {
       try {
         const api = await getApi()
@@ -108,7 +109,7 @@ function useQueryWithFallback<T>({
         throw error
       }
     },
-    enabled,
+    enabled: enabled && tenantLoaded,
     refetchInterval,
   })
 
@@ -153,6 +154,70 @@ export const queryKeys = {
   openClawInstances: () => ['openClawInstances'] as const,
   openClawAgents: (instanceId?: string) => ['openClawAgents', instanceId] as const,
 } as const
+
+// ---------------------------------------------------------------------------
+// Combined dashboard query (single request for all dashboard data)
+// ---------------------------------------------------------------------------
+
+export interface DashboardData {
+  loop_analytics: {
+    total_loops_detected: number
+    loops_by_method: Record<string, number>
+    avg_loop_length: number
+    top_agents_in_loops: Array<{ agent_id: string; count: number }>
+    time_series: Array<{ date: string; count: number }>
+  }
+  cost_analytics: {
+    total_cost_cents: number
+    total_tokens: number
+    cost_by_framework: Record<string, number>
+    cost_by_day: Array<{ date: string; cost_cents: number }>
+    top_expensive_traces: Array<{ trace_id: string; session_id: string; cost_cents: number; tokens: number }>
+  }
+  detections: { items: Detection[]; total: number; page: number; per_page: number }
+  traces: { traces: Trace[]; total: number; page: number; per_page: number }
+  quality_assessments: { assessments: QualityAssessment[]; total: number; page: number; page_size: number }
+}
+
+export function useDashboardQuery(days: number = 30, initialData?: DashboardData | null) {
+  const { getToken } = useAuth()
+  const { tenantId, isLoaded: tenantLoaded } = useTenant()
+
+  const query = useQuery({
+    queryKey: ['dashboard', days, tenantId],
+    queryFn: async (): Promise<DashboardData> => {
+      const token = await getToken()
+      const API_BASE = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8000/api/v1'
+      const url = `${API_BASE}/tenants/${tenantId}/dashboard?days=${days}`
+      const headers: Record<string, string> = { 'Content-Type': 'application/json' }
+      if (token) headers['Authorization'] = `Bearer ${token}`
+      const response = await fetch(url, { headers, credentials: 'include' })
+      if (!response.ok) throw new Error(`Dashboard API error: ${response.status}`)
+      return response.json()
+    },
+    initialData: initialData || undefined,
+    enabled: tenantLoaded,
+  })
+
+  // In TanStack Query v5, isLoading = isPending && isFetching.
+  // When enabled=false (tenant not loaded yet) with no data, isLoading is false
+  // but we should still show the skeleton — the query hasn't started yet.
+  const isActuallyLoading = query.isLoading || (query.isPending && !query.data)
+
+  return {
+    loopAnalytics: query.data?.loop_analytics ?? null,
+    costAnalytics: query.data?.cost_analytics ?? null,
+    detections: query.data?.detections?.items ?? [],
+    detectionsTotal: query.data?.detections?.total ?? 0,
+    traces: query.data?.traces?.traces ?? [],
+    tracesTotal: query.data?.traces?.total ?? 0,
+    assessments: query.data?.quality_assessments?.assessments ?? [],
+    assessmentsTotal: query.data?.quality_assessments?.total ?? 0,
+    isLoading: isActuallyLoading,
+    isDemoMode: false,
+    refetch: query.refetch,
+  }
+}
 
 // ---------------------------------------------------------------------------
 // Query hooks (with demo-data fallback)
@@ -524,7 +589,7 @@ export function useOpenClawAgentsQuery(instanceId?: string) {
 // ---------------------------------------------------------------------------
 
 export function usePromoteHealingMutation() {
-  const getApi = useApiClient()
+  const { getApi } = useApiClient()
   const queryClient = useQueryClient()
 
   return useMutation({
@@ -539,7 +604,7 @@ export function usePromoteHealingMutation() {
 }
 
 export function useRejectHealingMutation() {
-  const getApi = useApiClient()
+  const { getApi } = useApiClient()
   const queryClient = useQueryClient()
 
   return useMutation({
@@ -554,7 +619,7 @@ export function useRejectHealingMutation() {
 }
 
 export function useRollbackHealingMutation() {
-  const getApi = useApiClient()
+  const { getApi } = useApiClient()
   const queryClient = useQueryClient()
 
   return useMutation({
@@ -569,7 +634,7 @@ export function useRollbackHealingMutation() {
 }
 
 export function useVerifyHealingMutation() {
-  const getApi = useApiClient()
+  const { getApi } = useApiClient()
   const queryClient = useQueryClient()
 
   return useMutation({
@@ -584,7 +649,7 @@ export function useVerifyHealingMutation() {
 }
 
 export function useApproveHealingMutation() {
-  const getApi = useApiClient()
+  const { getApi } = useApiClient()
   const queryClient = useQueryClient()
 
   return useMutation({
@@ -603,7 +668,7 @@ export function useApproveHealingMutation() {
 }
 
 export function useCreateConnectionMutation() {
-  const getApi = useApiClient()
+  const { getApi } = useApiClient()
   const queryClient = useQueryClient()
 
   return useMutation({
@@ -618,7 +683,7 @@ export function useCreateConnectionMutation() {
 }
 
 export function useTestConnectionMutation() {
-  const getApi = useApiClient()
+  const { getApi } = useApiClient()
   const queryClient = useQueryClient()
 
   return useMutation({
@@ -633,7 +698,7 @@ export function useTestConnectionMutation() {
 }
 
 export function useDeleteConnectionMutation() {
-  const getApi = useApiClient()
+  const { getApi } = useApiClient()
   const queryClient = useQueryClient()
 
   return useMutation({
@@ -648,7 +713,7 @@ export function useDeleteConnectionMutation() {
 }
 
 export function useRestoreVersionMutation() {
-  const getApi = useApiClient()
+  const { getApi } = useApiClient()
   const queryClient = useQueryClient()
 
   return useMutation({
@@ -664,7 +729,7 @@ export function useRestoreVersionMutation() {
 }
 
 export function useSubmitFeedbackMutation() {
-  const getApi = useApiClient()
+  const { getApi } = useApiClient()
 
   return useMutation({
     mutationFn: async ({ detectionId, isValid }: { detectionId: string; isValid: boolean }) => {
@@ -717,7 +782,7 @@ export function useQualityHealingsQuery(assessmentId?: string) {
 }
 
 export function useTriggerQualityHealingMutation() {
-  const getApi = useApiClient()
+  const { getApi } = useApiClient()
   const queryClient = useQueryClient()
 
   return useMutation({
@@ -736,7 +801,7 @@ export function useTriggerQualityHealingMutation() {
 }
 
 export function useApproveQualityHealingMutation() {
-  const getApi = useApiClient()
+  const { getApi } = useApiClient()
   const queryClient = useQueryClient()
 
   return useMutation({
@@ -751,7 +816,7 @@ export function useApproveQualityHealingMutation() {
 }
 
 export function useRollbackQualityHealingMutation() {
-  const getApi = useApiClient()
+  const { getApi } = useApiClient()
   const queryClient = useQueryClient()
 
   return useMutation({
@@ -770,7 +835,7 @@ export function useRollbackQualityHealingMutation() {
 // ---------------------------------------------------------------------------
 
 export function useUpdateThresholdsMutation() {
-  const getApi = useApiClient()
+  const { getApi } = useApiClient()
   const queryClient = useQueryClient()
 
   return useMutation({
@@ -788,7 +853,7 @@ export function useUpdateThresholdsMutation() {
 }
 
 export function useResetThresholdsMutation() {
-  const getApi = useApiClient()
+  const { getApi } = useApiClient()
   const queryClient = useQueryClient()
 
   return useMutation({
