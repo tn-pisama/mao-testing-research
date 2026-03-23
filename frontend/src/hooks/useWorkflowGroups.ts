@@ -16,7 +16,7 @@ export function useWorkflowGroups() {
     async function loadGroups() {
       try {
         const token = await getToken()
-        if (!token || !tenantId) {
+        if (!token || !tenantId || tenantId === 'default') {
           setGroups([])
           setIsLoading(false)
           return
@@ -27,7 +27,8 @@ export function useWorkflowGroups() {
         setGroups(data)
         setError(null)
       } catch (err) {
-        console.error('Failed to load workflow groups:', err)
+        // Non-critical: workflow groups are optional
+        console.warn('Failed to load workflow groups:', (err as Error).message)
         setError('Failed to load groups')
         setGroups([])
       } finally {
