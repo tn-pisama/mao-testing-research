@@ -143,15 +143,28 @@ class N8NComplexityDetector(TurnAwareDetector):
         affected_node_indices: List[int] = []
         node_index_map = {node.get("name", ""): idx for idx, node in enumerate(nodes)}
 
-        # 1. Check node count
+        # Scale thresholds by workflow size: small workflows get more lenient
+        # thresholds, large workflows get stricter ones.
         node_count = len(nodes)
-        if node_count > self.max_node_count:
+        if node_count < 15:
+            threshold_scale = 1.3  # More lenient for small workflows
+        elif node_count > 40:
+            threshold_scale = 0.8  # Stricter for large workflows
+        else:
+            threshold_scale = 1.0
+
+        scaled_max_node_count = int(self.max_node_count * threshold_scale)
+        scaled_max_branch_depth = int(self.max_branch_depth * threshold_scale)
+        scaled_max_cyclomatic = int(self.max_cyclomatic_complexity * threshold_scale)
+
+        # 1. Check node count
+        if node_count > scaled_max_node_count:
             issues.append({
                 "detected": True,
                 "type": "excessive_nodes",
                 "node_count": node_count,
-                "threshold": self.max_node_count,
-                "explanation": f"Workflow has {node_count} nodes (threshold: {self.max_node_count})",
+                "threshold": scaled_max_node_count,
+                "explanation": f"Workflow has {node_count} nodes (threshold: {scaled_max_node_count})",
                 "turns": list(range(node_count)),
             })
             affected_node_indices.extend(range(node_count))
@@ -160,7 +173,7 @@ class N8NComplexityDetector(TurnAwareDetector):
         branching_depth = self._calculate_workflow_branch_depth(
             adjacency, node_lookup
         )
-        if branching_depth > self.max_branch_depth:
+        if branching_depth > scaled_max_branch_depth:
             branching_indices = [
                 node_index_map[name]
                 for name, data in node_lookup.items()
@@ -171,8 +184,8 @@ class N8NComplexityDetector(TurnAwareDetector):
                 "detected": True,
                 "type": "deep_branching",
                 "branch_depth": branching_depth,
-                "threshold": self.max_branch_depth,
-                "explanation": f"Workflow has {branching_depth} levels of nested branches (threshold: {self.max_branch_depth})",
+                "threshold": scaled_max_branch_depth,
+                "explanation": f"Workflow has {branching_depth} levels of nested branches (threshold: {scaled_max_branch_depth})",
                 "turns": branching_indices,
             })
             affected_node_indices.extend(branching_indices)
@@ -185,7 +198,7 @@ class N8NComplexityDetector(TurnAwareDetector):
         # Ensure minimum of 1
         cyclomatic_complexity = max(1, cyclomatic_complexity)
 
-        if cyclomatic_complexity > self.max_cyclomatic_complexity:
+        if cyclomatic_complexity > scaled_max_cyclomatic:
             branching_indices = [
                 node_index_map[name]
                 for name, data in node_lookup.items()
@@ -199,11 +212,11 @@ class N8NComplexityDetector(TurnAwareDetector):
                 "edges": total_edges,
                 "nodes": node_count,
                 "connected_components": num_connected_components,
-                "threshold": self.max_cyclomatic_complexity,
+                "threshold": scaled_max_cyclomatic,
                 "explanation": (
                     f"Workflow has cyclomatic complexity of {cyclomatic_complexity} "
                     f"(E={total_edges} - N={node_count} + 2*P={num_connected_components}, "
-                    f"threshold: {self.max_cyclomatic_complexity})"
+                    f"threshold: {scaled_max_cyclomatic})"
                 ),
                 "turns": branching_indices,
             })
@@ -421,15 +434,26 @@ class N8NComplexityDetector(TurnAwareDetector):
 
         active_categories = {k: v for k, v in categories.items() if v}
 
-        # Flag when a workflow touches 5+ distinct functional areas,
+        # "other" and categories that commonly co-occur (like "validation"
+        # which is infrastructure, not a separate concern) are related to
+        # whichever domain is present. Only count truly UNRELATED groups.
+        # "transform", "validation", "other" are infrastructure — not
+        # independent functional concerns.
+        infrastructure_categories = {"transform", "validation", "other"}
+        unrelated_categories = {
+            k for k in active_categories if k not in infrastructure_categories
+        }
+
+        # Flag when a workflow touches 3+ UNRELATED functional areas,
         # which indicates it should be decomposed or split.
-        if len(active_categories) >= 5:
+        if len(unrelated_categories) >= 3:
             return {
                 "detected": True,
                 "type": "multiple_concerns",
                 "categories": list(active_categories.keys()),
-                "category_count": len(active_categories),
-                "explanation": f"Workflow handles {len(active_categories)} distinct concerns: {', '.join(active_categories.keys())}",
+                "unrelated_categories": list(unrelated_categories),
+                "category_count": len(unrelated_categories),
+                "explanation": f"Workflow handles {len(unrelated_categories)} unrelated concerns: {', '.join(sorted(unrelated_categories))}",
                 "turns": list(range(len(nodes))),
             }
 
