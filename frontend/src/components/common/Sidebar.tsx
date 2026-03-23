@@ -48,7 +48,7 @@ const n8nObserveItems: NavItem[] = [
 ]
 
 const n8nImproveItems: NavItem[] = [
-  { label: 'Quality', href: '/quality', icon: Star },
+  { label: 'Workflow Quality', href: '/quality', icon: Star },
   { label: 'Problems Found', href: '/detections', icon: AlertCircle },
   { label: 'Fixes', href: '/healing', icon: Wrench },
 ]
@@ -61,7 +61,7 @@ const developerObserveItems: NavItem[] = [
 ]
 
 const developerImproveItems: NavItem[] = [
-  { label: 'Quality', href: '/quality', icon: Star },
+  { label: 'Workflows', href: '/quality', icon: Star },
   { label: 'Healing', href: '/healing', icon: Sparkles },
   { label: 'Replay', href: '/replay', icon: RotateCcw },
 ]

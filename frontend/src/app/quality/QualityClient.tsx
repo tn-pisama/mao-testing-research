@@ -78,10 +78,10 @@ export function QualityClient({ initialAssessments, initialTotal }: QualityClien
               <div className="p-2 bg-amber-600/20 rounded-lg">
                 <Star className="w-6 h-6 text-amber-400" />
               </div>
-              <h1 className="text-2xl font-bold text-white">Quality Assessments</h1>
+              <h1 className="text-2xl font-bold text-white">Workflows</h1>
             </div>
             <p className="text-zinc-400">
-              Review quality scores and improvement suggestions for your workflows
+              Quality scores and improvement suggestions for your workflows
             </p>
           </div>
         </div>
