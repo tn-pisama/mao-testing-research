@@ -354,7 +354,10 @@ class MultiLevelLoopDetector:
             1 for k in current.state_delta
             if k in prev.state_delta and current.state_delta[k] != prev.state_delta[k]
         )
-        return len(delta_keys) > 0 or value_changes > 2
+        # v1.2.1: Lowered from > 2 to >= 2 — if 2+ fields change value between
+        # states, that's meaningful progress (e.g., batch processing where each
+        # item has a different ID and amount but the same action key).
+        return len(delta_keys) > 0 or value_changes >= 2
     
     def _compute_state_hash(self, state: StateSnapshot) -> str:
         normalized = json.dumps(state.state_delta, sort_keys=True)

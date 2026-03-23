@@ -262,10 +262,29 @@ class CompletionMisjudgmentDetector:
         self.strict_mode = strict_mode
         self.completion_threshold = completion_threshold
 
+    # v1.7.1: Partial progress phrases that look like completion claims but are not.
+    # "I've completed 3 of 5" should NOT count as a full completion claim.
+    _PARTIAL_PROGRESS_EXEMPTIONS = re.compile(
+        r"(?:i have|i've)\s+(?:completed|finished|done)\s+\d+\s+(?:of|out of|/)\s+\d+",
+        re.IGNORECASE,
+    )
+
     def _detect_completion_claim(self, text: str) -> bool:
-        """Detect if agent claims task completion."""
+        """Detect if agent claims task completion.
+
+        v1.7.1: Exempt partial-progress phrases like "completed 3 of 5" that
+        explicitly acknowledge incomplete work.
+        """
         for pattern in self.COMPLETION_CLAIM_PATTERNS:
-            if re.search(pattern, text, re.IGNORECASE):
+            match = re.search(pattern, text, re.IGNORECASE)
+            if match:
+                # v1.7.1: Check if this match is part of a partial-progress phrase
+                # e.g., "I've completed 3 of 5 endpoints" — NOT a full claim
+                start = max(0, match.start() - 20)
+                end = min(len(text), match.end() + 30)
+                window = text[start:end]
+                if self._PARTIAL_PROGRESS_EXEMPTIONS.search(window):
+                    continue
                 return True
         return False
 
@@ -379,9 +398,19 @@ class CompletionMisjudgmentDetector:
         return qualifiers
 
     def _detect_confident_delivery(self, text: str) -> bool:
-        """v1.1: Detect implicit completion via confident delivery."""
+        """v1.1: Detect implicit completion via confident delivery.
+
+        v1.7.1: Exempt partial-progress phrases like "completed 3 of 5".
+        """
         for pattern in self.CONFIDENT_DELIVERY_PATTERNS:
-            if re.search(pattern, text, re.IGNORECASE):
+            match = re.search(pattern, text, re.IGNORECASE)
+            if match:
+                # v1.7.1: Same partial-progress exemption as _detect_completion_claim
+                start = max(0, match.start() - 20)
+                end = min(len(text), match.end() + 30)
+                window = text[start:end]
+                if self._PARTIAL_PROGRESS_EXEMPTIONS.search(window):
+                    continue
                 return True
         return False
 
