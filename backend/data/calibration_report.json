@@ -1,5 +1,5 @@
 {
-  "calibrated_at": "2026-03-23T16:01:05.481630+00:00",
+  "calibrated_at": "2026-03-23T16:52:06.962105+00:00",
   "detector_count": 41,
   "skipped": [
     "workflow",
@@ -682,27 +682,27 @@
     },
     "retrieval_quality": {
       "detection_type": "retrieval_quality",
-      "f1": 0.7059,
-      "precision": 0.5455,
-      "recall": 1.0,
+      "f1": 0.6667,
+      "precision": 0.5238,
+      "recall": 0.9167,
       "sample_count": 49,
       "optimal_threshold": 0.1,
-      "true_positives": 24,
+      "true_positives": 22,
       "true_negatives": 5,
       "false_positives": 20,
-      "false_negatives": 0,
-      "ece": 0.3054,
-      "f1_ci_lower": 0.5806,
-      "f1_ci_upper": 0.8182,
+      "false_negatives": 2,
+      "ece": 0.3287,
+      "f1_ci_lower": 0.5263,
+      "f1_ci_upper": 0.7848,
       "difficulty_breakdown": {
         "easy": {
-          "f1": 0.7143,
-          "precision": 0.5556,
-          "recall": 1.0,
+          "f1": 0.6667,
+          "precision": 0.5294,
+          "recall": 0.9,
           "n": 23,
-          "tp": 10,
+          "tp": 9,
           "fp": 8,
-          "fn": 0,
+          "fn": 1,
           "tn": 5
         },
         "hard": {
@@ -726,13 +726,13 @@
           "tn": 0
         },
         "mixed": {
-          "f1": 0.6429,
-          "precision": 0.4737,
-          "recall": 1.0,
+          "f1": 0.5926,
+          "precision": 0.4444,
+          "recall": 0.8889,
           "n": 19,
-          "tp": 9,
+          "tp": 8,
           "fp": 10,
-          "fn": 0,
+          "fn": 1,
           "tn": 0
         }
       }
@@ -853,18 +853,18 @@
     },
     "withholding": {
       "detection_type": "withholding",
-      "f1": 0.8267,
-      "precision": 0.7045,
-      "recall": 1.0,
+      "f1": 0.8108,
+      "precision": 0.6977,
+      "recall": 0.9677,
       "sample_count": 53,
       "optimal_threshold": 0.1,
-      "true_positives": 31,
+      "true_positives": 30,
       "true_negatives": 9,
       "false_positives": 13,
-      "false_negatives": 0,
-      "ece": 0.1887,
-      "f1_ci_lower": 0.7273,
-      "f1_ci_upper": 0.9091,
+      "false_negatives": 1,
+      "ece": 0.1336,
+      "f1_ci_lower": 0.7097,
+      "f1_ci_upper": 0.8974,
       "difficulty_breakdown": {
         "easy": {
           "f1": 0.75,
@@ -897,61 +897,61 @@
           "tn": 0
         },
         "mixed": {
-          "f1": 0.85,
-          "precision": 0.7391,
-          "recall": 1.0,
+          "f1": 0.8205,
+          "precision": 0.7273,
+          "recall": 0.9412,
           "n": 23,
-          "tp": 17,
+          "tp": 16,
           "fp": 6,
-          "fn": 0,
+          "fn": 1,
           "tn": 0
         }
       }
     },
     "n8n_schema": {
       "detection_type": "n8n_schema",
-      "f1": 0.7619,
-      "precision": 0.6829,
-      "recall": 0.8615,
+      "f1": 0.7752,
+      "precision": 0.7812,
+      "recall": 0.7692,
       "sample_count": 110,
-      "optimal_threshold": 0.75,
-      "true_positives": 56,
-      "true_negatives": 19,
-      "false_positives": 26,
-      "false_negatives": 9,
-      "ece": 0.1868,
-      "f1_ci_lower": 0.6763,
-      "f1_ci_upper": 0.8323,
+      "optimal_threshold": 0.1,
+      "true_positives": 50,
+      "true_negatives": 31,
+      "false_positives": 14,
+      "false_negatives": 15,
+      "ece": 0.095,
+      "f1_ci_lower": 0.6838,
+      "f1_ci_upper": 0.848,
       "difficulty_breakdown": {
         "easy": {
-          "f1": 0.8235,
-          "precision": 0.7,
-          "recall": 1.0,
+          "f1": 0.8462,
+          "precision": 0.9167,
+          "recall": 0.7857,
           "n": 25,
-          "tp": 14,
-          "fp": 6,
-          "fn": 0,
-          "tn": 5
+          "tp": 11,
+          "fp": 1,
+          "fn": 3,
+          "tn": 10
         },
         "hard": {
-          "f1": 0.7347,
-          "precision": 0.6667,
+          "f1": 0.75,
+          "precision": 0.6923,
           "recall": 0.8182,
           "n": 36,
           "tp": 18,
-          "fp": 9,
+          "fp": 8,
           "fn": 4,
-          "tn": 5
+          "tn": 6
         },
         "medium": {
-          "f1": 0.75,
-          "precision": 0.6857,
-          "recall": 0.8276,
+          "f1": 0.7636,
+          "precision": 0.8077,
+          "recall": 0.7241,
           "n": 49,
-          "tp": 24,
-          "fp": 11,
-          "fn": 5,
-          "tn": 9
+          "tp": 21,
+          "fp": 5,
+          "fn": 8,
+          "tn": 15
         }
       }
     },
@@ -1014,48 +1014,48 @@
     },
     "n8n_complexity": {
       "detection_type": "n8n_complexity",
-      "f1": 0.6815,
-      "precision": 0.6765,
-      "recall": 0.6866,
+      "f1": 0.8392,
+      "precision": 0.7895,
+      "recall": 0.8955,
       "sample_count": 110,
       "optimal_threshold": 0.1,
-      "true_positives": 46,
-      "true_negatives": 21,
-      "false_positives": 22,
-      "false_negatives": 21,
-      "ece": 0.3087,
-      "f1_ci_lower": 0.5833,
-      "f1_ci_upper": 0.766,
+      "true_positives": 60,
+      "true_negatives": 27,
+      "false_positives": 16,
+      "false_negatives": 7,
+      "ece": 0.3147,
+      "f1_ci_lower": 0.768,
+      "f1_ci_upper": 0.9,
       "difficulty_breakdown": {
         "easy": {
-          "f1": 0.7692,
-          "precision": 0.7143,
-          "recall": 0.8333,
+          "f1": 0.9231,
+          "precision": 0.8571,
+          "recall": 1.0,
           "n": 11,
-          "tp": 5,
-          "fp": 2,
-          "fn": 1,
-          "tn": 3
+          "tp": 6,
+          "fp": 1,
+          "fn": 0,
+          "tn": 4
         },
         "hard": {
-          "f1": 0.6462,
-          "precision": 0.6176,
-          "recall": 0.6774,
+          "f1": 0.8406,
+          "precision": 0.7632,
+          "recall": 0.9355,
           "n": 50,
-          "tp": 21,
-          "fp": 13,
-          "fn": 10,
-          "tn": 6
+          "tp": 29,
+          "fp": 9,
+          "fn": 2,
+          "tn": 10
         },
         "medium": {
-          "f1": 0.7018,
-          "precision": 0.7407,
-          "recall": 0.6667,
+          "f1": 0.8197,
+          "precision": 0.8065,
+          "recall": 0.8333,
           "n": 49,
-          "tp": 20,
-          "fp": 7,
-          "fn": 10,
-          "tn": 12
+          "tp": 25,
+          "fp": 6,
+          "fn": 5,
+          "tn": 13
         }
       }
     },
@@ -1070,7 +1070,7 @@
       "true_negatives": 5,
       "false_positives": 42,
       "false_negatives": 0,
-      "ece": 0.2315,
+      "ece": 0.0889,
       "f1_ci_lower": 0.7282,
       "f1_ci_upper": 0.8491,
       "difficulty_breakdown": {
@@ -1447,18 +1447,18 @@
     },
     "openclaw_sandbox_escape": {
       "detection_type": "openclaw_sandbox_escape",
-      "f1": 0.8451,
-      "precision": 0.7317,
+      "f1": 0.7895,
+      "precision": 0.6522,
       "recall": 1.0,
       "sample_count": 100,
-      "optimal_threshold": 0.6,
+      "optimal_threshold": 0.1,
       "true_positives": 60,
-      "true_negatives": 18,
-      "false_positives": 22,
+      "true_negatives": 8,
+      "false_positives": 32,
       "false_negatives": 0,
-      "ece": 0.1867,
-      "f1_ci_lower": 0.7761,
-      "f1_ci_upper": 0.9067,
+      "ece": 0.3823,
+      "f1_ci_lower": 0.7143,
+      "f1_ci_upper": 0.8553,
       "difficulty_breakdown": {
         "easy": {
           "f1": 0.8,
@@ -1471,24 +1471,24 @@
           "tn": 2
         },
         "hard": {
-          "f1": 0.8571,
-          "precision": 0.75,
+          "f1": 0.7925,
+          "precision": 0.6562,
           "recall": 1.0,
           "n": 35,
           "tp": 21,
-          "fp": 7,
+          "fp": 11,
           "fn": 0,
-          "tn": 7
+          "tn": 3
         },
         "medium": {
-          "f1": 0.8571,
-          "precision": 0.75,
+          "f1": 0.7826,
+          "precision": 0.6429,
           "recall": 1.0,
           "n": 45,
           "tp": 27,
-          "fp": 9,
+          "fp": 15,
           "fn": 0,
-          "tn": 9
+          "tn": 3
         }
       }
     },
