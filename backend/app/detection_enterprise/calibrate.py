@@ -57,6 +57,18 @@ def _get_golden_dataset(db_session=None, tenant_id=None):
         except Exception as e:
             logger.warning(f"Failed to load expanded golden dataset: {e}")
 
+    # Merge external real traces (MAST, SWE-bench, etc.)
+    external_path = Path(__file__).parent.parent.parent / "data" / "golden_dataset_external.json"
+    if external_path.exists():
+        try:
+            before = len(dataset.entries)
+            dataset.load_json(external_path)
+            added = len(dataset.entries) - before
+            if added > 0:
+                logger.info(f"Loaded {added} external real traces from {external_path.name} (total: {len(dataset.entries)})")
+        except Exception as e:
+            logger.warning(f"Failed to load external golden dataset: {e}")
+
     return dataset
 
 logger = logging.getLogger(__name__)
