@@ -1,0 +1,281 @@
+"""Combined dashboard endpoint — returns all dashboard data in a single request."""
+
+import asyncio
+from fastapi import APIRouter, Depends, Query
+from pydantic import BaseModel
+from sqlalchemy.ext.asyncio import AsyncSession
+from sqlalchemy import select, func, cast, Float, text
+from typing import Any, Dict, List, Optional
+from uuid import UUID
+from datetime import datetime, timedelta
+
+from sqlalchemy.sql.expression import literal_column
+from app.storage.database import get_db, set_tenant_context
+from app.storage.models import Detection, Trace, State, WorkflowQualityAssessment
+from app.core.auth import get_current_tenant
+from app.api.v1.detections import detection_to_response
+
+router = APIRouter(prefix="/dashboard", tags=["dashboard"])
+
+
+class DashboardResponse(BaseModel):
+    loop_analytics: Dict[str, Any]
+    cost_analytics: Dict[str, Any]
+    detections: Dict[str, Any]
+    traces: Dict[str, Any]
+    quality_assessments: Dict[str, Any]
+
+
+async def _loop_analytics(db: AsyncSession, tid: UUID, start_date: datetime) -> dict:
+    base_filter = [
+        Detection.tenant_id == tid,
+        Detection.detection_type == "infinite_loop",
+        Detection.created_at >= start_date,
+    ]
+
+    method_expr = func.coalesce(Detection.method, literal_column("'unknown'"))
+    method_result = await db.execute(
+        select(
+            method_expr.label("method"),
+            func.count().label("cnt"),
+        ).where(*base_filter).group_by(method_expr)
+    )
+    method_rows = method_result.all()
+    total = sum(r.cnt for r in method_rows)
+
+    avg_result = await db.execute(
+        select(func.avg(cast(Detection.details["loop_length"].as_string(), Float)))
+        .where(*base_filter)
+        .where(Detection.details["loop_length"] != None)  # noqa: E711
+    )
+
+    agent_result = await db.execute(
+        select(State.agent_id, func.count().label("cnt"))
+        .select_from(Detection).join(State, Detection.state_id == State.id)
+        .where(*base_filter)
+        .group_by(State.agent_id).order_by(func.count().desc()).limit(10)
+    )
+
+    ts_result = await db.execute(
+        select(func.date_trunc("day", Detection.created_at).label("day"), func.count().label("cnt"))
+        .where(*base_filter).group_by(text("1")).order_by(text("1"))
+    )
+    ts_map = {r.day.date(): r.cnt for r in ts_result.all()}
+    days = min(30, (datetime.utcnow().date() - start_date.date()).days + 1)
+    time_series = []
+    for i in range(days):
+        d = (start_date + timedelta(days=i)).date()
+        time_series.append({"date": datetime(d.year, d.month, d.day).isoformat(), "count": ts_map.get(d, 0)})
+
+    return {
+        "total_loops_detected": total,
+        "loops_by_method": {r.method: r.cnt for r in method_rows},
+        "avg_loop_length": float(avg_result.scalar() or 0),
+        "top_agents_in_loops": [{"agent_id": r.agent_id, "count": r.cnt} for r in agent_result.all()],
+        "time_series": time_series,
+    }
+
+
+async def _cost_analytics(db: AsyncSession, tid: UUID, start_date: datetime) -> dict:
+    base_filter = [Trace.tenant_id == tid, Trace.created_at >= start_date]
+
+    fw_result = await db.execute(
+        select(Trace.framework, func.sum(Trace.total_cost_cents).label("cost"), func.sum(Trace.total_tokens).label("tokens"))
+        .where(*base_filter).group_by(Trace.framework)
+    )
+    fw_rows = fw_result.all()
+
+    daily_result = await db.execute(
+        select(func.date_trunc("day", Trace.created_at).label("day"), func.sum(Trace.total_cost_cents).label("cost"))
+        .where(*base_filter).group_by(text("1")).order_by(text("1"))
+    )
+    daily_map = {r.day.date(): r.cost or 0 for r in daily_result.all()}
+    days = min(30, (datetime.utcnow().date() - start_date.date()).days + 1)
+    cost_by_day = []
+    for i in range(days):
+        d = (start_date + timedelta(days=i)).date()
+        cost_by_day.append({"date": datetime(d.year, d.month, d.day).isoformat(), "cost_cents": daily_map.get(d, 0)})
+
+    top_result = await db.execute(
+        select(Trace.id, Trace.session_id, Trace.total_cost_cents, Trace.total_tokens)
+        .where(*base_filter).order_by(Trace.total_cost_cents.desc()).limit(10)
+    )
+
+    return {
+        "total_cost_cents": sum(r.cost or 0 for r in fw_rows),
+        "total_tokens": sum(r.tokens or 0 for r in fw_rows),
+        "cost_by_framework": {r.framework: r.cost or 0 for r in fw_rows},
+        "cost_by_day": cost_by_day,
+        "top_expensive_traces": [
+            {"trace_id": str(r.id), "session_id": r.session_id, "cost_cents": r.total_cost_cents, "tokens": r.total_tokens}
+            for r in top_result.all()
+        ],
+    }
+
+
+async def _recent_detections(db: AsyncSession, tid: UUID, limit: int = 10) -> dict:
+    count_result = await db.execute(
+        select(func.count()).where(Detection.tenant_id == tid)
+    )
+    total = count_result.scalar() or 0
+
+    result = await db.execute(
+        select(Detection).where(Detection.tenant_id == tid)
+        .order_by(Detection.created_at.desc()).limit(limit)
+    )
+    detections = result.scalars().all()
+
+    return {
+        "items": [_detection_dict(d) for d in detections],
+        "total": total,
+        "page": 1,
+        "per_page": limit,
+    }
+
+
+def _detection_dict(d: Detection) -> dict:
+    """Lightweight detection serialization for dashboard (skip heavy explanations)."""
+    conf_pct = d.confidence / 100.0 if d.confidence else 0.0
+    tier = "HIGH" if conf_pct >= 0.80 else "LIKELY" if conf_pct >= 0.60 else "POSSIBLE" if conf_pct >= 0.40 else "LOW"
+    return {
+        "id": str(d.id),
+        "trace_id": str(d.trace_id),
+        "state_id": str(d.state_id) if d.state_id else None,
+        "detection_type": d.detection_type,
+        "confidence": d.confidence,
+        "method": d.method,
+        "details": d.details,
+        "validated": d.validated,
+        "false_positive": d.false_positive,
+        "created_at": d.created_at.isoformat() if d.created_at else None,
+        "confidence_tier": tier,
+        "detector_method": d.method,
+    }
+
+
+async def _recent_traces(db: AsyncSession, tid: UUID, limit: int = 10) -> dict:
+    count_result = await db.execute(
+        select(func.count()).where(Trace.tenant_id == tid)
+    )
+    total = count_result.scalar() or 0
+
+    result = await db.execute(
+        select(Trace).where(Trace.tenant_id == tid)
+        .order_by(Trace.created_at.desc()).limit(limit)
+    )
+    traces = result.scalars().all()
+
+    if not traces:
+        return {"traces": [], "total": total, "page": 1, "per_page": limit}
+
+    trace_ids = [t.id for t in traces]
+    state_counts = dict((await db.execute(
+        select(State.trace_id, func.count().label("c")).where(State.trace_id.in_(trace_ids)).group_by(State.trace_id)
+    )).all())
+    det_counts = dict((await db.execute(
+        select(Detection.trace_id, func.count().label("c")).where(Detection.trace_id.in_(trace_ids)).group_by(Detection.trace_id)
+    )).all())
+
+    return {
+        "traces": [
+            {
+                "id": str(t.id),
+                "session_id": t.session_id,
+                "framework": t.framework,
+                "status": t.status,
+                "total_tokens": t.total_tokens,
+                "total_cost_cents": t.total_cost_cents,
+                "created_at": t.created_at.isoformat() if t.created_at else None,
+                "completed_at": t.completed_at.isoformat() if t.completed_at else None,
+                "state_count": state_counts.get(t.id, 0),
+                "detection_count": det_counts.get(t.id, 0),
+            }
+            for t in traces
+        ],
+        "total": total,
+        "page": 1,
+        "per_page": limit,
+    }
+
+
+async def _quality_assessments(db: AsyncSession, tid: UUID, limit: int = 20) -> dict:
+    count_result = await db.execute(
+        select(func.count()).where(WorkflowQualityAssessment.tenant_id == tid)
+    )
+    total = count_result.scalar() or 0
+
+    result = await db.execute(
+        select(WorkflowQualityAssessment).where(WorkflowQualityAssessment.tenant_id == tid)
+        .order_by(WorkflowQualityAssessment.created_at.desc()).limit(limit)
+    )
+    assessments = result.scalars().all()
+
+    return {
+        "assessments": [
+            {
+                "id": str(a.id),
+                "workflow_id": a.workflow_id,
+                "workflow_name": a.workflow_name,
+                "trace_id": str(a.trace_id) if a.trace_id else None,
+                "overall_score": a.overall_score,
+                "overall_grade": a.overall_grade,
+                "agent_scores": a.agent_scores or [],
+                "orchestration_score": a.orchestration_score or {},
+                "improvements": a.improvements or [],
+                "complexity_metrics": a.complexity_metrics or {},
+                "total_issues": a.total_issues,
+                "critical_issues_count": a.critical_issues_count,
+                "source": a.source,
+                "assessment_time_ms": a.assessment_time_ms,
+                "summary": a.summary,
+                "created_at": a.created_at.isoformat() if a.created_at else None,
+            }
+            for a in assessments
+        ],
+        "total": total,
+        "page": 1,
+        "page_size": limit,
+    }
+
+
+@router.get("", response_model=DashboardResponse)
+async def get_dashboard(
+    days: int = Query(30, ge=1, le=365),
+    tenant_id: str = Depends(get_current_tenant),
+    db: AsyncSession = Depends(get_db),
+):
+    """Return all dashboard data in a single request."""
+    await set_tenant_context(db, tenant_id)
+    tid = UUID(tenant_id)
+    start_date = datetime.utcnow() - timedelta(days=days)
+
+    empty_loop = {"total_loops_detected": 0, "loops_by_method": {}, "avg_loop_length": 0, "top_agents_in_loops": [], "time_series": []}
+    empty_cost = {"total_cost_cents": 0, "total_tokens": 0, "cost_by_framework": {}, "cost_by_day": [], "top_expensive_traces": []}
+    empty_detections = {"items": [], "total": 0, "page": 1, "per_page": 10}
+    empty_traces = {"traces": [], "total": 0, "page": 1, "per_page": 10}
+    empty_assessments = {"assessments": [], "total": 0, "page": 1, "page_size": 20}
+
+    # Run each query independently so one failure doesn't crash the whole dashboard
+    async def safe(fn, *args, fallback=None):
+        try:
+            return await fn(*args)
+        except Exception as e:
+            import logging
+            logging.warning(f"Dashboard query {fn.__name__} failed: {e}")
+            return fallback
+
+    loop, cost, detections, traces, assessments = await asyncio.gather(
+        safe(_loop_analytics, db, tid, start_date, fallback=empty_loop),
+        safe(_cost_analytics, db, tid, start_date, fallback=empty_cost),
+        safe(_recent_detections, db, tid, fallback=empty_detections),
+        safe(_recent_traces, db, tid, fallback=empty_traces),
+        safe(_quality_assessments, db, tid, fallback=empty_assessments),
+    )
+
+    return DashboardResponse(
+        loop_analytics=loop,
+        cost_analytics=cost,
+        detections=detections,
+        traces=traces,
+        quality_assessments=assessments,
+    )
