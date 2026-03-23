@@ -109,9 +109,9 @@ class N8NCycleDetector(TurnAwareDetector):
 
     def __init__(
         self,
-        min_cycle_repetitions: int = 3,  # Increased from 2 to reduce FP
+        min_cycle_repetitions: int = 4,  # Increased from 3 to reduce FP
         max_healthy_retries: int = 4,
-        content_similarity_threshold: float = 0.6,  # Raised from 0.4 to reduce FPs — require stronger evidence
+        content_similarity_threshold: float = 0.75,  # Raised from 0.6 to reduce FPs — require stronger evidence
     ):
         """Initialize cycle detector.
 
@@ -546,6 +546,12 @@ class N8NCycleDetector(TurnAwareDetector):
         n = len(normalized_sequence)
 
         if n < 4:
+            return {"detected": False}
+
+        # If all node executions have different output content, it's NOT a loop —
+        # same node names but different work being done each time.
+        contents = [t.content.strip() for t in turns if t.content.strip()]
+        if contents and len(set(contents)) == len(contents):
             return {"detected": False}
 
         # Skip initial trigger/setup nodes
