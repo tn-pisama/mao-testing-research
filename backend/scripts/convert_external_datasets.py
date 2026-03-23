@@ -464,6 +464,183 @@ def convert_swebench(dataset_path: str) -> list:
     return entries
 
 
+# ---------------------------------------------------------------------------
+# TRAIL conversion
+# ---------------------------------------------------------------------------
+
+TRAIL_TO_PISAMA = {
+    "Formatting Errors": "specification", "Formatting Error": "specification",
+    "Instruction Non-compliance": "derailment", "Instruction Non-Compliance": "derailment",
+    "Instruction non complience": "derailment",
+    "Goal Deviation": "derailment", "Goal deviation": "derailment",
+    "Resource Abuse": "overflow", "Resource Exhaustion": "overflow",
+    "Resource Not Found": "overflow", "Timeout Issues": "overflow",
+    "Tool-related": "coordination", "Tool Selection Errors": "coordination",
+    "Tool Selection": "coordination", "Tool Definition Issues": "coordination",
+    "Tool Output Misinterpretation": "hallucination",
+    "Language-only": "hallucination", "Language-Only": "hallucination",
+    "Task Orchestration": "decomposition", "Task Orchestration Errors": "decomposition",
+    "Task Orchestration Error": "decomposition",
+    "Context Handling Failures": "context", "Context Handling Failure": "context",
+    "Poor Information Retrieval": "retrieval_quality",
+    "Poor Information retrieval": "retrieval_quality",
+    "Incorrect Problem Identification": "specification",
+    " Incorrect Problem Identification": "specification",
+    "Incorrect Memory Usage": "corruption",
+    "Environment Setup Errors": "corruption",
+    "Authentication Errors": "corruption",
+    "Service Errors": "corruption",
+}
+
+
+def convert_trail(trail_path: str) -> list[GoldenDatasetEntry]:
+    """Convert TRAIL benchmark traces to golden entries."""
+    import re, glob
+
+    entries = []
+    ann_dirs = sorted(glob.glob(f"{trail_path}/processed_annotations_*"))
+
+    for ann_dir in ann_dirs:
+        source_name = Path(ann_dir).name.replace("processed_annotations_", "")
+        span_dir = f"{trail_path}/data/{source_name.replace('_', ' ').title()}"
+
+        for ann_file in sorted(glob.glob(f"{ann_dir}/*.json")):
+            trace_id = Path(ann_file).stem
+            try:
+                with open(ann_file) as f:
+                    text = re.sub(r",\s*]", "]", re.sub(r",\s*}", "}", f.read()))
+                    ann = json.loads(text)
+            except Exception:
+                continue
+
+            # Load spans for content extraction
+            agent_output = ""
+            task = f"Task from {source_name} benchmark trace {trace_id[:12]}"
+            span_file = os.path.join(span_dir, f"{trace_id}.json")
+            if os.path.exists(span_file):
+                try:
+                    with open(span_file) as f:
+                        text = re.sub(r",\s*]", "]", re.sub(r",\s*}", "}", f.read()))
+                        spans_data = json.loads(text)
+                    for span in spans_data.get("spans", [])[:5]:
+                        attrs = span.get("span_attributes", {})
+                        if isinstance(attrs, dict):
+                            for key in ["input.value", "output.value"]:
+                                val = attrs.get(key, "")
+                                if val and isinstance(val, str) and len(val) > 20:
+                                    if not agent_output:
+                                        task = val[:200]
+                                    else:
+                                        agent_output = val[:500]
+                                    break
+                except Exception:
+                    pass
+            if not agent_output:
+                agent_output = f"Agent output for trace {trace_id[:16]}"
+
+            seen = set()
+            for err in ann.get("errors", []):
+                pisama_type = TRAIL_TO_PISAMA.get(err.get("category", ""))
+                if not pisama_type or pisama_type in seen:
+                    continue
+                seen.add(pisama_type)
+                try:
+                    dt = DetectionType(pisama_type)
+                except ValueError:
+                    continue
+
+                desc = err.get("description", "")[:80]
+                if pisama_type == "specification":
+                    input_data = {"user_intent": task[:300], "task_specification": agent_output[:500]}
+                elif pisama_type in ("derailment",):
+                    input_data = {"task": task[:300], "output": agent_output[:500]}
+                elif pisama_type == "context":
+                    input_data = {"context": task[:300], "output": agent_output[:500]}
+                elif pisama_type == "hallucination":
+                    input_data = {"output": agent_output[:500], "sources": [task[:300]]}
+                elif pisama_type == "coordination":
+                    ts = datetime.now(timezone.utc).timestamp()
+                    input_data = {
+                        "messages": [{"from_agent": "agent", "to_agent": "tool",
+                                      "content": agent_output[:300], "timestamp": ts}],
+                        "agent_ids": ["agent", "tool"],
+                    }
+                elif pisama_type == "decomposition":
+                    input_data = {"task_description": task[:200],
+                                  "decomposition": [{"subtask": agent_output[:200]}]}
+                elif pisama_type == "retrieval_quality":
+                    input_data = {"query": task[:200], "retrieved_documents": [agent_output[:500]],
+                                  "agent_output": desc[:300]}
+                else:
+                    input_data = {"context": agent_output[:500], "output": desc[:300]}
+
+                entries.append(GoldenDatasetEntry(
+                    id=f"trail_{source_name}_{trace_id[:12]}_{pisama_type}",
+                    detection_type=dt, input_data=input_data,
+                    expected_detected=True,
+                    expected_confidence_min=0.0, expected_confidence_max=1.0,
+                    description=f"TRAIL {source_name}: {err.get('category', '')} - {desc}",
+                    source="trail_real", difficulty="hard", split="test",
+                    tags=["real_trace", "trail", source_name],
+                ))
+
+    log.info(f"  TRAIL: {len(entries)} entries from {len(ann_dirs)} source dirs")
+    return entries
+
+
+# ---------------------------------------------------------------------------
+# GAIA conversion
+# ---------------------------------------------------------------------------
+
+def convert_gaia(gaia_path: str) -> list[GoldenDatasetEntry]:
+    """Convert GAIA benchmark questions to golden entries (negatives)."""
+    from datasets import DatasetDict
+    gaia = DatasetDict.load_from_disk(gaia_path)
+    entries = []
+
+    for split_name in gaia:
+        for row in gaia[split_name]:
+            question = row.get("Question", "")
+            answer = str(row.get("Final answer", ""))
+            level = int(row.get("Level", 1))
+            task_id = row.get("task_id", "")[:20]
+
+            if not question or len(question) < 20:
+                continue
+
+            difficulty = {1: "easy", 2: "medium", 3: "hard"}.get(level, "medium")
+
+            # Negative: correct answer = no specification mismatch
+            entries.append(GoldenDatasetEntry(
+                id=f"gaia_{task_id}_spec_neg",
+                detection_type=DetectionType.SPECIFICATION,
+                input_data={"user_intent": question[:300],
+                            "task_specification": f"Answer: {question[:200]}. Result: {answer[:100]}"},
+                expected_detected=False,
+                expected_confidence_min=0.0, expected_confidence_max=0.5,
+                description=f"GAIA L{level}: correctly answered",
+                source="gaia_real", difficulty=difficulty, split="test",
+                tags=["real_trace", "gaia"],
+            ))
+
+            # L2/L3: derailment negative (agent stays on topic)
+            if level >= 2:
+                entries.append(GoldenDatasetEntry(
+                    id=f"gaia_{task_id}_derail_neg",
+                    detection_type=DetectionType.DERAILMENT,
+                    input_data={"task": question[:300],
+                                "output": f"The answer is {answer[:100]}. I analyzed the relevant information."},
+                    expected_detected=False,
+                    expected_confidence_min=0.0, expected_confidence_max=0.5,
+                    description=f"GAIA L{level}: on-topic answer",
+                    source="gaia_real", difficulty=difficulty, split="test",
+                    tags=["real_trace", "gaia"],
+                ))
+
+    log.info(f"  GAIA: {len(entries)} entries from {sum(gaia[s].num_rows for s in gaia)} questions")
+    return entries
+
+
 def main():
     """Main conversion pipeline."""
     all_entries = []
@@ -481,6 +658,20 @@ def main():
         all_entries.extend(convert_swebench(swe_path))
     else:
         log.warning(f"SWE-bench dataset not found at {swe_path}")
+
+    # Convert TRAIL (from GitHub clone)
+    trail_path = "data/external/trail-github/benchmarking"
+    if os.path.exists(trail_path):
+        all_entries.extend(convert_trail(trail_path))
+    else:
+        log.warning(f"TRAIL dataset not found at {trail_path}")
+
+    # Convert GAIA (from HuggingFace)
+    gaia_path = "data/external/gaia"
+    if os.path.exists(gaia_path):
+        all_entries.extend(convert_gaia(gaia_path))
+    else:
+        log.warning(f"GAIA dataset not found at {gaia_path}")
 
     if not all_entries:
         log.error("No entries converted!")
