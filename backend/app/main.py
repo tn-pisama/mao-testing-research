@@ -66,11 +66,20 @@ from app.api.v1 import (
 
 settings = get_settings()
 
+# Quality routers - always loaded (no feature flag)
+quality_routers_loaded = False
+try:
+    from app.api.enterprise import quality, quality_healing
+    quality_routers_loaded = True
+except ImportError as e:
+    import logging
+    logging.warning(f"Quality routers not available: {e}")
+
 # Enterprise routers - conditionally loaded based on feature flags
 enterprise_routers_loaded = False
 if settings.features.enterprise_enabled:
     try:
-        from app.api.enterprise import evals, chaos, testing, replay, regression, diagnose, quality, quality_healing
+        from app.api.enterprise import evals, chaos, testing, replay, regression, diagnose
         enterprise_routers_loaded = True
     except ImportError as e:
         import logging
@@ -309,9 +318,12 @@ if enterprise_routers_loaded:
         app.include_router(replay.router, prefix="/api/v1/tenants/{tenant_id}", tags=["enterprise"])
     if settings.features.is_enabled("ml_detection"):
         app.include_router(diagnose.router, prefix="/api/v1", tags=["enterprise"])  # Agent Forensics
-    # Quality assessment — always enabled (no feature flag)
-    app.include_router(quality.router, prefix="/api/v1", tags=["enterprise"])
-    app.include_router(quality_healing.router, prefix="/api/v1", tags=["enterprise"])
+    pass  # enterprise features registered below
+
+# Quality assessment — always enabled (no feature flag)
+if quality_routers_loaded:
+    app.include_router(quality.router, prefix="/api/v1", tags=["quality"])
+    app.include_router(quality_healing.router, prefix="/api/v1", tags=["quality"])
 
 if _OTEL_AVAILABLE:
     FastAPIInstrumentor.instrument_app(app)

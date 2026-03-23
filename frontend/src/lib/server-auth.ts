@@ -30,8 +30,15 @@ export async function getServerApiToken(): Promise<{ token: string; tenantId: st
 }
 
 /** Fetch from backend API with automatic 401 retry via server-token. */
+/**
+ * Fetch from backend API. Path should start with / and can use {tenant_id} placeholder.
+ * If no {tenant_id} in path, /tenants/{tenantId} is prepended automatically.
+ */
 export async function serverFetch<T>(path: string, auth: { token: string; tenantId: string; email?: string }): Promise<T | null> {
-  const url = `${API}/tenants/${auth.tenantId}${path}`
+  const fullPath = path.includes('{tenant_id}')
+    ? path.replace('{tenant_id}', auth.tenantId)
+    : `/tenants/${auth.tenantId}${path}`
+  const url = `${API}${fullPath}`
   try {
     const res = await fetch(url, {
       headers: { Authorization: `Bearer ${auth.token}` },

@@ -78,7 +78,7 @@ async def _auto_assess_trace(tenant_id: str, trace_id: str, session_id: str, age
 
             # Build agent scores
             agent_scores = [
-                {"agent_id": aid, "agent_name": aid, "overall_score": score, "grade": grade, "dimensions": [], "issues_count": 0, "critical_issues": 0}
+                {"agent_id": aid, "agent_name": aid, "overall_score": score, "grade": grade, "dimensions": [], "issues_count": 0, "critical_issues": []}
                 for aid in (agent_ids or ["unknown"])
             ]
 
