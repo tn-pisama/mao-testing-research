@@ -56,7 +56,7 @@ export default function TracesPage() {
       <div className="p-6">
         <div className="flex justify-between items-center mb-6">
           <div className="flex items-center gap-3">
-            <h1 className="text-2xl font-bold text-white">Traces</h1>
+            <h1 className="text-2xl font-bold text-white">Runs</h1>
             {isDemoMode && (
               <span className="flex items-center gap-1.5 px-2 py-1 text-xs font-medium rounded-full bg-amber-500/20 text-amber-400 border border-amber-500/30">
                 <WifiOff size={12} />

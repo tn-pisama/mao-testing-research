@@ -63,7 +63,7 @@ export default function TraceDetailPage() {
         {/* Header */}
         <div className="mb-6">
           <h1 className="text-2xl font-bold text-white mb-2">
-            Trace: {trace?.session_id?.slice(0, 8)}...
+            Run: {trace?.session_id?.slice(0, 8)}...
           </h1>
           <div className="flex gap-4 text-sm text-zinc-400">
             <span>Framework: {trace?.framework}</span>

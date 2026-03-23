@@ -32,8 +32,8 @@ interface Tool {
 const tools: Tool[] = [
   {
     id: 'replay',
-    name: 'Trace Replay',
-    description: 'Replay agent traces deterministically for debugging and testing',
+    name: 'Run Replay',
+    description: 'Replay agent runs deterministically for debugging and testing',
     icon: Play,
     href: '/replay',
     status: 'available',
@@ -74,8 +74,8 @@ const tools: Tool[] = [
   },
   {
     id: 'import',
-    name: 'Trace Import',
-    description: 'Import traces from LangSmith, OpenTelemetry, or custom formats',
+    name: 'Run Import',
+    description: 'Import runs from LangSmith, OpenTelemetry, or custom formats',
     icon: FileJson,
     href: '/import',
     status: 'available',

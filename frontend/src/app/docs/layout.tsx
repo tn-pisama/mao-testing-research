@@ -35,7 +35,7 @@ const docsNav = [
     items: [
       { href: '/docs/detections', label: 'Detections', icon: AlertTriangle },
       { href: '/docs/failure-modes', label: 'Failure Modes', icon: Target },
-      { href: '/docs/traces', label: 'Traces', icon: Workflow },
+      { href: '/docs/traces', label: 'Runs', icon: Workflow },
     ],
   },
   {

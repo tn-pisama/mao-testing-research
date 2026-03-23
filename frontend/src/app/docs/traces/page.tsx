@@ -13,30 +13,33 @@ import {
 } from 'lucide-react'
 
 export const metadata: Metadata = {
-  title: 'Trace Format',
-  description: 'Pisama trace format and OpenTelemetry ingestion. gen_ai.* semantic conventions and universal trace model.',
+  title: 'Runs',
+  description: 'Pisama run format and OpenTelemetry ingestion. gen_ai.* semantic conventions and universal trace model.',
 }
 
 export default function TracesPage() {
   return (
     <div>
       <div className="mb-8">
-        <h1 className="text-3xl font-bold text-white mb-4">Traces</h1>
+        <h1 className="text-3xl font-bold text-white mb-4">Runs</h1>
         <p className="text-lg text-zinc-300">
-          Understanding trace data and how to analyze multi-agent execution flows.
+          Understanding run data and how to analyze multi-agent execution flows.
         </p>
       </div>
 
       <section className="mb-10">
-        <h2 className="text-xl font-bold text-white mb-4">What is a Trace?</h2>
+        <h2 className="text-xl font-bold text-white mb-4">What is a Run?</h2>
         <p className="text-zinc-300 mb-4">
-          A trace represents a complete execution of your multi-agent workflow, from initial
+          A <strong className="text-white">run</strong> represents a complete execution of your multi-agent workflow, from initial
           input to final output. It captures every agent interaction, state change, tool call,
           and message exchange.
         </p>
+        <p className="text-zinc-400 text-sm mb-4">
+          Technically, a run maps to an <a href="https://opentelemetry.io/docs/concepts/signals/traces/" className="text-blue-400 hover:underline" target="_blank" rel="noopener noreferrer">OpenTelemetry trace</a> — a collection of spans sharing the same <code className="text-xs bg-zinc-800 px-1.5 py-0.5 rounded">traceId</code>. The Pisama API uses <code className="text-xs bg-zinc-800 px-1.5 py-0.5 rounded">trace</code> in endpoint paths and payloads to stay compatible with OTEL conventions.
+        </p>
 
         <div className="bg-zinc-800/50 rounded-xl border border-zinc-700 p-6">
-          <h3 className="font-semibold text-white mb-4">Trace Anatomy</h3>
+          <h3 className="font-semibold text-white mb-4">Run Anatomy</h3>
           <div className="space-y-4">
             <TraceComponent
               icon={Workflow}
@@ -65,9 +68,9 @@ export default function TracesPage() {
       </section>
 
       <section className="mb-10">
-        <h2 className="text-xl font-bold text-white mb-4">Trace Status</h2>
+        <h2 className="text-xl font-bold text-white mb-4">Run Status</h2>
         <p className="text-zinc-300 mb-4">
-          Each trace has a status indicating its current state:
+          Each run has a status indicating its current state:
         </p>
 
         <div className="grid md:grid-cols-3 gap-4">

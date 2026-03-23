@@ -116,7 +116,7 @@ export default function SettingsPage() {
                 </SettingsSection>
 
                 <SettingsSection title="Data Retention" description="Configure how long data is stored">
-                  <SettingsField label="Trace Retention (days)">
+                  <SettingsField label="Run Retention (days)">
                     <Input type="number" defaultValue={30} className="w-32" />
                   </SettingsField>
                   <SettingsField label="Detection Retention (days)">
@@ -172,7 +172,7 @@ export default function SettingsPage() {
                               Developer Mode
                             </div>
                             <div className="text-xs text-zinc-400">
-                              Show advanced features like Traces, Agents, and raw data views.
+                              Show advanced features like Runs, Agents, and raw data views.
                               Turn this on if you want access to technical debugging tools.
                             </div>
                           </div>

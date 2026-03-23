@@ -1,15 +1,18 @@
-# Your First Trace
+# Your First Run
 
-This tutorial walks you through sending a trace to PISAMA, running detection, and interpreting the results.
+This tutorial walks you through sending a run to Pisama, running detection, and interpreting the results.
+
+!!! info "Terminology"
+    In Pisama, a **run** is a complete execution of your agent or workflow. Under the hood, runs are stored as [OpenTelemetry traces](https://opentelemetry.io/docs/concepts/signals/traces/) — a collection of spans sharing the same `traceId`. The API uses `trace` in endpoint paths and payloads for OTEL compatibility.
 
 ## Prerequisites
 
-- PISAMA running locally (see [Installation](installation.md))
+- Pisama running locally (see [Installation](installation.md))
 - `curl` and `jq` installed
 
 ## Step 1: Create a tenant
 
-Every trace belongs to a tenant. Create one:
+Every run belongs to a tenant. Create one:
 
 ```bash
 curl -s -X POST http://localhost:8000/api/v1/auth/tenants \

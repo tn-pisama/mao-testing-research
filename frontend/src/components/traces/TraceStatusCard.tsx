@@ -59,7 +59,7 @@ export function TraceStatusCard({ traces, isLoading }: TraceStatusCardProps) {
     <Card>
       <CardHeader>
         <div className="flex items-center justify-between">
-          <CardTitle>Trace Status</CardTitle>
+          <CardTitle>Run Status</CardTitle>
           <Link
             href="/traces"
             className="flex items-center gap-1 text-sm text-blue-400 hover:text-blue-300 font-mono"

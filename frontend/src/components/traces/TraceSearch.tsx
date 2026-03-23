@@ -22,8 +22,8 @@ export function TraceSearch({
       <div className="flex items-center gap-4">
         <input
           type="text"
-          placeholder="Search traces..."
-          aria-label="Search traces"
+          placeholder="Search runs..."
+          aria-label="Search runs"
           onChange={(e) => onSearch?.(e.target.value)}
           className="flex-1 px-4 py-2 bg-zinc-950 border border-zinc-800 rounded-lg text-white placeholder-white/40 font-mono focus:outline-none focus:ring-2 focus:ring-blue-500"
         />

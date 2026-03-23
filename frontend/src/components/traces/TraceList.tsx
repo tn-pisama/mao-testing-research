@@ -75,7 +75,7 @@ export function TraceList({
       <Card>
         <div className="text-center py-8 text-zinc-400">
           <Loader2 size={24} className="mx-auto mb-2 animate-spin" />
-          <p className="text-sm">Loading traces...</p>
+          <p className="text-sm">Loading runs...</p>
         </div>
       </Card>
     )
@@ -89,8 +89,8 @@ export function TraceList({
         {(!traces || traces.length === 0) ? (
           <div className="text-center py-8 text-zinc-400">
             <Clock size={32} className="mx-auto mb-2 opacity-50" />
-            <p className="text-sm">No traces found</p>
-            <p className="text-xs mt-1 text-zinc-500">Traces will appear here once your agents start running</p>
+            <p className="text-sm">No runs found</p>
+            <p className="text-xs mt-1 text-zinc-500">Runs will appear here once your agents start running</p>
           </div>
         ) : (
           <div className="divide-y divide-zinc-700">

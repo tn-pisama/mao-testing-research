@@ -251,8 +251,8 @@ function CreateApiKeyModal({ onClose, onCreated }: CreateApiKeyModalProps) {
   const [copied, setCopied] = useState(false)
 
   const availableScopes = [
-    { id: 'traces:read', label: 'Read Traces' },
-    { id: 'traces:write', label: 'Write Traces' },
+    { id: 'traces:read', label: 'Read Runs' },
+    { id: 'traces:write', label: 'Write Runs' },
     { id: 'detections:read', label: 'Read Detections' },
     { id: 'detections:write', label: 'Write Detections' },
     { id: 'quality:read', label: 'Read Quality Assessments' },

@@ -161,7 +161,7 @@ export function DashboardClient({ initialData }: { initialData: DashboardData | 
                   <div className="bg-zinc-800 rounded-lg p-3 border border-zinc-700">
                     <div className="flex items-center gap-2 mb-1">
                       <Layers size={18} className="text-blue-400" />
-                      <div className="text-xs text-zinc-400">Total Traces</div>
+                      <div className="text-xs text-zinc-400">Total Runs</div>
                     </div>
                     <div className="text-2xl font-bold text-blue-400">{dashQ.tracesTotal}</div>
                     <div className="text-xs text-zinc-500 mt-0.5">Last 30 days</div>
