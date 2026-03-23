@@ -2,7 +2,7 @@
 
 import { useState } from 'react'
 import nextDynamic from 'next/dynamic'
-import { Upload, Wifi, WifiOff } from 'lucide-react'
+import { Upload, Wifi, WifiOff, Activity, AlertTriangle, Layers } from 'lucide-react'
 import { Layout } from '@/components/common/Layout'
 import { RecentDetectionsCard } from '@/components/dashboard/RecentDetectionsCard'
 import { TraceStatusCard } from '@/components/traces/TraceStatusCard'
@@ -51,6 +51,7 @@ export function DashboardClient({ initialData }: { initialData: DashboardData | 
   const { isN8nUser, showAdvancedFeatures } = useUserPreferences()
 
   const showSimplifiedDashboard = isN8nUser && !showAdvancedFeatures
+  const hasAssessments = qualityAssessments.length > 0
 
   const selectedWorkflow = selectedWorkflowId
     ? qualityAssessments.find(a => a.workflow_id === selectedWorkflowId)
@@ -151,56 +152,107 @@ export function DashboardClient({ initialData }: { initialData: DashboardData | 
           </StaggerContainer>
         ) : (
           <StaggerContainer stagger={0.06}>
+            {/* Overview stats: show general stats when no assessments, workflow stats when they exist */}
             <StaggerItem>
-              <WorkflowOverviewStats workflows={qualityAssessments} isLoading={false} />
-            </StaggerItem>
-
-            <StaggerItem>
-              <div className="mb-6">
-                <div className="flex items-center justify-between mb-4">
-                  <h2 className="text-xl font-semibold text-white">Your Workflows</h2>
+              {hasAssessments ? (
+                <WorkflowOverviewStats workflows={qualityAssessments} isLoading={false} />
+              ) : (
+                <div className="grid grid-cols-2 md:grid-cols-4 gap-3 mb-6">
+                  <div className="bg-zinc-800 rounded-lg p-3 border border-zinc-700">
+                    <div className="flex items-center gap-2 mb-1">
+                      <Layers size={18} className="text-blue-400" />
+                      <div className="text-xs text-zinc-400">Total Traces</div>
+                    </div>
+                    <div className="text-2xl font-bold text-blue-400">{dashQ.tracesTotal}</div>
+                    <div className="text-xs text-zinc-500 mt-0.5">Last 30 days</div>
+                  </div>
+                  <div className="bg-zinc-800 rounded-lg p-3 border border-zinc-700">
+                    <div className="flex items-center gap-2 mb-1">
+                      <AlertTriangle size={18} className="text-amber-400" />
+                      <div className="text-xs text-zinc-400">Detections</div>
+                    </div>
+                    <div className="text-2xl font-bold text-amber-400">{dashQ.detectionsTotal}</div>
+                    <div className="text-xs text-zinc-500 mt-0.5">Issues found</div>
+                  </div>
+                  <div className="bg-zinc-800 rounded-lg p-3 border border-zinc-700">
+                    <div className="flex items-center gap-2 mb-1">
+                      <Activity size={18} className="text-green-400" />
+                      <div className="text-xs text-zinc-400">Detection Rate</div>
+                    </div>
+                    <div className="text-2xl font-bold text-green-400">
+                      {dashQ.tracesTotal > 0
+                        ? `${((dashQ.detectionsTotal / dashQ.tracesTotal) * 100).toFixed(0)}%`
+                        : '—'}
+                    </div>
+                    <div className="text-xs text-zinc-500 mt-0.5">Issues per trace</div>
+                  </div>
+                  <div className="bg-zinc-800 rounded-lg p-3 border border-zinc-700">
+                    <div className="flex items-center gap-2 mb-1">
+                      <div className="text-xs text-zinc-400">Assessments</div>
+                    </div>
+                    <div className="text-2xl font-bold text-zinc-500">{dashQ.assessmentsTotal}</div>
+                    <div className="text-xs text-zinc-500 mt-0.5">Quality reviews</div>
+                  </div>
                 </div>
-                <WorkflowDataTable
-                  workflows={qualityAssessments}
-                  onSelectWorkflow={setSelectedWorkflowId}
-                  selectedWorkflowId={selectedWorkflowId}
-                />
-              </div>
+              )}
             </StaggerItem>
 
+            {/* Traces and detections first (always visible) */}
             <StaggerItem>
-              <WorkflowAttentionList detections={detections} isLoading={false} />
-            </StaggerItem>
-
-            <StaggerItem>
-              <div className="grid lg:grid-cols-2 gap-6 mb-6 mt-6">
-                <QualitySuggestionsCard
-                  suggestions={qualityAssessments.flatMap(a => a.improvements)}
-                  isLoading={false}
-                  maxItems={6}
-                />
+              <div className="grid lg:grid-cols-2 gap-6 mb-6">
                 <TraceStatusCard
                   traces={traces}
                   isLoading={false}
                 />
+                <RecentDetectionsCard
+                  detections={detections}
+                  isLoading={false}
+                />
               </div>
             </StaggerItem>
 
+            {/* Detection alerts */}
             <StaggerItem>
-              <div className="mt-8 pt-8 border-t border-zinc-800">
-                <h2 className="text-lg font-semibold text-white mb-4">Developer Analytics</h2>
-                <div className="grid lg:grid-cols-2 gap-6 mb-6">
-                  <LoopAnalyticsCard data={loopAnalytics} isLoading={false} />
-                  <CostAnalyticsCard data={costAnalytics} isLoading={false} />
-                </div>
-                <div className="grid lg:grid-cols-2 gap-6">
-                  <RecentDetectionsCard
-                    detections={detections}
-                    isLoading={false}
-                  />
-                </div>
+              <WorkflowAttentionList detections={detections} isLoading={false} />
+            </StaggerItem>
+
+            {/* Analytics */}
+            <StaggerItem>
+              <div className="grid lg:grid-cols-2 gap-6 mb-6 mt-6">
+                <LoopAnalyticsCard data={loopAnalytics} isLoading={false} />
+                <CostAnalyticsCard data={costAnalytics} isLoading={false} />
               </div>
             </StaggerItem>
+
+            {/* Quality assessments section — only show when there's data */}
+            {hasAssessments && (
+              <>
+                <StaggerItem>
+                  <div className="mt-8 pt-8 border-t border-zinc-800">
+                    <h2 className="text-lg font-semibold text-white mb-4">Workflow Quality</h2>
+                    <WorkflowOverviewStats workflows={qualityAssessments} isLoading={false} />
+                  </div>
+                </StaggerItem>
+
+                <StaggerItem>
+                  <div className="mb-6">
+                    <WorkflowDataTable
+                      workflows={qualityAssessments}
+                      onSelectWorkflow={setSelectedWorkflowId}
+                      selectedWorkflowId={selectedWorkflowId}
+                    />
+                  </div>
+                </StaggerItem>
+
+                <StaggerItem>
+                  <QualitySuggestionsCard
+                    suggestions={qualityAssessments.flatMap(a => a.improvements)}
+                    isLoading={false}
+                    maxItems={6}
+                  />
+                </StaggerItem>
+              </>
+            )}
           </StaggerContainer>
         )}
       </div>
