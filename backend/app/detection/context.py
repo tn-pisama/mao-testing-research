@@ -369,7 +369,7 @@ class ContextNeglectDetector:
 
         # v1.2: Set thresholds based on context importance
         # Critical context requires higher utilization to pass
-        task_utilization_threshold = 0.25 if has_critical_context else 0.15
+        task_utilization_threshold = 0.35 if has_critical_context else 0.15  # Raised from 0.25 for critical context
 
         # v1.3: Improved detection logic with tighter skip conditions.
         # Key insight: explicit context reference shows awareness, but
@@ -391,9 +391,10 @@ class ContextNeglectDetector:
         #    (utilization < 0.10) suggests a superficial reference.
         elif context_referenced and utilization >= 0.10:
             detected = False
-        # 3. If output shows adaptation AND addresses task → OK
+        # 3. If output shows adaptation AND addresses task AND uses some context → OK
         #    (legitimate methodology change while doing the task)
-        elif adaptation_detected and task_addressed:
+        #    v1.3: Require utilization >= 0.15 to prevent bypass with just an adaptation phrase
+        elif adaptation_detected and task_addressed and utilization >= 0.15:
             detected = False
         # 4. If task is addressed AND utilization meets threshold → OK
         elif task_addressed and utilization >= task_utilization_threshold:

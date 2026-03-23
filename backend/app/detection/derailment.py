@@ -171,7 +171,7 @@ class TaskDerailmentDetector:
         drift_threshold: float = 0.5,
         min_output_length: int = 20,
         confidence_scaling: float = 1.0,
-        task_coverage_threshold: float = 0.5,  # Minimum task term coverage to consider task addressed
+        task_coverage_threshold: float = 0.6,  # Raised from 0.5 — require stronger task coverage to avoid FNs on hard cases
         framework: Optional[str] = None,  # v1.5: Framework for benign pattern matching
     ):
         self.similarity_threshold = similarity_threshold
@@ -371,7 +371,7 @@ class TaskDerailmentDetector:
 
         # Find if another focus dominates
         for other_focus, other_count in focus_counts.items():
-            if other_focus != requested_focus and other_count >= 3 and other_count > requested_count * 2:
+            if other_focus != requested_focus and other_count >= 2 and other_count > requested_count * 1.5:  # Lowered from 3/2x to 2/1.5x
                 return True, (
                     f"Task asks for '{requested_focus}' research but output focuses on "
                     f"'{other_focus}' ({other_count} matches vs {requested_count} for {requested_focus})"

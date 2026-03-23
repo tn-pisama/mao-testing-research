@@ -33,6 +33,10 @@ BENIGN_LOOP_PATTERNS: Set[str] = {
     "retry", "retrying", "attempt", "page", "pagination", "offset",
     "cursor", "next", "previous", "batch", "chunk", "poll", "polling",
     "heartbeat", "ping", "healthcheck", "status", "progress",
+    "paginate", "iterate", "load items", "next page", "fetch page",
+    "scroll", "enumerate", "for each", "foreach", "loop over",
+    "split in batches", "splitinbatches", "wait", "delay", "schedule",
+    "cron", "interval", "webhook response", "respond to webhook",
 }
 
 
@@ -107,7 +111,7 @@ class N8NCycleDetector(TurnAwareDetector):
         self,
         min_cycle_repetitions: int = 3,  # Increased from 2 to reduce FP
         max_healthy_retries: int = 4,
-        content_similarity_threshold: float = 0.4,  # Minimum similarity to confirm loop
+        content_similarity_threshold: float = 0.6,  # Raised from 0.4 to reduce FPs — require stronger evidence
     ):
         """Initialize cycle detector.
 
@@ -127,14 +131,38 @@ class N8NCycleDetector(TurnAwareDetector):
         - Pagination (fetching pages of data)
         - Polling (checking status repeatedly)
         - Retry logic (automatic retries on failure)
+        - Pipeline stages (same operation on different data)
         """
         for turn in turns:
             content_lower = turn.content.lower()
             node_lower = turn.participant_id.lower()
-            # Check if content or node name suggests benign pattern
+            node_type = turn.turn_metadata.get("node_type", "").lower()
+
+            # Check if content, node name, or node type suggests benign pattern
             for pattern in BENIGN_LOOP_PATTERNS:
-                if pattern in content_lower or pattern in node_lower:
+                if pattern in content_lower or pattern in node_lower or pattern in node_type:
                     return True
+
+            # n8n built-in loop nodes are always benign
+            if "splitinbatches" in node_type or "loopoveritems" in node_type:
+                return True
+
+        # Check for pipeline pattern: monotonically increasing execution times
+        # indicate sequential processing, not a stuck loop
+        timestamps = []
+        for turn in turns:
+            ts = turn.turn_metadata.get("execution_time") or turn.turn_metadata.get("startedAt")
+            if ts is not None:
+                try:
+                    timestamps.append(float(ts) if isinstance(ts, (int, float)) else 0)
+                except (ValueError, TypeError):
+                    pass
+
+        if len(timestamps) >= 4:
+            increasing = all(timestamps[i] <= timestamps[i+1] for i in range(len(timestamps)-1))
+            if increasing and timestamps[-1] > timestamps[0]:
+                return True
+
         return False
 
     def _verify_content_similarity(

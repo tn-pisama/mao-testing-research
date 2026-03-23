@@ -79,9 +79,10 @@ INJECTION_PATTERNS = [
     (r'(?:ignore|forget) (?:the )?(?:previous|above) (?:and|then|now) (?:do|say|output|respond|follow)', "chained_injection", "high"),
     (r'step \d+:?\s+(?:ignore|forget|override|bypass|disregard)', "chained_injection", "high"),
     (r'first,?\s+(?:ignore|forget|disregard).*(?:then|next|after that|now)', "chained_injection", "high"),
-    # Encoding / obfuscation
-    (r'(?:base64|rot13|hex|binary|unicode|ascii)\s*(?:decode|encode|translate|convert)', "encoding_attack", "medium"),
-    (r'(?:decode|translate|interpret|execute|run|eval)\s+(?:the following|this|these)', "encoding_attack", "medium"),
+    # Encoding / obfuscation (handle spaces, hyphens, underscores between terms)
+    (r'(?:base[\s\-_]*64|rot[\s\-_]*13|hex(?:adecimal)?|binary|unicode|ascii|url[\s\-_]*encod)', "encoding_attack", "medium"),
+    (r'(?:decode|translate|interpret|execute|run|eval)\s+(?:the following|this|these|that)', "encoding_attack", "medium"),
+    (r'(?:decode|translate|convert)\s+(?:and|then)\s+(?:follow|execute|do|run|obey)', "encoding_attack", "high"),
     # Indirect / social engineering
     (r'(?:my (?:boss|manager|teacher|professor|supervisor|admin|ceo) (?:said|told|asked|wants|needs|requires) (?:you|me) to)', "social_engineering", "medium"),
     (r'(?:i have (?:permission|authority|authorization|clearance|access) to)', "social_engineering", "medium"),
@@ -151,7 +152,7 @@ class InjectionDetector:
     def __init__(
         self,
         pattern_threshold: float = 0.7,
-        semantic_threshold: float = 0.65,
+        semantic_threshold: float = 0.55,  # Lowered from 0.65 to catch subtle/paraphrased attacks
         confidence_scaling: float = 1.0,
     ):
         self._embedder = None
@@ -220,12 +221,18 @@ class InjectionDetector:
         
         is_benign = self._check_benign_context(text_lower)
         details["benign_context"] = is_benign
-        
+
         detected = len(matched_patterns) > 0 or jailbreak_score > 0.5 or semantic_score > self.semantic_threshold
-        
-        if is_benign and max_severity != "critical":
-            detected = False
-            max_severity = "info"
+
+        # Benign context reduces confidence but doesn't completely disable detection.
+        # This prevents FNs where an actual injection is wrapped in "security research" language.
+        if is_benign and max_severity not in ("critical", "high"):
+            # Downgrade severity but keep detection if signals are strong
+            if len(matched_patterns) >= 2 or jailbreak_score > 0.7:
+                pass  # Strong signals override benign context
+            else:
+                max_severity = "low"
+                # Don't set detected=False — let confidence calibration handle it
         
         raw_score = self._calculate_raw_score(
             len(matched_patterns),

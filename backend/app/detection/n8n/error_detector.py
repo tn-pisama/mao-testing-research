@@ -24,22 +24,21 @@ from app.detection.turn_aware._base import (
 
 logger = logging.getLogger(__name__)
 
-# Indicators of null/invalid data
+# Indicators of null/invalid data — require structural context to avoid FPs
+# These are checked with word boundaries or structural patterns
 NULL_DATA_INDICATORS: Set[str] = {
-    "null",
+    '"null"',           # JSON null value
+    ": null",           # YAML/JSON null
     "undefined",
-    "none",
-    "error:",
-    "failed:",
-    "invalid",
-    "missing",
-    "not found",
+    "\"none\"",         # JSON "none" string
+    ": none",
     "cannot read property",
-    "typeerror",
+    "typeerror:",
+    "referenceerror:",
 }
 
 # Maximum acceptable error rate (% of nodes that can fail)
-DEFAULT_MAX_ERROR_RATE = 0.10  # 10% of nodes
+DEFAULT_MAX_ERROR_RATE = 0.15  # 15% of nodes (raised from 10% — transactional workflows have ~5-8%)
 
 
 class N8NErrorDetector(TurnAwareDetector):
@@ -75,17 +74,33 @@ class N8NErrorDetector(TurnAwareDetector):
         self.check_downstream_data = check_downstream_data
 
     def _has_error(self, turn: TurnSnapshot) -> bool:
-        """Check if a turn represents a node with an error."""
-        # Check turn metadata for error flag
+        """Check if a turn represents a node with an error.
+
+        Requires structural evidence of error, not just substring matches.
+        This prevents FPs from content like 'the failed login attempt' or
+        'error message handling code'.
+        """
+        # Check turn metadata for error flag (most reliable signal)
         if turn.turn_metadata.get("has_error"):
             return True
 
-        # Check if error mentioned in content
-        content_lower = turn.content.lower()
-        return any(
-            indicator in content_lower
-            for indicator in ["error:", "failed:", "exception:"]
-        )
+        # Check for node execution status in metadata
+        status = turn.turn_metadata.get("status", "").lower()
+        if status in ("error", "failed", "crashed"):
+            return True
+
+        # Only check content for unambiguous error patterns
+        content_lower = turn.content.lower().strip()
+
+        # Node output that starts with error indicator (not just contains it)
+        if content_lower.startswith(("error:", "exception:", "fatal:")):
+            return True
+
+        # JSON error objects
+        if '"error"' in content_lower and ('"message"' in content_lower or '"stack"' in content_lower):
+            return True
+
+        return False
 
     def _is_workflow_successful(
         self, metadata: Optional[Dict[str, Any]]

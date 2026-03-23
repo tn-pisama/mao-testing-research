@@ -16,29 +16,30 @@ class RoleType(Enum):
     CONVERSATIONAL = "conversational"
 
 
+# Thresholds lowered by ~0.07 to improve hard-case detection (borderline drift)
 ROLE_THRESHOLDS: Dict[RoleType, Dict[str, float]] = {
     RoleType.CREATIVE: {
-        "consistency_threshold": 0.55,
+        "consistency_threshold": 0.48,
         "drift_threshold": 0.25,
         "flexibility_bonus": 0.15,
     },
     RoleType.ANALYTICAL: {
-        "consistency_threshold": 0.75,
+        "consistency_threshold": 0.68,
         "drift_threshold": 0.12,
         "flexibility_bonus": 0.0,
     },
     RoleType.ASSISTANT: {
-        "consistency_threshold": 0.65,
+        "consistency_threshold": 0.58,
         "drift_threshold": 0.18,
         "flexibility_bonus": 0.08,
     },
     RoleType.SPECIALIST: {
-        "consistency_threshold": 0.72,
+        "consistency_threshold": 0.65,
         "drift_threshold": 0.14,
         "flexibility_bonus": 0.05,
     },
     RoleType.CONVERSATIONAL: {
-        "consistency_threshold": 0.58,
+        "consistency_threshold": 0.51,
         "drift_threshold": 0.22,
         "flexibility_bonus": 0.12,
     },
@@ -216,8 +217,8 @@ class PersonaConsistencyScorer:
         raw_score = semantic_sim
         
         weighted_score = (
-            semantic_sim * 0.6 +
-            lexical_overlap * 0.2 +
+            semantic_sim * 0.45 +
+            lexical_overlap * 0.35 +  # Raised from 0.2 — lexical overlap catches word-level drift
             tone_score * 0.2 +
             flexibility_bonus
         )

@@ -129,30 +129,42 @@ class RetrievalQualityDetector:
         doc_lower = document.lower()
         query_lower = query.lower()
 
-        # Calculate topic overlap
+        # Calculate topic overlap — require 60% match, not 100%
         doc_words = set(doc_lower.split())
         topic_matches = sum(1 for topic in query_topics if topic.lower() in doc_lower)
-        topic_score = topic_matches / len(query_topics) if query_topics else 0
+        raw_topic_score = topic_matches / len(query_topics) if query_topics else 0
+        # Cap at 1.0, give partial credit for 60%+ match
+        topic_score = min(1.0, raw_topic_score / 0.6) if raw_topic_score >= 0.3 else raw_topic_score
 
-        # Check for temporal alignment (year/quarter matching)
+        # Check for temporal alignment — degrade score instead of binary fail
         query_years = set(re.findall(r'\b20\d{2}\b', query))
         doc_years = set(re.findall(r'\b20\d{2}\b', document))
 
-        temporal_aligned = True
+        temporal_score = 1.0
         temporal_reason = ""
         if query_years:
             year_overlap = query_years & doc_years
-            if not year_overlap:
-                temporal_aligned = False
-                temporal_reason = f"Query asks for {query_years} but doc contains {doc_years or 'no years'}"
+            if year_overlap:
+                temporal_score = 1.0
+            elif doc_years:
+                # Doc has years but not the ones asked for — still partially relevant
+                # (e.g., prior year data for baseline comparison)
+                temporal_score = 0.5
+                temporal_reason = f"Query asks for {query_years} but doc contains {doc_years}"
+            else:
+                # Doc has no year info — minor penalty, not a complete fail
+                temporal_score = 0.7
+                temporal_reason = f"Query asks for {query_years} but doc contains no year references"
 
-        # Check for entity alignment
+        # Check for entity alignment — require 50% match, not 100%
         query_entities = set(re.findall(r'\b[A-Z][a-z]+(?:\s+[A-Z][a-z]+)*\b', query))
         doc_entities = set(re.findall(r'\b[A-Z][a-z]+(?:\s+[A-Z][a-z]+)*\b', document))
-        entity_overlap = len(query_entities & doc_entities) / len(query_entities) if query_entities else 1.0
+        raw_entity_overlap = len(query_entities & doc_entities) / len(query_entities) if query_entities else 1.0
+        # Require 50% entity match, give full credit at 50%+
+        entity_overlap = min(1.0, raw_entity_overlap / 0.5) if raw_entity_overlap >= 0.25 else raw_entity_overlap
 
         # Combined relevance score
-        relevance = (topic_score * 0.5 + entity_overlap * 0.3 + (1.0 if temporal_aligned else 0.0) * 0.2)
+        relevance = (topic_score * 0.5 + entity_overlap * 0.3 + temporal_score * 0.2)
 
         # Determine reason
         if relevance >= 0.7:
@@ -161,10 +173,10 @@ class RetrievalQualityDetector:
             reason = "Document has moderate relevance"
         elif temporal_reason:
             reason = temporal_reason
-        elif entity_overlap < 0.3:
+        elif raw_entity_overlap < 0.3:
             reason = "Document lacks key entities from query"
         else:
-            reason = f"Low topic overlap ({topic_score:.0%})"
+            reason = f"Low topic overlap ({raw_topic_score:.0%})"
 
         return relevance, reason
 
@@ -180,12 +192,12 @@ class RetrievalQualityDetector:
         output_lower = output.lower()
 
         # Look for explicit mentions of missing information
+        # Tightened patterns to require negative framing (not just descriptive words)
         missing_patterns = [
-            (r"(?:could not find|couldn't find|no (?:data|information|document))", "explicit_missing"),
-            (r"(?:incomplete|partial|limited) (?:data|information|results)", "incomplete_data"),
-            (r"(?:unable to|cannot) (?:locate|find|retrieve)", "retrieval_failure"),
-            (r"(?:no results|nothing found|empty results)", "empty_results"),
-            (r"(?:missing|lacking) (?:required|necessary|relevant)", "missing_required"),
+            (r"(?:could not find|couldn't find|no (?:relevant |matching )?(?:data|information|document)s?\b)", "explicit_missing"),
+            (r"(?:i (?:was |am )?unable to (?:locate|find|retrieve))", "retrieval_failure"),
+            (r"(?:no results|nothing (?:was )?found|empty results?|zero results)", "empty_results"),
+            (r"(?:missing|lacking) (?:the )?(?:required|necessary|relevant|key)", "missing_required"),
         ]
 
         for pattern, gap_type in missing_patterns:
