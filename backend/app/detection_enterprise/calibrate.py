@@ -23,13 +23,16 @@ from app.detection_enterprise.golden_dataset import (
 _db_golden_dataset_factory = None
 
 def _get_golden_dataset(db_session=None, tenant_id=None):
-    """Get the golden dataset, preferring DB when a session is available."""
+    """Get the golden dataset, preferring DB when a session is available.
+
+    Loads hardcoded entries first, then merges any additional entries from
+    the expanded JSON file (which contains LLM-generated samples).
+    """
     if db_session is not None:
         import asyncio
         from app.detection_enterprise.golden_dataset import create_default_golden_dataset_from_db
         try:
             loop = asyncio.get_running_loop()
-            # Already in async context — create a task
             import concurrent.futures
             with concurrent.futures.ThreadPoolExecutor() as pool:
                 dataset = loop.run_in_executor(
@@ -38,9 +41,23 @@ def _get_golden_dataset(db_session=None, tenant_id=None):
                 )
                 return asyncio.get_event_loop().run_until_complete(dataset)
         except RuntimeError:
-            # No running loop — safe to use asyncio.run
             return asyncio.run(create_default_golden_dataset_from_db(db_session, tenant_id))
-    return create_default_golden_dataset()
+
+    dataset = create_default_golden_dataset()
+
+    # Merge additional entries from the expanded JSON file (LLM-generated samples)
+    expanded_path = Path(__file__).parent.parent.parent / "data" / "golden_dataset_expanded.json"
+    if expanded_path.exists():
+        try:
+            before = len(dataset.entries)
+            dataset.load_json(expanded_path)
+            added = len(dataset.entries) - before
+            if added > 0:
+                logger.info(f"Loaded {added} additional entries from {expanded_path.name} (total: {len(dataset.entries)})")
+        except Exception as e:
+            logger.warning(f"Failed to load expanded golden dataset: {e}")
+
+    return dataset
 
 logger = logging.getLogger(__name__)
 
