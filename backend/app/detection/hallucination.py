@@ -101,6 +101,14 @@ class HallucinationDetector:
         grounding_score = 1.0
         hallucination_type = None
 
+        # v1.6: Strip Q&A format prefixes — "Question: ... Answer: ..." output
+        # should only be evaluated on the answer part. The question is
+        # context, not a claim, and drags down grounding score.
+        import re as _re
+        _qa_match = _re.search(r'(?:^|\n)\s*Answer:\s*', output, _re.IGNORECASE)
+        if _qa_match:
+            output = output[_qa_match.end():].strip()
+
         if sources:
             source_score, source_evidence = self._check_source_grounding(output, sources)
             grounding_score = min(grounding_score, source_score)

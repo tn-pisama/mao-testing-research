@@ -486,7 +486,8 @@ class TaskDerailmentDetector:
         # v1.7: Answer output — if output starts with "answer:" or "to answer",
         # the agent is directly addressing the task
         output_start = output_lower[:40].strip()
-        if output_start.startswith(("answer:", "to answer", "the answer")):
+        if output_start.startswith(("answer:", "to answer", "the answer",
+                                      "i followed these steps")):
             return True
 
         # Check for task action verbs being addressed
