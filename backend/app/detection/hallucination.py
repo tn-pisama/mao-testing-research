@@ -107,16 +107,22 @@ class HallucinationDetector:
             evidence.extend(source_evidence)
             details["source_grounding_score"] = source_score
 
-            # v1.4: If output closely matches source text (>80% word overlap),
+            # v1.4: If output closely matches source text (>75% word overlap),
             # don't flag as hallucination — the output is well-grounded.
             source_blob = " ".join(s.content for s in sources).lower().split()
             output_words = set(output.lower().split())
             if source_blob:
                 source_word_set = set(source_blob)
                 overlap = len(output_words & source_word_set) / max(len(output_words), 1)
-                if overlap > 0.80:
+                if overlap > 0.75:
                     grounding_score = max(grounding_score, 0.85)
                     details["high_source_overlap"] = round(overlap, 3)
+
+            # v1.5: Track short-source flag for diagnostics. The effective
+            # threshold adjustment is handled below.
+            all_sources_short = all(len(s.content) < 200 for s in sources)
+            if all_sources_short:
+                details["short_sources"] = True
 
         if context:
             context_score, context_evidence = self._check_context_consistency(output, context)
