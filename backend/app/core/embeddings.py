@@ -167,6 +167,39 @@ class EmbeddingService:
             return f"{prefix}: {texts}"
         return [f"{prefix}: {t}" for t in texts]
     
+    def _try_voyage_api(self, texts: List[str]) -> Optional[np.ndarray]:
+        """Try Voyage AI API for embeddings. Returns None if unavailable."""
+        from app.config import get_settings
+        settings = get_settings()
+        if not settings.voyage_api_key:
+            return None
+        try:
+            import httpx
+            with httpx.Client(timeout=15.0) as client:
+                # Voyage API has a limit of 128 texts per request
+                all_embeddings = []
+                for i in range(0, len(texts), 128):
+                    batch = texts[i:i+128]
+                    resp = client.post(
+                        "https://api.voyageai.com/v1/embeddings",
+                        headers={
+                            "Authorization": f"Bearer {settings.voyage_api_key}",
+                            "Content-Type": "application/json",
+                        },
+                        json={"input": batch, "model": "voyage-3-lite"},
+                    )
+                    if resp.status_code != 200:
+                        logger.warning(f"Voyage API error {resp.status_code}: {resp.text[:200]}")
+                        return None
+                    data = resp.json()
+                    all_embeddings.extend([d["embedding"] for d in data["data"]])
+                result = np.array(all_embeddings, dtype=np.float32)
+                logger.debug(f"Voyage API encoded {len(texts)} texts ({result.shape[1]}d)")
+                return result
+        except Exception as e:
+            logger.warning(f"Voyage API failed, falling back to local model: {e}")
+            return None
+
     def encode(
         self,
         texts: Union[str, List[str]],
@@ -175,17 +208,27 @@ class EmbeddingService:
         show_progress: bool = False,
         normalize: bool = True,
     ) -> np.ndarray:
+        # Normalize input to list
+        single = isinstance(texts, str)
+        text_list = [texts] if single else list(texts)
+
+        # Try Voyage AI API first (fast, no local model needed)
+        api_result = self._try_voyage_api(text_list)
+        if api_result is not None:
+            return api_result[0] if single else api_result
+
+        # Fallback to local model
         if self._should_use_prefix():
             prefix = "query" if is_query else "passage"
-            texts = self._add_prefix(texts, prefix)
-        
+            text_list = self._add_prefix(text_list, prefix)
+
         embeddings = self.model.encode(
-            texts,
+            text_list,
             batch_size=batch_size,
             show_progress_bar=show_progress,
             normalize_embeddings=normalize,
         )
-        
+
         return embeddings
     
     def encode_query(self, query: str, normalize: bool = True) -> np.ndarray:

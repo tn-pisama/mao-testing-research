@@ -16,6 +16,11 @@ RUN pip install --no-cache-dir torch --index-url https://download.pytorch.org/wh
 RUN pip install --no-cache-dir sentence-transformers==2.3.1
 RUN pip install --no-cache-dir -r requirements.txt
 
+# Pre-download lightweight fallback model (80MB) so first request is instant
+RUN python -c "from sentence_transformers import SentenceTransformer; SentenceTransformer('all-MiniLM-L6-v2')" \
+    && cp -r /root/.cache/huggingface /home/mao/.cache/huggingface \
+    && chown -R mao:mao /home/mao/.cache
+
 COPY --chown=mao:mao . .
 
 USER mao

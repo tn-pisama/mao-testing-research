@@ -306,10 +306,14 @@ class Settings(BaseSettings):
     auth_rate_limit_window_seconds: int = 60
     tenant_tier_cache_ttl_seconds: int = 300  # Cache tenant plan tier for 5 minutes
     
-    # BGE-M3: +2.5% MTEB over e5-large-v2, same 1024d, no prefix required
-    embedding_model: str = "BAAI/bge-m3"
-    embedding_dimensions: int = 1024
-    embedding_instruction_prefix: bool = False  # BGE-M3 doesn't need prefixes
+    # Voyage AI API key — primary embedding provider (fast, scalable, no local model)
+    voyage_api_key: str = ""
+
+    # Local fallback model (only used when Voyage API unavailable)
+    # all-MiniLM-L6-v2: 80MB, 384d, loads in <1s — vs bge-m3: 2.2GB, 1024d, 5-10s
+    embedding_model: str = "all-MiniLM-L6-v2"
+    embedding_dimensions: int = 384
+    embedding_instruction_prefix: bool = False
     loop_detection_window: int = 7
     structural_threshold: float = 0.95
     semantic_threshold: float = 0.85
