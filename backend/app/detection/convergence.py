@@ -165,6 +165,40 @@ class ConvergenceDetector:
         else:
             improvement_rate = 0.0
 
+        # --- Overall trend guard ---
+        # If the metric improved substantially from start to end (>30% in
+        # the right direction), suppress MINOR regression/thrashing issues.
+        # These are normal fluctuations in a clearly converging series
+        # (e.g., noisy SGD, cosine annealing, stepwise learning rate).
+        first_val, last_val = values[0], values[-1]
+        scale = max(abs(first_val), abs(last_val), 1e-10)
+        if direction == "minimize":
+            overall_improvement = (first_val - last_val) / scale
+        else:
+            overall_improvement = (last_val - first_val) / scale
+        # Check smoothness: count direction reversals over the full series.
+        # If more than 50% of steps reverse direction, the series oscillates
+        # and the "improvement" is just lucky start/end alignment.
+        reversals = sum(
+            1 for i in range(2, len(values))
+            if (values[i] - values[i-1]) * (values[i-1] - values[i-2]) < 0
+        )
+        max_reversals = max(1, len(values) - 2)
+        is_smooth = (reversals / max_reversals) < 0.60
+        if overall_improvement > 0.30 and is_smooth:
+            issues = [
+                i for i in issues
+                if i.failure_type not in (ConvergenceFailureType.REGRESSION, ConvergenceFailureType.THRASHING)
+            ]
+        # When improvement is very high, tail-end plateau is expected
+        # (metric has converged, further improvement diminishes)
+        if overall_improvement > 0.50:
+            issues = [
+                i for i in issues
+                if i.failure_type != ConvergenceFailureType.PLATEAU
+                or i.severity not in (ConvergenceSeverity.MINOR, ConvergenceSeverity.MODERATE)
+            ]
+
         if not issues:
             return ConvergenceResult(
                 detected=False,

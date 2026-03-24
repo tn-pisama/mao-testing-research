@@ -825,6 +825,9 @@ class SpecificationMismatchDetector:
         user_intent = self._strip_metadata(user_intent)
         task_specification = self._strip_metadata(task_specification)
 
+        # v2.5: Detect Q&A "Answer:" format for reduced sensitivity
+        is_qa_answer = task_specification.strip().startswith("Answer:")
+
         intent_requirements = self._extract_requirements(user_intent)
         intent_constraints = self._extract_constraints(user_intent)
         all_requirements = intent_requirements + intent_constraints
@@ -894,7 +897,13 @@ class SpecificationMismatchDetector:
         # v1.3: Also skip if this is a reformulation of the task (not a violation)
         # v1.5: Tightened bonus/benign skip — require coverage >= 0.65 (was 0.5)
         # to prevent agents from masking missing requirements with extras
-        skip_coverage_check = (
+        # v2.5: Q&A "Answer:" entries have naturally lower coverage
+        # (answers don't repeat the question). Only flag severe mismatches.
+        # Q&A answers use completely different vocabulary from questions;
+        # coverage will always be very low. Skip coverage check entirely.
+        skip_coverage_check_qa = is_qa_answer
+
+        skip_coverage_check = skip_coverage_check_qa or (
             numeric_constraint_met or
             (is_reformulation and coverage >= 0.4) or  # v1.5: reformulation must still show some coverage
             (has_bonus and coverage >= 0.65) or  # Tightened: extras only skip at high coverage
@@ -918,9 +927,9 @@ class SpecificationMismatchDetector:
 
         # v2.1: Key phrase check — catches cases where individual keywords
         # overlap but specific multi-word concepts are absent from the spec.
-        # Example: "email verification" absent even though both "email" and
-        # "verification" appear elsewhere in the spec.
-        if not detected:
+        # v2.5: Skip for Q&A "Answer:" format — answers naturally use different
+        # phrasing than questions, so key phrase overlap is unreliable.
+        if not detected and not is_qa_answer:
             has_missing_phrases, missing_phrases, phrase_fraction = (
                 self._detect_missing_key_phrases(user_intent, task_specification)
             )

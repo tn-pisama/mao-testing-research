@@ -43,7 +43,7 @@ class TokenBreakdown:
 class ContextOverflowDetector:
     def __init__(
         self,
-        warning_threshold: float = 0.70,
+        warning_threshold: float = 0.50,
         critical_threshold: float = 0.85,
         overflow_threshold: float = 0.95,
         confidence_scaling: float = 1.0,

@@ -20,6 +20,17 @@ from typing import Any, Optional
 
 logger = logging.getLogger(__name__)
 
+# Raw execution trace/log patterns — these are NOT structured messages
+_TRACE_LOG_PATTERNS = [
+    r'\[\d{4}-\d{2}-\d{2}\s+\d{2}:\d{2}:\d{2}',
+    r'\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}',
+    r'\b(?:INFO|DEBUG|WARNING|ERROR)\b\]?\s+',
+    r'RUN\.SH STARTING',
+    r'AUTOGEN_TESTBED_SETTING',
+    r'\*\*\[Preprocessing\]\*\*',
+    r'=== (?:Test write|MetaGPT|Communication Log)',
+]
+
 
 class BreakdownType(str, Enum):
     INTENT_MISMATCH = "intent_mismatch"
@@ -179,16 +190,26 @@ class CommunicationBreakdownDetector:
         sender_name: Optional[str] = None,
         receiver_name: Optional[str] = None,
     ) -> CommunicationBreakdownResult:
-        if self.check_format:
+        # Skip format/intent checks on raw execution traces — these are log
+        # data, not structured inter-agent messages.
+        is_raw_trace = sum(
+            1 for p in _TRACE_LOG_PATTERNS
+            if re.search(p, sender_message[:500])
+        ) >= 2
+
+        if self.check_format and not is_raw_trace:
             expected_format = self._detect_expected_format(sender_message)
             format_ok, format_msg = self._check_format_compliance(expected_format, receiver_response)
         else:
             expected_format = None
             format_ok, format_msg = True, "Format check disabled"
-        
+
         intent_alignment = self._compute_intent_alignment(
             sender_message, receiver_response, receiver_action
         )
+        # Raw traces have near-zero keyword overlap — don't flag as intent mismatch
+        if is_raw_trace and intent_alignment < self.intent_threshold:
+            intent_alignment = self.intent_threshold  # Neutralize
         
         ambiguities = self._detect_ambiguous_language(sender_message)
         
