@@ -269,15 +269,34 @@ class CompletionMisjudgmentDetector:
         re.IGNORECASE,
     )
 
+    # v1.9: Log/test separator patterns — lines matching these are visual
+    # separators or timestamp prefixes and should NOT trigger completion claims.
+    # Only match pure separator lines (not log-level prefixed content).
+    _LOG_PATTERNS = [
+        re.compile(r'^={5,}$'),     # ===== separator lines (full line)
+        re.compile(r'^-{5,}$'),     # ----- separator lines (full line)
+        re.compile(r'^\[?\d{4}-\d{2}-\d{2}[T ]'),  # ISO timestamp prefix
+    ]
+
     def _detect_completion_claim(self, text: str) -> bool:
         """Detect if agent claims task completion.
 
         v1.7.1: Exempt partial-progress phrases like "completed 3 of 5" that
         explicitly acknowledge incomplete work.
+        v1.9: Skip log/test output lines that match LOG_PATTERNS.
         """
         for pattern in self.COMPLETION_CLAIM_PATTERNS:
             match = re.search(pattern, text, re.IGNORECASE)
             if match:
+                # v1.9: Check if match is on a log/test line — skip if so
+                line_start = text.rfind('\n', 0, match.start()) + 1
+                line_end = text.find('\n', match.end())
+                if line_end == -1:
+                    line_end = len(text)
+                line = text[line_start:line_end].strip()
+                if any(lp.search(line) for lp in self._LOG_PATTERNS):
+                    continue
+
                 # v1.7.1: Check if this match is part of a partial-progress phrase
                 # e.g., "I've completed 3 of 5 endpoints" — NOT a full claim
                 start = max(0, match.start() - 20)
@@ -401,10 +420,20 @@ class CompletionMisjudgmentDetector:
         """v1.1: Detect implicit completion via confident delivery.
 
         v1.7.1: Exempt partial-progress phrases like "completed 3 of 5".
+        v1.9: Skip log/test output lines.
         """
         for pattern in self.CONFIDENT_DELIVERY_PATTERNS:
             match = re.search(pattern, text, re.IGNORECASE)
             if match:
+                # v1.9: Skip log/test lines
+                line_start = text.rfind('\n', 0, match.start()) + 1
+                line_end = text.find('\n', match.end())
+                if line_end == -1:
+                    line_end = len(text)
+                line = text[line_start:line_end].strip()
+                if any(lp.search(line) for lp in self._LOG_PATTERNS):
+                    continue
+
                 # v1.7.1: Same partial-progress exemption as _detect_completion_claim
                 start = max(0, match.start() - 20)
                 end = min(len(text), match.end() + 30)
