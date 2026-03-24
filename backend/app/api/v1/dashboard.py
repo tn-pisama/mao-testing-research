@@ -446,3 +446,59 @@ async def get_agent_quality(
 
     agents.sort(key=lambda a: a["avg_score"])
     return {"agents": agents, "total": len(agents)}
+
+
+@router.get("/agent-quality/{agent_id}")
+async def get_agent_detail(
+    agent_id: str,
+    tenant_id: str = Depends(get_current_tenant),
+    db: AsyncSession = Depends(get_db),
+):
+    """Per-run quality details for a specific agent."""
+    await set_tenant_context(db, tenant_id)
+    tid = UUID(tenant_id)
+
+    result = await db.execute(
+        select(WorkflowQualityAssessment).where(WorkflowQualityAssessment.tenant_id == tid)
+        .order_by(WorkflowQualityAssessment.created_at.desc())
+    )
+    assessments = result.scalars().all()
+
+    runs = []
+    scores = []
+    for a in assessments:
+        for agent in (a.agent_scores or []):
+            if agent.get("agent_id") == agent_id:
+                score = agent.get("overall_score", 0)
+                scores.append(score)
+                runs.append({
+                    "assessment_id": str(a.id),
+                    "workflow_name": a.workflow_name,
+                    "workflow_id": a.workflow_id,
+                    "score": score,
+                    "grade": agent.get("grade", ""),
+                    "dimensions": agent.get("dimensions", []),
+                    "issues_count": agent.get("issues_count", 0),
+                    "critical_issues": agent.get("critical_issues", []),
+                    "improvements": a.improvements or [],
+                    "created_at": a.created_at.isoformat() if a.created_at else None,
+                })
+                break
+
+    avg_score = round(sum(scores) / len(scores), 1) if scores else 0
+    grade = "Healthy" if avg_score >= 90 else "Degraded" if avg_score >= 70 else "At Risk" if avg_score >= 50 else "Critical"
+
+    return {
+        "agent_id": agent_id,
+        "agent_name": runs[0]["workflow_name"].split()[0] if runs else agent_id,
+        "avg_score": avg_score,
+        "grade": grade,
+        "total_runs": len(runs),
+        "runs": runs[:50],
+        "score_explanation": (
+            "Quality score starts at 100 for each run. "
+            "Deductions: -10 per failure detection found (max -40), "
+            "-15 for very short executions (<2 agent steps). "
+            "Grade: Healthy (90+), Degraded (70-89), At Risk (50-69), Critical (<50)."
+        ),
+    }
