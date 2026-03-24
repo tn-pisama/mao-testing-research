@@ -70,8 +70,8 @@ class ConvergenceDetector:
 
     def __init__(
         self,
-        plateau_threshold: float = 0.01,
-        plateau_window: int = 8,
+        plateau_threshold: float = 0.02,
+        plateau_window: int = 10,
         regression_tolerance: float = 0.02,
         thrashing_min_reversals: int = 3,
         min_steps: int = 3,
@@ -79,13 +79,15 @@ class ConvergenceDetector:
         """
         Args:
             plateau_threshold: Min improvement rate per step to not be a plateau.
+                Raised to 0.02 (from 0.01) to allow 10-15% variance before flagging.
             plateau_window: Number of recent steps to evaluate for plateau.
+                Raised to 10 (from 8) to require more steps before declaring plateau.
             regression_tolerance: Max acceptable regression from best (as fraction of best).
             thrashing_min_reversals: Min direction changes in window to flag thrashing.
             min_steps: Minimum number of data points required for detection.
         """
-        self.plateau_threshold = plateau_threshold  # default 0.001
-        self.plateau_window = plateau_window  # default 5
+        self.plateau_threshold = plateau_threshold
+        self.plateau_window = plateau_window
         self.regression_tolerance = regression_tolerance
         self.thrashing_min_reversals = thrashing_min_reversals
         self.min_steps = min_steps
