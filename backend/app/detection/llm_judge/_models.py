@@ -69,7 +69,7 @@ MODELS: Dict[str, ModelConfig] = {
         context_window=128000,
     ),
     "haiku-4.5": ModelConfig(
-        model_id="claude-haiku-4-5-20260115",
+        model_id="claude-haiku-4-5-20251001",
         provider=ModelProvider.ANTHROPIC,
         input_price_per_1m=1.00,
         output_price_per_1m=5.00,
@@ -214,7 +214,7 @@ CLAUDE_MODELS: Dict[str, ClaudeModelConfig] = {
     ),
     # Haiku 4.5 as Tier 1 Claude fallback
     "haiku-4.5": ClaudeModelConfig(
-        model_id="claude-haiku-4-5-20260115",
+        model_id="claude-haiku-4-5-20251001",
         input_price_per_1m=1.0,
         output_price_per_1m=5.0,
         context_window=200000,
