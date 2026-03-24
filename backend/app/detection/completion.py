@@ -246,14 +246,6 @@ class CompletionMisjudgmentDetector:
         (r'"(?:documented|completed|done|tested)(?:Endpoints?|Items?|Tasks?)?"\s*:\s*(\d+).*?"(?:total)(?:Endpoints?|Items?|Tasks?)?"\s*:\s*(\d+)', "json_ratio"),
     ]
 
-    # v1.9: Log/test patterns to exclude from completion claim scanning
-    LOG_PATTERNS = [
-        re.compile(r'^={3,}'),
-        re.compile(r'^-{3,}'),
-        re.compile(r'^\[?\d{4}-\d{2}'),
-        re.compile(r'^(?:INFO|DEBUG|WARNING|ERROR)\b'),
-    ]
-
     # Success criteria extraction patterns
     CRITERIA_PATTERNS = [
         r'(?:should|must|need to|required to)\s+(.+?)(?:\.|$)',
@@ -282,7 +274,6 @@ class CompletionMisjudgmentDetector:
 
         v1.7.1: Exempt partial-progress phrases like "completed 3 of 5" that
         explicitly acknowledge incomplete work.
-        v1.9: Skip lines that match log/test patterns.
         """
         for pattern in self.COMPLETION_CLAIM_PATTERNS:
             match = re.search(pattern, text, re.IGNORECASE)
@@ -293,11 +284,6 @@ class CompletionMisjudgmentDetector:
                 end = min(len(text), match.end() + 30)
                 window = text[start:end]
                 if self._PARTIAL_PROGRESS_EXEMPTIONS.search(window):
-                    continue
-                # v1.9: Skip log/test separator lines
-                line_start = text.rfind('\n', 0, match.start()) + 1
-                line = text[line_start:match.end() + 30].strip()
-                if any(lp.match(line) for lp in self.LOG_PATTERNS):
                     continue
                 return True
         return False
@@ -1110,9 +1096,11 @@ class CompletionMisjudgmentDetector:
         if enum_issues:
             issues.extend(enum_issues)
 
-        # v1.9: Structural subtask gap detection — if subtasks provided as
-        # strings and agent claims done but covers < 50%, flag it.
-        if subtasks and len(subtasks) > 1 and completion_claimed:
+        # v1.9: Structural subtask gap detection — if subtasks provided and
+        # agent claims done but covers < 50% of subtask names, flag it.
+        # Only fires when subtask analysis shows all "completed" (no prior
+        # IGNORED_SUBTASKS issue) to avoid double-flagging.
+        if subtasks and len(subtasks) > 1 and completion_claimed and not incomplete_subtasks:
             subtask_names = [
                 s.get("name", s.get("description", "")) if isinstance(s, dict) else str(s)
                 for s in subtasks
