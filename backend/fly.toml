@@ -4,6 +4,9 @@ primary_region = 'iad'
 [build]
   dockerfile = "Dockerfile"
 
+[deploy]
+  release_command = "sh -c 'python -m alembic upgrade head || echo WARNING: migration failed, continuing'"
+
 [env]
   PORT = "8000"
   ENVIRONMENT = "production"

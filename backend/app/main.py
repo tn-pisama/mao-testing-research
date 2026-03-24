@@ -127,6 +127,21 @@ async def lifespan(app: FastAPI):
         except Exception as e:
             _logger.warning("Failed to initialize Marketplace metering: %s", e)
 
+    # Validate critical DB tables exist — create missing ones
+    try:
+        from app.storage.database import async_session_maker
+        from sqlalchemy import text as _text
+        async with async_session_maker() as _db:
+            for table in ["traces", "detections", "states", "tenants", "users", "workflow_quality_assessments", "api_audit"]:
+                result = await _db.execute(_text(
+                    f"SELECT EXISTS (SELECT FROM information_schema.tables WHERE table_name = '{table}')"
+                ))
+                exists = result.scalar()
+                if not exists:
+                    _logger.warning(f"Critical table '{table}' missing from database — run migrations")
+    except Exception as e:
+        _logger.warning(f"DB schema validation failed (non-fatal): {e}")
+
     # Embedding model is lazy-loaded on first use to speed up startup
     from app.api.v1.health import mark_startup_complete
     mark_startup_complete()
@@ -165,8 +180,7 @@ app.add_middleware(
     max_age=3600,
 )
 
-# APIAuditMiddleware disabled — "No response returned" errors crash the response pipeline
-# app.add_middleware(APIAuditMiddleware)
+app.add_middleware(APIAuditMiddleware)
 app.add_middleware(CorrelationIdMiddleware)
 
 

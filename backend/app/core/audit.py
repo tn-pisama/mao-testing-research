@@ -30,30 +30,43 @@ async def log_auth_event(
     db: AsyncSession,
     tenant_id: Optional[str],
     user_id: Optional[str],
-    action: str,
-    ip_address: Optional[str],
+    event_type: str,
+    client_ip: Optional[str],
     user_agent: Optional[str],
     success: bool,
-    error_code: Optional[str] = None,
+    failure_reason: Optional[str],
 ):
-    audit = AuthAudit(
-        tenant_id=UUID(tenant_id) if tenant_id else None,
-        user_id=UUID(user_id) if user_id else None,
-        action=action,
-        ip_address=ip_address,
-        user_agent=user_agent[:500] if user_agent else None,
-        success=success,
-        error_code=error_code,
-    )
-    db.add(audit)
-    await db.commit()
+    """Write an auth event to the database. Fails silently."""
+    try:
+        audit = AuthAudit(
+            tenant_id=UUID(tenant_id) if tenant_id else None,
+            user_id=UUID(user_id) if user_id else None,
+            event_type=event_type,
+            client_ip=client_ip,
+            user_agent=user_agent[:500] if user_agent else None,
+            success=success,
+            failure_reason=failure_reason,
+        )
+        db.add(audit)
+        await db.commit()
+    except Exception:
+        logger.warning("Failed to write auth audit log", exc_info=False)
+        try:
+            await db.rollback()
+        except Exception:
+            pass
 
 
 class APIAuditMiddleware(BaseHTTPMiddleware):
-    """Logs POST/PUT/DELETE API requests to the api_audit table."""
+    """Logs POST/PUT/DELETE API requests to the api_audit table.
+
+    IMPORTANT: This middleware must NEVER crash the response pipeline.
+    All audit operations are fire-and-forget. If audit fails, the
+    request still succeeds normally.
+    """
 
     async def dispatch(self, request: Request, call_next) -> Response:
-        # Only audit mutations
+        # Only audit mutations — skip GETs entirely
         if request.method not in ("POST", "PUT", "DELETE", "PATCH"):
             return await call_next(request)
 
@@ -62,25 +75,33 @@ class APIAuditMiddleware(BaseHTTPMiddleware):
             return await call_next(request)
 
         start = time.monotonic()
-        response = await call_next(request)
+
+        # ALWAYS call the next handler and return its response.
+        # Audit is secondary — if it fails, the response still goes through.
+        try:
+            response = await call_next(request)
+        except Exception:
+            # If the handler itself crashes, re-raise — that's not our problem
+            raise
+
         duration_ms = (time.monotonic() - start) * 1000
 
-        # Extract tenant_id from path
-        tenant_id = None
-        m = _TENANT_RE.search(path)
-        if m:
-            tenant_id = m.group(1)
-
-        # Extract user_id from request state (set by auth dependency)
-        user_id = None
-        if hasattr(request.state, "auth_context"):
-            auth_ctx = request.state.auth_context
-            user_id = getattr(auth_ctx, "user_id", None)
-
-        correlation_id = get_correlation_id()
-        ip_address = request.client.host if request.client else None
-
+        # Fire-and-forget audit write — wrapped in try/except so it NEVER
+        # affects the response that's already been generated
         try:
+            tenant_id = None
+            m = _TENANT_RE.search(path)
+            if m:
+                tenant_id = m.group(1)
+
+            user_id = None
+            if hasattr(request.state, "auth_context"):
+                auth_ctx = request.state.auth_context
+                user_id = getattr(auth_ctx, "user_id", None)
+
+            correlation_id = get_correlation_id()
+            ip_address = request.client.host if request.client else None
+
             from app.storage.database import async_session_maker
 
             async with async_session_maker() as db:
@@ -97,6 +118,11 @@ class APIAuditMiddleware(BaseHTTPMiddleware):
                 db.add(audit)
                 await db.commit()
         except Exception:
-            logger.warning("Failed to write API audit log", exc_info=True)
+            # Audit failed — log a warning, but NEVER affect the response
+            logger.warning(
+                "Failed to write API audit log for %s %s",
+                request.method, path,
+                exc_info=False,
+            )
 
         return response
