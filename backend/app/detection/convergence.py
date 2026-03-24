@@ -70,8 +70,8 @@ class ConvergenceDetector:
 
     def __init__(
         self,
-        plateau_threshold: float = 0.001,
-        plateau_window: int = 5,
+        plateau_threshold: float = 0.01,
+        plateau_window: int = 8,
         regression_tolerance: float = 0.02,
         thrashing_min_reversals: int = 3,
         min_steps: int = 3,
@@ -84,8 +84,8 @@ class ConvergenceDetector:
             thrashing_min_reversals: Min direction changes in window to flag thrashing.
             min_steps: Minimum number of data points required for detection.
         """
-        self.plateau_threshold = plateau_threshold
-        self.plateau_window = plateau_window
+        self.plateau_threshold = plateau_threshold  # default 0.001
+        self.plateau_window = plateau_window  # default 5
         self.regression_tolerance = regression_tolerance
         self.thrashing_min_reversals = thrashing_min_reversals
         self.min_steps = min_steps
