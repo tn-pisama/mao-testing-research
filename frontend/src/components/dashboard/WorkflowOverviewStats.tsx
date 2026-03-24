@@ -20,9 +20,10 @@ function calculateHealthDistribution(workflows: QualityAssessment[]): HealthDist
   return workflows.reduce(
     (acc, w) => {
       const grade = w.overall_grade
-      if (grade === 'A') acc.excellent++
-      else if (grade === 'B+' || grade === 'B') acc.good++
-      else if (grade === 'C+' || grade === 'C') acc.needsWork++
+      // Support both letter grades (A/B/C/D) and health tiers (Healthy/Degraded/At Risk/Critical)
+      if (grade === 'A' || grade === 'Healthy') acc.excellent++
+      else if (grade === 'B+' || grade === 'B' || grade === 'Degraded') acc.good++
+      else if (grade === 'C+' || grade === 'C' || grade === 'At Risk' || grade === 'Needs Work') acc.needsWork++
       else acc.critical++
       return acc
     },
@@ -59,8 +60,8 @@ export function WorkflowOverviewStats({ workflows, isLoading }: WorkflowOverview
     <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-6 gap-3 mb-6">
       {/* Total Workflows */}
       <StatCard
-        icon={<Workflow size={18} />}
-        label="Total Workflows"
+        icon={<Workflow size={16} />}
+        label="Workflows"
         value={workflows.length}
         color="slate"
       />
@@ -144,14 +145,14 @@ function StatCard({ icon, label, value, color, subtitle }: StatCardProps) {
 
   return (
     <div className={cn(
-      'rounded-lg p-3 border',
+      'rounded-lg p-3 border min-w-0',
       color === 'slate' ? 'bg-zinc-800 border-zinc-700' : colorClasses[color]
     )}>
-      <div className="flex items-center gap-2 mb-1">
-        {icon}
-        <div className="text-xs text-zinc-400">{label}</div>
+      <div className="flex items-center gap-1.5 mb-1">
+        <div className="shrink-0">{icon}</div>
+        <div className="text-xs text-zinc-400 truncate">{label}</div>
       </div>
-      <div className="text-2xl font-bold">{value}</div>
+      <div className="text-xl font-bold">{value}</div>
       {subtitle && (
         <div className="text-xs text-zinc-300 mt-0.5">{subtitle}</div>
       )}
