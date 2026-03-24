@@ -194,11 +194,14 @@ export function useDashboardQuery(days: number = 30, initialData?: DashboardData
       const token = await getToken()
       const { default: API_BASE } = await import('@/lib/api-url')
       const url = `${API_BASE}/tenants/${tenantId}/dashboard?days=${days}`
+      console.log('[dashboard-fetch]', { tenantId, url: url.slice(0, 80) })
       const headers: Record<string, string> = { 'Content-Type': 'application/json' }
       if (token) headers['Authorization'] = `Bearer ${token}`
       const response = await fetch(url, { headers, credentials: 'include' })
       if (!response.ok) throw new Error(`Dashboard API error: ${response.status}`)
-      return response.json()
+      const data = await response.json()
+      console.log('[dashboard-result]', { traces: data?.traces?.total, assessments: data?.quality_assessments?.total })
+      return data
     },
     initialData: initialData || undefined,
     enabled: tenantLoaded,
