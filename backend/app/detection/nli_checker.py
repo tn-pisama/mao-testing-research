@@ -30,7 +30,8 @@ def get_nli_model():
     model_name = "MoritzLaurer/DeBERTa-v3-base-mnli-fever-docnli-ling-2c"
     logger.info("Loading NLI model: %s", model_name)
 
-    _nli_tokenizer = AutoTokenizer.from_pretrained(model_name)
+    # use_fast=False required for Python 3.14 (fast tokenizer has vocab_file bug)
+    _nli_tokenizer = AutoTokenizer.from_pretrained(model_name, use_fast=False)
     _nli_model = AutoModelForSequenceClassification.from_pretrained(model_name)
     _nli_model.eval()
 
