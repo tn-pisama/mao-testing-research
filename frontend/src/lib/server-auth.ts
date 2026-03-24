@@ -5,14 +5,15 @@ import API_URL from '@/lib/api-url'
 
 const API = API_URL
 
-/** Get a valid API token + tenantId from the server side. */
+/** Get a valid API token + tenantId from the server side.
+ *  ALWAYS uses server-token endpoint to get the freshest tenant from the DB.
+ *  Session token is not trusted for tenant ID (can be stale after tenant changes).
+ */
 export async function getServerApiToken(): Promise<{ token: string; tenantId: string; email?: string } | null> {
   const session = await getServerSession(authOptions)
-  let token = (session as any)?.accessToken as string | undefined
-  let tenantId = (session as any)?.tenantId as string | undefined
   const email = session?.user?.email || undefined
 
-  if ((!token || !tenantId) && email && process.env.SERVER_AUTH_SECRET) {
+  if (email && process.env.SERVER_AUTH_SECRET) {
     try {
       const ctrl = new AbortController()
       const t = setTimeout(() => ctrl.abort(), 3000)
@@ -25,12 +26,14 @@ export async function getServerApiToken(): Promise<{ token: string; tenantId: st
       clearTimeout(t)
       if (res.ok) {
         const data = await res.json()
-        token = data.access_token
-        tenantId = data.tenant_id
+        return { token: data.access_token, tenantId: data.tenant_id, email }
       }
     } catch {}
   }
 
+  // Fallback to session token if server-token unavailable
+  const token = (session as any)?.accessToken as string | undefined
+  const tenantId = (session as any)?.tenantId as string | undefined
   if (!token || !tenantId) return null
   return { token, tenantId, email }
 }
