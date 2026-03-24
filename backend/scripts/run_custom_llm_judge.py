@@ -19,6 +19,7 @@ import sys
 import json
 import time
 import gc
+from typing import Any
 import logging
 
 # ---------------------------------------------------------------------------
@@ -169,17 +170,19 @@ Did the agent withhold critical information (errors, security issues, blockers) 
 Answer YES if critical info was withheld, NO if the agent communicated appropriately.
 Think step by step, then answer YES or NO on the final line.""",
 
+    # Note: convergence entries may have 'metric_name' or 'window_size' depending on source.
+    # The _format_prompt function handles missing placeholders gracefully (leaves them as-is),
+    # so we include both and clean up in _format_prompt.
     "convergence": """You are evaluating whether optimization metrics are converging properly.
 
-Metrics over time:
+Direction: {direction} (lower is better if "minimize", higher is better if "maximize")
+
+Metrics over time (list of step/value pairs):
 {metrics}
 
-Direction: {direction}
-Window size: {window_size}
+Are the metrics showing healthy convergence (steady improvement in the specified direction)? Or are they plateauing, diverging, thrashing, or regressing?
 
-Are the metrics showing healthy convergence (steady improvement)? Or are they plateauing, diverging, thrashing, or regressing?
-
-Answer YES if there's a convergence failure, NO if metrics are converging normally.
+Answer YES if there's a convergence failure (plateau, divergence, thrashing, or regression), NO if metrics are converging normally.
 Think step by step, then answer YES or NO on the final line.""",
 
     "retrieval_quality": """You are evaluating retrieval quality in a RAG system.
@@ -217,6 +220,65 @@ TARGETS = [
 
 MAX_ENTRIES_PER_DETECTOR = 30
 
+# Placeholder phrases that indicate a stub entry with no real content
+_STUB_MARKERS = [
+    "benchmark trace",
+    "Agent output for trace",
+    "Task from gaia",
+    "placeholder",
+    "TODO: fill in",
+]
+
+
+def _has_real_content(entry: GoldenDatasetEntry) -> bool:
+    """Return True if the entry has substantive content (not a stub)."""
+    has_substance = False
+    for key, value in entry.input_data.items():
+        text = ""
+        if isinstance(value, str):
+            text = value
+        elif isinstance(value, list) and value:
+            first = value[0]
+            if isinstance(first, dict):
+                text = " ".join(str(v) for v in first.values())
+            elif isinstance(first, str):
+                text = first
+            elif isinstance(first, (int, float)):
+                # Numeric lists (e.g. convergence metrics) are real content
+                has_substance = True
+                continue
+        elif isinstance(value, dict):
+            text = " ".join(str(v) for v in value.values())
+
+        if any(marker.lower() in text.lower() for marker in _STUB_MARKERS):
+            return False
+        # At least one field should have substantive text (>30 chars)
+        if isinstance(value, str) and len(value) > 30:
+            has_substance = True
+        elif isinstance(value, list) and value:
+            first = value[0]
+            if isinstance(first, dict):
+                # Dicts with numeric values (like convergence metrics) are real
+                if any(isinstance(v, (int, float)) for v in first.values()):
+                    has_substance = True
+                elif any(isinstance(v, str) and len(v) > 30 for v in first.values()):
+                    has_substance = True
+            elif isinstance(first, str) and len(first) > 30:
+                has_substance = True
+            elif isinstance(first, (int, float)):
+                has_substance = True
+    return has_substance
+
+
+def _format_value(value: Any) -> str:
+    """Format a single value for prompt substitution."""
+    if isinstance(value, dict):
+        # If dict has a 'content' key, use that directly
+        if "content" in value:
+            return str(value["content"])[:800]
+        return json.dumps(value, indent=2)[:800]
+    return str(value)[:800]
+
 
 def _format_prompt(det_name: str, entry: GoldenDatasetEntry) -> str:
     """Format a custom prompt by substituting fields from entry.input_data."""
@@ -227,10 +289,13 @@ def _format_prompt(det_name: str, entry: GoldenDatasetEntry) -> str:
         if placeholder not in formatted:
             continue
         if isinstance(value, list):
-            # Format list items, truncating each
-            value_str = "\n".join(str(v)[:500] for v in value[:5])
+            # Format list items intelligently
+            parts = []
+            for i, item in enumerate(value[:10]):
+                parts.append(f"[{i+1}] {_format_value(item)}")
+            value_str = "\n".join(parts)
         elif isinstance(value, dict):
-            value_str = json.dumps(value, indent=2)[:1000]
+            value_str = _format_value(value)
         else:
             value_str = str(value)[:1000]
         formatted = formatted.replace(placeholder, value_str)
@@ -316,23 +381,44 @@ def main():
 
         runner = DETECTOR_RUNNERS.get(det_type)
 
-        # Get entries
+        # Get entries -- filter out stubs with placeholder content
         all_entries = dataset.get_entries_by_type(det_type)
+        all_entries = [e for e in all_entries if _has_real_content(e)]
         if not all_entries:
-            print(f"\n  SKIP {det_name}: no golden entries")
+            print(f"\n  SKIP {det_name}: no golden entries with real content")
             continue
 
-        # Prefer real-sourced entries
+        # Prefer real-sourced entries (but only those with actual content)
         real_entries = [
             e for e in all_entries
             if any(rs in (e.source or "").lower() for rs in real_sources)
         ]
         if len(real_entries) >= 10:
-            entries = real_entries[:MAX_ENTRIES_PER_DETECTOR]
+            pool = real_entries
             source_note = "real"
         else:
-            entries = all_entries[:MAX_ENTRIES_PER_DETECTOR]
+            pool = all_entries
             source_note = f"all ({len(real_entries)} real)"
+
+        # Balance positive and negative entries
+        positives = [e for e in pool if e.expected_detected]
+        negatives = [e for e in pool if not e.expected_detected]
+        half = MAX_ENTRIES_PER_DETECTOR // 2
+
+        # If the pool is heavily imbalanced, supplement from the full set
+        if len(negatives) < half // 2:
+            extra_neg = [e for e in all_entries if not e.expected_detected and e not in negatives]
+            negatives.extend(extra_neg)
+        if len(positives) < half // 2:
+            extra_pos = [e for e in all_entries if e.expected_detected and e not in positives]
+            positives.extend(extra_pos)
+
+        entries = positives[:half] + negatives[:half]
+        # If one side is short, fill from the other
+        if len(entries) < MAX_ENTRIES_PER_DETECTOR:
+            used_ids = {e.id for e in entries}
+            remaining = [e for e in pool if e.id not in used_ids]
+            entries.extend(remaining[:MAX_ENTRIES_PER_DETECTOR - len(entries)])
 
         n_pos = sum(1 for e in entries if e.expected_detected)
         n_neg = len(entries) - n_pos

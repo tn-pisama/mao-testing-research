@@ -612,10 +612,85 @@ def _build_detector_runners() -> Dict[DetectionType, Any]:
 DETECTOR_RUNNERS: Dict[DetectionType, Any] = _build_detector_runners()
 
 
+def _format_list_field(items: list, max_items: int = 10) -> str:
+    """Format a list field for LLM prompt substitution."""
+    parts = []
+    for i, item in enumerate(items[:max_items]):
+        if isinstance(item, dict):
+            if "content" in item:
+                parts.append(f"[{i+1}] {str(item['content'])[:800]}")
+            else:
+                import json as _json
+                parts.append(f"[{i+1}] {_json.dumps(item, indent=2)[:800]}")
+        else:
+            parts.append(f"[{i+1}] {str(item)[:800]}")
+    return "\n".join(parts)
+
+
+# Custom per-detector prompts that outperform the generic MAST format.
+# These were validated in scripts/run_custom_llm_judge.py against the golden
+# dataset and use YES/NO answers instead of JSON scores.
+_CUSTOM_DETECTOR_PROMPTS = {
+    "grounding": """You are evaluating whether an AI agent's output is properly grounded in source documents.
+
+Source documents:
+{source_documents}
+
+Agent's output:
+{agent_output}
+
+Is the agent's output well-grounded in the source documents? Are all factual claims supported by the sources?
+
+Answer YES if there are ungrounded claims (detection should fire), NO if properly grounded.
+Think step by step, then answer YES or NO on the final line.""",
+
+    "retrieval_quality": """You are evaluating retrieval quality in a RAG system.
+
+Query:
+{query}
+
+Retrieved documents:
+{retrieved_documents}
+
+Agent's output based on retrieval:
+{agent_output}
+
+Were the retrieved documents relevant to the query? Did retrieval quality affect the output?
+
+Answer YES if retrieval was poor/irrelevant, NO if retrieval was adequate.
+Think step by step, then answer YES or NO on the final line.""",
+}
+
+
 def _entry_to_llm_prompt(entry: GoldenDatasetEntry, det_type: str,
                          rule_detected: bool, rule_confidence: float) -> str:
-    """Convert a golden dataset entry into an LLM judge prompt."""
+    """Convert a golden dataset entry into an LLM judge prompt.
+
+    For detectors where custom per-field prompts outperform the generic MAST
+    format (grounding, retrieval_quality), uses the custom prompt directly.
+    """
     d = entry.input_data
+
+    # Use custom per-detector prompts for detectors where they outperform
+    if det_type in _CUSTOM_DETECTOR_PROMPTS:
+        template = _CUSTOM_DETECTOR_PROMPTS[det_type]
+        formatted = template
+        for key, value in d.items():
+            placeholder = "{" + key + "}"
+            if placeholder not in formatted:
+                continue
+            if isinstance(value, list):
+                value_str = _format_list_field(value)
+            elif isinstance(value, dict):
+                if "content" in value:
+                    value_str = str(value["content"])[:800]
+                else:
+                    import json as _json
+                    value_str = _json.dumps(value, indent=2)[:800]
+            else:
+                value_str = str(value)[:1000]
+            formatted = formatted.replace(placeholder, value_str)
+        return formatted
 
     # Build a human-readable summary of the input data
     if det_type == "specification":

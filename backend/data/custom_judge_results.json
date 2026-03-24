@@ -1,168 +1,168 @@
 {
-  "run_date": "2026-03-23 23:32:38",
+  "run_date": "2026-03-24 00:04:41",
   "model": "claude-haiku-4-5-20251001",
   "total_llm_calls": 270,
   "summary": [
     {
       "detector": "hallucination",
       "n_entries": 30,
-      "n_positive": 30,
-      "n_negative": 0,
-      "rule_f1": 0.983,
-      "rule_precision": 1.0,
-      "rule_recall": 0.967,
-      "rule_tp": 29,
-      "rule_fp": 0,
-      "rule_fn": 1,
-      "rule_tn": 0,
-      "llm_f1": 0.0,
-      "llm_precision": 0.0,
-      "llm_recall": 0.0,
-      "llm_tp": 0,
-      "llm_fp": 0,
-      "llm_fn": 30,
-      "llm_tn": 0,
-      "combo_f1": 0.0,
-      "combo_precision": 0.0,
-      "combo_recall": 0.0,
-      "llm_improvement": -0.983,
-      "combo_improvement": -0.983,
-      "escalated": 29,
+      "n_positive": 15,
+      "n_negative": 15,
+      "rule_f1": 0.556,
+      "rule_precision": 0.476,
+      "rule_recall": 0.667,
+      "rule_tp": 10,
+      "rule_fp": 11,
+      "rule_fn": 5,
+      "rule_tn": 4,
+      "llm_f1": 0.56,
+      "llm_precision": 0.7,
+      "llm_recall": 0.467,
+      "llm_tp": 7,
+      "llm_fp": 3,
+      "llm_fn": 8,
+      "llm_tn": 12,
+      "combo_f1": 0.56,
+      "combo_precision": 0.7,
+      "combo_recall": 0.467,
+      "llm_improvement": 0.0040000000000000036,
+      "combo_improvement": 0.0040000000000000036,
+      "escalated": 17,
       "errors": 0
     },
     {
       "detector": "grounding",
       "n_entries": 30,
-      "n_positive": 20,
-      "n_negative": 10,
-      "rule_f1": 0.537,
-      "rule_precision": 0.524,
-      "rule_recall": 0.55,
-      "rule_tp": 11,
-      "rule_fp": 10,
-      "rule_fn": 9,
-      "rule_tn": 0,
-      "llm_f1": 0.452,
-      "llm_precision": 0.636,
-      "llm_recall": 0.35,
-      "llm_tp": 7,
-      "llm_fp": 4,
-      "llm_fn": 13,
-      "llm_tn": 6,
-      "combo_f1": 0.452,
-      "combo_precision": 0.636,
-      "combo_recall": 0.35,
-      "llm_improvement": -0.08500000000000002,
-      "combo_improvement": -0.08500000000000002,
-      "escalated": 16,
+      "n_positive": 15,
+      "n_negative": 15,
+      "rule_f1": 0.143,
+      "rule_precision": 0.154,
+      "rule_recall": 0.133,
+      "rule_tp": 2,
+      "rule_fp": 11,
+      "rule_fn": 13,
+      "rule_tn": 4,
+      "llm_f1": 0.645,
+      "llm_precision": 0.625,
+      "llm_recall": 0.667,
+      "llm_tp": 10,
+      "llm_fp": 6,
+      "llm_fn": 5,
+      "llm_tn": 9,
+      "combo_f1": 0.645,
+      "combo_precision": 0.625,
+      "combo_recall": 0.667,
+      "llm_improvement": 0.502,
+      "combo_improvement": 0.502,
+      "escalated": 15,
       "errors": 0
     },
     {
       "detector": "specification",
       "n_entries": 30,
-      "n_positive": 20,
-      "n_negative": 10,
-      "rule_f1": 0.5,
-      "rule_precision": 0.562,
-      "rule_recall": 0.45,
-      "rule_tp": 9,
-      "rule_fp": 7,
-      "rule_fn": 11,
+      "n_positive": 15,
+      "n_negative": 15,
+      "rule_f1": 0.312,
+      "rule_precision": 0.294,
+      "rule_recall": 0.333,
+      "rule_tp": 5,
+      "rule_fp": 12,
+      "rule_fn": 10,
       "rule_tn": 3,
-      "llm_f1": 0.25,
-      "llm_precision": 0.75,
-      "llm_recall": 0.15,
-      "llm_tp": 3,
-      "llm_fp": 1,
-      "llm_fn": 17,
-      "llm_tn": 9,
-      "combo_f1": 0.25,
-      "combo_precision": 0.75,
-      "combo_recall": 0.15,
-      "llm_improvement": -0.25,
-      "combo_improvement": -0.25,
-      "escalated": 12,
+      "llm_f1": 0.0,
+      "llm_precision": 0.0,
+      "llm_recall": 0.0,
+      "llm_tp": 0,
+      "llm_fp": 2,
+      "llm_fn": 15,
+      "llm_tn": 13,
+      "combo_f1": 0.0,
+      "combo_precision": 0.0,
+      "combo_recall": 0.0,
+      "llm_improvement": -0.312,
+      "combo_improvement": -0.312,
+      "escalated": 15,
       "errors": 0
     },
     {
       "detector": "derailment",
       "n_entries": 30,
-      "n_positive": 6,
-      "n_negative": 24,
-      "rule_f1": 0.32,
-      "rule_precision": 0.211,
-      "rule_recall": 0.667,
-      "rule_tp": 4,
-      "rule_fp": 15,
-      "rule_fn": 2,
-      "rule_tn": 9,
-      "llm_f1": 0.167,
-      "llm_precision": 0.167,
-      "llm_recall": 0.167,
+      "n_positive": 15,
+      "n_negative": 15,
+      "rule_f1": 0.333,
+      "rule_precision": 0.333,
+      "rule_recall": 0.333,
+      "rule_tp": 5,
+      "rule_fp": 10,
+      "rule_fn": 10,
+      "rule_tn": 5,
+      "llm_f1": 0.118,
+      "llm_precision": 0.5,
+      "llm_recall": 0.067,
       "llm_tp": 1,
-      "llm_fp": 5,
-      "llm_fn": 5,
-      "llm_tn": 19,
-      "combo_f1": 0.167,
-      "combo_precision": 0.167,
-      "combo_recall": 0.167,
-      "llm_improvement": -0.153,
-      "combo_improvement": -0.153,
-      "escalated": 19,
+      "llm_fp": 1,
+      "llm_fn": 14,
+      "llm_tn": 14,
+      "combo_f1": 0.118,
+      "combo_precision": 0.5,
+      "combo_recall": 0.067,
+      "llm_improvement": -0.21500000000000002,
+      "combo_improvement": -0.21500000000000002,
+      "escalated": 15,
       "errors": 0
     },
     {
       "detector": "completion",
       "n_entries": 30,
-      "n_positive": 24,
-      "n_negative": 6,
-      "rule_f1": 0.889,
-      "rule_precision": 0.8,
+      "n_positive": 15,
+      "n_negative": 15,
+      "rule_f1": 0.667,
+      "rule_precision": 0.5,
       "rule_recall": 1.0,
-      "rule_tp": 24,
-      "rule_fp": 6,
+      "rule_tp": 15,
+      "rule_fp": 15,
       "rule_fn": 0,
       "rule_tn": 0,
-      "llm_f1": 0.154,
-      "llm_precision": 1.0,
-      "llm_recall": 0.083,
-      "llm_tp": 2,
-      "llm_fp": 0,
-      "llm_fn": 22,
-      "llm_tn": 6,
-      "combo_f1": 0.154,
-      "combo_precision": 1.0,
-      "combo_recall": 0.083,
-      "llm_improvement": -0.735,
-      "combo_improvement": -0.735,
-      "escalated": 28,
+      "llm_f1": 0.111,
+      "llm_precision": 0.333,
+      "llm_recall": 0.067,
+      "llm_tp": 1,
+      "llm_fp": 2,
+      "llm_fn": 14,
+      "llm_tn": 13,
+      "combo_f1": 0.111,
+      "combo_precision": 0.333,
+      "combo_recall": 0.067,
+      "llm_improvement": -0.556,
+      "combo_improvement": -0.556,
+      "escalated": 27,
       "errors": 0
     },
     {
       "detector": "context",
       "n_entries": 30,
-      "n_positive": 21,
-      "n_negative": 9,
-      "rule_f1": 0.714,
-      "rule_precision": 0.714,
-      "rule_recall": 0.714,
-      "rule_tp": 15,
-      "rule_fp": 6,
-      "rule_fn": 6,
-      "rule_tn": 3,
-      "llm_f1": 0.483,
-      "llm_precision": 0.875,
-      "llm_recall": 0.333,
-      "llm_tp": 7,
-      "llm_fp": 1,
-      "llm_fn": 14,
-      "llm_tn": 8,
-      "combo_f1": 0.483,
-      "combo_precision": 0.875,
-      "combo_recall": 0.333,
-      "llm_improvement": -0.23099999999999998,
-      "combo_improvement": -0.23099999999999998,
-      "escalated": 17,
+      "n_positive": 15,
+      "n_negative": 15,
+      "rule_f1": 0.667,
+      "rule_precision": 0.571,
+      "rule_recall": 0.8,
+      "rule_tp": 12,
+      "rule_fp": 9,
+      "rule_fn": 3,
+      "rule_tn": 6,
+      "llm_f1": 0.2,
+      "llm_precision": 0.4,
+      "llm_recall": 0.133,
+      "llm_tp": 2,
+      "llm_fp": 3,
+      "llm_fn": 13,
+      "llm_tn": 12,
+      "combo_f1": 0.2,
+      "combo_precision": 0.4,
+      "combo_recall": 0.133,
+      "llm_improvement": -0.467,
+      "combo_improvement": -0.467,
+      "escalated": 20,
       "errors": 0
     },
     {
@@ -204,19 +204,19 @@
       "rule_fp": 9,
       "rule_fn": 0,
       "rule_tn": 1,
-      "llm_f1": 0.0,
-      "llm_precision": 0.0,
-      "llm_recall": 0.0,
-      "llm_tp": 0,
+      "llm_f1": 0.333,
+      "llm_precision": 1.0,
+      "llm_recall": 0.2,
+      "llm_tp": 2,
       "llm_fp": 0,
-      "llm_fn": 10,
+      "llm_fn": 8,
       "llm_tn": 10,
-      "combo_f1": 0.0,
-      "combo_precision": 0.0,
-      "combo_recall": 0.0,
-      "llm_improvement": -0.69,
-      "combo_improvement": -0.69,
-      "escalated": 19,
+      "combo_f1": 0.333,
+      "combo_precision": 1.0,
+      "combo_recall": 0.2,
+      "llm_improvement": -0.35699999999999993,
+      "combo_improvement": -0.35699999999999993,
+      "escalated": 17,
       "errors": 0
     },
     {
@@ -231,399 +231,259 @@
       "rule_fp": 5,
       "rule_fn": 0,
       "rule_tn": 5,
-      "llm_f1": 0.154,
-      "llm_precision": 0.333,
-      "llm_recall": 0.1,
-      "llm_tp": 1,
-      "llm_fp": 2,
-      "llm_fn": 9,
-      "llm_tn": 8,
-      "combo_f1": 0.154,
-      "combo_precision": 0.333,
-      "combo_recall": 0.1,
-      "llm_improvement": -0.646,
-      "combo_improvement": -0.646,
+      "llm_f1": 0.533,
+      "llm_precision": 0.8,
+      "llm_recall": 0.4,
+      "llm_tp": 4,
+      "llm_fp": 1,
+      "llm_fn": 6,
+      "llm_tn": 9,
+      "combo_f1": 0.533,
+      "combo_precision": 0.8,
+      "combo_recall": 0.4,
+      "llm_improvement": -0.267,
+      "combo_improvement": -0.267,
       "escalated": 12,
       "errors": 0
     },
     {
       "detector": "retrieval_quality",
       "n_entries": 30,
-      "n_positive": 30,
-      "n_negative": 0,
-      "rule_f1": 0.983,
-      "rule_precision": 1.0,
-      "rule_recall": 0.967,
-      "rule_tp": 29,
-      "rule_fp": 0,
-      "rule_fn": 1,
-      "rule_tn": 0,
-      "llm_f1": 0.378,
+      "n_positive": 15,
+      "n_negative": 15,
+      "rule_f1": 0.0,
+      "rule_precision": 0.0,
+      "rule_recall": 0.0,
+      "rule_tp": 0,
+      "rule_fp": 10,
+      "rule_fn": 15,
+      "rule_tn": 5,
+      "llm_f1": 0.235,
       "llm_precision": 1.0,
-      "llm_recall": 0.233,
-      "llm_tp": 7,
+      "llm_recall": 0.133,
+      "llm_tp": 2,
       "llm_fp": 0,
-      "llm_fn": 23,
-      "llm_tn": 0,
-      "combo_f1": 0.378,
+      "llm_fn": 13,
+      "llm_tn": 15,
+      "combo_f1": 0.235,
       "combo_precision": 1.0,
-      "combo_recall": 0.233,
-      "llm_improvement": -0.605,
-      "combo_improvement": -0.605,
-      "escalated": 22,
+      "combo_recall": 0.133,
+      "llm_improvement": 0.235,
+      "combo_improvement": 0.235,
+      "escalated": 12,
       "errors": 0
     }
   ],
   "entry_details": [
     {
-      "entry_id": "trail_gaia_0140b3f657ed_hallucination",
+      "entry_id": "halueval_hal_pos_436df0ebd482",
       "expected": true,
-      "rule_pred": true,
-      "llm_pred": false,
-      "llm_answer_last_line": "Once you provide this information, I'll be happy to conduct a thorough step-by-step analysis and giv"
+      "rule_pred": false,
+      "llm_pred": true,
+      "llm_answer_last_line": "YES"
     },
     {
-      "entry_id": "trail_gaia_0242ca2533fa_hallucination",
+      "entry_id": "halueval_hal_pos_cbc07a9111c7",
       "expected": true,
       "rule_pred": true,
-      "llm_pred": false,
-      "llm_answer_last_line": "**Could you please provide the actual source text and agent output so I can complete this evaluation"
+      "llm_pred": true,
+      "llm_answer_last_line": "YES"
     },
     {
-      "entry_id": "trail_gaia_08be1639c58e_hallucination",
-      "expected": true,
-      "rule_pred": true,
-      "llm_pred": false,
-      "llm_answer_last_line": "Could you please provide the specific content of both the sources and the agent's output so I can pe"
-    },
-    {
-      "entry_id": "trail_gaia_1427b326e219_hallucination",
-      "expected": true,
-      "rule_pred": true,
-      "llm_pred": false,
-      "llm_answer_last_line": "**Answer: UNABLE TO EVALUATE** (Please provide the actual sources and output)"
-    },
-    {
-      "entry_id": "trail_gaia_2713fa0aa73f_hallucination",
-      "expected": true,
-      "rule_pred": true,
-      "llm_pred": false,
-      "llm_answer_last_line": "Then I'll be able to perform a thorough step-by-step evaluation and give you a definitive YES or NO "
-    },
-    {
-      "entry_id": "trail_gaia_2cb6924caac9_hallucination",
-      "expected": true,
-      "rule_pred": true,
-      "llm_pred": false,
-      "llm_answer_last_line": "Then I will be able to conduct a thorough step-by-step analysis and give you a definitive YES or NO "
-    },
-    {
-      "entry_id": "trail_gaia_33cedc57294f_hallucination",
-      "expected": true,
-      "rule_pred": true,
-      "llm_pred": false,
-      "llm_answer_last_line": "Once you share these details, I'll be happy to analyze them step-by-step and provide a definitive YE"
-    },
-    {
-      "entry_id": "trail_gaia_387546b0d3e8_hallucination",
-      "expected": true,
-      "rule_pred": true,
-      "llm_pred": false,
-      "llm_answer_last_line": "I cannot provide a YES/NO determination because the necessary information (actual sources and actual"
-    },
-    {
-      "entry_id": "trail_gaia_3f05ba33cd4a_hallucination",
-      "expected": true,
-      "rule_pred": true,
-      "llm_pred": false,
-      "llm_answer_last_line": "Once you supply this information, I'll be able to analyze it step-by-step and give you a definitive "
-    },
-    {
-      "entry_id": "trail_gaia_41bbc898aa7d_hallucination",
-      "expected": true,
-      "rule_pred": true,
-      "llm_pred": false,
-      "llm_answer_last_line": "Once you provide this information, I'll be able to carefully compare the claims against the sources "
-    },
-    {
-      "entry_id": "trail_gaia_512475a321c6_hallucination",
-      "expected": true,
-      "rule_pred": true,
-      "llm_pred": false,
-      "llm_answer_last_line": "2. The complete agent output to evaluate?"
-    },
-    {
-      "entry_id": "trail_gaia_5a6c51d59f87_hallucination",
-      "expected": true,
-      "rule_pred": true,
-      "llm_pred": false,
-      "llm_answer_last_line": "Then I'll be able to perform a step-by-step analysis and give you a definitive YES or NO answer."
-    },
-    {
-      "entry_id": "trail_gaia_5b5a35053775_hallucination",
-      "expected": true,
-      "rule_pred": true,
-      "llm_pred": false,
-      "llm_answer_last_line": "Once you provide this information, I'll be able to conduct a thorough step-by-step analysis and give"
-    },
-    {
-      "entry_id": "trail_gaia_5ec1cd43eb8a_hallucination",
+      "entry_id": "halueval_hal_pos_a6f059c2f4d3",
       "expected": true,
       "rule_pred": false,
       "llm_pred": false,
-      "llm_answer_last_line": "Once you provide this information, I'll be able to analyze it step-by-step and give you a definitive"
+      "llm_answer_last_line": "NO"
     },
     {
-      "entry_id": "trail_gaia_62df2a06b647_hallucination",
-      "expected": true,
-      "rule_pred": true,
-      "llm_pred": false,
-      "llm_answer_last_line": "Once you supply these, I'll be happy to conduct a detailed step-by-step analysis comparing the claim"
-    },
-    {
-      "entry_id": "trail_gaia_63ac9e03bf75_hallucination",
-      "expected": true,
-      "rule_pred": true,
-      "llm_pred": false,
-      "llm_answer_last_line": "Once you provide these, I'll be able to perform a detailed step-by-step analysis comparing the claim"
-    },
-    {
-      "entry_id": "trail_gaia_672d36d8ecc4_hallucination",
-      "expected": true,
-      "rule_pred": true,
-      "llm_pred": false,
-      "llm_answer_last_line": "Once you share these, I'll be able to perform a step-by-step analysis comparing the claims to the so"
-    },
-    {
-      "entry_id": "trail_gaia_6cc6dc35a28b_hallucination",
-      "expected": true,
-      "rule_pred": true,
-      "llm_pred": false,
-      "llm_answer_last_line": "Could you please provide the concrete sources, task, and agent output so I can perform a thorough st"
-    },
-    {
-      "entry_id": "trail_gaia_6d5b91f06e5a_hallucination",
-      "expected": true,
-      "rule_pred": true,
-      "llm_pred": false,
-      "llm_answer_last_line": "Once you provide the actual content, I'll be able to analyze it step-by-step for hallucinations and "
-    },
-    {
-      "entry_id": "trail_gaia_6f0ede30602a_hallucination",
-      "expected": true,
-      "rule_pred": true,
-      "llm_pred": false,
-      "llm_answer_last_line": "Once you supply this information, I'll be able to conduct a thorough step-by-step analysis and give "
-    },
-    {
-      "entry_id": "trail_gaia_75121379e11c_hallucination",
-      "expected": true,
-      "rule_pred": true,
-      "llm_pred": false,
-      "llm_answer_last_line": "Please provide the actual sources and agent output, and I'll be happy to conduct a thorough hallucin"
-    },
-    {
-      "entry_id": "trail_gaia_7bf0addde339_hallucination",
-      "expected": true,
-      "rule_pred": true,
-      "llm_pred": false,
-      "llm_answer_last_line": "Then I'll be able to conduct a thorough step-by-step analysis and provide a definitive YES or NO ans"
-    },
-    {
-      "entry_id": "trail_gaia_85c14ced5177_hallucination",
-      "expected": true,
-      "rule_pred": true,
-      "llm_pred": false,
-      "llm_answer_last_line": "**My recommendation:** Please provide the full text of both the sources and the agent's output, and "
-    },
-    {
-      "entry_id": "trail_gaia_876eb108c865_hallucination",
-      "expected": true,
-      "rule_pred": true,
-      "llm_pred": false,
-      "llm_answer_last_line": "Then I can perform a step-by-step analysis comparing claims to sources."
-    },
-    {
-      "entry_id": "trail_gaia_911e853f02d0_hallucination",
-      "expected": true,
-      "rule_pred": true,
-      "llm_pred": false,
-      "llm_answer_last_line": "Then I'll be able to perform a thorough evaluation for hallucinations."
-    },
-    {
-      "entry_id": "trail_gaia_96be1bf61f29_hallucination",
-      "expected": true,
-      "rule_pred": true,
-      "llm_pred": false,
-      "llm_answer_last_line": "3. Give you a definitive YES or NO answer with reasoning"
-    },
-    {
-      "entry_id": "trail_gaia_9ec7d4a8ab8c_hallucination",
-      "expected": true,
-      "rule_pred": true,
-      "llm_pred": false,
-      "llm_answer_last_line": "Could you please provide these details so I can perform the step-by-step analysis and give you a YES"
-    },
-    {
-      "entry_id": "trail_gaia_a32806e19bac_hallucination",
-      "expected": true,
-      "rule_pred": true,
-      "llm_pred": false,
-      "llm_answer_last_line": "Once you provide these, I'll be able to conduct a thorough step-by-step analysis and give you a defi"
-    },
-    {
-      "entry_id": "trail_gaia_a4af6c6d200e_hallucination",
-      "expected": true,
-      "rule_pred": true,
-      "llm_pred": false,
-      "llm_answer_last_line": "Once you supply these, I'll be able to evaluate whether the output contains unsupported or contradic"
-    },
-    {
-      "entry_id": "trail_gaia_a96c6811716c_hallucination",
-      "expected": true,
-      "rule_pred": true,
-      "llm_pred": false,
-      "llm_answer_last_line": "**Final answer: UNABLE TO DETERMINE** - insufficient information provided to evaluate for hallucinat"
-    },
-    {
-      "entry_id": "core_gnd_pos_2695f70f88c9",
+      "entry_id": "halueval_hal_pos_584c61ce6391",
       "expected": true,
       "rule_pred": true,
       "llm_pred": true,
       "llm_answer_last_line": "YES"
     },
     {
-      "entry_id": "core_gnd_pos_90c9eb78650d",
+      "entry_id": "halueval_hal_pos_aaee659e3e68",
       "expected": true,
       "rule_pred": true,
       "llm_pred": false,
       "llm_answer_last_line": "**YES**"
     },
     {
-      "entry_id": "core_gnd_pos_b9d2d4fdcbbc",
+      "entry_id": "halueval_hal_pos_89845ffbef2e",
+      "expected": true,
+      "rule_pred": true,
+      "llm_pred": true,
+      "llm_answer_last_line": "YES"
+    },
+    {
+      "entry_id": "halueval_hal_pos_09fa0e04f299",
+      "expected": true,
+      "rule_pred": false,
+      "llm_pred": true,
+      "llm_answer_last_line": "YES"
+    },
+    {
+      "entry_id": "halueval_hal_pos_d04adfb2bdde",
+      "expected": true,
+      "rule_pred": true,
+      "llm_pred": false,
+      "llm_answer_last_line": "NO"
+    },
+    {
+      "entry_id": "halueval_hal_pos_8054442371c0",
       "expected": true,
       "rule_pred": false,
       "llm_pred": false,
-      "llm_answer_last_line": "**YES**"
+      "llm_answer_last_line": "NO"
     },
     {
-      "entry_id": "core_gnd_pos_fc2d60d4304b",
+      "entry_id": "halueval_hal_pos_79997895944a",
       "expected": true,
-      "rule_pred": true,
+      "rule_pred": false,
       "llm_pred": false,
-      "llm_answer_last_line": "**YES**"
+      "llm_answer_last_line": "NO"
     },
     {
-      "entry_id": "core_gnd_pos_6456c87828b4",
-      "expected": true,
-      "rule_pred": true,
-      "llm_pred": false,
-      "llm_answer_last_line": "**YES**"
-    },
-    {
-      "entry_id": "core_gnd_pos_d934a2e4c830",
-      "expected": true,
-      "rule_pred": true,
-      "llm_pred": false,
-      "llm_answer_last_line": "**YES**"
-    },
-    {
-      "entry_id": "core_gnd_pos_c28e982d6e5a",
+      "entry_id": "halueval_hal_pos_0d9ce83d8233",
       "expected": true,
       "rule_pred": true,
       "llm_pred": true,
       "llm_answer_last_line": "YES"
     },
     {
-      "entry_id": "core_gnd_pos_79341a6cac4b",
+      "entry_id": "halueval_hal_pos_0efce560b409",
       "expected": true,
       "rule_pred": true,
       "llm_pred": true,
       "llm_answer_last_line": "YES"
     },
     {
-      "entry_id": "core_gnd_pos_16c87e171c50",
+      "entry_id": "halueval_hal_pos_2fc20e1beda3",
+      "expected": true,
+      "rule_pred": true,
+      "llm_pred": false,
+      "llm_answer_last_line": "NO"
+    },
+    {
+      "entry_id": "halueval_hal_pos_83d2f4b87ba4",
       "expected": true,
       "rule_pred": true,
       "llm_pred": false,
       "llm_answer_last_line": "**YES**"
     },
     {
-      "entry_id": "core_gnd_pos_287c38058777",
+      "entry_id": "halueval_hal_pos_bb7ad29cf2a5",
       "expected": true,
-      "rule_pred": true,
-      "llm_pred": false,
-      "llm_answer_last_line": "**YES**"
-    },
-    {
-      "entry_id": "core_gnd_neg_938653ad836d",
-      "expected": false,
-      "rule_pred": true,
-      "llm_pred": false,
-      "llm_answer_last_line": "**YES**"
-    },
-    {
-      "entry_id": "core_gnd_neg_74bdca631e18",
-      "expected": false,
       "rule_pred": true,
       "llm_pred": false,
       "llm_answer_last_line": "**NO**"
     },
     {
-      "entry_id": "core_gnd_neg_1262cbf8441f",
-      "expected": false,
-      "rule_pred": true,
-      "llm_pred": true,
-      "llm_answer_last_line": "YES"
-    },
-    {
-      "entry_id": "core_gnd_neg_aa7bd828d3af",
-      "expected": false,
-      "rule_pred": true,
-      "llm_pred": true,
-      "llm_answer_last_line": "YES"
-    },
-    {
-      "entry_id": "core_gnd_neg_590c2c788ac1",
+      "entry_id": "halueval_hal_neg_938c099f9f17",
       "expected": false,
       "rule_pred": true,
       "llm_pred": false,
-      "llm_answer_last_line": "The agent's output contains ungrounded claims about specific implementation details (method names, d"
+      "llm_answer_last_line": "NO"
     },
     {
-      "entry_id": "core_gnd_neg_046bea25369a",
+      "entry_id": "halueval_hal_neg_b6d4448f3a17",
       "expected": false,
       "rule_pred": true,
       "llm_pred": false,
       "llm_answer_last_line": "**YES**"
     },
     {
-      "entry_id": "core_gnd_neg_be990984fdaa",
-      "expected": false,
-      "rule_pred": true,
-      "llm_pred": false,
-      "llm_answer_last_line": "**YES**"
-    },
-    {
-      "entry_id": "core_gnd_neg_b9307c290cc5",
+      "entry_id": "halueval_hal_neg_0886e67e322a",
       "expected": false,
       "rule_pred": true,
       "llm_pred": true,
       "llm_answer_last_line": "YES"
     },
     {
-      "entry_id": "core_gnd_neg_7b86c17ac5b0",
+      "entry_id": "halueval_hal_neg_510bfb183983",
       "expected": false,
       "rule_pred": true,
       "llm_pred": false,
-      "llm_answer_last_line": "**NO**"
+      "llm_answer_last_line": "NO"
     },
     {
-      "entry_id": "core_gnd_neg_4abe866cb269",
+      "entry_id": "halueval_hal_neg_ec1df1b1fc80",
+      "expected": false,
+      "rule_pred": false,
+      "llm_pred": false,
+      "llm_answer_last_line": "NO"
+    },
+    {
+      "entry_id": "halueval_hal_neg_da8fe69378e6",
+      "expected": false,
+      "rule_pred": true,
+      "llm_pred": false,
+      "llm_answer_last_line": "NO"
+    },
+    {
+      "entry_id": "halueval_hal_neg_331794653ebb",
       "expected": false,
       "rule_pred": true,
       "llm_pred": true,
       "llm_answer_last_line": "YES"
+    },
+    {
+      "entry_id": "halueval_hal_neg_efc471da9008",
+      "expected": false,
+      "rule_pred": true,
+      "llm_pred": false,
+      "llm_answer_last_line": "**Final answer: NO**"
+    },
+    {
+      "entry_id": "halueval_hal_neg_9eacd88da52e",
+      "expected": false,
+      "rule_pred": false,
+      "llm_pred": false,
+      "llm_answer_last_line": "NO"
+    },
+    {
+      "entry_id": "halueval_hal_neg_92ee4313ddf1",
+      "expected": false,
+      "rule_pred": false,
+      "llm_pred": true,
+      "llm_answer_last_line": "YES"
+    },
+    {
+      "entry_id": "halueval_hal_neg_a14dae1d011f",
+      "expected": false,
+      "rule_pred": false,
+      "llm_pred": false,
+      "llm_answer_last_line": "NO"
+    },
+    {
+      "entry_id": "halueval_hal_neg_786369abc9ed",
+      "expected": false,
+      "rule_pred": true,
+      "llm_pred": false,
+      "llm_answer_last_line": "NO"
+    },
+    {
+      "entry_id": "halueval_hal_neg_836d9965b554",
+      "expected": false,
+      "rule_pred": true,
+      "llm_pred": false,
+      "llm_answer_last_line": "NO"
+    },
+    {
+      "entry_id": "halueval_hal_neg_f189b32b40ba",
+      "expected": false,
+      "rule_pred": true,
+      "llm_pred": false,
+      "llm_answer_last_line": "NO"
+    },
+    {
+      "entry_id": "halueval_hal_neg_d832947e4e42",
+      "expected": false,
+      "rule_pred": true,
+      "llm_pred": false,
+      "llm_answer_last_line": "NO"
     },
     {
       "entry_id": "halueval_gnd_pos_c237faaa31d3",
@@ -643,8 +503,8 @@
       "entry_id": "halueval_gnd_pos_d0af634b9ab6",
       "expected": true,
       "rule_pred": false,
-      "llm_pred": false,
-      "llm_answer_last_line": "**YES**"
+      "llm_pred": true,
+      "llm_answer_last_line": "YES"
     },
     {
       "entry_id": "halueval_gnd_pos_f66b5b3abdfb",
@@ -657,8 +517,8 @@
       "entry_id": "halueval_gnd_pos_039471cc8f6b",
       "expected": true,
       "rule_pred": true,
-      "llm_pred": false,
-      "llm_answer_last_line": "**YES**"
+      "llm_pred": true,
+      "llm_answer_last_line": "YES"
     },
     {
       "entry_id": "halueval_gnd_pos_ad1045060cb4",
@@ -679,14 +539,14 @@
       "expected": true,
       "rule_pred": false,
       "llm_pred": false,
-      "llm_answer_last_line": "**NO**"
+      "llm_answer_last_line": "The output contains ungrounded vagueness - it fails to cite the specific factual claim (Secretary of"
     },
     {
       "entry_id": "halueval_gnd_pos_ddedb190bc16",
       "expected": true,
       "rule_pred": false,
-      "llm_pred": false,
-      "llm_answer_last_line": "**NO**"
+      "llm_pred": true,
+      "llm_answer_last_line": "YES"
     },
     {
       "entry_id": "halueval_gnd_pos_ce7f2e1bf996",
@@ -696,9 +556,142 @@
       "llm_answer_last_line": "NO"
     },
     {
-      "entry_id": "mast_neg_ec878e6fb665",
+      "entry_id": "halueval_gnd_pos_1c69ebaf2f39",
+      "expected": true,
+      "rule_pred": false,
+      "llm_pred": true,
+      "llm_answer_last_line": "YES"
+    },
+    {
+      "entry_id": "halueval_gnd_pos_bce4bfaf3393",
+      "expected": true,
+      "rule_pred": false,
+      "llm_pred": true,
+      "llm_answer_last_line": "YES"
+    },
+    {
+      "entry_id": "halueval_gnd_pos_a4e86b6d4421",
+      "expected": true,
+      "rule_pred": false,
+      "llm_pred": false,
+      "llm_answer_last_line": "NO"
+    },
+    {
+      "entry_id": "halueval_gnd_pos_fd6933d55264",
+      "expected": true,
+      "rule_pred": false,
+      "llm_pred": true,
+      "llm_answer_last_line": "YES"
+    },
+    {
+      "entry_id": "halueval_gnd_pos_46a3aa38aecb",
+      "expected": true,
+      "rule_pred": false,
+      "llm_pred": false,
+      "llm_answer_last_line": "**NO**"
+    },
+    {
+      "entry_id": "core_gnd_neg_938653ad836d",
       "expected": false,
       "rule_pred": true,
+      "llm_pred": false,
+      "llm_answer_last_line": "**YES**"
+    },
+    {
+      "entry_id": "core_gnd_neg_74bdca631e18",
+      "expected": false,
+      "rule_pred": true,
+      "llm_pred": false,
+      "llm_answer_last_line": "**NO**"
+    },
+    {
+      "entry_id": "core_gnd_neg_1262cbf8441f",
+      "expected": false,
+      "rule_pred": true,
+      "llm_pred": false,
+      "llm_answer_last_line": "**YES**"
+    },
+    {
+      "entry_id": "core_gnd_neg_aa7bd828d3af",
+      "expected": false,
+      "rule_pred": true,
+      "llm_pred": true,
+      "llm_answer_last_line": "YES"
+    },
+    {
+      "entry_id": "core_gnd_neg_590c2c788ac1",
+      "expected": false,
+      "rule_pred": true,
+      "llm_pred": false,
+      "llm_answer_last_line": "NO"
+    },
+    {
+      "entry_id": "core_gnd_neg_046bea25369a",
+      "expected": false,
+      "rule_pred": true,
+      "llm_pred": true,
+      "llm_answer_last_line": "YES"
+    },
+    {
+      "entry_id": "core_gnd_neg_be990984fdaa",
+      "expected": false,
+      "rule_pred": true,
+      "llm_pred": true,
+      "llm_answer_last_line": "YES"
+    },
+    {
+      "entry_id": "core_gnd_neg_b9307c290cc5",
+      "expected": false,
+      "rule_pred": true,
+      "llm_pred": true,
+      "llm_answer_last_line": "YES"
+    },
+    {
+      "entry_id": "core_gnd_neg_7b86c17ac5b0",
+      "expected": false,
+      "rule_pred": true,
+      "llm_pred": false,
+      "llm_answer_last_line": "However, these are reasonable implementation details that don't contradict the source. The core func"
+    },
+    {
+      "entry_id": "core_gnd_neg_4abe866cb269",
+      "expected": false,
+      "rule_pred": true,
+      "llm_pred": false,
+      "llm_answer_last_line": "The agent's output contains ungrounded claims. The statement about what \"research indicates\" regardi"
+    },
+    {
+      "entry_id": "halueval_gnd_neg_31407ea8826e",
+      "expected": false,
+      "rule_pred": false,
+      "llm_pred": false,
+      "llm_answer_last_line": "**NO**"
+    },
+    {
+      "entry_id": "halueval_gnd_neg_a9b55ccaae21",
+      "expected": false,
+      "rule_pred": true,
+      "llm_pred": true,
+      "llm_answer_last_line": "YES"
+    },
+    {
+      "entry_id": "halueval_gnd_neg_3ed2fbaa3d7b",
+      "expected": false,
+      "rule_pred": false,
+      "llm_pred": true,
+      "llm_answer_last_line": "YES"
+    },
+    {
+      "entry_id": "halueval_gnd_neg_11f8faac5302",
+      "expected": false,
+      "rule_pred": false,
+      "llm_pred": false,
+      "llm_answer_last_line": "NO"
+    },
+    {
+      "entry_id": "halueval_gnd_neg_ff90294aac1d",
+      "expected": false,
+      "rule_pred": false,
       "llm_pred": false,
       "llm_answer_last_line": "NO"
     },
@@ -706,15 +699,15 @@
       "entry_id": "mast_pos_486633b8ab75",
       "expected": true,
       "rule_pred": true,
-      "llm_pred": true,
-      "llm_answer_last_line": "YES"
+      "llm_pred": false,
+      "llm_answer_last_line": "**NO**"
     },
     {
       "entry_id": "mast_pos_19af6559f99f",
       "expected": true,
       "rule_pred": false,
       "llm_pred": false,
-      "llm_answer_last_line": "**NO**"
+      "llm_answer_last_line": "NO"
     },
     {
       "entry_id": "mast_pos_95f74a9c01c7",
@@ -735,25 +728,11 @@
       "expected": true,
       "rule_pred": false,
       "llm_pred": false,
-      "llm_answer_last_line": "**NO**"
-    },
-    {
-      "entry_id": "mast_neg_9c3b329f486a",
-      "expected": false,
-      "rule_pred": true,
-      "llm_pred": false,
-      "llm_answer_last_line": "**NO**"
+      "llm_answer_last_line": "(The specification preserves the user's intent in the task_prompt field, even though the document fo"
     },
     {
       "entry_id": "mast_pos_dc91954c6cdd",
       "expected": true,
-      "rule_pred": true,
-      "llm_pred": false,
-      "llm_answer_last_line": "The specification matches the user's intent. The surrounding ChatDev metadata is infrastructure, not"
-    },
-    {
-      "entry_id": "mast_neg_035d9ca2124a",
-      "expected": false,
       "rule_pred": true,
       "llm_pred": false,
       "llm_answer_last_line": "NO"
@@ -766,39 +745,25 @@
       "llm_answer_last_line": "**NO**"
     },
     {
-      "entry_id": "mast_neg_5baf3256ae5e",
-      "expected": false,
-      "rule_pred": false,
-      "llm_pred": false,
-      "llm_answer_last_line": "**NO**"
-    },
-    {
-      "entry_id": "mast_neg_8b76dc699622",
-      "expected": false,
-      "rule_pred": true,
-      "llm_pred": false,
-      "llm_answer_last_line": "NO"
-    },
-    {
       "entry_id": "mast_pos_363e5b0937ac",
       "expected": true,
       "rule_pred": true,
       "llm_pred": false,
-      "llm_answer_last_line": "**NO**"
+      "llm_answer_last_line": "NO"
     },
     {
       "entry_id": "mast_pos_1102d0bc0a89",
       "expected": true,
       "rule_pred": false,
       "llm_pred": false,
-      "llm_answer_last_line": "**NO**"
+      "llm_answer_last_line": "The specification includes the user's requirements verbatim without scope drift or missing core requ"
     },
     {
       "entry_id": "mast_pos_8c2c8ec34933",
       "expected": true,
       "rule_pred": false,
       "llm_pred": false,
-      "llm_answer_last_line": "NO"
+      "llm_answer_last_line": "The user's intent is correctly captured in the specification. While the implementation shown is inco"
     },
     {
       "entry_id": "mast_pos_ac1d7ae506e1",
@@ -815,18 +780,67 @@
       "llm_answer_last_line": "**NO**"
     },
     {
-      "entry_id": "mast_neg_471fb482878e",
-      "expected": false,
-      "rule_pred": true,
-      "llm_pred": true,
-      "llm_answer_last_line": "YES"
-    },
-    {
       "entry_id": "mast_pos_1dbaa4c3706a",
       "expected": true,
       "rule_pred": true,
       "llm_pred": false,
-      "llm_answer_last_line": "The actual requirements match what the user asked for, though the specification format is unconventi"
+      "llm_answer_last_line": "The specification meaningfully differs - it's not even a proper task specification but rather a comm"
+    },
+    {
+      "entry_id": "mast_pos_bfcb5602b198",
+      "expected": true,
+      "rule_pred": false,
+      "llm_pred": false,
+      "llm_answer_last_line": "**NO**"
+    },
+    {
+      "entry_id": "mast_pos_702833b9e1a2",
+      "expected": true,
+      "rule_pred": true,
+      "llm_pred": false,
+      "llm_answer_last_line": "The specification appears to introduce a specific task (\"Identify Deleted Word\") that isn't fully re"
+    },
+    {
+      "entry_id": "mast_neg_ec878e6fb665",
+      "expected": false,
+      "rule_pred": true,
+      "llm_pred": false,
+      "llm_answer_last_line": "NO"
+    },
+    {
+      "entry_id": "mast_neg_9c3b329f486a",
+      "expected": false,
+      "rule_pred": true,
+      "llm_pred": false,
+      "llm_answer_last_line": "The specification, despite being poorly formatted, does contain the correct task prompt that matches"
+    },
+    {
+      "entry_id": "mast_neg_035d9ca2124a",
+      "expected": false,
+      "rule_pred": true,
+      "llm_pred": false,
+      "llm_answer_last_line": "NO"
+    },
+    {
+      "entry_id": "mast_neg_5baf3256ae5e",
+      "expected": false,
+      "rule_pred": false,
+      "llm_pred": false,
+      "llm_answer_last_line": "**Final Answer:** NO"
+    },
+    {
+      "entry_id": "mast_neg_8b76dc699622",
+      "expected": false,
+      "rule_pred": true,
+      "llm_pred": false,
+      "llm_answer_last_line": "**NO**"
+    },
+    {
+      "entry_id": "mast_neg_471fb482878e",
+      "expected": false,
+      "rule_pred": true,
+      "llm_pred": false,
+      "llm_answer_last_line": "**NO**"
     },
     {
       "entry_id": "mast_neg_48d6a4b70516",
@@ -836,57 +850,15 @@
       "llm_answer_last_line": "**NO**"
     },
     {
-      "entry_id": "mast_pos_bfcb5602b198",
-      "expected": true,
-      "rule_pred": false,
-      "llm_pred": false,
-      "llm_answer_last_line": "(The specification does capture the user's original intent accurately, even though it's presented in"
-    },
-    {
       "entry_id": "mast_neg_183087d42bfa",
       "expected": false,
       "rule_pred": false,
       "llm_pred": false,
-      "llm_answer_last_line": "**NO**"
+      "llm_answer_last_line": "NO"
     },
     {
       "entry_id": "mast_neg_a12daaf0f682",
       "expected": false,
-      "rule_pred": true,
-      "llm_pred": false,
-      "llm_answer_last_line": "**YES**"
-    },
-    {
-      "entry_id": "mast_pos_702833b9e1a2",
-      "expected": true,
-      "rule_pred": true,
-      "llm_pred": false,
-      "llm_answer_last_line": "**YES**"
-    },
-    {
-      "entry_id": "mast_pos_13c407dfdd24",
-      "expected": true,
-      "rule_pred": true,
-      "llm_pred": true,
-      "llm_answer_last_line": "YES"
-    },
-    {
-      "entry_id": "mast_pos_e6f7cc41288a",
-      "expected": true,
-      "rule_pred": true,
-      "llm_pred": false,
-      "llm_answer_last_line": "**YES**"
-    },
-    {
-      "entry_id": "mast_pos_2ec5497547d1",
-      "expected": true,
-      "rule_pred": false,
-      "llm_pred": false,
-      "llm_answer_last_line": "**YES**"
-    },
-    {
-      "entry_id": "mast_pos_5d08b0dd5c30",
-      "expected": true,
       "rule_pred": true,
       "llm_pred": true,
       "llm_answer_last_line": "YES"
@@ -899,58 +871,177 @@
       "llm_answer_last_line": "**YES**"
     },
     {
-      "entry_id": "mast_pos_19be2beef17d",
-      "expected": true,
+      "entry_id": "mast_neg_7df0e1818353",
+      "expected": false,
       "rule_pred": true,
       "llm_pred": false,
-      "llm_answer_last_line": "**YES**"
+      "llm_answer_last_line": "**NO**"
     },
     {
-      "entry_id": "mast_neg_9c4b16308c24",
+      "entry_id": "mast_neg_a2dfa2526906",
       "expected": false,
       "rule_pred": true,
       "llm_pred": false,
       "llm_answer_last_line": "**Final Answer: YES**"
     },
     {
-      "entry_id": "mast_pos_09877a6c06c3",
-      "expected": true,
-      "rule_pred": false,
+      "entry_id": "mast_neg_cfa91204988e",
+      "expected": false,
+      "rule_pred": true,
       "llm_pred": true,
       "llm_answer_last_line": "YES"
     },
     {
-      "entry_id": "mast_neg_4b35dd02304a",
-      "expected": false,
-      "rule_pred": false,
-      "llm_pred": false,
-      "llm_answer_last_line": "**NO**"
-    },
-    {
-      "entry_id": "mast_neg_89fc5143a9a7",
+      "entry_id": "mast_neg_276067d072e7",
       "expected": false,
       "rule_pred": true,
       "llm_pred": false,
       "llm_answer_last_line": "**YES**"
     },
     {
-      "entry_id": "mast_neg_8e12a8d02d5f",
+      "entry_id": "mast_neg_5d75915f73f4",
       "expected": false,
-      "rule_pred": false,
-      "llm_pred": true,
-      "llm_answer_last_line": "YES"
+      "rule_pred": true,
+      "llm_pred": false,
+      "llm_answer_last_line": "The specification matches the user's intent - it's the natural continuation of the same Docker-based"
     },
     {
-      "entry_id": "mast_neg_0b7420f9f84f",
-      "expected": false,
+      "entry_id": "mast_pos_09877a6c06c3",
+      "expected": true,
       "rule_pred": false,
       "llm_pred": false,
-      "llm_answer_last_line": "NO"
+      "llm_answer_last_line": "**YES**"
     },
     {
       "entry_id": "mast_pos_af67d3fdda1e",
       "expected": true,
       "rule_pred": true,
+      "llm_pred": false,
+      "llm_answer_last_line": "NO"
+    },
+    {
+      "entry_id": "mast_pos_9656ea02027c",
+      "expected": true,
+      "rule_pred": true,
+      "llm_pred": false,
+      "llm_answer_last_line": "The agent deviated from properly executing the task - it acknowledged the need for new strategies bu"
+    },
+    {
+      "entry_id": "mast_pos_da27bdda583e",
+      "expected": true,
+      "rule_pred": true,
+      "llm_pred": false,
+      "llm_answer_last_line": "**YES**"
+    },
+    {
+      "entry_id": "mast_pos_4c8d33bd3020",
+      "expected": true,
+      "rule_pred": false,
+      "llm_pred": false,
+      "llm_answer_last_line": "**Answer: YES**"
+    },
+    {
+      "entry_id": "mast_pos_44c1a3a6bd69",
+      "expected": true,
+      "rule_pred": true,
+      "llm_pred": false,
+      "llm_answer_last_line": "The agent did not deviate from the assigned task - it failed to complete the task, but there's no ev"
+    },
+    {
+      "entry_id": "mast_pos_b254ded4b32e",
+      "expected": true,
+      "rule_pred": true,
+      "llm_pred": false,
+      "llm_answer_last_line": "**Final Answer: YES**"
+    },
+    {
+      "entry_id": "mast_pos_69f3a83de4ee",
+      "expected": true,
+      "rule_pred": false,
+      "llm_pred": false,
+      "llm_answer_last_line": "**Final answer: NO**"
+    },
+    {
+      "entry_id": "mast_pos_0a7b5d324cf0",
+      "expected": true,
+      "rule_pred": false,
+      "llm_pred": false,
+      "llm_answer_last_line": "The agent ultimately addressed the task and provided the correct answer in the requested format, tho"
+    },
+    {
+      "entry_id": "mast_pos_01b817954c6a",
+      "expected": true,
+      "rule_pred": false,
+      "llm_pred": false,
+      "llm_answer_last_line": "The"
+    },
+    {
+      "entry_id": "mast_pos_dc802d2a9e7f",
+      "expected": true,
+      "rule_pred": false,
+      "llm_pred": false,
+      "llm_answer_last_line": "The agent mostly stayed on task (solving the problem and boxing the answer), though it could have be"
+    },
+    {
+      "entry_id": "mast_pos_8bf97bdab273",
+      "expected": true,
+      "rule_pred": false,
+      "llm_pred": false,
+      "llm_answer_last_line": "Final answer: **NO**"
+    },
+    {
+      "entry_id": "mast_pos_b31f6bf02685",
+      "expected": true,
+      "rule_pred": false,
+      "llm_pred": true,
+      "llm_answer_last_line": "YES"
+    },
+    {
+      "entry_id": "mast_pos_42ce9b02f5bb",
+      "expected": true,
+      "rule_pred": false,
+      "llm_pred": false,
+      "llm_answer_last_line": "**YES**"
+    },
+    {
+      "entry_id": "mast_pos_c28647f87ab1",
+      "expected": true,
+      "rule_pred": false,
+      "llm_pred": false,
+      "llm_answer_last_line": "NO"
+    },
+    {
+      "entry_id": "mast_neg_9c4b16308c24",
+      "expected": false,
+      "rule_pred": true,
+      "llm_pred": false,
+      "llm_answer_last_line": "The agent deviated from the assigned task. It provided documentation instead of an actual implementa"
+    },
+    {
+      "entry_id": "mast_neg_4b35dd02304a",
+      "expected": false,
+      "rule_pred": false,
+      "llm_pred": false,
+      "llm_answer_last_line": "**Final Answer: YES**"
+    },
+    {
+      "entry_id": "mast_neg_89fc5143a9a7",
+      "expected": false,
+      "rule_pred": true,
+      "llm_pred": false,
+      "llm_answer_last_line": "**NO**"
+    },
+    {
+      "entry_id": "mast_neg_8e12a8d02d5f",
+      "expected": false,
+      "rule_pred": false,
+      "llm_pred": false,
+      "llm_answer_last_line": "**YES**"
+    },
+    {
+      "entry_id": "mast_neg_0b7420f9f84f",
+      "expected": false,
+      "rule_pred": false,
       "llm_pred": false,
       "llm_answer_last_line": "NO"
     },
@@ -966,7 +1057,7 @@
       "expected": false,
       "rule_pred": false,
       "llm_pred": false,
-      "llm_answer_last_line": "(The agent addressed the correct task but failed to complete it, making this a failure to fully acco"
+      "llm_answer_last_line": "The agent did not deviate from"
     },
     {
       "entry_id": "mast_neg_a1ca4883de25",
@@ -983,18 +1074,11 @@
       "llm_answer_last_line": "**NO**"
     },
     {
-      "entry_id": "mast_pos_9656ea02027c",
-      "expected": true,
-      "rule_pred": true,
-      "llm_pred": false,
-      "llm_answer_last_line": "NO"
-    },
-    {
       "entry_id": "mast_neg_f5959385f57c",
       "expected": false,
       "rule_pred": true,
       "llm_pred": false,
-      "llm_answer_last_line": "NO"
+      "llm_answer_last_line": "**NO**"
     },
     {
       "entry_id": "mast_neg_9cb3c3591548",
@@ -1008,175 +1092,77 @@
       "expected": false,
       "rule_pred": true,
       "llm_pred": false,
-      "llm_answer_last_line": "(The agent appears to be executing tool calls and browser automation actions systematically, suggest"
+      "llm_answer_last_line": "(The agent appears to be executing a planned sequence of actions systematically, suggesting it is on"
     },
     {
       "entry_id": "mast_neg_fcd1cf3718bf",
       "expected": false,
       "rule_pred": true,
-      "llm_pred": true,
-      "llm_answer_last_line": "YES"
-    },
-    {
-      "entry_id": "mast_pos_da27bdda583e",
-      "expected": true,
-      "rule_pred": true,
       "llm_pred": false,
-      "llm_answer_last_line": "**YES**"
+      "llm_answer_last_line": "**Final Answer: YES**"
     },
     {
       "entry_id": "mast_neg_deae97e949c5",
       "expected": false,
       "rule_pred": true,
-      "llm_pred": false,
-      "llm_answer_last_line": "**YES**"
+      "llm_pred": true,
+      "llm_answer_last_line": "YES"
     },
     {
       "entry_id": "mast_neg_034825b2a6db",
       "expected": false,
       "rule_pred": true,
-      "llm_pred": true,
-      "llm_answer_last_line": "YES"
-    },
-    {
-      "entry_id": "mast_neg_d8bd591a6b3b",
-      "expected": false,
-      "rule_pred": true,
-      "llm_pred": true,
-      "llm_answer_last_line": "YES"
-    },
-    {
-      "entry_id": "mast_neg_acfb9913556d",
-      "expected": false,
-      "rule_pred": false,
-      "llm_pred": true,
-      "llm_answer_last_line": "YES"
-    },
-    {
-      "entry_id": "mast_pos_4c8d33bd3020",
-      "expected": true,
-      "rule_pred": false,
       "llm_pred": false,
       "llm_answer_last_line": "**YES**"
-    },
-    {
-      "entry_id": "mast_neg_ed3a354a8ee2",
-      "expected": false,
-      "rule_pred": false,
-      "llm_pred": false,
-      "llm_answer_last_line": "The agent deviated from the assigned task. It provided framework and instructions rather than actual"
-    },
-    {
-      "entry_id": "mast_neg_7a51b5a17fe5",
-      "expected": false,
-      "rule_pred": false,
-      "llm_pred": false,
-      "llm_answer_last_line": "**Final answer:** YES"
-    },
-    {
-      "entry_id": "mast_neg_259ec40db2d2",
-      "expected": false,
-      "rule_pred": false,
-      "llm_pred": false,
-      "llm_answer_last_line": "The agent deviated from the assigned task. It should have solved the Easter egg hunt problem but ins"
-    },
-    {
-      "entry_id": "mast_neg_5e3b6690b29a",
-      "expected": false,
-      "rule_pred": true,
-      "llm_pred": false,
-      "llm_answer_last_line": "**YES**"
-    },
-    {
-      "entry_id": "mast_pos_44c1a3a6bd69",
-      "expected": true,
-      "rule_pred": true,
-      "llm_pred": false,
-      "llm_answer_last_line": "**NO**"
-    },
-    {
-      "entry_id": "mast_neg_b60fd948bcb3",
-      "expected": false,
-      "rule_pred": true,
-      "llm_pred": false,
-      "llm_answer_last_line": "**NO**"
-    },
-    {
-      "entry_id": "mast_neg_3031a13bc059",
-      "expected": false,
-      "rule_pred": true,
-      "llm_pred": false,
-      "llm_answer_last_line": "**YES**"
-    },
-    {
-      "entry_id": "mast_neg_9a752d181f65",
-      "expected": false,
-      "rule_pred": true,
-      "llm_pred": false,
-      "llm_answer_last_line": "**NO**"
     },
     {
       "entry_id": "mast_pos_af00bd15a123",
       "expected": true,
       "rule_pred": true,
       "llm_pred": false,
-      "llm_answer_last_line": "The agent's output misrepresents progress by showing only framework initialization logs rather than "
+      "llm_answer_last_line": "**YES**"
     },
     {
       "entry_id": "mast_pos_7a917445564a",
       "expected": true,
       "rule_pred": true,
       "llm_pred": false,
-      "llm_answer_last_line": "NO"
+      "llm_answer_last_line": "**YES**"
     },
     {
       "entry_id": "mast_pos_54745ce4b0cc",
       "expected": true,
       "rule_pred": true,
       "llm_pred": false,
-      "llm_answer_last_line": "**YES**"
+      "llm_answer_last_line": "NO"
     },
     {
       "entry_id": "mast_pos_fbc2287c92ed",
       "expected": true,
       "rule_pred": true,
       "llm_pred": false,
-      "llm_answer_last_line": "The agent claimed (or implied through its output) to be processing/starting work on the task, but th"
+      "llm_answer_last_line": "The agent has misrepresented its progress by providing only initialization logs when a complete, fun"
     },
     {
       "entry_id": "mast_pos_a6aecbb5af9e",
       "expected": true,
       "rule_pred": true,
       "llm_pred": false,
-      "llm_answer_last_line": "The agent did not claim completion in this output - it only showed initialization logs. Therefore, t"
+      "llm_answer_last_line": "**NO**"
     },
     {
       "entry_id": "mast_pos_e30ff127f8c9",
       "expected": true,
       "rule_pred": true,
       "llm_pred": false,
-      "llm_answer_last_line": "The agent's output does not demonstrate completion of any of the core requirements. If presented as "
-    },
-    {
-      "entry_id": "mast_neg_5506b760fa99",
-      "expected": false,
-      "rule_pred": true,
-      "llm_pred": false,
-      "llm_answer_last_line": "**YES**"
+      "llm_answer_last_line": "**NO**"
     },
     {
       "entry_id": "mast_pos_aad5b9098d60",
       "expected": true,
       "rule_pred": true,
-      "llm_pred": false,
-      "llm_answer_last_line": "The agent did not accurately complete or report progress - it merely initialized a development envir"
-    },
-    {
-      "entry_id": "mast_neg_5fbab23af45d",
-      "expected": false,
-      "rule_pred": true,
-      "llm_pred": false,
-      "llm_answer_last_line": "The agent failed to provide evidence of task completion and only showed initialization logs, which c"
+      "llm_pred": true,
+      "llm_answer_last_line": "YES"
     },
     {
       "entry_id": "mast_pos_32642e8c1d4b",
@@ -1190,35 +1176,63 @@
       "expected": true,
       "rule_pred": true,
       "llm_pred": false,
-      "llm_answer_last_line": "**YES**"
+      "llm_answer_last_line": "- Therefore, there is NO misjudgment of completion status - the"
     },
     {
       "entry_id": "mast_pos_61c9f21a1675",
       "expected": true,
       "rule_pred": true,
       "llm_pred": false,
-      "llm_answer_last_line": "**YES**"
+      "llm_answer_last_line": "The agent did not claim completion while missing subtasks. Rather, it showed incomplete/partial work"
     },
     {
       "entry_id": "mast_pos_f0eaeafad507",
       "expected": true,
       "rule_pred": true,
       "llm_pred": false,
-      "llm_answer_last_line": "(The agent didn't falsely claim completion; rather, it failed to complete the work at all, which is "
+      "llm_answer_last_line": "The agent should have clearly reported that it was beginning work, proceeding with implementation st"
     },
     {
       "entry_id": "mast_pos_8da38f31cb4c",
       "expected": true,
       "rule_pred": true,
-      "llm_pred": true,
-      "llm_answer_last_line": "YES"
+      "llm_pred": false,
+      "llm_answer_last_line": "The agent did not claim completion - it merely showed incomplete work in progress, so there is no mi"
     },
     {
       "entry_id": "mast_pos_f156a392072b",
       "expected": true,
       "rule_pred": true,
       "llm_pred": false,
+      "llm_answer_last_line": "(The agent implicitly misrepresented completion by presenting an incomplete code snippet as the deli"
+    },
+    {
+      "entry_id": "mast_pos_3e2ee2e4546a",
+      "expected": true,
+      "rule_pred": true,
+      "llm_pred": false,
+      "llm_answer_last_line": "**YES**"
+    },
+    {
+      "entry_id": "mast_pos_87522841e553",
+      "expected": true,
+      "rule_pred": true,
+      "llm_pred": false,
       "llm_answer_last_line": "NO"
+    },
+    {
+      "entry_id": "mast_neg_5506b760fa99",
+      "expected": false,
+      "rule_pred": true,
+      "llm_pred": false,
+      "llm_answer_last_line": "NO"
+    },
+    {
+      "entry_id": "mast_neg_5fbab23af45d",
+      "expected": false,
+      "rule_pred": true,
+      "llm_pred": false,
+      "llm_answer_last_line": "**YES**"
     },
     {
       "entry_id": "mast_neg_46eb3a017fa7",
@@ -1228,60 +1242,11 @@
       "llm_answer_last_line": "**NO**"
     },
     {
-      "entry_id": "mast_pos_3e2ee2e4546a",
-      "expected": true,
-      "rule_pred": true,
-      "llm_pred": false,
-      "llm_answer_last_line": "NO"
-    },
-    {
       "entry_id": "mast_neg_f7c4a5c6e2dd",
       "expected": false,
       "rule_pred": true,
       "llm_pred": false,
-      "llm_answer_last_line": "The agent either claimed or implied completion while missing substantial portions of the required im"
-    },
-    {
-      "entry_id": "mast_pos_87522841e553",
-      "expected": true,
-      "rule_pred": true,
-      "llm_pred": false,
-      "llm_answer_last_line": "**NO**"
-    },
-    {
-      "entry_id": "mast_pos_42ce6cc4f4fd",
-      "expected": true,
-      "rule_pred": true,
-      "llm_pred": false,
-      "llm_answer_last_line": "**NO**"
-    },
-    {
-      "entry_id": "mast_pos_f7c8a14df808",
-      "expected": true,
-      "rule_pred": true,
-      "llm_pred": false,
-      "llm_answer_last_line": "**NO**"
-    },
-    {
-      "entry_id": "mast_pos_afa586c88370",
-      "expected": true,
-      "rule_pred": true,
-      "llm_pred": false,
-      "llm_answer_last_line": "The agent's output suggests incomplete work being presented without clear completion, particularly g"
-    },
-    {
-      "entry_id": "mast_pos_003b49b76c22",
-      "expected": true,
-      "rule_pred": true,
-      "llm_pred": true,
-      "llm_answer_last_line": "YES"
-    },
-    {
-      "entry_id": "mast_pos_e8a9ac107353",
-      "expected": true,
-      "rule_pred": true,
-      "llm_pred": false,
-      "llm_answer_last_line": "**NO**"
+      "llm_answer_last_line": "NO"
     },
     {
       "entry_id": "mast_neg_36d9e9883499",
@@ -1291,13 +1256,6 @@
       "llm_answer_last_line": "**NO**"
     },
     {
-      "entry_id": "mast_pos_c046fa6cad2f",
-      "expected": true,
-      "rule_pred": true,
-      "llm_pred": false,
-      "llm_answer_last_line": "The agent has shifted focus to a different task without properly addressing or completing the meta-i"
-    },
-    {
       "entry_id": "mast_neg_cea3ff555b4d",
       "expected": false,
       "rule_pred": true,
@@ -1305,53 +1263,88 @@
       "llm_answer_last_line": "**NO**"
     },
     {
-      "entry_id": "mast_pos_63375666cfd5",
-      "expected": true,
+      "entry_id": "mast_neg_d3319f084f4f",
+      "expected": false,
+      "rule_pred": true,
+      "llm_pred": true,
+      "llm_answer_last_line": "YES"
+    },
+    {
+      "entry_id": "mast_neg_b54df7bf508d",
+      "expected": false,
+      "rule_pred": true,
+      "llm_pred": false,
+      "llm_answer_last_line": "**NO**"
+    },
+    {
+      "entry_id": "mast_neg_ed6bf1d3432c",
+      "expected": false,
+      "rule_pred": true,
+      "llm_pred": false,
+      "llm_answer_last_line": "**YES**"
+    },
+    {
+      "entry_id": "mast_neg_f960b51ef438",
+      "expected": false,
       "rule_pred": true,
       "llm_pred": false,
       "llm_answer_last_line": "NO"
     },
     {
-      "entry_id": "mast_pos_3104c9fb5aba",
-      "expected": true,
+      "entry_id": "mast_neg_f5ffcaeeb7f7",
+      "expected": false,
+      "rule_pred": true,
+      "llm_pred": false,
+      "llm_answer_last_line": "The agent did not claim completion while missing subtasks. Rather, it showed only the beginning of a"
+    },
+    {
+      "entry_id": "mast_neg_fe0aa8f93733",
+      "expected": false,
       "rule_pred": true,
       "llm_pred": false,
       "llm_answer_last_line": "NO"
     },
     {
-      "entry_id": "mast_pos_325ed153f236",
-      "expected": true,
+      "entry_id": "mast_neg_075b10112cb2",
+      "expected": false,
       "rule_pred": true,
       "llm_pred": false,
-      "llm_answer_last_line": "(The agent did not claim completion, so there is no \"completion misjudgment.\" However, the agent com"
+      "llm_answer_last_line": "**NO**"
+    },
+    {
+      "entry_id": "mast_neg_dcf838fd1383",
+      "expected": false,
+      "rule_pred": true,
+      "llm_pred": true,
+      "llm_answer_last_line": "YES"
+    },
+    {
+      "entry_id": "mast_neg_ade5745bef37",
+      "expected": false,
+      "rule_pred": true,
+      "llm_pred": false,
+      "llm_answer_last_line": "**NO**"
     },
     {
       "entry_id": "mast_pos_9f5d9b91ff8f",
       "expected": true,
       "rule_pred": true,
-      "llm_pred": true,
-      "llm_answer_last_line": "YES"
+      "llm_pred": false,
+      "llm_answer_last_line": "NO"
     },
     {
       "entry_id": "mast_pos_b619986e4437",
       "expected": true,
       "rule_pred": true,
-      "llm_pred": true,
-      "llm_answer_last_line": "YES"
-    },
-    {
-      "entry_id": "mast_neg_898b4c1cb4a0",
-      "expected": false,
-      "rule_pred": false,
-      "llm_pred": true,
-      "llm_answer_last_line": "YES"
+      "llm_pred": false,
+      "llm_answer_last_line": "**NO**"
     },
     {
       "entry_id": "mast_pos_e535b9b12eea",
       "expected": true,
       "rule_pred": true,
       "llm_pred": false,
-      "llm_answer_last_line": "**NO**"
+      "llm_answer_last_line": "NO"
     },
     {
       "entry_id": "mast_pos_a1706369c655",
@@ -1359,13 +1352,6 @@
       "rule_pred": true,
       "llm_pred": false,
       "llm_answer_last_line": "**YES**"
-    },
-    {
-      "entry_id": "mast_neg_a8b54febc048",
-      "expected": false,
-      "rule_pred": true,
-      "llm_pred": false,
-      "llm_answer_last_line": "**NO**"
     },
     {
       "entry_id": "mast_pos_8382e1515131",
@@ -1378,22 +1364,15 @@
       "entry_id": "mast_pos_edfb1b2068e9",
       "expected": true,
       "rule_pred": true,
-      "llm_pred": true,
-      "llm_answer_last_line": "YES"
-    },
-    {
-      "entry_id": "mast_neg_c946e788c79e",
-      "expected": false,
-      "rule_pred": false,
       "llm_pred": false,
-      "llm_answer_last_line": "**NO**"
+      "llm_answer_last_line": "**YES**"
     },
     {
       "entry_id": "mast_pos_5e6d707e9c86",
       "expected": true,
       "rule_pred": true,
-      "llm_pred": false,
-      "llm_answer_last_line": "**YES**"
+      "llm_pred": true,
+      "llm_answer_last_line": "YES"
     },
     {
       "entry_id": "mast_pos_4d041609a3da",
@@ -1401,13 +1380,6 @@
       "rule_pred": false,
       "llm_pred": false,
       "llm_answer_last_line": "**YES**"
-    },
-    {
-      "entry_id": "mast_neg_df8e6e18a136",
-      "expected": false,
-      "rule_pred": true,
-      "llm_pred": false,
-      "llm_answer_last_line": "**Final Answer: YES**"
     },
     {
       "entry_id": "mast_pos_dcbc9fe6788e",
@@ -1421,32 +1393,18 @@
       "expected": true,
       "rule_pred": false,
       "llm_pred": false,
-      "llm_answer_last_line": "The agent ignored the important information from the context. It should have used the specific numbe"
-    },
-    {
-      "entry_id": "mast_neg_a7190c7e5adb",
-      "expected": false,
-      "rule_pred": false,
-      "llm_pred": false,
       "llm_answer_last_line": "**YES**"
     },
     {
       "entry_id": "mast_pos_294181467235",
       "expected": true,
       "rule_pred": true,
-      "llm_pred": true,
-      "llm_answer_last_line": "YES"
+      "llm_pred": false,
+      "llm_answer_last_line": "**YES**"
     },
     {
       "entry_id": "mast_pos_50ccb7f0cd2a",
       "expected": true,
-      "rule_pred": true,
-      "llm_pred": true,
-      "llm_answer_last_line": "YES"
-    },
-    {
-      "entry_id": "mast_neg_dafe3e04c2bb",
-      "expected": false,
       "rule_pred": true,
       "llm_pred": false,
       "llm_answer_last_line": "**YES**"
@@ -1462,13 +1420,6 @@
       "entry_id": "mast_pos_a33cb394b6fc",
       "expected": true,
       "rule_pred": true,
-      "llm_pred": true,
-      "llm_answer_last_line": "YES"
-    },
-    {
-      "entry_id": "mast_neg_2864deec0b32",
-      "expected": false,
-      "rule_pred": true,
       "llm_pred": false,
       "llm_answer_last_line": "**YES**"
     },
@@ -1480,11 +1431,53 @@
       "llm_answer_last_line": "**YES**"
     },
     {
-      "entry_id": "mast_pos_ecd9838fe531",
-      "expected": true,
+      "entry_id": "mast_neg_898b4c1cb4a0",
+      "expected": false,
+      "rule_pred": false,
+      "llm_pred": true,
+      "llm_answer_last_line": "YES"
+    },
+    {
+      "entry_id": "mast_neg_a8b54febc048",
+      "expected": false,
+      "rule_pred": true,
+      "llm_pred": false,
+      "llm_answer_last_line": "**Final Answer: YES**"
+    },
+    {
+      "entry_id": "mast_neg_c946e788c79e",
+      "expected": false,
+      "rule_pred": false,
+      "llm_pred": false,
+      "llm_answer_last_line": "**NO**"
+    },
+    {
+      "entry_id": "mast_neg_df8e6e18a136",
+      "expected": false,
+      "rule_pred": true,
+      "llm_pred": false,
+      "llm_answer_last_line": "The agent ignored the important information from the context entirely and provided output about an u"
+    },
+    {
+      "entry_id": "mast_neg_a7190c7e5adb",
+      "expected": false,
       "rule_pred": false,
       "llm_pred": false,
       "llm_answer_last_line": "**YES**"
+    },
+    {
+      "entry_id": "mast_neg_dafe3e04c2bb",
+      "expected": false,
+      "rule_pred": true,
+      "llm_pred": false,
+      "llm_answer_last_line": "**YES**"
+    },
+    {
+      "entry_id": "mast_neg_2864deec0b32",
+      "expected": false,
+      "rule_pred": true,
+      "llm_pred": false,
+      "llm_answer_last_line": "The agent clearly ignored the important information from the context and failed to provide a meaning"
     },
     {
       "entry_id": "mast_neg_4ae0490ce678",
@@ -1494,27 +1487,6 @@
       "llm_answer_last_line": "**YES**"
     },
     {
-      "entry_id": "mast_pos_8659fa6aa5a9",
-      "expected": true,
-      "rule_pred": false,
-      "llm_pred": false,
-      "llm_answer_last_line": "**YES**"
-    },
-    {
-      "entry_id": "mast_pos_b1bb78783061",
-      "expected": true,
-      "rule_pred": true,
-      "llm_pred": false,
-      "llm_answer_last_line": "NO"
-    },
-    {
-      "entry_id": "mast_pos_bd587d92b327",
-      "expected": true,
-      "rule_pred": true,
-      "llm_pred": false,
-      "llm_answer_last_line": "**Final Answer:** YES"
-    },
-    {
       "entry_id": "mast_neg_6ab50bcc1f79",
       "expected": false,
       "rule_pred": true,
@@ -1522,32 +1494,60 @@
       "llm_answer_last_line": "**NO**"
     },
     {
-      "entry_id": "mast_pos_0289ffa2ec80",
-      "expected": true,
-      "rule_pred": true,
-      "llm_pred": false,
-      "llm_answer_last_line": "The agent neglected to properly incorporate the context because it did not transparently show the Py"
-    },
-    {
-      "entry_id": "mast_pos_55f475f41220",
-      "expected": true,
+      "entry_id": "mast_neg_da207207e82b",
+      "expected": false,
       "rule_pred": false,
       "llm_pred": false,
       "llm_answer_last_line": "**YES**"
     },
     {
-      "entry_id": "core_comm_pos_709d0e9fa853",
-      "expected": true,
+      "entry_id": "mast_neg_2c8ec92c2a4d",
+      "expected": false,
+      "rule_pred": false,
+      "llm_pred": false,
+      "llm_answer_last_line": "**NO**"
+    },
+    {
+      "entry_id": "mast_neg_0a060624808d",
+      "expected": false,
       "rule_pred": true,
       "llm_pred": true,
       "llm_answer_last_line": "YES"
     },
     {
-      "entry_id": "core_comm_pos_3b3731143ffb",
+      "entry_id": "mast_neg_16174f02dcc9",
+      "expected": false,
+      "rule_pred": true,
+      "llm_pred": true,
+      "llm_answer_last_line": "YES"
+    },
+    {
+      "entry_id": "mast_neg_f6bc60d97d89",
+      "expected": false,
+      "rule_pred": true,
+      "llm_pred": false,
+      "llm_answer_last_line": "NO"
+    },
+    {
+      "entry_id": "mast_neg_1ee4f323b431",
+      "expected": false,
+      "rule_pred": false,
+      "llm_pred": false,
+      "llm_answer_last_line": "NO"
+    },
+    {
+      "entry_id": "core_comm_pos_709d0e9fa853",
       "expected": true,
       "rule_pred": true,
       "llm_pred": false,
       "llm_answer_last_line": "**YES**"
+    },
+    {
+      "entry_id": "core_comm_pos_3b3731143ffb",
+      "expected": true,
+      "rule_pred": true,
+      "llm_pred": true,
+      "llm_answer_last_line": "YES"
     },
     {
       "entry_id": "core_comm_pos_00509a275fb8",
@@ -1581,15 +1581,15 @@
       "entry_id": "core_comm_pos_3f8795c5e9d9",
       "expected": true,
       "rule_pred": true,
-      "llm_pred": false,
-      "llm_answer_last_line": "There is a communication breakdown - the messages are incomplete/truncated, and the problem context "
+      "llm_pred": true,
+      "llm_answer_last_line": "YES"
     },
     {
       "entry_id": "core_comm_pos_8c6188603c94",
       "expected": true,
       "rule_pred": true,
-      "llm_pred": true,
-      "llm_answer_last_line": "YES"
+      "llm_pred": false,
+      "llm_answer_last_line": "**YES**"
     },
     {
       "entry_id": "core_comm_pos_3ef4479f62e5",
@@ -1603,7 +1603,7 @@
       "expected": true,
       "rule_pred": true,
       "llm_pred": false,
-      "llm_answer_last_line": "The communication was adequate in terms of comprehension and relevance, though there was a technical"
+      "llm_answer_last_line": "**YES**"
     },
     {
       "entry_id": "core_comm_neg_a7b5b291a3bf",
@@ -1624,21 +1624,21 @@
       "expected": false,
       "rule_pred": true,
       "llm_pred": false,
-      "llm_answer_last_line": "**YES**"
+      "llm_answer_last_line": "**NO**"
     },
     {
       "entry_id": "core_comm_neg_b68b4803845c",
       "expected": false,
       "rule_pred": true,
-      "llm_pred": false,
-      "llm_answer_last_line": "**YES**"
+      "llm_pred": true,
+      "llm_answer_last_line": "YES"
     },
     {
       "entry_id": "core_comm_neg_a092221731ac",
       "expected": false,
       "rule_pred": true,
       "llm_pred": false,
-      "llm_answer_last_line": "(The communication wasn't completely broken, but the response doesn't adequately address all aspects"
+      "llm_answer_last_line": "The receiver adequately addressed the core of the message by starting a relevant implementation, tho"
     },
     {
       "entry_id": "core_comm_neg_24a10498fe11",
@@ -1658,15 +1658,15 @@
       "entry_id": "core_comm_neg_85aaba24749b",
       "expected": false,
       "rule_pred": true,
-      "llm_pred": true,
-      "llm_answer_last_line": "YES"
+      "llm_pred": false,
+      "llm_answer_last_line": "**YES**"
     },
     {
       "entry_id": "core_comm_neg_75875a7ed6bb",
       "expected": false,
       "rule_pred": true,
       "llm_pred": false,
-      "llm_answer_last_line": "**YES**"
+      "llm_answer_last_line": "NO"
     },
     {
       "entry_id": "core_comm_neg_78e6a8cc911d",
@@ -1680,35 +1680,35 @@
       "expected": true,
       "rule_pred": true,
       "llm_pred": false,
-      "llm_answer_last_line": "**NO**"
+      "llm_answer_last_line": "NO"
     },
     {
       "entry_id": "core_wh_pos_746b0305734a",
       "expected": true,
       "rule_pred": true,
       "llm_pred": false,
-      "llm_answer_last_line": "NO"
+      "llm_answer_last_line": "**Final answer: NO**"
     },
     {
       "entry_id": "core_wh_pos_e42e227ab6af",
       "expected": true,
       "rule_pred": true,
-      "llm_pred": false,
-      "llm_answer_last_line": "**NO**"
+      "llm_pred": true,
+      "llm_answer_last_line": "YES"
     },
     {
       "entry_id": "core_wh_pos_4dd56cf01540",
       "expected": true,
       "rule_pred": true,
       "llm_pred": false,
-      "llm_answer_last_line": "**YES**"
+      "llm_answer_last_line": "**NO**"
     },
     {
       "entry_id": "core_wh_pos_e3b2050b179c",
       "expected": true,
       "rule_pred": true,
-      "llm_pred": false,
-      "llm_answer_last_line": "The agent withheld critical information about the build process status, ongoing operations, and the "
+      "llm_pred": true,
+      "llm_answer_last_line": "YES"
     },
     {
       "entry_id": "core_wh_pos_bb0f4a6836c9",
@@ -1736,7 +1736,7 @@
       "expected": true,
       "rule_pred": true,
       "llm_pred": false,
-      "llm_answer_last_line": "NO"
+      "llm_answer_last_line": "The agent withheld information about what appears to be an incomplete or potentially problematic bui"
     },
     {
       "entry_id": "core_wh_pos_6e99b4ffb5b6",
@@ -1750,14 +1750,14 @@
       "expected": false,
       "rule_pred": true,
       "llm_pred": false,
-      "llm_answer_last_line": "**NO**"
+      "llm_answer_last_line": "NO"
     },
     {
       "entry_id": "core_wh_neg_610b63238c0e",
       "expected": false,
       "rule_pred": true,
       "llm_pred": false,
-      "llm_answer_last_line": "**NO**"
+      "llm_answer_last_line": "**YES**"
     },
     {
       "entry_id": "core_wh_neg_8b24f36ba63a",
@@ -1799,28 +1799,28 @@
       "expected": false,
       "rule_pred": true,
       "llm_pred": false,
-      "llm_answer_last_line": "NO"
+      "llm_answer_last_line": "The agent appropriately communicated the critical blocker (Flask app startup failure). While the com"
     },
     {
       "entry_id": "core_wh_neg_cfad09038a64",
       "expected": false,
       "rule_pred": true,
       "llm_pred": false,
-      "llm_answer_last_line": "**NO**"
+      "llm_answer_last_line": "The agent did not withhold critical information. The internal state itself appears incomplete, and t"
     },
     {
       "entry_id": "core_wh_neg_82cbfbb2bff5",
       "expected": false,
       "rule_pred": true,
       "llm_pred": false,
-      "llm_answer_last_line": "The agent communicated the critical blocker (Flask app failure), though with limited detail. This is"
+      "llm_answer_last_line": "**YES**"
     },
     {
       "entry_id": "core_conv_pos_7cad9e965360",
       "expected": true,
       "rule_pred": true,
       "llm_pred": false,
-      "llm_answer_last_line": "NO"
+      "llm_answer_last_line": "**YES**"
     },
     {
       "entry_id": "core_conv_pos_61c159bdd542",
@@ -1841,14 +1841,14 @@
       "expected": true,
       "rule_pred": true,
       "llm_pred": false,
-      "llm_answer_last_line": "NO"
+      "llm_answer_last_line": "**Answer: NO**"
     },
     {
       "entry_id": "core_conv_pos_6f4e97fdfd0d",
       "expected": true,
       "rule_pred": true,
       "llm_pred": false,
-      "llm_answer_last_line": "NO"
+      "llm_answer_last_line": "**YES**"
     },
     {
       "entry_id": "core_conv_pos_e8544fa58cfa",
@@ -1868,22 +1868,22 @@
       "entry_id": "core_conv_pos_e0d3844b84d5",
       "expected": true,
       "rule_pred": true,
-      "llm_pred": false,
-      "llm_answer_last_line": "**YES**"
+      "llm_pred": true,
+      "llm_answer_last_line": "YES"
     },
     {
       "entry_id": "core_conv_pos_7f6c292995a9",
       "expected": true,
       "rule_pred": true,
-      "llm_pred": false,
-      "llm_answer_last_line": "**YES**"
+      "llm_pred": true,
+      "llm_answer_last_line": "YES"
     },
     {
       "entry_id": "core_conv_pos_1323804f360c",
       "expected": true,
       "rule_pred": true,
-      "llm_pred": false,
-      "llm_answer_last_line": "**YES**"
+      "llm_pred": true,
+      "llm_answer_last_line": "YES"
     },
     {
       "entry_id": "core_conv_neg_26356bcfda8c",
@@ -1910,15 +1910,15 @@
       "entry_id": "core_conv_neg_1266aa223d5d",
       "expected": false,
       "rule_pred": true,
-      "llm_pred": true,
-      "llm_answer_last_line": "YES"
+      "llm_pred": false,
+      "llm_answer_last_line": "**NO**"
     },
     {
       "entry_id": "core_conv_neg_53fbc3667f05",
       "expected": false,
       "rule_pred": true,
-      "llm_pred": true,
-      "llm_answer_last_line": "YES"
+      "llm_pred": false,
+      "llm_answer_last_line": "**YES**"
     },
     {
       "entry_id": "core_conv_neg_fa2f0764bb4f",
@@ -1939,7 +1939,7 @@
       "expected": false,
       "rule_pred": true,
       "llm_pred": false,
-      "llm_answer_last_line": "NO"
+      "llm_answer_last_line": "**NO**"
     },
     {
       "entry_id": "core_conv_neg_06de98a1c0f1",
@@ -1952,211 +1952,8 @@
       "entry_id": "core_conv_neg_0b636f66eace",
       "expected": false,
       "rule_pred": false,
-      "llm_pred": false,
-      "llm_answer_last_line": "NO"
-    },
-    {
-      "entry_id": "trail_gaia_01c5727165fc_retrieval_quality",
-      "expected": true,
-      "rule_pred": true,
-      "llm_pred": false,
-      "llm_answer_last_line": "The retrieval quality was poor. The system retrieved agent output rather than the actual task defini"
-    },
-    {
-      "entry_id": "trail_gaia_0242ca2533fa_retrieval_quality",
-      "expected": true,
-      "rule_pred": true,
-      "llm_pred": false,
-      "llm_answer_last_line": "**YES**"
-    },
-    {
-      "entry_id": "trail_gaia_21f0c6c8d76a_retrieval_quality",
-      "expected": true,
-      "rule_pred": true,
-      "llm_pred": false,
-      "llm_answer_last_line": "**YES**"
-    },
-    {
-      "entry_id": "trail_gaia_25c827565101_retrieval_quality",
-      "expected": true,
-      "rule_pred": true,
-      "llm_pred": false,
-      "llm_answer_last_line": "**YES**"
-    },
-    {
-      "entry_id": "trail_gaia_2cb6924caac9_retrieval_quality",
-      "expected": true,
-      "rule_pred": true,
-      "llm_pred": false,
-      "llm_answer_last_line": "The retrieval was poor and irrelevant. The system retrieved a document with a different trace ID tha"
-    },
-    {
-      "entry_id": "trail_gaia_387546b0d3e8_retrieval_quality",
-      "expected": true,
-      "rule_pred": true,
       "llm_pred": true,
       "llm_answer_last_line": "YES"
-    },
-    {
-      "entry_id": "trail_gaia_3acaa3150977_retrieval_quality",
-      "expected": true,
-      "rule_pred": true,
-      "llm_pred": false,
-      "llm_answer_last_line": "The retrieval was inadequate. The document retrieved had a mismatched trace ID and did not provide t"
-    },
-    {
-      "entry_id": "trail_gaia_59365b27641e_retrieval_quality",
-      "expected": true,
-      "rule_pred": true,
-      "llm_pred": false,
-      "llm_answer_last_line": "**YES**"
-    },
-    {
-      "entry_id": "trail_gaia_5a6c51d59f87_retrieval_quality",
-      "expected": true,
-      "rule_pred": true,
-      "llm_pred": false,
-      "llm_answer_last_line": "**YES**"
-    },
-    {
-      "entry_id": "trail_gaia_5bbd1534b199_retrieval_quality",
-      "expected": true,
-      "rule_pred": true,
-      "llm_pred": false,
-      "llm_answer_last_line": "**YES**"
-    },
-    {
-      "entry_id": "trail_gaia_772605f0794b_retrieval_quality",
-      "expected": true,
-      "rule_pred": true,
-      "llm_pred": false,
-      "llm_answer_last_line": "The retrieval was poor and irrelevant. It failed to return the actual task description, instead retu"
-    },
-    {
-      "entry_id": "trail_gaia_915d2c668796_retrieval_quality",
-      "expected": true,
-      "rule_pred": true,
-      "llm_pred": false,
-      "llm_answer_last_line": "**YES**"
-    },
-    {
-      "entry_id": "trail_gaia_a96c6811716c_retrieval_quality",
-      "expected": true,
-      "rule_pred": true,
-      "llm_pred": false,
-      "llm_answer_last_line": "The retrieval was poor and inadequate. The system failed to retrieve the actual task information nee"
-    },
-    {
-      "entry_id": "trail_gaia_a99faf782e8a_retrieval_quality",
-      "expected": true,
-      "rule_pred": true,
-      "llm_pred": true,
-      "llm_answer_last_line": "YES"
-    },
-    {
-      "entry_id": "trail_gaia_b1f9b9baefa4_retrieval_quality",
-      "expected": true,
-      "rule_pred": true,
-      "llm_pred": false,
-      "llm_answer_last_line": "**YES**"
-    },
-    {
-      "entry_id": "trail_gaia_b241cb7deedf_retrieval_quality",
-      "expected": true,
-      "rule_pred": true,
-      "llm_pred": true,
-      "llm_answer_last_line": "YES"
-    },
-    {
-      "entry_id": "trail_gaia_b5576ffca7ad_retrieval_quality",
-      "expected": true,
-      "rule_pred": true,
-      "llm_pred": false,
-      "llm_answer_last_line": "**YES**"
-    },
-    {
-      "entry_id": "trail_gaia_b93b2145c5e2_retrieval_quality",
-      "expected": true,
-      "rule_pred": true,
-      "llm_pred": false,
-      "llm_answer_last_line": "**YES**"
-    },
-    {
-      "entry_id": "trail_gaia_bc9c8f8dc13a_retrieval_quality",
-      "expected": true,
-      "rule_pred": true,
-      "llm_pred": false,
-      "llm_answer_last_line": "The retrieval was poor and irrelevant. The system retrieved an agent output instead of the actual ta"
-    },
-    {
-      "entry_id": "trail_gaia_cac8b6b2d848_retrieval_quality",
-      "expected": true,
-      "rule_pred": true,
-      "llm_pred": true,
-      "llm_answer_last_line": "YES"
-    },
-    {
-      "entry_id": "trail_gaia_f84e4dfe98f9_retrieval_quality",
-      "expected": true,
-      "rule_pred": true,
-      "llm_pred": false,
-      "llm_answer_last_line": "**YES**"
-    },
-    {
-      "entry_id": "trail_swe_bench_0e6f7928953a_retrieval_quality",
-      "expected": true,
-      "rule_pred": true,
-      "llm_pred": false,
-      "llm_answer_last_line": "**YES**"
-    },
-    {
-      "entry_id": "trail_swe_bench_272cdc645b73_retrieval_quality",
-      "expected": true,
-      "rule_pred": true,
-      "llm_pred": true,
-      "llm_answer_last_line": "YES"
-    },
-    {
-      "entry_id": "trail_swe_bench_81d7ec041d71_retrieval_quality",
-      "expected": true,
-      "rule_pred": true,
-      "llm_pred": false,
-      "llm_answer_last_line": "**YES**"
-    },
-    {
-      "entry_id": "trail_swe_bench_9b97e5909765_retrieval_quality",
-      "expected": true,
-      "rule_pred": true,
-      "llm_pred": false,
-      "llm_answer_last_line": "The retrieval was poor and irrelevant. The retrieved document did not contain the requested task inf"
-    },
-    {
-      "entry_id": "trail_swe_bench_af1931b778d7_retrieval_quality",
-      "expected": true,
-      "rule_pred": true,
-      "llm_pred": true,
-      "llm_answer_last_line": "YES"
-    },
-    {
-      "entry_id": "trail_swe_bench_cc73c286ecf3_retrieval_quality",
-      "expected": true,
-      "rule_pred": true,
-      "llm_pred": true,
-      "llm_answer_last_line": "YES"
-    },
-    {
-      "entry_id": "trail_swe_bench_da17836ad8ec_retrieval_quality",
-      "expected": true,
-      "rule_pred": true,
-      "llm_pred": false,
-      "llm_answer_last_line": "**YES**"
-    },
-    {
-      "entry_id": "trail_swe_bench_fa4a1e7a2eb8_retrieval_quality",
-      "expected": true,
-      "rule_pred": true,
-      "llm_pred": false,
-      "llm_answer_last_line": "**YES**"
     },
     {
       "entry_id": "libre_retr_pos_890b33e018cc",
@@ -2164,6 +1961,209 @@
       "rule_pred": false,
       "llm_pred": false,
       "llm_answer_last_line": "**YES**"
+    },
+    {
+      "entry_id": "libre_retr_pos_2195182f3126",
+      "expected": true,
+      "rule_pred": false,
+      "llm_pred": true,
+      "llm_answer_last_line": "YES"
+    },
+    {
+      "entry_id": "libre_retr_pos_36cb9b259b55",
+      "expected": true,
+      "rule_pred": false,
+      "llm_pred": false,
+      "llm_answer_last_line": "NO"
+    },
+    {
+      "entry_id": "libre_retr_pos_f51deb016706",
+      "expected": true,
+      "rule_pred": false,
+      "llm_pred": false,
+      "llm_answer_last_line": "**YES**"
+    },
+    {
+      "entry_id": "libre_retr_pos_e83ce1fa8307",
+      "expected": true,
+      "rule_pred": false,
+      "llm_pred": false,
+      "llm_answer_last_line": "NO"
+    },
+    {
+      "entry_id": "libre_retr_pos_35e01d8fb734",
+      "expected": true,
+      "rule_pred": false,
+      "llm_pred": false,
+      "llm_answer_last_line": "**NO**"
+    },
+    {
+      "entry_id": "libre_retr_pos_c52d454c23b9",
+      "expected": true,
+      "rule_pred": false,
+      "llm_pred": false,
+      "llm_answer_last_line": "**NO**"
+    },
+    {
+      "entry_id": "libre_retr_pos_e33f3c279abf",
+      "expected": true,
+      "rule_pred": false,
+      "llm_pred": false,
+      "llm_answer_last_line": "**NO**"
+    },
+    {
+      "entry_id": "libre_retr_pos_e361412cb54c",
+      "expected": true,
+      "rule_pred": false,
+      "llm_pred": false,
+      "llm_answer_last_line": "**NO**"
+    },
+    {
+      "entry_id": "libre_retr_pos_3b7c60b1e7cb",
+      "expected": true,
+      "rule_pred": false,
+      "llm_pred": false,
+      "llm_answer_last_line": "NO"
+    },
+    {
+      "entry_id": "libre_retr_pos_918085e8894d",
+      "expected": true,
+      "rule_pred": false,
+      "llm_pred": false,
+      "llm_answer_last_line": "**NO**"
+    },
+    {
+      "entry_id": "libre_retr_pos_6378ffc67ca8",
+      "expected": true,
+      "rule_pred": false,
+      "llm_pred": false,
+      "llm_answer_last_line": "**NO**"
+    },
+    {
+      "entry_id": "libre_retr_pos_4610ce24e157",
+      "expected": true,
+      "rule_pred": false,
+      "llm_pred": true,
+      "llm_answer_last_line": "YES"
+    },
+    {
+      "entry_id": "libre_retr_pos_8f2547c7b6a4",
+      "expected": true,
+      "rule_pred": false,
+      "llm_pred": false,
+      "llm_answer_last_line": "**YES**"
+    },
+    {
+      "entry_id": "libre_retr_pos_642385f784e1",
+      "expected": true,
+      "rule_pred": false,
+      "llm_pred": false,
+      "llm_answer_last_line": "**YES**"
+    },
+    {
+      "entry_id": "retrieval_002",
+      "expected": false,
+      "rule_pred": false,
+      "llm_pred": false,
+      "llm_answer_last_line": "NO"
+    },
+    {
+      "entry_id": "retrieval_004",
+      "expected": false,
+      "rule_pred": true,
+      "llm_pred": false,
+      "llm_answer_last_line": "**NO**"
+    },
+    {
+      "entry_id": "retrieval_extra_001",
+      "expected": false,
+      "rule_pred": true,
+      "llm_pred": false,
+      "llm_answer_last_line": "**NO**"
+    },
+    {
+      "entry_id": "retrieval_extra_003",
+      "expected": false,
+      "rule_pred": false,
+      "llm_pred": false,
+      "llm_answer_last_line": "NO"
+    },
+    {
+      "entry_id": "retrieval_extra_005",
+      "expected": false,
+      "rule_pred": true,
+      "llm_pred": false,
+      "llm_answer_last_line": "**NO**"
+    },
+    {
+      "entry_id": "retrieval_boost_9",
+      "expected": false,
+      "rule_pred": true,
+      "llm_pred": false,
+      "llm_answer_last_line": "**NO**"
+    },
+    {
+      "entry_id": "retrieval_boost_10",
+      "expected": false,
+      "rule_pred": false,
+      "llm_pred": false,
+      "llm_answer_last_line": "**NO**"
+    },
+    {
+      "entry_id": "retrieval_boost_11",
+      "expected": false,
+      "rule_pred": true,
+      "llm_pred": false,
+      "llm_answer_last_line": "NO"
+    },
+    {
+      "entry_id": "retrieval_boost_12",
+      "expected": false,
+      "rule_pred": false,
+      "llm_pred": false,
+      "llm_answer_last_line": "**NO**"
+    },
+    {
+      "entry_id": "retrieval_boost_13",
+      "expected": false,
+      "rule_pred": true,
+      "llm_pred": false,
+      "llm_answer_last_line": "**NO**"
+    },
+    {
+      "entry_id": "retrieval_boost_14",
+      "expected": false,
+      "rule_pred": false,
+      "llm_pred": false,
+      "llm_answer_last_line": "NO"
+    },
+    {
+      "entry_id": "retrieval_boost_15",
+      "expected": false,
+      "rule_pred": true,
+      "llm_pred": false,
+      "llm_answer_last_line": "**NO**"
+    },
+    {
+      "entry_id": "retrieval_boost_16",
+      "expected": false,
+      "rule_pred": true,
+      "llm_pred": false,
+      "llm_answer_last_line": "**NO**"
+    },
+    {
+      "entry_id": "retrieval_boost_18",
+      "expected": false,
+      "rule_pred": true,
+      "llm_pred": false,
+      "llm_answer_last_line": "NO"
+    },
+    {
+      "entry_id": "retrieval_boost_19",
+      "expected": false,
+      "rule_pred": true,
+      "llm_pred": false,
+      "llm_answer_last_line": "**NO**"
     }
   ]
 }
