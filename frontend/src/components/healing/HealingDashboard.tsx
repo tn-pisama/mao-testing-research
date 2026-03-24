@@ -48,14 +48,14 @@ function StatsCard({ title, value, icon: Icon, color }: StatsCardProps) {
 
   return (
     <Card>
-      <CardContent className="p-4">
-        <div className="flex items-center justify-between">
-          <div>
-            <p className="text-xs text-zinc-500 mb-1">{title}</p>
-            <p className="text-2xl font-bold text-white">{value}</p>
+      <CardContent className="p-3">
+        <div className="flex items-center gap-3">
+          <div className={`p-2 rounded-lg shrink-0 ${colorClasses[color as keyof typeof colorClasses] || colorClasses.slate}`}>
+            <Icon size={18} />
           </div>
-          <div className={`p-3 rounded-lg ${colorClasses[color as keyof typeof colorClasses] || colorClasses.slate}`}>
-            <Icon size={24} />
+          <div className="min-w-0">
+            <p className="text-xs text-zinc-500 truncate">{title}</p>
+            <p className="text-xl font-bold text-white">{value}</p>
           </div>
         </div>
       </CardContent>
@@ -138,7 +138,7 @@ export function HealingDashboard({
   return (
     <div className="space-y-6">
       {/* Stats */}
-      <div className="grid grid-cols-2 lg:grid-cols-6 gap-4">
+      <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-6 gap-3">
         <StatsCard
           title="Total Healings"
           value={stats.total}
