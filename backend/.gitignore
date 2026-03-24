@@ -22,3 +22,5 @@ mast_ml_model.pkl
 # Downloaded HuggingFace datasets (re-downloadable via scripts/download_datasets.py)
 data/external/
 data/external/trail-github/
+data/external/agentboard/
+data/external/gaia2/
