@@ -65,25 +65,10 @@ export function useTenant() {
       return
     }
 
-    // 1. Check in-memory cache (from token exchange or session)
-    const cached = getCachedTenantId()
-    if (cached) {
-      setTenantId(cached)
-      setIsLoading(false)
-      persistTenant(cached, email)
-      return
-    }
+    // Always fetch tenant from backend — session/cache can be stale after tenant changes
+    // Skip straight to per-email localStorage check, then backend fetch
 
-    // 1b. Check session (token exchange happens at sign-in in NextAuth callback)
-    const sessionTenantId = (session as any)?.tenantId
-    if (sessionTenantId) {
-      setTenantId(sessionTenantId)
-      setIsLoading(false)
-      persistTenant(sessionTenantId, email)
-      return
-    }
-
-    // 2. Check per-email localStorage (more specific than pisama_last_tenant)
+    // 1. Check per-email localStorage (quick, usually correct)
     try {
       const stored = localStorage.getItem(`pisama_tenant_${email}`)
       if (stored) {
