@@ -12,23 +12,12 @@ let exchangePromise: Promise<string | null> | null = null
 let refreshPromise: Promise<string | null> | null = null
 let cachedTenantId: string | null = null
 
-// Rehydrate from sessionStorage on module init (client only)
+// Don't rehydrate from sessionStorage — cached tokens may have stale tenant IDs.
+// getToken() always calls /api/auth/refresh-token which gets the correct tenant from DB.
 if (typeof window !== 'undefined') {
   try {
-    const stored = sessionStorage.getItem(TOKEN_STORAGE_KEY)
-    if (stored) {
-      const parsed = JSON.parse(stored)
-      if (parsed.expiresAt > Date.now()) {
-        cachedBackendToken = parsed.token
-        backendTokenExpiresAt = parsed.expiresAt
-        if (parsed.tenantId) cachedTenantId = parsed.tenantId
-      } else {
-        sessionStorage.removeItem(TOKEN_STORAGE_KEY)
-      }
-    }
-  } catch {
-    // Corrupted data, ignore
-  }
+    sessionStorage.removeItem(TOKEN_STORAGE_KEY)
+  } catch {}
 }
 
 /** Return the tenant_id obtained during token exchange, or null. */
@@ -141,13 +130,8 @@ export function useSafeAuth() {
     return extendedSession?.idToken || null
   }, [extendedSession?.idToken])
 
-  // Cache tenant ID from session (used by useTenant) but NOT the access token.
-  // The session token may be expired — let getToken() always reach the refresh
-  // path which returns a genuinely fresh JWT via server-token fallback.
-  const sessionTenantId = extendedSession?.tenantId
-  if (sessionTenantId && !cachedTenantId) {
-    cachedTenantId = sessionTenantId
-  }
+  // Don't cache session's tenantId — it can be stale after tenant changes.
+  // useTenant() fetches from /auth/tenant-by-email instead.
 
   const getToken = useCallback(async () => {
     // Development mode: use API key
