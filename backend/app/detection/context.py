@@ -100,7 +100,7 @@ class ContextNeglectDetector:
     
     def __init__(
         self,
-        utilization_threshold: float = 0.3,
+        utilization_threshold: float = 0.65,  # v1.3: Raised from 0.3 — keyword overlap alone insufficient
         min_context_length: int = 50,
         extract_entities: bool = True,
     ):
@@ -367,9 +367,9 @@ class ContextNeglectDetector:
                 critical_topics, output
             )
 
-        # v1.2: Set thresholds based on context importance
+        # v1.3: Set thresholds based on context importance
         # Critical context requires higher utilization to pass
-        task_utilization_threshold = 0.35 if has_critical_context else 0.15  # Raised from 0.25 for critical context
+        task_utilization_threshold = 0.50 if has_critical_context else 0.35  # v1.3: Raised to match higher base threshold
 
         # v1.3: Improved detection logic with tighter skip conditions.
         # Key insight: explicit context reference shows awareness, but
@@ -386,15 +386,15 @@ class ContextNeglectDetector:
         # 1. If utilization is good, no neglect
         elif utilization >= self.utilization_threshold:
             detected = False
-        # 2. If output explicitly references prior context → OK only if some
-        #    utilization exists. v1.3: reference without any actual context usage
-        #    (utilization < 0.10) suggests a superficial reference.
-        elif context_referenced and utilization >= 0.10:
+        # 2. If output explicitly references prior context → OK only if meaningful
+        #    utilization exists. v1.3: reference without substantial context usage
+        #    (utilization < 0.25) suggests a superficial reference.
+        elif context_referenced and utilization >= 0.25:
             detected = False
         # 3. If output shows adaptation AND addresses task AND uses some context → OK
         #    (legitimate methodology change while doing the task)
-        #    v1.3: Require utilization >= 0.15 to prevent bypass with just an adaptation phrase
-        elif adaptation_detected and task_addressed and utilization >= 0.15:
+        #    v1.3: Require utilization >= 0.30 to prevent bypass with just an adaptation phrase
+        elif adaptation_detected and task_addressed and utilization >= 0.30:
             detected = False
         # 4. If task is addressed AND utilization meets threshold → OK
         elif task_addressed and utilization >= task_utilization_threshold:

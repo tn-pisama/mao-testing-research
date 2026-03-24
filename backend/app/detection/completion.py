@@ -1115,6 +1115,21 @@ class CompletionMisjudgmentDetector:
                         evidence=context,
                     ))
 
+        # v2.0: Detect truncated output — output that ends mid-code or mid-sentence
+        # is clearly incomplete. This is a strong signal (SEVERE) because the
+        # deliverable is literally cut off.
+        if len(agent_output) > 500:
+            tail = agent_output[-30:].rstrip()
+            # Truncated if ends with "..." (explicit truncation marker)
+            is_truncated = tail.endswith('...')
+            if is_truncated:
+                issues.append(CompletionIssue(
+                    issue_type=CompletionIssueType.PARTIAL_DELIVERY,
+                    description="Output appears truncated (ends with ellipsis)",
+                    severity=CompletionSeverity.SEVERE,
+                    evidence=f"Output tail: ...{tail}",
+                ))
+
         # v1.5: Detect structural incompleteness (e.g., fewer list items than requested)
         structural_issues = self._detect_structural_incompleteness(task, agent_output)
         if structural_issues:

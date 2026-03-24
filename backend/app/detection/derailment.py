@@ -470,9 +470,26 @@ class TaskDerailmentDetector:
         if coverage >= self.task_coverage_threshold:
             return True
 
-        # Check for task action verbs being addressed
+        # v1.7: Task echo detection — if output begins with the task text
+        # (common in Q&A agents like GAIA), the agent clearly understood the task
         task_lower = task.lower()
         output_lower = output.lower()
+        task_prefix = task_lower[:min(80, len(task_lower))].strip()
+        if task_prefix and task_prefix in output_lower[:len(task_prefix) + 50]:
+            return True
+
+        # v1.7: Patch/diff output — if output contains a unified diff, the agent
+        # is providing a code fix which addresses the task (bug report -> patch)
+        if "diff --git" in output or ("applied fix" in output_lower and "---" in output):
+            return True
+
+        # v1.7: Answer output — if output starts with "answer:" or "to answer",
+        # the agent is directly addressing the task
+        output_start = output_lower[:40].strip()
+        if output_start.startswith(("answer:", "to answer", "the answer")):
+            return True
+
+        # Check for task action verbs being addressed
 
         # v1.2: Enhanced action patterns with related topics
         # Each pattern: (action_verb, indicators, related_topics_allowed)
@@ -637,6 +654,18 @@ class TaskDerailmentDetector:
             severity=severity,
             output_length=len(output),
         )
+
+        # v1.6: Exploration tolerance — if output ends with task-relevant
+        # content, allow earlier drift (agent explored then converged)
+        if task and output:
+            last_portion = output[int(len(output) * 0.7):]
+            task_words = task.lower().split()[:10]
+            if task_words:
+                final_coverage = sum(
+                    1 for word in task_words if word in last_portion.lower()
+                ) / len(task_words)
+                if final_coverage > 0.3:
+                    confidence *= 0.6
 
         agent_prefix = f"Agent '{agent_name}'" if agent_name else "Agent"
         explanation = (

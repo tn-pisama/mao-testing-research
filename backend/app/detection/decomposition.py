@@ -586,6 +586,29 @@ class TaskDecompositionDetector:
         decomposition: str,
         agent_capabilities: Optional[dict[str, list[str]]] = None,
     ) -> DecompositionResult:
+        # v2.0: Handle list-format decomposition (e.g. from AgentBench/GAIA traces)
+        if isinstance(decomposition, list):
+            decomposition = "\n".join(str(item) for item in decomposition)
+
+        # v2.1: Recognize SWE-bench / patch-plan format:
+        #   "Repository: X\n Fix: ... \n Tests to pass: [...]"
+        # These are valid structured plans, not vague decompositions.
+        decomp_lower = decomposition.lower()
+        has_fix_ref = any(kw in decomp_lower for kw in ["fix:", "patch:", "apply patch", "apply fix"])
+        has_test_ref = any(kw in decomp_lower for kw in ["tests to pass", "test_", "tests/test_", "::test_"])
+        if has_fix_ref and has_test_ref:
+            return DecompositionResult(
+                detected=False,
+                issues=[],
+                severity=DecompositionSeverity.NONE,
+                confidence=0.8,
+                subtask_count=1,
+                problematic_subtasks=[],
+                explanation="Patch-plan decomposition with fix target and test criteria",
+                vague_count=0,
+                complex_count=0,
+            )
+
         # v1.2: Check for direct implementation of simple tasks first
         is_simple = self._is_simple_task(task_description)
         is_direct = self._is_direct_implementation(decomposition)

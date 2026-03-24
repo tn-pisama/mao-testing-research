@@ -413,8 +413,9 @@ class SpecificationMismatchDetector:
             return False, [], 0.0
 
         fraction = len(missing) / len(intent_phrases)
-        # Flag if any key phrase has both words completely absent from spec
-        has_missing = len(missing) >= 1
+        # v2.4: Require at least 2 missing phrases AND 20% fraction to reduce
+        # FPs on Q&A tasks (GAIA) where answers naturally omit some intent bigrams
+        has_missing = len(missing) >= 2 and fraction >= 0.20
         return has_missing, missing, fraction
 
     def _semantic_coverage(
@@ -645,8 +646,8 @@ class SpecificationMismatchDetector:
         intent_reqs = self._count_distinct_requirements(user_intent)
         spec_reqs = self._count_distinct_requirements(task_specification)
 
-        # If spec has 2x+ more requirements than intent, flag as scope expansion
-        if spec_reqs >= intent_reqs * 2 and spec_reqs >= 4:
+        # v2.4: Raised from 2x/4 to 3x/6 — agents routinely elaborate requirements
+        if spec_reqs >= intent_reqs * 3 and spec_reqs >= 6:
             return (
                 f"scope_expansion: spec has {spec_reqs} requirements vs "
                 f"{intent_reqs} in intent ({spec_reqs/intent_reqs:.1f}x expansion)"
@@ -795,13 +796,16 @@ class SpecificationMismatchDetector:
 
         return covered / len(intent_requirements), missing
 
-    # v2.3: Framework metadata patterns that inflate ambiguity scores
+    # v2.3: Framework metadata patterns that inflate ambiguity/mismatch scores
+    # v2.4: Expanded for ChatDev framework outputs — section headers, timestamps,
+    #   file paths, and log-level prefixes cause false requirement mismatches.
     METADATA_PATTERNS = [
         r'\[Preprocessing\].*?\n',
-        r'\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}.*?\n',  # ISO timestamps
-        r'config/.*?\n',
+        r'##\s+(?:Summary|Modified Files|Thinking|Code)\b.*?\n',  # ChatDev section headers
+        r'\d{4}-\d{2}-\d{2}[T ]\d{2}:\d{2}:\d{2}.*?\n',  # ISO timestamps (T or space separator)
+        r'(?:config|src|lib)/\S+\.(?:py|js|ts|json)\b.*?\n',  # Source file paths
         r'\.py:\d+.*?\n',  # Python file references
-        r'(?:INFO|DEBUG|WARNING|ERROR).*?\n',  # Log level prefixes
+        r'(?:INFO|DEBUG|WARNING|ERROR)\s+\S+.*?\n',  # Log level prefixes with logger name
     ]
 
     @staticmethod
