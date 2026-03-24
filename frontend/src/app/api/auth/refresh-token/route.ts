@@ -8,18 +8,9 @@ const BACKEND_URL = API_URL
 export async function POST(request: NextRequest) {
   try {
     const token = await getToken({ req: request, secret: process.env.NEXTAUTH_SECRET })
-
-    // Try JWT refresh first (if we have a backend token to refresh)
-    if (token?.accessToken) {
-      const res = await fetch(`${BACKEND_URL}/auth/refresh`, {
-        method: 'POST',
-        headers: { Authorization: `Bearer ${token.accessToken}` },
-      })
-      if (res.ok) return NextResponse.json(await res.json())
-    }
-
-    // Fallback: server-to-server token using email from NextAuth session
     const email = token?.email as string | undefined
+
+    // Always use server-token (gets tenant from DB, not stale JWT)
     if (email && process.env.SERVER_AUTH_SECRET) {
       const res = await fetch(`${BACKEND_URL}/auth/server-token`, {
         method: 'POST',
