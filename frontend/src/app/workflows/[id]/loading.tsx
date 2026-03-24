@@ -1,18 +1,14 @@
-import { Layout } from '@/components/common/Layout'
-import { Skeleton } from '@/components/ui/Skeleton'
+import { Skeleton } from "@/components/ui/Skeleton"
 
-export default function WorkflowDetailLoading() {
+export default function Loading() {
   return (
-    <Layout>
-      <div className="p-6">
-        <Skeleton className="h-6 w-20 mb-4" />
-        <Skeleton className="h-8 w-72 mb-2" />
-        <div className="flex gap-3 mb-6">
-          <Skeleton className="h-6 w-16 rounded" />
-          <Skeleton className="h-6 w-20 rounded" />
-        </div>
-        <Skeleton className="h-[600px] rounded-xl" />
+    <div className="p-6">
+      <Skeleton className="h-8 w-48 mb-6" />
+      <div className="grid lg:grid-cols-2 gap-6 mb-6">
+        <Skeleton className="h-64 rounded-xl" />
+        <Skeleton className="h-64 rounded-xl" />
       </div>
-    </Layout>
+      <Skeleton className="h-64 rounded-xl" />
+    </div>
   )
 }

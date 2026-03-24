@@ -1,18 +1,14 @@
-import { Layout } from '@/components/common/Layout'
-import { Skeleton } from '@/components/ui/Skeleton'
+import { Skeleton } from "@/components/ui/Skeleton"
 
-export default function TracesLoading() {
+export default function Loading() {
   return (
-    <Layout>
-      <div className="p-6">
-        <Skeleton className="h-8 w-32 mb-6" />
-        <Skeleton className="h-10 w-full mb-4 rounded-lg" />
-        <div className="space-y-3">
-          {[1, 2, 3, 4, 5].map((i) => (
-            <Skeleton key={i} className="h-16 rounded-lg" />
-          ))}
-        </div>
+    <div className="p-6">
+      <Skeleton className="h-8 w-48 mb-6" />
+      <div className="grid lg:grid-cols-2 gap-6 mb-6">
+        <Skeleton className="h-64 rounded-xl" />
+        <Skeleton className="h-64 rounded-xl" />
       </div>
-    </Layout>
+      <Skeleton className="h-64 rounded-xl" />
+    </div>
   )
 }
