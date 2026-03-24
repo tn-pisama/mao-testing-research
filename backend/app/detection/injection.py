@@ -409,7 +409,13 @@ class InjectionDetector:
         return round(calibrated, 4), calibration_info
     
     def _cosine_similarity(self, a: np.ndarray, b: np.ndarray) -> float:
-        return float(np.dot(a, b) / (np.linalg.norm(a) * np.linalg.norm(b)))
+        # Flatten to 1D — EmbeddingService returns (1, dim) for single texts
+        a = np.asarray(a).flatten()
+        b = np.asarray(b).flatten()
+        norm = np.linalg.norm(a) * np.linalg.norm(b)
+        if norm == 0:
+            return 0.0
+        return float(np.dot(a, b) / norm)
     
     def analyze_output_for_jailbreak_success(self, output: str) -> Tuple[bool, float, List[str]]:
         evidence = []
