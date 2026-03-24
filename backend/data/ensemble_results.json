@@ -1,0 +1,176 @@
+{
+  "run_date": "2026-03-24 09:04:15",
+  "approach": "three_signal_ensemble",
+  "signals": {
+    "rule": "Existing rule-based detector (DETECTOR_RUNNERS)",
+    "nli": "DeBERTa-v3 NLI entailment (check_grounding)",
+    "judge": "Inverted LLM judge (claude-haiku-4-5-20251001)"
+  },
+  "ensemble_weights": {
+    "rule": 0.3,
+    "nli": 0.4,
+    "judge": 0.5
+  },
+  "results": {
+    "hallucination": {
+      "detector": "hallucination",
+      "n_entries": 30,
+      "n_positive": 15,
+      "n_negative": 15,
+      "source": "real",
+      "rule": {
+        "f1": 0.556,
+        "precision": 0.476,
+        "recall": 0.667,
+        "tp": 10,
+        "fp": 11,
+        "fn": 5,
+        "tn": 4
+      },
+      "nli": {
+        "f1": 0.0,
+        "precision": 0.0,
+        "recall": 0.0,
+        "tp": 0,
+        "fp": 0,
+        "fn": 15,
+        "tn": 15
+      },
+      "judge": {
+        "f1": 0.848,
+        "precision": 0.778,
+        "recall": 0.933,
+        "tp": 14,
+        "fp": 4,
+        "fn": 1,
+        "tn": 11
+      },
+      "ensembles": {
+        "Majority": {
+          "f1": 0.714,
+          "precision": 0.769,
+          "recall": 0.667,
+          "tp": 10,
+          "fp": 3,
+          "fn": 5,
+          "tn": 12
+        },
+        "Any-Pos": {
+          "f1": 0.683,
+          "precision": 0.538,
+          "recall": 0.933,
+          "tp": 14,
+          "fp": 12,
+          "fn": 1,
+          "tn": 3
+        },
+        "Weighted": {
+          "f1": 0.714,
+          "precision": 0.769,
+          "recall": 0.667,
+          "tp": 10,
+          "fp": 3,
+          "fn": 5,
+          "tn": 12
+        }
+      },
+      "best_ensemble": "Majority",
+      "best_ensemble_f1": 0.714,
+      "cost_usd": 0.0458,
+      "judge_errors": 0
+    },
+    "grounding": {
+      "detector": "grounding",
+      "n_entries": 30,
+      "n_positive": 15,
+      "n_negative": 15,
+      "source": "real",
+      "rule": {
+        "f1": 0.143,
+        "precision": 0.154,
+        "recall": 0.133,
+        "tp": 2,
+        "fp": 11,
+        "fn": 13,
+        "tn": 4
+      },
+      "nli": {
+        "f1": 0.0,
+        "precision": 0.0,
+        "recall": 0.0,
+        "tp": 0,
+        "fp": 0,
+        "fn": 15,
+        "tn": 15
+      },
+      "judge": {
+        "f1": 0.667,
+        "precision": 0.542,
+        "recall": 0.867,
+        "tp": 13,
+        "fp": 11,
+        "fn": 2,
+        "tn": 4
+      },
+      "ensembles": {
+        "Majority": {
+          "f1": 0.154,
+          "precision": 0.182,
+          "recall": 0.133,
+          "tp": 2,
+          "fp": 9,
+          "fn": 13,
+          "tn": 6
+        },
+        "Any-Pos": {
+          "f1": 0.634,
+          "precision": 0.5,
+          "recall": 0.867,
+          "tp": 13,
+          "fp": 13,
+          "fn": 2,
+          "tn": 2
+        },
+        "Weighted": {
+          "f1": 0.154,
+          "precision": 0.182,
+          "recall": 0.133,
+          "tp": 2,
+          "fp": 9,
+          "fn": 13,
+          "tn": 6
+        }
+      },
+      "best_ensemble": "Any-Pos",
+      "best_ensemble_f1": 0.634,
+      "cost_usd": 0.0524,
+      "judge_errors": 0
+    }
+  },
+  "summary": [
+    {
+      "detector": "hallucination",
+      "rule_f1": 0.556,
+      "nli_f1": 0.0,
+      "judge_f1": 0.848,
+      "majority_f1": 0.714,
+      "any_pos_f1": 0.683,
+      "weighted_f1": 0.714,
+      "best_method": "judge",
+      "best_f1": 0.848,
+      "cost_usd": 0.0458
+    },
+    {
+      "detector": "grounding",
+      "rule_f1": 0.143,
+      "nli_f1": 0.0,
+      "judge_f1": 0.667,
+      "majority_f1": 0.154,
+      "any_pos_f1": 0.634,
+      "weighted_f1": 0.154,
+      "best_method": "judge",
+      "best_f1": 0.667,
+      "cost_usd": 0.0524
+    }
+  ]
+}
