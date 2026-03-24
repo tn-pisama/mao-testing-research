@@ -58,7 +58,7 @@ class CommunicationBreakdownDetector:
     
     def __init__(
         self,
-        intent_threshold: float = 0.60,  # v1.1: Raised from 0.55 for precision
+        intent_threshold: float = 0.45,  # v1.2: Lowered from 0.60 — paraphrased responses flagged as FP
         check_format: bool = True,
         check_ambiguity: bool = True,
     ):
