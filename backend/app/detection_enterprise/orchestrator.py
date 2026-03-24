@@ -84,6 +84,7 @@ class DetectionCategory(str, Enum):
     COORDINATION_FAILURE = "coordination"
     FLAWED_WORKFLOW = "workflow"
     CONVERGENCE = "convergence"
+    CONTEXT_PRESSURE = "context_pressure"
     # n8n framework-specific
     N8N_CYCLE = "n8n_cycle"
     N8N_SCHEMA = "n8n_schema"
@@ -675,6 +676,12 @@ class DetectionOrchestrator:
             all_detections.append(convergence_result)
             result.detectors_run.append("convergence")
 
+        # Run context pressure detection (F20: Anthropic harness research)
+        context_pressure_result = self._detect_context_pressure(trace, snapshots)
+        if context_pressure_result:
+            all_detections.append(context_pressure_result)
+            result.detectors_run.append("context_pressure")
+
         # Run grounding failure detection (F15: OfficeQA-inspired)
         if DetectionCategory.GROUNDING_FAILURE not in self.DISABLED_DETECTORS:
             grounding_result = self._detect_grounding_failure(trace)
@@ -744,6 +751,8 @@ class DetectionOrchestrator:
         (DetectionCategory.TASK_DERAILMENT, DetectionCategory.COMPLETION_MISJUDGMENT),
         # Communication breakdown subsumes coordination failure (symptom of it)
         (DetectionCategory.COMMUNICATION_BREAKDOWN, DetectionCategory.COORDINATION_FAILURE),
+        # Context pressure subsumes completion misjudgment (pressure → premature completion)
+        (DetectionCategory.CONTEXT_PRESSURE, DetectionCategory.COMPLETION_MISJUDGMENT),
     ]
 
     def _deduplicate_detections(self, detections: List[DetectionResult]) -> List[DetectionResult]:
@@ -1903,6 +1912,72 @@ class DetectionOrchestrator:
 
         return None
 
+    def _detect_context_pressure(
+        self, trace: UniversalTrace, snapshots: list,
+    ) -> Optional[DetectionResult]:
+        """Detect context-pressure-induced quality degradation (F20).
+
+        Behavioral signals that context window saturation is affecting
+        output quality: declining verbosity, wrap-up language, quality cliff.
+        """
+        from app.detection.context_pressure import context_pressure_detector
+
+        # Build state dicts from snapshots
+        states = []
+        for i, span in enumerate(trace.spans):
+            states.append({
+                "sequence_num": i,
+                "token_count": span.tokens_total or 0,
+                "state_delta": span.metadata or {},
+            })
+
+        if len(states) < 4:
+            return None
+
+        try:
+            result = context_pressure_detector.detect(states=states)
+
+            if result.detected and result.confidence > 0.3:
+                severity = Severity.MEDIUM
+                if result.severity.value == "critical":
+                    severity = Severity.CRITICAL
+                elif result.severity.value == "high":
+                    severity = Severity.HIGH
+                elif result.severity.value == "low":
+                    severity = Severity.LOW
+
+                signal_descriptions = [s.description for s in result.signals]
+                evidence_items = [{
+                    "context_utilization": result.context_utilization,
+                    "output_decline_ratio": result.output_decline_ratio,
+                    "cliff_detected": result.cliff_detected,
+                    "premature_signals": result.premature_signals,
+                    "signal_count": len(result.signals),
+                }]
+
+                return DetectionResult(
+                    category=DetectionCategory.CONTEXT_PRESSURE,
+                    detected=True,
+                    confidence=result.confidence,
+                    severity=severity,
+                    title="Context Pressure Degradation",
+                    description=(
+                        f"Agent output quality degraded under context window pressure. "
+                        f"Context utilization: {result.context_utilization:.0%}. "
+                        + "; ".join(signal_descriptions[:3])
+                    ),
+                    evidence=evidence_items,
+                    suggested_fix=(
+                        "Implement context resets between agent phases, use summarization "
+                        "to reduce context size, or split work into smaller sprints."
+                    ),
+                    raw_result=result,
+                )
+        except Exception as e:
+            logger.warning("Context pressure detector failed: %s", e)
+
+        return None
+
     def _generate_explanation(self, primary: DetectionResult, trace: UniversalTrace) -> str:
         """Generate a human-readable root cause explanation.
 
@@ -1919,6 +1994,11 @@ class DetectionOrchestrator:
                 f"The conversation exceeded safe context limits. {primary.description} "
                 "When context overflows, the model may lose important information from earlier "
                 "in the conversation, leading to inconsistent or degraded responses."
+            ),
+            DetectionCategory.CONTEXT_PRESSURE: (
+                f"The agent's output quality degraded due to context window pressure. {primary.description} "
+                "This 'context anxiety' pattern occurs when models approach their context limit — "
+                "they wrap up prematurely, reduce detail, or narrow scope rather than maintaining quality."
             ),
             DetectionCategory.TOOL_PROVISION: (
                 f"A tool call failed during execution. {primary.description} "

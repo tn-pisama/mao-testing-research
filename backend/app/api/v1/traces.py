@@ -140,9 +140,16 @@ async def ingest_traces(
                 )
             )
             if not existing.scalar_one_or_none():
+                # Infer harness type from OTEL resource attributes if available
+                harness_type = None
+                for resource_span in request.resourceSpans:
+                    for attr in resource_span.get("resource", {}).get("attributes", []):
+                        if attr.get("key") == "pisama.harness.type":
+                            harness_type = attr.get("value", {}).get("stringValue")
                 trace = Trace(
                     tenant_id=UUID(tenant_id),
                     session_id=parsed.trace_id,
+                    harness_type=harness_type,
                 )
                 db.add(trace)
                 await db.flush()
@@ -163,6 +170,9 @@ async def ingest_traces(
             tenant_id=UUID(tenant_id),
             sequence_num=parsed.sequence_num,
             agent_id=parsed.agent_id,
+            agent_role=getattr(parsed, "agent_role", None),
+            sprint_id=getattr(parsed, "sprint_id", None),
+            context_reset=getattr(parsed, "context_reset", False),
             state_delta=parsed.state_delta,
             state_hash=parsed.state_hash,
             prompt_hash=parsed.state_hash if parsed.prompt else None,

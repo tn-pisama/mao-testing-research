@@ -63,6 +63,21 @@ from .convergence import (
     ConvergenceFailureType,
     ConvergenceSeverity,
 )
+from .delegation import (
+    delegation_detector,
+    DelegationQualityDetector,
+    DelegationResult,
+    DelegationIssue,
+    DelegationSeverity,
+    DelegationIssueType,
+)
+from .context_pressure import (
+    context_pressure_detector,
+    ContextPressureDetector,
+    ContextPressureResult,
+    PressureSignal,
+    PressureSeverity,
+)
 from .validation import DetectionValidator, ValidationMetrics
 
 # Create singleton instances for convenience
@@ -166,6 +181,19 @@ __all__ = [
     "ConvergenceIssue",
     "ConvergenceFailureType",
     "ConvergenceSeverity",
+    # Delegation quality detection
+    "delegation_detector",
+    "DelegationQualityDetector",
+    "DelegationResult",
+    "DelegationIssue",
+    "DelegationSeverity",
+    "DelegationIssueType",
+    # Context pressure detection
+    "context_pressure_detector",
+    "ContextPressureDetector",
+    "ContextPressureResult",
+    "PressureSignal",
+    "PressureSeverity",
     # Validation
     "DetectionValidator",
     "ValidationMetrics",

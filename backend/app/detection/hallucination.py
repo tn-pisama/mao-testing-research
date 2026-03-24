@@ -155,6 +155,18 @@ class HallucinationDetector:
             if fabrication_score < 0.7:
                 grounding_score = min(grounding_score, fabrication_score)
 
+        # v1.7: Self-negotiation detection — agent identifies issues then
+        # rationalizes them away. Pattern from Anthropic harness research:
+        # evaluator agents "identify legitimate issues, then talk themselves
+        # into deciding they weren't a big deal and approve the work anyway."
+        self_negotiation_score, self_negotiation_evidence = self._detect_self_negotiation(output)
+        if self_negotiation_score > 0:
+            evidence.extend(self_negotiation_evidence)
+            details["self_negotiation_score"] = self_negotiation_score
+            # Drag grounding down when strong self-negotiation detected
+            if self_negotiation_score >= 0.5:
+                grounding_score = min(grounding_score, 1.0 - self_negotiation_score * 0.4)
+
         # v1.4: Make citation check optional — if no citation pattern exists
         # in the output AND sources are plain text strings, skip the citation
         # check entirely to avoid FP on simple Q&A.
@@ -183,6 +195,8 @@ class HallucinationDetector:
                 hallucination_type = "invalid_citation"
             elif fabrication_score < 0.5:
                 hallucination_type = "fabricated_fact"
+            elif details.get("self_negotiation_score", 0) >= 0.5:
+                hallucination_type = "self_negotiation"
             else:
                 hallucination_type = "general_hallucination"
         
@@ -421,6 +435,69 @@ class HallucinationDetector:
         consistency_score = max(0, 1 - (contradictions / total_checks))
         return consistency_score, evidence
     
+    def _detect_self_negotiation(self, output: str) -> Tuple[float, List[str]]:
+        """Detect self-negotiation: agent identifies issues then dismisses them.
+
+        Pattern: evaluator identifies problems but rationalizes them as acceptable.
+        From Anthropic: "agents identify legitimate issues, then talk themselves
+        into deciding they weren't a big deal and approve the work anyway."
+        """
+        evidence = []
+        score = 0.0
+
+        lower = output.lower()
+
+        # Problem-acknowledgment phrases
+        problem_phrases = [
+            "issue", "bug", "error", "problem", "flaw", "defect", "failure",
+            "missing", "incorrect", "broken", "not working", "doesn't work",
+            "not implemented", "incomplete", "wrong",
+        ]
+        # Dismissal phrases that follow problem acknowledgment
+        dismissal_phrases = [
+            "however this is acceptable",
+            "but this is minor",
+            "not a big deal",
+            "shouldn't be a concern",
+            "can be ignored",
+            "within acceptable",
+            "doesn't affect the overall",
+            "still meets the requirements",
+            "overall the quality is",
+            "despite this, I would still",
+            "I'll approve",
+            "passing this",
+            "while not perfect",
+            "good enough",
+            "the issues are minor",
+            "these are edge cases",
+            "negligible impact",
+            "won't affect most users",
+        ]
+
+        problem_count = sum(1 for p in problem_phrases if p in lower)
+        dismissal_count = sum(1 for d in dismissal_phrases if d in lower)
+
+        if problem_count >= 2 and dismissal_count >= 1:
+            score = min((problem_count * 0.15 + dismissal_count * 0.25), 1.0)
+            evidence.append(
+                f"Self-negotiation: {problem_count} problems identified but "
+                f"{dismissal_count} dismissal patterns found"
+            )
+
+        # High self-rating despite issues
+        rating_match = re.search(r'(?:score|rating|grade)[:\s]*(\d+)\s*/\s*(\d+)', lower)
+        if rating_match and problem_count >= 2:
+            given = int(rating_match.group(1))
+            total = int(rating_match.group(2))
+            if total > 0 and given / total >= 0.8:
+                score = max(score, 0.7)
+                evidence.append(
+                    f"High self-rating ({given}/{total}) despite {problem_count} identified issues"
+                )
+
+        return score, evidence
+
     def _detect_fabricated_facts(self, output: str) -> Tuple[float, List[str]]:
         evidence = []
         score = 1.0

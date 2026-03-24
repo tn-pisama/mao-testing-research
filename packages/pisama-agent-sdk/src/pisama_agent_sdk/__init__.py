@@ -68,6 +68,9 @@ from .hooks.matchers import (
 # Session management
 from .session import SessionManager, session_manager
 
+# Evaluator client (Pisama-as-evaluator for multi-agent harnesses)
+from .evaluator import PisamaEvaluator, EvalResult, EvalFailure
+
 __all__ = [
     # Version
     "__version__",
@@ -101,4 +104,8 @@ __all__ = [
     # Session
     "SessionManager",
     "session_manager",
+    # Evaluator
+    "PisamaEvaluator",
+    "EvalResult",
+    "EvalFailure",
 ]

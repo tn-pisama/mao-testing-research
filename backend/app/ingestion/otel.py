@@ -32,6 +32,10 @@ class ParsedState:
     token_count: int
     latency_ms: int
     timestamp: datetime
+    # Harness-aware fields
+    agent_role: Optional[str] = None  # planner/generator/evaluator/orchestrator/tool
+    sprint_id: Optional[str] = None
+    context_reset: bool = False
 
 
 class OTELParser:
@@ -75,6 +79,16 @@ class OTELParser:
             
             latency_ms = (otel_span.end_time_unix_nano - otel_span.start_time_unix_nano) // 1_000_000
             
+            # Extract harness-aware fields from OTEL attributes
+            attrs = otel_span.attributes
+            agent_role = (
+                attrs.get("gen_ai.agent.role")
+                or attrs.get("pisama.agent.role")
+                or None
+            )
+            sprint_id = attrs.get("pisama.sprint.id") or None
+            context_reset = attrs.get("pisama.context.reset", "false") in ("true", "True", True, "1")
+
             parsed_states.append(ParsedState(
                 trace_id=trace_id,
                 sequence_num=trace_sequence[trace_id],
@@ -87,6 +101,9 @@ class OTELParser:
                 token_count=token_count,
                 latency_ms=latency_ms,
                 timestamp=datetime.fromtimestamp(otel_span.start_time_unix_nano / 1e9),
+                agent_role=agent_role,
+                sprint_id=sprint_id,
+                context_reset=context_reset,
             ))
             
             trace_sequence[trace_id] += 1

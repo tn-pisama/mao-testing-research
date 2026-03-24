@@ -62,6 +62,7 @@ from app.api.v1 import (
     onboarding,
     admin,
     dashboard,
+    evaluate,
 )
 
 settings = get_settings()
@@ -298,6 +299,7 @@ app.include_router(diagnostics.router, prefix="/api/v1")  # Detector diagnostics
 app.include_router(marketplace.router, prefix="/api/v1")  # AWS Marketplace integration
 app.include_router(onboarding.router, prefix="/api/v1/tenants/{tenant_id}", dependencies=_tenant_rate_deps)  # Onboarding wizard
 app.include_router(admin.router, prefix="/api/v1/tenants/{tenant_id}", dependencies=_tenant_rate_deps)  # Admin audit log
+app.include_router(evaluate.router, prefix="/api/v1", dependencies=_tenant_rate_deps)  # Pisama-as-evaluator
 
 # AWS Marketplace usage tracking middleware (only when enabled)
 if settings.aws_marketplace_enabled:

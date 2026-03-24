@@ -24,7 +24,7 @@ class Tenant(Base):
     stripe_subscription_id = Column(String(255), nullable=True)
     subscription_status = Column(String(50), nullable=True)  # active, canceled, past_due, etc.
     current_period_end = Column(DateTime(timezone=True), nullable=True)
-    span_limit = Column(Integer, default=10000, nullable=False)  # Free tier default
+    project_limit = Column(Integer, default=1, nullable=False)  # Free tier default
 
     traces = relationship("Trace", back_populates="tenant")
     detections = relationship("Detection", back_populates="tenant")
@@ -127,9 +127,12 @@ class Trace(Base):
     parent_trace_id = Column(UUID(as_uuid=True), ForeignKey("traces.id"), nullable=True)
     framework = Column(String(32), default="langgraph")
     status = Column(String(32), default="running")
+    detection_status = Column(String(32), default="pending")  # pending/running/partial/complete/failed
+    detection_metadata = Column(JSONB, default=dict)  # {failed_detectors: [...], detectors_run: N, ...}
     total_tokens = Column(Integer, default=0)
     total_cost_cents = Column(Integer, default=0)
     is_conversation = Column(Boolean, default=False)
+    harness_type = Column(String(32), nullable=True)  # single_agent/pipeline/gan_evaluator/hierarchical/sprint_based
     created_at = Column(DateTime(timezone=True), server_default=func.now())
     completed_at = Column(DateTime(timezone=True), nullable=True)
 
@@ -154,6 +157,9 @@ class State(Base):
     tenant_id = Column(UUID(as_uuid=True), ForeignKey("tenants.id"), nullable=False)
     sequence_num = Column(Integer, nullable=False)
     agent_id = Column(String(128), nullable=False)
+    agent_role = Column(String(32), nullable=True)  # planner/generator/evaluator/orchestrator/tool
+    sprint_id = Column(String(64), nullable=True)  # Groups states into sprint boundaries
+    context_reset = Column(Boolean, default=False)  # True if context was cleared before this state
     state_delta = Column(JSONB, nullable=False)
     state_hash = Column(String(64), nullable=False)
     prompt_hash = Column(String(64), nullable=True)
@@ -1508,4 +1514,27 @@ class MemoryExtractionJob(Base):
     __table_args__ = (
         Index("idx_mej_tenant", "tenant_id"),
         Index("idx_mej_status", "status"),
+    )
+
+
+class ShadowEvalResult(Base):
+    """Shadow evaluation results for runtime judge drift detection."""
+    __tablename__ = "shadow_eval_results"
+
+    id = Column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
+    detector_type = Column(String(64), nullable=False)
+    golden_entry_id = Column(String(255), nullable=False)
+    expected_detected = Column(Boolean, nullable=False)
+    actual_detected = Column(Boolean, nullable=False)
+    expected_confidence_min = Column(Float, default=0.0)
+    expected_confidence_max = Column(Float, default=1.0)
+    actual_confidence = Column(Float, nullable=False)
+    match = Column(Boolean, nullable=False)
+    error = Column(Text, nullable=True)
+    created_at = Column(DateTime(timezone=True), server_default=func.now())
+
+    __table_args__ = (
+        Index("idx_shadow_eval_detector", "detector_type"),
+        Index("idx_shadow_eval_created", "created_at"),
+        Index("idx_shadow_eval_match", "detector_type", "match"),
     )

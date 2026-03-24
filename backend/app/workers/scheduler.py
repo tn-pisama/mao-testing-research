@@ -333,6 +333,106 @@ async def recheck_stale_healings():
             await redis.close()
 
 
+async def check_judge_drift():
+    """Periodic job: compute drift reports from recent shadow eval results.
+
+    Queries the shadow_eval_results table, groups by detector, computes
+    rolling accuracy, and logs warnings if any detector has drifted below
+    its tier threshold.
+    """
+    lock_key = "mao:shadow_eval:drift_check_lock"
+    redis = None
+
+    try:
+        redis = await get_redis()
+        if not await acquire_sync_lock(redis, lock_key, ttl=300):
+            logger.debug("Judge drift check skipped — lock held")
+            return
+
+        from app.storage.database import async_session_maker
+        from app.storage.models import ShadowEvalResult as ShadowEvalModel
+        from app.detection_enterprise.shadow_eval import compute_drift_report, TIER_ACCURACY_THRESHOLDS
+        from sqlalchemy import select, desc
+        from datetime import datetime, timedelta
+
+        # Detector tier mapping (simplified — production detectors with F1 >= 0.70)
+        DETECTOR_TIERS = {
+            "loop": "production", "corruption": "production", "persona_drift": "production",
+            "hallucination": "production", "coordination": "production",
+            "specification": "production", "grounding": "production",
+            "decomposition": "production", "context": "production",
+            "completion": "production", "context_pressure": "production",
+            "withholding": "beta", "overflow": "beta", "retrieval_quality": "beta",
+            "communication": "beta", "derailment": "beta", "injection": "beta",
+            "workflow": "beta", "convergence": "beta",
+        }
+
+        lookback = timedelta(days=7)
+        cutoff = datetime.utcnow() - lookback
+
+        async with async_session_maker() as session:
+            stmt = (
+                select(ShadowEvalModel)
+                .where(ShadowEvalModel.created_at >= cutoff)
+                .order_by(desc(ShadowEvalModel.created_at))
+            )
+            rows = (await session.execute(stmt)).scalars().all()
+
+        if not rows:
+            logger.info("Judge drift check: no shadow eval results in last 7 days")
+            return
+
+        # Group by detector type
+        by_detector: dict = {}
+        for row in rows:
+            by_detector.setdefault(row.detector_type, []).append(row)
+
+        drifted_detectors = []
+        for det_type, det_rows in by_detector.items():
+            tier = DETECTOR_TIERS.get(det_type, "beta")
+            # Convert DB rows to ShadowEvalResult-like objects for the report
+            from app.detection_enterprise.shadow_eval import ShadowEvalResult
+            results = [
+                ShadowEvalResult(
+                    detector_type=r.detector_type,
+                    golden_entry_id=r.golden_entry_id,
+                    expected_detected=r.expected_detected,
+                    actual_detected=r.actual_detected,
+                    expected_confidence_min=r.expected_confidence_min,
+                    expected_confidence_max=r.expected_confidence_max,
+                    actual_confidence=r.actual_confidence,
+                    match=r.match,
+                    error=r.error,
+                )
+                for r in det_rows
+            ]
+            report = compute_drift_report(results, detector_tier=tier)
+            if report.drifted:
+                drifted_detectors.append(report)
+                logger.warning(
+                    "JUDGE DRIFT DETECTED: %s accuracy %.2f < threshold %.2f (%s tier, %d evals)",
+                    det_type, report.accuracy, report.threshold, tier, report.total_evaluations,
+                )
+
+        if drifted_detectors:
+            logger.warning(
+                "Judge drift check: %d/%d detectors drifted",
+                len(drifted_detectors), len(by_detector),
+            )
+        else:
+            logger.info(
+                "Judge drift check: all %d detectors within thresholds (%d total evals)",
+                len(by_detector), len(rows),
+            )
+
+    except Exception as e:
+        logger.error(f"Judge drift check failed: {e}")
+    finally:
+        if redis:
+            await release_sync_lock(redis, lock_key)
+            await redis.close()
+
+
 def create_scheduler() -> AsyncIOScheduler:
     """Create and configure the APScheduler instance."""
     global scheduler
@@ -363,9 +463,21 @@ def create_scheduler() -> AsyncIOScheduler:
         max_instances=1,
     )
 
+    # Add the shadow eval drift check job
+    drift_check_hours = int(os.getenv("SHADOW_EVAL_CHECK_HOURS", "6"))
+    scheduler.add_job(
+        check_judge_drift,
+        trigger=IntervalTrigger(hours=drift_check_hours),
+        id="judge_drift_check",
+        name="Judge Drift Check",
+        replace_existing=True,
+        max_instances=1,
+    )
+
     logger.info(
         f"Scheduler configured: n8n sync every {sync_interval_minutes} minutes, "
-        f"healing recheck every {recheck_interval_minutes} minutes"
+        f"healing recheck every {recheck_interval_minutes} minutes, "
+        f"judge drift check every {drift_check_hours} hours"
     )
 
     return scheduler
