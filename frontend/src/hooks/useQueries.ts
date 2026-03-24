@@ -192,7 +192,7 @@ export function useDashboardQuery(days: number = 30, initialData?: DashboardData
     queryKey: ['dashboard', days, tenantId],
     queryFn: async (): Promise<DashboardData> => {
       const token = await getToken()
-      const API_BASE = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8000/api/v1'
+      const API_BASE = process.env.NEXT_PUBLIC_API_URL || 'https://mao-api.fly.dev/api/v1'
       const url = `${API_BASE}/tenants/${tenantId}/dashboard?days=${days}`
       const headers: Record<string, string> = { 'Content-Type': 'application/json' }
       if (token) headers['Authorization'] = `Bearer ${token}`

@@ -156,7 +156,7 @@ export function useSafeAuth() {
       if (cachedBackendToken && backendTokenExpiresAt && backendTokenExpiresAt > now) {
         return cachedBackendToken
       }
-      const API_BASE = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8000/api/v1'
+      const API_BASE = process.env.NEXT_PUBLIC_API_URL || 'https://mao-api.fly.dev/api/v1'
       try {
         const response = await fetch(`${API_BASE}/auth/token`, {
           method: 'POST',
