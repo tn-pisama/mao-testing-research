@@ -165,7 +165,8 @@ app.add_middleware(
     max_age=3600,
 )
 
-app.add_middleware(APIAuditMiddleware)
+# APIAuditMiddleware disabled — "No response returned" errors crash the response pipeline
+# app.add_middleware(APIAuditMiddleware)
 app.add_middleware(CorrelationIdMiddleware)
 
 
