@@ -1,9 +1,9 @@
 {
-  "run_date": "2026-03-24 01:15:47",
+  "run_date": "2026-03-24 08:30:20",
   "approach": "inverted_prompting",
   "insight": "Ask 'Is this CORRECT?' instead of 'Is this a failure?' to flip conservative LLM bias",
   "round1_model": "claude-haiku-4-5-20251001",
-  "round2_model": "claude-sonnet-4-6-20250514",
+  "round2_model": "claude-sonnet-4-20250514",
   "round1_results": {
     "hallucination": {
       "n_entries": 30,
@@ -238,16 +238,16 @@
       "rule_fp": 11,
       "rule_fn": 5,
       "rule_tn": 4,
-      "inv_f1": 0.0,
-      "inv_precision": 0.0,
-      "inv_recall": 0.0,
-      "inv_tp": 0,
-      "inv_fp": 0,
-      "inv_fn": 15,
-      "inv_tn": 15,
-      "improvement": -0.556,
-      "cost_usd": 0.0,
-      "errors": 30
+      "inv_f1": 0.788,
+      "inv_precision": 0.722,
+      "inv_recall": 0.867,
+      "inv_tp": 13,
+      "inv_fp": 5,
+      "inv_fn": 2,
+      "inv_tn": 10,
+      "improvement": 0.232,
+      "cost_usd": 0.1389,
+      "errors": 0
     },
     "grounding": {
       "n_entries": 30,
@@ -260,16 +260,16 @@
       "rule_fp": 11,
       "rule_fn": 13,
       "rule_tn": 4,
-      "inv_f1": 0.0,
-      "inv_precision": 0.0,
-      "inv_recall": 0.0,
-      "inv_tp": 0,
-      "inv_fp": 0,
-      "inv_fn": 15,
-      "inv_tn": 15,
-      "improvement": -0.143,
-      "cost_usd": 0.0,
-      "errors": 30
+      "inv_f1": 0.684,
+      "inv_precision": 0.565,
+      "inv_recall": 0.867,
+      "inv_tp": 13,
+      "inv_fp": 10,
+      "inv_fn": 2,
+      "inv_tn": 5,
+      "improvement": 0.541,
+      "cost_usd": 0.1528,
+      "errors": 0
     },
     "context": {
       "n_entries": 30,
@@ -282,16 +282,16 @@
       "rule_fp": 9,
       "rule_fn": 3,
       "rule_tn": 6,
-      "inv_f1": 0.0,
-      "inv_precision": 0.0,
-      "inv_recall": 0.0,
-      "inv_tp": 0,
-      "inv_fp": 0,
-      "inv_fn": 15,
-      "inv_tn": 15,
-      "improvement": -0.667,
-      "cost_usd": 0.0,
-      "errors": 30
+      "inv_f1": 0.743,
+      "inv_precision": 0.65,
+      "inv_recall": 0.867,
+      "inv_tp": 13,
+      "inv_fp": 7,
+      "inv_fn": 2,
+      "inv_tn": 8,
+      "improvement": 0.076,
+      "cost_usd": 0.169,
+      "errors": 0
     },
     "derailment": {
       "n_entries": 30,
@@ -304,16 +304,16 @@
       "rule_fp": 10,
       "rule_fn": 10,
       "rule_tn": 5,
-      "inv_f1": 0.0,
-      "inv_precision": 0.0,
-      "inv_recall": 0.0,
-      "inv_tp": 0,
-      "inv_fp": 0,
-      "inv_fn": 15,
-      "inv_tn": 15,
-      "improvement": -0.333,
-      "cost_usd": 0.0,
-      "errors": 30
+      "inv_f1": 0.444,
+      "inv_precision": 0.381,
+      "inv_recall": 0.533,
+      "inv_tp": 8,
+      "inv_fp": 13,
+      "inv_fn": 7,
+      "inv_tn": 2,
+      "improvement": 0.111,
+      "cost_usd": 0.1849,
+      "errors": 0
     },
     "retrieval_quality": {
       "n_entries": 30,
@@ -326,16 +326,16 @@
       "rule_fp": 0,
       "rule_fn": 29,
       "rule_tn": 0,
-      "inv_f1": 0.0,
-      "inv_precision": 0.0,
-      "inv_recall": 0.0,
-      "inv_tp": 0,
+      "inv_f1": 0.667,
+      "inv_precision": 1.0,
+      "inv_recall": 0.5,
+      "inv_tp": 15,
       "inv_fp": 0,
-      "inv_fn": 30,
+      "inv_fn": 15,
       "inv_tn": 0,
-      "improvement": -0.065,
-      "cost_usd": 0.0,
-      "errors": 30
+      "improvement": 0.602,
+      "cost_usd": 0.1486,
+      "errors": 0
     }
   },
   "summary": [
@@ -343,17 +343,17 @@
       "detector": "hallucination",
       "rule_f1": 0.556,
       "haiku_inv_f1": 0.774,
-      "sonnet_inv_f1": 0.0,
-      "best_method": "haiku_inverted",
-      "best_f1": 0.774
+      "sonnet_inv_f1": 0.788,
+      "best_method": "sonnet_inverted",
+      "best_f1": 0.788
     },
     {
       "detector": "grounding",
       "rule_f1": 0.143,
       "haiku_inv_f1": 0.632,
-      "sonnet_inv_f1": 0.0,
-      "best_method": "haiku_inverted",
-      "best_f1": 0.632
+      "sonnet_inv_f1": 0.684,
+      "best_method": "sonnet_inverted",
+      "best_f1": 0.684
     },
     {
       "detector": "specification",
@@ -367,7 +367,7 @@
       "detector": "derailment",
       "rule_f1": 0.333,
       "haiku_inv_f1": 0.682,
-      "sonnet_inv_f1": 0.0,
+      "sonnet_inv_f1": 0.444,
       "best_method": "haiku_inverted",
       "best_f1": 0.682
     },
@@ -383,9 +383,9 @@
       "detector": "context",
       "rule_f1": 0.667,
       "haiku_inv_f1": 0.667,
-      "sonnet_inv_f1": 0.0,
-      "best_method": "rule",
-      "best_f1": 0.667
+      "sonnet_inv_f1": 0.743,
+      "best_method": "sonnet_inverted",
+      "best_f1": 0.743
     },
     {
       "detector": "communication",
@@ -415,7 +415,7 @@
       "detector": "retrieval_quality",
       "rule_f1": 0.065,
       "haiku_inv_f1": 0.824,
-      "sonnet_inv_f1": 0.0,
+      "sonnet_inv_f1": 0.667,
       "best_method": "haiku_inverted",
       "best_f1": 0.824
     }

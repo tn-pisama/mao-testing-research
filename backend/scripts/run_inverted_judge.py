@@ -13,6 +13,7 @@ Usage:
     python scripts/run_inverted_judge.py
 """
 
+import argparse
 import os
 import sys
 import json
@@ -294,6 +295,7 @@ def _call_inverted_judge(
     response = client.messages.create(
         model=model,
         max_tokens=500,
+        timeout=60.0,
         messages=[{"role": "user", "content": prompt}],
     )
     answer = response.content[0].text.strip()
@@ -554,6 +556,14 @@ def _run_round(
 
 
 def main():
+    parser = argparse.ArgumentParser(description="Inverted LLM judge evaluation")
+    parser.add_argument(
+        "--sonnet-only",
+        action="store_true",
+        help="Skip Haiku round; load previous results and run only Sonnet round",
+    )
+    args = parser.parse_args()
+
     print("=" * 78)
     print("INVERTED Judge Evaluation: 'Is this CORRECT?' (NO = failure detected)")
     print("=" * 78)
@@ -578,53 +588,69 @@ def main():
     # Shared cache for entries/rule_preds between rounds
     entry_cache: Dict[str, Tuple] = {}
 
-    # -----------------------------------------------------------------------
-    # Round 1: Haiku with inverted prompts (all 10 detectors)
-    # -----------------------------------------------------------------------
-    print("\n" + "=" * 78)
-    print("ROUND 1: Haiku with Inverted Prompts (all 10 detectors)")
-    print(f"Model: {HAIKU_MODEL}")
-    print("=" * 78)
-
-    haiku_results = _run_round(
-        dataset, TARGETS, HAIKU_MODEL, "Haiku", HAIKU_COST, entry_cache
+    output_path = Path(
+        "/Users/tuomonikulainen/mao-testing-research/backend/data/inverted_judge_results.json"
     )
 
-    # Decide whether to run Sonnet round
-    improved_count = sum(
-        1 for r in haiku_results.values() if r["improvement"] > 0
-    )
-    avg_improvement = (
-        sum(r["improvement"] for r in haiku_results.values()) / len(haiku_results)
-        if haiku_results
-        else 0
-    )
+    if args.sonnet_only:
+        # Load previous Haiku results
+        if not output_path.exists():
+            print("\nERROR: No previous results found. Run without --sonnet-only first.")
+            sys.exit(1)
+        prev = json.loads(output_path.read_text())
+        haiku_results = prev.get("round1_results", {})
+        print(f"\nLoaded previous Haiku results for {len(haiku_results)} detectors")
+    else:
+        # -----------------------------------------------------------------------
+        # Round 1: Haiku with inverted prompts (all 10 detectors)
+        # -----------------------------------------------------------------------
+        print("\n" + "=" * 78)
+        print("ROUND 1: Haiku with Inverted Prompts (all 10 detectors)")
+        print(f"Model: {HAIKU_MODEL}")
+        print("=" * 78)
 
-    print("\n" + "=" * 78)
-    print("ROUND 1 SUMMARY")
-    print("=" * 78)
-    print(
-        f"\n{'Detector':<22} {'Rule F1':>8} {'Haiku-Inv':>10} {'Delta':>8} {'Verdict':>10}"
-    )
-    print("-" * 62)
-    for det_name in TARGETS:
-        if det_name not in haiku_results:
-            continue
-        r = haiku_results[det_name]
-        delta = r["improvement"]
-        verdict = "BETTER" if delta > 0.02 else ("SAME" if delta > -0.02 else "WORSE")
-        print(
-            f"  {det_name:<20} {r['rule_f1']:>7.3f} {r['inv_f1']:>10.3f} "
-            f"{'+' if delta >= 0 else ''}{delta:>7.3f} {verdict:>10}"
+        haiku_results = _run_round(
+            dataset, TARGETS, HAIKU_MODEL, "Haiku", HAIKU_COST, entry_cache
         )
 
-    print(f"\nImproved: {improved_count}/{len(haiku_results)}")
-    print(f"Avg delta: {avg_improvement:+.3f}")
+        # Decide whether to run Sonnet round
+        improved_count = sum(
+            1 for r in haiku_results.values() if r["improvement"] > 0
+        )
+        avg_improvement = (
+            sum(r["improvement"] for r in haiku_results.values()) / len(haiku_results)
+            if haiku_results
+            else 0
+        )
+
+        print("\n" + "=" * 78)
+        print("ROUND 1 SUMMARY")
+        print("=" * 78)
+        print(
+            f"\n{'Detector':<22} {'Rule F1':>8} {'Haiku-Inv':>10} {'Delta':>8} {'Verdict':>10}"
+        )
+        print("-" * 62)
+        for det_name in TARGETS:
+            if det_name not in haiku_results:
+                continue
+            r = haiku_results[det_name]
+            delta = r["improvement"]
+            verdict = "BETTER" if delta > 0.02 else ("SAME" if delta > -0.02 else "WORSE")
+            print(
+                f"  {det_name:<20} {r['rule_f1']:>7.3f} {r['inv_f1']:>10.3f} "
+                f"{'+' if delta >= 0 else ''}{delta:>7.3f} {verdict:>10}"
+            )
+
+        print(f"\nImproved: {improved_count}/{len(haiku_results)}")
+        print(f"Avg delta: {avg_improvement:+.3f}")
 
     # -----------------------------------------------------------------------
     # Round 2: Sonnet on top 5 hardest (if Round 1 shows promise)
     # -----------------------------------------------------------------------
-    run_sonnet = improved_count >= 2 or avg_improvement > -0.05
+    if args.sonnet_only:
+        run_sonnet = True
+    else:
+        run_sonnet = improved_count >= 2 or avg_improvement > -0.05
     sonnet_results = {}
 
     if run_sonnet:
@@ -682,10 +708,6 @@ def main():
     # -----------------------------------------------------------------------
     # Save results
     # -----------------------------------------------------------------------
-    output_path = Path(
-        "/Users/tuomonikulainen/mao-testing-research/backend/data/inverted_judge_results.json"
-    )
-
     # Strip entry_details from saved results to keep file manageable
     def _strip_details(results_dict):
         stripped = {}
