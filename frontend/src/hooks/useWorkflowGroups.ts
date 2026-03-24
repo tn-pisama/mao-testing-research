@@ -13,30 +13,11 @@ export function useWorkflowGroups() {
   const [error, setError] = useState<string | null>(null)
 
   useEffect(() => {
-    async function loadGroups() {
-      try {
-        const token = await getToken()
-        if (!token || !tenantId || tenantId === 'default') {
-          setGroups([])
-          setIsLoading(false)
-          return
-        }
-
-        const api = createApiClient(token, tenantId)
-        const data = await api.listWorkflowGroups()
-        setGroups(data)
-        setError(null)
-      } catch (err) {
-        // Non-critical: workflow groups are optional
-        console.warn('Failed to load workflow groups:', (err as Error).message)
-        setError('Failed to load groups')
-        setGroups([])
-      } finally {
-        setIsLoading(false)
-      }
-    }
-    loadGroups()
-  }, [getToken, tenantId])
+    // Workflow groups endpoint not yet deployed — skip API call
+    // This also prevents Mixed Content errors from old cached JS bundles
+    setGroups([])
+    setIsLoading(false)
+  }, [tenantId])
 
   const createGroup = async (data: CreateGroupRequest) => {
     const token = await getToken()
