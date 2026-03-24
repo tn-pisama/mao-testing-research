@@ -246,6 +246,14 @@ class CompletionMisjudgmentDetector:
         (r'"(?:documented|completed|done|tested)(?:Endpoints?|Items?|Tasks?)?"\s*:\s*(\d+).*?"(?:total)(?:Endpoints?|Items?|Tasks?)?"\s*:\s*(\d+)', "json_ratio"),
     ]
 
+    # v1.9: Log/test patterns to exclude from completion claim scanning
+    LOG_PATTERNS = [
+        re.compile(r'^={3,}'),
+        re.compile(r'^-{3,}'),
+        re.compile(r'^\[?\d{4}-\d{2}'),
+        re.compile(r'^(?:INFO|DEBUG|WARNING|ERROR)\b'),
+    ]
+
     # Success criteria extraction patterns
     CRITERIA_PATTERNS = [
         r'(?:should|must|need to|required to)\s+(.+?)(?:\.|$)',
@@ -274,6 +282,7 @@ class CompletionMisjudgmentDetector:
 
         v1.7.1: Exempt partial-progress phrases like "completed 3 of 5" that
         explicitly acknowledge incomplete work.
+        v1.9: Skip lines that match log/test patterns.
         """
         for pattern in self.COMPLETION_CLAIM_PATTERNS:
             match = re.search(pattern, text, re.IGNORECASE)
@@ -284,6 +293,11 @@ class CompletionMisjudgmentDetector:
                 end = min(len(text), match.end() + 30)
                 window = text[start:end]
                 if self._PARTIAL_PROGRESS_EXEMPTIONS.search(window):
+                    continue
+                # v1.9: Skip log/test separator lines
+                line_start = text.rfind('\n', 0, match.start()) + 1
+                line = text[line_start:match.end() + 30].strip()
+                if any(lp.match(line) for lp in self.LOG_PATTERNS):
                     continue
                 return True
         return False
@@ -1095,6 +1109,27 @@ class CompletionMisjudgmentDetector:
         enum_issues = self._detect_enumerated_coverage(task, agent_output)
         if enum_issues:
             issues.extend(enum_issues)
+
+        # v1.9: Structural subtask gap detection — if subtasks provided as
+        # strings and agent claims done but covers < 50%, flag it.
+        if subtasks and len(subtasks) > 1 and completion_claimed:
+            subtask_names = [
+                s.get("name", s.get("description", "")) if isinstance(s, dict) else str(s)
+                for s in subtasks
+            ]
+            output_lower = agent_output.lower()
+            mentioned = sum(
+                1 for st in subtask_names
+                if any(word.lower() in output_lower for word in st.split()[:3] if len(word) > 2)
+            )
+            coverage = mentioned / len(subtask_names) if subtask_names else 1.0
+            if coverage < 0.5:
+                issues.append(CompletionIssue(
+                    issue_type=CompletionIssueType.IGNORED_SUBTASKS,
+                    description=f"Agent claims completion but only mentions {mentioned}/{len(subtask_names)} subtasks ({coverage:.0%} coverage)",
+                    severity=CompletionSeverity.MODERATE,
+                    evidence=f"subtask_coverage={coverage:.2f}",
+                ))
 
         # v1.6: Completion by absence — if task has explicit criteria
         # and output addresses fewer than half, flag even without claim
