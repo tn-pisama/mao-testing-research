@@ -795,12 +795,32 @@ class SpecificationMismatchDetector:
 
         return covered / len(intent_requirements), missing
 
+    # v2.3: Framework metadata patterns that inflate ambiguity scores
+    METADATA_PATTERNS = [
+        r'\[Preprocessing\].*?\n',
+        r'\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}.*?\n',  # ISO timestamps
+        r'config/.*?\n',
+        r'\.py:\d+.*?\n',  # Python file references
+        r'(?:INFO|DEBUG|WARNING|ERROR).*?\n',  # Log level prefixes
+    ]
+
+    @staticmethod
+    def _strip_metadata(text: str) -> str:
+        """v2.3: Strip framework metadata that inflates ambiguity scores."""
+        for pattern in SpecificationMismatchDetector.METADATA_PATTERNS:
+            text = re.sub(pattern, '', text)
+        return text.strip()
+
     def detect(
         self,
         user_intent: str,
         task_specification: str,
         original_request: Optional[str] = None,
     ) -> SpecificationMismatchResult:
+        # v2.3: Strip framework metadata before analysis
+        user_intent = self._strip_metadata(user_intent)
+        task_specification = self._strip_metadata(task_specification)
+
         intent_requirements = self._extract_requirements(user_intent)
         intent_constraints = self._extract_constraints(user_intent)
         all_requirements = intent_requirements + intent_constraints
