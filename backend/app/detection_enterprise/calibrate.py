@@ -996,6 +996,8 @@ def calibrate_all(
         DetectionType.N8N_ERROR,
         DetectionType.N8N_RESOURCE,
         DetectionType.N8N_TIMEOUT,
+        # Delegation quality detector
+        DetectionType.DELEGATION,
     ]
 
     # Optional: wrap in a Phoenix parent span
