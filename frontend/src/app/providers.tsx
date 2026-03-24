@@ -1,7 +1,7 @@
 'use client'
 
-import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
-import { useState, Component, ReactNode } from 'react'
+import { QueryClient, QueryClientProvider, hydrate, dehydrate } from '@tanstack/react-query'
+import { useState, useEffect, Component, ReactNode } from 'react'
 import { UserPreferencesProvider } from '@/lib/user-preferences'
 
 interface ErrorBoundaryState {
@@ -46,18 +46,72 @@ class ErrorBoundary extends Component<{ children: ReactNode; fallback?: ReactNod
   }
 }
 
+const TWENTY_FOUR_HOURS = 24 * 60 * 60 * 1000
+const CACHE_KEY = 'pisama_query_cache'
+
 export function Providers({ children }: { children: React.ReactNode }) {
-  const [queryClient] = useState(
-    () =>
-      new QueryClient({
-        defaultOptions: {
-          queries: {
-            staleTime: 60 * 1000,
-            refetchOnWindowFocus: false,
-          },
+  const [queryClient] = useState(() => {
+    const client = new QueryClient({
+      defaultOptions: {
+        queries: {
+          staleTime: 60 * 1000,
+          gcTime: TWENTY_FOUR_HOURS,
+          refetchOnWindowFocus: false,
         },
-      })
-  )
+      },
+    })
+
+    // Hydrate from localStorage synchronously (client only)
+    if (typeof window !== 'undefined') {
+      try {
+        const raw = localStorage.getItem(CACHE_KEY)
+        if (raw) {
+          const { timestamp, state } = JSON.parse(raw)
+          if (Date.now() - timestamp < TWENTY_FOUR_HOURS) {
+            hydrate(client, state)
+          } else {
+            localStorage.removeItem(CACHE_KEY)
+          }
+        }
+      } catch {
+        // Corrupt cache, ignore
+      }
+    }
+
+    return client
+  })
+
+  // Persist cache on changes (debounced) and on tab hide
+  useEffect(() => {
+    if (typeof window === 'undefined') return
+
+    let timeout: ReturnType<typeof setTimeout>
+
+    function saveCache() {
+      try {
+        localStorage.setItem(CACHE_KEY, JSON.stringify({
+          timestamp: Date.now(),
+          state: dehydrate(queryClient),
+        }))
+      } catch {}
+    }
+
+    const unsubscribe = queryClient.getQueryCache().subscribe(() => {
+      clearTimeout(timeout)
+      timeout = setTimeout(saveCache, 2000)
+    })
+
+    const handleVisibility = () => {
+      if (document.visibilityState === 'hidden') saveCache()
+    }
+    document.addEventListener('visibilitychange', handleVisibility)
+
+    return () => {
+      clearTimeout(timeout)
+      unsubscribe()
+      document.removeEventListener('visibilitychange', handleVisibility)
+    }
+  }, [queryClient])
 
   return (
     <ErrorBoundary>

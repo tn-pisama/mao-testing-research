@@ -5,6 +5,7 @@ import { useSafeAuth } from '@/hooks/useSafeAuth'
 import { useTenant } from '@/hooks/useTenant'
 import { User, Mail, Building2, LogOut, CreditCard } from 'lucide-react'
 import { useSession, signOut } from 'next-auth/react'
+import { clearAllCaches } from '@/hooks/useSafeAuth'
 import Image from 'next/image'
 import Link from 'next/link'
 
@@ -14,6 +15,7 @@ export default function AccountPage() {
   const { data: session } = useSession()
 
   const handleSignOut = async () => {
+    clearAllCaches()
     await signOut({ callbackUrl: '/' })
   }
 
