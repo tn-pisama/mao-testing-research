@@ -61,57 +61,16 @@ export function Providers({ children }: { children: React.ReactNode }) {
       },
     })
 
-    // Hydrate from localStorage synchronously (client only)
+    // localStorage cache disabled — was hydrating stale data with old tenant
     if (typeof window !== 'undefined') {
-      try {
-        const raw = localStorage.getItem(CACHE_KEY)
-        if (raw) {
-          const { timestamp, state } = JSON.parse(raw)
-          if (Date.now() - timestamp < TWENTY_FOUR_HOURS) {
-            hydrate(client, state)
-          } else {
-            localStorage.removeItem(CACHE_KEY)
-          }
-        }
-      } catch {
-        // Corrupt cache, ignore
-      }
+      try { localStorage.removeItem(CACHE_KEY) } catch {}
     }
 
     return client
   })
 
-  // Persist cache on changes (debounced) and on tab hide
-  useEffect(() => {
-    if (typeof window === 'undefined') return
-
-    let timeout: ReturnType<typeof setTimeout>
-
-    function saveCache() {
-      try {
-        localStorage.setItem(CACHE_KEY, JSON.stringify({
-          timestamp: Date.now(),
-          state: dehydrate(queryClient),
-        }))
-      } catch {}
-    }
-
-    const unsubscribe = queryClient.getQueryCache().subscribe(() => {
-      clearTimeout(timeout)
-      timeout = setTimeout(saveCache, 2000)
-    })
-
-    const handleVisibility = () => {
-      if (document.visibilityState === 'hidden') saveCache()
-    }
-    document.addEventListener('visibilitychange', handleVisibility)
-
-    return () => {
-      clearTimeout(timeout)
-      unsubscribe()
-      document.removeEventListener('visibilitychange', handleVisibility)
-    }
-  }, [queryClient])
+  // localStorage cache persistence disabled — was hydrating stale tenant data
+  // SSR + TanStack Query staleTime handles caching instead
 
   return (
     <ErrorBoundary>
