@@ -448,29 +448,96 @@ async def get_agent_quality(
     return {"agents": agents, "total": len(agents)}
 
 
+# Agent role inference from name
+_AGENT_ROLES = {
+    "researcher": "Researches topics and gathers information from available sources",
+    "writer": "Generates written content, reports, and documentation",
+    "analyst": "Analyzes data and extracts insights from available information",
+    "coordinator": "Orchestrates workflow and delegates tasks between agents",
+    "validator": "Validates output quality, correctness, and completeness",
+    "reviewer": "Reviews and provides feedback on other agents' output",
+    "planner": "Plans task decomposition and execution strategy",
+    "coder": "Writes and modifies code based on requirements",
+    "summarizer": "Summarizes long content into concise outputs",
+    "classifier": "Categorizes and labels input data",
+    "extractor": "Extracts structured data from unstructured sources",
+    "translator": "Translates content between languages or formats",
+    "editor": "Edits and refines content for clarity and quality",
+    "assistant": "General-purpose assistant that handles varied tasks",
+}
+
+_DETECTION_DESCRIPTIONS = {
+    "infinite_loop": "Agent repeated the same action in a loop",
+    "state_corruption": "Agent's internal state became inconsistent or corrupted",
+    "persona_drift": "Agent deviated from its assigned role or personality",
+    "coordination_deadlock": "Agent got stuck waiting for another agent",
+    "hallucination": "Agent produced information not grounded in source data",
+    "context_neglect": "Agent ignored relevant context in its response",
+    "task_derailment": "Agent drifted from the assigned task",
+    "communication_breakdown": "Agent failed to communicate clearly with other agents",
+    "specification_mismatch": "Agent output didn't match the task specification",
+    "poor_decomposition": "Task was broken down poorly into subtasks",
+    "flawed_workflow": "Workflow execution had structural issues",
+    "prompt_injection": "Potential prompt injection attempt detected",
+    "information_withholding": "Agent withheld information it should have shared",
+    "premature_completion": "Agent stopped too early without completing the task",
+}
+
+
+def _infer_role(agent_id: str) -> str:
+    """Infer agent role from its name."""
+    name = agent_id.lower().strip()
+    for key, desc in _AGENT_ROLES.items():
+        if key in name:
+            return desc
+    return f"Agent responsible for '{agent_id}' tasks in the workflow"
+
+
 @router.get("/agent-quality/{agent_id}")
 async def get_agent_detail(
     agent_id: str,
     tenant_id: str = Depends(get_current_tenant),
     db: AsyncSession = Depends(get_db),
 ):
-    """Per-run quality details for a specific agent."""
+    """Per-run quality details for a specific agent with role summary and failure breakdown."""
     await set_tenant_context(db, tenant_id)
     tid = UUID(tenant_id)
 
+    # Get assessments
     result = await db.execute(
         select(WorkflowQualityAssessment).where(WorkflowQualityAssessment.tenant_id == tid)
         .order_by(WorkflowQualityAssessment.created_at.desc())
     )
     assessments = result.scalars().all()
 
+    # Get detections for this tenant to cross-reference with agent runs
+    det_result = await db.execute(
+        select(Detection.trace_id, Detection.detection_type)
+        .where(Detection.tenant_id == tid)
+    )
+    # Map trace_id → list of detection types
+    trace_detections: dict = {}
+    for trace_id, det_type in det_result.all():
+        trace_detections.setdefault(trace_id, []).append(det_type)
+
     runs = []
     scores = []
+    failure_counts: dict = {}
+    runs_with_issues = 0
+
     for a in assessments:
         for agent in (a.agent_scores or []):
             if agent.get("agent_id") == agent_id:
                 score = agent.get("overall_score", 0)
                 scores.append(score)
+
+                # Check detections for this run's trace
+                run_detections = trace_detections.get(a.trace_id, [])
+                if run_detections:
+                    runs_with_issues += 1
+                for dt in run_detections:
+                    failure_counts[dt] = failure_counts.get(dt, 0) + 1
+
                 runs.append({
                     "assessment_id": str(a.id),
                     "workflow_name": a.workflow_name,
@@ -480,6 +547,7 @@ async def get_agent_detail(
                     "dimensions": agent.get("dimensions", []),
                     "issues_count": agent.get("issues_count", 0),
                     "critical_issues": agent.get("critical_issues", []),
+                    "detections": run_detections,
                     "improvements": a.improvements or [],
                     "created_at": a.created_at.isoformat() if a.created_at else None,
                 })
@@ -488,13 +556,29 @@ async def get_agent_detail(
     avg_score = round(sum(scores) / len(scores), 1) if scores else 0
     grade = "Healthy" if avg_score >= 90 else "Degraded" if avg_score >= 70 else "At Risk" if avg_score >= 50 else "Critical"
 
+    # Build failure summary
+    failure_by_type = sorted([
+        {
+            "type": dt,
+            "count": count,
+            "description": _DETECTION_DESCRIPTIONS.get(dt, f"Detection: {dt}"),
+        }
+        for dt, count in failure_counts.items()
+    ], key=lambda x: x["count"], reverse=True)
+
     return {
         "agent_id": agent_id,
-        "agent_name": runs[0]["workflow_name"].split()[0] if runs else agent_id,
+        "agent_name": agent_id,
+        "role_summary": _infer_role(agent_id),
         "avg_score": avg_score,
         "grade": grade,
         "total_runs": len(runs),
         "runs": runs[:50],
+        "failure_summary": {
+            "total_failures": sum(failure_counts.values()),
+            "runs_with_issues": runs_with_issues,
+            "by_type": failure_by_type,
+        },
         "score_explanation": (
             "Quality score starts at 100 for each run. "
             "Deductions: -10 per failure detection found (max -40), "

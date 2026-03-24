@@ -33,11 +33,23 @@ interface AgentRun {
   created_at: string
 }
 
+interface FailureType {
+  type: string
+  count: number
+  description: string
+}
+
 interface AgentDetail {
   agent_id: string
   avg_score: number
   grade: string
   total_runs: number
+  role_summary: string
+  failure_summary: {
+    total_failures: number
+    runs_with_issues: number
+    by_type: FailureType[]
+  }
   runs: AgentRun[]
   score_explanation: string
 }
@@ -108,10 +120,49 @@ function AgentDetailPanel({ agentId }: { agentId: string }) {
 
   return (
     <div className="px-4 py-4 bg-zinc-900/50 border-t border-zinc-800">
+      {/* Role summary */}
+      <div className="flex items-start gap-2 mb-3 p-3 rounded-lg bg-blue-500/5 border border-blue-500/20">
+        <Bot size={14} className="text-blue-400 mt-0.5 shrink-0" />
+        <div>
+          <span className="text-xs font-medium text-blue-400">Role: </span>
+          <span className="text-xs text-zinc-300">{detail.role_summary}</span>
+        </div>
+      </div>
+
+      {/* Failure summary */}
+      {detail.failure_summary.total_failures > 0 ? (
+        <div className="mb-4 p-3 rounded-lg bg-amber-500/5 border border-amber-500/20">
+          <div className="flex items-center gap-2 mb-2">
+            <AlertTriangle size={14} className="text-amber-400" />
+            <span className="text-xs font-medium text-amber-400">
+              {detail.failure_summary.total_failures} failure{detail.failure_summary.total_failures !== 1 ? 's' : ''} across {detail.failure_summary.runs_with_issues} run{detail.failure_summary.runs_with_issues !== 1 ? 's' : ''}
+            </span>
+          </div>
+          <div className="space-y-1.5 ml-5">
+            {detail.failure_summary.by_type.map((f) => (
+              <div key={f.type} className="flex items-start gap-2">
+                <span className="text-xs font-mono text-amber-300 shrink-0">{f.count}x</span>
+                <div>
+                  <span className="text-xs font-medium text-zinc-300">{f.type.replace(/_/g, ' ')}</span>
+                  <span className="text-xs text-zinc-500"> — {f.description}</span>
+                </div>
+              </div>
+            ))}
+          </div>
+        </div>
+      ) : (
+        <div className="mb-4 p-3 rounded-lg bg-green-500/5 border border-green-500/20">
+          <div className="flex items-center gap-2">
+            <Activity size={14} className="text-green-400" />
+            <span className="text-xs text-green-400">No failures detected across {detail.total_runs} runs</span>
+          </div>
+        </div>
+      )}
+
       {/* Score explanation */}
       <div className="flex items-start gap-2 mb-4 p-3 rounded-lg bg-zinc-800/50 border border-zinc-700">
-        <Info size={14} className="text-blue-400 mt-0.5 shrink-0" />
-        <p className="text-xs text-zinc-400">{detail.score_explanation}</p>
+        <Info size={14} className="text-zinc-500 mt-0.5 shrink-0" />
+        <p className="text-xs text-zinc-500">{detail.score_explanation}</p>
       </div>
 
       {/* Run history */}
