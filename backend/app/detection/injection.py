@@ -23,10 +23,13 @@ class InjectionResult:
 
 
 INJECTION_PATTERNS = [
-    # Direct overrides
+    # Direct overrides — both word orders (e.g., "ignore all previous instructions" AND "ignore all instructions above")
     (r'ignore (?:all )?(?:previous|prior|above|earlier|preceding) (?:instructions?|prompts?|rules?|context|guidelines?|directives?)', "direct_override", "high"),
+    (r'ignore (?:all )?(?:instructions?|prompts?|rules?|context|guidelines?|directives?) (?:above|previous|prior|earlier|preceding|below|that came before)', "direct_override", "high"),
     (r'disregard (?:all )?(?:previous|prior|your|any|the) (?:instructions?|guidelines?|rules?|context|directions?)', "direct_override", "high"),
+    (r'disregard (?:all )?(?:instructions?|guidelines?|rules?) (?:above|previous|prior|given|provided)', "direct_override", "high"),
     (r'forget (?:everything|all|what) (?:you were|I|you\'ve been|that was) (?:told|said|given|instructed)', "direct_override", "high"),
+    (r'forget (?:the |your |all )?(?:instructions?|rules?|guidelines?) (?:above|given|provided)', "direct_override", "high"),
     (r'do not (?:follow|obey|listen to|adhere to) (?:the|your|any|previous) (?:instructions?|rules?|guidelines?)', "direct_override", "high"),
     (r'stop (?:following|obeying|adhering to) (?:the|your|any) (?:instructions?|rules?)', "direct_override", "high"),
     (r'(?:please )?(?:set aside|put aside|drop|abandon|discard) (?:your|the|all|any) (?:instructions?|rules?|guidelines?|restrictions?)', "direct_override", "high"),
@@ -63,7 +66,7 @@ INJECTION_PATTERNS = [
     # Delimiter injection
     (r'\[SYSTEM\]|\[INST\]|\<\|system\|\>|\<\|user\|\>|\<\|assistant\|\>', "delimiter_injection", "high"),
     (r'```system|```instructions?|<system>|</system>|<\|im_start\|>', "delimiter_injection", "high"),
-    (r'Human:|Assistant:|User:|AI:|System:', "delimiter_injection", "medium"),
+    (r'(?:^|\n)\s*(?:Human|Assistant|User|AI|System)\s*:', "delimiter_injection", "medium"),
     (r'<<SYS>>|<</SYS>>|<s>|</s>|\[/INST\]', "delimiter_injection", "high"),
     (r'###\s*(?:System|Instruction|Human|User|Assistant)', "delimiter_injection", "medium"),
     # Urgency manipulation
@@ -87,6 +90,10 @@ INJECTION_PATTERNS = [
     (r'(?:my (?:boss|manager|teacher|professor|supervisor|admin|ceo) (?:said|told|asked|wants|needs|requires) (?:you|me) to)', "social_engineering", "medium"),
     (r'(?:i have (?:permission|authority|authorization|clearance|access) to)', "social_engineering", "medium"),
     (r'(?:this is (?:an? )?(?:authorized|approved|sanctioned|legitimate) (?:request|test|override))', "social_engineering", "medium"),
+    # MAST attack patterns
+    (r'ADMIN\s+OVERRIDE', "jailbreak", "critical"),
+    (r'ignore\s+the\s+task\.?\s+instead', "direct_override", "high"),
+    (r'forget\s+(?:about\s+)?(?:the|your)\s+(?:current\s+)?task', "direct_override", "high"),
 ]
 
 JAILBREAK_SIGNATURES = [
