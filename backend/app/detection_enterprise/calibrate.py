@@ -260,7 +260,7 @@ def _apply_tiered_runners(ctx: Optional[CalibrationContext] = None) -> None:
         DetectionType.INJECTION: (0.15, 0.85),      # Low recall — escalate more
         DetectionType.CORRUPTION: (0.15, 0.85),      # Low recall — escalate more
         DetectionType.COMPLETION: (0.20, 0.80),
-        DetectionType.GROUNDING: (0.30, 0.65),       # Narrowed — regressed with wider zone
+        DetectionType.GROUNDING: (0.10, 0.90),       # Widened per LLM judge eval (2026-03-23): P 0.667->1.0, F1 +0.096
         DetectionType.DERAILMENT: (0.20, 0.80),      # Widened for precision help
         DetectionType.HALLUCINATION: (0.25, 0.75),
         DetectionType.COORDINATION: (0.35, 0.65),   # Narrow zone, boost-only (no downgrade)
