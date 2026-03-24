@@ -107,6 +107,25 @@ class HallucinationDetector:
             evidence.extend(source_evidence)
             details["source_grounding_score"] = source_score
 
+            # v1.4: If sources are short (< 200 chars), raise grounding bar —
+            # short sources need higher overlap to be meaningful.
+            total_source_len = sum(len(s.content) for s in sources)
+            if total_source_len < 200:
+                self._effective_grounding_threshold = 0.80
+            else:
+                self._effective_grounding_threshold = self.grounding_threshold
+
+            # v1.4: If output closely matches source text (>70% word overlap),
+            # don't flag as hallucination — the output is well-grounded.
+            source_blob = " ".join(s.content for s in sources).lower().split()
+            output_words = set(output.lower().split())
+            if source_blob:
+                source_word_set = set(source_blob)
+                overlap = len(output_words & source_word_set) / max(len(output_words), 1)
+                if overlap > 0.70:
+                    grounding_score = max(grounding_score, 0.85)
+                    details["high_source_overlap"] = round(overlap, 3)
+
         if context:
             context_score, context_evidence = self._check_context_consistency(output, context)
             grounding_score = min(grounding_score, context_score)
@@ -130,17 +149,26 @@ class HallucinationDetector:
             if fabrication_score < 0.7:
                 grounding_score = min(grounding_score, fabrication_score)
 
-        citation_score, citation_evidence = self._check_citation_validity(output, sources)
-        if citation_score < 0.8:
-            evidence.extend(citation_evidence)
-            details["citation_issues"] = citation_evidence
-            # Include citation score in grounding decision
-            grounding_score = min(grounding_score, citation_score)
+        # v1.4: Make citation check optional — if no citation pattern exists
+        # in the output AND sources are plain text strings, skip the citation
+        # check entirely to avoid FP on simple Q&A.
+        has_citation_patterns = bool(self.citation_pattern.search(output))
+        sources_are_plain = sources is not None and all(
+            len(s.content) < 200 and not s.metadata for s in sources
+        ) if sources else False
+        if has_citation_patterns or not sources_are_plain:
+            citation_score, citation_evidence = self._check_citation_validity(output, sources)
+            if citation_score < 0.8:
+                evidence.extend(citation_evidence)
+                details["citation_issues"] = citation_evidence
+                grounding_score = min(grounding_score, citation_score)
 
         confidence_score = self._analyze_confidence_calibration(output)
         details["confidence_calibration"] = confidence_score
 
-        detected = grounding_score < self.grounding_threshold
+        # v1.4: Use effective threshold (raised for short sources)
+        effective_threshold = getattr(self, '_effective_grounding_threshold', self.grounding_threshold)
+        detected = grounding_score < effective_threshold
         
         if detected:
             if details.get("source_grounding_score", 1.0) < 0.5:
