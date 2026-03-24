@@ -84,8 +84,29 @@ def _build_detector_runners() -> Dict[DetectionType, Any]:
                 for s in raw_sources
             ]
             output = entry.input_data["output"]
-            result = hallucination_detector.detect_hallucination(output, sources)
-            return result.detected, result.confidence
+
+            # Signal 1: Rule-based
+            rule_result = hallucination_detector.detect_hallucination(output, sources)
+            rule_det = rule_result.detected
+            rule_conf = rule_result.confidence
+
+            # Signal 2: NLI entailment (free, fast)
+            try:
+                from app.detection.nli_checker import check_grounding as nli_check
+                source_texts = [s if isinstance(s, str) else s.get("content", str(s)) for s in raw_sources]
+                nli_det, nli_conf, _ = nli_check(output, source_texts)
+            except Exception:
+                nli_det, nli_conf = False, 0.0
+
+            # Combined: if EITHER rule or NLI detects, flag it (any-positive for recall)
+            # But use NLI confidence as primary when available
+            if nli_det and nli_conf > 0.5:
+                return True, nli_conf
+            elif rule_det:
+                return True, rule_conf
+            else:
+                # Neither detected — use max confidence
+                return False, max(rule_conf, nli_conf)
 
         runners[DetectionType.HALLUCINATION] = _run_hallucination
     except Exception as exc:
@@ -249,8 +270,29 @@ def _build_detector_runners() -> Dict[DetectionType, Any]:
         def _run_grounding(entry: GoldenDatasetEntry) -> Tuple[bool, float]:
             agent_output = entry.input_data.get("agent_output", "")
             source_documents = entry.input_data.get("source_documents", [])
+
+            # Signal 1: Rule-based
             result = grounding_detector.detect(agent_output, source_documents)
-            return result.detected, result.confidence
+            rule_det = result.detected
+            rule_conf = result.confidence
+
+            # Signal 2: NLI entailment (free, fast)
+            try:
+                from app.detection.nli_checker import check_grounding as nli_check
+                source_texts = [s if isinstance(s, str) else str(s) for s in source_documents]
+                nli_det, nli_conf, _ = nli_check(agent_output, source_texts)
+            except Exception:
+                nli_det, nli_conf = False, 0.0
+
+            # Ensemble: majority vote (rule + NLI, with NLI as tiebreaker)
+            votes = [rule_det, nli_det]
+            if all(votes):
+                return True, max(rule_conf, nli_conf)
+            elif not any(votes):
+                return False, min(rule_conf, nli_conf)
+            else:
+                # Disagreement — use NLI as tiebreaker (it has higher accuracy)
+                return nli_det, nli_conf
 
         runners[DetectionType.GROUNDING] = _run_grounding
     except Exception as exc:
