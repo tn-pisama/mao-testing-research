@@ -6,6 +6,7 @@ import { cn } from '@/lib/utils'
 
 interface WorkflowOverviewStatsProps {
   workflows: QualityAssessment[]
+  total?: number
   isLoading?: boolean
 }
 
@@ -41,7 +42,7 @@ function countCriticalIssues(workflows: QualityAssessment[]): number {
   return workflows.reduce((acc, w) => acc + w.critical_issues_count, 0)
 }
 
-export function WorkflowOverviewStats({ workflows, isLoading }: WorkflowOverviewStatsProps) {
+export function WorkflowOverviewStats({ workflows, total, isLoading }: WorkflowOverviewStatsProps) {
   if (isLoading) {
     return (
       <div className="grid grid-cols-2 md:grid-cols-4 lg:grid-cols-6 gap-3 mb-6">
@@ -62,7 +63,7 @@ export function WorkflowOverviewStats({ workflows, isLoading }: WorkflowOverview
       <StatCard
         icon={<Workflow size={16} />}
         label="Workflows"
-        value={workflows.length}
+        value={total ?? workflows.length}
         color="slate"
       />
 

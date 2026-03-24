@@ -120,7 +120,7 @@ export function DashboardClient({ initialData }: { initialData: DashboardData | 
         {showSimplifiedDashboard ? (
           <StaggerContainer stagger={0.06}>
             <StaggerItem>
-              <WorkflowOverviewStats workflows={qualityAssessments} isLoading={false} />
+              <WorkflowOverviewStats workflows={qualityAssessments} total={dashQ.assessmentsTotal} isLoading={false} />
             </StaggerItem>
 
             <StaggerItem>
@@ -155,7 +155,7 @@ export function DashboardClient({ initialData }: { initialData: DashboardData | 
             {/* Overview stats: show general stats when no assessments, workflow stats when they exist */}
             <StaggerItem>
               {hasAssessments ? (
-                <WorkflowOverviewStats workflows={qualityAssessments} isLoading={false} />
+                <WorkflowOverviewStats workflows={qualityAssessments} total={dashQ.assessmentsTotal} isLoading={false} />
               ) : (
                 <div className="grid grid-cols-2 md:grid-cols-4 gap-3 mb-6">
                   <div className="bg-zinc-800 rounded-lg p-3 border border-zinc-700">
@@ -230,7 +230,7 @@ export function DashboardClient({ initialData }: { initialData: DashboardData | 
                 <StaggerItem>
                   <div className="mt-8 pt-8 border-t border-zinc-800">
                     <h2 className="text-lg font-semibold text-white mb-4">Workflow Quality</h2>
-                    <WorkflowOverviewStats workflows={qualityAssessments} isLoading={false} />
+                    <WorkflowOverviewStats workflows={qualityAssessments} total={dashQ.assessmentsTotal} isLoading={false} />
                   </div>
                 </StaggerItem>
 
