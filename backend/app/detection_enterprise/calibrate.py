@@ -253,25 +253,44 @@ def _apply_tiered_runners(ctx: Optional[CalibrationContext] = None) -> None:
         logger.warning("No ANTHROPIC_API_KEY, tiered runners disabled")
         return
 
+    # Import inverted judge for the 6 detectors where it outperforms MAST prompts.
+    # Falls back to MAST prompts if import fails.
+    _inverted_judge_fn = None
+    _inverted_detectors = set()
+    try:
+        from app.detection.llm_judge.inverted_prompts import (
+            run_inverted_judge as _inv_judge,
+            INVERTED_DETECTORS as _inv_det_set,
+        )
+        _inverted_judge_fn = _inv_judge
+        _inverted_detectors = _inv_det_set
+        logger.info("Inverted judge loaded for %d detectors: %s",
+                     len(_inverted_detectors), sorted(_inverted_detectors))
+    except ImportError:
+        logger.info("Inverted judge not available, using MAST prompts for all detectors")
+
     # Per-type gray zones: wider for low-recall detectors, narrower for low-precision.
     # Detectors already at production (coordination, context, loop) are EXCLUDED
     # to avoid regression from LLM interference.
+    #
+    # v2.0 (2026-03-24): Widened gray zones for 6 inverted-prompt detectors to
+    # escalate more cases — inverted prompting dramatically improves F1.
     gray_zones = {
         DetectionType.INJECTION: (0.15, 0.85),      # Low recall — escalate more
         DetectionType.CORRUPTION: (0.15, 0.85),      # Low recall — escalate more
         DetectionType.COMPLETION: (0.20, 0.80),
-        DetectionType.GROUNDING: (0.10, 0.90),       # Widened per LLM judge eval (2026-03-23): P 0.667->1.0, F1 +0.096
-        DetectionType.DERAILMENT: (0.20, 0.80),      # Widened for precision help
-        DetectionType.HALLUCINATION: (0.25, 0.75),
+        DetectionType.GROUNDING: (0.10, 0.90),       # Inverted: +0.489 F1 — escalate almost everything
+        DetectionType.DERAILMENT: (0.25, 0.75),      # Inverted: +0.349 F1
+        DetectionType.HALLUCINATION: (0.20, 0.80),   # Inverted: +0.218 F1 — escalate most cases
         DetectionType.COORDINATION: (0.35, 0.65),   # Narrow zone, boost-only (no downgrade)
         DetectionType.CONTEXT: (0.30, 0.65),         # Narrow zone, boost-only
         DetectionType.COMMUNICATION: (0.15, 0.85),   # Widened — low precision
-        DetectionType.SPECIFICATION: (0.15, 0.85),    # Widened — low precision
+        DetectionType.SPECIFICATION: (0.25, 0.75),    # Inverted: +0.088 F1
         DetectionType.PERSONA_DRIFT: (0.15, 0.85),   # Widened — low precision
         DetectionType.DECOMPOSITION: (0.05, 0.99),   # Escalate ALL — bimodal fix
         DetectionType.WORKFLOW: (0.15, 0.85),         # Widened — near production
         DetectionType.WITHHOLDING: (0.10, 0.80),     # Widened — many TP/FP at 0.13
-        DetectionType.RETRIEVAL_QUALITY: (0.10, 0.90),  # Widened — very low precision
+        DetectionType.RETRIEVAL_QUALITY: (0.10, 0.90),  # Inverted: +0.759 F1 — escalate almost everything
         # OpenClaw framework-specific — moderate zones for initial calibration
         DetectionType.OPENCLAW_SESSION_LOOP: (0.20, 0.80),
         DetectionType.OPENCLAW_TOOL_ABUSE: (0.20, 0.80),
@@ -293,6 +312,8 @@ def _apply_tiered_runners(ctx: Optional[CalibrationContext] = None) -> None:
         DetectionType.LANGGRAPH_TOOL_FAILURE: (0.20, 0.80),
         DetectionType.LANGGRAPH_PARALLEL_SYNC: (0.20, 0.80),
         DetectionType.LANGGRAPH_CHECKPOINT_CORRUPTION: (0.20, 0.80),
+        # Convergence — inverted prompting: +0.147 F1
+        DetectionType.CONVERGENCE: (0.25, 0.75),
     }
     # Detectors where soft downgrade is DISABLED (high precision already).
     # For these, LLM can only boost or keep-as-is, never reduce confidence.
@@ -328,8 +349,41 @@ def _apply_tiered_runners(ctx: Optional[CalibrationContext] = None) -> None:
         ctx.escalation_counts[det_name] = 0
 
         def _make_wrapper(orig_fn, dt_name, lo, hi, _ctx=ctx):
+            # Check if this detector should use inverted prompting
+            _use_inverted = (_inverted_judge_fn is not None
+                            and dt_name in _inverted_detectors)
+
             def _wrapped(entry: GoldenDatasetEntry) -> Tuple[bool, float]:
                 detected, confidence = orig_fn(entry)
+
+                # ---------------------------------------------------------------
+                # Inverted prompt path (for 6 validated detectors)
+                # ---------------------------------------------------------------
+                # Inverted prompts replace both boost AND upgrade paths:
+                # they ask "Is this CORRECT?" and return detected=True if
+                # INCORRECT. This is a full replacement for gray-zone cases.
+                if _use_inverted and lo <= confidence <= hi:
+                    cache_key = f"{entry.id}:{dt_name}:inverted:{_ctx.trial_seed}"
+                    if cache_key in _llm_cache:
+                        return _llm_cache[cache_key]
+                    try:
+                        inv_detected, inv_cost, inv_tokens = _inverted_judge_fn(
+                            dt_name, entry.input_data
+                        )
+                        _ctx.escalation_counts[dt_name] = _ctx.escalation_counts.get(dt_name, 0) + 1
+                        _ctx.llm_cost[dt_name] = _ctx.llm_cost.get(dt_name, 0.0) + inv_cost
+                        _ctx.llm_tokens[dt_name] = _ctx.llm_tokens.get(dt_name, 0) + inv_tokens
+                        result = (inv_detected, 0.80)
+                        _llm_cache[cache_key] = result
+                        return result
+                    except Exception as e:
+                        logger.debug("Inverted judge failed for %s: %s", dt_name, e)
+                    # Fall through to rule-based result on error
+                    return detected, confidence
+
+                # ---------------------------------------------------------------
+                # MAST prompt path (for all other detectors)
+                # ---------------------------------------------------------------
 
                 # Strategy: boost detected=True when LLM agrees, soft-downgrade
                 # when LLM VERY STRONGLY disagrees (helps precision without killing recall).
@@ -349,7 +403,7 @@ def _apply_tiered_runners(ctx: Optional[CalibrationContext] = None) -> None:
                             _ctx.llm_tokens[dt_name] = _ctx.llm_tokens.get(dt_name, 0) + getattr(result, "tokens_used", 0)
                             if "Error" not in result.reasoning and "Could not parse" not in result.reasoning:
                                 if result.score > 0.5:
-                                    # LLM agrees → boost confidence
+                                    # LLM agrees -> boost confidence
                                     boosted = (True, max(confidence, result.score * 0.9))
                                     _llm_cache[cache_key] = boosted
                                     return boosted
@@ -361,7 +415,7 @@ def _apply_tiered_runners(ctx: Optional[CalibrationContext] = None) -> None:
                                         downgraded = (True, confidence * sd_factor)
                                         _llm_cache[cache_key] = downgraded
                                         return downgraded
-                                # LLM disagrees but not strongly → keep as-is
+                                # LLM disagrees but not strongly -> keep as-is
                         except Exception as e:
                             logger.debug("LLM boost failed for %s: %s", dt_name, e)
                     return detected, confidence
@@ -393,7 +447,8 @@ def _apply_tiered_runners(ctx: Optional[CalibrationContext] = None) -> None:
             return _wrapped
 
         DETECTOR_RUNNERS[det_type] = _make_wrapper(original_runner, det_name, gz_lo, gz_hi)
-        logger.info("Wrapped %s with LLM escalation (gray zone: %.2f-%.2f)", det_name, gz_lo, gz_hi)
+        judge_type = "inverted" if (det_name in _inverted_detectors and _inverted_judge_fn) else "MAST"
+        logger.info("Wrapped %s with %s LLM escalation (gray zone: %.2f-%.2f)", det_name, judge_type, gz_lo, gz_hi)
 
 
 # ---------------------------------------------------------------------------
