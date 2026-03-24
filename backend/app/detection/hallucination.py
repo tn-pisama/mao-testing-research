@@ -107,22 +107,14 @@ class HallucinationDetector:
             evidence.extend(source_evidence)
             details["source_grounding_score"] = source_score
 
-            # v1.4: If sources are short (< 200 chars), raise grounding bar —
-            # short sources need higher overlap to be meaningful.
-            total_source_len = sum(len(s.content) for s in sources)
-            if total_source_len < 200:
-                self._effective_grounding_threshold = 0.80
-            else:
-                self._effective_grounding_threshold = self.grounding_threshold
-
-            # v1.4: If output closely matches source text (>70% word overlap),
+            # v1.4: If output closely matches source text (>80% word overlap),
             # don't flag as hallucination — the output is well-grounded.
             source_blob = " ".join(s.content for s in sources).lower().split()
             output_words = set(output.lower().split())
             if source_blob:
                 source_word_set = set(source_blob)
                 overlap = len(output_words & source_word_set) / max(len(output_words), 1)
-                if overlap > 0.70:
+                if overlap > 0.80:
                     grounding_score = max(grounding_score, 0.85)
                     details["high_source_overlap"] = round(overlap, 3)
 
@@ -166,9 +158,7 @@ class HallucinationDetector:
         confidence_score = self._analyze_confidence_calibration(output)
         details["confidence_calibration"] = confidence_score
 
-        # v1.4: Use effective threshold (raised for short sources)
-        effective_threshold = getattr(self, '_effective_grounding_threshold', self.grounding_threshold)
-        detected = grounding_score < effective_threshold
+        detected = grounding_score < self.grounding_threshold
         
         if detected:
             if details.get("source_grounding_score", 1.0) < 0.5:
