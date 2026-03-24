@@ -1,7 +1,9 @@
 import { getServerSession } from 'next-auth'
 import { authOptions } from '@/lib/auth'
 
-const API = (process.env.NEXT_PUBLIC_API_URL || 'https://mao-api.fly.dev/api/v1').trim().replace(/^http:\/\//, 'https://')
+import API_URL from '@/lib/api-url'
+
+const API = API_URL
 
 /** Get a valid API token + tenantId from the server side. */
 export async function getServerApiToken(): Promise<{ token: string; tenantId: string; email?: string } | null> {

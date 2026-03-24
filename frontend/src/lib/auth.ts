@@ -3,7 +3,9 @@ import GoogleProvider from 'next-auth/providers/google'
 import type { JWT } from 'next-auth/jwt'
 import type { Session } from 'next-auth'
 
-const BACKEND_URL = (process.env.NEXT_PUBLIC_API_URL || 'https://mao-api.fly.dev/api/v1').trim().replace(/^http:\/\//, 'https://')
+import API_URL from '@/lib/api-url'
+
+const BACKEND_URL = API_URL
 
 export const authOptions: NextAuthOptions = {
   providers: [

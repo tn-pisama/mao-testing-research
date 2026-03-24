@@ -4,7 +4,9 @@ import { useSession } from 'next-auth/react'
 import { useEffect, useState } from 'react'
 import { getCachedTenantId } from './useSafeAuth'
 
-const API_BASE = (process.env.NEXT_PUBLIC_API_URL || 'https://mao-api.fly.dev/api/v1').trim().replace(/^http:\/\//, 'https://')
+import API_URL from '@/lib/api-url'
+
+const API_BASE = API_URL
 
 /** Read the last-used tenant synchronously for instant cache key matching. */
 function getInitialTenant(): string {

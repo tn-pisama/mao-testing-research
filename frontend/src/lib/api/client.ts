@@ -1,5 +1,6 @@
-// Force HTTPS and trim whitespace — env var was historically set with http:// or trailing \n
-export const API_BASE = (process.env.NEXT_PUBLIC_API_URL || 'https://mao-api.fly.dev/api/v1').trim().replace(/^http:\/\//, 'https://')
+import API_URL from '@/lib/api-url'
+
+export const API_BASE = API_URL
 
 export interface FetchOptions {
   method?: string

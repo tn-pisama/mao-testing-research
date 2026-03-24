@@ -235,7 +235,7 @@ export default function DeveloperApiPage() {
                 </p>
               </div>
               <a
-                href={`${(process.env.NEXT_PUBLIC_API_URL || 'https://mao-api.fly.dev').trim().replace(/^http:\/\//, 'https://')}/docs`}
+                href="https://mao-api.fly.dev/docs"
                 target="_blank"
                 rel="noopener noreferrer"
                 className="flex items-center gap-2 px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white text-sm font-medium rounded-lg transition-colors"

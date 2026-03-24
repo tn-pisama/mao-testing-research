@@ -1,7 +1,9 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { getToken } from 'next-auth/jwt'
 
-const BACKEND_URL = (process.env.NEXT_PUBLIC_API_URL || 'https://mao-api.fly.dev/api/v1').trim().replace(/^http:\/\//, 'https://')
+import API_URL from '@/lib/api-url'
+
+const BACKEND_URL = API_URL
 
 export async function POST(request: NextRequest) {
   try {

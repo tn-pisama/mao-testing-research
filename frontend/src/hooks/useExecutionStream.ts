@@ -69,7 +69,7 @@ export function useExecutionStream({ onExecution, enabled = true }: UseExecution
       }
 
       // Construct SSE endpoint URL
-      const baseUrl = (process.env.NEXT_PUBLIC_API_URL || 'https://mao-api.fly.dev').trim().replace(/^http:\/\//, 'https://')
+      const { default: baseUrl } = await import('@/lib/api-url')
       const url = `${baseUrl}/api/v1/n8n/stream`
 
       // EventSource doesn't support custom headers, so we use query param for auth
