@@ -26,20 +26,24 @@ training_image = (
     )
 )
 
-# Mount training data
-train_data = modal.Mount.from_local_file("/tmp/slm_train.jsonl", remote_path="/data/train.jsonl")
-val_data = modal.Mount.from_local_file("/tmp/slm_val.jsonl", remote_path="/data/val.jsonl")
-
-# Volume for saving the trained model
+# Volume for data + model
+data_volume = modal.Volume.from_name("pisama-slm-data", create_if_missing=True)
 model_volume = modal.Volume.from_name("pisama-slm-model", create_if_missing=True)
+
+
+@app.function(image=training_image, timeout=120)
+def upload_data():
+    """Upload training data to Modal volume."""
+    import json
+    # Read local files and write to volume
+    return "Data upload handled via local_entrypoint"
 
 
 @app.function(
     image=training_image,
     gpu="A10G",
     timeout=3600,
-    mounts=[train_data, val_data],
-    volumes={"/model_output": model_volume},
+    volumes={"/data": data_volume, "/model_output": model_volume},
 )
 def train():
     import json
@@ -203,7 +207,7 @@ def train():
     image=training_image,
     gpu="A10G",
     timeout=600,
-    volumes={"/model_output": model_volume},
+    volumes={"/data": data_volume, "/model_output": model_volume},
 )
 def evaluate():
     """Run full evaluation on the trained model."""
@@ -236,7 +240,15 @@ def evaluate():
 
 @app.local_entrypoint()
 def main():
-    print("Starting SLM Judge training on Modal A10G...")
+    import subprocess
+
+    # Upload training data to volume
+    print("Uploading training data to Modal volume...")
+    subprocess.run(["modal", "volume", "put", "pisama-slm-data", "/tmp/slm_train.jsonl", "train.jsonl"], check=True)
+    subprocess.run(["modal", "volume", "put", "pisama-slm-data", "/tmp/slm_val.jsonl", "val.jsonl"], check=True)
+    print("Data uploaded.")
+
+    print("\nStarting SLM Judge training on Modal A10G...")
     result = train.remote()
     print(f"\nTraining complete!")
     print(f"  Accuracy: {result['accuracy']:.1%}")
