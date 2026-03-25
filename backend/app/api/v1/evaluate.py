@@ -157,7 +157,7 @@ def _run_single_detector(
     if det_name == "specification":
         from app.detection.specification import SpecificationMismatchDetector
         detector = SpecificationMismatchDetector()
-        result = detector.detect_mismatch(
+        result = detector.detect(
             task_specification=spec_text,
             user_intent=spec.get("user_intent", spec_text),
         )
@@ -166,14 +166,14 @@ def _run_single_detector(
             "confidence": result.confidence,
             "severity": result.severity.value if hasattr(result.severity, 'value') else str(result.severity),
             "title": "Specification Mismatch",
-            "description": "; ".join(result.issues) if hasattr(result, 'issues') and result.issues else "Output doesn't match specification",
+            "description": "; ".join(result.missing_requirements[:3]) if result.missing_requirements else "Output doesn't match specification",
             "suggested_fix": "Review output against specification requirements",
         }
 
     elif det_name == "completion":
         from app.detection.completion import CompletionMisjudgmentDetector
         detector = CompletionMisjudgmentDetector()
-        result = detector.detect_completion_misjudgment(
+        result = detector.detect(
             task=spec_text,
             subtasks=spec.get("subtasks", []),
             agent_output=output_text,
@@ -210,7 +210,7 @@ def _run_single_detector(
     elif det_name == "derailment":
         from app.detection.derailment import TaskDerailmentDetector
         detector = TaskDerailmentDetector()
-        result = detector.detect_derailment(
+        result = detector.detect(
             task=spec_text,
             output=output_text,
         )
@@ -282,7 +282,7 @@ def _run_single_detector(
     elif det_name == "decomposition":
         from app.detection.decomposition import TaskDecompositionDetector
         detector = TaskDecompositionDetector()
-        result = detector.detect_decomposition_issues(
+        result = detector.detect(
             task_description=spec_text,
             decomposition=output.get("decomposition", output_text),
         )
