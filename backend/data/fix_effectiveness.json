@@ -1,0 +1,305 @@
+{
+  "updated_at": "2026-03-25T19:19:52.431581+00:00",
+  "records": [
+    {
+      "fix_type": "timeout_addition",
+      "detection_type": "n8n_timeout",
+      "success_count": 1,
+      "fail_count": 0,
+      "total_confidence_drop": 0.8799999999999999,
+      "avg_confidence_drop": 0.8799999999999999,
+      "best_drop": 0.8799999999999999,
+      "last_used": "2026-03-25T19:19:52.427275+00:00"
+    },
+    {
+      "fix_type": "step_validator",
+      "detection_type": "n8n_error",
+      "success_count": 1,
+      "fail_count": 0,
+      "total_confidence_drop": 0.58,
+      "avg_confidence_drop": 0.58,
+      "best_drop": 0.58,
+      "last_used": "2026-03-25T19:19:52.427609+00:00"
+    },
+    {
+      "fix_type": "retry_limit",
+      "detection_type": "loop",
+      "success_count": 1,
+      "fail_count": 0,
+      "total_confidence_drop": 0.98,
+      "avg_confidence_drop": 0.98,
+      "best_drop": 0.98,
+      "last_used": "2026-03-25T19:19:52.427693+00:00"
+    },
+    {
+      "fix_type": "state_validation",
+      "detection_type": "corruption",
+      "success_count": 1,
+      "fail_count": 0,
+      "total_confidence_drop": 0.845,
+      "avg_confidence_drop": 0.845,
+      "best_drop": 0.845,
+      "last_used": "2026-03-25T19:19:52.427765+00:00"
+    },
+    {
+      "fix_type": "prompt_reinforcement",
+      "detection_type": "persona_drift",
+      "success_count": 1,
+      "fail_count": 0,
+      "total_confidence_drop": 0.15779999999999994,
+      "avg_confidence_drop": 0.15779999999999994,
+      "best_drop": 0.15779999999999994,
+      "last_used": "2026-03-25T19:19:52.427842+00:00"
+    },
+    {
+      "fix_type": "fact_checking",
+      "detection_type": "hallucination",
+      "success_count": 1,
+      "fail_count": 0,
+      "total_confidence_drop": 0.30000000000000004,
+      "avg_confidence_drop": 0.30000000000000004,
+      "best_drop": 0.30000000000000004,
+      "last_used": "2026-03-25T19:19:52.427929+00:00"
+    },
+    {
+      "fix_type": "input_filtering",
+      "detection_type": "injection",
+      "success_count": 1,
+      "fail_count": 0,
+      "total_confidence_drop": 0.45360000000000006,
+      "avg_confidence_drop": 0.45360000000000006,
+      "best_drop": 0.45360000000000006,
+      "last_used": "2026-03-25T19:19:52.428010+00:00"
+    },
+    {
+      "fix_type": "context_pruning",
+      "detection_type": "overflow",
+      "success_count": 1,
+      "fail_count": 0,
+      "total_confidence_drop": 0.569,
+      "avg_confidence_drop": 0.569,
+      "best_drop": 0.569,
+      "last_used": "2026-03-25T19:19:52.428094+00:00"
+    },
+    {
+      "fix_type": "task_anchoring",
+      "detection_type": "derailment",
+      "success_count": 1,
+      "fail_count": 0,
+      "total_confidence_drop": 0.4360111111111111,
+      "avg_confidence_drop": 0.4360111111111111,
+      "best_drop": 0.4360111111111111,
+      "last_used": "2026-03-25T19:19:52.428181+00:00"
+    },
+    {
+      "fix_type": "task_anchoring",
+      "detection_type": "context",
+      "success_count": 1,
+      "fail_count": 0,
+      "total_confidence_drop": 0.5,
+      "avg_confidence_drop": 0.5,
+      "best_drop": 0.5,
+      "last_used": "2026-03-25T19:19:52.428271+00:00"
+    },
+    {
+      "fix_type": "message_schema",
+      "detection_type": "communication",
+      "success_count": 1,
+      "fail_count": 0,
+      "total_confidence_drop": 0.6,
+      "avg_confidence_drop": 0.6,
+      "best_drop": 0.6,
+      "last_used": "2026-03-25T19:19:52.428365+00:00"
+    },
+    {
+      "fix_type": "spec_validation",
+      "detection_type": "specification",
+      "success_count": 1,
+      "fail_count": 0,
+      "total_confidence_drop": -0.050000000000000044,
+      "avg_confidence_drop": -0.050000000000000044,
+      "best_drop": 0.0,
+      "last_used": "2026-03-25T19:19:52.428475+00:00"
+    },
+    {
+      "fix_type": "task_decomposer",
+      "detection_type": "decomposition",
+      "success_count": 1,
+      "fail_count": 0,
+      "total_confidence_drop": -0.5,
+      "avg_confidence_drop": -0.5,
+      "best_drop": 0.0,
+      "last_used": "2026-03-25T19:19:52.428579+00:00"
+    },
+    {
+      "fix_type": "completion_gate",
+      "detection_type": "completion",
+      "success_count": 1,
+      "fail_count": 0,
+      "total_confidence_drop": -0.25,
+      "avg_confidence_drop": -0.25,
+      "best_drop": 0.0,
+      "last_used": "2026-03-25T19:19:52.428689+00:00"
+    },
+    {
+      "fix_type": "strategy_switch",
+      "detection_type": "convergence",
+      "success_count": 1,
+      "fail_count": 0,
+      "total_confidence_drop": 1.0,
+      "avg_confidence_drop": 1.0,
+      "best_drop": 1.0,
+      "last_used": "2026-03-25T19:19:52.428895+00:00"
+    },
+    {
+      "fix_type": "safety_boundary",
+      "detection_type": "openclaw_session_loop",
+      "success_count": 1,
+      "fail_count": 0,
+      "total_confidence_drop": 0.8,
+      "avg_confidence_drop": 0.8,
+      "best_drop": 0.8,
+      "last_used": "2026-03-25T19:19:52.429023+00:00"
+    },
+    {
+      "fix_type": "safety_boundary",
+      "detection_type": "openclaw_tool_abuse",
+      "success_count": 1,
+      "fail_count": 0,
+      "total_confidence_drop": 0.9,
+      "avg_confidence_drop": 0.9,
+      "best_drop": 0.9,
+      "last_used": "2026-03-25T19:19:52.429156+00:00"
+    },
+    {
+      "fix_type": "safety_boundary",
+      "detection_type": "openclaw_elevated_risk",
+      "success_count": 1,
+      "fail_count": 0,
+      "total_confidence_drop": 0.7999999999999999,
+      "avg_confidence_drop": 0.7999999999999999,
+      "best_drop": 0.7999999999999999,
+      "last_used": "2026-03-25T19:19:52.429285+00:00"
+    },
+    {
+      "fix_type": "safety_boundary",
+      "detection_type": "openclaw_spawn_chain",
+      "success_count": 1,
+      "fail_count": 0,
+      "total_confidence_drop": 1.0,
+      "avg_confidence_drop": 1.0,
+      "best_drop": 1.0,
+      "last_used": "2026-03-25T19:19:52.429420+00:00"
+    },
+    {
+      "fix_type": "safety_boundary",
+      "detection_type": "openclaw_channel_mismatch",
+      "success_count": 1,
+      "fail_count": 0,
+      "total_confidence_drop": 0.65,
+      "avg_confidence_drop": 0.65,
+      "best_drop": 0.65,
+      "last_used": "2026-03-25T19:19:52.429571+00:00"
+    },
+    {
+      "fix_type": "safety_boundary",
+      "detection_type": "openclaw_sandbox_escape",
+      "success_count": 0,
+      "fail_count": 1,
+      "total_confidence_drop": 0.0,
+      "avg_confidence_drop": 0.0,
+      "best_drop": 0.0,
+      "last_used": "2026-03-25T19:19:52.429722+00:00"
+    },
+    {
+      "fix_type": "workflow_guard",
+      "detection_type": "dify_iteration_escape",
+      "success_count": 0,
+      "fail_count": 1,
+      "total_confidence_drop": 0.10000000000000009,
+      "avg_confidence_drop": 0.10000000000000009,
+      "best_drop": 0.10000000000000009,
+      "last_used": "2026-03-25T19:19:52.429875+00:00"
+    },
+    {
+      "fix_type": "workflow_guard",
+      "detection_type": "dify_rag_poisoning",
+      "success_count": 1,
+      "fail_count": 0,
+      "total_confidence_drop": 0.8,
+      "avg_confidence_drop": 0.8,
+      "best_drop": 0.8,
+      "last_used": "2026-03-25T19:19:52.430029+00:00"
+    },
+    {
+      "fix_type": "workflow_guard",
+      "detection_type": "dify_classifier_drift",
+      "success_count": 1,
+      "fail_count": 0,
+      "total_confidence_drop": 0.65,
+      "avg_confidence_drop": 0.65,
+      "best_drop": 0.65,
+      "last_used": "2026-03-25T19:19:52.430187+00:00"
+    },
+    {
+      "fix_type": "workflow_guard",
+      "detection_type": "dify_model_fallback",
+      "success_count": 0,
+      "fail_count": 1,
+      "total_confidence_drop": 0.25,
+      "avg_confidence_drop": 0.25,
+      "best_drop": 0.25,
+      "last_used": "2026-03-25T19:19:52.430352+00:00"
+    },
+    {
+      "fix_type": "workflow_guard",
+      "detection_type": "dify_tool_schema_mismatch",
+      "success_count": 1,
+      "fail_count": 0,
+      "total_confidence_drop": 0.85,
+      "avg_confidence_drop": 0.85,
+      "best_drop": 0.85,
+      "last_used": "2026-03-25T19:19:52.430517+00:00"
+    },
+    {
+      "fix_type": "workflow_guard",
+      "detection_type": "dify_variable_leak",
+      "success_count": 1,
+      "fail_count": 0,
+      "total_confidence_drop": 0.8,
+      "avg_confidence_drop": 0.8,
+      "best_drop": 0.8,
+      "last_used": "2026-03-25T19:19:52.430688+00:00"
+    },
+    {
+      "fix_type": "step_validator",
+      "detection_type": "langgraph_recursion",
+      "success_count": 1,
+      "fail_count": 0,
+      "total_confidence_drop": 0.09999999999999998,
+      "avg_confidence_drop": 0.09999999999999998,
+      "best_drop": 0.09999999999999998,
+      "last_used": "2026-03-25T19:19:52.430980+00:00"
+    },
+    {
+      "fix_type": "step_validator",
+      "detection_type": "langgraph_edge_misroute",
+      "success_count": 0,
+      "fail_count": 1,
+      "total_confidence_drop": 0.0,
+      "avg_confidence_drop": 0.0,
+      "best_drop": 0.0,
+      "last_used": "2026-03-25T19:19:52.431359+00:00"
+    },
+    {
+      "fix_type": "step_validator",
+      "detection_type": "langgraph_tool_failure",
+      "success_count": 0,
+      "fail_count": 1,
+      "total_confidence_drop": 0.0,
+      "avg_confidence_drop": 0.0,
+      "best_drop": 0.0,
+      "last_used": "2026-03-25T19:19:52.431580+00:00"
+    }
+  ]
+}
