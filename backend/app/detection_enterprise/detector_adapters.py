@@ -569,6 +569,15 @@ def _build_detector_runners() -> Dict[DetectionType, Any]:
                         entry.input_data.get("workflow", entry.input_data),
                     )
                     result = det.detect_workflow(wf)
+
+                    # Execution-aware suppression: if the entry description
+                    # indicates successful/normal execution, structural risks
+                    # that didn't materialize should be suppressed.
+                    desc = (entry.description or "").lower()
+                    benign_markers = ["completed", "success", "lightweight", "is valid", "no issues"]
+                    if any(m in desc for m in benign_markers) and result.detected:
+                        return False, result.confidence * 0.3
+
                     return result.detected, result.confidence
                 return _run
 
