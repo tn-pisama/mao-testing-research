@@ -106,6 +106,9 @@ class DetectionResponse(BaseModel):
     # Sprint 4: Detection transparency fields
     confidence_tier: Optional[str] = None  # HIGH/LIKELY/POSSIBLE/LOW
     detector_method: Optional[str] = None  # Detection method used
+    # Continuous quality scoring (0.0 = total failure, 1.0 = perfect)
+    quality_score: Optional[float] = None
+    quality_dimensions: Optional[Dict[str, float]] = None  # correctness, completeness, safety, efficiency
 
 
 class PaginatedDetectionResponse(BaseModel):

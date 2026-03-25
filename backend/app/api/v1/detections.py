@@ -52,7 +52,43 @@ def detection_to_response(d: Detection) -> DetectionResponse:
         suggested_action=explanation_data.get("suggested_action"),
         confidence_tier=tier,
         detector_method=d.method,
+        quality_score=_compute_quality_score(d),
+        quality_dimensions=_compute_quality_dimensions(d),
     )
+
+
+def _compute_quality_score(d) -> float:
+    """Compute continuous quality score from detection confidence.
+
+    quality_score = 1.0 - (confidence / 100). A detection with
+    confidence 85 means quality 0.15.  No detection = quality 1.0.
+    """
+    return round(max(0.0, 1.0 - d.confidence / 100.0), 4)
+
+
+def _compute_quality_dimensions(d) -> Dict[str, float]:
+    """Compute per-dimension quality scores based on detection type."""
+    base = 1.0 - d.confidence / 100.0
+    dims = {"correctness": 1.0, "completeness": 1.0, "safety": 1.0, "efficiency": 1.0}
+
+    dt = d.detection_type
+    if dt in ("hallucination", "grounding"):
+        dims["correctness"] = base
+    elif dt in ("completion", "decomposition", "specification"):
+        dims["completeness"] = base
+    elif dt in ("injection", "corruption", "withholding"):
+        dims["safety"] = base
+    elif dt in ("loop", "overflow", "convergence", "n8n_timeout", "n8n_resource"):
+        dims["efficiency"] = base
+    elif dt in ("derailment", "context", "persona_drift", "communication"):
+        dims["correctness"] = base * 0.7 + 0.3
+        dims["completeness"] = base * 0.5 + 0.5
+    else:
+        # Default: spread across dimensions
+        dims["correctness"] = base * 0.5 + 0.5
+        dims["efficiency"] = base * 0.5 + 0.5
+
+    return {k: round(v, 4) for k, v in dims.items()}
 
 
 @router.get("", response_model=PaginatedDetectionResponse)
