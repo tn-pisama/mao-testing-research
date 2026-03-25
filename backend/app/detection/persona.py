@@ -104,6 +104,39 @@ class PersonaConsistencyScorer:
             self._embedder = get_embedder()
         return self._embedder
     
+    # Role-domain keyword map: maps persona keywords to expected domain vocabulary
+    _ROLE_DOMAIN_KEYWORDS = {
+        "legal": ["law", "statute", "section", "court", "legal", "act", "regulation", "case", "ruling", "compliance"],
+        "code": ["code", "bug", "function", "variable", "error", "sql", "api", "vulnerability", "line", "class"],
+        "review": ["review", "found", "issue", "suggest", "improvement", "quality", "coverage", "analysis"],
+        "data": ["data", "statistic", "trend", "percent", "increase", "decrease", "p-value", "revenue", "metric"],
+        "support": ["ticket", "issue", "resolve", "escalate", "dns", "configuration", "troubleshoot"],
+        "medical": ["symptom", "condition", "diagnosis", "consult", "healthcare", "professional", "specialist"],
+        "writer": ["documentation", "api", "endpoint", "parameter", "response", "example", "guide"],
+        "schedul": ["calendar", "meeting", "available", "book", "invite", "conference", "slot"],
+        "translat": ["translate", "text", "language", "register", "formal", "meaning", "original"],
+        "test": ["test", "pass", "fail", "bug", "coverage", "reproduction", "suite", "assertion"],
+        "research": ["study", "paper", "found", "model", "accuracy", "benchmark", "contribution"],
+        "security": ["security", "vulnerability", "exploit", "auth", "permission", "injection", "xss"],
+    }
+
+    def _compute_role_action_relevance(self, persona_desc: str, output: str) -> float:
+        """Check if output demonstrates domain-appropriate actions for the persona.
+
+        Returns 0.0-1.0 where higher means the output is relevant to the role.
+        """
+        persona_lower = persona_desc.lower()
+        output_lower = output.lower()
+
+        best_match = 0.0
+        for role_keyword, domain_terms in self._ROLE_DOMAIN_KEYWORDS.items():
+            if role_keyword in persona_lower:
+                matches = sum(1 for t in domain_terms if t in output_lower)
+                relevance = min(1.0, matches / 3.0)  # 3+ domain terms = full match
+                best_match = max(best_match, relevance)
+
+        return best_match
+
     def _detect_evaluator_leniency(self, output: str) -> float:
         """Detect evaluator leniency: approving work despite identified issues.
 
@@ -258,10 +291,19 @@ class PersonaConsistencyScorer:
         
         raw_score = semantic_sim
         
+        # v2.2: Role-action relevance — if the output demonstrates
+        # domain-appropriate actions, the agent IS on-persona even when
+        # embedding similarity is low (short persona descriptions have
+        # unreliable semantic similarity to domain-specific outputs).
+        role_action_boost = self._compute_role_action_relevance(
+            agent.persona_description, output
+        )
+
         weighted_score = (
-            semantic_sim * 0.45 +
-            lexical_overlap * 0.35 +  # Raised from 0.2 — lexical overlap catches word-level drift
-            tone_score * 0.2 +
+            semantic_sim * 0.35 +
+            lexical_overlap * 0.25 +
+            tone_score * 0.15 +
+            role_action_boost * 0.25 +
             flexibility_bonus
         )
         weighted_score = min(1.0, weighted_score)
@@ -270,6 +312,7 @@ class PersonaConsistencyScorer:
             "semantic_similarity": round(semantic_sim, 4),
             "lexical_overlap": round(lexical_overlap, 4),
             "tone_consistency": round(tone_score, 4),
+            "role_action_boost": round(role_action_boost, 4),
             "flexibility_bonus": flexibility_bonus,
         }
         

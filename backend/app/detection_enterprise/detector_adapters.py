@@ -435,6 +435,20 @@ def _build_detector_runners() -> Dict[DetectionType, Any]:
             raw_nodes = workflow_def.get("nodes", [])
             raw_connections = workflow_def.get("connections", [])
 
+            # MAST data uses "steps" instead of "nodes" — convert
+            if not raw_nodes and workflow_def.get("steps"):
+                raw_steps = workflow_def["steps"]
+                raw_nodes = [
+                    {"id": s.get("id", f"s{i}"), "name": s.get("name", ""),
+                     "type": "step", "depends_on": s.get("depends_on", [])}
+                    for i, s in enumerate(raw_steps)
+                ]
+                # Build connections from depends_on
+                for s in raw_steps:
+                    sid = s.get("id", "")
+                    for dep in s.get("depends_on", []):
+                        raw_connections.append({"from": dep, "to": sid})
+
             # Build incoming/outgoing maps from connections.
             # Formats vary by source:
             #   N8N/OpenClaw: list of {"from": str, "to": str}
