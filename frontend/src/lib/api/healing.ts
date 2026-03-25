@@ -29,6 +29,12 @@ export interface HealingRecord {
   rolled_back_at: string | null
   created_at: string
   error_message: string | null
+  // Per-detector progress tracking (Tier 1 capability)
+  detector_progress?: Record<string, {
+    before: number | null
+    after: number | null
+    status: 'pending' | 'fixing' | 'fixed' | 'failed' | 'rolled_back'
+  }>
   // Staged deployment fields
   deployment_stage?: 'staged' | 'promoted' | 'rejected' | 'rolled_back' | null
   workflow_id?: string

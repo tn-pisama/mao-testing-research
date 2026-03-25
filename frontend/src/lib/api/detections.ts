@@ -24,6 +24,14 @@ export interface Detection {
   // Detection transparency
   confidence_tier?: 'HIGH' | 'LIKELY' | 'POSSIBLE' | 'LOW'
   detector_method?: string
+  // Quality scoring (Tier 1 capability)
+  quality_score?: number
+  quality_dimensions?: {
+    correctness: number
+    completeness: number
+    safety: number
+    efficiency: number
+  }
 }
 
 export interface DetectionListResponse {
