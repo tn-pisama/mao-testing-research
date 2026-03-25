@@ -148,9 +148,8 @@ def train():
         save_steps=200,
         save_total_limit=2,
         bf16=True,
-        max_seq_length=512,
-        dataset_text_field="text",
         report_to="none",
+        max_length=512,
     )
 
     # Train
@@ -160,7 +159,7 @@ def train():
         args=training_args,
         train_dataset=train_dataset,
         eval_dataset=val_dataset,
-        tokenizer=tokenizer,
+        processing_class=tokenizer,
     )
 
     trainer.train()
