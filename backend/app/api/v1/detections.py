@@ -168,6 +168,37 @@ def get_fix_generator() -> FixGenerator:
     generator.register(CorruptionFixGenerator())
     generator.register(PersonaFixGenerator())
     generator.register(DeadlockFixGenerator())
+    # Register all remaining generators for full coverage
+    try:
+        from app.fixes.hallucination_fixes import HallucinationFixGenerator
+        from app.fixes.injection_fixes import InjectionFixGenerator
+        from app.fixes.overflow_fixes import OverflowFixGenerator
+        from app.fixes.derailment_fixes import DerailmentFixGenerator
+        from app.fixes.context_neglect_fixes import ContextNeglectFixGenerator
+        from app.fixes.communication_fixes import CommunicationFixGenerator
+        from app.fixes.specification_fixes import SpecificationFixGenerator
+        from app.fixes.decomposition_fixes import DecompositionFixGenerator
+        from app.fixes.workflow_fixes import WorkflowFixGenerator
+        from app.fixes.withholding_fixes import WithholdingFixGenerator
+        from app.fixes.completion_fixes import CompletionFixGenerator
+        from app.fixes.cost_fixes import CostFixGenerator
+        from app.fixes.convergence_fixes import ConvergenceFixGenerator
+        from app.fixes.grounding_fixes import GroundingFixGenerator
+        from app.fixes.delegation_fixes import DelegationFixGenerator
+        from app.fixes.framework_fixes import (
+            N8nFixGenerator, OpenClawFixGenerator, DifyFixGenerator, LangGraphFixGenerator,
+        )
+        for gen_cls in [
+            HallucinationFixGenerator, InjectionFixGenerator, OverflowFixGenerator,
+            DerailmentFixGenerator, ContextNeglectFixGenerator, CommunicationFixGenerator,
+            SpecificationFixGenerator, DecompositionFixGenerator, WorkflowFixGenerator,
+            WithholdingFixGenerator, CompletionFixGenerator, CostFixGenerator,
+            ConvergenceFixGenerator, GroundingFixGenerator, DelegationFixGenerator,
+            N8nFixGenerator, OpenClawFixGenerator, DifyFixGenerator, LangGraphFixGenerator,
+        ]:
+            generator.register(gen_cls())
+    except ImportError:
+        pass  # Graceful degradation if some generators not available
     return generator
 
 

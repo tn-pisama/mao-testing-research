@@ -117,6 +117,12 @@ class SelfHealingEngine:
         self.fix_generator.register(CompletionFixGenerator())
         self.fix_generator.register(CostFixGenerator())
         self.fix_generator.register(ConvergenceFixGenerator())
+
+        from app.fixes.grounding_fixes import GroundingFixGenerator
+        from app.fixes.delegation_fixes import DelegationFixGenerator
+        self.fix_generator.register(GroundingFixGenerator())
+        self.fix_generator.register(DelegationFixGenerator())
+
         # Framework-specific fix generators
         from app.fixes.framework_fixes import (
             N8nFixGenerator, OpenClawFixGenerator, DifyFixGenerator, LangGraphFixGenerator,
