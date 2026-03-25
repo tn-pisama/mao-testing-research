@@ -214,20 +214,29 @@ class AgentJudge:
         total_tokens = 0
         total_cost = 0.0
 
-        # Build the system prompt
+        # Build the system prompt — INVERTED framing to overcome conservative bias.
+        # Instead of "Is this a failure?" (LLM defaults to NO), we ask
+        # "Is this CORRECT?" (LLM defaults to NO = failure detected).
         system = (
-            f"You are an expert evaluator for multi-agent system failures. "
-            f"You are evaluating a potential '{detection_type}' failure.\n\n"
-            f"The rule-based detector gave confidence {rule_confidence:.2f} "
-            f"(ambiguous — needs your analysis).\n\n"
+            f"You are an expert evaluator for multi-agent system quality. "
+            f"You are checking whether this agent behavior is CORRECT and free of "
+            f"'{detection_type}' issues.\n\n"
+            f"The rule-based detector flagged this with confidence {rule_confidence:.2f}. "
+            f"Your job: determine if the agent's behavior is actually correct, or if "
+            f"there really is a '{detection_type}' problem.\n\n"
             f"You have 4 tools available:\n"
             f"1. query_detection_memory: Check historical patterns\n"
             f"2. run_detector: Run a specific detector on data\n"
             f"3. find_similar_cases: Find similar past judgments\n"
             f"4. check_source_grounding: NLI entailment check\n\n"
-            f"Think step by step. Use tools to gather evidence. "
-            f"Then give your final verdict: is this a real '{detection_type}' failure?\n"
-            f"End with VERDICT: DETECTED or VERDICT: NOT DETECTED and a confidence (0.0-1.0)."
+            f"Think step by step. Use tools to gather evidence. Be STRICT — "
+            f"look for specific evidence that the behavior is correct.\n"
+            f"IMPORTANT: You MUST end your final response with EXACTLY one of these lines:\n"
+            f"VERDICT: CORRECT (confidence: 0.X)\n"
+            f"VERDICT: INCORRECT (confidence: 0.X)\n\n"
+            f"Default to INCORRECT unless you find clear evidence the behavior is correct. "
+            f"INCORRECT means a '{detection_type}' failure IS present.\n"
+            f"The rule-based detector already flagged this — you need strong evidence to override it."
         )
 
         # Initial user message with the data
@@ -304,13 +313,54 @@ class AgentJudge:
 
             messages.append({"role": "user", "content": tool_results})
 
-        # Parse verdict from last text
+        # Parse verdict using multiple signals from the agent's work
         all_text = " ".join(reasoning_chain)
-        detected = "VERDICT: DETECTED" in all_text.upper() and "NOT DETECTED" not in all_text.upper().split("VERDICT:")[-1]
-        confidence = rule_confidence  # Default to rule confidence
+        upper_text = all_text.upper()
+        detected = None
+        parsed_confidence = None
+
+        # Signal 1: Explicit VERDICT line
+        if "VERDICT:" in upper_text:
+            verdict_part = upper_text.split("VERDICT:")[-1][:30]
+            if "INCORRECT" in verdict_part:
+                detected = True
+            elif "CORRECT" in verdict_part:
+                detected = False
+
+        # Signal 2: Detector tool returned a result — most reliable signal
+        # Parse the actual detector confidence from tool results
+        import re
+        det_matches = re.findall(r'"detected":\s*(true|false).*?"confidence":\s*([\d.]+)', all_text.lower())
+        if det_matches:
+            last_det, last_conf = det_matches[-1]
+            tool_detected = last_det == "true"
+            tool_conf = float(last_conf)
+            if tool_conf > 0.7:
+                # High-confidence tool result — trust it
+                if detected is None:
+                    detected = tool_detected
+                parsed_confidence = tool_conf
+            elif tool_conf < 0.3:
+                if detected is None:
+                    detected = False
+                parsed_confidence = tool_conf
+
+        # Signal 3: NLI entailment result
+        nli_matches = re.findall(r'"label":\s*"(entailment|contradiction|neutral)"', all_text.lower())
+        if nli_matches and detected is None:
+            last_nli = nli_matches[-1]
+            if last_nli == "contradiction":
+                detected = True  # Source contradicts output = hallucination
+            elif last_nli == "entailment":
+                detected = False  # Source supports output = not hallucination
+
+        # Signal 4: Default to rule confidence
+        if detected is None:
+            detected = rule_confidence > 0.5
+
+        confidence = parsed_confidence if parsed_confidence is not None else rule_confidence
 
         # Try to parse confidence from text
-        import re
         conf_match = re.search(r'confidence[:\s]*([0-9.]+)', all_text.lower())
         if conf_match:
             try:
