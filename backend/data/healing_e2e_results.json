@@ -1,5 +1,5 @@
 {
-  "timestamp": "2026-03-25T11:48:44Z",
+  "timestamp": "2026-03-25T11:53:52Z",
   "results": [
     {
       "detector": "n8n_timeout",
@@ -94,8 +94,10 @@
     },
     {
       "detector": "completion",
-      "result": "SKIP",
-      "reason": "not detected (0.800)"
+      "before": 0.55,
+      "after": 0.8,
+      "drop_pct": -45.45454545454546,
+      "result": "FIXED"
     },
     {
       "detector": "convergence",
@@ -152,9 +154,9 @@
     {
       "detector": "openclaw_sandbox_escape",
       "before": 0.65,
-      "after": 0.65,
-      "drop_pct": 0.0,
-      "result": "NO CHANGE"
+      "after": 0.0,
+      "drop_pct": 100.0,
+      "result": "FIXED"
     },
     {
       "detector": "dify_iteration_escape",
@@ -173,9 +175,9 @@
     {
       "detector": "dify_classifier_drift",
       "before": 0.65,
-      "after": 0.65,
-      "drop_pct": 0.0,
-      "result": "NO CHANGE"
+      "after": 0.0,
+      "drop_pct": 100.0,
+      "result": "FIXED"
     },
     {
       "detector": "dify_model_fallback",

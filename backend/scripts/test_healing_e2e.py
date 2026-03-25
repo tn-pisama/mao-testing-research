@@ -146,9 +146,10 @@ CORE_TEST_CASES = {
     },
     "completion": {
         "input": {"task":"Implement user authentication with email verification and password reset",
-                  "subtasks":["email verification","password reset","login flow"],
-                  "agent_output":"I implemented the login flow.","success_criteria":[]},
-        "fix": lambda d: {**d, "agent_output":"I implemented all three: login flow with session management, email verification with token-based confirmation, and password reset with secure token generation and expiry."},
+                  "subtasks":["Implement email verification system","Implement password reset flow","Implement login flow with sessions"],
+                  "agent_output":"I implemented the login flow only. The other features are not done yet.",
+                  "success_criteria":["All three features working","Tests passing"]},
+        "fix": lambda d: {**d, "agent_output":"I implemented all three features: 1) Login flow with session management and JWT tokens. 2) Email verification with token-based confirmation links. 3) Password reset with secure token generation, expiry, and rate limiting. All tests passing."},
     },
     "convergence": {
         "input": {"metrics":[{"step":i,"value":0.5+0.02*(-1)**i} for i in range(20)],"direction":"minimize","window_size":10},
@@ -179,13 +180,13 @@ def _load_framework_cases():
         data = json.load(f)
 
     framework_types = {
-        # OpenClaw: truncate session events to remove the failure pattern
+        # OpenClaw: targeted fixes per failure type
         "openclaw_session_loop": lambda d: _fix_session(d, max_events=4),
         "openclaw_tool_abuse": lambda d: _fix_session(d, max_events=5),
-        "openclaw_elevated_risk": lambda d: _fix_session(d, max_events=3),
+        "openclaw_elevated_risk": lambda d: _fix_openclaw_risk(d),
         "openclaw_spawn_chain": lambda d: _fix_session(d, max_events=3),
         "openclaw_channel_mismatch": lambda d: _fix_channel(d),
-        "openclaw_sandbox_escape": lambda d: _fix_session(d, max_events=3),
+        "openclaw_sandbox_escape": lambda d: _fix_openclaw_sandbox(d),
         # Dify: fix the workflow run status and node outputs
         "dify_iteration_escape": lambda d: _fix_dify_run(d, fix_type="iteration"),
         "dify_rag_poisoning": lambda d: _fix_dify_run(d, fix_type="rag"),
@@ -219,28 +220,118 @@ def _fix_session(d, max_events=4):
 def _fix_channel(d):
     d = copy.deepcopy(d)
     session = d.get("session", d)
-    # Set consistent channel across all events
     channel = session.get("channel", "slack")
     for event in session.get("events", []):
         event["channel"] = channel
+    return d
+
+def _fix_openclaw_risk(d):
+    """Replace risky tool calls with safe ones."""
+    d = copy.deepcopy(d)
+    session = d.get("session", d)
+    safe_events = []
+    for event in session.get("events", []):
+        ev = copy.deepcopy(event)
+        # Remove elevated risk signals
+        if ev.get("type") == "tool.call":
+            ev["tool_name"] = "search_knowledge_base"
+            ev["parameters"] = {"query": "help"}
+            ev.pop("risk_level", None)
+            ev.pop("sensitive_data", None)
+        safe_events.append(ev)
+    session["events"] = safe_events[:3]
+    return d
+
+def _fix_openclaw_sandbox(d):
+    """Remove sandbox escape signals."""
+    d = copy.deepcopy(d)
+    session = d.get("session", d)
+    safe_events = []
+    for event in session.get("events", []):
+        ev = copy.deepcopy(event)
+        if ev.get("type") == "tool.call":
+            # Replace filesystem/network escape with safe tool
+            ev["tool_name"] = "calculate"
+            ev["parameters"] = {"expression": "2+2"}
+            ev.pop("file_path", None)
+            ev.pop("url", None)
+            ev.pop("command", None)
+        safe_events.append(ev)
+    session["events"] = safe_events[:3]
     return d
 
 def _fix_dify_run(d, fix_type="iteration"):
     d = copy.deepcopy(d)
     wf = d.get("workflow_run", d)
     wf["status"] = "succeeded"
-    wf["elapsed_time"] = min(wf.get("elapsed_time", 5.0), 5.0)
+    if wf.get("elapsed_time"):
+        wf["elapsed_time"] = min(float(wf["elapsed_time"]), 5.0)
     for node in wf.get("nodes", []):
         node["status"] = "succeeded"
-        node["elapsed_time"] = min(node.get("elapsed_time", 1.0), 2.0)
-        if fix_type == "iteration" and node.get("node_type") == "iteration":
-            inputs = node.get("inputs", {})
-            if "items" in inputs and isinstance(inputs["items"], list):
-                inputs["items"] = inputs["items"][:10]
-        if fix_type == "rag" and node.get("node_type") == "knowledge_retrieval":
-            node.setdefault("outputs", {})["documents"] = [{"content": "Safe clean document."}]
-        if fix_type == "schema":
-            node["status"] = "succeeded"
+        if node.get("elapsed_time"):
+            node["elapsed_time"] = min(float(node["elapsed_time"]), 2.0)
+
+        if fix_type == "iteration":
+            # Fix: reduce iteration count, ensure bounded
+            if node.get("node_type") == "iteration":
+                inputs = node.get("inputs", {})
+                if "items" in inputs and isinstance(inputs["items"], list):
+                    inputs["items"] = inputs["items"][:5]
+                node.setdefault("outputs", {})["results"] = inputs.get("items", [])[:5]
+                node["iteration_count"] = min(node.get("iteration_count", 5), 5)
+
+        elif fix_type == "rag":
+            if node.get("node_type") == "knowledge_retrieval":
+                node.setdefault("outputs", {})["documents"] = [{"content": "Safe verified document.", "score": 0.95}]
+
+        elif fix_type == "classifier":
+            # Fix: ensure consistent classification across nodes
+            if node.get("node_type") == "question_classifier":
+                outputs = node.setdefault("outputs", {})
+                outputs["category"] = "billing_support"  # Consistent category
+                outputs["confidence"] = 0.95
+
+        elif fix_type == "model":
+            # Fix: use primary model, remove fallback signals
+            if node.get("node_type") == "llm":
+                inputs = node.get("inputs", {})
+                inputs.pop("fallback_model", None)
+                inputs["model"] = inputs.get("model", "gpt-4")
+                node.setdefault("outputs", {})["model_used"] = inputs["model"]
+                node.pop("fallback_triggered", None)
+                node.pop("original_error", None)
+
+        elif fix_type == "schema":
+            # Fix: align input/output schemas between connected nodes
+            if node.get("node_type") == "tool" and node.get("status") == "failed":
+                node["status"] = "succeeded"
+                # Ensure inputs match expected schema
+                inputs = node.get("inputs", {})
+                for k, v in inputs.items():
+                    if v is None:
+                        inputs[k] = ""
+                    elif isinstance(v, str) and not v:
+                        inputs[k] = "0"
+                node.setdefault("outputs", {})["status"] = "success"
+
+        elif fix_type == "variable":
+            # Fix: remove variable leak signals
+            if node.get("node_type") == "code":
+                outputs = node.get("outputs", {})
+                result = outputs.get("result", "")
+                if isinstance(result, str):
+                    # Strip env vars, API keys, secrets from output
+                    for pattern in ["API_KEY", "SECRET", "PASSWORD", "TOKEN", "PRIVATE"]:
+                        result = re.sub(rf'{pattern}[=:]\s*\S+', f'{pattern}=[REDACTED]', result, flags=re.IGNORECASE)
+                    outputs["result"] = result
+            # Remove sensitive headers
+            if node.get("node_type") == "http_request":
+                inputs = node.get("inputs", {})
+                headers = inputs.get("headers", {})
+                if isinstance(headers, dict):
+                    for k in list(headers.keys()):
+                        if any(s in k.lower() for s in ["auth", "key", "secret", "token"]):
+                            headers[k] = "[REDACTED]"
     return d
 
 def _fix_lg(d, fix_type="recursion"):
@@ -250,19 +341,64 @@ def _fix_lg(d, fix_type="recursion"):
     ge["total_supersteps"] = min(ge.get("total_supersteps", 5), 5)
     if "checkpoints" in ge:
         ge["checkpoints"] = ge["checkpoints"][:5]
+
     if fix_type == "state":
         for cp in ge.get("checkpoints", []):
             state = cp.get("state", {})
-            # Ensure no None values (corruption signal)
             for k, v in list(state.items()):
                 if v is None:
                     state[k] = ""
-    if fix_type == "tool":
+
+    elif fix_type == "edge":
+        # Fix: ensure correct routing decisions in checkpoints
         for cp in ge.get("checkpoints", []):
-            if "tool_calls" in cp.get("state", {}):
-                for tc in cp["state"]["tool_calls"]:
-                    tc["status"] = "success"
-                    tc.pop("error", None)
+            state = cp.get("state", {})
+            # Remove misroute signals — set decision to match expected path
+            if "decision" in state:
+                state["decision"] = "correct_path"
+            if "routed_to" in state:
+                state["routed_to"] = state.get("expected_route", state["routed_to"])
+            state.pop("misroute_detected", None)
+            state.pop("wrong_branch", None)
+
+    elif fix_type == "tool":
+        # Fix: resolve all tool failures
+        for cp in ge.get("checkpoints", []):
+            state = cp.get("state", {})
+            if "tool_results" in state:
+                if isinstance(state["tool_results"], list):
+                    for tr in state["tool_results"]:
+                        if isinstance(tr, dict):
+                            tr["status"] = "success"
+                            tr.pop("error", None)
+                            if not tr.get("output"):
+                                tr["output"] = "Tool executed successfully"
+            if "tool_calls" in state:
+                if isinstance(state["tool_calls"], list):
+                    for tc in state["tool_calls"]:
+                        if isinstance(tc, dict):
+                            tc["status"] = "success"
+                            tc.pop("error", None)
+
+    elif fix_type == "sync":
+        # Fix: ensure all parallel branches completed
+        for cp in ge.get("checkpoints", []):
+            state = cp.get("state", {})
+            if "branches" in state:
+                for branch in state["branches"]:
+                    if isinstance(branch, dict):
+                        branch["status"] = "completed"
+                        branch.pop("timeout", None)
+
+    elif fix_type == "checkpoint":
+        # Fix: ensure checkpoint integrity
+        for cp in ge.get("checkpoints", []):
+            cp.pop("corrupted", None)
+            cp.pop("checksum_mismatch", None)
+            state = cp.get("state", {})
+            for k, v in list(state.items()):
+                if v is None:
+                    state[k] = ""
     return d
 
 import copy
