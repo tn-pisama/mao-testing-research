@@ -115,30 +115,92 @@ Multi-Agent Orchestration Testing Platform - Failure detection for LLM agent sys
 
 ### Production Topology
 - **Backend**: Fly.io (`mao-api.fly.dev`), 2 machines, auto-scale, config in `backend/fly.toml`
-- **Frontend**: Vercel (`pisama.ai`), auto-deploy on push to main
+- **Frontend**: Vercel (auto-deploy on push to main), config in root `vercel.json`
 - **Docs**: Vercel (`docs.pisama.com`), MkDocs Material, auto-deploy on push
-- **CI/CD**: GitHub Actions (`.github/workflows/deploy.yml`) — tests then deploys to Fly.io
+- **Database**: Fly Postgres (connected via `DATABASE_URL` secret)
+- **Redis**: Fly Redis (connected via `REDIS_URL` secret)
 
-### Deployment Checklist (Lessons Learned)
-1. **Backend (Fly.io)**: `cd backend && flyctl deploy --remote-only` — requires `.dockerignore` to exclude golden datasets and ML models (otherwise 1GB+ upload)
-2. **Frontend (Vercel)**: `cd frontend && vercel --prod` — or auto-deploys on push. **Must pass `npm run build` locally first** — Vercel won't deploy if build fails
-3. **Always verify component variants match**: Button supports `primary|secondary|ghost|danger|success|warning`. Badge supports `default|success|warning|error|info`. Using wrong variants breaks the TypeScript build
-4. **CI JWT_SECRET must not contain "secret"**: The startup validation rejects weak secrets. Use a random string like `xK9mPqL2vN7wR4tY8uJ3hB6gF5dC0aZS`
-5. **Sentry frontend incompatible**: `@sentry/nextjs` v9 has peer dep conflicts with Next.js 16. Backend sentry-sdk works fine
-6. **Dockerfile uses `requirements-prod.txt`**, not `requirements.txt` — any new production dependency must be added to both
-7. **`mark_startup_complete()`** must exist in `app.api.v1.health` — the lifespan imports it
+### Backend Deployment (Fly.io)
 
-### Deploying Changes
 ```bash
-# Backend
-cd backend && flyctl deploy --remote-only
-
-# Frontend (if Vercel auto-deploy isn't working)
-cd frontend && npm run build && vercel --prod
-
-# Set GitHub secret for CI deploy
-gh secret set FLY_API_TOKEN --body "$(grep access_token ~/.fly/config.yml | sed 's/access_token: //')"
+cd backend && flyctl deploy --remote-only -a mao-api
 ```
+
+**Pre-deploy checklist:**
+1. Run `pytest tests/test_detection.py tests/test_tier1_capabilities.py -q` locally
+2. If you added a Python dependency, add it to BOTH `requirements.txt` AND `requirements-prod.txt`
+3. If you added a new detection module, verify it imports: `JWT_SECRET=... python3 -c "from app.main import app"`
+4. If you modified models.py, create an Alembic migration in `app/storage/migrations/versions/`
+
+**How it works:**
+- `fly.toml` defines the app config (port 8000, health check, auto-scale)
+- `Dockerfile` uses `requirements-prod.txt` (NOT `requirements.txt`)
+- `.dockerignore` excludes `data/`, `tests/`, `scripts/` (keeps image under 900MB)
+- Release command runs `python -m alembic upgrade head` before starting
+- Health check: `GET /api/v1/health` must return `{"status":"healthy"}`
+
+**Common issues:**
+- `NameError: name 'Dict' is not defined` → Python 3.11 needs `from typing import Dict` (not `dict` lowercase)
+- `alembic_version column too short` → Run `ALTER TABLE alembic_version ALTER COLUMN version_num TYPE VARCHAR(128)` on DB
+- Health check timeout → App crashed on startup. Run `flyctl logs -a mao-api` to see the import error
+
+**Secrets (set via `flyctl secrets set -a mao-api KEY=value`):**
+- `DATABASE_URL` — PostgreSQL connection string (asyncpg)
+- `JWT_SECRET` — Min 32 chars, no word "secret"
+- `ANTHROPIC_API_KEY` — For LLM judge + agent-as-judge
+- `REDIS_URL` — For rate limiting + caching
+- `N8N_API_KEY`, `N8N_HOST` — For n8n healing integration
+- `CORS_ORIGINS` — Frontend URL(s)
+
+### Frontend Deployment (Vercel)
+
+```bash
+cd frontend && npm run build && cd .. && vercel --prod
+```
+
+**Pre-deploy checklist:**
+1. Run `cd frontend && npx tsc --noEmit` — zero TypeScript errors required
+2. Run `npm run build` locally — Vercel will reject if build fails
+3. Verify component variant types match (Button, Badge, etc.)
+
+**How it works:**
+- Root `vercel.json` tells Vercel to `cd frontend && npm install` and `cd frontend && npm run build`
+- Output directory is `frontend/.next`
+- Framework: Next.js (auto-detected)
+- Region: `iad1` (US East)
+- Auto-deploys on push to main (if GitHub integration is connected)
+
+**Common issues:**
+- `npm install` exits 254 → Vercel tried to install from repo root. The root `vercel.json` must have `"installCommand": "cd frontend && npm install"`
+- TypeScript error on deploy → Always run `npx tsc --noEmit` before pushing
+- Component variant mismatch → Button supports `primary|secondary|ghost|danger|success|warning`, Badge supports `default|success|warning|error|info`
+
+**Environment variables (set in Vercel dashboard):**
+- `NEXT_PUBLIC_API_URL` — Backend URL (`https://mao-api.fly.dev`)
+- `NEXT_PUBLIC_DEMO_MODE` — Set to `true` for demo mode
+- `NEXTAUTH_SECRET` — For NextAuth sessions
+- `NEXTAUTH_URL` — Frontend URL
+
+### Quick Deploy (both)
+
+```bash
+# 1. Backend
+cd backend && flyctl deploy --remote-only -a mao-api
+
+# 2. Frontend
+cd .. && vercel --prod
+
+# 3. Verify
+curl -s https://mao-api.fly.dev/api/v1/health | python3 -m json.tool
+```
+
+### Deployment Lessons Learned
+1. **`requirements-prod.txt` is the source of truth** for backend dependencies. If you `pip install` something new, add it to both files
+2. **Sentry frontend incompatible**: `@sentry/nextjs` v9 has peer dep conflicts with Next.js 16. Backend sentry-sdk works fine
+3. **`mark_startup_complete()`** must exist in `app.api.v1.health` — the lifespan imports it
+4. **Golden datasets are NOT in the Docker image** — `.dockerignore` excludes `data/`. Detection runs against the database, not local files
+5. **Alembic migrations run automatically** on deploy via `release_command`. New migrations must chain correctly (check `down_revision`)
+6. **The Docker image is ~900MB** — includes PyTorch CPU, sentence-transformers, and the MiniLM model. Build takes ~8 min on Depot
 
 ## Development Guidelines
 
