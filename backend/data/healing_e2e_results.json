@@ -1,5 +1,5 @@
 {
-  "timestamp": "2026-03-25T11:53:52Z",
+  "timestamp": "2026-03-25T12:03:23Z",
   "results": [
     {
       "detector": "n8n_timeout",
@@ -133,9 +133,9 @@
     {
       "detector": "openclaw_elevated_risk",
       "before": 0.7999999999999999,
-      "after": 0.7999999999999999,
-      "drop_pct": 0.0,
-      "result": "NO CHANGE"
+      "after": 0.0,
+      "drop_pct": 100.0,
+      "result": "FIXED"
     },
     {
       "detector": "openclaw_spawn_chain",
@@ -154,9 +154,9 @@
     {
       "detector": "openclaw_sandbox_escape",
       "before": 0.65,
-      "after": 0.0,
-      "drop_pct": 100.0,
-      "result": "FIXED"
+      "after": 0.65,
+      "drop_pct": 0.0,
+      "result": "NO CHANGE"
     },
     {
       "detector": "dify_iteration_escape",
@@ -182,23 +182,23 @@
     {
       "detector": "dify_model_fallback",
       "before": 0.9,
-      "after": 0.9,
-      "drop_pct": 0.0,
+      "after": 0.65,
+      "drop_pct": 27.77777777777778,
       "result": "NO CHANGE"
     },
     {
       "detector": "dify_tool_schema_mismatch",
       "before": 0.85,
-      "after": 0.85,
-      "drop_pct": 0.0,
-      "result": "NO CHANGE"
+      "after": 0.0,
+      "drop_pct": 100.0,
+      "result": "FIXED"
     },
     {
       "detector": "dify_variable_leak",
       "before": 0.8,
-      "after": 0.8,
-      "drop_pct": 0.0,
-      "result": "NO CHANGE"
+      "after": 0.0,
+      "drop_pct": 100.0,
+      "result": "FIXED"
     },
     {
       "detector": "langgraph_recursion",
