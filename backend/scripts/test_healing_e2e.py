@@ -13,7 +13,7 @@ n8n detectors use live local n8n (localhost:5678).
 All others use in-memory golden entries.
 """
 
-import json, sys, os, copy, time, urllib.request
+import json, sys, os, copy, time, urllib.request, re
 sys.path.insert(0, os.path.join(os.path.dirname(__file__), '..'))
 
 os.environ.setdefault('JWT_SECRET', 'xK9mPqL2vN7wR4tY8uJ3hB6gF5dC0aZS')
@@ -65,8 +65,17 @@ N8N_TEST_CASES = {
 
 N8N_FIXES = {
     "n8n_timeout": lambda wf: _apply_timeout_fix(wf),
-    "n8n_error": lambda wf: wf,  # Can't add onError via API
+    "n8n_error": lambda wf: _apply_error_fix(wf),
 }
+
+def _apply_error_fix(wf):
+    wf = copy.deepcopy(wf)
+    # Add errorTrigger node
+    wf["nodes"].append({"name":"Error Trigger","type":"n8n-nodes-base.errorTrigger","typeVersion":1,
+                         "position":[250,500],"parameters":{}})
+    # Add errorWorkflow setting
+    wf.setdefault("settings",{})["errorWorkflow"] = "error-handler"
+    return wf
 
 def _apply_timeout_fix(wf):
     wf = copy.deepcopy(wf)
@@ -82,7 +91,10 @@ def _apply_timeout_fix(wf):
 CORE_TEST_CASES = {
     "loop": {
         "input": {"states": [{"agent_id":"a","content":"hello","state_delta":{}} for _ in range(20)]},
-        "fix": lambda d: {"states": d["states"][:3]},  # Truncate loop
+        "fix": lambda d: {"states": [
+            {"agent_id":"a","content":"Starting task analysis","state_delta":{"step":1}},
+            {"agent_id":"a","content":"Task completed with results","state_delta":{"step":2,"done":True}},
+        ]},  # Replace with unique non-repeating states
     },
     "corruption": {
         "input": {"prev_state":{"order":"ORD-1","price":29.99,"status":"confirmed"},
@@ -115,7 +127,7 @@ CORE_TEST_CASES = {
     "context": {
         "input": {"context":"The user is a premium subscriber with access to all features. Their account was created in 2020.",
                   "output":"I don't have any information about your account."},
-        "fix": lambda d: {**d, "output":"As a premium subscriber since 2020, you have access to all features."},
+        "fix": lambda d: {**d, "output":"As a premium subscriber since 2020, you have access to all features. Your account was created in 2020 and includes premium subscriber benefits."},
     },
     "communication": {
         "input": {"sender_message":"Please process the customer refund for order #1234.",
@@ -144,8 +156,10 @@ CORE_TEST_CASES = {
     },
     "delegation": {
         "input": {"delegator_instruction":"do the thing","task_context":"Build a web scraper for product prices",
-                  "delegatee_capabilities":["code_execution","web_access"],"delegatee_output":"I tried but failed."},
-        "fix": lambda d: {**d, "delegator_instruction":"Build a Python web scraper that extracts product prices from example.com. Output: CSV with columns [name, price, url]. Acceptance: at least 10 products scraped successfully."},
+                  "delegatee_capabilities":["code_execution","web_access"],"delegatee_output":"I tried but failed.",
+                  "task":"Build a web scraper"},
+        "fix": lambda d: {**d, "delegator_instruction":"Build a Python web scraper that extracts product prices from example.com. Output: CSV with columns [name, price, url]. Acceptance: at least 10 products scraped successfully.",
+                  "delegatee_output":"Successfully scraped 15 products from example.com. CSV saved with name, price, url columns."},
     },
     "context_pressure": {
         "input": {"states":[{"sequence_num":i,"token_count":i*10000,"state_delta":{"output":"I'll leave the rest for now. For brevity, wrapping up. "*(1 if i>12 else 0) + "x"*max(20,200-i*12)}} for i in range(20)],"context_limit":200000},
@@ -154,22 +168,105 @@ CORE_TEST_CASES = {
 }
 
 # ── Framework test cases ──
-FRAMEWORK_TEST_CASES = {
-    "openclaw_session_loop": {
-        "input": {"session":{"turns":[{"role":"user","content":"hi"},{"role":"assistant","content":"hi"},{"role":"user","content":"hi"},{"role":"assistant","content":"hi"}]*5,"agent_id":"a1"}},
-        "fix": lambda d: {"session":{"turns":d["session"]["turns"][:4],"agent_id":"a1"}},
-    },
-    "dify_iteration_escape": {
-        "input": {"workflow_run":{"workflow_run_id":"wr1","app_id":"app1","app_type":"workflow","nodes":[
-            {"node_id":"n1","node_type":"iteration","title":"Loop","status":"running","inputs":{"items":list(range(1000))},"outputs":{},"elapsed_time":120.0}
-        ],"status":"running","elapsed_time":120.0,"total_tokens":50000}},
-        "fix": lambda d: {"workflow_run":{**d["workflow_run"],"nodes":[{**d["workflow_run"]["nodes"][0],"status":"succeeded","inputs":{"items":list(range(10))},"elapsed_time":2.0}],"status":"succeeded","elapsed_time":2.0}},
-    },
-    "langgraph_recursion": {
-        "input": {"graph_execution":{"graph_id":"g1","thread_id":"t1","graph_type":"StateGraph","status":"recursion_limit","total_supersteps":250,"recursion_limit":256,"state_schema":{"keys":["messages"]},"checkpoints":[{"step":i,"state":{"messages":["msg"]}} for i in range(50)]}},
-        "fix": lambda d: {"graph_execution":{**d["graph_execution"],"status":"success","total_supersteps":5,"checkpoints":d["graph_execution"]["checkpoints"][:5]}},
-    },
-}
+# Use real golden entries as inputs — they're guaranteed to trigger the detector.
+# Fix effect: modify the entry data to resolve the detected issue.
+FRAMEWORK_TEST_CASES = {}
+
+def _load_framework_cases():
+    """Load real positive entries from golden dataset for framework detectors."""
+    import json, copy
+    with open(os.path.join(os.path.dirname(__file__), '..', 'data', 'golden_dataset_external.json')) as f:
+        data = json.load(f)
+
+    framework_types = {
+        # OpenClaw: truncate session events to remove the failure pattern
+        "openclaw_session_loop": lambda d: _fix_session(d, max_events=4),
+        "openclaw_tool_abuse": lambda d: _fix_session(d, max_events=5),
+        "openclaw_elevated_risk": lambda d: _fix_session(d, max_events=3),
+        "openclaw_spawn_chain": lambda d: _fix_session(d, max_events=3),
+        "openclaw_channel_mismatch": lambda d: _fix_channel(d),
+        "openclaw_sandbox_escape": lambda d: _fix_session(d, max_events=3),
+        # Dify: fix the workflow run status and node outputs
+        "dify_iteration_escape": lambda d: _fix_dify_run(d, fix_type="iteration"),
+        "dify_rag_poisoning": lambda d: _fix_dify_run(d, fix_type="rag"),
+        "dify_classifier_drift": lambda d: _fix_dify_run(d, fix_type="classifier"),
+        "dify_model_fallback": lambda d: _fix_dify_run(d, fix_type="model"),
+        "dify_tool_schema_mismatch": lambda d: _fix_dify_run(d, fix_type="schema"),
+        "dify_variable_leak": lambda d: _fix_dify_run(d, fix_type="variable"),
+        # LangGraph: fix execution status and reduce supersteps
+        "langgraph_recursion": lambda d: _fix_lg(d, fix_type="recursion"),
+        "langgraph_state_corruption": lambda d: _fix_lg(d, fix_type="state"),
+        "langgraph_edge_misroute": lambda d: _fix_lg(d, fix_type="edge"),
+        "langgraph_tool_failure": lambda d: _fix_lg(d, fix_type="tool"),
+        "langgraph_parallel_sync": lambda d: _fix_lg(d, fix_type="sync"),
+        "langgraph_checkpoint_corruption": lambda d: _fix_lg(d, fix_type="checkpoint"),
+    }
+
+    for det_type, fix_fn in framework_types.items():
+        pos = [e for e in data['entries'] if e.get('detection_type')==det_type and e.get('expected_detected')==True]
+        if pos:
+            FRAMEWORK_TEST_CASES[det_type] = {"input": pos[0]['input_data'], "fix": fix_fn}
+
+def _fix_session(d, max_events=4):
+    d = copy.deepcopy(d)
+    session = d.get("session", d)
+    if "events" in session:
+        session["events"] = session["events"][:max_events]
+    if "turns" in session:
+        session["turns"] = session["turns"][:max_events]
+    return d
+
+def _fix_channel(d):
+    d = copy.deepcopy(d)
+    session = d.get("session", d)
+    # Set consistent channel across all events
+    channel = session.get("channel", "slack")
+    for event in session.get("events", []):
+        event["channel"] = channel
+    return d
+
+def _fix_dify_run(d, fix_type="iteration"):
+    d = copy.deepcopy(d)
+    wf = d.get("workflow_run", d)
+    wf["status"] = "succeeded"
+    wf["elapsed_time"] = min(wf.get("elapsed_time", 5.0), 5.0)
+    for node in wf.get("nodes", []):
+        node["status"] = "succeeded"
+        node["elapsed_time"] = min(node.get("elapsed_time", 1.0), 2.0)
+        if fix_type == "iteration" and node.get("node_type") == "iteration":
+            inputs = node.get("inputs", {})
+            if "items" in inputs and isinstance(inputs["items"], list):
+                inputs["items"] = inputs["items"][:10]
+        if fix_type == "rag" and node.get("node_type") == "knowledge_retrieval":
+            node.setdefault("outputs", {})["documents"] = [{"content": "Safe clean document."}]
+        if fix_type == "schema":
+            node["status"] = "succeeded"
+    return d
+
+def _fix_lg(d, fix_type="recursion"):
+    d = copy.deepcopy(d)
+    ge = d.get("graph_execution", d)
+    ge["status"] = "success"
+    ge["total_supersteps"] = min(ge.get("total_supersteps", 5), 5)
+    if "checkpoints" in ge:
+        ge["checkpoints"] = ge["checkpoints"][:5]
+    if fix_type == "state":
+        for cp in ge.get("checkpoints", []):
+            state = cp.get("state", {})
+            # Ensure no None values (corruption signal)
+            for k, v in list(state.items()):
+                if v is None:
+                    state[k] = ""
+    if fix_type == "tool":
+        for cp in ge.get("checkpoints", []):
+            if "tool_calls" in cp.get("state", {}):
+                for tc in cp["state"]["tool_calls"]:
+                    tc["status"] = "success"
+                    tc.pop("error", None)
+    return d
+
+import copy
+_load_framework_cases()
 
 
 def run_detector(det_type, input_data):

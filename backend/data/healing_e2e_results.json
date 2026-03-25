@@ -1,5 +1,5 @@
 {
-  "timestamp": "2026-03-25T11:39:35Z",
+  "timestamp": "2026-03-25T11:48:44Z",
   "results": [
     {
       "detector": "n8n_timeout",
@@ -11,16 +11,16 @@
     {
       "detector": "n8n_error",
       "before": 0.58,
-      "after": 0.58,
-      "drop_pct": 0.0,
-      "result": "NO CHANGE"
+      "after": 0.0,
+      "drop_pct": 100.0,
+      "result": "FIXED"
     },
     {
       "detector": "loop",
       "before": 0.98,
-      "after": 0.89,
-      "drop_pct": 9.183673469387754,
-      "result": "NO CHANGE"
+      "after": 0.0,
+      "drop_pct": 100.0,
+      "result": "FIXED"
     },
     {
       "detector": "corruption",
@@ -67,9 +67,9 @@
     {
       "detector": "context",
       "before": 0.9375,
-      "after": 0.5625,
-      "drop_pct": 40.0,
-      "result": "NO CHANGE"
+      "after": 0.4375,
+      "drop_pct": 53.333333333333336,
+      "result": "PARTIAL"
     },
     {
       "detector": "communication",
@@ -116,13 +116,87 @@
     },
     {
       "detector": "openclaw_session_loop",
-      "result": "SKIP",
-      "reason": "not detected (0.000)"
+      "before": 0.8,
+      "after": 0.0,
+      "drop_pct": 100.0,
+      "result": "FIXED"
+    },
+    {
+      "detector": "openclaw_tool_abuse",
+      "before": 0.9,
+      "after": 0.0,
+      "drop_pct": 100.0,
+      "result": "FIXED"
+    },
+    {
+      "detector": "openclaw_elevated_risk",
+      "before": 0.7999999999999999,
+      "after": 0.7999999999999999,
+      "drop_pct": 0.0,
+      "result": "NO CHANGE"
+    },
+    {
+      "detector": "openclaw_spawn_chain",
+      "before": 1.0,
+      "after": 0.0,
+      "drop_pct": 100.0,
+      "result": "FIXED"
+    },
+    {
+      "detector": "openclaw_channel_mismatch",
+      "before": 0.65,
+      "after": 0.0,
+      "drop_pct": 100.0,
+      "result": "FIXED"
+    },
+    {
+      "detector": "openclaw_sandbox_escape",
+      "before": 0.65,
+      "after": 0.65,
+      "drop_pct": 0.0,
+      "result": "NO CHANGE"
     },
     {
       "detector": "dify_iteration_escape",
-      "result": "SKIP",
-      "reason": "not detected (0.000)"
+      "before": 0.8,
+      "after": 0.7,
+      "drop_pct": 12.50000000000001,
+      "result": "NO CHANGE"
+    },
+    {
+      "detector": "dify_rag_poisoning",
+      "before": 0.8,
+      "after": 0.0,
+      "drop_pct": 100.0,
+      "result": "FIXED"
+    },
+    {
+      "detector": "dify_classifier_drift",
+      "before": 0.65,
+      "after": 0.65,
+      "drop_pct": 0.0,
+      "result": "NO CHANGE"
+    },
+    {
+      "detector": "dify_model_fallback",
+      "before": 0.9,
+      "after": 0.9,
+      "drop_pct": 0.0,
+      "result": "NO CHANGE"
+    },
+    {
+      "detector": "dify_tool_schema_mismatch",
+      "before": 0.85,
+      "after": 0.85,
+      "drop_pct": 0.0,
+      "result": "NO CHANGE"
+    },
+    {
+      "detector": "dify_variable_leak",
+      "before": 0.8,
+      "after": 0.8,
+      "drop_pct": 0.0,
+      "result": "NO CHANGE"
     },
     {
       "detector": "langgraph_recursion",
@@ -130,6 +204,35 @@
       "after": 0.85,
       "drop_pct": 10.526315789473683,
       "result": "FIXED"
+    },
+    {
+      "detector": "langgraph_state_corruption",
+      "result": "SKIP",
+      "reason": "not detected (0.850)"
+    },
+    {
+      "detector": "langgraph_edge_misroute",
+      "before": 0.92,
+      "after": 0.92,
+      "drop_pct": 0.0,
+      "result": "NO CHANGE"
+    },
+    {
+      "detector": "langgraph_tool_failure",
+      "before": 0.6,
+      "after": 0.6,
+      "drop_pct": 0.0,
+      "result": "NO CHANGE"
+    },
+    {
+      "detector": "langgraph_parallel_sync",
+      "result": "SKIP",
+      "reason": "not detected (0.850)"
+    },
+    {
+      "detector": "langgraph_checkpoint_corruption",
+      "result": "SKIP",
+      "reason": "not detected (0.850)"
     }
   ]
 }
