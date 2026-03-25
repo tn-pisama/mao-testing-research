@@ -280,6 +280,77 @@ async def get_healing_status(
     )
 
 
+class DetectorProgressItem(BaseModel):
+    before: Optional[float] = None
+    after: Optional[float] = None
+    status: str = "pending"  # pending, fixing, fixed, failed, rolled_back
+
+
+class HealingProgressResponse(BaseModel):
+    healing_id: str
+    status: str
+    total_detectors: int
+    fixed: int
+    pending: int
+    failed: int
+    detector_progress: Dict[str, DetectorProgressItem]
+
+
+@router.get("/{healing_id}/progress", response_model=HealingProgressResponse)
+async def get_healing_progress(
+    healing_id: UUID,
+    tenant_id: str = Depends(get_current_tenant),
+    db: AsyncSession = Depends(get_db),
+):
+    """Get per-detector progress for a healing operation."""
+    healing = await _get_healing_or_404(healing_id, tenant_id, db)
+
+    progress = healing.detector_progress or {}
+    items = {
+        k: DetectorProgressItem(**v) if isinstance(v, dict) else DetectorProgressItem(status=str(v))
+        for k, v in progress.items()
+    }
+    fixed = sum(1 for v in items.values() if v.status == "fixed")
+    failed = sum(1 for v in items.values() if v.status == "failed")
+    pending = sum(1 for v in items.values() if v.status in ("pending", "fixing"))
+
+    return HealingProgressResponse(
+        healing_id=str(healing.id),
+        status=healing.status,
+        total_detectors=len(items),
+        fixed=fixed,
+        pending=pending,
+        failed=failed,
+        detector_progress=items,
+    )
+
+
+@router.get("/progress-summary")
+async def get_healing_progress_summary(
+    tenant_id: str = Depends(get_current_tenant),
+    db: AsyncSession = Depends(get_db),
+):
+    """Aggregate healing progress across all operations."""
+    result = await db.execute(
+        select(HealingRecord)
+        .where(HealingRecord.tenant_id == tenant_id)
+        .order_by(desc(HealingRecord.created_at))
+        .limit(100)
+    )
+    records = result.scalars().all()
+
+    total = len(records)
+    by_status = {}
+    for r in records:
+        by_status[r.status] = by_status.get(r.status, 0) + 1
+
+    return {
+        "total_healing_operations": total,
+        "by_status": by_status,
+        "success_rate": by_status.get("applied", 0) / total if total > 0 else 0,
+    }
+
+
 @router.post("/{healing_id}/approve", response_model=ApproveHealingResponse)
 async def approve_healing(
     healing_id: UUID,

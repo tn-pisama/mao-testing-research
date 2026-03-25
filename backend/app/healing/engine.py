@@ -13,6 +13,8 @@ from .models import (
     FailureCategory,
     AppliedFix,
     ValidationResult,
+    FixRiskLevel,
+    get_fix_risk_level,
 )
 from .analyzer import FailureAnalyzer
 from .applicator import FixApplicator
@@ -196,19 +198,28 @@ class SelfHealingEngine:
                 return result
             
             result.status = HealingStatus.APPLYING_FIX
-            
+
             current_config = workflow_config
+            applied_fix = None
             for attempt, suggestion in enumerate(fix_suggestions[:self.max_fix_attempts]):
                 try:
+                    # Fix 1: Risk gating — block DANGEROUS fixes without approval
+                    risk = get_fix_risk_level(suggestion.fix_type.value)
+                    if risk == FixRiskLevel.DANGEROUS and not self.auto_apply:
+                        result.metadata[f"attempt_{attempt}_risk_blocked"] = (
+                            f"{suggestion.fix_type.value} requires approval (risk={risk.value})"
+                        )
+                        continue
+
                     applied_fix = self.applicator.apply(
                         suggestion.to_dict(),
                         current_config,
                         result.failure_signature.category,
                     )
                     result.applied_fixes.append(applied_fix)
-                    
+
                     result.status = HealingStatus.VALIDATING
-                    
+
                     validations = await asyncio.wait_for(
                         self.validator.validate(
                             applied_fix,
@@ -219,17 +230,34 @@ class SelfHealingEngine:
                         timeout=self.validation_timeout,
                     )
                     result.validation_results.extend(validations)
-                    
+
                     if all(v.success for v in validations):
                         result.status = HealingStatus.SUCCESS
                         result.completed_at = datetime.now(timezone.utc)
                         self._healing_history.append(result)
                         return result
-                    
-                    current_config = applied_fix.modified_state
-                    
+
+                    # Fix 2: Auto-rollback on validation failure before next attempt
+                    if applied_fix and applied_fix.rollback_available:
+                        try:
+                            self.applicator.rollback(applied_fix, current_config)
+                            current_config = applied_fix.original_state
+                            result.metadata[f"attempt_{attempt}_rolled_back"] = True
+                        except Exception as rb_err:
+                            logger.warning("Rollback failed for attempt %d: %s", attempt, rb_err)
+                    else:
+                        current_config = applied_fix.modified_state
+
                 except Exception as e:
+                    # Fix 2: Rollback on apply error too
+                    if applied_fix and applied_fix.rollback_available:
+                        try:
+                            self.applicator.rollback(applied_fix, current_config)
+                            current_config = applied_fix.original_state
+                        except Exception:
+                            pass
                     result.metadata[f"attempt_{attempt}_error"] = str(e)
+                    applied_fix = None
                     continue
             
             if result.applied_fixes and any(

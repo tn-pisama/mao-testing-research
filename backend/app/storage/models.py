@@ -882,6 +882,10 @@ class HealingRecord(Base):
     rolled_back_at = Column(DateTime(timezone=True), nullable=True)
     created_at = Column(DateTime(timezone=True), server_default=func.now())
 
+    # Per-detector progress tracking
+    # {"loop": {"before": 0.85, "after": 0.1, "status": "fixed"}, ...}
+    detector_progress = Column(JSONB, default=dict)
+
     # Error tracking
     error_message = Column(Text, nullable=True)
 

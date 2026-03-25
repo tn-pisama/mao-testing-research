@@ -104,6 +104,36 @@ class VerificationOrchestrator:
         self._config = config or HealingConfig()
         self._verification_timeout = verification_timeout or self._config.verification_timeout
 
+    def _get_redetector(self, detection_type: str, fallback_detector=None):
+        """Return a callable that re-runs the detector on execution data.
+
+        Maps detection types to their adapter runners from the detector
+        registry. Returns None if no runner is available.
+        """
+        try:
+            from app.detection_enterprise.detector_adapters import _build_detector_runners
+            from app.detection_enterprise.golden_dataset import GoldenDatasetEntry
+
+            runners = _build_detector_runners()
+            for key, runner in runners.items():
+                if key.value == detection_type:
+                    async def redetect(execution_data):
+                        entry = GoldenDatasetEntry(
+                            id="redetect_after_fix",
+                            detection_type=detection_type,
+                            input_data=execution_data if isinstance(execution_data, dict) else {},
+                            expected_detected=True,
+                        )
+                        try:
+                            detected, confidence = runner(entry)
+                            return confidence
+                        except Exception:
+                            return 0.0
+                    return redetect
+        except Exception as e:
+            logger.debug("Could not build redetector for %s: %s", detection_type, e)
+        return None
+
     async def verify_level1(
         self,
         detection_type: str,
@@ -267,6 +297,27 @@ class VerificationOrchestrator:
                 error=f"Execution verification failed: {e}",
                 verified_at=datetime.utcnow().isoformat(),
             )
+
+        # Fix 4: LLM judge for semantic verification when detector
+        # still shows non-zero confidence after fix
+        if after > 0.1:
+            try:
+                from app.detection.llm_judge.inverted_prompts import (
+                    INVERTED_DETECTORS,
+                    run_inverted_judge,
+                )
+                if detection_type in INVERTED_DETECTORS:
+                    judge_det, _, _ = run_inverted_judge(
+                        detection_type, modified_workflow or {}
+                    )
+                    if not judge_det:  # Judge says CORRECT → fix worked
+                        after = min(after, 0.15)
+                        logger.info(
+                            "LLM judge confirms fix for %s (overridden to %.2f)",
+                            detection_type, after,
+                        )
+            except Exception as judge_err:
+                logger.debug("LLM judge unavailable: %s", judge_err)
 
         passed = level1.passed and after < before * self._config.improvement_threshold
         return VerificationResult(
