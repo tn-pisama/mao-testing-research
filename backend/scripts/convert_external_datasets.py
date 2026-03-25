@@ -262,8 +262,21 @@ def _build_input_data(detection_type: DetectionType, task: str, trajectory_text:
         return {"user_intent": task, "task_specification": traj_short}
 
     elif detection_type == DetectionType.WORKFLOW:
+        # Generate multi-step workflow with connections from the task description.
+        # Infer steps from trajectory structure if possible.
+        steps = [
+            {"id": "s1", "name": "Parse task requirements", "depends_on": []},
+            {"id": "s2", "name": task[:100], "depends_on": ["s1"]},
+            {"id": "s3", "name": "Validate output", "depends_on": ["s2"]},
+        ]
+        connections = [{"from": "s1", "to": "s2"}, {"from": "s2", "to": "s3"}]
         return {
-            "workflow_definition": {"name": task[:200], "steps": [{"id": "s1", "name": task[:100]}]},
+            "workflow_definition": {
+                "name": task[:200],
+                "nodes": steps,
+                "connections": connections,
+                "steps": steps,  # Keep for backward compat
+            },
             "execution_result": {"status": "completed", "output": traj_short},
         }
 
@@ -487,10 +500,12 @@ TRAIL_TO_PISAMA = {
     "Poor Information retrieval": "retrieval_quality",
     "Incorrect Problem Identification": "specification",
     " Incorrect Problem Identification": "specification",
-    "Incorrect Memory Usage": "corruption",
-    "Environment Setup Errors": "corruption",
-    "Authentication Errors": "corruption",
-    "Service Errors": "corruption",
+    # These are operational errors, not state corruption.
+    # Map to derailment (task failed due to environment issues).
+    "Incorrect Memory Usage": "derailment",
+    "Environment Setup Errors": "derailment",
+    "Authentication Errors": "derailment",
+    "Service Errors": "derailment",
 }
 
 
