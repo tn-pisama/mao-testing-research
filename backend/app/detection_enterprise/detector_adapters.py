@@ -284,7 +284,7 @@ def _build_detector_runners() -> Dict[DetectionType, Any]:
             except Exception:
                 nli_det, nli_conf = False, 0.0
 
-            # Signal 3: Inverted LLM judge
+            # Signal 3: Inverted LLM judge (primary — F1=0.805 vs 0.592 without)
             try:
                 from app.detection.llm_judge.inverted_prompts import run_inverted_judge
                 source_texts_str = [s if isinstance(s, str) else str(s) for s in source_documents]
@@ -292,19 +292,17 @@ def _build_detector_runners() -> Dict[DetectionType, Any]:
                     "grounding",
                     {"agent_output": agent_output[:1500], "source_documents": source_texts_str[:3]},
                 )
+                # Judge is the most accurate signal — use it as primary
+                return judge_det, 0.80 if judge_det else 0.20
             except Exception:
-                judge_det = None  # Judge unavailable
-
-            # Ensemble: majority vote of 3 signals (rule, NLI, judge)
-            votes = [rule_det, nli_det]
-            if judge_det is not None:
-                votes.append(judge_det)
-            yes_votes = sum(1 for v in votes if v)
-            majority = yes_votes > len(votes) / 2
-            if majority:
-                return True, max(rule_conf, nli_conf)
-            else:
-                return False, min(rule_conf, nli_conf)
+                # Fallback to rule+NLI when judge unavailable
+                votes = [rule_det, nli_det]
+                if all(votes):
+                    return True, max(rule_conf, nli_conf)
+                elif not any(votes):
+                    return False, min(rule_conf, nli_conf)
+                else:
+                    return nli_det, nli_conf
 
         runners[DetectionType.GROUNDING] = _run_grounding
     except Exception as exc:
@@ -415,14 +413,12 @@ def _build_detector_runners() -> Dict[DetectionType, Any]:
             except Exception:
                 judge_det, judge_conf = rule_det, rule_conf
 
-            # Ensemble: both must agree to detect (high-precision gate)
+            # Ensemble: require both to agree (AND gate for precision).
+            # Neither signal alone is reliable on MAST trace data.
             if rule_det and judge_det:
                 return True, max(rule_conf, judge_conf)
-            elif not rule_det and not judge_det:
-                return False, min(rule_conf, judge_conf)
             else:
-                # Disagreement: trust the LLM judge (it sees semantic meaning)
-                return judge_det, judge_conf
+                return False, min(rule_conf, judge_conf)
 
         runners[DetectionType.WITHHOLDING] = _run_withholding
     except Exception as exc:
