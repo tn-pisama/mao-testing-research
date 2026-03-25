@@ -42,6 +42,10 @@ class EvaluateRequest(BaseModel):
         default=None,
         description="Model context window size for pressure detection",
     )
+    agent_judge: bool = Field(
+        default=False,
+        description="Use Agent-as-Judge for ambiguous detections (multi-step reasoning with tools)",
+    )
 
 
 class FailureDetail(BaseModel):
