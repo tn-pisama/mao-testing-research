@@ -22,6 +22,7 @@ import { Button } from '../ui/Button'
 import { TermTooltip } from '../ui/Tooltip'
 import { PipelineStepper } from './PipelineStepper'
 import type { HealingRecord } from '@/lib/api'
+import { DetectorProgressCard } from './DetectorProgressCard'
 
 interface HealingCardProps {
   healing: HealingRecord
@@ -210,6 +211,11 @@ export function HealingCard({
               </div>
               <p className="text-xs text-zinc-400">{status.description}</p>
             </div>
+
+            {/* Detector Progress (new capability) */}
+            {healing.detector_progress && Object.keys(healing.detector_progress).length > 0 && (
+              <DetectorProgressCard progress={healing.detector_progress} />
+            )}
 
             {/* Pipeline Progress */}
             <PipelineStepper healing={healing} />

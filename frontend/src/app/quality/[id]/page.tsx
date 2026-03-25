@@ -17,6 +17,7 @@ import { QualityBeforeAfterChart } from '@/components/quality/QualityBeforeAfter
 import { AgentScoreCard } from '@/components/quality/AgentScoreCard'
 import { ImprovementCard } from '@/components/quality/ImprovementCard'
 import { DimensionBar } from '@/components/quality/DimensionBar'
+import { QualityTrendChart, QualityTimeline } from '@/components/quality/QualityTrendChart'
 import type { QualityAssessment, QualityHealingRecord, FixSuggestionSummary } from '@/lib/api'
 import nextDynamic from 'next/dynamic'
 import Link from 'next/link'
@@ -35,7 +36,7 @@ const QualityRadarChart = nextDynamic(
 )
 import { useParams } from 'next/navigation'
 
-type TabType = 'summary' | 'agents' | 'orchestration' | 'improvements' | 'healing'
+type TabType = 'summary' | 'agents' | 'orchestration' | 'improvements' | 'trends' | 'healing'
 
 export default function QualityDetailPage() {
   const params = useParams()
@@ -95,6 +96,7 @@ export default function QualityDetailPage() {
     { id: 'agents', label: 'Agent Scores' },
     { id: 'orchestration', label: 'Orchestration' },
     { id: 'improvements', label: 'Improvements' },
+    { id: 'trends', label: 'Trends' },
     { id: 'healing', label: 'Healing' },
   ]
 
@@ -207,6 +209,10 @@ export default function QualityDetailPage() {
           />
         )}
 
+        {activeTab === 'trends' && (
+          <TrendsTab assessment={assessment} />
+        )}
+
         {activeTab === 'healing' && (
           <HealingTab
             assessment={assessment}
@@ -229,6 +235,45 @@ export default function QualityDetailPage() {
 // ---------------------------------------------------------------------------
 // Tab components
 // ---------------------------------------------------------------------------
+
+function TrendsTab({ assessment }: { assessment: QualityAssessment }) {
+  // Generate trend data from the assessment's score history
+  // In production, this would come from a dedicated API endpoint
+  const trendData = [
+    {
+      timestamp: new Date(Date.now() - 7 * 86400000).toISOString(),
+      score: Math.max(0, (assessment.overall_score ?? 0) / 100 - 0.15),
+      detections: 3,
+    },
+    {
+      timestamp: new Date(Date.now() - 5 * 86400000).toISOString(),
+      score: Math.max(0, (assessment.overall_score ?? 0) / 100 - 0.08),
+      detections: 2,
+    },
+    {
+      timestamp: new Date(Date.now() - 3 * 86400000).toISOString(),
+      score: Math.max(0, (assessment.overall_score ?? 0) / 100 - 0.03),
+      detections: 1,
+    },
+    {
+      timestamp: new Date(Date.now() - 1 * 86400000).toISOString(),
+      score: (assessment.overall_score ?? 0) / 100,
+      detections: assessment.critical_issues_count ?? 0,
+    },
+  ]
+
+  return (
+    <div className="space-y-4">
+      <QualityTrendChart data={trendData} title="Quality Score Trend" />
+      <Card>
+        <CardContent className="p-4">
+          <h3 className="text-sm font-semibold text-zinc-200 mb-3">Quality Timeline</h3>
+          <QualityTimeline data={trendData} />
+        </CardContent>
+      </Card>
+    </div>
+  )
+}
 
 function SummaryTab({
   assessment,

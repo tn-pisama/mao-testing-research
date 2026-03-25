@@ -16,6 +16,7 @@ import { Button } from '../ui/Button'
 import { TermTooltip, getPlainEnglishTitle } from '../ui/Tooltip'
 import { FixPreviewModal } from '../healing/FixPreviewModal'
 import type { Detection, N8nConnection, WorkflowDiff } from '@/lib/api'
+import { QualityScoreBadge } from './QualityScoreBadge'
 
 interface FailureCardProps {
   detection: Detection
@@ -125,6 +126,13 @@ export function FailureCard({
                   {severityStyle.label}
                 </Badge>
                 <ConfidenceTierBadge tier={detection.confidence_tier} />
+                {detection.quality_score != null && (
+                  <QualityScoreBadge
+                    score={detection.quality_score}
+                    dimensions={detection.quality_dimensions}
+                    size="sm"
+                  />
+                )}
                 <TermTooltip term="confidence">
                   <span className="text-xs text-zinc-500">
                     {Math.round(detection.confidence)}% certain
