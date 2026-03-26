@@ -49,23 +49,40 @@ class SLMJudge:
         os.path.dirname(__file__), "..", "..", "..", "models", "pisama-slm-judge-v1"
     )
 
+    # Modal endpoint for remote GPU inference
+    REMOTE_ENDPOINT = os.environ.get(
+        "SLM_JUDGE_URL",
+        "https://tuomo--pisama-slm-serve-slmjudgeservice-judge.modal.run",
+    )
+    REMOTE_HEALTH = os.environ.get(
+        "SLM_JUDGE_HEALTH_URL",
+        "https://tuomo--pisama-slm-serve-slmjudgeservice-health.modal.run",
+    )
+
     def __init__(
         self,
         model_path: Optional[str] = None,
         model_name: str = "pisama-slm-judge-v1",
         use_mock: bool = False,  # Default to trying real model
+        use_remote: bool = True,  # Prefer remote Modal endpoint
     ):
         self.model_name = model_name
         self.model_path = model_path or self.DEFAULT_MODEL_PATH
         self._model = None
         self._tokenizer = None
+        self.use_remote = use_remote
 
-        # Auto-detect: if trained model exists, use it; otherwise mock
-        if os.path.exists(os.path.join(self.model_path, "adapter_config.json")):
+        # Priority: remote > local model > mock
+        if use_remote:
             self.use_mock = False
+            logger.info("SLM judge: using remote Modal endpoint")
+        elif os.path.exists(os.path.join(self.model_path, "adapter_config.json")):
+            self.use_mock = False
+            self.use_remote = False
             logger.info("SLM judge: found trained model at %s", self.model_path)
         else:
             self.use_mock = use_mock if use_mock else True
+            self.use_remote = False
             logger.info("SLM judge: no trained model found, using mock mode")
 
     def _load_model(self):
@@ -111,6 +128,35 @@ class SLMJudge:
             logger.warning("Failed to load SLM judge: %s. Falling back to mock.", e)
             self.use_mock = True
 
+    def _remote_judge(self, detection_type: str, input_text: str) -> SLMVerdict:
+        """Call the remote Modal GPU endpoint for inference."""
+        import urllib.request
+        import urllib.error
+
+        payload = json.dumps({
+            "detection_type": detection_type,
+            "text": input_text[:400],
+        }).encode()
+
+        req = urllib.request.Request(
+            self.REMOTE_ENDPOINT,
+            data=payload,
+            headers={"Content-Type": "application/json"},
+            method="POST",
+        )
+
+        try:
+            with urllib.request.urlopen(req, timeout=30) as resp:
+                result = json.loads(resp.read().decode())
+                return SLMVerdict(
+                    detected=result.get("detected", False),
+                    confidence=result.get("confidence", 0.15),
+                    model_name=result.get("model", self.model_name),
+                )
+        except (urllib.error.URLError, TimeoutError, Exception) as e:
+            logger.warning("Remote SLM call failed: %s. Falling back to mock.", e)
+            return self._mock_judge(detection_type, input_text)
+
     def judge(
         self,
         detection_type: str,
@@ -130,6 +176,8 @@ class SLMJudge:
 
         if self.use_mock:
             verdict = self._mock_judge(detection_type, input_text)
+        elif self.use_remote:
+            verdict = self._remote_judge(detection_type, input_text)
         else:
             verdict = self._model_judge(detection_type, input_text)
 

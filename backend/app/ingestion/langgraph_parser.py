@@ -178,5 +178,36 @@ class LangGraphParser(BaseProviderParser):
 
         return states
 
+    def extract_subgraph_links(
+        self, run: LangGraphRun
+    ) -> List[Dict[str, str]]:
+        """Extract subgraph invocations from LangGraph run steps.
+
+        Steps with non-None checkpoint_ns belong to a subgraph.
+        Groups them by namespace and returns parent-child pairs.
+
+        Returns list of dicts with:
+            parent_run_id: the main graph run ID
+            subgraph_namespace: the checkpoint_ns value
+            step_count: number of steps in the subgraph
+        """
+        subgraph_steps: Dict[str, List[LangGraphStep]] = {}
+        for step in run.steps:
+            if step.checkpoint_ns:
+                ns = step.checkpoint_ns
+                if ns not in subgraph_steps:
+                    subgraph_steps[ns] = []
+                subgraph_steps[ns].append(step)
+
+        links = []
+        for ns, steps in subgraph_steps.items():
+            links.append({
+                "parent_run_id": run.run_id,
+                "subgraph_namespace": ns,
+                "step_count": len(steps),
+            })
+
+        return links
+
 
 langgraph_parser = LangGraphParser()

@@ -55,6 +55,12 @@ class DetectionType(Enum):
     LANGGRAPH_CHECKPOINT_CORRUPTION = "langgraph_checkpoint_corruption"  # Checkpoint/resume corruption
     # Convergence detection (metric-aware)
     CONVERGENCE = "convergence"  # Metric plateau, regression, thrashing, divergence
+    # Delegation quality detection
+    DELEGATION = "delegation"  # Missing criteria, vague instructions, incomplete handoffs
+    # Orchestration quality (multi-agent workflow quality assessment)
+    ORCHESTRATION_QUALITY = "orchestration_quality"  # Efficiency, utilization, parallelization
+    # Multi-chain interaction (cross-trace failure detection)
+    MULTI_CHAIN = "multi_chain"  # Cascade failures, cross-chain loops, data propagation
 
 
 @dataclass

@@ -187,5 +187,50 @@ class DifyParser(BaseProviderParser):
 
         return states
 
+    def extract_app_invocation_links(
+        self, run: DifyWorkflowRun
+    ) -> List[Dict[str, str]]:
+        """Extract cross-app invocations from HTTP request nodes.
+
+        Detects Dify HTTP request nodes that call Dify's own API to invoke
+        another workflow or app (POST /v1/workflows/run or /v1/chat-messages).
+
+        Returns list of dicts with:
+            parent_run_id: this workflow run's ID
+            target_app_id: the invoked app's ID (if extractable)
+            node_title: which node made the call
+        """
+        links = []
+        for node in run.nodes:
+            if node.node_type != "http_request":
+                continue
+
+            # Check inputs for Dify API calls
+            url = str(node.inputs.get("url", ""))
+            body = str(node.inputs.get("body", ""))
+
+            is_dify_call = (
+                "/v1/workflows/run" in url
+                or "/v1/chat-messages" in url
+                or "/v1/completion-messages" in url
+            )
+
+            if is_dify_call:
+                # Try to extract app_id from URL or body
+                target_app_id = ""
+                # URL pattern: /apps/{app_id}/...
+                if "/apps/" in url:
+                    parts = url.split("/apps/")
+                    if len(parts) > 1:
+                        target_app_id = parts[1].split("/")[0]
+
+                links.append({
+                    "parent_run_id": run.workflow_run_id,
+                    "target_app_id": target_app_id,
+                    "node_title": node.title,
+                })
+
+        return links
+
 
 dify_parser = DifyParser()

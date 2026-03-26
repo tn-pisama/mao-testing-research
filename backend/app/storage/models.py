@@ -134,6 +134,7 @@ class Trace(Base):
     total_cost_cents = Column(Integer, default=0)
     is_conversation = Column(Boolean, default=False)
     harness_type = Column(String(32), nullable=True)  # single_agent/pipeline/gan_evaluator/hierarchical/sprint_based
+    correlation_id = Column(String(128), nullable=True)  # Groups related traces across chains
     created_at = Column(DateTime(timezone=True), server_default=func.now())
     completed_at = Column(DateTime(timezone=True), nullable=True)
 
@@ -147,6 +148,8 @@ class Trace(Base):
         Index("idx_traces_session", "session_id"),
         Index("idx_traces_tenant_created", "tenant_id", "created_at"),
         Index("idx_traces_tenant_status", "tenant_id", "status"),
+        Index("idx_traces_parent", "parent_trace_id"),
+        Index("idx_traces_correlation", "correlation_id"),
     )
 
 

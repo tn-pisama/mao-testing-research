@@ -30,6 +30,7 @@ from .llm_judge import (
     LOW_STAKES_FAILURE_MODES,
     HIGH_STAKES_FAILURE_MODES,
 )
+from .llm_judge.slm_judge import SLMJudge, SLMVerdict
 from .task_extractors import (
     ConversationTurn,
     ExtractionResult,
@@ -103,6 +104,12 @@ class HybridPipelineConfig:
     # Maximum LLM cost per trace (USD)
     max_llm_cost_per_trace: float = 0.10
 
+    # SLM pre-screening: route low/medium-stakes detections through the $0 SLM
+    # before falling through to expensive Claude calls. If SLM agrees with
+    # pattern detector at high confidence, skip LLM entirely.
+    slm_enabled: bool = True
+    slm_confidence_accept: float = 0.80  # SLM must be this confident to skip LLM
+
     # 3-Tier model selection (based on benchmark results claude_comparison_20260111)
     # Low-stakes: haiku-3.5 ($0.11/100 judgments, 97.1% accuracy)
     # Default: sonnet-4 ($0.48/100 judgments, 97.1% accuracy)
@@ -133,11 +140,20 @@ class HybridDetectionPipeline:
         self,
         config: Optional[HybridPipelineConfig] = None,
         llm_judge: Optional[MASTLLMJudge] = None,
+        slm_judge: Optional[SLMJudge] = None,
     ):
         self.config = config or HybridPipelineConfig()
         self._llm_judge = llm_judge
+        self._slm_judge = slm_judge
         # Cache for tiered model judges
         self._judges_by_model: Dict[str, MASTLLMJudge] = {}
+
+    @property
+    def slm_judge(self) -> SLMJudge:
+        """Lazy-load SLM judge."""
+        if self._slm_judge is None:
+            self._slm_judge = SLMJudge()
+        return self._slm_judge
 
     @property
     def llm_judge(self) -> MASTLLMJudge:
@@ -304,6 +320,54 @@ class HybridDetectionPipeline:
             llm_tokens_used=llm_result.tokens_used if llm_result else 0,
         )
 
+    def _try_slm_prescreen(
+        self,
+        pattern_result: TurnAwareDetectionResult,
+    ) -> Optional[VerificationDecision]:
+        """Try SLM pre-screening before expensive LLM call.
+
+        Returns a decision if SLM is confident enough, None if LLM needed.
+        """
+        if not self.config.slm_enabled:
+            return None
+
+        # Skip SLM for high-stakes modes — always use Claude
+        if pattern_result.failure_mode in self.config.high_stakes_modes:
+            return None
+
+        # Build input text from pattern result
+        input_text = f"{pattern_result.failure_mode}: {pattern_result.explanation}"
+        detection_type = pattern_result.failure_mode
+
+        try:
+            slm_verdict = self.slm_judge.judge(detection_type, input_text)
+
+            # SLM agrees with pattern at high confidence → skip LLM
+            if slm_verdict.confidence >= self.config.slm_confidence_accept:
+                if slm_verdict.detected and pattern_result.detected:
+                    logger.info(
+                        "SLM pre-screen: confirmed %s (conf=%.2f), skipping LLM",
+                        detection_type, slm_verdict.confidence,
+                    )
+                    return VerificationDecision.ACCEPT
+                elif not slm_verdict.detected and not pattern_result.detected:
+                    logger.info(
+                        "SLM pre-screen: rejected %s (conf=%.2f), skipping LLM",
+                        detection_type, slm_verdict.confidence,
+                    )
+                    return VerificationDecision.REJECT
+
+            # SLM not confident or disagrees → fall through to LLM
+            logger.debug(
+                "SLM pre-screen inconclusive for %s (slm=%s/%.2f, pattern=%s/%.2f)",
+                detection_type, slm_verdict.detected, slm_verdict.confidence,
+                pattern_result.detected, pattern_result.confidence,
+            )
+            return None
+        except Exception as e:
+            logger.warning("SLM pre-screen failed: %s", e)
+            return None
+
     def verify_detection(
         self,
         pattern_result: TurnAwareDetectionResult,
@@ -326,6 +390,11 @@ class HybridDetectionPipeline:
 
         if decision != VerificationDecision.VERIFY:
             return self._combine_results(pattern_result, None, decision)
+
+        # Try SLM pre-screening first ($0 vs $0.01+ for LLM)
+        slm_decision = self._try_slm_prescreen(pattern_result)
+        if slm_decision is not None:
+            return self._combine_results(pattern_result, None, slm_decision)
 
         # Extract task and context for LLM
         extraction = extract_task(turns, metadata)
@@ -377,6 +446,12 @@ class HybridDetectionPipeline:
 
             if decision != VerificationDecision.VERIFY:
                 results.append(self._combine_results(pattern_result, None, decision))
+                continue
+
+            # Try SLM pre-screening first ($0)
+            slm_decision = self._try_slm_prescreen(pattern_result)
+            if slm_decision is not None:
+                results.append(self._combine_results(pattern_result, None, slm_decision))
                 continue
 
             # Check cost budget

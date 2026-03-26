@@ -701,6 +701,45 @@ def _build_detector_runners() -> Dict[DetectionType, Any]:
     except Exception as exc:
         logger.warning("Could not import delegation detector: %s", exc)
 
+    # --- Orchestration Quality ---
+    try:
+        from app.detection.orchestration_quality import OrchestrationQualityScorer
+
+        def _run_orchestration_quality(entry):
+            from app.detection.orchestration_quality import detect as oq_detect
+            messages = entry.input_data.get("messages")
+            states = entry.input_data.get("states")
+            agent_ids = entry.input_data.get("agent_ids")
+            if messages:
+                detected, confidence, _ = oq_detect(messages=messages, agent_ids=agent_ids)
+            elif states:
+                detected, confidence, _ = oq_detect(states=states)
+            else:
+                return False, 0.0
+            return detected, confidence
+
+        runners[DetectionType.ORCHESTRATION_QUALITY] = _run_orchestration_quality
+    except Exception as exc:
+        logger.warning("Could not import orchestration quality scorer: %s", exc)
+
+    # --- Multi-Chain Interaction ---
+    try:
+        from app.detection.multi_chain import build_trace_graph, MultiChainAnalyzer
+
+        def _run_multi_chain(entry):
+            traces = entry.input_data.get("traces", [])
+            links = entry.input_data.get("links", [])
+            if not traces or len(traces) < 2:
+                return False, 0.0
+            graph = build_trace_graph(traces, links)
+            analyzer = MultiChainAnalyzer()
+            result = analyzer.analyze(graph)
+            return result.detected, result.confidence
+
+        runners[DetectionType.MULTI_CHAIN] = _run_multi_chain
+    except Exception as exc:
+        logger.warning("Could not import multi-chain analyzer: %s", exc)
+
     return runners
 
 

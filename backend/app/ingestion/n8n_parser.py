@@ -209,5 +209,33 @@ class N8nParser(BaseProviderParser):
 
         return None
 
+    def extract_sub_workflow_links(
+        self, execution: N8nExecution
+    ) -> List[Dict[str, str]]:
+        """Extract sub-workflow invocations from Execute Workflow nodes.
+
+        Returns list of dicts with:
+            parent_execution_id: this execution's ID
+            child_workflow_id: the invoked workflow's ID
+            node_name: which node triggered the invocation
+        """
+        links = []
+        for node in execution.nodes:
+            # n8n Execute Workflow node type
+            if "executeWorkflow" in node.type or "ExecuteWorkflow" in node.name:
+                child_wf_id = node.parameters.get("workflowId", "")
+                if not child_wf_id:
+                    # Try nested value format
+                    wf_val = node.parameters.get("workflowId", {})
+                    if isinstance(wf_val, dict):
+                        child_wf_id = wf_val.get("value", "")
+                if child_wf_id:
+                    links.append({
+                        "parent_execution_id": execution.id,
+                        "child_workflow_id": str(child_wf_id),
+                        "node_name": node.name,
+                    })
+        return links
+
 
 n8n_parser = N8nParser()
