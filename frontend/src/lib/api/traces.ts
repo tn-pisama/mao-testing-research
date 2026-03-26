@@ -50,6 +50,34 @@ export interface TraceListResponse {
   per_page: number
 }
 
+// Orchestration Quality types
+export interface OrchestrationQualityResponse {
+  overall: number
+  topology: string
+  dimensions: Record<string, number>
+  issues: string[]
+  agent_stats: Record<string, { state_count: number; total_latency_ms: number; errors: number; role: string }>
+  critical_path: string[]
+  mode: string
+}
+
+// Chain Analysis types
+export interface ChainAnalysisIssue {
+  issue_type: string
+  description: string
+  severity: string
+  affected_traces: string[]
+}
+
+export interface ChainAnalysisResponse {
+  detected: boolean
+  confidence: number
+  issues: ChainAnalysisIssue[]
+  trace_count: number
+  root_traces: string[]
+  explanation: string
+}
+
 // ---------------------------------------------------------------------------
 // API methods (bound into the client factory)
 // ---------------------------------------------------------------------------
@@ -78,6 +106,20 @@ export function createTracesApi(opts: FetchOptions) {
 
     async analyzeTrace(traceId: string) {
       return fetchApi<unknown>(`/tenants/{tenant_id}/traces/${traceId}/analyze`, { ...opts, method: 'POST' })
+    },
+
+    async getOrchestrationQuality(traceId: string) {
+      return fetchApi<OrchestrationQualityResponse>(
+        `/tenants/{tenant_id}/traces/${traceId}/orchestration-quality`,
+        opts
+      )
+    },
+
+    async getChainAnalysis(traceId: string) {
+      return fetchApi<ChainAnalysisResponse>(
+        `/tenants/{tenant_id}/traces/${traceId}/chain-analysis`,
+        opts
+      )
     },
   }
 }

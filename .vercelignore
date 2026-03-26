@@ -10,3 +10,12 @@ content/
 *.pyc
 __pycache__
 data/
+frontend/.next/
+frontend/node_modules/
+models/
+.venv/
+_archived/
+scripts/
+benchmarks/
+n8n-workflows/
+n8n-nodes-claude-thinking/

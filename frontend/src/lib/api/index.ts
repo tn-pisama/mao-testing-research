@@ -7,7 +7,10 @@ export { fetchApi } from './client'
 export type { FetchOptions, ApiError } from './client'
 
 // Traces
-export type { Trace, State, TraceListResponse } from './traces'
+export type {
+  Trace, State, TraceListResponse,
+  OrchestrationQualityResponse, ChainAnalysisResponse, ChainAnalysisIssue,
+} from './traces'
 
 // Detections
 export type {
@@ -44,6 +47,9 @@ export type {
   WorkflowVersion,
   VersionHistoryResponse,
   RestoreVersionResponse,
+  HealingProgressResponse,
+  HealingProgressSummary,
+  DetectorProgressItem,
 } from './healing'
 
 // Diagnose

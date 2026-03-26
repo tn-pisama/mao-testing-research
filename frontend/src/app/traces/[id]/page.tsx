@@ -9,6 +9,8 @@ import { Skeleton } from '@/components/ui/Skeleton'
 import { TraceViewer } from '@/components/traces/TraceViewer'
 import { WaterfallTimeline } from '@/components/traces/WaterfallTimeline'
 import { FailureCard } from '@/components/detection/FailureCard'
+import { OrchestrationQualityPanel } from '@/components/traces/OrchestrationQualityPanel'
+import { ChainAnalysisPanel } from '@/components/traces/ChainAnalysisPanel'
 import { api } from '@/lib/api'
 
 const TraceFlowGraph = dynamic(
@@ -16,12 +18,14 @@ const TraceFlowGraph = dynamic(
   { ssr: false, loading: () => <Skeleton className="h-96 rounded-xl" /> }
 )
 
-type TraceTab = 'waterfall' | 'flow' | 'states'
+type TraceTab = 'waterfall' | 'flow' | 'states' | 'quality' | 'chain'
 
 const tabs: { id: TraceTab; label: string }[] = [
   { id: 'waterfall', label: 'Waterfall' },
   { id: 'flow', label: 'Flow Graph' },
   { id: 'states', label: 'States' },
+  { id: 'quality', label: 'Quality' },
+  { id: 'chain', label: 'Chain Analysis' },
 ]
 
 export default function TraceDetailPage() {
@@ -116,6 +120,14 @@ export default function TraceDetailPage() {
 
         {activeTab === 'states' && (
           <TraceViewer trace={trace} states={states || []} isLoading={statesLoading} />
+        )}
+
+        {activeTab === 'quality' && id && (
+          <OrchestrationQualityPanel traceId={id} />
+        )}
+
+        {activeTab === 'chain' && id && (
+          <ChainAnalysisPanel traceId={id} />
         )}
       </div>
     </Layout>

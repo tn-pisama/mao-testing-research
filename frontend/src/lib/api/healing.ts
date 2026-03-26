@@ -223,6 +223,33 @@ export interface RestoreVersionResponse {
   message: string
 }
 
+// Healing progress types
+export interface DetectorProgressItem {
+  before: number | null
+  after: number | null
+  status: 'pending' | 'fixing' | 'fixed' | 'failed' | 'rolled_back'
+}
+
+export interface HealingProgressResponse {
+  healing_id: string
+  overall_status: string
+  detector_progress: Record<string, DetectorProgressItem>
+  total_detectors: number
+  fixed_count: number
+  failed_count: number
+  pending_count: number
+}
+
+export interface HealingProgressSummary {
+  total_healings: number
+  active_healings: number
+  total_detectors_healed: number
+  total_detectors_failed: number
+  total_detectors_pending: number
+  success_rate: number
+  by_detection_type: Record<string, { healed: number; failed: number; pending: number }>
+}
+
 // Re-export for convenience
 export type { FixSuggestionSummary, CodeChange }
 
@@ -391,6 +418,21 @@ export function createHealingApi(opts: FetchOptions) {
       return fetchApi<{ formats: Array<{ name: string; description: string; default?: boolean; example_marker?: string }> }>(
         '/diagnose/formats',
         {}
+      )
+    },
+
+    // Healing progress tracking
+    async getHealingProgress(healingId: string) {
+      return fetchApi<HealingProgressResponse>(
+        `/tenants/{tenant_id}/healing/${healingId}/progress`,
+        opts
+      )
+    },
+
+    async getHealingProgressSummary() {
+      return fetchApi<HealingProgressSummary>(
+        `/tenants/{tenant_id}/healing/progress-summary`,
+        opts
       )
     },
   }
