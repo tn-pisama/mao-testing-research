@@ -114,7 +114,6 @@ nav:
       - Execution Failures: detection/failure-modes/execution.md
       - Verification Failures: detection/failure-modes/verification.md
       - Extended Detectors: detection/failure-modes/extended.md
-  - Pricing: pricing/index.md
   - Contributing:
     - Development Setup: contributing/development.md
     - Adding Detectors: contributing/adding-detectors.md
