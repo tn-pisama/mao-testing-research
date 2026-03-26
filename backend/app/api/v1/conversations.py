@@ -168,7 +168,7 @@ async def list_conversations(
         turns_result = await db.execute(
             select(ConversationTurn).where(
                 ConversationTurn.trace_id == trace.id
-            ).order_by(ConversationTurn.turn_number)
+            ).order_by(ConversationTurn.turn_number).limit(200)  # M5: cap at 200 turns
         )
         turns = turns_result.scalars().all()
 

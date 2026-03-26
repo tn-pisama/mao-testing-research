@@ -253,8 +253,8 @@ async def _get_cached_dashboard(tenant_id: str, days: int) -> dict | None:
             cached = await rate_limiter._redis.get(f"dashboard:{tenant_id}:{days}")
             if cached:
                 return json.loads(cached)
-    except Exception:
-        pass
+    except Exception as e:
+        logger.debug("Dashboard cache read failed: %s", e)
     return None
 
 
@@ -268,8 +268,8 @@ async def _set_cached_dashboard(tenant_id: str, days: int, data: dict) -> None:
                 DASHBOARD_CACHE_TTL,
                 json.dumps(data, default=str),
             )
-    except Exception:
-        pass
+    except Exception as e:
+        logger.debug("Dashboard cache write failed: %s", e)
 
 
 async def invalidate_dashboard_cache(tenant_id: str) -> None:
@@ -277,14 +277,13 @@ async def invalidate_dashboard_cache(tenant_id: str) -> None:
     try:
         await rate_limiter.connect()
         if rate_limiter._redis:
-            # Delete all dashboard cache keys for this tenant
             keys = []
             async for key in rate_limiter._redis.scan_iter(f"dashboard:{tenant_id}:*"):
                 keys.append(key)
             if keys:
                 await rate_limiter._redis.delete(*keys)
-    except Exception:
-        pass
+    except Exception as e:
+        logger.debug("Dashboard cache invalidation failed: %s", e)
 
 
 @router.get("", response_model=DashboardResponse)

@@ -42,7 +42,11 @@ class RateLimiter:
         if not _REDIS_AVAILABLE:
             return
         if self._redis is None:
-            self._redis = await aioredis.from_url(self.redis_url)
+            self._redis = await aioredis.from_url(
+                self.redis_url,
+                max_connections=50,  # M6: Explicit pool size
+                decode_responses=True,
+            )
 
     async def close(self):
         if self._redis:

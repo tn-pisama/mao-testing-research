@@ -313,13 +313,15 @@ async def get_trace(
     if not trace:
         raise HTTPException(status_code=404, detail="Trace not found")
     
-    state_count = await db.execute(
-        select(func.count()).where(State.trace_id == trace.id)
+    # M1: Single query for both counts (avoids N+1)
+    counts = await db.execute(
+        select(
+            func.count(State.id).filter(State.trace_id == trace.id).label("state_count"),
+            func.count(Detection.id).filter(Detection.trace_id == trace.id).label("detection_count"),
+        )
     )
-    detection_count = await db.execute(
-        select(func.count()).where(Detection.trace_id == trace.id)
-    )
-    
+    row = counts.one()
+
     return TraceResponse(
         id=trace.id,
         session_id=trace.session_id,
@@ -329,8 +331,8 @@ async def get_trace(
         total_cost_cents=trace.total_cost_cents,
         created_at=trace.created_at,
         completed_at=trace.completed_at,
-        state_count=state_count.scalar(),
-        detection_count=detection_count.scalar(),
+        state_count=row.state_count,
+        detection_count=row.detection_count,
     )
 
 
