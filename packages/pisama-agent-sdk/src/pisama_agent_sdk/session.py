@@ -25,6 +25,11 @@ class SessionState:
     created_at: datetime = field(default_factory=lambda: datetime.now(timezone.utc))
     last_activity: datetime = field(default_factory=lambda: datetime.now(timezone.utc))
 
+    # Harness-aware fields (for multi-agent orchestration tracing)
+    agent_role: Optional[str] = None  # planner/generator/evaluator/orchestrator/tool
+    sprint_id: Optional[str] = None  # Groups spans into sprint boundaries
+    context_reset: bool = False  # True if context was cleared at session start
+
     # Blocking state
     blocked: bool = False
     block_reason: Optional[str] = None
@@ -50,7 +55,7 @@ class SessionState:
                 - session_duration_s: Session duration in seconds
         """
         recent = list(self.recent_spans)[:window]
-        return {
+        ctx = {
             "recent_spans": recent,
             "tool_counts": dict(self.tool_counts),
             "total_tools": len(self.recent_spans),
@@ -58,6 +63,14 @@ class SessionState:
                 datetime.now(timezone.utc) - self.created_at
             ).total_seconds(),
         }
+        # Include harness-aware fields if set
+        if self.agent_role:
+            ctx["agent_role"] = self.agent_role
+        if self.sprint_id:
+            ctx["sprint_id"] = self.sprint_id
+        if self.context_reset:
+            ctx["context_reset"] = self.context_reset
+        return ctx
 
     def get_recent_tool_sequence(self, n: int = 5) -> list[str]:
         """Get the sequence of recent tool names.

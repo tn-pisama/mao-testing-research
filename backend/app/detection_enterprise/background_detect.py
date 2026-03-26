@@ -101,22 +101,27 @@ async def _maybe_run_shadow_eval() -> None:
         from app.storage.database import async_session_maker
         from app.storage.models import ShadowEvalResult as ShadowEvalModel
         from pisama_detectors import DETECTOR_REGISTRY, _try_run_detector
+        from dataclasses import asdict
 
         dataset = GoldenDataset()
-        entries = [e.__dict__ if hasattr(e, '__dict__') else e for e in dataset.entries]
+        # GoldenDataset.entries is Dict[str, GoldenDatasetEntry] — convert to list of dicts
+        entries = [asdict(e) for e in dataset.entries.values()]
 
         sample = pick_shadow_sample(entries)
         if not sample:
             return
 
         det_type = sample.get("detection_type", "")
+        # DetectionType enum — convert to string if needed
+        if hasattr(det_type, "value"):
+            det_type = det_type.value
         if det_type not in DETECTOR_REGISTRY:
             return
 
         detector_fn = DETECTOR_REGISTRY[det_type].function
 
         def runner(input_data):
-            result = _try_run_detector(detector_fn, input_data)
+            result = _try_run_detector(det_type, detector_fn, input_data)
             if result is None:
                 return False, 0.0
             return getattr(result, "detected", False), getattr(result, "confidence", 0.0)
