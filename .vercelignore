@@ -1,0 +1,12 @@
+backend/
+cli/
+packages/
+docs/
+docs-site/
+deploy/
+content/
+.claude/
+.git/
+*.pyc
+__pycache__
+data/
