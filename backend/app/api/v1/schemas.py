@@ -53,6 +53,22 @@ class UserResponse(BaseModel):
     created_at: datetime
 
 
+class LoginRequest(BaseModel):
+    email: str = Field(..., min_length=1, max_length=255)
+    password: str = Field(..., min_length=1, max_length=128)
+
+
+class LoginResponse(BaseModel):
+    access_token: str
+    tenant_id: str
+    user_id: str
+
+
+class SetPasswordRequest(BaseModel):
+    email: str = Field(..., min_length=1, max_length=255)
+    password: str = Field(..., min_length=8, max_length=128)
+
+
 class TraceIngestRequest(BaseModel):
     resourceSpans: List[Dict[str, Any]]
 

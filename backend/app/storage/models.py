@@ -44,6 +44,7 @@ class User(Base):
     google_user_id = Column(String(255), unique=True, nullable=True)  # New Google OAuth ID
     tenant_id = Column(UUID(as_uuid=True), ForeignKey("tenants.id"), nullable=True)
     email = Column(String(255), nullable=False)
+    password_hash = Column(String(128), nullable=True)
     name = Column(String(255), nullable=True)
     role = Column(String(50), default="member")
     created_at = Column(DateTime(timezone=True), server_default=func.now())

@@ -12,12 +12,14 @@ from jose import JWTError, jwt as jose_jwt
 from app.storage.database import get_db
 from app.storage.models import Tenant, ApiKey, User
 from app.core.auth import hash_api_key, verify_api_key, create_access_token, security
+import bcrypt
 from app.config import get_settings
 from app.core.dependencies import AuthContext, get_current_user_or_tenant
 from app.core.rate_limit import rate_limiter
 from app.api.v1.schemas import (
     TenantCreate, TenantResponse, TokenRequest, TokenResponse,
-    ApiKeyCreateRequest, ApiKeyResponse, ApiKeyCreateResponse, UserResponse
+    ApiKeyCreateRequest, ApiKeyResponse, ApiKeyCreateResponse, UserResponse,
+    LoginRequest, LoginResponse, SetPasswordRequest,
 )
 
 router = APIRouter(prefix="/auth", tags=["auth"])
@@ -317,6 +319,75 @@ async def create_server_token(
         raise HTTPException(status_code=404, detail="User not found")
     token = create_access_token(str(user.tenant_id))
     return {"access_token": token, "tenant_id": str(user.tenant_id)}
+
+
+@router.post("/login", response_model=LoginResponse)
+async def login_with_password(
+    request: LoginRequest,
+    http_request: Request,
+    db: AsyncSession = Depends(get_db),
+):
+    """Email/password login for invited users. No registration."""
+    client_ip = http_request.client.host if http_request.client else "unknown"
+    rate_key = f"login_rate_limit:{client_ip}"
+    allowed = await rate_limiter.check_rate_limit(rate_key, AUTH_RATE_LIMIT, AUTH_RATE_WINDOW)
+    if not allowed:
+        raise HTTPException(
+            status_code=status.HTTP_429_TOO_MANY_REQUESTS,
+            detail="Too many login attempts. Please try again later."
+        )
+
+    result = await db.execute(select(User).where(User.email == request.email))
+    user = result.scalar_one_or_none()
+
+    if not user or not user.password_hash:
+        raise HTTPException(
+            status_code=status.HTTP_401_UNAUTHORIZED,
+            detail="Invalid email or password",
+        )
+
+    if not bcrypt.checkpw(request.password.encode("utf-8"), user.password_hash.encode("utf-8")):
+        raise HTTPException(
+            status_code=status.HTTP_401_UNAUTHORIZED,
+            detail="Invalid email or password",
+        )
+
+    if not user.tenant_id:
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail="User has no tenant assigned",
+        )
+
+    access_token = create_access_token(str(user.tenant_id))
+    return LoginResponse(
+        access_token=access_token,
+        tenant_id=str(user.tenant_id),
+        user_id=str(user.id),
+    )
+
+
+@router.post("/set-password", status_code=status.HTTP_200_OK)
+async def set_user_password(
+    request: SetPasswordRequest,
+    http_request: Request,
+    db: AsyncSession = Depends(get_db),
+):
+    """Set password for an existing user. Protected by SERVER_AUTH_SECRET."""
+    settings = get_settings()
+    secret = http_request.headers.get("x-server-secret")
+    if not settings.server_auth_secret or not secret or secret != settings.server_auth_secret:
+        raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="Forbidden")
+
+    result = await db.execute(select(User).where(User.email == request.email))
+    user = result.scalar_one_or_none()
+    if not user:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="User not found")
+
+    user.password_hash = bcrypt.hashpw(
+        request.password.encode("utf-8"), bcrypt.gensalt()
+    ).decode("utf-8")
+    await db.commit()
+    return {"status": "ok", "email": request.email}
 
 
 @router.get("/tenant-by-email")

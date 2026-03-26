@@ -1,5 +1,6 @@
 import type { NextAuthOptions } from 'next-auth'
 import GoogleProvider from 'next-auth/providers/google'
+import CredentialsProvider from 'next-auth/providers/credentials'
 import type { JWT } from 'next-auth/jwt'
 import type { Session } from 'next-auth'
 
@@ -13,6 +14,35 @@ export const authOptions: NextAuthOptions = {
       clientId: process.env.GOOGLE_CLIENT_ID || '',
       clientSecret: process.env.GOOGLE_CLIENT_SECRET || '',
     }),
+    CredentialsProvider({
+      name: 'Email',
+      credentials: {
+        email: { label: 'Email', type: 'email' },
+        password: { label: 'Password', type: 'password' },
+      },
+      async authorize(credentials) {
+        if (!credentials?.email || !credentials?.password) return null
+
+        const res = await fetch(`${BACKEND_URL}/auth/login`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            email: credentials.email,
+            password: credentials.password,
+          }),
+        })
+
+        if (!res.ok) return null
+
+        const data = await res.json()
+        return {
+          id: data.user_id,
+          email: credentials.email,
+          accessToken: data.access_token,
+          tenantId: data.tenant_id,
+        }
+      },
+    }),
   ],
   callbacks: {
     async signIn({ account, profile }) {
@@ -25,6 +55,14 @@ export const authOptions: NextAuthOptions = {
       return true
     },
     async jwt({ token, account, user }) {
+      // Credentials provider: user object carries the backend token
+      if (user && (user as any).accessToken) {
+        token.accessToken = (user as any).accessToken
+        token.tenantId = (user as any).tenantId
+        token.backendTokenExpiry = Date.now() + 23 * 60 * 60 * 1000
+        return token
+      }
+
       // Initial sign-in: exchange Google token for backend JWT
       if (account && user) {
         token.idToken = account.id_token
