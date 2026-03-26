@@ -103,3 +103,4 @@ _archived/
 *.tfstate
 *.tfstate.*
 .terraform.lock.hcl
+backend/models/

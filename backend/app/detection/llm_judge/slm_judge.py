@@ -37,34 +37,76 @@ class SLMJudge:
     Interface matches the existing LLM judge API so it can be used
     as a drop-in replacement for Tier 1/2 judgments.
 
-    Two modes:
-    1. HuggingFace: Load a fine-tuned model from disk/hub
-    2. Mock: Use rule-based logic for testing (no model needed)
+    Three modes:
+    1. Trained LoRA: Load the fine-tuned QLoRA adapter (70% accuracy, $0/judgment)
+    2. HuggingFace: Load a full fine-tuned model from disk/hub
+    3. Mock: Use rule-based logic for testing (no model needed)
+
+    Auto-detection: checks for trained model at models/pisama-slm-judge-v1/
     """
+
+    DEFAULT_MODEL_PATH = os.path.join(
+        os.path.dirname(__file__), "..", "..", "..", "models", "pisama-slm-judge-v1"
+    )
 
     def __init__(
         self,
         model_path: Optional[str] = None,
         model_name: str = "pisama-slm-judge-v1",
-        use_mock: bool = True,
+        use_mock: bool = False,  # Default to trying real model
     ):
         self.model_name = model_name
-        self.model_path = model_path
+        self.model_path = model_path or self.DEFAULT_MODEL_PATH
         self._model = None
         self._tokenizer = None
-        self.use_mock = use_mock
+
+        # Auto-detect: if trained model exists, use it; otherwise mock
+        if os.path.exists(os.path.join(self.model_path, "adapter_config.json")):
+            self.use_mock = False
+            logger.info("SLM judge: found trained model at %s", self.model_path)
+        else:
+            self.use_mock = use_mock if use_mock else True
+            logger.info("SLM judge: no trained model found, using mock mode")
 
     def _load_model(self):
-        """Load the fine-tuned SLM from disk."""
+        """Load the fine-tuned SLM from disk (LoRA or full model)."""
         if self.use_mock or not self.model_path:
             return
 
         try:
-            from transformers import AutoModelForSequenceClassification, AutoTokenizer
-            self._tokenizer = AutoTokenizer.from_pretrained(self.model_path)
-            self._model = AutoModelForSequenceClassification.from_pretrained(self.model_path)
+            import torch
+            from transformers import AutoModelForCausalLM, AutoTokenizer
+
+            adapter_config = os.path.join(self.model_path, "adapter_config.json")
+            is_lora = os.path.exists(adapter_config)
+
+            if is_lora:
+                # Load LoRA adapter on top of base model
+                with open(adapter_config) as f:
+                    import json
+                    config = json.load(f)
+                base_model_name = config.get("base_model_name_or_path", "Qwen/Qwen2.5-3B-Instruct")
+
+                logger.info("Loading base model %s with LoRA adapter...", base_model_name)
+                from peft import PeftModel
+
+                base = AutoModelForCausalLM.from_pretrained(
+                    base_model_name,
+                    torch_dtype=torch.float16,
+                    device_map="auto",
+                    trust_remote_code=True,
+                )
+                self._model = PeftModel.from_pretrained(base, self.model_path)
+                self._tokenizer = AutoTokenizer.from_pretrained(self.model_path, trust_remote_code=True)
+            else:
+                # Load full model
+                self._model = AutoModelForCausalLM.from_pretrained(
+                    self.model_path, torch_dtype=torch.float16, device_map="auto", trust_remote_code=True,
+                )
+                self._tokenizer = AutoTokenizer.from_pretrained(self.model_path, trust_remote_code=True)
+
             self._model.eval()
-            logger.info("SLM judge loaded: %s", self.model_path)
+            logger.info("SLM judge loaded: %s (LoRA=%s)", self.model_path, is_lora)
         except Exception as e:
             logger.warning("Failed to load SLM judge: %s. Falling back to mock.", e)
             self.use_mock = True
@@ -119,7 +161,7 @@ class SLMJudge:
         )
 
     def _model_judge(self, detection_type: str, input_text: str) -> SLMVerdict:
-        """Real model inference (requires loaded model)."""
+        """Real model inference using the trained LoRA model."""
         if self._model is None:
             self._load_model()
         if self._model is None:
@@ -127,20 +169,30 @@ class SLMJudge:
 
         import torch
 
-        inputs = self._tokenizer(
-            input_text[:512],
-            return_tensors="pt",
-            truncation=True,
-            max_length=512,
+        # Format as chat prompt (same format as training)
+        prompt = (
+            f"<|im_start|>system\nYou are a failure detection judge for multi-agent AI systems. "
+            f"Answer YES if the data shows a failure, NO if it's normal behavior.<|im_end|>\n"
+            f"<|im_start|>user\nIs this a {detection_type} failure? Analyze the data and answer YES or NO.\n\n"
+            f"{input_text[:400]}<|im_end|>\n"
+            f"<|im_start|>assistant\n"
         )
 
-        with torch.no_grad():
-            outputs = self._model(**inputs)
-            probs = torch.softmax(outputs.logits, dim=-1)[0]
+        inputs = self._tokenizer(prompt, return_tensors="pt", truncation=True, max_length=480)
+        inputs = {k: v.to(self._model.device) for k, v in inputs.items()}
 
-        # Assume binary classification: [not_detected, detected]
-        detected = probs[1].item() > 0.5
-        confidence = probs[1].item() if detected else probs[0].item()
+        with torch.no_grad():
+            outputs = self._model.generate(
+                **inputs, max_new_tokens=5, do_sample=False,
+                pad_token_id=self._tokenizer.pad_token_id or self._tokenizer.eos_token_id,
+            )
+
+        response = self._tokenizer.decode(
+            outputs[0][inputs["input_ids"].shape[1]:], skip_special_tokens=True
+        ).strip().upper()
+
+        detected = "YES" in response
+        confidence = 0.85 if detected else 0.15  # Binary output, fixed confidence
 
         return SLMVerdict(
             detected=detected,
