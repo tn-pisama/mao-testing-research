@@ -98,6 +98,14 @@ logs/
 models/
 _archived/
 
+# Sensitive environment files (never commit)
+frontend/.env.local
+frontend/.env.vercel.production
+.env.local
+
+# Confidential docs (strategy, pricing, competitive intel)
+docs-internal/
+
 # Terraform
 .terraform/
 *.tfstate

@@ -19,7 +19,7 @@ from fastapi import HTTPException
 
 BLOCKED_HOSTS = {"localhost", "127.0.0.1", "0.0.0.0", "::1", "metadata.google.internal"}  # nosec B104 - blocking, not binding
 BLOCKED_PORTS = {22, 25, 445, 3306, 5432, 6379, 27017}
-TIMESTAMP_TOLERANCE_SECONDS = 30
+TIMESTAMP_TOLERANCE_SECONDS = 10  # Tightened from 30s to prevent replay attacks
 
 SENSITIVE_PATTERNS = [
     re.compile(r'\b[A-Za-z0-9._%+-]+@[A-Za-z0-9.-]+\.[A-Z|a-z]{2,}\b'),
@@ -143,8 +143,19 @@ def compute_state_hash(state_delta: dict) -> str:
 
 
 def hash_api_key(api_key: str) -> str:
-    """Hash an API key for storage. Uses SHA-256 hash."""
-    return hashlib.sha256(api_key.encode()).hexdigest()
+    """Hash an API key for storage using bcrypt (slow hash, rainbow-table resistant)."""
+    import bcrypt
+    return bcrypt.hashpw(api_key.encode(), bcrypt.gensalt()).decode()
+
+
+def verify_api_key(api_key: str, hashed: str) -> bool:
+    """Verify an API key against its bcrypt hash."""
+    import bcrypt
+    try:
+        return bcrypt.checkpw(api_key.encode(), hashed.encode())
+    except (ValueError, TypeError):
+        # Fallback: check if it's a legacy SHA-256 hash
+        return hashlib.sha256(api_key.encode()).hexdigest() == hashed
 
 
 # Backward-compat alias

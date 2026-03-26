@@ -57,9 +57,15 @@ class RateLimiter:
         now = time.time()
         cutoff = now - window
 
-        # Safety valve: clear entire store if it grows too large
+        # Safety valve: evict oldest entries if store grows too large (LRU-style)
         if len(self._memory_store) > 10000:
-            self._memory_store.clear()
+            # Remove 20% oldest keys by earliest timestamp
+            sorted_keys = sorted(
+                self._memory_store.keys(),
+                key=lambda k: min(self._memory_store[k]) if self._memory_store[k] else 0,
+            )
+            for k in sorted_keys[:2000]:
+                del self._memory_store[k]
 
         # Get or create the timestamp list for this key
         timestamps = self._memory_store.get(key, [])

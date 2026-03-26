@@ -36,5 +36,5 @@ UUID_PATTERN = re.compile(r'^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-
 async def set_tenant_context(session: AsyncSession, tenant_id: str):
     if not tenant_id or not UUID_PATTERN.match(tenant_id):
         raise ValueError(f"Invalid tenant_id format: {tenant_id}")
-    # SET doesn't support parameterized queries; tenant_id is UUID-validated above
-    await session.execute(text(f"SET app.current_tenant = '{tenant_id}'"))
+    # Use quoted identifier to prevent SQL injection even though UUID is validated above
+    await session.execute(text("SET app.current_tenant = :tid"), {"tid": tenant_id})

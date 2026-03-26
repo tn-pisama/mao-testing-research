@@ -22,9 +22,9 @@ import os
 from typing import List, Union, Optional, Dict, Any
 import numpy as np
 
-# Disk-based embedding cache for performance
+# Disk-based embedding cache — private directory, not world-readable /tmp
 _embedding_cache: Optional[Dict[str, np.ndarray]] = None
-_CACHE_DIR = "/tmp/mast_embeddings"
+_CACHE_DIR = os.path.join(os.path.expanduser("~"), ".cache", "pisama", "embeddings")
 _MAX_MEMORY_CACHE_SIZE = 5000  # Max entries in memory cache to prevent OOM
 
 

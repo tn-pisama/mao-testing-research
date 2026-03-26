@@ -337,11 +337,12 @@ async def get_trace(
 @router.get("/{trace_id}/states", response_model=List[StateResponse])
 async def get_trace_states(
     trace_id: UUID,
+    full_state: bool = Query(False, description="Include full state_delta (can be large)"),
     tenant_id: str = Depends(get_current_tenant),
     db: AsyncSession = Depends(get_db),
 ):
     await set_tenant_context(db, tenant_id)
-    
+
     result = await db.execute(
         select(State).where(
             State.trace_id == trace_id,
@@ -349,13 +350,26 @@ async def get_trace_states(
         ).order_by(State.sequence_num)
     )
     states = result.scalars().all()
-    
+
+    def _truncate_delta(delta: dict, max_chars: int = 500) -> dict:
+        """Truncate large state_delta values to prevent multi-MB responses."""
+        if not delta or full_state:
+            return delta or {}
+        truncated = {}
+        for k, v in delta.items():
+            s = str(v)
+            if len(s) > max_chars:
+                truncated[k] = s[:max_chars] + "...[truncated]"
+            else:
+                truncated[k] = v
+        return truncated
+
     return [
         StateResponse(
             id=s.id,
             sequence_num=s.sequence_num,
             agent_id=s.agent_id,
-            state_delta=s.state_delta,
+            state_delta=_truncate_delta(s.state_delta),
             state_hash=s.state_hash,
             token_count=s.token_count,
             latency_ms=s.latency_ms,
