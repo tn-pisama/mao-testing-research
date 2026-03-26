@@ -1,0 +1,24 @@
+apiVersion: v2
+name: pisama
+description: "PISAMA - AI Agent Failure Detection & Self-Healing Platform"
+type: application
+version: 0.1.0
+appVersion: "0.1.0"
+maintainers:
+  - name: PISAMA Team
+keywords:
+  - pisama
+  - ai
+  - agent
+  - failure-detection
+  - self-healing
+home: https://github.com/tn-pisama/pisama
+dependencies:
+  - name: postgresql
+    version: ~15.x
+    repository: https://charts.bitnami.com/bitnami
+    condition: postgresql.enabled
+  - name: redis
+    version: ~19.x
+    repository: https://charts.bitnami.com/bitnami
+    condition: redis.enabled

@@ -154,9 +154,9 @@ async def marketplace_subscribe(
         entitlement = await service.check_entitlement(customer.aws_customer_id)
     except Exception as e:
         logger.error("Failed to check entitlement: %s", e)
-        entitlement = {"is_active": True, "tier": "startup", "dimensions": {}}
+        entitlement = {"is_active": True, "tier": "pro", "dimensions": {}}
 
-    tier = entitlement.get("tier", "startup")
+    tier = entitlement.get("tier", "pro")
 
     # Step 3: Find or create tenant
     # Check if there is already a tenant linked to this AWS customer
@@ -457,7 +457,7 @@ async def _handle_unsubscribe_success(
     tenant = result.scalar_one_or_none()
 
     if tenant:
-        from app.billing.constants import PlanTier, get_span_limit
+        from app.billing.constants import PlanTier, get_project_limit
 
         await db.execute(
             update(Tenant)
@@ -465,7 +465,7 @@ async def _handle_unsubscribe_success(
             .values(
                 plan=PlanTier.FREE,
                 subscription_status=None,
-                span_limit=get_span_limit(PlanTier.FREE),
+                project_limit=get_project_limit(PlanTier.FREE),
             )
         )
         await db.commit()
@@ -507,14 +507,14 @@ async def _handle_entitlement_updated(
     tenant = result.scalar_one_or_none()
 
     if tenant and tenant.plan != new_tier:
-        from app.billing.constants import get_span_limit
+        from app.billing.constants import get_project_limit
 
         await db.execute(
             update(Tenant)
             .where(Tenant.id == tenant.id)
             .values(
                 plan=new_tier,
-                span_limit=get_span_limit(new_tier),
+                project_limit=get_project_limit(new_tier),
             )
         )
         await db.commit()

@@ -276,17 +276,17 @@ class MarketplaceMeteringService:
             dimensions: Dimension name to value mapping from entitlements.
 
         Returns:
-            Plan tier string: "free", "startup", "growth", or "enterprise".
+            Plan tier string: "free", "pro", "team", or "enterprise".
         """
         # Check if any enterprise-level dimension is present
-        span_limit = dimensions.get("spans_ingested", 0)
+        project_limit = dimensions.get("project_limit", 0)
 
-        if span_limit >= 2_500_000 or "enterprise" in dimensions:
+        if project_limit >= 10 or "enterprise" in dimensions:
             return "enterprise"
-        elif span_limit >= 250_000:
-            return "growth"
-        elif span_limit > 0:
-            return "startup"
+        elif project_limit >= 3:
+            return "team"
+        elif project_limit > 0:
+            return "pro"
         else:
             return "free"
 

@@ -301,8 +301,8 @@ async def seed_database():
 
                 await session.execute(
                     text("""
-                        INSERT INTO tenants (id, name, api_key_hash, settings, plan, span_limit, created_at)
-                        VALUES (:id, :name, :api_key_hash, :settings, 'free', 10000, NOW())
+                        INSERT INTO tenants (id, name, api_key_hash, settings, plan, project_limit, created_at)
+                        VALUES (:id, :name, :api_key_hash, :settings, 'free', 1, NOW())
                     """),
                     {
                         "id": str(tenant_id),

@@ -1,6 +1,7 @@
 from fastapi import APIRouter, Depends, Query
 from sqlalchemy.ext.asyncio import AsyncSession
-from sqlalchemy import select, func
+from sqlalchemy import select, func, case, cast, Float, text
+from sqlalchemy.sql import label
 from uuid import UUID
 from datetime import datetime, timedelta
 
@@ -25,66 +26,83 @@ async def get_loop_analytics(
     db: AsyncSession = Depends(get_db),
 ):
     await set_tenant_context(db, tenant_id)
-    
+    tid = UUID(tenant_id)
     start_date = datetime.utcnow() - timedelta(days=days)
-    
-    result = await db.execute(
-        select(Detection).where(
-            Detection.tenant_id == UUID(tenant_id),
-            Detection.detection_type == "infinite_loop",
-            Detection.created_at >= start_date,
+
+    base_filter = [
+        Detection.tenant_id == tid,
+        Detection.detection_type == "infinite_loop",
+        Detection.created_at >= start_date,
+    ]
+
+    # Total count + avg loop length + method breakdown — single query
+    method_result = await db.execute(
+        select(
+            func.coalesce(Detection.method, "unknown").label("method"),
+            func.count().label("cnt"),
         )
+        .where(*base_filter)
+        .group_by(func.coalesce(Detection.method, "unknown"))
     )
-    detections = result.scalars().all()
-    
-    loops_by_method = {}
-    total_loop_length = 0
-    agent_counts = {}
-    
-    for d in detections:
-        method = d.method or "unknown"
-        loops_by_method[method] = loops_by_method.get(method, 0) + 1
-        
-        if d.details and "loop_length" in d.details:
-            total_loop_length += d.details["loop_length"]
-    
-    for d in detections:
-        if d.state_id:
-            state_result = await db.execute(
-                select(State).where(State.id == d.state_id)
-            )
-            state = state_result.scalar_one_or_none()
-            if state:
-                agent_counts[state.agent_id] = agent_counts.get(state.agent_id, 0) + 1
-    
-    top_agents = sorted(
-        [{"agent_id": k, "count": v} for k, v in agent_counts.items()],
-        key=lambda x: x["count"],
-        reverse=True,
-    )[:10]
-    
+    method_rows = method_result.all()
+    loops_by_method = {row.method: row.cnt for row in method_rows}
+    total_loops = sum(row.cnt for row in method_rows)
+
+    # Avg loop length from JSONB
+    avg_result = await db.execute(
+        select(
+            func.avg(cast(Detection.details["loop_length"].as_string(), Float))
+        )
+        .where(*base_filter)
+        .where(Detection.details["loop_length"] != None)  # noqa: E711
+    )
+    avg_loop_length = avg_result.scalar() or 0
+
+    # Top agents — JOIN instead of N+1
+    agent_result = await db.execute(
+        select(
+            State.agent_id,
+            func.count().label("cnt"),
+        )
+        .select_from(Detection)
+        .join(State, Detection.state_id == State.id)
+        .where(*base_filter)
+        .group_by(State.agent_id)
+        .order_by(func.count().desc())
+        .limit(10)
+    )
+    top_agents = [
+        {"agent_id": row.agent_id, "count": row.cnt}
+        for row in agent_result.all()
+    ]
+
+    # Time series — SQL date_trunc
+    ts_result = await db.execute(
+        select(
+            func.date_trunc("day", Detection.created_at).label("day"),
+            func.count().label("cnt"),
+        )
+        .where(*base_filter)
+        .group_by(text("1"))
+        .order_by(text("1"))
+    )
+    ts_map = {row.day.date(): row.cnt for row in ts_result.all()}
+
+    # Fill in all days (including zeros)
     time_series = []
     for i in range(min(days, 30)):
-        day = datetime.utcnow() - timedelta(days=i)
-        day_start = day.replace(hour=0, minute=0, second=0, microsecond=0)
-        day_end = day_start + timedelta(days=1)
-        
-        count = sum(
-            1 for d in detections
-            if day_start <= d.created_at < day_end
-        )
-        
+        day = (datetime.utcnow() - timedelta(days=min(days, 30) - 1 - i)).date()
         time_series.append({
-            "date": day_start.isoformat(),
-            "count": count,
+            "date": datetime(day.year, day.month, day.day).isoformat(),
+            "count": ts_map.get(day, 0),
         })
-    
+
     return AnalyticsLoopResponse(
-        total_loops_detected=len(detections),
+        total_loops_detected=total_loops,
         loops_by_method=loops_by_method,
-        avg_loop_length=total_loop_length / len(detections) if detections else 0,
+        avg_loop_length=float(avg_loop_length),
         top_agents_in_loops=top_agents,
-        time_series=time_series[::-1],
+        time_series=time_series,
     )
 
 
@@ -95,56 +113,76 @@ async def get_cost_analytics(
     db: AsyncSession = Depends(get_db),
 ):
     await set_tenant_context(db, tenant_id)
-    
+    tid = UUID(tenant_id)
     start_date = datetime.utcnow() - timedelta(days=days)
-    
-    result = await db.execute(
-        select(Trace).where(
-            Trace.tenant_id == UUID(tenant_id),
-            Trace.created_at >= start_date,
+
+    base_filter = [
+        Trace.tenant_id == tid,
+        Trace.created_at >= start_date,
+    ]
+
+    # Totals + framework breakdown — single query
+    fw_result = await db.execute(
+        select(
+            Trace.framework,
+            func.sum(Trace.total_cost_cents).label("cost"),
+            func.sum(Trace.total_tokens).label("tokens"),
         )
+        .where(*base_filter)
+        .group_by(Trace.framework)
     )
-    traces = result.scalars().all()
-    
-    total_cost = sum(t.total_cost_cents for t in traces)
-    total_tokens = sum(t.total_tokens for t in traces)
-    
-    cost_by_framework = {}
-    for t in traces:
-        cost_by_framework[t.framework] = cost_by_framework.get(t.framework, 0) + t.total_cost_cents
-    
+    fw_rows = fw_result.all()
+    total_cost = sum(row.cost or 0 for row in fw_rows)
+    total_tokens = sum(row.tokens or 0 for row in fw_rows)
+    cost_by_framework = {row.framework: row.cost or 0 for row in fw_rows}
+
+    # Daily cost — SQL date_trunc
+    daily_result = await db.execute(
+        select(
+            func.date_trunc("day", Trace.created_at).label("day"),
+            func.sum(Trace.total_cost_cents).label("cost"),
+        )
+        .where(*base_filter)
+        .group_by(text("1"))
+        .order_by(text("1"))
+    )
+    daily_map = {row.day.date(): row.cost or 0 for row in daily_result.all()}
+
     cost_by_day = []
     for i in range(min(days, 30)):
-        day = datetime.utcnow() - timedelta(days=i)
-        day_start = day.replace(hour=0, minute=0, second=0, microsecond=0)
-        day_end = day_start + timedelta(days=1)
-        
-        day_cost = sum(
-            t.total_cost_cents for t in traces
-            if day_start <= t.created_at < day_end
-        )
-        
+        day = (datetime.utcnow() - timedelta(days=min(days, 30) - 1 - i)).date()
         cost_by_day.append({
-            "date": day_start.isoformat(),
-            "cost_cents": day_cost,
+            "date": datetime(day.year, day.month, day.day).isoformat(),
+            "cost_cents": daily_map.get(day, 0),
         })
-    
-    top_expensive = sorted(traces, key=lambda t: t.total_cost_cents, reverse=True)[:10]
+
+    # Top 10 expensive traces — just ORDER BY + LIMIT
+    top_result = await db.execute(
+        select(
+            Trace.id,
+            Trace.session_id,
+            Trace.total_cost_cents,
+            Trace.total_tokens,
+        )
+        .where(*base_filter)
+        .order_by(Trace.total_cost_cents.desc())
+        .limit(10)
+    )
     top_expensive_data = [
         {
-            "trace_id": str(t.id),
-            "session_id": t.session_id,
-            "cost_cents": t.total_cost_cents,
-            "tokens": t.total_tokens,
+            "trace_id": str(row.id),
+            "session_id": row.session_id,
+            "cost_cents": row.total_cost_cents,
+            "tokens": row.total_tokens,
         }
-        for t in top_expensive
+        for row in top_result.all()
     ]
-    
+
     return AnalyticsCostResponse(
         total_cost_cents=total_cost,
         total_tokens=total_tokens,
         cost_by_framework=cost_by_framework,
-        cost_by_day=cost_by_day[::-1],
+        cost_by_day=cost_by_day,
         top_expensive_traces=top_expensive_data,
     )
 
@@ -195,8 +233,6 @@ async def get_quality_analytics(
     category_scores = {}
     category_counts = {}
     for a in all_assessments:
-        # Try to infer category from workflow_id or name
-        # For now, use a simple categorization
         category = "general"
         if a.workflow_id and "ai" in a.workflow_id.lower():
             category = "ai_multi_agent"

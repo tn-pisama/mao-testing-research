@@ -12,7 +12,7 @@ sections: [hero, features, how-it-works, testimonials, pricing, faq, cta]
 **Stop Catching Agent Failures in Production**
 
 ### Subheadline
-Test multi-agent AI systems before they hit production. PISAMA detects 17 failure modes—from infinite loops to state corruption—saving you thousands in API costs and countless hours of debugging.
+Agents never question each other's outputs. Pisama does. Detect 17 failure modes—from hallucination cascades to state corruption—before they compound through your multi-agent system.
 
 ### CTA Buttons
 - **Primary**: Start Free Trial (→ Sign up page)
@@ -60,6 +60,29 @@ Icon: 💸
 
 ### Closing Line
 *"Your agent system can pass all tests and still fail catastrophically in production."*
+
+---
+
+## The Evaluation Gap
+
+### Headline
+**The Better AI Gets, the Less Anyone Checks**
+
+### Body
+Anthropic's [AI Fluency Index](https://www.anthropic.com/research/AI-fluency-index) found that when AI produces polished outputs, humans evaluate them *less* — fact-checking drops 3.7%, reasoning questioning drops 3.1%. They call it the Artifact Paradox.
+
+Now consider multi-agent systems. When Agent A hands output to Agent B, there's no evaluation at all. Agents accept upstream outputs at face value, always. They don't question reasoning, check facts, or identify missing context. They can't.
+
+As models improve and intermediate outputs look more convincing, even the humans monitoring the system are less likely to spot problems. The evaluation gap widens on both sides.
+
+### Pullquote
+*"Humans skip evaluation when outputs look polished. Agents never evaluate at all. Pisama is the evaluation layer that neither provides."*
+
+### Visual
+Funnel diagram:
+- Top: "Human evaluates AI output" (30% check facts — Anthropic AI Fluency Index)
+- Middle: "Agent evaluates agent output" (0% — no evaluation capability)
+- Bottom: "Pisama evaluates every handoff" (17 detectors, every trace, production scale)
 
 ---
 
@@ -351,6 +374,9 @@ A: We'll email you at 80% and 100% usage. After hitting your limit, you can upgr
 
 **Q: Do you offer educational discounts?**
 A: Yes! Students and educators get the Startup plan free. Email support@pisama.ai with your .edu address.
+
+**Q: Why can't we just review agent outputs manually?**
+A: Research shows you probably won't. Anthropic's AI Fluency Index found that the more polished an AI output looks, the less likely humans are to evaluate it critically — fact-checking drops, reasoning questioning drops. And that's for a single human-AI interaction. In a multi-agent pipeline with dozens of handoffs per trace, manual review doesn't scale. Pisama applies systematic evaluation at every agent handoff, automatically.
 
 **Q: What's your refund policy?**
 A: 30-day money-back guarantee on paid plans, no questions asked.

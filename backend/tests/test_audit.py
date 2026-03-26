@@ -8,8 +8,8 @@ os.environ.setdefault("DATABASE_URL", "postgresql+asyncpg://mao:mao@localhost:54
 os.environ.setdefault("REDIS_URL", "redis://localhost:6379")
 os.environ.setdefault("FEATURE_ENTERPRISE_ENABLED", "true")
 os.environ.setdefault("FEATURE_QUALITY_ASSESSMENT", "true")
-os.environ.setdefault("STRIPE_PRICE_ID_STARTUP", "price_test_startup")
-os.environ.setdefault("STRIPE_PRICE_ID_GROWTH", "price_test_growth")
+os.environ.setdefault("STRIPE_PRICE_ID_PRO_MONTHLY", "price_test_pro")
+os.environ.setdefault("STRIPE_PRICE_ID_TEAM_MONTHLY", "price_test_team")
 os.environ.setdefault("FRONTEND_URL", "https://app.example.com")
 
 from datetime import datetime, timezone, timedelta

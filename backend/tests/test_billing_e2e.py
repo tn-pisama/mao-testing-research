@@ -1,7 +1,7 @@
 """
-E2E Test: Free → Startup Billing Upgrade Flow (Fully Mocked)
+E2E Test: Free → Pro Billing Upgrade Flow (Fully Mocked)
 
-Tests the complete billing upgrade flow from free plan to startup plan,
+Tests the complete billing upgrade flow from free plan to pro plan,
 using mocks for all external dependencies including database.
 """
 
@@ -17,18 +17,18 @@ from app.billing.webhooks import process_webhook_event
 
 
 class TestBillingUpgradeFlowMocked:
-    """Test Free → Startup upgrade flow with fully mocked dependencies."""
+    """Test Free → Pro upgrade flow with fully mocked dependencies."""
 
     @pytest.mark.asyncio
-    async def test_free_to_startup_upgrade_success(self):
+    async def test_free_to_pro_upgrade_success(self):
         """
-        E2E-BILLING-001: Complete Free → Startup upgrade flow.
+        E2E-BILLING-001: Complete Free → Pro upgrade flow.
 
         Steps:
-        1. Create checkout session for startup plan
+        1. Create checkout session for pro plan
         2. Simulate successful payment via webhook
-        3. Verify tenant upgraded to startup plan
-        4. Verify span_limit increased to 250,000
+        3. Verify tenant upgraded to pro plan
+        4. Verify project_limit increased to 3
         5. Verify subscription status is active
         """
         # Create mock tenant
@@ -36,7 +36,7 @@ class TestBillingUpgradeFlowMocked:
             id=uuid4(),
             name="test-tenant@example.com",
             plan=PlanTier.FREE,
-            span_limit=10000,
+            project_limit=1,
             subscription_status=None,
             stripe_customer_id=None,
             stripe_subscription_id=None,
@@ -62,7 +62,7 @@ class TestBillingUpgradeFlowMocked:
 
         # Step 1: Verify tenant starts on free plan
         assert test_tenant.plan == PlanTier.FREE
-        assert test_tenant.span_limit == 10000
+        assert test_tenant.project_limit == 1
         assert test_tenant.stripe_customer_id is None
 
         # Step 2: Create checkout session (mock Stripe API)
@@ -88,7 +88,7 @@ class TestBillingUpgradeFlowMocked:
             response = await stripe_service.create_checkout_session(
                 db=mock_db,
                 tenant_id=tenant_id,
-                plan=PlanTier.STARTUP,
+                plan=PlanTier.PRO,
                 success_url="https://app.example.com/success",
                 cancel_url="https://app.example.com/cancel",
             )
@@ -117,7 +117,7 @@ class TestBillingUpgradeFlowMocked:
                     'subscription': 'sub_test123',
                     'metadata': {
                         'tenant_id': tenant_id,
-                        'plan': PlanTier.STARTUP,
+                        'plan': PlanTier.PRO,
                     },
                 }
             }
@@ -139,13 +139,13 @@ class TestBillingUpgradeFlowMocked:
         """
         E2E-BILLING-002: Reject checkout for invalid plans.
 
-        Only startup and growth plans should be allowed for checkout.
+        Only pro and team plans should be allowed for checkout.
         """
         test_tenant = Tenant(
             id=uuid4(),
             name="test-tenant@example.com",
             plan=PlanTier.FREE,
-            span_limit=10000,
+            project_limit=1,
         )
         tenant_id = str(test_tenant.id)
 
@@ -178,7 +178,7 @@ class TestBillingUpgradeFlowMocked:
 
         When subscription is cancelled, tenant should:
         - Revert to free plan
-        - Have span_limit reset to 10,000
+        - Have project_limit reset to 1
         - Lose stripe_subscription_id
         - Have subscription_status cleared
         """
@@ -186,8 +186,8 @@ class TestBillingUpgradeFlowMocked:
         test_tenant = Tenant(
             id=uuid4(),
             name="test-tenant@example.com",
-            plan=PlanTier.STARTUP,
-            span_limit=250000,
+            plan=PlanTier.PRO,
+            project_limit=3,
             subscription_status=SubscriptionStatus.ACTIVE,
             stripe_customer_id='cus_test456',
             stripe_subscription_id='sub_test456',

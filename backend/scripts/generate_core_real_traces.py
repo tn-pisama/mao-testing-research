@@ -673,7 +673,7 @@ def generate_overflow_entries(mast: Dataset) -> list:
             detection_type=DetectionType.OVERFLOW,
             input_data={
                 "current_tokens": tokens,
-                "model": "claude-sonnet-4-6",
+                "model": "claude-sonnet-4-20250514",
             },
             expected_detected=True,
             expected_confidence_min=0.5,
@@ -708,7 +708,7 @@ def generate_overflow_entries(mast: Dataset) -> list:
             detection_type=DetectionType.OVERFLOW,
             input_data={
                 "current_tokens": tokens,
-                "model": "claude-sonnet-4-6",
+                "model": "claude-sonnet-4-20250514",
             },
             expected_detected=False,
             expected_confidence_min=0.0,

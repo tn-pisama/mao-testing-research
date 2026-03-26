@@ -16,23 +16,26 @@ class PlanInfo(BaseModel):
     name: PlanTier
     display_name: str
     price_monthly: Optional[int]  # None for Enterprise
-    span_limit: Optional[int]  # None for unlimited
-    project_limit: Optional[int]
+    project_limit: Optional[int]  # None for unlimited
     retention_days: Optional[int]
     team_limit: Optional[int]
+    daily_run_limit: Optional[int]
+    alerts_per_day: Optional[int]
     features: List[str]
 
 
 class CheckoutRequest(BaseModel):
     """Request to create a Stripe Checkout session."""
-    plan: PlanTier = Field(..., description="Plan to subscribe to (startup or growth)")
+    plan: PlanTier = Field(..., description="Plan to subscribe to (pro or team)")
+    annual: bool = Field(False, description="Whether to use annual billing")
     success_url: Optional[str] = Field(None, description="URL to redirect after success")
     cancel_url: Optional[str] = Field(None, description="URL to redirect on cancel")
 
     class Config:
         json_schema_extra = {
             "example": {
-                "plan": "startup",
+                "plan": "pro",
+                "annual": False,
                 "success_url": "https://app.pisama.ai/billing/success",
                 "cancel_url": "https://app.pisama.ai/billing/cancel"
             }
@@ -52,9 +55,10 @@ class PortalResponse(BaseModel):
 
 class UsageInfo(BaseModel):
     """Current usage statistics."""
-    span_count: int = Field(..., description="Spans used in current period")
-    span_limit: int = Field(..., description="Span limit for current plan")
-    usage_percentage: float = Field(..., description="Percentage of limit used (0-100)")
+    project_count: int = Field(..., description="Projects used")
+    project_limit: int = Field(..., description="Project limit for current plan")
+    daily_runs: int = Field(..., description="Agent runs today")
+    daily_run_limit: int = Field(..., description="Daily run limit for current plan")
 
 
 class BillingStatus(BaseModel):
@@ -68,14 +72,15 @@ class BillingStatus(BaseModel):
     class Config:
         json_schema_extra = {
             "example": {
-                "plan": "startup",
+                "plan": "pro",
                 "status": "active",
-                "current_period_end": "2026-03-01T00:00:00Z",
+                "current_period_end": "2026-04-01T00:00:00Z",
                 "cancel_at_period_end": False,
                 "usage": {
-                    "span_count": 125000,
-                    "span_limit": 250000,
-                    "usage_percentage": 50.0
+                    "project_count": 2,
+                    "project_limit": 3,
+                    "daily_runs": 120,
+                    "daily_run_limit": 500
                 }
             }
         }

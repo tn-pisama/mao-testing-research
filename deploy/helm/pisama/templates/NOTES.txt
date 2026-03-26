@@ -1,0 +1,71 @@
+============================================================
+  PISAMA - AI Agent Failure Detection & Self-Healing Platform
+============================================================
+
+Thank you for installing {{ .Chart.Name }} (v{{ .Chart.Version }}).
+
+{{- if .Values.ingress.enabled }}
+
+1. The application is accessible via Ingress:
+{{- range .Values.ingress.hosts }}
+   {{- range .paths }}
+   {{ if eq .service "backend" }}API{{ else }}UI{{ end }}: http{{ if $.Values.ingress.tls }}s{{ end }}://{{ $.Values.ingress.hosts | first | default (dict "host" "localhost") | dig "host" "localhost" }}{{ .path }}
+   {{- end }}
+{{- end }}
+
+{{- if not .Values.ingress.tls }}
+
+   WARNING: TLS is not enabled. For production, configure TLS in values.yaml:
+
+     ingress:
+       tls:
+         - secretName: pisama-tls
+           hosts:
+             - {{ (index .Values.ingress.hosts 0).host }}
+{{- end }}
+
+{{- else }}
+
+1. Get the application URLs by running:
+
+   # Backend API
+   export BACKEND_POD=$(kubectl get pods -l "app.kubernetes.io/component=backend,app.kubernetes.io/instance={{ .Release.Name }}" -o jsonpath="{.items[0].metadata.name}" -n {{ .Release.Namespace }})
+   kubectl port-forward $BACKEND_POD 8000:{{ .Values.backend.service.port }} -n {{ .Release.Namespace }}
+
+   # Frontend UI
+   export FRONTEND_POD=$(kubectl get pods -l "app.kubernetes.io/component=frontend,app.kubernetes.io/instance={{ .Release.Name }}" -o jsonpath="{.items[0].metadata.name}" -n {{ .Release.Namespace }})
+   kubectl port-forward $FRONTEND_POD 3000:{{ .Values.frontend.service.port }} -n {{ .Release.Namespace }}
+
+   Then open http://localhost:3000 in your browser.
+
+{{- end }}
+
+2. Check deployment status:
+
+   kubectl get pods -l "app.kubernetes.io/instance={{ .Release.Name }}" -n {{ .Release.Namespace }}
+
+3. View backend logs:
+
+   kubectl logs -l "app.kubernetes.io/component=backend,app.kubernetes.io/instance={{ .Release.Name }}" -n {{ .Release.Namespace }} -f
+
+4. Check database migration status:
+
+   kubectl get jobs -l "app.kubernetes.io/instance={{ .Release.Name }},app.kubernetes.io/component=migration" -n {{ .Release.Namespace }}
+
+{{- if and (not .Values.secrets.jwtSecret) (not (lookup "v1" "Secret" .Release.Namespace (include "pisama.secret.name" .))) }}
+
+IMPORTANT: You must set a JWT secret for production use:
+
+   helm upgrade {{ .Release.Name }} . --set secrets.jwtSecret=$(openssl rand -hex 32)
+
+{{- end }}
+
+{{- if and .Values.postgresql.enabled (not .Values.postgresql.auth.password) }}
+
+IMPORTANT: You must set a PostgreSQL password for production use:
+
+   helm upgrade {{ .Release.Name }} . --set postgresql.auth.password=$(openssl rand -hex 16)
+
+{{- end }}
+
+For more information, visit: https://github.com/tn-pisama/pisama

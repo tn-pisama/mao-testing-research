@@ -44,10 +44,11 @@ async def list_plans():
                 name=plan_name,
                 display_name=config["display_name"],
                 price_monthly=config["price_monthly"],
-                span_limit=config["span_limit"],
                 project_limit=config["project_limit"],
                 retention_days=config["retention_days"],
                 team_limit=config["team_limit"],
+                daily_run_limit=config.get("daily_run_limit"),
+                alerts_per_day=config.get("alerts_per_day"),
                 features=config["features"],
             )
         )

@@ -71,7 +71,7 @@ class TestJudgeModel:
 
     def test_claude_sonnet_value(self):
         """Should have correct model ID for Claude Sonnet."""
-        assert JudgeModel.CLAUDE_SONNET.value == "claude-sonnet-4-6"
+        assert JudgeModel.CLAUDE_SONNET.value == "claude-sonnet-4-20250514"
 
 
 # ============================================================================
@@ -549,7 +549,7 @@ class TestLLMJudgeIntegration:
         result = scorer.score("Here's how to solve your problem...")
 
         assert result.score == 0.88
-        assert result.metadata["model"] == "claude-sonnet-4-6"
+        assert result.metadata["model"] == "claude-sonnet-4-20250514"
         assert result.metadata["tokens_used"] == 120  # input + output
 
 

@@ -31,15 +31,15 @@ class TestRateLimitConfig:
     def test_tier_ordering(self):
         """Higher tiers should have higher limits."""
         free = RATE_LIMITS[PlanTier.FREE]["requests_per_minute"]
-        startup = RATE_LIMITS[PlanTier.STARTUP]["requests_per_minute"]
-        growth = RATE_LIMITS[PlanTier.GROWTH]["requests_per_minute"]
+        pro = RATE_LIMITS[PlanTier.PRO]["requests_per_minute"]
+        team = RATE_LIMITS[PlanTier.TEAM]["requests_per_minute"]
         enterprise = RATE_LIMITS[PlanTier.ENTERPRISE]["requests_per_minute"]
 
-        assert free < startup < growth < enterprise
+        assert free < pro < team < enterprise
 
     def test_get_rate_limit_known_tier(self):
-        config = get_rate_limit(PlanTier.STARTUP)
-        assert config["requests_per_minute"] == 500
+        config = get_rate_limit(PlanTier.PRO)
+        assert config["requests_per_minute"] == 200
 
     def test_get_rate_limit_unknown_tier_defaults_to_free(self):
         config = get_rate_limit("nonexistent")
@@ -47,7 +47,7 @@ class TestRateLimitConfig:
 
     def test_free_tier_limits(self):
         config = get_rate_limit(PlanTier.FREE)
-        assert config["requests_per_minute"] == 100
+        assert config["requests_per_minute"] == 30
         assert config["window_seconds"] == 60
 
 
@@ -110,12 +110,12 @@ class TestTierCaching:
     async def test_cache_and_get_tier_with_mock_redis(self):
         limiter = RateLimiter()
         mock_redis = AsyncMock()
-        mock_redis.get = AsyncMock(return_value=b"startup")
+        mock_redis.get = AsyncMock(return_value=b"pro")
         mock_redis.set = AsyncMock()
         limiter._redis = mock_redis
 
         tier = await limiter.get_tenant_tier("tenant-123")
-        assert tier == "startup"
+        assert tier == "pro"
         mock_redis.get.assert_called_once_with("tenant_tier:tenant-123")
 
     @pytest.mark.asyncio
@@ -125,8 +125,8 @@ class TestTierCaching:
         mock_redis.set = AsyncMock()
         limiter._redis = mock_redis
 
-        await limiter.cache_tenant_tier("tenant-123", "growth", ttl=300)
-        mock_redis.set.assert_called_once_with("tenant_tier:tenant-123", "growth", ex=300)
+        await limiter.cache_tenant_tier("tenant-123", "team", ttl=300)
+        mock_redis.set.assert_called_once_with("tenant_tier:tenant-123", "team", ex=300)
 
     @pytest.mark.asyncio
     async def test_invalidate_tenant_tier_with_mock_redis(self):
@@ -159,7 +159,7 @@ class TestTierCaching:
 
 class TestCheckTenantRateLimit:
     @pytest.mark.asyncio
-    async def test_free_tier_uses_100_limit(self):
+    async def test_free_tier_uses_30_limit(self):
         mock_db = AsyncMock()
         mock_result = MagicMock()
         mock_result.scalar_one_or_none.return_value = PlanTier.FREE
@@ -169,44 +169,44 @@ class TestCheckTenantRateLimit:
             mock_limiter.get_tenant_tier = AsyncMock(return_value=None)
             mock_limiter.cache_tenant_tier = AsyncMock()
             mock_limiter.check_rate_limit_detailed = AsyncMock(
-                return_value=RateLimitResult(allowed=True, limit=100, remaining=99, reset_at=int(time.time()) + 60)
+                return_value=RateLimitResult(allowed=True, limit=30, remaining=29, reset_at=int(time.time()) + 60)
             )
 
             result = await check_tenant_rate_limit("tenant-free", mock_db)
             assert result.allowed is True
-            assert result.limit == 100
+            assert result.limit == 30
 
             # Verify it was called with free tier limits
             mock_limiter.check_rate_limit_detailed.assert_called_once_with(
-                "rate_limit:tenant:tenant-free", 100, 60
+                "rate_limit:tenant:tenant-free", 30, 60
             )
 
     @pytest.mark.asyncio
-    async def test_startup_tier_uses_500_limit(self):
+    async def test_pro_tier_uses_200_limit(self):
         mock_db = AsyncMock()
 
         with patch("app.core.rate_limit.rate_limiter") as mock_limiter:
-            # Cache hit: return startup tier
-            mock_limiter.get_tenant_tier = AsyncMock(return_value="startup")
+            # Cache hit: return pro tier
+            mock_limiter.get_tenant_tier = AsyncMock(return_value="pro")
             mock_limiter.check_rate_limit_detailed = AsyncMock(
-                return_value=RateLimitResult(allowed=True, limit=500, remaining=499, reset_at=int(time.time()) + 60)
+                return_value=RateLimitResult(allowed=True, limit=200, remaining=199, reset_at=int(time.time()) + 60)
             )
 
-            result = await check_tenant_rate_limit("tenant-startup", mock_db)
-            assert result.limit == 500
+            result = await check_tenant_rate_limit("tenant-pro", mock_db)
+            assert result.limit == 200
 
     @pytest.mark.asyncio
-    async def test_growth_tier_uses_2000_limit(self):
+    async def test_team_tier_uses_1000_limit(self):
         mock_db = AsyncMock()
 
         with patch("app.core.rate_limit.rate_limiter") as mock_limiter:
-            mock_limiter.get_tenant_tier = AsyncMock(return_value="growth")
+            mock_limiter.get_tenant_tier = AsyncMock(return_value="team")
             mock_limiter.check_rate_limit_detailed = AsyncMock(
-                return_value=RateLimitResult(allowed=True, limit=2000, remaining=1999, reset_at=int(time.time()) + 60)
+                return_value=RateLimitResult(allowed=True, limit=1000, remaining=999, reset_at=int(time.time()) + 60)
             )
 
-            result = await check_tenant_rate_limit("tenant-growth", mock_db)
-            assert result.limit == 2000
+            result = await check_tenant_rate_limit("tenant-team", mock_db)
+            assert result.limit == 1000
 
     @pytest.mark.asyncio
     async def test_rate_limit_exceeded_raises_429(self):
@@ -215,7 +215,7 @@ class TestCheckTenantRateLimit:
         with patch("app.core.rate_limit.rate_limiter") as mock_limiter:
             mock_limiter.get_tenant_tier = AsyncMock(return_value="free")
             mock_limiter.check_rate_limit_detailed = AsyncMock(
-                return_value=RateLimitResult(allowed=False, limit=100, remaining=0, reset_at=int(time.time()) + 60)
+                return_value=RateLimitResult(allowed=False, limit=30, remaining=0, reset_at=int(time.time()) + 60)
             )
 
             with pytest.raises(HTTPException) as exc_info:
@@ -224,7 +224,7 @@ class TestCheckTenantRateLimit:
             assert exc_info.value.status_code == 429
             assert "Rate limit exceeded" in exc_info.value.detail
             assert "X-RateLimit-Limit" in exc_info.value.headers
-            assert exc_info.value.headers["X-RateLimit-Limit"] == "100"
+            assert exc_info.value.headers["X-RateLimit-Limit"] == "30"
             assert "Retry-After" in exc_info.value.headers
 
     @pytest.mark.asyncio
@@ -234,7 +234,7 @@ class TestCheckTenantRateLimit:
         with patch("app.core.rate_limit.rate_limiter") as mock_limiter:
             mock_limiter.get_tenant_tier = AsyncMock(return_value="free")
             mock_limiter.check_rate_limit_detailed = AsyncMock(
-                return_value=RateLimitResult(allowed=False, limit=100, remaining=0, reset_at=int(time.time()) + 60)
+                return_value=RateLimitResult(allowed=False, limit=30, remaining=0, reset_at=int(time.time()) + 60)
             )
 
             with pytest.raises(HTTPException) as exc_info:
@@ -253,20 +253,20 @@ class TestCheckTenantRateLimit:
             mock_limiter.get_tenant_tier = AsyncMock(return_value=None)
             mock_limiter.cache_tenant_tier = AsyncMock()
             mock_limiter.check_rate_limit_detailed = AsyncMock(
-                return_value=RateLimitResult(allowed=True, limit=100, remaining=99, reset_at=int(time.time()) + 60)
+                return_value=RateLimitResult(allowed=True, limit=30, remaining=29, reset_at=int(time.time()) + 60)
             )
 
             result = await check_tenant_rate_limit("unknown-tenant", mock_db)
-            assert result.limit == 100
+            assert result.limit == 30
 
     @pytest.mark.asyncio
     async def test_tier_cache_hit_skips_db_query(self):
         mock_db = AsyncMock()
 
         with patch("app.core.rate_limit.rate_limiter") as mock_limiter:
-            mock_limiter.get_tenant_tier = AsyncMock(return_value="growth")
+            mock_limiter.get_tenant_tier = AsyncMock(return_value="team")
             mock_limiter.check_rate_limit_detailed = AsyncMock(
-                return_value=RateLimitResult(allowed=True, limit=2000, remaining=1999, reset_at=int(time.time()) + 60)
+                return_value=RateLimitResult(allowed=True, limit=1000, remaining=999, reset_at=int(time.time()) + 60)
             )
 
             await check_tenant_rate_limit("cached-tenant", mock_db)

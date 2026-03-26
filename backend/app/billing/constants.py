@@ -1,7 +1,7 @@
 """
 Billing Constants - Plan Definitions
 
-Defines the pricing tiers and their limits for PISAMA.
+Defines the pricing tiers and their limits for Pisama.
 """
 
 from enum import Enum
@@ -11,8 +11,8 @@ from typing import Dict, List
 class PlanTier(str, Enum):
     """Available pricing tiers."""
     FREE = "free"
-    STARTUP = "startup"
-    GROWTH = "growth"
+    PRO = "pro"
+    TEAM = "team"
     ENTERPRISE = "enterprise"
 
 
@@ -32,67 +32,70 @@ PLANS: Dict[str, Dict] = {
     PlanTier.FREE: {
         "display_name": "Free",
         "price_monthly": 0,
-        "span_limit": 10_000,
         "project_limit": 1,
         "retention_days": 7,
         "team_limit": 1,
+        "daily_run_limit": 50,
+        "alerts_per_day": 5,
         "features": [
-            "10K spans/month",
             "1 project",
-            "7-day retention",
-            "Community support",
-            "Basic detectors",
+            "All 42 failure detectors",
+            "Basic fix suggestions",
+            "Email alerts",
+            "7-day history",
         ],
     },
-    PlanTier.STARTUP: {
-        "display_name": "Startup",
-        "price_monthly": 49,
-        "span_limit": 250_000,
-        "project_limit": 5,
+    PlanTier.PRO: {
+        "display_name": "Pro",
+        "price_monthly": 29,
+        "project_limit": 3,
         "retention_days": 30,
-        "team_limit": 3,
+        "team_limit": 1,
+        "daily_run_limit": 500,
+        "alerts_per_day": 50,
         "features": [
-            "250K spans/month",
-            "5 projects",
-            "30-day retention",
-            "Slack & API alerts",
-            "All detectors",
-            "Email support",
+            "3 projects",
+            "Code-level fix suggestions",
+            "Slack & webhook alerts",
+            "Cost analytics",
+            "API access",
+            "30-day history",
         ],
     },
-    PlanTier.GROWTH: {
-        "display_name": "Growth",
-        "price_monthly": 199,
-        "span_limit": 2_500_000,
-        "project_limit": 25,
+    PlanTier.TEAM: {
+        "display_name": "Team",
+        "price_monthly": 79,
+        "project_limit": 10,
         "retention_days": 90,
-        "team_limit": 10,
+        "team_limit": 5,
+        "daily_run_limit": 5000,
+        "alerts_per_day": 500,
         "features": [
-            "2.5M spans/month",
-            "25 projects",
-            "90-day retention",
-            "PagerDuty integration",
-            "All detectors + ML",
+            "10 projects",
+            "5 team members",
+            "AI runbooks",
+            "Trend analytics",
+            "Custom alert rules",
+            "90-day history",
             "Priority support",
-            "Custom rules",
         ],
     },
     PlanTier.ENTERPRISE: {
         "display_name": "Enterprise",
         "price_monthly": None,  # Custom pricing
-        "span_limit": None,  # Unlimited
         "project_limit": None,  # Unlimited
         "retention_days": None,  # Custom
         "team_limit": None,  # Unlimited
+        "daily_run_limit": None,  # Unlimited
+        "alerts_per_day": None,  # Unlimited
         "features": [
-            "Unlimited spans",
             "Unlimited projects",
-            "Custom retention",
+            "Unlimited team",
+            "Self-healing automation",
             "SSO & RBAC",
+            "Custom retention",
             "SLA guarantee",
             "Dedicated support",
-            "Custom integrations",
-            "Self-hosted option",
         ],
     },
 }
@@ -103,17 +106,24 @@ def get_plan_config(plan: str) -> Dict:
     return PLANS.get(plan, PLANS[PlanTier.FREE])
 
 
-def get_span_limit(plan: str) -> int:
-    """Get span limit for a plan."""
+def get_project_limit(plan: str) -> int:
+    """Get project limit for a plan."""
     config = get_plan_config(plan)
-    return config.get("span_limit", 10_000)
+    return config.get("project_limit", 1)
+
+
+def get_daily_run_limit(plan: str) -> int:
+    """Get daily run limit for a plan."""
+    config = get_plan_config(plan)
+    limit = config.get("daily_run_limit")
+    return limit if limit is not None else 999_999_999
 
 
 # Per-tier rate limits (requests per window)
 RATE_LIMITS: Dict[str, Dict[str, int]] = {
-    PlanTier.FREE: {"requests_per_minute": 100, "window_seconds": 60},
-    PlanTier.STARTUP: {"requests_per_minute": 500, "window_seconds": 60},
-    PlanTier.GROWTH: {"requests_per_minute": 2000, "window_seconds": 60},
+    PlanTier.FREE: {"requests_per_minute": 30, "window_seconds": 60},
+    PlanTier.PRO: {"requests_per_minute": 200, "window_seconds": 60},
+    PlanTier.TEAM: {"requests_per_minute": 1000, "window_seconds": 60},
     PlanTier.ENTERPRISE: {"requests_per_minute": 10000, "window_seconds": 60},
 }
 
@@ -123,11 +133,12 @@ def get_rate_limit(plan: str) -> Dict[str, int]:
     return RATE_LIMITS.get(plan, RATE_LIMITS[PlanTier.FREE])
 
 
-def get_stripe_price_id(plan: str, env_vars: Dict[str, str]) -> str:
+def get_stripe_price_id(plan: str, env_vars: Dict[str, str], annual: bool = False) -> str:
     """Get Stripe Price ID for a plan from environment variables."""
-    if plan == PlanTier.STARTUP:
-        return env_vars.get("STRIPE_PRICE_ID_STARTUP", "")
-    elif plan == PlanTier.GROWTH:
-        return env_vars.get("STRIPE_PRICE_ID_GROWTH", "")
+    suffix = "_ANNUAL" if annual else "_MONTHLY"
+    if plan == PlanTier.PRO:
+        return env_vars.get(f"STRIPE_PRICE_ID_PRO{suffix}", "")
+    elif plan == PlanTier.TEAM:
+        return env_vars.get(f"STRIPE_PRICE_ID_TEAM{suffix}", "")
     else:
         raise ValueError(f"No Stripe price ID configured for plan: {plan}")

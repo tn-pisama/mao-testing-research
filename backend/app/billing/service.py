@@ -14,7 +14,7 @@ from sqlalchemy import select, update, func
 from app.storage.models import Tenant, User, State
 from app.config import get_settings
 from app.core.rate_limit import rate_limiter
-from .constants import PlanTier, get_span_limit, get_stripe_price_id, PLANS
+from .constants import PlanTier, get_project_limit, get_daily_run_limit, get_stripe_price_id, PLANS
 from .schemas import CheckoutResponse, PortalResponse, BillingStatus, UsageInfo
 
 logger = logging.getLogger(__name__)
@@ -37,6 +37,7 @@ class StripeService:
         db: AsyncSession,
         tenant_id: str,
         plan: str,
+        annual: bool = False,
         success_url: Optional[str] = None,
         cancel_url: Optional[str] = None,
     ) -> CheckoutResponse:
@@ -46,7 +47,8 @@ class StripeService:
         Args:
             db: Database session
             tenant_id: Tenant UUID
-            plan: Plan to subscribe to (startup or growth)
+            plan: Plan to subscribe to (pro or team)
+            annual: Whether to use annual billing
             success_url: URL to redirect to after successful payment
             cancel_url: URL to redirect to if user cancels
 
@@ -57,8 +59,8 @@ class StripeService:
             ValueError: If plan is invalid or tenant not found
         """
         # Validate plan
-        if plan not in [PlanTier.STARTUP, PlanTier.GROWTH]:
-            raise ValueError(f"Invalid plan for checkout: {plan}. Must be startup or growth.")
+        if plan not in [PlanTier.PRO, PlanTier.TEAM]:
+            raise ValueError(f"Invalid plan for checkout: {plan}. Must be pro or team.")
 
         # Get tenant
         result = await db.execute(select(Tenant).where(Tenant.id == tenant_id))
@@ -67,11 +69,12 @@ class StripeService:
             raise ValueError(f"Tenant not found: {tenant_id}")
 
         # Get Stripe price ID from environment
+        suffix = "_ANNUAL" if annual else "_MONTHLY"
         env_vars = {
-            "STRIPE_PRICE_ID_STARTUP": getattr(settings, 'STRIPE_PRICE_ID_STARTUP', ''),
-            "STRIPE_PRICE_ID_GROWTH": getattr(settings, 'STRIPE_PRICE_ID_GROWTH', ''),
+            f"STRIPE_PRICE_ID_PRO{suffix}": getattr(settings, f'STRIPE_PRICE_ID_PRO{suffix}', ''),
+            f"STRIPE_PRICE_ID_TEAM{suffix}": getattr(settings, f'STRIPE_PRICE_ID_TEAM{suffix}', ''),
         }
-        price_id = get_stripe_price_id(plan, env_vars)
+        price_id = get_stripe_price_id(plan, env_vars, annual=annual)
         if not price_id:
             raise ValueError(f"Stripe price ID not configured for plan: {plan}")
 
@@ -189,23 +192,26 @@ class StripeService:
         if not tenant:
             raise ValueError(f"Tenant not found: {tenant_id}")
 
-        # Get billing period start (use current_period_start or default to 30 days ago)
-        if hasattr(tenant, 'current_period_start') and tenant.current_period_start:
-            period_start = tenant.current_period_start
-        else:
-            period_start = datetime.now(timezone.utc) - timedelta(days=30)
+        # Count projects for this tenant
+        from app.storage.models import Project
+        project_result = await db.execute(
+            select(func.count(Project.id))
+            .where(Project.tenant_id == tenant_id)
+        )
+        project_count = project_result.scalar() or 0
 
-        # Count states (spans) for this tenant in billing period
-        span_result = await db.execute(
+        # Count today's runs (states created today)
+        today_start = datetime.now(timezone.utc).replace(hour=0, minute=0, second=0, microsecond=0)
+        run_result = await db.execute(
             select(func.count(State.id))
             .where(State.tenant_id == tenant_id)
-            .where(State.created_at >= period_start)
+            .where(State.created_at >= today_start)
         )
-        span_count = span_result.scalar() or 0
+        daily_runs = run_result.scalar() or 0
 
-        # Calculate usage percentage
-        span_limit = tenant.span_limit or get_span_limit(tenant.plan)
-        usage_percentage = (span_count / span_limit * 100) if span_limit > 0 else 0
+        # Get limits from plan config
+        project_limit = get_project_limit(tenant.plan)
+        daily_run_limit = get_daily_run_limit(tenant.plan)
 
         return BillingStatus(
             plan=tenant.plan,
@@ -213,9 +219,10 @@ class StripeService:
             current_period_end=tenant.current_period_end,
             cancel_at_period_end=False,  # TODO: Get from Stripe subscription
             usage=UsageInfo(
-                span_count=span_count,
-                span_limit=span_limit,
-                usage_percentage=round(usage_percentage, 2),
+                project_count=project_count,
+                project_limit=project_limit,
+                daily_runs=daily_runs,
+                daily_run_limit=daily_run_limit,
             ),
         )
 
@@ -234,12 +241,12 @@ class StripeService:
         Args:
             db: Database session
             tenant_id: Tenant UUID
-            plan: New plan (startup, growth, etc.)
+            plan: New plan (pro, team, etc.)
             subscription_id: Stripe subscription ID
             status: Subscription status
             current_period_end: When current period ends
         """
-        span_limit = get_span_limit(plan)
+        plan_config = PLANS.get(plan, PLANS[PlanTier.FREE])
 
         await db.execute(
             update(Tenant)
@@ -249,7 +256,7 @@ class StripeService:
                 stripe_subscription_id=subscription_id,
                 subscription_status=status,
                 current_period_end=current_period_end,
-                span_limit=span_limit,
+                project_limit=plan_config.get("project_limit", 1),
             )
         )
         await db.commit()
@@ -271,6 +278,8 @@ class StripeService:
             db: Database session
             tenant_id: Tenant UUID
         """
+        free_config = PLANS[PlanTier.FREE]
+
         await db.execute(
             update(Tenant)
             .where(Tenant.id == tenant_id)
@@ -279,7 +288,7 @@ class StripeService:
                 subscription_status=None,
                 stripe_subscription_id=None,
                 current_period_end=None,
-                span_limit=get_span_limit(PlanTier.FREE),
+                project_limit=free_config["project_limit"],
             )
         )
         await db.commit()

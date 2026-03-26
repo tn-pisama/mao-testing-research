@@ -1,464 +1,279 @@
-# PISAMA Pricing Tiers
+# Pisama Pricing
 
-**Date:** 2026-01-05
-**Version:** 1.1
-**Status:** Draft - requires validation
-
----
-
-## Metering Model
-
-### What We Capture Per Span
-
-Each tool call generates a **span** containing:
-
-| Data Type | Description | Typical Size |
-|-----------|-------------|--------------|
-| **User Input** | Prompt/message that triggered the action | 100-2,000 chars |
-| **Reasoning** | Claude's extended thinking blocks | 0-10,000 chars |
-| **AI Output** | Claude's text response | 200-2,000 chars |
-| **Tool Input** | Parameters passed to tool | 100-1,000 chars |
-| **Tool Output** | Result from tool execution | 100-50,000 chars |
-| **Metadata** | Session ID, timestamp, model, tokens, cost | ~500 chars |
-
-### Billing Unit: Spans (not "Traces")
-
-| Term | Definition | Example |
-|------|------------|---------|
-| **Session** | One Claude Code conversation | User opens CC, works, closes |
-| **Span** | One tool operation within a session | `Bash`, `Read`, `Edit`, `Task` |
-
-**We bill on SPANS.**
-
-Why spans, not sessions:
-- Sessions vary wildly (10 spans to 500+ spans)
-- Spans are predictable, industry-standard (OTEL)
-- Aligns with competitors (Datadog, LangSmith)
-
-### Typical Usage
-
-| User Type | Spans/Session | Sessions/Day | Spans/Month |
-|-----------|---------------|--------------|-------------|
-| Solo (light) | 20-50 | 2-3 | 1,500-4,500 |
-| Solo (heavy) | 50-100 | 5-10 | 7,500-30,000 |
-| Team member | 50-200 | 10-20 | 15,000-120,000 |
-| Power user | 100-500 | 20+ | 60,000-300,000 |
-
-### What Counts as a Span
-
-| Counts as Span | Doesn't Count |
-|----------------|---------------|
-| `Bash` execution | Pre-flight checks |
-| `Read` file | Internal state |
-| `Edit` file | Retries (same span ID) |
-| `Write` file | Blocked operations |
-| `Task` subagent | - |
-| `Grep`/`Glob` | - |
-| MCP tool calls | - |
-| Skill invocations | - |
-
-### Capture Levels
-
-| Level | Input | Reasoning | Output | Tool I/O | Metadata |
-|-------|-------|-----------|--------|----------|----------|
-| **Full** | ✓ | ✓ | ✓ | ✓ | ✓ |
-| **Standard** | ✓ | - | ✓ | ✓ | ✓ |
-| **Minimal** | - | - | - | Summary | ✓ |
-
-- **Free tier**: Standard (no reasoning, saves storage)
-- **Paid tiers**: Full (configurable)
+**Date:** 2026-03-21
+**Version:** 2.0
+**Status:** Active
 
 ---
 
-## Pricing Philosophy
+## Billing Model: Per-Project
 
-1. **Free tier must deliver value** - Not a crippled demo, actual utility for solo builders
-2. **Clear upgrade triggers** - Users hit limits naturally when they're ready to pay
-3. **Usage-based alignment** - Pay for what you use, not seat count
-4. **No surprise bills** - Hard limits, not overage charges
-5. **Span-based billing** - Industry standard, predictable
+Pisama uses flat per-project pricing. No usage metering, no surprise bills.
+
+**What counts as a project?** One app or repo you're monitoring with Pisama.
+
+Why per-project (not usage-based):
+- Vibe-coders think in projects, not API calls or spans
+- Flat pricing = predictable costs
+- No usage anxiety or surprise overages
+- Simple to explain: "Monitor up to 3 projects for $29/mo"
 
 ---
 
-## Tier Comparison
+## Pricing Tiers
 
-| Feature | Free | Startup ($49/mo) | Growth ($199/mo) | Enterprise |
-|---------|------|------------------|------------------|------------|
-| **Spans/month** | 10,000 | 250,000 | 2,500,000 | Unlimited |
-| **Capture level** | Standard | Full | Full | Full |
-| **Projects** | 1 | 5 | 25 | Unlimited |
-| **Retention** | 7 days | 30 days | 90 days | Custom (up to 2 years) |
-| **Team members** | 1 | 3 | 10 | Unlimited |
-| **Frameworks** | All | All | All | All |
+| | Free | Pro | Team | Enterprise |
+|---|---|---|---|---|
+| **Price** | $0 | $29/mo | $79/mo | Custom |
+| **Annual** | - | $23/mo | $63/mo | Negotiable |
+| **Projects** | 1 | 3 | 10 | Unlimited |
+| **Team members** | 1 | 1 | 5 | Unlimited |
+| **History** | 7 days | 30 days | 90 days | Custom |
 | | | | | |
 | **Detection** | | | | |
-| - Failure detection (14 modes) | ✓ | ✓ | ✓ | ✓ |
-| - Detection history | 7 days | 30 days | 90 days | Custom |
+| All 42 failure detectors | Yes | Yes | Yes | Yes |
 | | | | | |
 | **Fix Suggestions** | | | | |
-| - Basic fix suggestions | ✓ | ✓ | ✓ | ✓ |
-| - Code-level fixes | - | ✓ | ✓ | ✓ |
-| - Fix confidence scores | - | ✓ | ✓ | ✓ |
-| - AI-generated runbooks | - | - | ✓ | ✓ |
+| Basic fix descriptions | Yes | Yes | Yes | Yes |
+| Code-level fixes | - | Yes | Yes | Yes |
+| AI-generated runbooks | - | - | Yes | Yes |
 | | | | | |
-| **Alerting** | | | | |
-| - Email alerts | ✓ | ✓ | ✓ | ✓ |
-| - Slack integration | - | ✓ | ✓ | ✓ |
-| - Webhook support | - | ✓ | ✓ | ✓ |
-| - PagerDuty/OpsGenie | - | - | ✓ | ✓ |
-| - Custom alert rules | - | - | ✓ | ✓ |
+| **Alerts** | | | | |
+| Email alerts | 5/day | 50/day | 500/day | Unlimited |
+| Slack + Discord + webhooks | - | Yes | Yes | Yes |
+| PagerDuty / OpsGenie | - | - | Yes | Yes |
+| Custom alert rules | - | - | Yes | Yes |
 | | | | | |
 | **Cost Analytics** | | | | |
-| - Token usage (basic) | ✓ | ✓ | ✓ | ✓ |
-| - Cost breakdown | - | ✓ | ✓ | ✓ |
-| - Budget alerts | - | ✓ | ✓ | ✓ |
-| - Cost projections | - | - | ✓ | ✓ |
-| - Optimization suggestions | - | - | ✓ | ✓ |
+| Basic token usage | Yes | Yes | Yes | Yes |
+| Cost breakdown per project | - | Yes | Yes | Yes |
+| Trend analysis + projections | - | - | Yes | Yes |
 | | | | | |
 | **API & Export** | | | | |
-| - Dashboard access | ✓ | ✓ | ✓ | ✓ |
-| - API access | - | ✓ | ✓ | ✓ |
-| - OTEL export | - | ✓ | ✓ | ✓ |
-| - Data export (CSV/JSON) | - | ✓ | ✓ | ✓ |
-| - OTEL ingestion | - | - | - | ✓ |
+| Dashboard access | Yes | Yes | Yes | Yes |
+| REST API access | - | Yes | Yes | Yes |
+| CSV/JSON data export | - | Yes | Yes | Yes |
 | | | | | |
 | **Team & Admin** | | | | |
-| - Basic roles | - | ✓ | ✓ | ✓ |
-| - Advanced RBAC | - | - | - | ✓ |
-| - SSO/SAML | - | - | - | ✓ |
-| - Audit logs | - | - | ✓ | ✓ |
+| Activity logs / audit | - | - | Yes | Yes |
+| SSO / SAML | - | - | - | Yes |
+| Advanced RBAC | - | - | - | Yes |
 | | | | | |
-| **Self-Healing** (Phase 4) | | | | |
-| - Playbook fixes | - | - | ✓ | ✓ |
-| - AI-generated fixes | - | - | - | ✓ |
-| - Auto-apply (canary) | - | - | - | ✓ |
+| **Self-Healing** | | | | |
+| Playbook fixes | - | - | - | Yes |
+| Automated fix application | - | - | - | Yes |
+| Approval workflows | - | - | - | Yes |
 | | | | | |
 | **Support** | | | | |
-| - Community (Discord) | ✓ | ✓ | ✓ | ✓ |
-| - Email support | - | ✓ | ✓ | ✓ |
-| - Priority support | - | - | ✓ | ✓ |
-| - Dedicated support | - | - | - | ✓ |
-| - SLA | - | - | - | ✓ |
+| Community (Discord) | Yes | Yes | Yes | Yes |
+| Email support | - | Yes | Yes | Yes |
+| Priority support | - | - | Yes | Yes |
+| Dedicated support + SLA | - | - | - | Yes |
+| | | | | |
+| **Frameworks** | All | All | All | All |
+| **Integration** | SDK + CLI | SDK + CLI | SDK + CLI | SDK + CLI |
 
 ---
 
-## Free Tier Detail
+## Free Tier
 
-### Limits
+**"Try it, it works."**
+
+All 42 failure detectors included — not a crippled demo. The upgrade triggers are project count and fix quality, not detection capability.
 
 | Dimension | Limit | Rationale |
 |-----------|-------|-----------|
-| **Spans/month** | 10,000 | ~330/day, covers solo dev comfortably |
-| **Capture level** | Standard | No reasoning capture (saves 60% storage) |
-| **Projects** | 1 | Single app focus, upgrade for multi-project |
-| **Retention** | 7 days | Debug recent issues, not trend analysis |
-| **Team members** | 1 | Solo use only |
-| **API calls/day** | 0 | Dashboard only, upgrade for API |
-| **Alerts/day** | 10 | Prevent spam, encourage prioritization |
+| Projects | 1 | Single app focus |
+| Team members | 1 | Solo use |
+| History | 7 days | Debug recent issues |
+| Email alerts | 5/day | Prevent spam |
+| API access | No | Dashboard only |
 
-### Rate Limits
-
-| Limit | Value | Rationale |
-|-------|-------|-----------|
-| Spans/minute | 100 | Prevent burst abuse |
-| Spans/hour | 1,000 | ~16/min sustained |
-| Concurrent sessions | 3 | Solo dev workload |
-
-### Included Features
-
-| Feature | Included | Notes |
-|---------|----------|-------|
-| All 14 failure modes | ✓ | Full detection capability |
-| Basic fix suggestions | ✓ | Text-based, not code-level |
-| Email alerts | ✓ | Up to 10/day |
-| Token usage display | ✓ | Basic count, no breakdown |
-| Dashboard | ✓ | Full UI access |
-| All frameworks | ✓ | No framework restrictions |
-| Community Discord | ✓ | Self-serve support |
-
-### Not Included (Upgrade Triggers)
-
-| Feature | Why Excluded | Upgrade Trigger |
-|---------|--------------|-----------------|
-| Slack/webhook alerts | Team feature | "I need my team to see alerts" |
-| Code-level fixes | Premium value | "I want copy-paste fixes" |
-| API access | Developer feature | "I want to automate" |
-| OTEL export | Integration feature | "I need this in Datadog" |
-| Cost breakdown | Business feature | "I need to show my CTO" |
-| >1 project | Scale feature | "I have multiple apps" |
-| >7 day retention | Analysis feature | "I need to see trends" |
-| Team members | Collaboration | "My team needs access" |
-
-### Abuse Prevention
-
-| Mechanism | Implementation |
-|-----------|----------------|
-| Rate limiting | 50 traces/min, 500/hour hard cap |
-| Project limit | 1 project, can't create more |
-| No API | Dashboard only, harder to automate abuse |
-| Email verification | Required for signup |
-| Monthly reset | Hard reset, no rollover |
-| Single user | No sharing accounts |
+No credit card required.
 
 ---
 
-## Startup Tier Detail ($49/mo)
+## Pro Tier ($29/mo)
 
-### Target User
-Alex (AI Team Lead) who can approve <$500/mo
+**"My side projects are covered."**
 
-### Limits
+Target: Solo builder with 2-3 active projects who wants copy-paste fixes and Slack alerts.
 
-| Dimension | Limit |
-|-----------|-------|
-| Spans/month | 250,000 |
-| Capture level | Full (incl. reasoning) |
-| Projects | 5 |
-| Retention | 30 days |
-| Team members | 3 |
-| API calls/day | 10,000 |
-| Alerts/day | 100 |
+Upgrade triggers from Free:
+- "I have a second project"
+- "I want code-level fixes, not just descriptions"
+- "I need Slack alerts"
 
-### Key Unlocks from Free
-
-| Feature | Value to User |
-|---------|---------------|
-| **Slack integration** | Alerts where the team lives |
-| **Code-level fixes** | Copy-paste solutions |
-| **API access** | Automation, CI/CD integration |
-| **OTEL export** | Connect to existing observability |
-| **Cost breakdown** | Understand spending by agent |
-| **5 projects** | Multiple apps/environments |
-| **3 team members** | Small team collaboration |
-| **30 day retention** | Weekly trend analysis |
-| **Email support** | Get help when stuck |
-
-### Overage Handling
-
-**No overage charges.** Hard limit at 250K spans.
-
-When approaching limit:
-- 80% (200K): Email warning
-- 90% (225K): Dashboard banner
-- 100% (250K): New spans rejected, existing data retained
-
-User can:
-1. Wait for monthly reset
-2. Upgrade to Growth
-3. Delete old projects to free up quota (future feature)
+Annual: $23/mo ($276/yr, 20% off).
 
 ---
 
-## Growth Tier Detail ($199/mo)
+## Team Tier ($79/mo)
 
-### Target User
-Jordan (CTO) who approves $200-500/mo for team tools
+**"My team needs this."**
 
-### Limits
+Target: Small team (2-5 people) shipping AI-powered products together.
 
-| Dimension | Limit |
-|-----------|-------|
-| Spans/month | 2,500,000 |
-| Capture level | Full (configurable) |
-| Projects | 25 |
-| Retention | 90 days |
-| Team members | 10 |
-| API calls/day | 100,000 |
-| Alerts/day | 1,000 |
+Upgrade triggers from Pro:
+- "My co-founder needs access"
+- "I need longer history to see trends"
+- "I have more than 3 active projects"
 
-### Key Unlocks from Startup
-
-| Feature | Value to User |
-|---------|---------------|
-| **PagerDuty/OpsGenie** | On-call workflow integration |
-| **Cost projections** | Budget planning |
-| **Optimization suggestions** | Reduce AI spend |
-| **AI-generated runbooks** | Operational documentation |
-| **Custom alert rules** | Tailored alerting |
-| **Audit logs** | Compliance, debugging |
-| **Self-healing (playbooks)** | Automated fixes |
-| **10 team members** | Full team access |
-| **90 day retention** | Quarterly analysis |
-| **Priority support** | Faster response |
+Annual: $63/mo ($756/yr, 20% off).
 
 ---
 
-## Enterprise Tier (Custom)
+## Enterprise (Custom)
 
-### Target User
-Jordan (CTO) + Procurement for companies with compliance needs
+**"We need compliance, self-healing, and regulatory readiness."**
 
-### Typical Configuration
+Target: Companies with compliance needs, EU AI Act obligations, or production-critical agent systems.
 
-| Dimension | Typical | Maximum |
-|-----------|---------|---------|
-| Spans/month | 25M+ | Unlimited |
-| Capture level | Full + custom | Configurable |
-| Projects | 100+ | Unlimited |
-| Retention | 1 year | 2 years |
-| Team members | 50+ | Unlimited |
+**EU AI Act Ready** — Pisama's runtime monitoring satisfies post-market monitoring requirements (Article 9, Article 72):
 
-### Key Unlocks from Growth
+| EU AI Act Requirement | Pisama Enterprise Feature |
+|---|---|
+| Continuous performance monitoring | 42 failure detectors on production traces |
+| Comprehensive logging | OTEL trace ingestion with full audit trail |
+| Serious incident reporting | Alert escalation with regulatory timestamps |
+| Human oversight mechanisms | Healing approval workflows (human-in-the-loop) |
+| Risk management documentation | Compliance report export (detection history, risk levels, resolutions) |
 
-| Feature | Value to User |
-|---------|---------------|
-| **OTEL native ingestion** | Enterprise observability stack |
-| **SSO/SAML** | Corporate identity |
-| **Advanced RBAC** | Granular permissions |
-| **AI-generated fixes** | Full self-healing |
-| **Auto-apply (canary)** | Automated remediation |
-| **Data residency** | Compliance requirements |
-| **SLA** | Guaranteed uptime |
-| **Dedicated support** | Named contact |
-| **Custom retention** | Compliance needs |
-| **SOC 2 report** | Security compliance |
+Additional Enterprise features:
+- Unlimited projects and team members
+- Automated fix application with approval workflows
+- SSO / SAML, advanced RBAC
+- Custom retention (up to 2 years)
+- Data residency options (EU, US)
+- Dedicated support with SLA
+- SOC 2 report
+- Compliance report export (PDF, regulatory-ready)
+- Incident log with severity classification
 
-### Pricing Factors
-
-| Factor | Impact |
-|--------|--------|
-| Trace volume | Primary driver |
-| Retention period | Storage cost |
-| Self-healing usage | AI inference cost |
-| Support level | Service cost |
-| Compliance needs | Audit cost |
-
-### Typical Pricing
+Typical pricing:
 
 | Company Size | Typical Annual |
-|--------------|----------------|
-| 200-500 employees | $25,000-50,000 |
-| 500-2000 employees | $50,000-150,000 |
-| 2000+ employees | $150,000+ |
+|---|---|
+| 50-200 employees | $15,000-30,000 |
+| 200-1000 employees | $30,000-100,000 |
+| 1000+ employees | $100,000+ |
 
 ---
 
-## Annual Discount
+## Backend Guardrails
 
-| Tier | Monthly | Annual (per month) | Savings |
-|------|---------|-------------------|---------|
-| Startup | $49 | $41 | 17% |
-| Growth | $199 | $166 | 17% |
-| Enterprise | Custom | Custom | Negotiable |
+To prevent abuse without complicating pricing, soft limits exist but are not surfaced to users:
 
----
+| Tier | Agent runs/day | API requests/min | Alerts/day |
+|------|---------------|------------------|------------|
+| Free | 50 | 30 | 5 |
+| Pro | 500 | 200 | 50 |
+| Team | 5,000 | 1,000 | 500 |
+| Enterprise | Unlimited | 10,000 | Unlimited |
 
-## Conversion Metrics to Track
-
-### Free → Startup Triggers
-
-| Trigger | Target % |
-|---------|----------|
-| Hit trace limit | 30% |
-| Tried to add team member | 25% |
-| Wanted Slack alerts | 20% |
-| Needed API access | 15% |
-| Other | 10% |
-
-### Startup → Growth Triggers
-
-| Trigger | Target % |
-|---------|----------|
-| Hit trace limit | 25% |
-| Needed PagerDuty | 20% |
-| Wanted cost projections | 20% |
-| Team size >3 | 20% |
-| Other | 15% |
+When a free user hits the daily run limit, show a friendly upgrade nudge — don't hard-block.
 
 ---
 
-## Implementation Notes
+## Upgrade / Downgrade
 
-### Phase 1 Requirements
-
-1. **Billing system integration** (Stripe)
-2. **Usage tracking** (traces, API calls, alerts)
-3. **Limit enforcement** (hard stops, not soft)
-4. **Upgrade prompts** (contextual, not annoying)
-5. **Plan management UI** (view usage, upgrade, downgrade)
-
-### Database Schema Additions
-
-```sql
--- Organization limits
-ALTER TABLE organizations ADD COLUMN plan VARCHAR(20) DEFAULT 'free';
-ALTER TABLE organizations ADD COLUMN trace_limit INTEGER DEFAULT 5000;
-ALTER TABLE organizations ADD COLUMN project_limit INTEGER DEFAULT 1;
-ALTER TABLE organizations ADD COLUMN retention_days INTEGER DEFAULT 7;
-ALTER TABLE organizations ADD COLUMN team_limit INTEGER DEFAULT 1;
-
--- Usage tracking
-CREATE TABLE usage_metrics (
-    id UUID PRIMARY KEY,
-    organization_id UUID REFERENCES organizations(id),
-    period_start TIMESTAMP,
-    period_end TIMESTAMP,
-    traces_count INTEGER DEFAULT 0,
-    api_calls_count INTEGER DEFAULT 0,
-    alerts_sent_count INTEGER DEFAULT 0,
-    created_at TIMESTAMP DEFAULT NOW()
-);
-
--- Plan changes
-CREATE TABLE plan_changes (
-    id UUID PRIMARY KEY,
-    organization_id UUID REFERENCES organizations(id),
-    from_plan VARCHAR(20),
-    to_plan VARCHAR(20),
-    reason VARCHAR(255),
-    changed_at TIMESTAMP DEFAULT NOW()
-);
-```
+- **Upgrade**: Instant. Prorated billing for remainder of current period.
+- **Downgrade**: Takes effect at end of current billing period. Extra projects are paused (not deleted) for 30 days.
+- **Cancel**: Reverts to Free at end of billing period. Data retained per Free tier limits (7 days).
 
 ---
 
 ## Competitive Comparison
 
-| Feature | PISAMA Free | LangSmith Free | Arize Free |
-|---------|-------------|----------------|------------|
-| Spans/month | 10,000 | 5,000 traces | 1,000 |
-| Capture | Standard (no reasoning) | Full | Full |
-| Retention | 7 days | 14 days | 7 days |
-| Team members | 1 | 1 | 1 |
-| All frameworks | ✓ | LangChain only | ✓ |
-| Detection | 14 failure modes | Basic | Drift only |
-| Fix suggestions | ✓ | - | - |
-| Email alerts | ✓ | - | ✓ |
-| Input/Output capture | ✓ | ✓ | ✓ |
-| Reasoning capture | Paid only | ✓ | - |
+Competitors use different billing models (per-call, per-seat, usage-based). Here's what each actually costs at common usage levels:
 
-**PISAMA advantage:** Fix suggestions included in free tier (unique). More generous span limit.
+### Solo Dev (1 project, ~1,500 traces/mo)
+
+| Platform | Monthly Cost | What You Get |
+|---|---|---|
+| **Pisama** | **$0** | 42 detectors, basic fixes, email alerts, 7-day history |
+| Patronus AI | $15 | Hallucination eval only, no dashboard |
+| LangSmith | $0 | Tracing only, 5K trace limit, 1 user |
+| Langfuse | $0 | Tracing only, 50K obs limit, 2 users |
+| Braintrust | $0 | Tracing + evals, 1M span limit |
+| Arize | $0 | Tracing, 3 users, 14-day retention |
+
+### Small Team (3 devs, 5 projects, ~10K traces/mo)
+
+| Platform | Monthly Cost | What You Get |
+|---|---|---|
+| **Pisama** | **$79** | 42 detectors, code fixes, runbooks, Slack, 5 members |
+| Patronus AI | $100+ | Hallucination + custom evals, enterprise sales required |
+| LangSmith | $117 ($39 x 3) | Tracing + evals, LangChain only |
+| Langfuse | $30-199 | Tracing + prompt mgmt, no detection |
+| Braintrust | $0-249 | Tracing + evals (free tier may still cover) |
+| Arize | $50 | Tracing + basic monitoring |
+
+### Feature Comparison
+
+| Capability | Pisama | Patronus | LangSmith | Langfuse | Braintrust | Arize |
+|---|---|---|---|---|---|---|
+| Failure detection | 42 modes | Hallucination | None | None | None | Drift |
+| Fix suggestions | Yes | No | No | No | No | No |
+| Self-healing | Enterprise | No | No | No | No | No |
+| Tracing | Yes | No | Yes | Yes | Yes | Yes |
+| Framework-agnostic | Yes | Yes | LangChain-first | Yes | Yes | Yes |
+| Billing model | Flat/project | Per-call | Per-seat | Usage | Usage | Usage |
+
+**Pisama advantage**: Only platform with failure detection + fix suggestions at every tier. Flat per-project pricing — no usage anxiety.
 
 ---
 
 ## FAQ
 
-**Q: Why no credit card for free tier?**
-A: Reduce friction. We want maximum signups, filter later.
+**Do I need a credit card for Free?**
+No.
 
-**Q: Why hard limits instead of overage?**
-A: No surprise bills. Trust builds loyalty.
+**What counts as a project?**
+One app or repo you're monitoring with Pisama.
 
-**Q: Why 10,000 spans for free?**
-A: Covers solo dev comfortably (~330/day). Based on typical usage: 20-50 spans/session, 2-5 sessions/day.
+**Can I upgrade anytime?**
+Yes. Instant upgrade, prorated billing.
 
-**Q: Why no reasoning capture in free tier?**
-A: Reasoning blocks can be 10KB+ per span - 60% of storage. Standard capture (input, output, tool I/O) still provides full debugging value.
+**What if I hit the daily limit?**
+We'll nudge you to upgrade. No data loss.
 
-**Q: What's the difference between a span and a trace?**
-A: A **span** is one tool operation (Bash, Read, Edit). A **session** (sometimes called trace) is a collection of spans from one Claude Code conversation. We bill on spans because sessions vary wildly in size.
+**What happens if I downgrade?**
+Your extra projects are paused (not deleted) for 30 days.
 
-**Q: Why no Slack in free?**
-A: Natural upgrade trigger for teams. Email sufficient for solo.
+**Do all tiers get all 42 detectors?**
+Yes. Detection capability is the same across all tiers. Upgrade triggers are project count, fix quality, and team features.
 
-**Q: Why include fix suggestions in free?**
-A: Key differentiator. Hook users on the unique value.
+---
 
-**Q: Can users downgrade?**
-A: Yes, at any time. Data beyond new limits is archived (not deleted) for 30 days.
+## Implementation
 
-**Q: Is reasoning captured in paid tiers?**
-A: Yes, full capture including extended thinking blocks. Configurable if you want to exclude for storage savings.
+### Stripe Products
+
+| Product | Price ID Env Var |
+|---------|-----------------|
+| Pisama Pro Monthly ($29) | `STRIPE_PRICE_ID_PRO_MONTHLY` |
+| Pisama Pro Annual ($276) | `STRIPE_PRICE_ID_PRO_ANNUAL` |
+| Pisama Team Monthly ($79) | `STRIPE_PRICE_ID_TEAM_MONTHLY` |
+| Pisama Team Annual ($756) | `STRIPE_PRICE_ID_TEAM_ANNUAL` |
+
+### Backend Constants
+
+Plan definitions in `backend/app/billing/constants.py`:
+- `PlanTier.FREE` / `PlanTier.PRO` / `PlanTier.TEAM` / `PlanTier.ENTERPRISE`
+- `get_project_limit(plan)` — returns project limit for a plan
+- `get_daily_run_limit(plan)` — returns daily run limit
+- `get_rate_limit(plan)` — returns API rate limit config
+
+### Database
+
+Tenant model (`backend/app/storage/models.py`):
+- `plan` — current plan (free/pro/team/enterprise)
+- `project_limit` — project limit (default: 1)
+- `stripe_customer_id` — Stripe customer
+- `stripe_subscription_id` — Stripe subscription
+- `subscription_status` — active/canceled/etc.
+- `current_period_end` — billing period end
 
 ---
 
@@ -466,5 +281,6 @@ A: Yes, full capture including extended thinking blocks. Configurable if you wan
 
 | Version | Date | Changes |
 |---------|------|---------|
-| 1.0 | 2026-01-05 | Initial pricing structure |
-| 1.1 | 2026-01-05 | Clarified metering model: bill on spans (not traces/sessions). Added capture levels (Full/Standard/Minimal). Free tier gets Standard capture (no reasoning). Updated limits: Free 10K spans, Startup 250K, Growth 2.5M. |
+| 1.0 | 2026-01-05 | Initial pricing structure (span-based) |
+| 1.1 | 2026-01-05 | Clarified metering model, capture levels |
+| 2.0 | 2026-03-21 | Full overhaul: per-project billing, renamed tiers (Startup->Pro, Growth->Team), new prices ($29/$79), 42 detectors, vibe-coder audience |

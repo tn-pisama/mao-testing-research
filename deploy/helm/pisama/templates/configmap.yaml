@@ -1,0 +1,16 @@
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: {{ include "pisama.configmap.name" . }}
+  labels:
+    {{- include "pisama.labels" . | nindent 4 }}
+data:
+  ENVIRONMENT: {{ .Values.backend.env.ENVIRONMENT | quote }}
+  CORS_ORIGINS: {{ .Values.backend.env.CORS_ORIGINS | quote }}
+  EMBEDDING_MODEL: {{ .Values.backend.env.EMBEDDING_MODEL | quote }}
+  DATABASE_HOST: {{ include "pisama.database.host" . | quote }}
+  DATABASE_PORT: {{ include "pisama.database.port" . | quote }}
+  DATABASE_NAME: {{ include "pisama.database.name" . | quote }}
+  DATABASE_USER: {{ include "pisama.database.user" . | quote }}
+  REDIS_HOST: {{ include "pisama.redis.host" . | quote }}
+  REDIS_PORT: {{ include "pisama.redis.port" . | quote }}

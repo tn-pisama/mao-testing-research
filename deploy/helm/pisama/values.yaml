@@ -1,0 +1,237 @@
+# ============================================================================
+# PISAMA Helm Chart - Production Configuration
+# ============================================================================
+
+# -- Global settings
+global:
+  # -- Image pull secrets for private registries
+  imagePullSecrets: []
+
+# ============================================================================
+# Backend (FastAPI + Uvicorn)
+# ============================================================================
+backend:
+  image:
+    repository: ghcr.io/tn-pisama/pisama-backend
+    tag: latest
+    pullPolicy: IfNotPresent
+  # -- Number of backend replicas
+  replicas: 2
+  resources:
+    requests:
+      cpu: 250m
+      memory: 512Mi
+    limits:
+      cpu: "1"
+      memory: 2Gi
+  env:
+    ENVIRONMENT: production
+    CORS_ORIGINS: "*"
+    EMBEDDING_MODEL: BAAI/bge-m3
+  service:
+    type: ClusterIP
+    port: 8000
+  probes:
+    liveness:
+      path: /api/v1/health/live
+      initialDelaySeconds: 10
+      periodSeconds: 15
+    readiness:
+      path: /api/v1/health/ready
+      initialDelaySeconds: 15
+      periodSeconds: 10
+    startup:
+      path: /api/v1/health/startup
+      initialDelaySeconds: 5
+      periodSeconds: 5
+      failureThreshold: 30
+  # -- Node selector for backend pods
+  nodeSelector: {}
+  # -- Tolerations for backend pods
+  tolerations: []
+  # -- Additional pod annotations
+  podAnnotations: {}
+  # -- Pod security context
+  podSecurityContext:
+    runAsNonRoot: true
+    runAsUser: 1000
+    fsGroup: 1000
+  # -- Container security context
+  securityContext:
+    readOnlyRootFilesystem: true
+    allowPrivilegeEscalation: false
+    capabilities:
+      drop:
+        - ALL
+
+# ============================================================================
+# Frontend (Next.js)
+# ============================================================================
+frontend:
+  image:
+    repository: ghcr.io/tn-pisama/pisama-frontend
+    tag: latest
+    pullPolicy: IfNotPresent
+  # -- Number of frontend replicas
+  replicas: 2
+  resources:
+    requests:
+      cpu: 100m
+      memory: 256Mi
+    limits:
+      cpu: 500m
+      memory: 512Mi
+  service:
+    type: ClusterIP
+    port: 3000
+  # -- Node selector for frontend pods
+  nodeSelector: {}
+  # -- Tolerations for frontend pods
+  tolerations: []
+  # -- Additional pod annotations
+  podAnnotations: {}
+  # -- Pod security context
+  podSecurityContext:
+    runAsNonRoot: true
+    runAsUser: 1000
+    fsGroup: 1000
+  # -- Container security context
+  securityContext:
+    readOnlyRootFilesystem: false
+    allowPrivilegeEscalation: false
+    capabilities:
+      drop:
+        - ALL
+
+# ============================================================================
+# Ingress
+# ============================================================================
+ingress:
+  enabled: true
+  className: nginx
+  annotations: {}
+  # Example annotations for production:
+  #   cert-manager.io/cluster-issuer: letsencrypt-prod
+  #   nginx.ingress.kubernetes.io/rate-limit: "100"
+  #   nginx.ingress.kubernetes.io/proxy-body-size: "50m"
+  hosts:
+    - host: pisama.example.com
+      paths:
+        - path: /api
+          pathType: Prefix
+          service: backend
+        - path: /
+          pathType: Prefix
+          service: frontend
+  tls: []
+  # Example TLS config:
+  #   - secretName: pisama-tls
+  #     hosts:
+  #       - pisama.example.com
+
+# ============================================================================
+# PostgreSQL (Bitnami subchart)
+# ============================================================================
+postgresql:
+  enabled: true
+  auth:
+    username: pisama
+    password: ""  # Set via --set or secrets
+    database: pisama
+  primary:
+    persistence:
+      size: 20Gi
+    initdb:
+      scripts:
+        enable-pgvector.sql: |
+          CREATE EXTENSION IF NOT EXISTS vector;
+
+# ============================================================================
+# Redis (Bitnami subchart)
+# ============================================================================
+redis:
+  enabled: true
+  auth:
+    enabled: false
+  architecture: standalone
+
+# ============================================================================
+# External Database (when postgresql.enabled=false)
+# ============================================================================
+externalDatabase:
+  host: ""
+  port: 5432
+  user: pisama
+  password: ""
+  database: pisama
+  sslMode: require
+
+# ============================================================================
+# External Redis (when redis.enabled=false)
+# ============================================================================
+externalRedis:
+  host: ""
+  port: 6379
+
+# ============================================================================
+# Secrets
+# ============================================================================
+secrets:
+  # -- JWT signing secret (required, 32+ characters)
+  jwtSecret: ""
+  # -- Anthropic API key for LLM judge
+  anthropicApiKey: ""
+  # -- Clerk authentication keys
+  clerkPublishableKey: ""
+  clerkSecretKey: ""
+  # -- Stripe payment key
+  stripeSecretKey: ""
+
+# ============================================================================
+# Database Migration Job
+# ============================================================================
+migration:
+  # -- Enable database migration job on install/upgrade
+  enabled: true
+  # -- Migration command to execute
+  command: ["alembic", "upgrade", "head"]
+  # -- Backoff limit for migration job retries
+  backoffLimit: 3
+  # -- Time-to-live for completed migration jobs (seconds)
+  ttlSecondsAfterFinished: 600
+
+# ============================================================================
+# Feature Flags
+# ============================================================================
+featureFlags:
+  mlDetection: false
+  advancedEvals: false
+  chaosEngineering: false
+  regressionTesting: false
+  traceReplay: false
+  cognitiveMemory: false
+  qualityAssessment: false
+
+# ============================================================================
+# Service Account
+# ============================================================================
+serviceAccount:
+  # -- Create a service account
+  create: true
+  # -- Annotations for the service account
+  annotations: {}
+  # -- Name override (defaults to fullname)
+  name: ""
+
+# ============================================================================
+# Pod Disruption Budget
+# ============================================================================
+podDisruptionBudget:
+  # -- Enable PDB for backend
+  backend:
+    enabled: true
+    minAvailable: 1
+  # -- Enable PDB for frontend
+  frontend:
+    enabled: true
+    minAvailable: 1
