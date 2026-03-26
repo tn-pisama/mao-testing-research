@@ -126,7 +126,8 @@ class Trace(Base):
     tenant_id = Column(UUID(as_uuid=True), ForeignKey("tenants.id"), nullable=False)
     session_id = Column(String(64), nullable=False)
     parent_trace_id = Column(UUID(as_uuid=True), ForeignKey("traces.id"), nullable=True)
-    framework = Column(String(32), default="langgraph")
+    framework = Column(String(32), default="unknown")
+    provider = Column(String(32), nullable=True)  # bedrock, vertex_ai, crewai, openai, anthropic
     status = Column(String(32), default="running")
     detection_status = Column(String(32), default="pending")  # pending/running/partial/complete/failed
     detection_metadata = Column(JSONB, default=dict)  # {failed_detectors: [...], detectors_run: N, ...}

@@ -140,15 +140,26 @@ async def ingest_traces(
                 )
             )
             if not existing.scalar_one_or_none():
-                # Infer harness type from OTEL resource attributes if available
+                # Infer harness type and framework from OTEL attributes
                 harness_type = None
+                provider = None
                 for resource_span in request.resourceSpans:
                     for attr in resource_span.get("resource", {}).get("attributes", []):
-                        if attr.get("key") == "pisama.harness.type":
-                            harness_type = attr.get("value", {}).get("stringValue")
+                        key = attr.get("key", "")
+                        val = attr.get("value", {}).get("stringValue", "")
+                        if key == "pisama.harness.type":
+                            harness_type = val
+                        elif key in ("gen_ai.system", "gen_ai.provider.name"):
+                            provider = val
+
+                # Auto-detect framework from parsed span attributes
+                detected_framework = parsed.framework if hasattr(parsed, "framework") else None
+                framework = detected_framework or harness_type or "unknown"
+
                 trace = Trace(
                     tenant_id=UUID(tenant_id),
                     session_id=parsed.trace_id,
+                    framework=framework,
                     harness_type=harness_type,
                 )
                 db.add(trace)
@@ -598,3 +609,188 @@ async def analyze_trace(
         "analyzed_states": len(states),
         "detection_types_run": ["loop", "hallucination", "corruption", "persona", "coordination"],
     }
+
+
+@router.get("/{trace_id}/orchestration-quality")
+async def get_orchestration_quality(
+    trace_id: UUID,
+    tenant_id: str = Depends(get_current_tenant),
+    db: AsyncSession = Depends(get_db),
+):
+    """Score orchestration quality for a multi-agent trace.
+
+    Auto-detects input mode:
+    - Execution mode: structured states with agent_id, latency_ms, state_delta
+    - Conversation mode: message-style states (from coordination data)
+    """
+    from app.api.v1.schemas import OrchestrationQualityResponse
+    from app.detection.orchestration_quality import detect as oq_detect
+
+    await set_tenant_context(db, tenant_id)
+
+    trace = await db.execute(
+        select(Trace).where(Trace.id == trace_id, Trace.tenant_id == UUID(tenant_id))
+    )
+    trace = trace.scalar_one_or_none()
+    if not trace:
+        raise HTTPException(status_code=404, detail="Trace not found")
+
+    states_result = await db.execute(
+        select(State).where(State.trace_id == trace_id).order_by(State.sequence_num)
+    )
+    states = states_result.scalars().all()
+
+    if not states:
+        raise HTTPException(status_code=400, detail="Trace has no states")
+
+    # Build state dicts for the scorer
+    state_dicts = [
+        {
+            "agent_id": s.agent_id or "unknown",
+            "agent_role": s.agent_role or s.agent_id or "unknown",
+            "sequence_num": s.sequence_num,
+            "latency_ms": s.latency_ms or 100,
+            "state_delta": s.state_delta or {},
+            "tool_calls": s.tool_calls,
+            "status": "completed",
+            "output": (s.response_redacted or "")[:200],
+        }
+        for s in states
+    ]
+
+    detected, confidence, score = oq_detect(states=state_dicts)
+
+    return OrchestrationQualityResponse(
+        overall=score.overall,
+        topology=score.topology,
+        dimensions=score.dimensions,
+        issues=score.issues,
+        agent_stats=score.agent_stats,
+        critical_path=score.critical_path,
+        mode="execution",
+    )
+
+
+@router.get("/{trace_id}/chain-analysis")
+async def get_chain_analysis(
+    trace_id: UUID,
+    tenant_id: str = Depends(get_current_tenant),
+    db: AsyncSession = Depends(get_db),
+):
+    """Analyze cross-chain interactions for a trace and its linked traces.
+
+    Traverses parent_trace_id links to build a trace graph, then detects:
+    - Cascade failures (parent error propagates to child)
+    - Data corruption propagation
+    - Cross-chain loops
+    - Redundant work across sibling traces
+    """
+    from app.api.v1.schemas import ChainAnalysisResponse, ChainAnalysisIssue
+    from app.detection.multi_chain import build_trace_graph, MultiChainAnalyzer
+
+    await set_tenant_context(db, tenant_id)
+
+    # Load the target trace
+    trace = await db.execute(
+        select(Trace).where(Trace.id == trace_id, Trace.tenant_id == UUID(tenant_id))
+    )
+    trace = trace.scalar_one_or_none()
+    if not trace:
+        raise HTTPException(status_code=404, detail="Trace not found")
+
+    # Find all linked traces (parent chain + child chain)
+    linked_traces = [trace]
+
+    # Walk up to root
+    current = trace
+    while current.parent_trace_id:
+        parent = await db.execute(
+            select(Trace).where(Trace.id == current.parent_trace_id)
+        )
+        parent = parent.scalar_one_or_none()
+        if not parent or parent in linked_traces:
+            break
+        linked_traces.append(parent)
+        current = parent
+
+    # Walk down to children (breadth-first)
+    queue = [trace.id]
+    visited = {t.id for t in linked_traces}
+    while queue:
+        parent_id = queue.pop(0)
+        children = await db.execute(
+            select(Trace).where(Trace.parent_trace_id == parent_id)
+        )
+        for child in children.scalars().all():
+            if child.id not in visited:
+                linked_traces.append(child)
+                visited.add(child.id)
+                queue.append(child.id)
+
+    if len(linked_traces) < 2:
+        return ChainAnalysisResponse(
+            detected=False, confidence=0.0, trace_count=1,
+            root_traces=[str(trace_id)],
+            explanation="No linked traces found — single trace, no chain analysis possible",
+        )
+
+    # Build trace graph
+    trace_dicts = []
+    for t in linked_traces:
+        # Load first and last states for corruption detection
+        first_state = await db.execute(
+            select(State).where(State.trace_id == t.id).order_by(State.sequence_num).limit(1)
+        )
+        last_state = await db.execute(
+            select(State).where(State.trace_id == t.id).order_by(State.sequence_num.desc()).limit(1)
+        )
+        fs = first_state.scalar_one_or_none()
+        ls = last_state.scalar_one_or_none()
+
+        # Get detection types for this trace
+        detections = await db.execute(
+            select(Detection).where(Detection.trace_id == t.id)
+        )
+        det_types = [d.detection_type for d in detections.scalars().all()]
+
+        trace_dicts.append({
+            "trace_id": str(t.id),
+            "session_id": t.session_id,
+            "framework": t.framework or "",
+            "status": t.status or "completed",
+            "detection_types": det_types,
+            "first_state_delta": fs.state_delta if fs else {},
+            "last_state_delta": ls.state_delta if ls else {},
+            "created_at": t.created_at.isoformat() if t.created_at else None,
+            "completed_at": t.completed_at.isoformat() if t.completed_at else None,
+        })
+
+    link_dicts = []
+    for t in linked_traces:
+        if t.parent_trace_id:
+            link_dicts.append({
+                "parent_trace_id": str(t.parent_trace_id),
+                "child_trace_id": str(t.id),
+                "link_type": "parent_trace_id",
+            })
+
+    graph = build_trace_graph(trace_dicts, link_dicts)
+    analyzer = MultiChainAnalyzer()
+    result = analyzer.analyze(graph)
+
+    return ChainAnalysisResponse(
+        detected=result.detected,
+        confidence=result.confidence,
+        issues=[
+            ChainAnalysisIssue(
+                issue_type=i.issue_type,
+                description=i.description,
+                severity=i.severity,
+                affected_traces=i.affected_traces,
+            )
+            for i in result.issues
+        ],
+        trace_count=len(linked_traces),
+        root_traces=graph.roots,
+        explanation=result.explanation,
+    )

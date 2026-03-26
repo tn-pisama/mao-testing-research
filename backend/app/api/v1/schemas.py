@@ -400,3 +400,32 @@ class QualityAnalyticsResponse(BaseModel):
     page: int
     page_size: int
     has_more: bool
+
+
+class OrchestrationQualityResponse(BaseModel):
+    """Response for orchestration quality scoring."""
+    overall: float
+    topology: str = "unknown"
+    dimensions: Dict[str, float] = {}
+    issues: List[str] = []
+    agent_stats: Dict[str, Dict[str, Any]] = {}
+    critical_path: List[str] = []
+    mode: str = "execution"  # "execution" or "conversation"
+
+
+class ChainAnalysisIssue(BaseModel):
+    """A single cross-chain issue."""
+    issue_type: str
+    description: str
+    severity: str
+    affected_traces: List[str] = []
+
+
+class ChainAnalysisResponse(BaseModel):
+    """Response for multi-chain interaction analysis."""
+    detected: bool
+    confidence: float
+    issues: List[ChainAnalysisIssue] = []
+    trace_count: int = 0
+    root_traces: List[str] = []
+    explanation: str = ""
