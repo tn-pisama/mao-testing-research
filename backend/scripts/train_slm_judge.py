@@ -42,7 +42,7 @@ def upload_data():
 @app.function(
     image=training_image,
     gpu="A10G",
-    timeout=3600,
+    timeout=5400,  # 90 min — training takes ~75 min
     volumes={"/data": data_volume, "/model_output": model_volume},
 )
 def train():
