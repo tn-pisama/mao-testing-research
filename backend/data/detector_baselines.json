@@ -1,0 +1,23 @@
+{
+  "adaptive_thinking": {
+    "cost": {
+      "mean": 7.3948,
+      "stdev": 59.8668,
+      "p50": 3,
+      "p75": 4.2115,
+      "p90": 5,
+      "p95": 6,
+      "threshold_dynamic": 9.0
+    }
+  },
+  "subagent_boundary": {
+    "tool_count": {
+      "mean": 3.27,
+      "stdev": 1.51,
+      "p90": 5,
+      "p95": 6,
+      "threshold_anomaly": 8
+    }
+  },
+  "computed_from": "2355 real Claude Code entries"
+}
