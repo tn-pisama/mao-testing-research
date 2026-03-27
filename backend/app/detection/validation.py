@@ -61,6 +61,14 @@ class DetectionType(Enum):
     ORCHESTRATION_QUALITY = "orchestration_quality"  # Efficiency, utilization, parallelization
     # Multi-chain interaction (cross-trace failure detection)
     MULTI_CHAIN = "multi_chain"  # Cascade failures, cross-chain loops, data propagation
+    # Anthropic feature-specific detectors (Jan-Mar 2026)
+    COMPUTER_USE = "computer_use"  # Screen interaction failures (Computer Use)
+    DISPATCH_ASYNC = "dispatch_async"  # Async phone→desktop task failures (Dispatch)
+    AGENT_TEAMS = "agent_teams"  # Multi-agent team coordination failures (Agent Teams)
+    SUBAGENT_BOUNDARY = "subagent_boundary"  # Subagent permission boundary violations
+    SCHEDULED_TASK = "scheduled_task"  # Recurring task drift (/loop)
+    ADAPTIVE_THINKING = "adaptive_thinking"  # Thinking variance (overthinking/underthinking)
+    COWORK_SAFETY = "cowork_safety"  # Non-developer agent safety risks (Cowork)
 
 
 @dataclass

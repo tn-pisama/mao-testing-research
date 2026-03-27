@@ -77,6 +77,12 @@ FRAMEWORK_PREFIXES = {
     "openclaw.": "openclaw",
     "microsoft.": "microsoft_agent_framework",
     "agent_framework.": "microsoft_agent_framework",
+    # Claude-specific features (Jan-Mar 2026)
+    "claude.computer_use.": "computer_use",
+    "claude.dispatch.": "dispatch",
+    "claude.agent_teams.": "agent_teams",
+    "claude.cowork.": "cowork",
+    "claude.scheduled_task.": "scheduled_task",
 }
 
 

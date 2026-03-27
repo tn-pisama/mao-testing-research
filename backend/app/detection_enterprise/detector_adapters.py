@@ -740,6 +740,36 @@ def _build_detector_runners() -> Dict[DetectionType, Any]:
     except Exception as exc:
         logger.warning("Could not import multi-chain analyzer: %s", exc)
 
+    # --- Anthropic Feature Detectors (Jan-Mar 2026) ---
+    _anthropic_detectors = {
+        DetectionType.COMPUTER_USE: ("app.detection.computer_use", "detect",
+            lambda e: {"actions": e.input_data.get("actions", []), "task": e.input_data.get("task", ""), "final_state": e.input_data.get("final_state", "")}),
+        DetectionType.DISPATCH_ASYNC: ("app.detection.dispatch_async", "detect",
+            lambda e: {"instruction": e.input_data.get("instruction", ""), "execution_steps": e.input_data.get("execution_steps", []), "result": e.input_data.get("result", ""), "instruction_timestamp": e.input_data.get("instruction_timestamp", ""), "result_timestamp": e.input_data.get("result_timestamp", "")}),
+        DetectionType.AGENT_TEAMS: ("app.detection.agent_teams", "detect",
+            lambda e: {"task_list": e.input_data.get("task_list", []), "messages": e.input_data.get("messages", []), "team_size": e.input_data.get("team_size", 0)}),
+        DetectionType.SUBAGENT_BOUNDARY: ("app.detection.subagent_boundary", "detect",
+            lambda e: {"allowed_tools": e.input_data.get("allowed_tools", []), "actual_tool_calls": e.input_data.get("actual_tool_calls", []), "parent_instruction": e.input_data.get("parent_instruction", ""), "subagent_output": e.input_data.get("subagent_output", ""), "spawn_attempts": e.input_data.get("spawn_attempts", 0)}),
+        DetectionType.SCHEDULED_TASK: ("app.detection.scheduled_task", "detect",
+            lambda e: {"runs": e.input_data.get("runs", []), "schedule_interval_ms": e.input_data.get("schedule_interval_ms", 0)}),
+        DetectionType.ADAPTIVE_THINKING: ("app.detection.adaptive_thinking", "detect",
+            lambda e: {"effort_level": e.input_data.get("effort_level", "high"), "thinking_tokens": e.input_data.get("thinking_tokens", 0), "output_tokens": e.input_data.get("output_tokens", 0), "latency_ms": e.input_data.get("latency_ms", 0), "cost_usd": e.input_data.get("cost_usd", 0.0)}),
+        DetectionType.COWORK_SAFETY: ("app.detection.cowork_safety", "detect",
+            lambda e: {"user_instruction": e.input_data.get("user_instruction", ""), "planned_tasks": e.input_data.get("planned_tasks", []), "executed_actions": e.input_data.get("executed_actions", []), "connectors_used": e.input_data.get("connectors_used", []), "files_modified": e.input_data.get("files_modified", 0)}),
+    }
+    for det_type, (module_path, func_name, extractor) in _anthropic_detectors.items():
+        try:
+            import importlib
+            mod = importlib.import_module(module_path)
+            detect_fn = getattr(mod, func_name)
+            def _make_runner(fn, ext):
+                def _run(entry):
+                    return fn(**ext(entry))
+                return _run
+            runners[det_type] = _make_runner(detect_fn, extractor)
+        except Exception as exc:
+            logger.warning("Could not import %s detector: %s", det_type.value, exc)
+
     return runners
 
 
