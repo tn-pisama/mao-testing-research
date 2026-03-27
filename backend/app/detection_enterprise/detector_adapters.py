@@ -628,7 +628,10 @@ def _build_detector_runners() -> Dict[DetectionType, Any]:
 
             def _make_dify_runner(det):
                 def _run(entry: GoldenDatasetEntry) -> Tuple[bool, float]:
-                    wf_run = entry.input_data.get("workflow_run", entry.input_data)
+                    # Try both key names for resilience
+                    wf_run = (entry.input_data.get("workflow_run")
+                              or entry.input_data.get("workflow_execution")
+                              or entry.input_data)
                     result = det.detect_workflow_run(wf_run)
                     return result.detected, result.confidence
                 return _run
