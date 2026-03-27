@@ -1,12 +1,12 @@
 """Adaptive Thinking Variance Detection.
 
-Detects issues with Claude's adaptive thinking mode (early 2026):
-- Overthinking: thinking_tokens >> output_tokens (wasted compute)
-- Underthinking: low effort + minimal output (quality risk)
-- Cost spikes: single call exceeding budget
-- Timeout risk: extreme latency from max effort
+Detects issues with Claude's adaptive thinking mode (early 2026).
+Thresholds calibrated against real Claude pricing and behavior:
+- Normal extended thinking: 5-15x thinking/output ratio
+- Opus 4.6 with extended thinking: $0.15-0.40 per call normally
+- Max effort legitimately takes 2-3 minutes
 
-Based on Claude Adaptive Thinking (replaces binary extended thinking).
+EXPERIMENTAL: Based on early data. Will improve with production traces.
 """
 
 from typing import Tuple
@@ -23,28 +23,32 @@ def detect(
     scores = []
 
     # 1. Overthinking: thinking >> output
+    # Normal extended thinking is 5-15x. Flag at 20x+ (FinTech report: 40% cost
+    # drop switching to adaptive = previous ratio was ~25-30x on routine queries)
     if thinking_tokens > 0 and output_tokens > 0:
         ratio = thinking_tokens / output_tokens
-        if ratio > 10:
-            scores.append(min(1.0, ratio / 20))
+        if ratio > 20:
+            scores.append(min(1.0, (ratio - 20) / 30))  # Gradual: 20x=0, 50x=1.0
 
-    # 2. Underthinking: low effort + tiny output
-    if effort_level in ("low", "medium") and output_tokens > 0 and output_tokens < 50:
-        scores.append(0.6)
-    if effort_level == "low" and output and len(output.split()) < 10:
+    # 2. Underthinking: low effort + near-empty output
+    # Short answers are valid. Only flag truly empty responses.
+    if effort_level == "low" and output_tokens > 0 and output_tokens < 20:
         scores.append(0.5)
 
-    # 3. Cost spike
-    if cost_usd > 0.50:
-        scores.append(min(1.0, cost_usd / 1.0))
-    elif cost_usd > 0.20 and effort_level in ("low", "medium"):
-        scores.append(0.6)  # High cost for low effort = misconfigured
+    # 3. Cost spike — Opus 4.6 with extended thinking can cost $0.40 normally.
+    # Flag at $1.00+ (clearly anomalous for a single call).
+    if cost_usd > 1.00:
+        scores.append(min(1.0, cost_usd / 2.0))
+    # High cost at low effort = likely misconfigured
+    elif cost_usd > 0.50 and effort_level in ("low", "medium"):
+        scores.append(0.6)
 
-    # 4. Timeout risk
-    if latency_ms > 120000:  # 2 minutes
-        scores.append(min(1.0, latency_ms / 180000))
-    elif latency_ms > 60000 and effort_level != "max":
-        scores.append(0.5)  # Slow for non-max effort
+    # 4. Timeout risk — max effort legitimately takes 2-3 min.
+    # Flag at 3 min+ (180s). Non-max effort should be faster.
+    if latency_ms > 180000:  # 3 minutes
+        scores.append(min(1.0, latency_ms / 300000))
+    elif latency_ms > 90000 and effort_level not in ("high", "max"):
+        scores.append(0.4)  # Slow for non-intensive effort
 
     if not scores:
         return False, 0.0
