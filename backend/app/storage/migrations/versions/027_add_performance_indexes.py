@@ -12,8 +12,8 @@ depends_on: Union[str, Sequence[str], None] = None
 
 
 def upgrade() -> None:
-    op.create_index("idx_states_agent_role", "states", ["agent_role"])
-    op.create_index("idx_states_sprint", "states", ["sprint_id"])
+    op.execute("CREATE INDEX IF NOT EXISTS idx_states_agent_role ON states (agent_role)")
+    op.execute("CREATE INDEX IF NOT EXISTS idx_states_sprint ON states (sprint_id)")
     op.execute("CREATE INDEX IF NOT EXISTS idx_traces_detection_meta ON traces USING GIN(detection_metadata)")
 
 
