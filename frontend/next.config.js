@@ -2,6 +2,12 @@
 const nextConfig = {
   reactStrictMode: true,
   output: 'standalone',
+  async rewrites() {
+    return [
+      { source: '/docs', destination: 'https://docs.pisama.ai/' },
+      { source: '/docs/:path*', destination: 'https://docs.pisama.ai/:path*' },
+    ]
+  },
   async headers() {
     return [
       {

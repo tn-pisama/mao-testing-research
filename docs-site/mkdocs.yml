@@ -1,6 +1,6 @@
 site_name: Pisama Documentation
 site_description: Multi-agent failure detection & self-healing platform
-site_url: https://docs.pisama.com
+site_url: https://docs.pisama.ai
 
 theme:
   name: material
