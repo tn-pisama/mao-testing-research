@@ -56,6 +56,7 @@ const settingsItems: NavItem[] = [
 
 function NavLink({ item, pathname, isCollapsed }: { item: NavItem; pathname: string | null; isCollapsed: boolean }) {
   const isExternal = item.href.startsWith('http')
+  const isRewriteRoute = item.href === '/docs'
   const isActive = !isExternal && (pathname === item.href ||
     (item.href !== '/settings' && pathname?.startsWith(item.href + '/')))
   const Icon = item.icon
@@ -86,6 +87,14 @@ function NavLink({ item, pathname, isCollapsed }: { item: NavItem; pathname: str
   if (isExternal) {
     return (
       <a href={item.href} target="_blank" rel="noopener noreferrer" className={className}>
+        {content}
+      </a>
+    )
+  }
+
+  if (isRewriteRoute) {
+    return (
+      <a href={item.href} className={className}>
         {content}
       </a>
     )
