@@ -28,6 +28,7 @@ import {
   MessageSquare,
   Brain,
   LogOut,
+  BookOpen,
 } from 'lucide-react'
 import { useUserPreferences } from '@/lib/user-preferences'
 import { signOut } from 'next-auth/react'
@@ -74,27 +75,29 @@ const developerConfigureItems: NavItem[] = [
 const n8nSettingsItems: NavItem[] = [
   { label: 'Account', href: '/account', icon: User },
   { label: 'Settings', href: '/settings', icon: Settings },
+  { label: 'Docs', href: 'https://docs.pisama.com', icon: BookOpen },
 ]
 
 const developerSettingsItems: NavItem[] = [
   { label: 'Settings', href: '/settings', icon: Settings },
+  { label: 'Docs', href: 'https://docs.pisama.com', icon: BookOpen },
 ]
 
 function NavLink({ item, pathname, isCollapsed }: { item: NavItem; pathname: string | null; isCollapsed: boolean }) {
-  const isActive = pathname === item.href ||
-    (item.href !== '/settings' && pathname?.startsWith(item.href + '/'))
+  const isExternal = item.href.startsWith('http')
+  const isActive = !isExternal && (pathname === item.href ||
+    (item.href !== '/settings' && pathname?.startsWith(item.href + '/')))
   const Icon = item.icon
 
-  return (
-    <Link
-      href={item.href}
-      className={cn(
-        'flex items-center gap-3 px-3 py-2 rounded-lg text-sm transition-colors duration-150',
-        isActive
-          ? 'bg-blue-500/10 text-blue-400 border-l-2 border-blue-500 -ml-px'
-          : 'text-zinc-400 hover:bg-zinc-800 hover:text-zinc-200'
-      )}
-    >
+  const className = cn(
+    'flex items-center gap-3 px-3 py-2 rounded-lg text-sm transition-colors duration-150',
+    isActive
+      ? 'bg-blue-500/10 text-blue-400 border-l-2 border-blue-500 -ml-px'
+      : 'text-zinc-400 hover:bg-zinc-800 hover:text-zinc-200'
+  )
+
+  const content = (
+    <>
       <Icon size={18} />
       {!isCollapsed && (
         <>
@@ -106,6 +109,20 @@ function NavLink({ item, pathname, isCollapsed }: { item: NavItem; pathname: str
           )}
         </>
       )}
+    </>
+  )
+
+  if (isExternal) {
+    return (
+      <a href={item.href} target="_blank" rel="noopener noreferrer" className={className}>
+        {content}
+      </a>
+    )
+  }
+
+  return (
+    <Link href={item.href} className={className}>
+      {content}
     </Link>
   )
 }
