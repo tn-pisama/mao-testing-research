@@ -29,6 +29,7 @@ import {
   Brain,
   LogOut,
   BookOpen,
+  ClipboardCheck,
 } from 'lucide-react'
 import { useUserPreferences } from '@/lib/user-preferences'
 import { signOut } from 'next-auth/react'
@@ -52,6 +53,7 @@ const n8nImproveItems: NavItem[] = [
   { label: 'Workflow Quality', href: '/quality', icon: Star },
   { label: 'Problems Found', href: '/detections', icon: AlertCircle },
   { label: 'Fixes', href: '/healing', icon: Wrench },
+  { label: 'Review', href: '/review', icon: ClipboardCheck },
 ]
 
 // Developer sees full navigation
@@ -65,6 +67,7 @@ const developerImproveItems: NavItem[] = [
   { label: 'Workflows', href: '/quality', icon: Star },
   { label: 'Agents', href: '/agents', icon: Bot },
   { label: 'Healing', href: '/healing', icon: Wrench },
+  { label: 'Review', href: '/review', icon: ClipboardCheck },
 ]
 
 const developerConfigureItems: NavItem[] = [
