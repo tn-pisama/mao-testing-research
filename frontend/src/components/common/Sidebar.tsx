@@ -7,31 +7,18 @@ import {
   LayoutDashboard,
   Activity,
   AlertTriangle,
-  AlertCircle,
-  BarChart3,
-  Users,
   Settings,
   Code2,
-  Zap,
   Shield,
-  GitBranch,
   Box,
-  Sparkles,
   Wrench,
   Star,
   User,
-  RotateCcw,
-  Workflow,
   Bot,
-  Network,
-  Terminal,
-  MessageSquare,
-  Brain,
   LogOut,
   BookOpen,
   ClipboardCheck,
 } from 'lucide-react'
-import { useUserPreferences } from '@/lib/user-preferences'
 import { signOut } from 'next-auth/react'
 import { clearAllCaches } from '@/hooks/useSafeAuth'
 
@@ -40,50 +27,31 @@ interface NavItem {
   href: string
   icon: React.ElementType
   badge?: string
-  advancedOnly?: boolean
 }
 
-// n8n user sees simplified navigation with friendly terminology
-const n8nObserveItems: NavItem[] = [
-  { label: 'Dashboard', href: '/dashboard', icon: LayoutDashboard },
-  { label: 'My Workflows', href: '/n8n', icon: GitBranch },
-]
-
-const n8nImproveItems: NavItem[] = [
-  { label: 'Workflow Quality', href: '/quality', icon: Star },
-  { label: 'Problems Found', href: '/detections', icon: AlertCircle },
-  { label: 'Fixes', href: '/healing', icon: Wrench },
-  { label: 'Review', href: '/review', icon: ClipboardCheck },
-]
-
-// Developer sees full navigation
-const developerObserveItems: NavItem[] = [
+// Unified navigation — all platforms treated equally
+const observeItems: NavItem[] = [
   { label: 'Dashboard', href: '/dashboard', icon: LayoutDashboard },
   { label: 'Runs', href: '/traces', icon: Activity },
   { label: 'Detections', href: '/detections', icon: AlertTriangle },
 ]
 
-const developerImproveItems: NavItem[] = [
+const improveItems: NavItem[] = [
   { label: 'Workflows', href: '/quality', icon: Star },
   { label: 'Agents', href: '/agents', icon: Bot },
   { label: 'Healing', href: '/healing', icon: Wrench },
   { label: 'Review', href: '/review', icon: ClipboardCheck },
 ]
 
-const developerConfigureItems: NavItem[] = [
+const configureItems: NavItem[] = [
   { label: 'Integrations', href: '/integrations', icon: Box },
   { label: 'API Keys', href: '/settings/api-keys', icon: Code2 },
 ]
 
-const n8nSettingsItems: NavItem[] = [
+const settingsItems: NavItem[] = [
   { label: 'Account', href: '/account', icon: User },
   { label: 'Settings', href: '/settings', icon: Settings },
-  { label: 'Docs', href: 'https://docs.pisama.com', icon: BookOpen },
-]
-
-const developerSettingsItems: NavItem[] = [
-  { label: 'Settings', href: '/settings', icon: Settings },
-  { label: 'Docs', href: 'https://docs.pisama.com', icon: BookOpen },
+  { label: 'Docs', href: '/docs', icon: BookOpen },
 ]
 
 function NavLink({ item, pathname, isCollapsed }: { item: NavItem; pathname: string | null; isCollapsed: boolean }) {
@@ -130,10 +98,8 @@ function NavLink({ item, pathname, isCollapsed }: { item: NavItem; pathname: str
   )
 }
 
-function NavSection({ title, items, pathname, isCollapsed, showAdvancedFeatures }: { title?: string; items: NavItem[]; pathname: string | null; isCollapsed: boolean; showAdvancedFeatures: boolean }) {
-  const filteredItems = items.filter(item => !item.advancedOnly || showAdvancedFeatures)
-
-  if (filteredItems.length === 0) return null
+function NavSection({ title, items, pathname, isCollapsed }: { title?: string; items: NavItem[]; pathname: string | null; isCollapsed: boolean }) {
+  if (items.length === 0) return null
 
   return (
     <div className="space-y-0.5">
@@ -142,7 +108,7 @@ function NavSection({ title, items, pathname, isCollapsed, showAdvancedFeatures 
           {title}
         </div>
       )}
-      {filteredItems.map((item) => (
+      {items.map((item) => (
         <NavLink key={item.href} item={item} pathname={pathname} isCollapsed={isCollapsed} />
       ))}
     </div>
@@ -156,9 +122,6 @@ interface SidebarProps {
 
 export function Sidebar({ isCollapsed = false, onToggle: _onToggle }: SidebarProps) {
   const pathname = usePathname()
-  const { isN8nUser, showAdvancedFeatures, preferences: _preferences } = useUserPreferences()
-
-  const isSimplifiedView = isN8nUser && !showAdvancedFeatures
 
   return (
     <aside
@@ -174,7 +137,7 @@ export function Sidebar({ isCollapsed = false, onToggle: _onToggle }: SidebarPro
           <Shield className="h-7 w-7 text-blue-500" />
           {!isCollapsed && (
             <span className="text-lg font-semibold text-white tracking-tight">
-              {isSimplifiedView ? 'Workflow Guard' : 'Pisama'}
+              Pisama
             </span>
           )}
         </Link>
@@ -182,20 +145,10 @@ export function Sidebar({ isCollapsed = false, onToggle: _onToggle }: SidebarPro
 
       {/* Navigation */}
       <nav aria-label="Main navigation" className="flex-1 overflow-y-auto p-3 space-y-5 relative [mask-image:linear-gradient(to_bottom,black_calc(100%-2rem),transparent)]">
-        {isSimplifiedView ? (
-          <>
-            <NavSection title="Observe" items={n8nObserveItems} pathname={pathname} isCollapsed={isCollapsed} showAdvancedFeatures={showAdvancedFeatures} />
-            <NavSection title="Improve" items={n8nImproveItems} pathname={pathname} isCollapsed={isCollapsed} showAdvancedFeatures={showAdvancedFeatures} />
-            <NavSection title="Settings" items={n8nSettingsItems} pathname={pathname} isCollapsed={isCollapsed} showAdvancedFeatures={showAdvancedFeatures} />
-          </>
-        ) : (
-          <>
-            <NavSection title="Observe" items={developerObserveItems} pathname={pathname} isCollapsed={isCollapsed} showAdvancedFeatures={showAdvancedFeatures} />
-            <NavSection title="Improve" items={developerImproveItems} pathname={pathname} isCollapsed={isCollapsed} showAdvancedFeatures={showAdvancedFeatures} />
-            <NavSection title="Configure" items={developerConfigureItems} pathname={pathname} isCollapsed={isCollapsed} showAdvancedFeatures={showAdvancedFeatures} />
-            <NavSection title="Settings" items={developerSettingsItems} pathname={pathname} isCollapsed={isCollapsed} showAdvancedFeatures={showAdvancedFeatures} />
-          </>
-        )}
+        <NavSection title="Observe" items={observeItems} pathname={pathname} isCollapsed={isCollapsed} />
+        <NavSection title="Improve" items={improveItems} pathname={pathname} isCollapsed={isCollapsed} />
+        <NavSection title="Configure" items={configureItems} pathname={pathname} isCollapsed={isCollapsed} />
+        <NavSection title="Settings" items={settingsItems} pathname={pathname} isCollapsed={isCollapsed} />
       </nav>
 
       {/* Footer */}
