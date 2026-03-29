@@ -102,14 +102,23 @@ async def get_or_create_user_from_google(db: AsyncSession, claims: dict) -> User
 
     # If still not found, create new user
     if not user:
-        # Create a default tenant for the user
+        import secrets
+        from app.billing.constants import get_plan_defaults
+        from app.core.webhook_security import hash_api_key
+
+        # Create a default tenant with plan defaults + auto-generated API key
+        raw_key = f"mao_{secrets.token_urlsafe(32)}"
         tenant = Tenant(
             name=f"{email}'s Organization",
-            api_key_hash="",  # Will be generated when user creates API key
-            settings={}
+            api_key_hash=hash_api_key(raw_key),
+            settings=get_plan_defaults("free"),
         )
         db.add(tenant)
         await db.flush()
+
+        # Store the raw key temporarily on the user object for the auth response
+        # (one-time display — not persisted after this response)
+        tenant._initial_api_key = raw_key
 
         user = User(
             google_user_id=google_user_id,

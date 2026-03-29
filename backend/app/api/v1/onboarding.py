@@ -14,7 +14,8 @@ from sqlalchemy import select, func
 from typing import Optional, List
 import logging
 
-from app.storage.database import get_db
+from uuid import UUID
+from app.storage.database import get_db, set_tenant_context
 from app.storage.models import Trace, Detection
 from app.core.auth import get_current_tenant
 
@@ -144,3 +145,24 @@ async def run_onboarding_detection(
         types=sorted(types_seen),
         highest_confidence=highest_confidence,
     )
+
+
+@router.post("/onboarding/complete")
+async def complete_onboarding(
+    tenant_id: str = Depends(get_current_tenant),
+    db: AsyncSession = Depends(get_db),
+):
+    """Mark onboarding as completed for this tenant (server-side enforcement)."""
+    from datetime import datetime, timezone
+    from app.storage.models import Tenant
+
+    await set_tenant_context(db, tenant_id)
+    result = await db.execute(
+        select(Tenant).where(Tenant.id == UUID(tenant_id))
+    )
+    tenant = result.scalar_one_or_none()
+    if tenant and not tenant.onboarding_completed_at:
+        tenant.onboarding_completed_at = datetime.now(timezone.utc)
+        await db.commit()
+
+    return {"completed": True, "tenant_id": tenant_id}

@@ -128,6 +128,40 @@ RATE_LIMITS: Dict[str, Dict[str, int]] = {
 }
 
 
+# Default tenant settings per plan — persisted to Tenant.settings at creation
+PLAN_DEFAULTS: Dict[str, Dict] = {
+    PlanTier.FREE: {
+        "retention_days": 7,
+        "rate_limit_rpm": 30,
+        "max_traces_daily": 50,
+        "ml_detection": False,
+        "advanced_evals": False,
+        "auto_detection": True,
+    },
+    PlanTier.PRO: {
+        "retention_days": 30,
+        "rate_limit_rpm": 100,
+        "max_traces_daily": 500,
+        "ml_detection": True,
+        "advanced_evals": False,
+        "auto_detection": True,
+    },
+    PlanTier.TEAM: {
+        "retention_days": 90,
+        "rate_limit_rpm": 300,
+        "max_traces_daily": 5000,
+        "ml_detection": True,
+        "advanced_evals": True,
+        "auto_detection": True,
+    },
+}
+
+
+def get_plan_defaults(plan: str) -> Dict:
+    """Get default tenant settings for a plan tier."""
+    return PLAN_DEFAULTS.get(plan, PLAN_DEFAULTS[PlanTier.FREE])
+
+
 def get_rate_limit(plan: str) -> Dict[str, int]:
     """Get rate limit config for a plan tier. Defaults to FREE tier."""
     return RATE_LIMITS.get(plan, RATE_LIMITS[PlanTier.FREE])

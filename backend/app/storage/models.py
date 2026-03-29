@@ -25,6 +25,7 @@ class Tenant(Base):
     subscription_status = Column(String(50), nullable=True)  # active, canceled, past_due, etc.
     current_period_end = Column(DateTime(timezone=True), nullable=True)
     project_limit = Column(Integer, default=1, nullable=False)  # Free tier default
+    onboarding_completed_at = Column(DateTime(timezone=True), nullable=True)
 
     traces = relationship("Trace", back_populates="tenant")
     detections = relationship("Detection", back_populates="tenant")
