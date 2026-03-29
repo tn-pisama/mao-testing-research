@@ -71,6 +71,23 @@ class DetectionType(Enum):
     COWORK_SAFETY = "cowork_safety"  # Non-developer agent safety risks (Cowork)
 
 
+# Evaluation type classification (per "Evaluation Is the Load-Bearing Part" article)
+# Permanent: quality standards that matter regardless of model capability
+# Temporary: compensate for current model limitations, will become less relevant
+TEMPORARY_DETECTORS = frozenset({
+    DetectionType.ADAPTIVE_THINKING,
+    DetectionType.SUBAGENT_BOUNDARY,
+    DetectionType.COMPUTER_USE,
+    DetectionType.DISPATCH_ASYNC,
+    DetectionType.SCHEDULED_TASK,
+})
+
+
+def is_permanent_evaluation(dt: DetectionType) -> bool:
+    """Returns True if this detector enforces permanent quality standards."""
+    return dt not in TEMPORARY_DETECTORS
+
+
 @dataclass
 class LabeledSample:
     """A sample with ground truth label for validation."""

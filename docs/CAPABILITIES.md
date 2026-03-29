@@ -1,6 +1,14 @@
 # Pisama Detection Capabilities
 
-Multi-agent orchestration testing platform with 45+ failure detectors across 3 tiers.
+Multi-agent orchestration testing platform with 53 failure detectors across 3 tiers.
+
+## Evaluation Philosophy
+
+Following "Evaluation Is the Load-Bearing Part" (GoodEye Labs):
+- **Permanent evaluations**: Quality standards that matter regardless of model capability (48 detectors)
+- **Temporary evaluations**: Compensate for current model limitations (5 detectors: adaptive_thinking, subagent_boundary, computer_use, dispatch_async, scheduled_task)
+- **Few-shot calibrated**: LLM judge uses scored exemplars with reasoning for consistent evaluation
+- **Principle-based**: Each detector has explicit criteria documented in `DETECTION_PRINCIPLES.md`
 
 ## Tier 1: ICP Detectors (Always Available)
 

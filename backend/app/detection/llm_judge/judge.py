@@ -428,6 +428,20 @@ Use these examples to calibrate your judgment. Pay special attention to:
 ---
 """
 
+        # Add few-shot calibration exemplars (scored examples with reasoning)
+        from app.detection.llm_judge._prompts import get_few_shot_exemplars
+        exemplar_section = ""
+        exemplars = get_few_shot_exemplars(failure_mode)
+        if exemplars:
+            exemplar_section = f"""
+---
+
+{exemplars}
+
+Use these examples to calibrate your judgment. Match the reasoning depth and confidence calibration shown above.
+---
+"""
+
         # Add Chain-of-Thought section for hard semantic modes (F6, F8)
         cot_section = ""
         if failure_mode in CHAIN_OF_THOUGHT_PROMPTS:
@@ -484,7 +498,7 @@ Use these examples to calibrate your judgment. Pay special attention to:
 
 ### Example of NOT This Failure (should return NO):
 {mode_def['negative_example']}
-{rag_section}{knowledge_section}{cot_section}
+{rag_section}{knowledge_section}{cot_section}{exemplar_section}
 ---
 
 ## Trace to Evaluate
