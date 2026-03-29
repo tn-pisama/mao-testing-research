@@ -53,6 +53,7 @@ from app.api.v1 import (
     conversations,
     benchmarks,
     feedback,
+    review,
     healing,
     settings as settings_router,
     billing,
@@ -291,6 +292,7 @@ app.include_router(benchmarks.router, prefix="/api/v1")  # Benchmark results
 app.include_router(claude_code.router, prefix="/api/v1")  # Claude Code trace ingestion
 app.include_router(conversations.router, prefix="/api/v1/tenants/{tenant_id}", dependencies=_tenant_rate_deps)  # Conversation traces
 app.include_router(feedback.router, prefix="/api/v1/tenants/{tenant_id}", dependencies=_tenant_rate_deps)  # Detection feedback
+app.include_router(review.router, prefix="/api/v1/tenants/{tenant_id}", dependencies=_tenant_rate_deps)  # Hand-review queue
 app.include_router(healing.router, prefix="/api/v1/tenants/{tenant_id}", dependencies=_tenant_rate_deps)  # Self-healing operations
 app.include_router(settings_router.router, prefix="/api/v1/tenants/{tenant_id}", dependencies=_tenant_rate_deps)  # Tenant settings
 app.include_router(billing.router, prefix="/api/v1")  # Stripe billing

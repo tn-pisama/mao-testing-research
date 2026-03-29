@@ -217,6 +217,12 @@ class Detection(Base):
     validated_by = Column(String(128), nullable=True)
     false_positive = Column(Boolean, nullable=True)
     recall_context = Column(JSONB, nullable=True)  # {memories_recalled: [...ids], confidence_adjustment: float}
+    # Hand-review workflow fields
+    review_status = Column(String(32), default="pending")  # pending, confirmed, rejected, disputed
+    reviewed_by = Column(String(128), nullable=True)
+    reviewed_at = Column(DateTime(timezone=True), nullable=True)
+    review_notes = Column(String(1024), nullable=True)
+    promoted_to_golden = Column(Boolean, default=False)
     created_at = Column(DateTime(timezone=True), server_default=func.now())
 
     tenant = relationship("Tenant", back_populates="detections")

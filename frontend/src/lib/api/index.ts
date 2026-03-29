@@ -142,6 +142,12 @@ export type {
   MemoryStats,
 } from './memory'
 
+// Review
+export type {
+  ReviewQueueItem, ReviewQueueResponse, ReviewVerdict,
+  BatchReviewResponse, ReviewStatsResponse,
+} from './review'
+
 // Tenants / Settings
 export type {
   FeedbackStats,
@@ -175,6 +181,7 @@ import { createChaosApi } from './chaos'
 import { createSecurityApi } from './security'
 import { createIntegrationsApi } from './integrations'
 import { createMemoryApi } from './memory'
+import { createReviewApi } from './review'
 import { createTenantsApi } from './tenants'
 
 // ---------------------------------------------------------------------------
@@ -200,6 +207,7 @@ export function createApiClient(token?: string | null, tenantId?: string | null)
     ...createSecurityApi(opts),
     ...createIntegrationsApi(opts),
     ...createMemoryApi(opts),
+    ...createReviewApi(opts),
     ...createTenantsApi(opts),
   }
 }
