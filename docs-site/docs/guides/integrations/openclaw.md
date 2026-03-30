@@ -1,6 +1,6 @@
 # OpenClaw Integration
 
-PISAMA integrates with [OpenClaw](https://openclaw.dev) to monitor agent sessions and detect failure modes in OpenClaw-built multi-agent systems.
+Pisama integrates with [OpenClaw](https://openclaw.dev) to monitor agent sessions and detect failure modes in OpenClaw-built multi-agent systems.
 
 ## Setup
 
@@ -31,7 +31,7 @@ curl -X POST http://localhost:8000/api/v1/openclaw/agents \
 
 ### Configure Webhook
 
-Set up your OpenClaw instance to send session data to PISAMA:
+Set up your OpenClaw instance to send session data to Pisama:
 
 ```
 Webhook URL: https://your-pisama.com/api/v1/openclaw/webhook
@@ -42,7 +42,7 @@ Headers:
 
 ## OpenClaw-Specific Attributes
 
-PISAMA recognizes OpenClaw OTEL attributes:
+Pisama recognizes OpenClaw OTEL attributes:
 
 | OTEL Attribute | Description |
 |---|---|
@@ -52,7 +52,7 @@ PISAMA recognizes OpenClaw OTEL attributes:
 
 ## Detection Capabilities
 
-When monitoring OpenClaw agents, PISAMA detects:
+When monitoring OpenClaw agents, Pisama detects:
 
 - **Coordination failures**: Agent handoff and communication issues
 - **Persona drift**: Agents deviating from their assigned roles

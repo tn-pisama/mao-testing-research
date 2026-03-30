@@ -1,6 +1,6 @@
 # Adding New Detectors
 
-This guide walks through adding a new failure mode detector to PISAMA, from implementation to calibration.
+This guide walks through adding a new failure mode detector to Pisama, from implementation to calibration.
 
 ## Step-by-Step Checklist
 

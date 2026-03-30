@@ -1,6 +1,6 @@
 # Configuration
 
-PISAMA is configured through environment variables. This page covers all configuration options for the backend and frontend.
+Pisama is configured through environment variables. This page covers all configuration options for the backend and frontend.
 
 ## Backend Environment Variables
 

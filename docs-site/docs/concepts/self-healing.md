@@ -1,6 +1,6 @@
 # Self-Healing
 
-PISAMA's self-healing pipeline automatically generates, validates, and applies fixes when failure modes are detected in agent workflows. The system is designed with safety-first principles: every fix requires a checkpoint, every applied fix can be rolled back.
+Pisama's self-healing pipeline automatically generates, validates, and applies fixes when failure modes are detected in agent workflows. The system is designed with safety-first principles: every fix requires a checkpoint, every applied fix can be rolled back.
 
 ## Pipeline Overview
 

@@ -1,12 +1,12 @@
 # Dify Integration
 
-PISAMA integrates with [Dify](https://dify.ai) to monitor AI application workflows and detect failure modes in Dify-built agents.
+Pisama integrates with [Dify](https://dify.ai) to monitor AI application workflows and detect failure modes in Dify-built agents.
 
 ## Setup
 
 ### Register a Dify Instance
 
-Connect your Dify instance to PISAMA:
+Connect your Dify instance to Pisama:
 
 ```bash
 curl -X POST http://localhost:8000/api/v1/dify/instances \
@@ -34,7 +34,7 @@ curl -X POST http://localhost:8000/api/v1/dify/apps \
 
 ### Configure Webhook
 
-In your Dify instance, set up a webhook to send workflow execution data to PISAMA:
+In your Dify instance, set up a webhook to send workflow execution data to Pisama:
 
 ```
 Webhook URL: https://your-pisama.com/api/v1/dify/webhook
@@ -45,7 +45,7 @@ Headers:
 
 ## Detection Capabilities
 
-PISAMA detects the following failure modes in Dify workflows:
+Pisama detects the following failure modes in Dify workflows:
 
 - **Hallucination**: LLM nodes generating unsupported claims
 - **Loop detection**: Workflow loops and retry storms

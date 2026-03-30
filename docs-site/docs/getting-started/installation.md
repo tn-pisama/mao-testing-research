@@ -1,6 +1,6 @@
 # Installation
 
-PISAMA can be installed via Docker Compose (recommended) or manually.
+Pisama can be installed via Docker Compose (recommended) or manually.
 
 ## Prerequisites
 
@@ -12,7 +12,7 @@ PISAMA can be installed via Docker Compose (recommended) or manually.
 
 ## Docker Compose (Recommended)
 
-The fastest way to get PISAMA running locally:
+The fastest way to get Pisama running locally:
 
 ```bash
 git clone https://github.com/tn-pisama/mao-testing-research.git
@@ -104,7 +104,7 @@ The frontend is now available at [http://localhost:3000](http://localhost:3000).
 
 1. Open [http://localhost:8000/health](http://localhost:8000/health) -- should return `{"status": "healthy"}`
 2. Open [http://localhost:8000/docs](http://localhost:8000/docs) -- interactive API documentation (Swagger UI)
-3. Open [http://localhost:3000](http://localhost:3000) -- PISAMA dashboard
+3. Open [http://localhost:3000](http://localhost:3000) -- Pisama dashboard
 
 ## Running Tests
 

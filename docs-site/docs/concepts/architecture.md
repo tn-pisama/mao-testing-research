@@ -1,12 +1,12 @@
 # Architecture
 
-PISAMA is a full-stack platform for detecting and healing failure modes in multi-agent LLM systems. This page describes the system architecture, key components, and data flow.
+Pisama is a full-stack platform for detecting and healing failure modes in multi-agent LLM systems. This page describes the system architecture, key components, and data flow.
 
 ## System Overview
 
 ```
 ┌─────────────────────────────────────────────────────────────────────────────┐
-│                              PISAMA Platform                                │
+│                              Pisama Platform                                │
 ├─────────────────────────────────────────────────────────────────────────────┤
 │                                                                             │
 │  ┌──────────────┐  ┌──────────────┐  ┌──────────────┐  ┌──────────────┐   │
@@ -47,7 +47,7 @@ PISAMA is a full-stack platform for detecting and healing failure modes in multi
 
 ### Trace Ingestion Pipeline
 
-Traces enter PISAMA through the ingestion pipeline, which normalizes data from any supported framework into a common internal format.
+Traces enter Pisama through the ingestion pipeline, which normalizes data from any supported framework into a common internal format.
 
 ```
 Trace Source (OTEL / webhook / SDK)

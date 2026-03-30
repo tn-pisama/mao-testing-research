@@ -1,6 +1,6 @@
 # Detection Overview
 
-PISAMA detects **22 failure modes** in multi-agent LLM systems, organized by the [MAST taxonomy](https://arxiv.org/abs/2503.13657) with extensions for enterprise use cases.
+Pisama detects **22 failure modes** in multi-agent LLM systems, organized by the [MAST taxonomy](https://arxiv.org/abs/2503.13657) with extensions for enterprise use cases.
 
 ## Failure Mode Summary
 
@@ -88,7 +88,7 @@ Cross-cutting concerns not in the core MAST taxonomy:
 
 ## Platform-Specific Detectors
 
-In addition to the general-purpose detectors above, PISAMA includes 24 platform-specific detectors (6 per platform) that catch issues unique to each framework's architecture:
+In addition to the general-purpose detectors above, Pisama includes 24 platform-specific detectors (6 per platform) that catch issues unique to each framework's architecture:
 
 - **[n8n](failure-modes/n8n.md)** (6): Schema mismatch, workflow cycles, complexity, error handling, resource exhaustion, timeouts
 - **[LangGraph](failure-modes/langgraph.md)** (6): Recursion limits, state corruption, edge misrouting, tool failures, parallel sync, checkpoint corruption

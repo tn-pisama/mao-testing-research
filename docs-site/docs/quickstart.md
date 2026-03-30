@@ -1,8 +1,8 @@
 # Quickstart
 
-Get PISAMA running and detecting failures in under 5 minutes.
+Get Pisama running and detecting failures in under 5 minutes.
 
-## 1. Start PISAMA
+## 1. Start Pisama
 
 ```bash
 git clone https://github.com/tn-pisama/mao-testing-research.git
@@ -24,7 +24,7 @@ Expected response:
 {"status": "healthy", "database": "ok", "redis": "ok"}
 ```
 
-Open [http://localhost:3000](http://localhost:3000) to see the PISAMA dashboard.
+Open [http://localhost:3000](http://localhost:3000) to see the Pisama dashboard.
 
 ## 3. Create a tenant and get an API key
 

@@ -1,6 +1,6 @@
 # Development Setup
 
-Get productive with PISAMA development within a day.
+Get productive with Pisama development within a day.
 
 ## Prerequisites
 

@@ -1,6 +1,6 @@
 # Fly.io Deployment
 
-Deploy the PISAMA backend to [Fly.io](https://fly.io) for low-latency, globally distributed hosting.
+Deploy the Pisama backend to [Fly.io](https://fly.io) for low-latency, globally distributed hosting.
 
 ## Backend Deployment
 
@@ -106,7 +106,7 @@ fly logs
 fly dashboard
 ```
 
-PISAMA also exposes Prometheus metrics:
+Pisama also exposes Prometheus metrics:
 
 ```bash
 curl https://pisama-api.fly.dev/api/v1/metrics

@@ -1,6 +1,6 @@
 # Detection Tiers
 
-PISAMA uses a **tiered escalation system** to balance detection cost and accuracy. Each trace is analyzed starting from the cheapest tier, escalating only when lower tiers are inconclusive.
+Pisama uses a **tiered escalation system** to balance detection cost and accuracy. Each trace is analyzed starting from the cheapest tier, escalating only when lower tiers are inconclusive.
 
 ## Tier Overview
 

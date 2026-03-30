@@ -39,7 +39,7 @@ export TOKEN=$(curl -s -X POST http://localhost:8000/api/v1/auth/token \
 
 ## Step 3: Send an OpenTelemetry trace
 
-PISAMA accepts traces in the standard OTEL span export format. Here is a minimal example with two agent steps:
+Pisama accepts traces in the standard OTEL span export format. Here is a minimal example with two agent steps:
 
 ```bash
 curl -s -X POST "http://localhost:8000/api/v1/tenants/$TENANT_ID/traces/ingest" \
@@ -138,7 +138,7 @@ curl -s -X POST "http://localhost:8000/api/v1/tenants/$TENANT_ID/feedback" \
 
 ## Understanding OTEL attributes
 
-PISAMA uses standard OpenTelemetry semantic conventions with `gen_ai.*` extensions:
+Pisama uses standard OpenTelemetry semantic conventions with `gen_ai.*` extensions:
 
 | Attribute | Description |
 |---|---|
@@ -162,6 +162,6 @@ Framework-specific attributes are also supported:
 ## Next steps
 
 - [API Reference](../api/reference.md) -- Full endpoint documentation
-- [Failure Modes](../concepts/failure-modes.md) -- What PISAMA detects
+- [Failure Modes](../concepts/failure-modes.md) -- What Pisama detects
 - [n8n Integration](../guides/integrations/n8n.md) -- Webhook-based ingestion for n8n
 - [Detection Tiers](../concepts/detection-tiers.md) -- How tiered escalation works

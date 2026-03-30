@@ -1,6 +1,6 @@
 # Docker Compose Deployment
 
-Docker Compose is the recommended way to run PISAMA locally or in staging environments.
+Docker Compose is the recommended way to run Pisama locally or in staging environments.
 
 ## Quick Start
 

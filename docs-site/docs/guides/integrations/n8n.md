@@ -1,6 +1,6 @@
 # n8n Integration
 
-PISAMA integrates with [n8n](https://n8n.io) to detect failures in AI agent workflows built with the n8n workflow automation platform.
+Pisama integrates with [n8n](https://n8n.io) to detect failures in AI agent workflows built with the n8n workflow automation platform.
 
 ## Why Monitor n8n Workflows?
 
@@ -15,12 +15,12 @@ n8n workflows increasingly incorporate AI/LLM nodes (OpenAI, Anthropic, LangChai
 
 ### Method 1: Webhook (Recommended)
 
-The n8n workflow sends execution data to PISAMA after each run. This provides real-time detection and works with both n8n Cloud and self-hosted instances.
+The n8n workflow sends execution data to Pisama after each run. This provides real-time detection and works with both n8n Cloud and self-hosted instances.
 
 **Setup:**
 
 1. Add an HTTP Request node at the end of your n8n workflow
-2. Configure it to POST to your PISAMA instance:
+2. Configure it to POST to your Pisama instance:
 
 ```
 URL: https://your-pisama.com/api/v1/n8n/webhook
@@ -61,7 +61,7 @@ Body: {{ $json }}
 
 ### Method 2: API Polling
 
-PISAMA polls the n8n API for recent executions. No workflow modifications needed, but requires n8n API credentials.
+Pisama polls the n8n API for recent executions. No workflow modifications needed, but requires n8n API credentials.
 
 ```bash
 # Set environment variables
@@ -86,7 +86,7 @@ curl http://localhost:8000/api/v1/n8n/sync/status \
 
 ### Method 3: Workflow Discovery
 
-PISAMA can automatically discover workflows from a connected n8n instance:
+Pisama can automatically discover workflows from a connected n8n instance:
 
 ```bash
 curl -X POST http://localhost:8000/api/v1/n8n/discover \
@@ -95,7 +95,7 @@ curl -X POST http://localhost:8000/api/v1/n8n/discover \
 
 ## n8n-Specific Detectors
 
-PISAMA includes 6 detectors designed specifically for n8n workflows:
+Pisama includes 6 detectors designed specifically for n8n workflows:
 
 | Detector | Key | What It Detects |
 |---|---|---|
@@ -122,7 +122,7 @@ These detectors analyze workflow structure (JSON definition) rather than executi
 
 ## AI Node Detection
 
-PISAMA automatically identifies AI/LLM nodes in n8n workflows and extracts token usage data:
+Pisama automatically identifies AI/LLM nodes in n8n workflows and extracts token usage data:
 
 | n8n AI Node Parameter | OTEL Attribute |
 |---|---|

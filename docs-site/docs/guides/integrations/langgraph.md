@@ -1,12 +1,12 @@
 # LangGraph Integration
 
-PISAMA monitors [LangGraph](https://langchain-ai.github.io/langgraph/) applications by ingesting traces via webhooks or the OTEL export pipeline.
+Pisama monitors [LangGraph](https://langchain-ai.github.io/langgraph/) applications by ingesting traces via webhooks or the OTEL export pipeline.
 
 ## Setup
 
 ### Webhook-Based Integration
 
-Register your LangGraph deployment with PISAMA and configure it to send execution events:
+Register your LangGraph deployment with Pisama and configure it to send execution events:
 
 **Register a deployment:**
 
@@ -36,7 +36,7 @@ curl -X POST http://localhost:8000/api/v1/langgraph/assistants \
 
 ### OTEL-Based Integration
 
-If your LangGraph app already exports OTEL traces, point the OTEL exporter to PISAMA:
+If your LangGraph app already exports OTEL traces, point the OTEL exporter to Pisama:
 
 ```python
 from opentelemetry.exporter.otlp.proto.http.trace_exporter import OTLPSpanExporter
@@ -50,7 +50,7 @@ exporter = OTLPSpanExporter(
 
 ## LangGraph-Specific Attributes
 
-PISAMA recognizes LangGraph-specific OTEL attributes for agent identification and state tracking:
+Pisama recognizes LangGraph-specific OTEL attributes for agent identification and state tracking:
 
 | OTEL Attribute | Description |
 |---|---|
@@ -59,11 +59,11 @@ PISAMA recognizes LangGraph-specific OTEL attributes for agent identification an
 | `langgraph.thread_id` | Thread identifier for multi-turn conversations |
 | `langgraph.checkpoint_id` | Checkpoint identifier for state persistence |
 
-These attributes are automatically extracted during trace ingestion and used by PISAMA's detection pipeline.
+These attributes are automatically extracted during trace ingestion and used by Pisama's detection pipeline.
 
 ## Detection Capabilities
 
-When monitoring LangGraph applications, PISAMA detects:
+When monitoring LangGraph applications, Pisama detects:
 
 - **Loop detection**: Agents cycling through the same nodes repeatedly
 - **State corruption**: State mutations that violate schema or domain constraints
@@ -90,7 +90,7 @@ When monitoring LangGraph applications, PISAMA detects:
 from langgraph.graph import StateGraph, END
 from pisama_core import PisamaTracer
 
-# Initialize PISAMA tracer
+# Initialize Pisama tracer
 tracer = PisamaTracer(
     api_url="https://your-pisama.com/api/v1",
     api_key="YOUR_API_KEY",
@@ -104,7 +104,7 @@ graph.add_node("writer", writer_node)
 graph.add_edge("researcher", "writer")
 graph.add_edge("writer", END)
 
-# Compile with PISAMA tracing
+# Compile with Pisama tracing
 app = graph.compile()
 
 # Run with tracing

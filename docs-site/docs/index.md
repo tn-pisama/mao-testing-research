@@ -4,11 +4,11 @@ hide:
   - toc
 ---
 
-# PISAMA
+# Pisama
 
 ## Multi-agent failure detection & self-healing platform
 
-PISAMA detects **22 failure modes** in LLM agent systems, from infinite loops and hallucinations to coordination breakdowns and prompt injection. Built on the [MAST taxonomy](https://arxiv.org/abs/2503.13657), PISAMA provides production-grade observability for any multi-agent framework.
+Pisama detects **22 failure modes** in LLM agent systems, from infinite loops and hallucinations to coordination breakdowns and prompt injection. Built on the [MAST taxonomy](https://arxiv.org/abs/2503.13657), Pisama provides production-grade observability for any multi-agent framework.
 
 <div class="grid cards" markdown>
 
@@ -16,7 +16,7 @@ PISAMA detects **22 failure modes** in LLM agent systems, from infinite loops an
 
     ---
 
-    Install PISAMA, send your first trace, and see failure detection in action.
+    Install Pisama, send your first trace, and see failure detection in action.
 
     [:octicons-arrow-right-24: Quickstart](quickstart.md)
 
@@ -40,7 +40,7 @@ PISAMA detects **22 failure modes** in LLM agent systems, from infinite loops an
 
 ---
 
-## Why PISAMA?
+## Why Pisama?
 
 ### The problem
 
@@ -48,7 +48,7 @@ LLM agents fail silently. A coding agent loops for 40 minutes burning tokens. A 
 
 ### The solution
 
-PISAMA provides purpose-built failure detection for AI agent systems:
+Pisama provides purpose-built failure detection for AI agent systems:
 
 | Capability | Description |
 |---|---|
@@ -74,7 +74,7 @@ PISAMA provides purpose-built failure detection for AI agent systems:
 ## Architecture at a glance
 
 ```
-Trace Sources                   PISAMA Platform                    Outputs
+Trace Sources                   Pisama Platform                    Outputs
 --------------                  ---------------                    -------
 
  LangGraph  ----+
@@ -91,7 +91,7 @@ Trace Sources                   PISAMA Platform                    Outputs
 
 - [Installation](getting-started/installation.md) -- Full setup guide
 - [Configuration](getting-started/configuration.md) -- Environment variables reference
-- [Failure Modes](concepts/failure-modes.md) -- Understanding what PISAMA detects
+- [Failure Modes](concepts/failure-modes.md) -- Understanding what Pisama detects
 - [Integrations](guides/integrations/n8n.md) -- Connect your agent framework
 - [Deployment](guides/deployment/docker-compose.md) -- Production deployment options
 - [Contributing](contributing/development.md) -- Development setup and guidelines

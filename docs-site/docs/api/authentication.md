@@ -1,6 +1,6 @@
 # Authentication
 
-PISAMA supports multiple authentication methods depending on your integration type.
+Pisama supports multiple authentication methods depending on your integration type.
 
 ## Authentication Methods
 
@@ -97,7 +97,7 @@ curl -X POST http://localhost:8000/api/v1/n8n/webhook \
 
 ## Google OAuth (Dashboard)
 
-The PISAMA dashboard uses Google OAuth via NextAuth for browser-based authentication. Users sign in with their Google account and are automatically associated with their organization's tenant.
+The Pisama dashboard uses Google OAuth via NextAuth for browser-based authentication. Users sign in with their Google account and are automatically associated with their organization's tenant.
 
 ### Configuration
 

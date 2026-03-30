@@ -1,10 +1,10 @@
 # Claude Code Integration
 
-PISAMA captures and analyzes traces from [Claude Code](https://claude.com/claude-code) CLI sessions, detecting failure modes in Claude's tool-use patterns.
+Pisama captures and analyzes traces from [Claude Code](https://claude.com/claude-code) CLI sessions, detecting failure modes in Claude's tool-use patterns.
 
 ## Overview
 
-The Claude Code integration captures every tool call (Bash, Read, Edit, Write, Grep, etc.) as a span, enabling PISAMA to detect:
+The Claude Code integration captures every tool call (Bash, Read, Edit, Write, Grep, etc.) as a span, enabling Pisama to detect:
 
 - **Infinite loops**: Agent repeating the same tool calls without progress
 - **Task derailment**: Agent going off-topic from the assigned task
@@ -14,7 +14,7 @@ The Claude Code integration captures every tool call (Bash, Read, Edit, Write, G
 
 ## Installation
 
-Install the PISAMA Claude Code package:
+Install the Pisama Claude Code package:
 
 ```bash
 pip install pisama-claude-code
@@ -35,9 +35,9 @@ This installs the necessary hooks and creates a `.pisama` configuration director
 | `pisama-cc init` | Install hooks, create config |
 | `pisama-cc status` | Show connection status |
 | `pisama-cc analyze` | Run local detection on captured traces |
-| `pisama-cc sync` | Upload traces to PISAMA platform (requires API key) |
+| `pisama-cc sync` | Upload traces to Pisama platform (requires API key) |
 | `pisama-cc export` | Export traces to file |
-| `pisama-cc connect` | Connect to the PISAMA platform |
+| `pisama-cc connect` | Connect to the Pisama platform |
 | `pisama-cc disconnect` | Remove API key |
 
 ## Features by Mode
@@ -104,7 +104,7 @@ Each tool call generates a span containing:
          └───────────────────────┼─────────────────────┘
                                  ▼
          ┌──────────────────────────────────────────┐
-         │           PISAMA Platform                 │
+         │           Pisama Platform                 │
          │  Dashboard - Analytics - Alerts - Fixes  │
          └──────────────────────────────────────────┘
 ```
