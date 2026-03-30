@@ -2,6 +2,7 @@
 const nextConfig = {
   reactStrictMode: true,
   output: 'standalone',
+  skipTrailingSlashRedirect: true,
   async rewrites() {
     return [
       { source: '/docs/:path*', destination: 'https://docs.pisama.ai/:path*' },
