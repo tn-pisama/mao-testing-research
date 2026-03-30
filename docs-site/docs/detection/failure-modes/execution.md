@@ -230,4 +230,4 @@ Execution failures occur during agent runtime -- when agents deviate from their 
 - **Circular Delegation Analysis**: Traces delegation chains for cycles
 - **Progress Monitoring**: Measures whether exchanges produce forward progress
 
-The `CoordinationAnalyzer` checks 12 issue types including information withholding, conflicting instructions, duplicate dispatch, data corruption relay, ordering violations, resource contention, rapid instruction changes, and response delays.
+**Sub-types:** `ignored_messages`, `information_withholding`, `excessive_back_forth`, `circular_delegation`, `conflicting_instructions`, `duplicate_dispatch`, `data_corruption_relay`, `ordering_violations`, `excessive_delegation`, `resource_contention`, `rapid_instruction_change`, `response_delay`, `indirect_delegation`

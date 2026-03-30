@@ -117,4 +117,4 @@ Verification failures occur when agents improperly validate their outputs, bypas
 - **Numeric Ratio Detection**: Catches partial delivery (e.g., "8/10 endpoints")
 - **Planned/Future Work Detection**: Identifies indicators that the task is not actually complete
 
-**Sub-types:** `premature_completion`, `partial_delivery`, `ignored_subtasks`, `missed_criteria`, `false_completion_claim`, `incomplete_verification`
+**Sub-types:** `premature_completion`, `partial_delivery`, `ignored_subtasks`, `missed_criteria`, `false_success_claim`, `incomplete_verification`

@@ -108,7 +108,7 @@ Extended detectors cover cross-cutting concerns that fall outside the core MAST 
 
 - **Pattern Matching**: 60+ regex patterns across 6 attack categories
 - **Semantic Similarity**: Embedding-based comparison against known attack templates
-- **Attack Type Classification**: `direct_override`, `instruction_injection`, `role_hijack`, `constraint_manipulation`, `safety_bypass`, `jailbreak`
+- **Attack Type Classification**: `direct_override`, `instruction_injection`, `role_hijack`, `constraint_manipulation`, `safety_bypass`, `jailbreak`, `delimiter_injection`, `urgency_manipulation`, `extraction`, `chained_injection`, `encoding_attack`, `social_engineering`
 - **Benign Context Filtering**: Filters "security research", "red team", "penetration test" contexts
 
 ---

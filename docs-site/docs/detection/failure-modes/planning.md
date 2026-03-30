@@ -74,7 +74,7 @@ Planning failures occur when the task specification, decomposition, or workflow 
 - **Vagueness Detection**: Flags non-actionable steps using indicator words
 - **Complexity Estimation**: Identifies subtasks too broad for single execution
 
-**Sub-types:** `impossible_subtask`, `missing_dependency`, `circular_dependency`, `duplicate_work`, `wrong_granularity`, `missing_subtask`, `vague_subtask`, `overly_complex`
+**Sub-types:** `impossible_subtask`, `missing_dependency`, `circular_dependency`, `duplicate_work`, `wrong_granularity`, `missing_subtask`, `vague_subtask`, `overly_complex`, `irrelevant_step`, `wrong_order`, `missing_requirement`
 
 ---
 
