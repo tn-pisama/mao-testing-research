@@ -1,6 +1,6 @@
 # Failure Modes
 
-PISAMA detects **21 failure modes** in multi-agent LLM systems, organized into 4 categories based on the [MAST: Multi-Agent System Failure Taxonomy](https://arxiv.org/abs/2503.13657) (NeurIPS 2025 Spotlight).
+PISAMA detects **22 failure modes** in multi-agent LLM systems, organized into 4 categories based on the [MAST: Multi-Agent System Failure Taxonomy](https://arxiv.org/abs/2503.13657).
 
 ## Overview
 
@@ -82,6 +82,6 @@ For detailed descriptions of each failure mode including real-world examples, de
 
 ## References
 
-- [MAST: Multi-Agent System Failure Taxonomy](https://arxiv.org/abs/2503.13657) -- NeurIPS 2025 Spotlight
+- [MAST: Multi-Agent System Failure Taxonomy](https://arxiv.org/abs/2503.13657)
 - [Who&When: Automated Failure Attribution](https://arxiv.org/abs/2505.00212) -- ICML 2025 Spotlight
 - [AgentErrorTaxonomy & AgentErrorBench](https://arxiv.org/abs/2509.25370) -- October 2025

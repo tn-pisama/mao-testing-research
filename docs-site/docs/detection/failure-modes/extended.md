@@ -11,7 +11,7 @@ Extended detectors cover cross-cutting concerns that fall outside the core MAST 
 | **Detector key** | `loop` |
 | **Tier** | ICP |
 | **Severity** | Critical |
-| **Accuracy** | F1 0.846, P 0.829, R 0.863 |
+| **Accuracy** | F1 0.652, P 0.577, R 0.750 |
 
 **What it detects:** Agents stuck repeating the same sequence of actions. Uses multiple detection methods from hash-based to semantic clustering.
 
@@ -43,7 +43,7 @@ Extended detectors cover cross-cutting concerns that fall outside the core MAST 
 | **Detector key** | `overflow` |
 | **Tier** | ICP |
 | **Severity** | High |
-| **Accuracy** | F1 0.823, P 1.000, R 0.699 |
+| **Accuracy** | F1 0.706, P 1.000, R 0.545 |
 
 **What it detects:** Agent context windows approaching or exceeding capacity, causing information loss and degraded performance.
 
@@ -70,9 +70,9 @@ Extended detectors cover cross-cutting concerns that fall outside the core MAST 
 | **Detector key** | `injection` |
 | **Tier** | ICP |
 | **Severity** | Critical |
-| **Accuracy** | F1 0.944, P 0.983, R 0.908 |
+| **Accuracy** | F1 0.667, P 0.800, R 0.571 |
 
-**What it detects:** Prompt injection attacks and jailbreak attempts targeting LLM agents. The highest-accuracy detector in the system.
+**What it detects:** Prompt injection attacks and jailbreak attempts targeting LLM agents.
 
 **Real-world examples:**
 
@@ -97,7 +97,7 @@ Extended detectors cover cross-cutting concerns that fall outside the core MAST 
 | **Detector key** | `hallucination` |
 | **Tier** | ICP |
 | **Severity** | High |
-| **Accuracy** | F1 0.772, P 0.718, R 0.836 |
+| **Accuracy** | F1 0.857, P 1.000, R 0.750 |
 
 **What it detects:** Factual inaccuracies, fabricated information, and unsupported claims in agent outputs.
 
@@ -124,7 +124,7 @@ Extended detectors cover cross-cutting concerns that fall outside the core MAST 
 | **Detector key** | `grounding` |
 | **Tier** | ICP |
 | **Severity** | High |
-| **Accuracy** | F1 0.671, P 0.636, R 0.710 |
+| **Accuracy** | F1 0.850, P 0.739, R 1.000 |
 
 **What it detects:** Output contains claims, data, or statements not supported by source documents. Inspired by OfficeQA benchmark showing agents achieve less than 45% accuracy on document-grounded tasks.
 
@@ -144,14 +144,14 @@ Extended detectors cover cross-cutting concerns that fall outside the core MAST 
 
 ---
 
-## Retrieval Quality (Enterprise)
+## Retrieval Quality
 
 | Field | Value |
 |---|---|
 | **Detector key** | `retrieval_quality` |
-| **Tier** | Enterprise |
+| **Tier** | ICP |
 | **Severity** | Medium |
-| **Accuracy** | F1 0.824, P 0.718, R 0.968 |
+| **Accuracy** | F1 0.698, P 0.536, R 1.000 |
 
 **What it detects:** Agents retrieve wrong, irrelevant, or insufficient documents for a task. Retrieval is the primary bottleneck in RAG systems.
 
@@ -178,7 +178,7 @@ Extended detectors cover cross-cutting concerns that fall outside the core MAST 
 | **Detector key** | `persona_drift` |
 | **Tier** | ICP |
 | **Severity** | Medium |
-| **Accuracy** | F1 0.932, P 0.899, R 0.969 |
+| **Accuracy** | F1 0.828, P 0.800, R 0.857 |
 
 **What it detects:** Agent deviates from intended role, personality, or behavioral constraints over time. Uses role-aware thresholds for different agent types.
 
@@ -205,9 +205,9 @@ Extended detectors cover cross-cutting concerns that fall outside the core MAST 
 | **Detector key** | `corruption` |
 | **Tier** | ICP |
 | **Severity** | High |
-| **Accuracy** | F1 0.906, P 0.955, R 0.863 |
+| **Accuracy** | F1 0.909, P 0.870, R 0.952 |
 
-**What it detects:** Agent memory or state becomes corrupted, including type drift, schema violations, nullification, and velocity anomalies. Second-highest accuracy detector.
+**What it detects:** Agent memory or state becomes corrupted, including type drift, schema violations, nullification, and velocity anomalies.
 
 **Real-world examples:**
 
@@ -223,6 +223,35 @@ Extended detectors cover cross-cutting concerns that fall outside the core MAST 
 - **Velocity Analysis**: Detects abnormal rate of state changes (immune fields: version, timestamp)
 - **Null/Type Change Detection**: Catches field nullification and type mutations (excludes booleans)
 - **Cross-Field Validation**: Ensures relationships between related fields remain consistent
+
+---
+
+## Convergence Detection
+
+| Field | Value |
+|---|---|
+| **Detector key** | `convergence` |
+| **Tier** | ICP |
+| **Severity** | Medium |
+| **Accuracy** | F1 0.652, P 0.577, R 0.750 |
+
+**What it detects:** Metric sequences that plateau, regress, thrash, or diverge -- indicating training or optimization processes that have stalled or gone wrong.
+
+**Real-world examples:**
+
+- Loss metric hasn't improved for 20 consecutive steps (plateau)
+- Accuracy dropped from 0.85 to 0.72 over recent window (regression)
+- Metric oscillates between 0.6 and 0.8 without converging (thrashing)
+- Loss increasing monotonically across evaluation window (divergence)
+
+**Detection methods:**
+
+- **Plateau Detection**: Identifies metrics with near-zero improvement over a sliding window
+- **Regression Detection**: Catches metrics moving in the wrong direction
+- **Thrashing Detection**: Detects oscillating metrics with high variance and no trend
+- **Divergence Detection**: Flags monotonically worsening metrics
+
+**Sub-types:** `plateau`, `regression`, `thrashing`, `divergence`
 
 ---
 

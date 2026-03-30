@@ -11,7 +11,7 @@ Planning failures occur when the task specification, decomposition, or workflow 
 | **Detector key** | `specification` |
 | **Tier** | ICP |
 | **Severity** | Medium |
-| **Accuracy** | F1 0.703, P 0.592, R 0.866 |
+| **Accuracy** | F1 0.857, P 0.923, R 0.800 |
 | **MAST mapping** | FM-1.1 Disobey Task Specification |
 
 **What it detects:** Task output doesn't match the user's original specification. Catches scope drift, missing requirements, ambiguous specs, language mismatches, and conflicting specifications.
@@ -41,7 +41,7 @@ Planning failures occur when the task specification, decomposition, or workflow 
 | **Detector key** | `decomposition` |
 | **Tier** | ICP |
 | **Severity** | Medium |
-| **Accuracy** | F1 0.727, P 0.727, R 0.727 |
+| **Accuracy** | F1 1.000, P 1.000, R 1.000 |
 | **MAST mapping** | FM-1.2 |
 
 **What it detects:** Task breakdown creates subtasks that are impossible, circular, vague, too granular, or too broad.
@@ -131,7 +131,7 @@ Planning failures occur when the task specification, decomposition, or workflow 
 | **Detector key** | `workflow` |
 | **Tier** | ICP |
 | **Severity** | High |
-| **Accuracy** | F1 0.797, P 0.851, R 0.750 |
+| **Accuracy** | F1 0.667, P 0.517, R 0.938 |
 | **MAST mapping** | FM-1.5 |
 
 **What it detects:** Structural problems in agent workflow graphs including unreachable nodes, dead ends, missing error handling, bottlenecks, and missing termination conditions.

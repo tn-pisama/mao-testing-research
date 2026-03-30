@@ -11,7 +11,7 @@ Execution failures occur during agent runtime -- when agents deviate from their 
 | **Detector key** | `derailment` |
 | **Tier** | ICP |
 | **Severity** | High |
-| **Accuracy** | F1 0.820, P 0.702, R 0.985 |
+| **Accuracy** | F1 0.667, P 0.588, R 0.769 |
 | **MAST mapping** | FM-2.3 Task Derailment |
 
 **What it detects:** Agent goes off-topic or deviates from its assigned task. One of the most common failure modes (20% prevalence in MAST-Data).
@@ -42,7 +42,7 @@ Execution failures occur during agent runtime -- when agents deviate from their 
 | **Detector key** | `context` |
 | **Tier** | ICP |
 | **Severity** | Medium |
-| **Accuracy** | F1 0.868, P 0.805, R 0.943 |
+| **Accuracy** | F1 0.865, P 0.762, R 1.000 |
 | **MAST mapping** | FM-1.4 Loss of Conversation History |
 
 **What it detects:** Agent ignores or fails to use upstream context provided by previous agents or workflow steps.
@@ -70,7 +70,7 @@ Execution failures occur during agent runtime -- when agents deviate from their 
 | **Detector key** | `withholding` |
 | **Tier** | ICP |
 | **Severity** | Medium |
-| **Accuracy** | F1 0.874, P 0.805, R 0.957 |
+| **Accuracy** | F1 0.800, P 0.667, R 1.000 |
 | **MAST mapping** | FM-2.4 Information Withholding |
 
 **What it detects:** Agent doesn't share critical information with peers, including omitting negative findings, over-summarizing, or selectively reporting.
@@ -141,7 +141,7 @@ Execution failures occur during agent runtime -- when agents deviate from their 
 | **Detector key** | `communication` |
 | **Tier** | ICP |
 | **Severity** | Medium |
-| **Accuracy** | F1 0.818, P 0.724, R 0.940 |
+| **Accuracy** | F1 0.667, P 0.571, R 0.800 |
 | **MAST mapping** | FM-2.1, FM-2.2, FM-2.5 |
 
 **What it detects:** Messages between agents are misunderstood or misinterpreted, causing incorrect downstream behavior.
@@ -171,7 +171,7 @@ Execution failures occur during agent runtime -- when agents deviate from their 
 | **Detector key** | `coordination` |
 | **Tier** | ICP |
 | **Severity** | Critical |
-| **Accuracy** | F1 0.797, P 0.836, R 0.761 |
+| **Accuracy** | F1 0.914, P 0.842, R 1.000 |
 | **MAST mapping** | FM-2.5 Ignored Input |
 
 **What it detects:** Handoff failures, circular delegation, excessive back-and-forth, and ignored messages between coordinating agents.

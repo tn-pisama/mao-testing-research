@@ -71,7 +71,7 @@ Verification failures occur when agents improperly validate their outputs, bypas
 | **Detector key** | `completion` |
 | **Tier** | ICP |
 | **Severity** | High |
-| **Accuracy** | F1 0.745, P 0.687, R 0.814 |
+| **Accuracy** | F1 0.703, P 0.619, R 0.812 |
 | **MAST mapping** | FM-1.5 Unaware of Termination, FM-3.1 Premature Termination |
 
 **What it detects:** Agent incorrectly determines task completion, including premature claims, partial delivery, and ignored subtasks. One of the most prevalent failure modes -- 40% in MAST-Data for FM-1.5.

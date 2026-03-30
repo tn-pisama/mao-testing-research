@@ -1,33 +1,34 @@
 # Detection Overview
 
-PISAMA detects **21 failure modes** in multi-agent LLM systems, organized by the [MAST taxonomy](https://arxiv.org/abs/2503.13657) (NeurIPS 2025 Spotlight) with extensions for enterprise use cases.
+PISAMA detects **22 failure modes** in multi-agent LLM systems, organized by the [MAST taxonomy](https://arxiv.org/abs/2503.13657) with extensions for enterprise use cases.
 
 ## Failure Mode Summary
 
 | MAST ID | Name | Key | Category | Tier | F1 | Status |
 |---|---|---|---|---|---|---|
-| F1 | Specification Mismatch | `specification` | Planning | ICP | 0.703 | Beta |
-| F2 | Poor Task Decomposition | `decomposition` | Planning | ICP | 0.727 | Beta |
+| F1 | Specification Mismatch | `specification` | Planning | ICP | 0.857 | Production |
+| F2 | Poor Task Decomposition | `decomposition` | Planning | ICP | 1.000 | Production |
 | F3 | Resource Misallocation | `resource_misallocation` | Planning | Enterprise | -- | Dev |
 | F4 | Inadequate Tool Provision | `tool_provision` | Planning | Enterprise | -- | Dev |
-| F5 | Flawed Workflow Design | `workflow` | Planning | ICP | 0.797 | Beta |
-| F6 | Task Derailment | `derailment` | Execution | ICP | 0.820 | Production |
-| F7 | Context Neglect | `context` | Execution | ICP | 0.868 | Production |
-| F8 | Information Withholding | `withholding` | Execution | ICP | 0.874 | Production |
+| F5 | Flawed Workflow Design | `workflow` | Planning | ICP | 0.667 | Emerging |
+| F6 | Task Derailment | `derailment` | Execution | ICP | 0.667 | Emerging |
+| F7 | Context Neglect | `context` | Execution | ICP | 0.865 | Production |
+| F8 | Information Withholding | `withholding` | Execution | ICP | 0.800 | Production |
 | F9 | Role Usurpation | `role_usurpation` | Execution | Enterprise | -- | Dev |
-| F10 | Communication Breakdown | `communication` | Execution | ICP | 0.818 | Production |
-| F11 | Coordination Failure | `coordination` | Execution | ICP | 0.797 | Beta |
+| F10 | Communication Breakdown | `communication` | Execution | ICP | 0.667 | Emerging |
+| F11 | Coordination Failure | `coordination` | Execution | ICP | 0.914 | Production |
 | F12 | Output Validation Failure | `output_validation` | Verification | Enterprise | -- | Dev |
 | F13 | Quality Gate Bypass | `quality_gate` | Verification | Enterprise | -- | Dev |
-| F14 | Completion Misjudgment | `completion` | Verification | ICP | 0.745 | Beta |
-| -- | Loop Detection | `loop` | Extended | ICP | 0.846 | Production |
-| -- | Context Overflow | `overflow` | Extended | ICP | 0.823 | Production |
-| -- | Prompt Injection | `injection` | Extended | ICP | 0.944 | Production |
-| -- | Hallucination | `hallucination` | Extended | ICP | 0.772 | Beta |
-| -- | Grounding Failure | `grounding` | Extended | ICP | 0.671 | Emerging |
-| -- | Retrieval Quality | `retrieval_quality` | Extended | Enterprise | 0.824 | Production |
-| -- | Persona Drift | `persona_drift` | Extended | ICP | 0.932 | Production |
-| -- | State Corruption | `corruption` | Extended | ICP | 0.906 | Production |
+| F14 | Completion Misjudgment | `completion` | Verification | ICP | 0.703 | Beta |
+| -- | Loop Detection | `loop` | Extended | ICP | 0.652 | Emerging |
+| -- | Context Overflow | `overflow` | Extended | ICP | 0.706 | Beta |
+| -- | Prompt Injection | `injection` | Extended | ICP | 0.667 | Emerging |
+| -- | Hallucination | `hallucination` | Extended | ICP | 0.857 | Production |
+| -- | Grounding Failure | `grounding` | Extended | ICP | 0.850 | Production |
+| -- | Retrieval Quality | `retrieval_quality` | Extended | ICP | 0.698 | Emerging |
+| -- | Persona Drift | `persona_drift` | Extended | ICP | 0.828 | Production |
+| -- | State Corruption | `corruption` | Extended | ICP | 0.909 | Production |
+| -- | Convergence | `convergence` | Extended | ICP | 0.652 | Emerging |
 | -- | Cost Tracking | `cost` | Extended | ICP | N/A | Production |
 
 ## Status Definitions
@@ -76,12 +77,13 @@ Cross-cutting concerns not in the core MAST taxonomy:
 
 - **Loop Detection**: Agents stuck repeating actions
 - **Context Overflow**: Context window exhaustion
-- **Prompt Injection**: Attack detection (highest accuracy: F1 0.944)
+- **Prompt Injection**: Attack detection
 - **Hallucination**: Fabricated information
 - **Grounding Failure**: Claims unsupported by source documents
-- **Retrieval Quality**: Wrong or irrelevant documents retrieved (Enterprise)
+- **Retrieval Quality**: Wrong or irrelevant documents retrieved
 - **Persona Drift**: Role/personality deviation
 - **State Corruption**: Memory/state anomalies
+- **Convergence**: Metric plateau, regression, thrashing, divergence detection
 - **Cost Tracking**: Token/cost budget monitoring
 
 ## Detection Pipeline

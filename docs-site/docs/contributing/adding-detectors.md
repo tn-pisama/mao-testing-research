@@ -215,5 +215,5 @@ Your detector is automatically wrapped with tiered detection based on its calibr
 ## Further Reading
 
 - [Detection Tiers](../concepts/detection-tiers.md) -- How tiered escalation works
-- [Failure Modes Reference](../concepts/failure-modes.md) -- All 21 failure modes
+- [Failure Modes Reference](../concepts/failure-modes.md) -- All 22 failure modes
 - [Technical Architecture](../concepts/architecture.md) -- System overview

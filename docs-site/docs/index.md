@@ -8,7 +8,7 @@ hide:
 
 ## Multi-agent failure detection & self-healing platform
 
-PISAMA detects **21 failure modes** in LLM agent systems, from infinite loops and hallucinations to coordination breakdowns and prompt injection. Built on the [MAST taxonomy](https://arxiv.org/abs/2503.13657) (NeurIPS 2025 Spotlight), PISAMA provides production-grade observability for any multi-agent framework.
+PISAMA detects **22 failure modes** in LLM agent systems, from infinite loops and hallucinations to coordination breakdowns and prompt injection. Built on the [MAST taxonomy](https://arxiv.org/abs/2503.13657), PISAMA provides production-grade observability for any multi-agent framework.
 
 <div class="grid cards" markdown>
 
@@ -28,19 +28,11 @@ PISAMA detects **21 failure modes** in LLM agent systems, from infinite loops an
 
     [:octicons-arrow-right-24: API docs](api/reference.md)
 
--   :material-currency-usd:{ .lg .middle } **Pricing**
-
-    ---
-
-    Free tier with 10,000 spans/month. Startup, Growth, and Enterprise plans for teams.
-
-    [:octicons-arrow-right-24: See plans](pricing/index.md)
-
 -   :material-shield-search:{ .lg .middle } **Detection Reference**
 
     ---
 
-    Detailed documentation for all 21 failure mode detectors with accuracy benchmarks.
+    Detailed documentation for all 22 failure mode detectors with accuracy benchmarks.
 
     [:octicons-arrow-right-24: Detectors](detection/overview.md)
 
@@ -60,12 +52,12 @@ PISAMA provides purpose-built failure detection for AI agent systems:
 
 | Capability | Description |
 |---|---|
-| **21 failure detectors** | Covering planning, execution, verification, and cross-cutting concerns |
+| **22 failure detectors** | Covering planning, execution, verification, and cross-cutting concerns |
 | **Tiered detection** | Cost-aware escalation from hash-based ($0.00) to LLM judge ($0.05) |
 | **Framework agnostic** | Works with LangGraph, CrewAI, AutoGen, n8n, Dify, OpenClaw, Claude Code |
 | **Self-healing** | Automated fix generation, approval workflows, and rollback capabilities |
 | **OTEL native** | Built on OpenTelemetry with `gen_ai.*` semantic conventions |
-| **Production accuracy** | 10 detectors at F1 >= 0.80, with continuous calibration |
+| **Production accuracy** | 9 detectors at F1 >= 0.80, with continuous calibration |
 
 ### Supported frameworks
 
@@ -87,7 +79,7 @@ Trace Sources                   PISAMA Platform                    Outputs
 
  LangGraph  ----+
  n8n        ----+---> Ingestion ---> Detection Engine ---> Dashboard
- Dify       ----+     Pipeline       (21 detectors)        Alerts
+ Dify       ----+     Pipeline       (22 detectors)        Alerts
  CrewAI     ----+     (OTEL/         Tiered escalation     Fix suggestions
  Claude Code ---+      webhook)      LLM Judge             Self-healing
                                                             API / webhooks
