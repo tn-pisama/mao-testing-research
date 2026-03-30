@@ -1,34 +1,35 @@
 # Detection Overview
 
-Pisama detects **22 failure modes** in multi-agent LLM systems, organized by the [MAST taxonomy](https://arxiv.org/abs/2503.13657) with extensions for enterprise use cases.
+Pisama detects **43 failure modes** across general-purpose and platform-specific detectors, organized by the [MAST taxonomy](https://arxiv.org/abs/2503.13657) with extensions for enterprise use cases. **29 detectors** are production-grade (F1 >= 0.80).
 
 ## Failure Mode Summary
 
 | MAST ID | Name | Key | Category | Tier | F1 | Status |
 |---|---|---|---|---|---|---|
-| F1 | Specification Mismatch | `specification` | Planning | ICP | 0.857 | Production |
-| F2 | Poor Task Decomposition | `decomposition` | Planning | ICP | 1.000 | Production |
+| F1 | Specification Mismatch | `specification` | Planning | ICP | 0.747 | Beta |
+| F2 | Poor Task Decomposition | `decomposition` | Planning | ICP | 0.746 | Beta |
 | F3 | Resource Misallocation | `resource_misallocation` | Planning | Enterprise | -- | Dev |
 | F4 | Inadequate Tool Provision | `tool_provision` | Planning | Enterprise | -- | Dev |
-| F5 | Flawed Workflow Design | `workflow` | Planning | ICP | 0.667 | Emerging |
-| F6 | Task Derailment | `derailment` | Execution | ICP | 0.667 | Emerging |
-| F7 | Context Neglect | `context` | Execution | ICP | 0.865 | Production |
-| F8 | Information Withholding | `withholding` | Execution | ICP | 0.800 | Production |
+| F5 | Flawed Workflow Design | `workflow` | Planning | ICP | 0.692 | Emerging |
+| F6 | Task Derailment | `derailment` | Execution | ICP | 0.800 | Production |
+| F7 | Context Neglect | `context` | Execution | ICP | 0.731 | Beta |
+| F8 | Information Withholding | `withholding` | Execution | ICP | 0.796 | Beta |
 | F9 | Role Usurpation | `role_usurpation` | Execution | Enterprise | -- | Dev |
-| F10 | Communication Breakdown | `communication` | Execution | ICP | 0.667 | Emerging |
-| F11 | Coordination Failure | `coordination` | Execution | ICP | 0.914 | Production |
+| F10 | Communication Breakdown | `communication` | Execution | ICP | 0.821 | Production |
+| F11 | Coordination Failure | `coordination` | Execution | ICP | 0.912 | Production |
 | F12 | Output Validation Failure | `output_validation` | Verification | Enterprise | -- | Dev |
 | F13 | Quality Gate Bypass | `quality_gate` | Verification | Enterprise | -- | Dev |
-| F14 | Completion Misjudgment | `completion` | Verification | ICP | 0.703 | Beta |
-| -- | Loop Detection | `loop` | Extended | ICP | 0.652 | Emerging |
-| -- | Context Overflow | `overflow` | Extended | ICP | 0.706 | Beta |
-| -- | Prompt Injection | `injection` | Extended | ICP | 0.667 | Emerging |
-| -- | Hallucination | `hallucination` | Extended | ICP | 0.857 | Production |
-| -- | Grounding Failure | `grounding` | Extended | ICP | 0.850 | Production |
-| -- | Retrieval Quality | `retrieval_quality` | Extended | ICP | 0.698 | Emerging |
-| -- | Persona Drift | `persona_drift` | Extended | ICP | 0.828 | Production |
-| -- | State Corruption | `corruption` | Extended | ICP | 0.909 | Production |
-| -- | Convergence | `convergence` | Extended | ICP | 0.652 | Emerging |
+| F14 | Completion Misjudgment | `completion` | Verification | ICP | 0.718 | Beta |
+| -- | Loop Detection | `loop` | Extended | ICP | 0.780 | Beta |
+| -- | Context Overflow | `overflow` | Extended | ICP | 0.878 | Production |
+| -- | Prompt Injection | `injection` | Extended | ICP | 0.745 | Beta |
+| -- | Hallucination | `hallucination` | Extended | ICP | 0.755 | Beta |
+| -- | Grounding Failure | `grounding` | Extended | ICP | 0.599 | Emerging |
+| -- | Retrieval Quality | `retrieval_quality` | Extended | ICP | 0.551 | Emerging |
+| -- | Persona Drift | `persona_drift` | Extended | ICP | 0.774 | Beta |
+| -- | State Corruption | `corruption` | Extended | ICP | 0.832 | Production |
+| -- | Convergence | `convergence` | Extended | ICP | 0.855 | Production |
+| -- | Delegation | `delegation` | Extended | ICP | 0.841 | Production |
 | -- | Cost Tracking | `cost` | Extended | ICP | N/A | Production |
 
 ## Status Definitions

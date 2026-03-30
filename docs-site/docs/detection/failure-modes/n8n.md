@@ -6,10 +6,12 @@ Platform-specific detectors for n8n workflow automation. These run in addition t
 
 ## Schema Mismatch
 
+
 | Field | Value |
 |---|---|
 | **Detector key** | `n8n_schema` |
 | **Severity** | Medium |
+| **Accuracy** | F1 0.765, P 0.788, R 0.743 |
 
 **Plain language:** Two connected nodes in your workflow are speaking different languages. One node outputs data in a format the next node doesn't expect -- like plugging a USB-C cable into a USB-A port.
 
@@ -45,6 +47,7 @@ Platform-specific detectors for n8n workflow automation. These run in addition t
 |---|---|
 | **Detector key** | `n8n_cycle` |
 | **Severity** | Critical |
+| **Accuracy** | F1 0.812, P 0.689, R 0.988 |
 
 **Plain language:** Your workflow has a loop that never ends. Nodes keep passing data back and forth or re-executing the same steps endlessly, burning execution time and credits.
 
@@ -81,6 +84,7 @@ Platform-specific detectors for n8n workflow automation. These run in addition t
 |---|---|
 | **Detector key** | `n8n_complexity` |
 | **Severity** | Medium |
+| **Accuracy** | F1 0.841, P 0.805, R 0.880 |
 
 **Plain language:** Your workflow has grown too complex. It has too many nodes, too many nested branches, or tries to do too many unrelated things in one workflow -- making it fragile and hard to maintain.
 
@@ -116,6 +120,7 @@ Platform-specific detectors for n8n workflow automation. These run in addition t
 |---|---|
 | **Detector key** | `n8n_error` |
 | **Severity** | High |
+| **Accuracy** | F1 0.824, P 0.730, R 0.947 |
 
 **Plain language:** Your workflow has errors that are being silently swallowed, or nodes are failing without anyone noticing. A node might fail but the workflow continues as if everything is fine, passing bad data downstream.
 
@@ -152,6 +157,7 @@ Platform-specific detectors for n8n workflow automation. These run in addition t
 |---|---|
 | **Detector key** | `n8n_resource` |
 | **Severity** | High |
+| **Accuracy** | F1 0.949, P 0.942, R 0.956 |
 
 **Plain language:** Your workflow is consuming too many resources. Data is growing uncontrollably as it passes through nodes, API calls are being made excessively, or AI nodes are running without any token limits.
 
@@ -188,6 +194,7 @@ Platform-specific detectors for n8n workflow automation. These run in addition t
 |---|---|
 | **Detector key** | `n8n_timeout` |
 | **Severity** | High |
+| **Accuracy** | F1 0.959, P 0.946, R 0.972 |
 
 **Plain language:** Your workflow or individual nodes are taking too long. A webhook caller may have already given up waiting, or a node is stalled with no progress for over a minute.
 

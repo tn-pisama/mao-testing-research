@@ -87,7 +87,7 @@ Verification failures occur when agents improperly validate their outputs, bypas
 | **Detector key** | `completion` |
 | **Tier** | ICP |
 | **Severity** | High |
-| **Accuracy** | F1 0.703, P 0.619, R 0.812 |
+| **Accuracy** | F1 0.718, P 0.702, R 0.734 |
 | **MAST mapping** | FM-1.5 Unaware of Termination, FM-3.1 Premature Termination |
 
 **Plain language:** The agent said "I'm done" when it wasn't. It claimed to have completed everything, but important pieces are still missing -- like a contractor saying a house is finished when the plumbing isn't connected.

@@ -10,6 +10,7 @@ Platform-specific detectors for OpenClaw multi-agent chat sessions. These catch 
 |---|---|
 | **Detector key** | `openclaw_session_loop` |
 | **Severity** | Critical |
+| **Accuracy** | F1 0.985, P 1.000, R 0.970 |
 
 **Plain language:** Your agent is stuck in a loop within its session. It keeps calling the same tool, sending the same message, or spawning the same sub-agent over and over -- burning time and resources without making progress.
 
@@ -45,6 +46,7 @@ Platform-specific detectors for OpenClaw multi-agent chat sessions. These catch 
 |---|---|
 | **Detector key** | `openclaw_tool_abuse` |
 | **Severity** | High |
+| **Accuracy** | F1 0.870, P 0.851, R 0.891 |
 
 **Plain language:** Your agent is misusing its tools. It's making too many calls, calling the same tool redundantly, failing more than half the time, or using sensitive tools like file deletion or shell commands that could be dangerous.
 
@@ -80,6 +82,7 @@ Platform-specific detectors for OpenClaw multi-agent chat sessions. These catch 
 |---|---|
 | **Detector key** | `openclaw_elevated_risk` |
 | **Severity** | High |
+| **Accuracy** | F1 0.886, P 0.795, R 1.000 |
 
 **Plain language:** Your agent is performing risky operations, either in elevated mode (where it has extra permissions) or attempting dangerous actions without proper authorization. This could mean file system access, code execution, or admin-level operations.
 
@@ -116,6 +119,7 @@ Platform-specific detectors for OpenClaw multi-agent chat sessions. These catch 
 |---|---|
 | **Detector key** | `openclaw_spawn_chain` |
 | **Severity** | High |
+| **Accuracy** | F1 0.933, P 0.926, R 0.940 |
 
 **Plain language:** Your agents are spawning too many levels of sub-agents. Agent A spawns Agent B, which spawns Agent C, which spawns Agent D -- creating a deep chain that's hard to control. Even worse, some agents might be spawning each other in circles, or escalating to privileged agents they shouldn't access.
 
@@ -152,6 +156,7 @@ Platform-specific detectors for OpenClaw multi-agent chat sessions. These catch 
 |---|---|
 | **Detector key** | `openclaw_channel_mismatch` |
 | **Severity** | Medium |
+| **Accuracy** | F1 0.993, P 1.000, R 0.985 |
 
 **Plain language:** Your agent is sending messages formatted wrong for the messaging channel. Code blocks sent to WhatsApp don't render, messages are too long for the platform's limits, or sensitive personal information is being sent through channels where it shouldn't appear.
 
@@ -190,6 +195,7 @@ Platform-specific detectors for OpenClaw multi-agent chat sessions. These catch 
 |---|---|
 | **Detector key** | `openclaw_sandbox_escape` |
 | **Severity** | Critical |
+| **Accuracy** | F1 0.852, P 0.750, R 0.986 |
 
 **Plain language:** Your agent is trying to break out of its sandbox. The sandbox is supposed to restrict what the agent can do, but it's attempting to access files, make network calls, execute code, or query databases -- all things it's not supposed to do in a sandboxed environment.
 

@@ -11,7 +11,7 @@ Planning failures occur when the task specification, decomposition, or workflow 
 | **Detector key** | `specification` |
 | **Tier** | ICP |
 | **Severity** | Medium |
-| **Accuracy** | F1 0.857, P 0.923, R 0.800 |
+| **Accuracy** | F1 0.747, P 0.819, R 0.686 |
 | **MAST mapping** | FM-1.1 Disobey Task Specification |
 
 **Plain language:** The agent delivered something different from what was asked for. Like ordering a blue car and receiving a red one -- the work got done, but it doesn't match the original request.
@@ -48,7 +48,7 @@ Planning failures occur when the task specification, decomposition, or workflow 
 | **Detector key** | `decomposition` |
 | **Tier** | ICP |
 | **Severity** | Medium |
-| **Accuracy** | F1 1.000, P 1.000, R 1.000 |
+| **Accuracy** | F1 0.746, P 0.904, R 0.634 |
 | **MAST mapping** | FM-1.2 |
 
 **Plain language:** The agent broke a big task into smaller pieces badly. Some pieces depend on each other in circles, some are too vague to act on, and the overall breakdown doesn't make sense for the complexity of the work.
@@ -159,7 +159,7 @@ Planning failures occur when the task specification, decomposition, or workflow 
 | **Detector key** | `workflow` |
 | **Tier** | ICP |
 | **Severity** | High |
-| **Accuracy** | F1 0.667, P 0.517, R 0.938 |
+| **Accuracy** | F1 0.692, P 0.750, R 0.643 |
 | **MAST mapping** | FM-1.5 |
 
 **Plain language:** The workflow itself is badly designed -- some steps can never be reached, some paths have no ending, and there's no plan for what happens when things go wrong.

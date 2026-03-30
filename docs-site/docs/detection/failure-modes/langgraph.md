@@ -10,6 +10,7 @@ Platform-specific detectors for LangGraph state-graph agent execution. These cat
 |---|---|
 | **Detector key** | `langgraph_recursion` |
 | **Severity** | Critical |
+| **Accuracy** | F1 0.976, P 1.000, R 0.953 |
 
 **Plain language:** Your graph agent hit the recursion limit and was forcibly stopped. It ran too many steps -- either because it's stuck in a cycle or because the task genuinely requires more steps than the limit allows.
 
@@ -44,6 +45,7 @@ Platform-specific detectors for LangGraph state-graph agent execution. These cat
 |---|---|
 | **Detector key** | `langgraph_state_corruption` |
 | **Severity** | High |
+| **Accuracy** | F1 0.868, P 0.979, R 0.780 |
 
 **Plain language:** Your agent's state got corrupted between steps. Values changed type unexpectedly, important fields disappeared, identity fields were modified, or counters went backwards -- things that should never happen.
 
@@ -83,6 +85,7 @@ Platform-specific detectors for LangGraph state-graph agent execution. These cat
 |---|---|
 | **Detector key** | `langgraph_edge_misroute` |
 | **Severity** | High |
+| **Accuracy** | F1 0.835, P 0.941, R 0.750 |
 
 **Plain language:** Your graph routed to the wrong node. A conditional edge sent the agent down the wrong path -- like a GPS giving you a turn that leads to a dead end. The routing decision contradicted the agent's state or output.
 
@@ -120,6 +123,7 @@ Platform-specific detectors for LangGraph state-graph agent execution. These cat
 |---|---|
 | **Detector key** | `langgraph_tool_failure` |
 | **Severity** | High |
+| **Accuracy** | F1 0.900, P 0.931, R 0.871 |
 
 **Plain language:** A tool node in your graph failed, and the graph either couldn't recover or had to fall back to an alternative. Unrecovered tool failures can crash the entire graph execution.
 
@@ -155,6 +159,7 @@ Platform-specific detectors for LangGraph state-graph agent execution. These cat
 |---|---|
 | **Detector key** | `langgraph_parallel_sync` |
 | **Severity** | High |
+| **Accuracy** | F1 0.895, P 0.981, R 0.823 |
 
 **Plain language:** Nodes running in parallel stepped on each other. Two nodes tried to write to the same piece of state simultaneously, or parallel branches didn't properly merge back together -- causing lost data or inconsistent results.
 
@@ -192,6 +197,7 @@ Platform-specific detectors for LangGraph state-graph agent execution. These cat
 |---|---|
 | **Detector key** | `langgraph_checkpoint_corruption` |
 | **Severity** | High |
+| **Accuracy** | F1 0.889, P 0.929, R 0.853 |
 
 **Plain language:** Your graph's saved checkpoints are corrupted. Checkpoints are snapshots that let you resume or replay a graph run -- if they're out of order, have gaps, or don't match the actual state, replaying from them will produce wrong results.
 

@@ -11,7 +11,7 @@ Execution failures occur during agent runtime -- when agents deviate from their 
 | **Detector key** | `derailment` |
 | **Tier** | ICP |
 | **Severity** | High |
-| **Accuracy** | F1 0.667, P 0.588, R 0.769 |
+| **Accuracy** | F1 0.800, P 0.791, R 0.809 |
 | **MAST mapping** | FM-2.3 Task Derailment |
 
 **Plain language:** The agent went off-topic. It was asked to do one thing but started doing something else entirely -- like asking someone to write a blog post and getting API documentation instead.
@@ -46,7 +46,7 @@ Execution failures occur during agent runtime -- when agents deviate from their 
 | **Detector key** | `context` |
 | **Tier** | ICP |
 | **Severity** | Medium |
-| **Accuracy** | F1 0.865, P 0.762, R 1.000 |
+| **Accuracy** | F1 0.731, P 0.856, R 0.637 |
 | **MAST mapping** | FM-1.4 Loss of Conversation History |
 
 **Plain language:** The agent ignored information it was given. A previous step provided important context, but the agent acted as if it never received it -- starting from scratch instead of building on prior work.
@@ -81,7 +81,7 @@ Execution failures occur during agent runtime -- when agents deviate from their 
 | **Detector key** | `withholding` |
 | **Tier** | ICP |
 | **Severity** | Medium |
-| **Accuracy** | F1 0.800, P 0.667, R 1.000 |
+| **Accuracy** | F1 0.796, P 0.661, R 1.000 |
 | **MAST mapping** | FM-2.4 Information Withholding |
 
 **Plain language:** The agent knows something important but didn't share it. It might have found a security issue but only reported "task completed successfully" -- hiding bad news or over-simplifying critical details.
@@ -166,7 +166,7 @@ Execution failures occur during agent runtime -- when agents deviate from their 
 | **Detector key** | `communication` |
 | **Tier** | ICP |
 | **Severity** | Medium |
-| **Accuracy** | F1 0.667, P 0.571, R 0.800 |
+| **Accuracy** | F1 0.821, P 0.780, R 0.868 |
 | **MAST mapping** | FM-2.1, FM-2.2, FM-2.5 |
 
 **Plain language:** Agents are miscommunicating. One agent sends a message but the receiving agent misunderstands it -- like giving someone directions in kilometers when they expect miles.
@@ -203,7 +203,7 @@ Execution failures occur during agent runtime -- when agents deviate from their 
 | **Detector key** | `coordination` |
 | **Tier** | ICP |
 | **Severity** | Critical |
-| **Accuracy** | F1 0.914, P 0.842, R 1.000 |
+| **Accuracy** | F1 0.912, P 0.845, R 0.992 |
 | **MAST mapping** | FM-2.5 Ignored Input |
 
 **Plain language:** Agents can't work together. They're waiting on each other in circles, ignoring each other's messages, or going back and forth endlessly without making progress -- like two people stuck saying "no, you go first" at a doorway.

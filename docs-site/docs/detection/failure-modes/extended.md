@@ -11,7 +11,7 @@ Extended detectors cover cross-cutting concerns that fall outside the core MAST 
 | **Detector key** | `loop` |
 | **Tier** | ICP |
 | **Severity** | Critical |
-| **Accuracy** | F1 0.652, P 0.577, R 0.750 |
+| **Accuracy** | F1 0.780, P 0.768, R 0.793 |
 
 **Plain language:** The agent is stuck repeating itself. It keeps doing the same thing over and over without making progress -- burning time and money on an endless cycle.
 
@@ -51,7 +51,7 @@ Extended detectors cover cross-cutting concerns that fall outside the core MAST 
 | **Detector key** | `overflow` |
 | **Tier** | ICP |
 | **Severity** | High |
-| **Accuracy** | F1 0.706, P 1.000, R 0.545 |
+| **Accuracy** | F1 0.878, P 0.885, R 0.871 |
 
 **Plain language:** The agent is running out of memory. Its conversation has grown so long that it's hitting the limit of what it can keep track of, which causes it to start forgetting earlier information and making worse decisions.
 
@@ -85,7 +85,7 @@ Extended detectors cover cross-cutting concerns that fall outside the core MAST 
 | **Detector key** | `injection` |
 | **Tier** | ICP |
 | **Severity** | Critical |
-| **Accuracy** | F1 0.667, P 0.800, R 0.571 |
+| **Accuracy** | F1 0.745, P 0.882, R 0.645 |
 
 **Plain language:** Someone is trying to trick the agent into ignoring its instructions. They're embedding hidden commands in their input -- like slipping a fake memo into someone's inbox that says "ignore all previous memos."
 
@@ -120,7 +120,7 @@ Extended detectors cover cross-cutting concerns that fall outside the core MAST 
 | **Detector key** | `hallucination` |
 | **Tier** | ICP |
 | **Severity** | High |
-| **Accuracy** | F1 0.857, P 1.000, R 0.750 |
+| **Accuracy** | F1 0.755, P 0.711, R 0.806 |
 
 **Plain language:** The agent made things up. It stated facts, cited sources, or provided data that doesn't actually exist -- presenting fabricated information with full confidence.
 
@@ -155,7 +155,7 @@ Extended detectors cover cross-cutting concerns that fall outside the core MAST 
 | **Detector key** | `grounding` |
 | **Tier** | ICP |
 | **Severity** | High |
-| **Accuracy** | F1 0.850, P 0.739, R 1.000 |
+| **Accuracy** | F1 0.599, P 0.542, R 0.669 |
 
 **Plain language:** The agent's output contains claims that aren't supported by the source documents it was given. It may have misread numbers, confused which data belongs to which company, or fabricated details not present in any source.
 
@@ -190,7 +190,7 @@ Extended detectors cover cross-cutting concerns that fall outside the core MAST 
 | **Detector key** | `retrieval_quality` |
 | **Tier** | ICP |
 | **Severity** | Medium |
-| **Accuracy** | F1 0.698, P 0.536, R 1.000 |
+| **Accuracy** | F1 0.551, P 0.753, R 0.435 |
 
 **Plain language:** The agent retrieved the wrong documents. When it went looking for information to answer a question, it pulled back irrelevant, outdated, or incomplete results -- like searching for "2024 sales data" and getting marketing brochures from 2022.
 
@@ -226,7 +226,7 @@ Extended detectors cover cross-cutting concerns that fall outside the core MAST 
 | **Detector key** | `persona_drift` |
 | **Tier** | ICP |
 | **Severity** | Medium |
-| **Accuracy** | F1 0.828, P 0.800, R 0.857 |
+| **Accuracy** | F1 0.774, P 0.674, R 0.909 |
 
 **Plain language:** The agent changed personality mid-conversation. It started out formal and professional but gradually became casual, or a specialist agent started answering questions outside its expertise -- drifting away from who it's supposed to be.
 
@@ -261,7 +261,7 @@ Extended detectors cover cross-cutting concerns that fall outside the core MAST 
 | **Detector key** | `corruption` |
 | **Tier** | ICP |
 | **Severity** | High |
-| **Accuracy** | F1 0.909, P 0.870, R 0.952 |
+| **Accuracy** | F1 0.832, P 0.913, R 0.764 |
 
 **Plain language:** The agent's memory got corrupted. Values that should be numbers suddenly became text, important data fields disappeared, or data changed in ways that don't make sense -- like a price going negative or an age changing to 500.
 
@@ -297,7 +297,7 @@ Extended detectors cover cross-cutting concerns that fall outside the core MAST 
 | **Detector key** | `convergence` |
 | **Tier** | ICP |
 | **Severity** | Medium |
-| **Accuracy** | F1 0.652, P 0.577, R 0.750 |
+| **Accuracy** | F1 0.855, P 0.877, R 0.833 |
 
 **Plain language:** A metric that should be improving has stalled, gone backwards, or is bouncing around erratically. The optimization or training process isn't converging toward a good result.
 

@@ -10,6 +10,7 @@ Platform-specific detectors for Dify workflow and chatbot applications. These ca
 |---|---|
 | **Detector key** | `dify_rag_poisoning` |
 | **Severity** | Critical |
+| **Accuracy** | F1 0.932, P 0.991, R 0.879 |
 
 **Plain language:** Someone planted malicious instructions inside your knowledge base documents. When the Dify agent retrieves these documents, the hidden instructions trick the LLM into doing something it shouldn't -- like a Trojan horse hiding in your data.
 
@@ -46,6 +47,7 @@ Platform-specific detectors for Dify workflow and chatbot applications. These ca
 |---|---|
 | **Detector key** | `dify_iteration_escape` |
 | **Severity** | High |
+| **Accuracy** | F1 0.951, P 0.913, R 0.993 |
 
 **Plain language:** A loop in your Dify workflow is running out of control. It's gone past its intended number of repetitions, has no exit condition, or child nodes inside the loop are modifying things outside their scope.
 
@@ -84,6 +86,7 @@ Platform-specific detectors for Dify workflow and chatbot applications. These ca
 |---|---|
 | **Detector key** | `dify_model_fallback` |
 | **Severity** | Medium |
+| **Accuracy** | F1 0.966, P 0.958, R 0.974 |
 
 **Plain language:** Your Dify app quietly switched to a different AI model than what you configured. The model you chose failed, and Dify fell back to an alternative without telling you -- meaning your quality, cost, and behavior assumptions may be wrong.
 
@@ -118,6 +121,7 @@ Platform-specific detectors for Dify workflow and chatbot applications. These ca
 |---|---|
 | **Detector key** | `dify_variable_leak` |
 | **Severity** | High |
+| **Accuracy** | F1 0.709, P 0.796, R 0.639 |
 
 **Plain language:** Sensitive information like API keys, passwords, or personal data is showing up in your workflow's node outputs. This data could end up in logs, responses to users, or external API calls where it shouldn't be.
 
@@ -155,6 +159,7 @@ Platform-specific detectors for Dify workflow and chatbot applications. These ca
 |---|---|
 | **Detector key** | `dify_classifier_drift` |
 | **Severity** | Medium |
+| **Accuracy** | F1 0.904, P 1.000, R 0.825 |
 
 **Plain language:** Your Dify question classifier is making bad routing decisions. It's routing user questions to the wrong category, falling back to a default "other" bucket too often, or multiple classifiers disagree about where to route the same question.
 
@@ -190,6 +195,7 @@ Platform-specific detectors for Dify workflow and chatbot applications. These ca
 |---|---|
 | **Detector key** | `dify_tool_schema` |
 | **Severity** | Medium |
+| **Accuracy** | F1 0.954, P 1.000, R 0.913 |
 
 **Plain language:** A tool node in your Dify workflow received the wrong type of data. Required fields are missing, values have the wrong type, or unexpected extra fields are being passed -- causing the tool to fail or behave incorrectly.
 

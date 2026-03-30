@@ -57,7 +57,7 @@ Pisama provides purpose-built failure detection for AI agent systems:
 | **Framework agnostic** | Works with LangGraph, CrewAI, AutoGen, n8n, Dify, OpenClaw, Claude Code |
 | **Self-healing** | Automated fix generation, approval workflows, and rollback capabilities |
 | **OTEL native** | Built on OpenTelemetry with `gen_ai.*` semantic conventions |
-| **Production accuracy** | 9 detectors at F1 >= 0.80, with continuous calibration |
+| **Production accuracy** | 29 detectors at F1 >= 0.80, with continuous calibration |
 
 ### Supported frameworks
 
