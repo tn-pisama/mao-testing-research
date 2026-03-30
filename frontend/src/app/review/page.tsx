@@ -193,7 +193,7 @@ export default function ReviewPage() {
         const token = await getToken()
         if (!token || cancelled) return
         const resp = await fetch(
-          `${process.env.NEXT_PUBLIC_API_URL || 'https://mao-api.fly.dev'}/api/v1/tenants/${tenantId}/traces/${current.traceId}/states?per_page=5`,
+          `${process.env.NEXT_PUBLIC_API_URL || 'https://mao-api.fly.dev/api/v1'}/tenants/${tenantId}/traces/${current.traceId}/states?per_page=5`,
           { headers: { Authorization: `Bearer ${token}` } }
         )
         if (resp.ok && !cancelled) {
