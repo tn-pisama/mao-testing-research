@@ -138,7 +138,12 @@ export default function ReviewPage() {
         validated: showUnvalidatedOnly ? false : undefined,
       })
       setDetections(response.items.map((d: ApiDetection) => {
-        const fm = FAILURE_MODE_INFO[d.detection_type] || { name: d.detection_type.replace(/_/g, ' '), summary: '', technical: '', pos: '', neg: '' }
+        // Look up failure mode info: try exact match, then base type (e.g., "coordination" from "coordination_deadlock")
+        const baseType = d.detection_type.split('_').slice(0, -1).join('_') || d.detection_type
+        const fm = FAILURE_MODE_INFO[d.detection_type]
+          || FAILURE_MODE_INFO[baseType]
+          || FAILURE_MODE_INFO[d.detection_type.split('_')[0]]
+          || { name: d.detection_type.replace(/_/g, ' '), summary: '', technical: '', pos: '', neg: '' }
         return {
           id: d.id,
           type: d.detection_type,
@@ -171,6 +176,36 @@ export default function ReviewPage() {
 
   const current = detections[currentIndex]
   const pending = detections.length - reviewed
+
+  // Fetch trace states inline when current detection changes
+  const [traceStates, setTraceStates] = useState<Array<{ agent_id: string; sequence_num: number; state_delta: Record<string, unknown>; tool_calls?: unknown }>>([])
+  const [traceLoading, setTraceLoading] = useState(false)
+
+  useEffect(() => {
+    if (!current?.traceId || !getToken || !tenantId) {
+      setTraceStates([])
+      return
+    }
+    let cancelled = false
+    setTraceLoading(true)
+    const fetchTrace = async () => {
+      try {
+        const token = await getToken()
+        if (!token || cancelled) return
+        const resp = await fetch(
+          `${process.env.NEXT_PUBLIC_API_URL || 'https://mao-api.fly.dev'}/api/v1/tenants/${tenantId}/traces/${current.traceId}/states?per_page=5`,
+          { headers: { Authorization: `Bearer ${token}` } }
+        )
+        if (resp.ok && !cancelled) {
+          const data = await resp.json()
+          setTraceStates(Array.isArray(data) ? data.slice(0, 5) : [])
+        }
+      } catch { /* ignore */ }
+      if (!cancelled) setTraceLoading(false)
+    }
+    fetchTrace()
+    return () => { cancelled = true }
+  }, [current?.traceId, getToken, tenantId])
 
   const handleLabel = useCallback(async (label: 'correct' | 'false_positive' | 'unclear' | 'skip') => {
     if (!current || isSubmitting) return
@@ -482,12 +517,37 @@ export default function ReviewPage() {
               <p className="text-sm text-zinc-400 mb-4 italic">{current.businessImpact}</p>
             )}
 
+            {/* Inline trace context */}
+            {traceLoading ? (
+              <div className="text-xs text-zinc-500 mb-4">Loading trace data...</div>
+            ) : traceStates.length > 0 ? (
+              <details className="mb-4 group" open>
+                <summary className="text-xs text-zinc-500 cursor-pointer hover:text-zinc-300 select-none mb-2">
+                  Trace States ({traceStates.length} shown)
+                </summary>
+                <div className="space-y-2">
+                  {traceStates.map((s, i) => (
+                    <div key={i} className="bg-zinc-900/80 rounded p-2 border border-zinc-700/50 text-xs">
+                      <div className="flex items-center gap-2 mb-1">
+                        <span className="font-mono text-zinc-300">#{s.sequence_num}</span>
+                        <span className="text-blue-400">{s.agent_id || 'unknown'}</span>
+                        {s.tool_calls ? <span className="text-amber-400/70">[tool]</span> : null}
+                      </div>
+                      <pre className="text-zinc-500 whitespace-pre-wrap break-words max-h-20 overflow-y-auto">
+                        {JSON.stringify(s.state_delta, null, 1)?.slice(0, 300)}
+                      </pre>
+                    </div>
+                  ))}
+                </div>
+              </details>
+            ) : null}
+
             <div className="flex items-center gap-3 mb-4">
               <a href={`/traces/${current.traceId}`} target="_blank" rel="noopener noreferrer">
-                <Button variant="ghost" size="sm">View Trace</Button>
+                <Button variant="ghost" size="sm">Full Trace</Button>
               </a>
               <a href={`/detections/${current.id}`} target="_blank" rel="noopener noreferrer">
-                <Button variant="ghost" size="sm">View Details</Button>
+                <Button variant="ghost" size="sm">Full Details</Button>
               </a>
             </div>
 
