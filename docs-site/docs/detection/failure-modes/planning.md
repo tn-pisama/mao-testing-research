@@ -14,14 +14,21 @@ Planning failures occur when the task specification, decomposition, or workflow 
 | **Accuracy** | F1 0.857, P 0.923, R 0.800 |
 | **MAST mapping** | FM-1.1 Disobey Task Specification |
 
-**What it detects:** Task output doesn't match the user's original specification. Catches scope drift, missing requirements, ambiguous specs, language mismatches, and conflicting specifications.
+**Plain language:** The agent delivered something different from what was asked for. Like ordering a blue car and receiving a red one -- the work got done, but it doesn't match the original request.
 
-**Real-world examples:**
+**Technical:** Measures semantic coverage between the user's specification and the agent's output using embedding similarity, keyword matching, and structural analysis. Detects scope drift, missing requirements, and constraint violations.
 
-- User requests Python code but agent delivers TypeScript implementation
-- Task asks for 500-word summary but agent delivers 150 words
-- Agent reformulates requirements and loses critical constraints
-- Output uses deprecated API patterns (e.g., Python 2 `print` statement)
+**Examples (non-technical):**
+
+- You ask for a 500-word summary and get back 150 words
+- You request a report in Spanish but receive it in English
+- The agent completes only 3 of 5 requested tasks
+
+**Examples (technical):**
+
+- User specifies Python implementation but agent delivers TypeScript
+- Agent output uses deprecated `print` statement syntax (Python 2 vs 3)
+- Task requires REST API endpoints but agent generates GraphQL schema
 
 **Detection methods:**
 
@@ -44,20 +51,27 @@ Planning failures occur when the task specification, decomposition, or workflow 
 | **Accuracy** | F1 1.000, P 1.000, R 1.000 |
 | **MAST mapping** | FM-1.2 |
 
-**What it detects:** Task breakdown creates subtasks that are impossible, circular, vague, too granular, or too broad.
+**Plain language:** The agent broke a big task into smaller pieces badly. Some pieces depend on each other in circles, some are too vague to act on, and the overall breakdown doesn't make sense for the complexity of the work.
 
-**Real-world examples:**
+**Technical:** Analyzes task decomposition graphs for structural issues including circular dependencies, granularity mismatches, and vague subtask definitions using dependency analysis and complexity estimation.
 
-- Task decomposed into subtasks with circular dependencies (A needs B, B needs A)
-- Subtask says "handle the infrastructure" with no specifics
-- Simple "add button" task over-decomposed into 15 steps when 3 would suffice
-- Complex system design has only 2 subtasks, each too broad to execute
+**Examples (non-technical):**
+
+- A project plan where Step 3 requires Step 5 to be done first, but Step 5 requires Step 3
+- A subtask that just says "handle the infrastructure" with no specifics
+- A simple button change broken into 15 steps when 3 would do
+
+**Examples (technical):**
+
+- Subtask dependency graph contains cycle: `parse_data` → `validate_schema` → `parse_data`
+- Subtask description uses non-actionable language: "etc.", "various components", "if necessary"
+- Complex distributed system redesign decomposed into only 2 subtasks, each too broad for a single agent
 
 **Detection methods:**
 
 - **Dependency Analysis**: Detects circular, missing, or impossible dependencies
 - **Granularity Check**: Validates task-aware decomposition depth (complex vs simple)
-- **Vagueness Detection**: Flags non-actionable steps using indicator words ("etc", "various", "if necessary")
+- **Vagueness Detection**: Flags non-actionable steps using indicator words
 - **Complexity Estimation**: Identifies subtasks too broad for single execution
 
 **Sub-types:** `impossible_subtask`, `missing_dependency`, `circular_dependency`, `duplicate_work`, `wrong_granularity`, `missing_subtask`, `vague_subtask`, `overly_complex`
@@ -74,14 +88,21 @@ Planning failures occur when the task specification, decomposition, or workflow 
 | **Accuracy** | Benchmarking in progress |
 | **MAST mapping** | FM-1.3 |
 
-**What it detects:** Multiple agents compete for shared resources, leading to contention, starvation, or deadlock.
+**Plain language:** Multiple agents are fighting over the same resources, like two people trying to use one printer at the same time. This causes delays, deadlocks, or wasted capacity.
 
-**Real-world examples:**
+**Technical:** Tracks concurrent resource access patterns across agents, detecting contention, starvation conditions, circular wait (deadlock), and inefficient allocation using resource graph analysis.
 
-- Three agents simultaneously request access to the same database connection pool
-- One agent holds a resource lock indefinitely, starving other agents
-- Circular wait: Agent A waits for resource held by B, B waits for A
-- Resources allocated inefficiently -- most agents idle while one is overloaded
+**Examples (non-technical):**
+
+- Three agents all need database access at once, causing everything to slow down
+- One agent holds a lock indefinitely, preventing all other agents from working
+- Most agents sit idle while one agent is completely overloaded
+
+**Examples (technical):**
+
+- Three agents simultaneously request the same database connection pool, causing pool exhaustion
+- Agent A holds write lock on `users` table while Agent B holds lock on `orders`, both waiting for the other (deadlock)
+- Load balancer routes 90% of requests to one agent instance while others have zero utilization
 
 **Detection methods:**
 
@@ -104,14 +125,21 @@ Planning failures occur when the task specification, decomposition, or workflow 
 | **Accuracy** | Benchmarking in progress |
 | **MAST mapping** | FM-1.4 |
 
-**What it detects:** Agents lack the tools they need to complete assigned tasks.
+**Plain language:** The agent doesn't have the right tools to do its job. It's like asking someone to build furniture but not giving them a screwdriver -- they'll either fail or improvise badly.
 
-**Real-world examples:**
+**Technical:** Compares attempted tool invocations against the provisioned tool inventory, detecting hallucinated tool names, capability gaps, and manual workarounds that indicate missing tools.
 
-- Agent attempts to call `search_database` but no such tool is provisioned
-- Agent hallucinates tool name `web_search_v2` that doesn't exist
-- Agent manually scrapes data because it lacks a proper API client tool
-- Tool call fails repeatedly because the tool's capabilities don't match the task
+**Examples (non-technical):**
+
+- Agent tries to search a database but that capability was never set up
+- Agent manually copies data from a website because it lacks a proper data connector
+- Agent keeps failing because the tool it needs doesn't support the required file format
+
+**Examples (technical):**
+
+- Agent calls `search_database()` but no such tool exists in its tool registry
+- Agent hallucinates tool name `web_search_v2` -- only `web_search` is provisioned
+- Agent writes raw HTTP requests to scrape data because it lacks an API client tool
 
 **Detection methods:**
 
@@ -134,14 +162,22 @@ Planning failures occur when the task specification, decomposition, or workflow 
 | **Accuracy** | F1 0.667, P 0.517, R 0.938 |
 | **MAST mapping** | FM-1.5 |
 
-**What it detects:** Structural problems in agent workflow graphs including unreachable nodes, dead ends, missing error handling, bottlenecks, and missing termination conditions.
+**Plain language:** The workflow itself is badly designed -- some steps can never be reached, some paths have no ending, and there's no plan for what happens when things go wrong.
 
-**Real-world examples:**
+**Technical:** Performs graph traversal on workflow DAGs to detect unreachable nodes, dead-end paths, missing error handlers, bottleneck nodes, and excessive sequential depth.
 
-- Workflow has a node that can never be reached from the start node
-- Agent graph has a path with no terminal node -- workflow never ends
-- AI processing nodes have no error handling -- single failure crashes entire workflow
-- All paths funnel through a single bottleneck node
+**Examples (non-technical):**
+
+- A workflow step exists but no path ever leads to it -- it's orphaned
+- A workflow path has no finish line -- the process never ends
+- If any single step fails, the entire workflow crashes because there's no error handling
+
+**Examples (technical):**
+
+- Node `validate_output` is unreachable from the start node in the workflow DAG
+- Execution path through `process → transform → enrich` has no terminal node
+- AI processing nodes lack try/catch -- a single `APIError` crashes the entire pipeline
+- All 8 parallel paths funnel through a single `aggregate` node (bottleneck)
 
 **Detection methods:**
 

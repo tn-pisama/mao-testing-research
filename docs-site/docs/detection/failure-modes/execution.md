@@ -14,24 +14,28 @@ Execution failures occur during agent runtime -- when agents deviate from their 
 | **Accuracy** | F1 0.667, P 0.588, R 0.769 |
 | **MAST mapping** | FM-2.3 Task Derailment |
 
-**What it detects:** Agent goes off-topic or deviates from its assigned task. One of the most common failure modes (20% prevalence in MAST-Data).
+**Plain language:** The agent went off-topic. It was asked to do one thing but started doing something else entirely -- like asking someone to write a blog post and getting API documentation instead.
 
-**Real-world examples:**
+**Technical:** Computes embedding distance between the task description and the agent's output, combined with topic drift detection via keyword clustering and task substitution pair analysis (e.g., authentication vs authorization confusion).
 
-- Agent asked to write authentication docs starts writing about authorization instead
-- Research agent asked about pricing analysis delivers feature comparison instead
-- Code review agent starts implementing new features rather than reviewing
-- Agent asked for a blog post delivers API documentation
+**Examples (non-technical):**
+
+- You ask for a pricing analysis and the agent delivers a feature comparison instead
+- A code review agent starts writing new features rather than reviewing existing ones
+- An agent asked to summarize a document starts editing it instead
+
+**Examples (technical):**
+
+- Agent assigned `write_auth_docs` produces output about authorization middleware instead of authentication flows
+- Research agent's output embeddings have cosine similarity < 0.3 with the task description embedding
+- Agent confuses `pytest` test writing with `unittest` -- delivers wrong framework's patterns
 
 **Detection methods:**
 
 - **Semantic Similarity**: Compares embedding distance between task description and output
 - **Topic Drift Detection**: Tracks topic focus using keyword clustering
-- **Task Substitution Detection**: Identifies confused concepts using task clusters and substitution pairs (e.g., authentication vs authorization)
+- **Task Substitution Detection**: Identifies confused concepts using substitution pairs
 - **Coverage Verification**: Checks whether core task requirements are addressed
-
-!!! note "Common false positives"
-    Framework-specific patterns (AG2 tool_code, MetaGPT speaker selection) and legitimate comprehensive responses that touch adjacent topics can trigger false positives.
 
 ---
 
@@ -45,14 +49,21 @@ Execution failures occur during agent runtime -- when agents deviate from their 
 | **Accuracy** | F1 0.865, P 0.762, R 1.000 |
 | **MAST mapping** | FM-1.4 Loss of Conversation History |
 
-**What it detects:** Agent ignores or fails to use upstream context provided by previous agents or workflow steps.
+**Plain language:** The agent ignored information it was given. A previous step provided important context, but the agent acted as if it never received it -- starting from scratch instead of building on prior work.
 
-**Real-world examples:**
+**Technical:** Checks for key information elements from upstream context using element matching, critical marker detection (`CRITICAL`, `IMPORTANT` labels), and semantic overlap measurement between context and response.
 
-- Agent B ignores the analysis provided by Agent A and starts from scratch
-- Context marked as `CRITICAL` in upstream output is completely absent from response
-- Agent references "based on prior analysis" but doesn't actually use any prior data
-- Key findings from upstream research are lost during agent-to-agent handoff
+**Examples (non-technical):**
+
+- Agent B ignores Agent A's research findings and redoes the analysis from scratch
+- Important warnings from a previous step are completely absent from the output
+- Agent says "based on prior analysis" but doesn't actually use any of the prior data
+
+**Examples (technical):**
+
+- Upstream context contains `CRITICAL: rate limit is 100 req/s` but agent's output proposes 1000 req/s
+- Agent receives structured JSON context with 12 fields but only references 2 in its response
+- Context marked `priority: high` with 8 key findings -- agent's output mentions zero of them
 
 **Detection methods:**
 
@@ -73,14 +84,21 @@ Execution failures occur during agent runtime -- when agents deviate from their 
 | **Accuracy** | F1 0.800, P 0.667, R 1.000 |
 | **MAST mapping** | FM-2.4 Information Withholding |
 
-**What it detects:** Agent doesn't share critical information with peers, including omitting negative findings, over-summarizing, or selectively reporting.
+**Plain language:** The agent knows something important but didn't share it. It might have found a security issue but only reported "task completed successfully" -- hiding bad news or over-simplifying critical details.
 
-**Real-world examples:**
+**Technical:** Compares information density between the agent's internal state and its output, detecting critical omissions (errors, security issues), negative finding suppression, and excessive summarization loss.
 
-- Agent discovers a security vulnerability but reports only "task completed successfully"
-- Agent summarizes a 10-page report into 2 sentences, losing critical details
-- Agent reports only positive findings, omitting error cases and edge conditions
-- Output is significantly less informative than the agent's internal state suggests
+**Examples (non-technical):**
+
+- Agent finds a security problem but reports only "everything looks good"
+- A 10-page analysis is summarized into 2 sentences, losing all the important details
+- Agent reports only the positive findings and hides all the errors it encountered
+
+**Examples (technical):**
+
+- Agent's internal state contains `{"vulnerabilities": [{"severity": "critical", ...}]}` but output says "No issues found"
+- Input document has 47 data points; agent output references only 3
+- Agent discovers `DeprecationWarning` in 4 dependencies but output lists zero deprecations
 
 **Detection methods:**
 
@@ -114,14 +132,21 @@ Execution failures occur during agent runtime -- when agents deviate from their 
 | **Accuracy** | Benchmarking in progress |
 | **MAST mapping** | FM-2.6 |
 
-**What it detects:** Agent exceeds its designated role boundaries, taking actions or making decisions reserved for other roles.
+**Plain language:** The agent overstepped its role. A reviewer started making changes instead of just reviewing, or a support agent made admin-level decisions it wasn't authorized to make.
 
-**Real-world examples:**
+**Technical:** Validates agent actions against allowed/forbidden action sets defined in the role specification, detecting scope expansion, authority violations, and task hijacking through action-role boundary analysis.
 
-- Code reviewer agent starts modifying code instead of just reviewing
-- Research agent makes final product decisions reserved for the PM agent
-- Support agent escalates to admin-level operations without authorization
-- Agent gradually expands its scope of actions beyond its original assignment
+**Examples (non-technical):**
+
+- A code reviewer starts rewriting the code instead of just reviewing it
+- A research assistant makes final product decisions that should be the manager's call
+- A support agent escalates itself to admin privileges without authorization
+
+**Examples (technical):**
+
+- Agent with `role: "reviewer"` calls `git commit` and `git push` -- write actions outside its `allowed_actions: ["comment", "approve", "request_changes"]`
+- Agent with `role: "data_analyst"` executes `DROP TABLE` -- a DBA-only operation
+- Agent gradually expands: first reads files, then edits configs, then modifies production deployments
 
 **Detection methods:**
 
@@ -144,14 +169,21 @@ Execution failures occur during agent runtime -- when agents deviate from their 
 | **Accuracy** | F1 0.667, P 0.571, R 0.800 |
 | **MAST mapping** | FM-2.1, FM-2.2, FM-2.5 |
 
-**What it detects:** Messages between agents are misunderstood or misinterpreted, causing incorrect downstream behavior.
+**Plain language:** Agents are miscommunicating. One agent sends a message but the receiving agent misunderstands it -- like giving someone directions in kilometers when they expect miles.
 
-**Real-world examples:**
+**Technical:** Measures alignment between sender intent and receiver interpretation using semantic similarity, validates message format compliance against expected schemas, and detects ambiguous or incomplete inter-agent messages.
 
-- Agent A sends JSON data but Agent B parses it as plain text
-- Ambiguous instruction "process the results" interpreted differently by two agents
-- Agent receives conflicting instructions from two upstream agents
-- Critical information missing from inter-agent message
+**Examples (non-technical):**
+
+- Agent A sends data in one format but Agent B expects a different format
+- An ambiguous instruction like "process the results" is interpreted differently by two agents
+- Critical details are missing from a handoff message between agents
+
+**Examples (technical):**
+
+- Agent A sends JSON `{"price": "19.99"}` (string) but Agent B expects `{"price": 19.99}` (number), causing a type error
+- Agent A's message says "update the config" -- Agent B updates `nginx.conf` instead of `app.config.yml`
+- Inter-agent message missing required `correlation_id` field, breaking downstream tracing
 
 **Detection methods:**
 
@@ -174,14 +206,22 @@ Execution failures occur during agent runtime -- when agents deviate from their 
 | **Accuracy** | F1 0.914, P 0.842, R 1.000 |
 | **MAST mapping** | FM-2.5 Ignored Input |
 
-**What it detects:** Handoff failures, circular delegation, excessive back-and-forth, and ignored messages between coordinating agents.
+**Plain language:** Agents can't work together. They're waiting on each other in circles, ignoring each other's messages, or going back and forth endlessly without making progress -- like two people stuck saying "no, you go first" at a doorway.
 
-**Real-world examples:**
+**Technical:** Tracks message acknowledgment patterns, detects excessive back-and-forth exchanges (threshold: 5), analyzes delegation chains for cycles, and monitors whether inter-agent exchanges produce measurable forward progress.
 
-- Agent A waits for B's output while B waits for A's approval -- deadlock
-- Message from Agent A to Agent B never acknowledged
-- Agents A and B exchange 15 clarification messages without making progress
-- Task delegated A -> B -> C -> A, creating circular delegation
+**Examples (non-technical):**
+
+- Agent A waits for Agent B's output while Agent B waits for Agent A -- neither moves
+- One agent sends a request but the other agent never responds
+- Two agents exchange 15 messages clarifying the same thing without making any progress
+
+**Examples (technical):**
+
+- Circular delegation: task routed A → B → C → A, creating an infinite delegation loop
+- Agent A's `POST /handoff` to Agent B returns no acknowledgment after 30s timeout
+- Agents exchange 12 `clarify_request`/`clarify_response` messages with cosine similarity > 0.95 (repeating themselves)
+- Agent B receives Agent A's output but `processed: false` -- input was silently dropped
 
 **Detection methods:**
 
