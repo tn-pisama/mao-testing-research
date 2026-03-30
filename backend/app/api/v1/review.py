@@ -56,10 +56,14 @@ class ReviewQueueItem(BaseModel):
     confidence: int
     method: str
     review_status: str
-    details: dict
     created_at: str
-    # Context
+    # Evidence fields for inline review (no click-away needed)
     explanation: Optional[str] = None
+    business_impact: Optional[str] = None
+    evidence: dict = {}  # Type-specific key evidence fields
+    agent_id: Optional[str] = None
+    agent_role: Optional[str] = None
+    state_snippet: Optional[str] = None  # First 200 chars of relevant state data
 
 
 class ReviewQueueResponse(BaseModel):
@@ -88,6 +92,127 @@ class PromoteResponse(BaseModel):
 
 
 # ── Endpoints ────────────────────────────────────────────────────────
+
+def _truncate(val: str, max_len: int = 200) -> str:
+    """Truncate a string for display."""
+    s = str(val)
+    return s[:max_len] + "..." if len(s) > max_len else s
+
+
+def _extract_evidence(detection_type: str, details: dict) -> dict:
+    """Extract the 2-3 most relevant evidence fields per detection type.
+
+    Returns a dict of human-readable key-value pairs a reviewer needs
+    to judge the detection without clicking into the trace.
+    """
+    evidence = {}
+
+    if detection_type == "persona_drift":
+        if "persona_description" in details:
+            evidence["Assigned Persona"] = _truncate(details["persona_description"])
+        if "output" in details:
+            evidence["Agent Output"] = _truncate(details["output"])
+        if "consistency_score" in details:
+            evidence["Consistency Score"] = f"{details['consistency_score']:.2f}"
+
+    elif detection_type == "hallucination":
+        if "output" in details:
+            evidence["Agent Claim"] = _truncate(details["output"])
+        if "sources" in details:
+            src = details["sources"]
+            evidence["Sources"] = _truncate(str(src[0]) if isinstance(src, list) and src else str(src))
+
+    elif detection_type == "coordination":
+        if "agent_ids" in details:
+            evidence["Agents"] = ", ".join(details["agent_ids"][:5])
+        if "issues" in details and isinstance(details["issues"], list):
+            evidence["Issues"] = "; ".join(str(i.get("message", i)) for i in details["issues"][:3])
+
+    elif detection_type == "loop":
+        if "iterations" in details:
+            evidence["Iterations"] = str(details["iterations"])
+        if "repeated_hash" in details:
+            evidence["Repeated Pattern"] = _truncate(details["repeated_hash"])
+
+    elif detection_type == "injection":
+        if "text" in details:
+            evidence["Suspicious Input"] = _truncate(details["text"])
+
+    elif detection_type == "derailment":
+        if "task" in details:
+            evidence["Original Task"] = _truncate(details["task"])
+        if "output" in details:
+            evidence["Agent Output"] = _truncate(details["output"])
+
+    elif detection_type == "agent_teams":
+        if "task_list" in details:
+            tasks = details["task_list"]
+            if isinstance(tasks, list):
+                done = sum(1 for t in tasks if isinstance(t, dict) and t.get("status") in ("done", "completed"))
+                evidence["Tasks"] = f"{done}/{len(tasks)} completed"
+        if "messages" in details:
+            evidence["Messages"] = f"{len(details['messages'])} exchanged"
+
+    elif detection_type == "adaptive_thinking":
+        if "cost_usd" in details:
+            evidence["Cost"] = f"${details['cost_usd']:.3f}"
+        if "thinking_tokens" in details:
+            evidence["Thinking Tokens"] = f"{details['thinking_tokens']:,}"
+        if "output_tokens" in details:
+            evidence["Output Tokens"] = f"{details['output_tokens']:,}"
+
+    elif detection_type == "cowork_safety":
+        if "executed_actions" in details and isinstance(details["executed_actions"], list):
+            destructive = [a for a in details["executed_actions"]
+                          if isinstance(a, dict) and any(kw in str(a.get("action", "")).lower()
+                          for kw in ("delete", "rm", "overwrite", "drop"))]
+            if destructive:
+                evidence["Destructive Actions"] = "; ".join(
+                    f"{a.get('action')} → {a.get('target', '?')}" for a in destructive[:3]
+                )
+        if "files_modified" in details:
+            evidence["Files Modified"] = str(details["files_modified"])
+
+    # Default fallback: first 3 keys from details
+    if not evidence:
+        for key in list(details.keys())[:3]:
+            if key not in ("explanation", "business_impact", "suggested_action"):
+                evidence[key] = _truncate(str(details[key]))
+
+    return evidence
+
+
+def _get_business_impact(detection_type: str, confidence: int) -> str:
+    """Generate a brief business impact statement."""
+    severity = "High" if confidence >= 80 else "Medium" if confidence >= 50 else "Low"
+    impacts = {
+        "persona_drift": "Agent may confuse users by acting outside its designated role",
+        "hallucination": "Agent output may contain fabricated information not supported by sources",
+        "coordination": "Agents may fail to communicate, causing dropped tasks or duplicate work",
+        "loop": "Agent is stuck repeating the same actions, wasting compute and time",
+        "injection": "User input may be attempting to override agent safety instructions",
+        "derailment": "Agent deviated from the assigned task, producing irrelevant output",
+        "agent_teams": "Team coordination failure — tasks may be dropped, duplicated, or deadlocked",
+        "adaptive_thinking": "Reasoning cost disproportionate to output value",
+        "cowork_safety": "Agent performed potentially destructive actions on user files",
+        "subagent_boundary": "Subagent used tools outside its authorized scope",
+    }
+    impact = impacts.get(detection_type, f"Potential {detection_type.replace('_', ' ')} issue detected")
+    return f"[{severity}] {impact}"
+
+
+def _summarize_state(delta: dict) -> str:
+    """Extract a brief summary from a state_delta dict."""
+    if not delta:
+        return ""
+    # Pick the most informative field
+    for key in ("output", "text", "result", "response", "content", "message", "action"):
+        if key in delta:
+            return _truncate(str(delta[key]))
+    # Fallback: first value
+    first_val = next(iter(delta.values()), "")
+    return _truncate(str(first_val))
+
 
 @router.get("/queue", response_model=ReviewQueueResponse)
 async def get_review_queue(
@@ -143,10 +268,32 @@ async def get_review_queue(
 
     items = []
     for d in detections:
-        explanation = None
         details = d.details or {}
-        if "explanation" in details:
-            explanation = details["explanation"]
+
+        # Extract explanation
+        explanation = details.get("explanation", "")
+
+        # Extract type-specific evidence for inline review
+        evidence = _extract_evidence(d.detection_type, details)
+
+        # Generate business impact from detection type
+        business_impact = _get_business_impact(d.detection_type, d.confidence)
+
+        # Load trace context (agent_id, state snippet) via state_id
+        agent_id = None
+        agent_role = None
+        state_snippet = None
+        if d.state_id:
+            state_result = await db.execute(
+                select(State).where(State.id == d.state_id)
+            )
+            state = state_result.scalar_one_or_none()
+            if state:
+                agent_id = state.agent_id
+                agent_role = getattr(state, "agent_role", None)
+                delta = state.state_delta or {}
+                # Get the most relevant field from state_delta
+                state_snippet = _summarize_state(delta)
 
         items.append(ReviewQueueItem(
             id=str(d.id),
@@ -155,9 +302,13 @@ async def get_review_queue(
             confidence=d.confidence,
             method=d.method,
             review_status=d.review_status or "pending",
-            details=details,
             created_at=d.created_at.isoformat() if d.created_at else "",
             explanation=explanation,
+            business_impact=business_impact,
+            evidence=evidence,
+            agent_id=agent_id,
+            agent_role=agent_role,
+            state_snippet=state_snippet,
         ))
 
     return ReviewQueueResponse(

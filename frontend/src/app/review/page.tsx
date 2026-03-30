@@ -19,6 +19,12 @@ interface Detection {
   agentType: string
   pattern: string
   confidence: number
+  // Evidence for inline review
+  businessImpact: string
+  evidence: Record<string, string>
+  agentId: string
+  stateSnippet: string
+  details: Record<string, unknown>
 }
 
 const DETECTION_TYPES = [
@@ -31,6 +37,41 @@ const DETECTION_TYPES = [
     'coordination', 'persona_drift', 'derailment', 'context', 'communication',
   ]},
 ]
+
+function _truncate(val: unknown, max = 200): string {
+  const s = String(val || '')
+  return s.length > max ? s.slice(0, max) + '...' : s
+}
+
+function _extractEvidence(type: string, details: Record<string, unknown>): Record<string, string> {
+  const ev: Record<string, string> = {}
+  if (type === 'persona_drift') {
+    if (details.persona_description) ev['Assigned Persona'] = _truncate(details.persona_description)
+    if (details.output) ev['Agent Output'] = _truncate(details.output)
+  } else if (type === 'hallucination') {
+    if (details.output) ev['Agent Claim'] = _truncate(details.output)
+    if (details.sources) ev['Sources'] = _truncate(Array.isArray(details.sources) ? details.sources[0] : details.sources)
+  } else if (type === 'coordination') {
+    if (details.agent_ids && Array.isArray(details.agent_ids)) ev['Agents'] = (details.agent_ids as string[]).slice(0, 5).join(', ')
+    if (details.issues && Array.isArray(details.issues)) ev['Issues'] = (details.issues as Array<{message?: string}>).slice(0, 3).map(i => i.message || String(i)).join('; ')
+  } else if (type === 'injection') {
+    if (details.text) ev['Suspicious Input'] = _truncate(details.text)
+  } else if (type === 'derailment') {
+    if (details.task) ev['Task'] = _truncate(details.task)
+    if (details.output) ev['Output'] = _truncate(details.output)
+  } else if (type === 'loop') {
+    if (details.iterations) ev['Iterations'] = String(details.iterations)
+  }
+  // Default: first 3 non-explanation keys
+  if (Object.keys(ev).length === 0) {
+    for (const key of Object.keys(details).slice(0, 3)) {
+      if (!['explanation', 'business_impact', 'suggested_action'].includes(key)) {
+        ev[key] = _truncate(details[key])
+      }
+    }
+  }
+  return ev
+}
 
 const SEVERITY_LABELS = ['Minor', 'Low', 'Medium', 'High', 'Critical']
 
@@ -68,7 +109,12 @@ export default function ReviewPage() {
         traceId: d.trace_id,
         agentType: d.method,
         pattern: d.explanation || d.detection_type,
-        confidence: d.confidence
+        confidence: d.confidence,
+        businessImpact: d.business_impact || '',
+        evidence: _extractEvidence(d.detection_type, d.details || {}),
+        agentId: (d.details as Record<string, unknown>)?.agent_id as string || d.method,
+        stateSnippet: '',
+        details: d.details || {},
       })))
     } catch (err) {
       console.error('Failed to load detections:', err)
@@ -355,9 +401,33 @@ export default function ReviewPage() {
               </p>
             </div>
 
+            {/* Evidence — inline context for judgment */}
+            {Object.keys(current.evidence).length > 0 && (
+              <div className="bg-zinc-900/80 rounded-lg p-4 mb-4 border border-zinc-700/50">
+                <p className="text-xs font-medium text-zinc-500 uppercase tracking-wider mb-2">Evidence</p>
+                <dl className="space-y-2">
+                  {Object.entries(current.evidence).map(([key, val]) => (
+                    <div key={key}>
+                      <dt className="text-xs text-zinc-500">{key}</dt>
+                      <dd className="text-sm text-zinc-300 font-mono break-words">{val}</dd>
+                    </div>
+                  ))}
+                </dl>
+              </div>
+            )}
+
+            {/* Business impact */}
+            {current.businessImpact && (
+              <p className="text-sm text-zinc-400 mb-4 italic">{current.businessImpact}</p>
+            )}
+
             <div className="flex items-center gap-3 mb-4">
-              <Button variant="ghost" size="sm">View Trace</Button>
-              <Button variant="ghost" size="sm">View Suggestion</Button>
+              <a href={`/traces/${current.traceId}`} target="_blank" rel="noopener noreferrer">
+                <Button variant="ghost" size="sm">View Trace</Button>
+              </a>
+              <a href={`/detections/${current.id}`} target="_blank" rel="noopener noreferrer">
+                <Button variant="ghost" size="sm">View Details</Button>
+              </a>
             </div>
 
             {/* Severity rating */}

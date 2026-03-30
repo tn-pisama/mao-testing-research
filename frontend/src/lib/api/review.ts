@@ -8,9 +8,14 @@ export interface ReviewQueueItem {
   confidence: number
   method: string
   review_status: string
-  details: Record<string, unknown>
   created_at: string
+  // Evidence for inline review
   explanation?: string
+  business_impact?: string
+  evidence: Record<string, string>
+  agent_id?: string
+  agent_role?: string
+  state_snippet?: string
 }
 
 export interface ReviewQueueResponse {
