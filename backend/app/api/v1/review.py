@@ -57,13 +57,19 @@ class ReviewQueueItem(BaseModel):
     method: str
     review_status: str
     created_at: str
+    # Failure mode descriptions
+    failure_mode_name: str = ""
+    failure_mode_summary: str = ""
+    failure_mode_technical: str = ""
+    example_positive: str = ""
+    example_negative: str = ""
     # Evidence fields for inline review (no click-away needed)
     explanation: Optional[str] = None
     business_impact: Optional[str] = None
-    evidence: dict = {}  # Type-specific key evidence fields
+    evidence: dict = {}
     agent_id: Optional[str] = None
     agent_role: Optional[str] = None
-    state_snippet: Optional[str] = None  # First 200 chars of relevant state data
+    state_snippet: Optional[str] = None
 
 
 class ReviewQueueResponse(BaseModel):
@@ -295,6 +301,10 @@ async def get_review_queue(
                 # Get the most relevant field from state_delta
                 state_snippet = _summarize_state(delta)
 
+        # Load failure mode description
+        from app.detection.failure_modes import get_failure_mode
+        fm = get_failure_mode(d.detection_type)
+
         items.append(ReviewQueueItem(
             id=str(d.id),
             trace_id=str(d.trace_id),
@@ -303,6 +313,11 @@ async def get_review_queue(
             method=d.method,
             review_status=d.review_status or "pending",
             created_at=d.created_at.isoformat() if d.created_at else "",
+            failure_mode_name=fm.get("name", d.detection_type),
+            failure_mode_summary=fm.get("summary", ""),
+            failure_mode_technical=fm.get("technical", ""),
+            example_positive=fm.get("example_positive", ""),
+            example_negative=fm.get("example_negative", ""),
             explanation=explanation,
             business_impact=business_impact,
             evidence=evidence,

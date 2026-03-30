@@ -9,6 +9,12 @@ export interface ReviewQueueItem {
   method: string
   review_status: string
   created_at: string
+  // Failure mode descriptions
+  failure_mode_name: string
+  failure_mode_summary: string
+  failure_mode_technical: string
+  example_positive: string
+  example_negative: string
   // Evidence for inline review
   explanation?: string
   business_impact?: string
