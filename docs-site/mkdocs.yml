@@ -114,6 +114,10 @@ nav:
       - Execution Failures: detection/failure-modes/execution.md
       - Verification Failures: detection/failure-modes/verification.md
       - Extended Detectors: detection/failure-modes/extended.md
+      - n8n: detection/failure-modes/n8n.md
+      - LangGraph: detection/failure-modes/langgraph.md
+      - Dify: detection/failure-modes/dify.md
+      - OpenClaw: detection/failure-modes/openclaw.md
   - Contributing:
     - Development Setup: contributing/development.md
     - Adding Detectors: contributing/adding-detectors.md

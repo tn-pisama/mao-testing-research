@@ -86,6 +86,17 @@ Cross-cutting concerns not in the core MAST taxonomy:
 - **Convergence**: Metric plateau, regression, thrashing, divergence detection
 - **Cost Tracking**: Token/cost budget monitoring
 
+## Platform-Specific Detectors
+
+In addition to the general-purpose detectors above, PISAMA includes 24 platform-specific detectors (6 per platform) that catch issues unique to each framework's architecture:
+
+- **[n8n](failure-modes/n8n.md)** (6): Schema mismatch, workflow cycles, complexity, error handling, resource exhaustion, timeouts
+- **[LangGraph](failure-modes/langgraph.md)** (6): Recursion limits, state corruption, edge misrouting, tool failures, parallel sync, checkpoint corruption
+- **[Dify](failure-modes/dify.md)** (6): RAG poisoning, iteration escape, silent model fallback, variable leakage, classifier drift, tool schema mismatch
+- **[OpenClaw](failure-modes/openclaw.md)** (6): Session loops, tool abuse, elevated privilege risk, spawn chain depth, channel mismatch, sandbox escape
+
+These run automatically when traces from the corresponding platform are ingested.
+
 ## Detection Pipeline
 
 Each trace is analyzed by the `DetectionOrchestrator`, which runs applicable detectors using a cheapest-first strategy:
