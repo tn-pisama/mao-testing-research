@@ -47,6 +47,11 @@ function isPublicRoute(pathname: string): boolean {
 export async function middleware(req: NextRequest) {
   const { pathname } = req.nextUrl
 
+  // Redirect /docs to /docs/ so MkDocs relative asset paths resolve correctly
+  if (pathname === '/docs') {
+    return NextResponse.redirect(new URL('/docs/', req.url))
+  }
+
   // Public routes always pass through — no auth check needed
   if (isPublicRoute(pathname)) {
     return NextResponse.next()

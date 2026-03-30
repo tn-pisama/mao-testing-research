@@ -51,12 +51,12 @@ const configureItems: NavItem[] = [
 const settingsItems: NavItem[] = [
   { label: 'Account', href: '/account', icon: User },
   { label: 'Settings', href: '/settings', icon: Settings },
-  { label: 'Docs', href: '/docs', icon: BookOpen },
+  { label: 'Docs', href: '/docs/', icon: BookOpen },
 ]
 
 function NavLink({ item, pathname, isCollapsed }: { item: NavItem; pathname: string | null; isCollapsed: boolean }) {
   const isExternal = item.href.startsWith('http')
-  const isRewriteRoute = item.href === '/docs'
+  const isRewriteRoute = item.href.startsWith('/docs')
   const isActive = !isExternal && (pathname === item.href ||
     (item.href !== '/settings' && pathname?.startsWith(item.href + '/')))
   const Icon = item.icon
