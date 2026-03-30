@@ -5,18 +5,9 @@ site_url: https://docs.pisama.ai
 theme:
   name: material
   palette:
-    - scheme: default
-      primary: blue
-      accent: violet
-      toggle:
-        icon: material/brightness-7
-        name: Switch to dark mode
-    - scheme: slate
-      primary: blue
-      accent: violet
-      toggle:
-        icon: material/brightness-4
-        name: Switch to light mode
+    scheme: slate
+    primary: custom
+    accent: custom
   features:
     - navigation.tabs
     - navigation.tabs.sticky
@@ -73,6 +64,9 @@ markdown_extensions:
   - tables
   - toc:
       permalink: true
+
+extra_css:
+  - stylesheets/custom.css
 
 extra:
   social:
