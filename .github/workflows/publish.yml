@@ -1,0 +1,41 @@
+name: Publish to PyPI
+
+on:
+  push:
+    tags:
+      - 'pisama-core-v*'
+      - 'pisama-v*'
+
+permissions:
+  id-token: write
+
+jobs:
+  publish-core:
+    if: startsWith(github.ref, 'refs/tags/pisama-core-v')
+    runs-on: ubuntu-latest
+    environment: pypi
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - run: pip install build
+      - run: cd packages/pisama-core && python -m build
+      - uses: pypa/gh-action-pypi-publish@release/v1
+        with:
+          packages-dir: packages/pisama-core/dist/
+
+  publish-pisama:
+    if: startsWith(github.ref, 'refs/tags/pisama-v')
+    runs-on: ubuntu-latest
+    environment: pypi
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - run: pip install build
+      - run: cd packages/pisama && python -m build
+      - uses: pypa/gh-action-pypi-publish@release/v1
+        with:
+          packages-dir: packages/pisama/dist/

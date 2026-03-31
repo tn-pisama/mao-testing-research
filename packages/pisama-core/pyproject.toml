@@ -4,13 +4,13 @@ build-backend = "hatchling.build"
 
 [project]
 name = "pisama-core"
-version = "1.0.0"
-description = "Core detection, scoring, and healing engine for PISAMA agent forensics"
+version = "1.1.0"
+description = "Core detection, scoring, and healing engine for Pisama agent forensics"
 readme = "README.md"
 license = {text = "MIT"}
 requires-python = ">=3.10"
 authors = [
-    { name = "PISAMA Team", email = "team@pisama.dev" }
+    { name = "Pisama Team", email = "team@pisama.ai" }
 ]
 keywords = [
     "ai",
@@ -54,7 +54,7 @@ dev = [
 
 [project.urls]
 Homepage = "https://github.com/tn-pisama/pisama-core"
-Documentation = "https://pisama.dev/docs"
+Documentation = "https://docs.pisama.ai"
 Repository = "https://github.com/tn-pisama/pisama-core"
 
 [tool.hatch.build.targets.wheel]
