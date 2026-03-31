@@ -39,7 +39,7 @@ DATABASE_URL = os.getenv(
 )
 
 DEMO_TENANT_NAME = "Demo Organization"
-DEMO_API_KEY = "mao_demo_key_12345"
+DEMO_API_KEY = os.getenv("DEMO_API_KEY", "mao_demo_" + hashlib.sha256(b"pisama-demo-seed").hexdigest()[:12])
 
 
 def hash_key(key: str) -> str:

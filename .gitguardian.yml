@@ -1,0 +1,11 @@
+version: 2
+
+secret:
+  # Golden dataset files contain SYNTHETIC secrets used as test fixtures
+  # for injection/withholding/corruption detection testing.
+  # These are intentional and not real credentials.
+  paths-ignore:
+    - "backend/data/golden_dataset_*.json"
+    - "backend/tests/fixtures/**"
+    - "**/.env.example"
+    - "**/.env.test"
