@@ -1,9 +1,12 @@
 # Pisama
 
-[![License: MIT](https://img.shields.io/badge/License-MIT-blue.svg)](https://opensource.org/licenses/MIT)
+**Find and fix failures in AI agent systems. No LLM calls required.**
+
+[![PyPI](https://img.shields.io/pypi/v/pisama?color=blue)](https://pypi.org/project/pisama/)
+[![License: MIT](https://img.shields.io/badge/License-MIT-blue.svg)](LICENSE)
 [![Python 3.10+](https://img.shields.io/badge/python-3.10+-blue.svg)](https://www.python.org/downloads/)
 
-Multi-agent failure detection for production AI systems. Runs locally, no API key needed.
+Pisama detects 18 types of agent failures using heuristic detectors that run locally, with zero LLM cost. On the [TRAIL benchmark](https://arxiv.org/abs/2505.08638), Pisama achieves **60.1% joint accuracy** vs. 11% for the best frontier model — with 100% precision (zero false positives).
 
 ## Install
 
@@ -11,54 +14,86 @@ Multi-agent failure detection for production AI systems. Runs locally, no API ke
 pip install pisama
 ```
 
-## Quick Start
+## Usage
 
 ```python
-import pisama
+from pisama import analyze
 
-result = pisama.analyze("trace.json")
+result = analyze("trace.json")  # also accepts dicts and JSON strings
+
 for issue in result.issues:
-    print(f"[{issue.type}] {issue.summary} (severity={issue.severity})")
+    print(f"[{issue.type}] {issue.summary} (severity: {issue.severity})")
+    print(f"  Fix: {issue.recommendation}")
 ```
 
 ## CLI
 
 ```bash
-# Analyze a trace file
-pisama analyze trace.json
+pisama analyze trace.json          # Analyze a trace
+pisama watch python my_agent.py    # Watch a live agent (pip install pisama[auto])
+pisama replay <trace-id>           # Re-run detection on stored traces
+pisama smoke-test --last 50        # Batch test recent traces
+pisama detectors                   # List all 18 detectors
+pisama mcp-server                  # Start MCP server (pip install pisama[mcp])
+```
 
-# List available detectors
-pisama detectors
+## MCP Server
+
+Works in Cursor, Claude Desktop, Windsurf — no API key needed:
+
+```json
+{
+  "mcpServers": {
+    "pisama": { "command": "pisama", "args": ["mcp-server"] }
+  }
+}
 ```
 
 ## Detectors
 
-Pisama ships with 18 failure detectors that run locally:
+| Detector | What It Catches |
+|----------|----------------|
+| `loop` | Infinite loops, retry storms, stuck patterns |
+| `coordination` | Deadlocked handoffs, message storms |
+| `hallucination` | Factual errors, fabricated tool results |
+| `injection` | Prompt injection, jailbreak attempts |
+| `corruption` | State corruption, type drift |
+| `persona` | Persona drift, role confusion |
+| `derailment` | Task deviation, goal drift |
+| `context` | Context neglect, ignored instructions |
+| `specification` | Output vs. requirement mismatch |
+| `communication` | Inter-agent message breakdown |
+| `decomposition` | Poor task breakdown, circular dependencies |
+| `workflow` | Unreachable nodes, missing error handling |
+| `completion` | Premature completion, unfinished work |
+| `withholding` | Suppressed findings, hidden errors |
+| `convergence` | Metric plateau, regression, thrashing |
+| `overflow` | Context window exhaustion |
+| `cost` | Token budget overrun |
+| `repetition` | Tool dominance, low diversity |
 
-| Detector | Catches |
-|---|---|
-| loop | Exact, structural, and semantic loops |
-| corruption | State corruption and invalid transitions |
-| persona_drift | Persona drift and role confusion |
-| coordination | Agent handoff and communication failures |
-| hallucination | Factual inaccuracy in agent output |
-| injection | Prompt injection attempts |
-| overflow | Context window exhaustion |
-| derailment | Task focus deviation |
-| context | Context neglect in responses |
-| communication | Inter-agent communication breakdown |
-| specification | Output vs specification mismatch |
-| decomposition | Task breakdown failures |
-| workflow | Workflow execution issues |
-| withholding | Information withholding |
-| completion | Premature or delayed task completion |
-| cost | Token and cost budget overruns |
-| convergence | Metric plateau, regression, and divergence |
-| repetition | Repetitive output patterns |
+## Benchmark Results
 
-## Docs
+**TRAIL** (trace-level failure detection, 148 traces):
 
-Full documentation: [pisama.dev/docs](https://pisama.dev/docs)
+| Method | Joint Accuracy | Precision |
+|--------|---------------|-----------|
+| Gemini 2.5 Pro | 11.0% | -- |
+| OpenAI o3 | 9.2% | -- |
+| **Pisama** | **60.1%** | **100%** |
+
+**Who&When** (ICML 2025, multi-agent attribution):
+
+| Method | Agent Accuracy | Step Accuracy |
+|--------|---------------|---------------|
+| o1 | 53.5% | 14.2% |
+| **Pisama + Sonnet 4** | **60.3%** | **24.1%** |
+
+## Links
+
+- [Documentation](https://docs.pisama.ai)
+- [GitHub](https://github.com/tn-pisama/mao-testing-research)
+- [Platform](https://pisama.ai)
 
 ## License
 
