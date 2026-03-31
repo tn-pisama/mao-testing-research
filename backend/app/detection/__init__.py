@@ -78,6 +78,13 @@ from .context_pressure import (
     PressureSignal,
     PressureSeverity,
 )
+from .compaction_quality import (
+    compaction_quality_detector,
+    CompactionQualityDetector,
+    CompactionQualityResult,
+    CompactionIssue,
+    CompactionSeverity,
+)
 from .validation import DetectionValidator, ValidationMetrics
 
 # Create singleton instances for convenience
@@ -194,6 +201,12 @@ __all__ = [
     "ContextPressureResult",
     "PressureSignal",
     "PressureSeverity",
+    # Compaction quality detection
+    "compaction_quality_detector",
+    "CompactionQualityDetector",
+    "CompactionQualityResult",
+    "CompactionIssue",
+    "CompactionSeverity",
     # Validation
     "DetectionValidator",
     "ValidationMetrics",

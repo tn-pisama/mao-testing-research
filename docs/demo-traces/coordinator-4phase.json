@@ -1,0 +1,70 @@
+{
+  "trace_id": "demo-coordinator-4phase-001",
+  "framework": "multi-agent",
+  "pattern": "4-phase-coordinator",
+  "description": "Reference orchestration pattern: Research → Synthesis → Implementation → Verification. Based on production patterns observed in Claude Code's coordinator mode.",
+  "failure_mode": "healthy",
+  "phases": ["research", "synthesis", "implementation", "verification"],
+  "states": [
+    {
+      "agent_id": "coordinator",
+      "phase": "research",
+      "content": "Phase 1: Research. Dispatching parallel research agents to investigate auth patterns and security requirements.",
+      "state": {"phase": "research", "status": "dispatching", "workers": 3}
+    },
+    {
+      "agent_id": "researcher_codebase",
+      "phase": "research",
+      "content": "Scanning codebase for existing auth patterns. Found: OAuth2 in /src/auth/oauth.py:45, JWT validation in /src/middleware/auth.py:12, session handling in /src/auth/sessions.py:78.",
+      "state": {"phase": "research", "status": "in_progress", "findings": 3}
+    },
+    {
+      "agent_id": "researcher_docs",
+      "phase": "research",
+      "content": "Reviewing security requirements from docs/security-policy.md. Requirements: MFA mandatory for admin, session timeout 30min, OWASP Top 10 compliance, SOC2 audit trail.",
+      "state": {"phase": "research", "status": "in_progress", "requirements": 4}
+    },
+    {
+      "agent_id": "researcher_deps",
+      "phase": "research",
+      "content": "Analyzing dependency landscape. Current: PyJWT 2.8.0, passlib 1.7.4. Recommended upgrade: PyJWT 2.9.0 (fixes CVE-2026-1234). No breaking changes.",
+      "state": {"phase": "research", "status": "in_progress", "deps_analyzed": 2}
+    },
+    {
+      "agent_id": "coordinator",
+      "phase": "synthesis",
+      "content": "Phase 2: Synthesis. Merging research findings. Approach: Unify on OAuth2+JWT (existing pattern in 3 files). Add MFA via TOTP. Upgrade PyJWT to 2.9.0. Files to modify: /src/auth/oauth.py:45, /src/middleware/auth.py:12, /src/auth/sessions.py:78. New file: /src/auth/mfa.py.",
+      "state": {"phase": "synthesis", "status": "complete", "files_identified": 4, "approach": "oauth2_jwt_mfa"}
+    },
+    {
+      "agent_id": "implementer",
+      "phase": "implementation",
+      "content": "Phase 3: Implementation. Updated /src/auth/oauth.py - added MFA challenge step. Updated /src/middleware/auth.py - JWT validation now checks MFA claim. Created /src/auth/mfa.py - TOTP generation and verification. Updated /src/auth/sessions.py - 30min timeout enforced.",
+      "state": {"phase": "implementation", "status": "complete", "files_modified": 4, "lines_changed": 342}
+    },
+    {
+      "agent_id": "verifier",
+      "phase": "verification",
+      "content": "Phase 4: Verification. Running test suite: 24/24 auth tests pass. MFA flow verified end-to-end. Session timeout confirmed at 30min. OWASP checklist: 10/10 items addressed. PyJWT 2.9.0 CVE patch confirmed. No regressions detected.",
+      "state": {"phase": "verification", "status": "complete", "tests_passed": 24, "owasp_items": 10, "regressions": 0}
+    },
+    {
+      "agent_id": "coordinator",
+      "phase": "verification",
+      "content": "All 4 phases complete. Auth refactor delivered: OAuth2+JWT+MFA, OWASP compliant, 24 tests passing, no regressions.",
+      "state": {"phase": "complete", "status": "success", "total_agents": 5, "total_phases": 4}
+    }
+  ],
+  "coordination_messages": [
+    {"from_agent": "coordinator", "to_agent": "researcher_codebase", "content": "Research existing auth patterns in codebase", "timestamp": 1.0, "acknowledged": true},
+    {"from_agent": "coordinator", "to_agent": "researcher_docs", "content": "Research security requirements from docs", "timestamp": 1.0, "acknowledged": true},
+    {"from_agent": "coordinator", "to_agent": "researcher_deps", "content": "Analyze auth dependency landscape", "timestamp": 1.0, "acknowledged": true},
+    {"from_agent": "researcher_codebase", "to_agent": "coordinator", "content": "Found OAuth2, JWT, sessions in 3 files", "timestamp": 5.0, "acknowledged": true},
+    {"from_agent": "researcher_docs", "to_agent": "coordinator", "content": "4 security requirements: MFA, timeout, OWASP, SOC2", "timestamp": 6.0, "acknowledged": true},
+    {"from_agent": "researcher_deps", "to_agent": "coordinator", "content": "PyJWT upgrade recommended for CVE fix", "timestamp": 4.0, "acknowledged": true},
+    {"from_agent": "coordinator", "to_agent": "implementer", "content": "Implement OAuth2+JWT+MFA per synthesis spec", "timestamp": 7.0, "acknowledged": true},
+    {"from_agent": "implementer", "to_agent": "coordinator", "content": "Implementation complete. 4 files, 342 lines.", "timestamp": 15.0, "acknowledged": true},
+    {"from_agent": "coordinator", "to_agent": "verifier", "content": "Verify auth implementation meets all requirements", "timestamp": 16.0, "acknowledged": true},
+    {"from_agent": "verifier", "to_agent": "coordinator", "content": "Verification passed. 24/24 tests, OWASP 10/10.", "timestamp": 20.0, "acknowledged": true}
+  ]
+}

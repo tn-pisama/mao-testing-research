@@ -700,6 +700,35 @@ Target cost: **$0.05/trace average**.
 
 ---
 
+## Production Validation: Claude Code Architecture Patterns
+
+The March 2026 Claude Code source leak (512K lines of TypeScript) confirmed that the failure modes Pisama detects are first-class production concerns that Anthropic solves with dedicated engineering:
+
+| Pisama Detector | Claude Code Mitigation | What Pisama Catches |
+|----------------|----------------------|-------------------|
+| **Context Neglect** | 3-tier compaction (auto, micro, snip) with circuit breakers | When compaction degrades information below usability |
+| **Completion Misjudgment** | `maxOutputTokensRecoveryCount` (0-3 limit) with invisible resume messages | Token budget exhaustion loops and silent truncation |
+| **Loop Detection** | Retry tracking, backoff limits, circuit breakers | Retry cascades where recovery compounds failures |
+| **State Corruption** | autoDream background consolidation (Orient-Gather-Consolidate-Prune) | Memory corruption from background agent modifications |
+| **Coordination Analysis** | File-based IPC with XML `<task-notification>`, lock retries | Lock contention, task state desync, notification loss |
+| **Injection Detection** | 5-mode permission system with hook-based validation | Permission boundary bypass via indirect tool calls |
+| **Compaction Quality** (new) | No external detection — relies on internal circuit breakers | Summarization quality degradation (entity loss, semantic drift) |
+
+### Why This Matters
+
+Claude Code built circuit breakers *inside* the agent to prevent these failures. Pisama detects them *from outside* the agent, which means:
+
+1. **Framework-agnostic**: Works with any agent, not just Claude Code
+2. **Independent verification**: Agent self-checks can themselves fail (the circuit breaker for compaction exists because compaction fails)
+3. **Cross-agent detection**: Catches coordination failures between agents that no single agent can observe
+4. **Zero-cost heuristics**: Pisama's Tier 1-2 detection costs $0 vs. the LLM calls agents spend on self-monitoring
+
+### Reference Orchestration Pattern
+
+The 4-phase coordinator pattern (Research -> Synthesis -> Implementation -> Verification) observed in Claude Code's source is available as a demo trace: `docs/demo-traces/coordinator-4phase.json`.
+
+---
+
 ## References
 
 - [MAST: Multi-Agent System Failure Taxonomy](https://arxiv.org/abs/2503.13657) — NeurIPS 2025 Spotlight

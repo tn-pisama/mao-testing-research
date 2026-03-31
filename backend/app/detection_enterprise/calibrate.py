@@ -45,29 +45,34 @@ def _get_golden_dataset(db_session=None, tenant_id=None):
 
     dataset = create_default_golden_dataset()
 
-    # Merge additional entries from the expanded JSON file (LLM-generated samples)
-    expanded_path = Path(__file__).parent.parent.parent / "data" / "golden_dataset_expanded.json"
-    if expanded_path.exists():
-        try:
-            before = len(dataset.entries)
-            dataset.load_json(expanded_path)
-            added = len(dataset.entries) - before
-            if added > 0:
-                logger.info(f"Loaded {added} additional entries from {expanded_path.name} (total: {len(dataset.entries)})")
-        except Exception as e:
-            logger.warning(f"Failed to load expanded golden dataset: {e}")
+    # Merge additional entries from supplementary JSON files.
+    # These files can be very large (20-34MB each). To avoid OOM on
+    # memory-constrained machines, load only specific types needed by
+    # calibration and cap total entries.
+    _supplementary_files = [
+        ("golden_dataset_expanded.json", "expanded"),
+        ("golden_dataset_external.json", "external"),
+    ]
+    for fname, label in _supplementary_files:
+        fpath = Path(__file__).parent.parent.parent / "data" / fname
+        if fpath.exists():
+            try:
+                before = len(dataset.entries)
+                dataset.load_json(fpath)
+                added = len(dataset.entries) - before
+                if added > 0:
+                    logger.info(f"Loaded {added} {label} entries from {fname} (total: {len(dataset.entries)})")
+            except Exception as e:
+                logger.warning(f"Failed to load {label} golden dataset: {e}")
+            import gc; gc.collect()  # free raw JSON after each file
 
-    # Merge external real traces (MAST, SWE-bench, etc.)
-    external_path = Path(__file__).parent.parent.parent / "data" / "golden_dataset_external.json"
-    if external_path.exists():
-        try:
-            before = len(dataset.entries)
-            dataset.load_json(external_path)
-            added = len(dataset.entries) - before
-            if added > 0:
-                logger.info(f"Loaded {added} external real traces from {external_path.name} (total: {len(dataset.entries)})")
-        except Exception as e:
-            logger.warning(f"Failed to load external golden dataset: {e}")
+    # Cap entries per type to prevent OOM on memory-constrained machines.
+    # 300 samples per type is sufficient for reliable F1 estimation with
+    # tight confidence intervals, while keeping total memory manageable.
+    removed = dataset.cap_per_type(300)
+    if removed > 0:
+        logger.info(f"Capped dataset to 300 entries/type, removed {removed} (total: {len(dataset.entries)})")
+    import gc; gc.collect()
 
     return dataset
 
@@ -1095,6 +1100,13 @@ def calibrate_all(
 
         # Free memory between detectors to prevent OOM during full calibration
         import gc
+        # Unload NLI model after the last NLI-dependent detector (grounding)
+        if dt == DetectionType.GROUNDING:
+            try:
+                from app.detection.nli_checker import unload_nli_model
+                unload_nli_model()
+            except Exception:
+                pass
         gc.collect()
 
         if cal is None:
@@ -1445,6 +1457,8 @@ DETECTOR_METADATA: Dict[str, Dict[str, str]] = {
     "langgraph_tool_failure": {"name": "LangGraph Tool Failure", "tier": "enterprise", "module": "app.detection.langgraph.tool_failure_detector"},
     "langgraph_parallel_sync": {"name": "LangGraph Parallel Sync", "tier": "enterprise", "module": "app.detection.langgraph.parallel_sync_detector"},
     "langgraph_checkpoint_corruption": {"name": "LangGraph Checkpoint Corruption", "tier": "enterprise", "module": "app.detection.langgraph.checkpoint_corruption_detector"},
+    # Context compaction quality detection
+    "compaction_quality": {"name": "Compaction Quality", "tier": "icp", "module": "app.detection.compaction_quality"},
 }
 
 MINIMUM_PASSING_F1 = 0.40

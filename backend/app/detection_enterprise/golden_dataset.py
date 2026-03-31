@@ -66,6 +66,22 @@ class GoldenDataset:
             return True
         return False
     
+    def cap_per_type(self, max_per_type: int) -> int:
+        """Trim entries so no detection type exceeds max_per_type. Returns count removed."""
+        import random
+        by_type: Dict[DetectionType, List[str]] = {}
+        for eid, entry in self.entries.items():
+            by_type.setdefault(entry.detection_type, []).append(eid)
+        removed = 0
+        for dt, ids in by_type.items():
+            if len(ids) > max_per_type:
+                random.seed(42)
+                to_remove = random.sample(ids, len(ids) - max_per_type)
+                for eid in to_remove:
+                    del self.entries[eid]
+                removed += len(to_remove)
+        return removed
+
     def get_entries_by_type(self, detection_type: DetectionType) -> List[GoldenDatasetEntry]:
         return [e for e in self.entries.values() if e.detection_type == detection_type]
 
@@ -231,8 +247,14 @@ class GoldenDataset:
         with open(path) as f:
             data = json.load(f)
 
-        for entry_data in data.get("entries", []):
-            entry_data["detection_type"] = DetectionType(entry_data["detection_type"])
+        entries = data.get("entries", []) if isinstance(data, dict) else data
+        skipped_types: set = set()
+        for entry_data in entries:
+            try:
+                entry_data["detection_type"] = DetectionType(entry_data["detection_type"])
+            except ValueError:
+                skipped_types.add(entry_data["detection_type"])
+                continue
             dt = entry_data["detection_type"]
             if skip_types and dt in skip_types:
                 continue
@@ -240,6 +262,8 @@ class GoldenDataset:
                 continue
             entry = GoldenDatasetEntry(**entry_data)
             self.entries[entry.id] = entry
+        if skipped_types:
+            logger.warning("Skipped unknown detection types in %s: %s", path.name, sorted(skipped_types))
 
     def load_jsonl(self, path: Path) -> None:
         """Load golden dataset from JSONL format (one entry per line)."""
@@ -8938,6 +8962,11 @@ def create_default_golden_dataset(assign_splits: bool = True) -> GoldenDataset:
     for sample_list in _ALL_SAMPLE_LISTS:
         for sample in sample_list:
             dataset.add_entry(sample)
+
+    # Claude Code architecture pattern entries (completion, coordination, corruption, injection)
+    from app.detection_enterprise.claude_code_golden_entries import create_claude_code_golden_entries
+    for sample in create_claude_code_golden_entries():
+        dataset.add_entry(sample)
 
     # Convergence detector entries (100 total: 50 pos, 50 neg)
     from app.detection_enterprise.convergence_golden_entries import create_convergence_golden_entries

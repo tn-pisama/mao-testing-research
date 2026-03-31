@@ -32,11 +32,14 @@ def _build_detector_runners() -> Dict[DetectionType, Any]:
         from app.detection.loop import loop_detector, StateSnapshot as LoopStateSnapshot
 
         def _run_loop(entry: GoldenDatasetEntry) -> Tuple[bool, float]:
-            raw_states = entry.input_data["states"]
+            if "trace" in entry.input_data:
+                raw_states = entry.input_data["trace"]["spans"]
+            else:
+                raw_states = entry.input_data["states"]
             states = [
                 LoopStateSnapshot(
                     agent_id=s["agent_id"],
-                    content=s["content"],
+                    content=s.get("content", ""),
                     state_delta=s.get("state_delta", {}),
                     sequence_num=idx,
                 )
@@ -130,8 +133,13 @@ def _build_detector_runners() -> Dict[DetectionType, Any]:
         from app.detection.overflow import overflow_detector
 
         def _run_overflow(entry: GoldenDatasetEntry) -> Tuple[bool, float]:
-            current_tokens = entry.input_data["current_tokens"]
-            model = entry.input_data["model"]
+            if "trace" in entry.input_data:
+                spans = entry.input_data["trace"].get("spans", [])
+                current_tokens = max((s.get("cumulative_tokens", s.get("token_count", 0)) for s in spans), default=0)
+                model = entry.input_data.get("model", "gpt-4")
+            else:
+                current_tokens = entry.input_data["current_tokens"]
+                model = entry.input_data["model"]
             result = overflow_detector.detect_overflow(current_tokens, model)
             return result.detected, result.confidence
 
@@ -262,6 +270,20 @@ def _build_detector_runners() -> Dict[DetectionType, Any]:
         runners[DetectionType.COMPLETION] = _run_completion
     except Exception as exc:
         logger.warning("Could not import completion detector: %s", exc)
+
+    # --- COMPACTION_QUALITY ---
+    try:
+        from app.detection.compaction_quality import compaction_quality_detector
+
+        def _run_compaction_quality(entry: GoldenDatasetEntry) -> Tuple[bool, float]:
+            original = entry.input_data.get("original", "")
+            compacted = entry.input_data.get("compacted", "")
+            result = compaction_quality_detector.detect(original, compacted)
+            return result.detected, result.confidence
+
+        runners[DetectionType.COMPACTION_QUALITY] = _run_compaction_quality
+    except Exception as exc:
+        logger.warning("Could not import compaction quality detector: %s", exc)
 
     # --- GROUNDING (may not have standalone detector) ---
     try:
@@ -491,9 +513,12 @@ def _build_detector_runners() -> Dict[DetectionType, Any]:
             main_terminal = None
             if leaf_nodes and primary_start:
                 visited: Dict[str, int] = {}
+                max_depth = len(all_names)
                 stack = [(primary_start, 0)]
                 while stack:
                     nid, depth = stack.pop()
+                    if depth > max_depth:
+                        continue
                     if nid in visited and visited[nid] >= depth:
                         continue
                     visited[nid] = depth

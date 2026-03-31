@@ -57,6 +57,22 @@ class DetectionType(Enum):
     CONVERGENCE = "convergence"  # Metric plateau, regression, thrashing, divergence
     # Delegation quality detection
     DELEGATION = "delegation"  # Missing criteria, vague instructions, incomplete handoffs
+    CONTEXT_PRESSURE = "context_pressure"  # Context window filling up, token budget pressure
+    # Agentic design pattern detectors
+    ROUTING = "routing"
+    PROPAGATION = "propagation"
+    CRITIC_QUALITY = "critic_quality"
+    ESCALATION_LOOP = "escalation_loop"
+    CITATION = "citation"
+    PARALLEL_CONSISTENCY = "parallel_consistency"
+    MEMORY_STALENESS = "memory_staleness"
+    APPROVAL_BYPASS = "approval_bypass"
+    MODEL_SELECTION = "model_selection"
+    MCP_PROTOCOL = "mcp_protocol"
+    REASONING_CONSISTENCY = "reasoning_consistency"
+    ENTITY_CONFUSION = "entity_confusion"
+    TASK_STARVATION = "task_starvation"
+    EXPLORATION_SAFETY = "exploration_safety"
     # Orchestration quality (multi-agent workflow quality assessment)
     ORCHESTRATION_QUALITY = "orchestration_quality"  # Efficiency, utilization, parallelization
     # Multi-chain interaction (cross-trace failure detection)
@@ -69,6 +85,7 @@ class DetectionType(Enum):
     SCHEDULED_TASK = "scheduled_task"  # Recurring task drift (/loop)
     ADAPTIVE_THINKING = "adaptive_thinking"  # Thinking variance (overthinking/underthinking)
     COWORK_SAFETY = "cowork_safety"  # Non-developer agent safety risks (Cowork)
+    COMPACTION_QUALITY = "compaction_quality"  # Context compaction/summarization quality degradation
 
 
 # Evaluation type classification (per "Evaluation Is the Load-Bearing Part" article)
