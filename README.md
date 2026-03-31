@@ -96,7 +96,7 @@ Tier 1 (Hash)    Tier 2 (Delta)    Tier 3 (Embeddings)    Tier 4 (LLM Judge)    
   $0                $0                 $0                     ~$0.02               --
 ```
 
-### 18 Failure Detectors
+### 32 Failure Detectors
 
 | Detector | What It Catches |
 |----------|----------------|
@@ -118,6 +118,20 @@ Tier 1 (Hash)    Tier 2 (Delta)    Tier 3 (Embeddings)    Tier 4 (LLM Judge)    
 | `overflow` | Context window exhaustion |
 | `cost` | Token budget overrun |
 | `repetition` | Tool dominance, low diversity |
+| `routing` | Input sent to wrong specialist/route |
+| `propagation` | Silent error propagation across pipeline steps |
+| `critic_quality` | Rubber-stamping critics in reflection loops |
+| `escalation_loop` | Agent escalation loops without resolution |
+| `citation` | Fabricated citations, unsupported claims |
+| `parallel_consistency` | Contradictory parallel branch results |
+| `memory_staleness` | Outdated memory/context retrieval |
+| `approval_bypass` | High-risk actions without human approval |
+| `model_selection` | Wrong model tier for task complexity |
+| `mcp_protocol` | MCP tool discovery, schema, auth failures |
+| `reasoning_consistency` | Contradictory reasoning paths, abandoned CoT |
+| `entity_confusion` | Agent mixes up entities from context |
+| `task_starvation` | Planned tasks that never execute |
+| `exploration_safety` | Risky actions during trial-and-error phases |
 
 All detectors are available on the free tier. No feature gating.
 
@@ -172,7 +186,7 @@ The hosted platform at [pisama.ai](https://pisama.ai) adds:
 |---|---|---|---|---|
 | Price | $0 | $29/mo | $79/mo | Custom |
 | Projects | 1 | 3 | 10 | Unlimited |
-| All 18 detectors | Yes | Yes | Yes | Yes |
+| All 32 detectors | Yes | Yes | Yes | Yes |
 | Code-level fixes | -- | Yes | Yes | Yes |
 | Self-healing | -- | -- | -- | Yes |
 

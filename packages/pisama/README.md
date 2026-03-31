@@ -6,7 +6,7 @@
 [![License: MIT](https://img.shields.io/badge/License-MIT-blue.svg)](LICENSE)
 [![Python 3.10+](https://img.shields.io/badge/python-3.10+-blue.svg)](https://www.python.org/downloads/)
 
-Pisama detects 18 types of agent failures using heuristic detectors that run locally, with zero LLM cost. On the [TRAIL benchmark](https://arxiv.org/abs/2505.08638), Pisama achieves **60.1% joint accuracy** vs. 11% for the best frontier model — with 100% precision (zero false positives).
+Pisama detects 32 types of agent failures using heuristic detectors that run locally, with zero LLM cost. On the [TRAIL benchmark](https://arxiv.org/abs/2505.08638), Pisama achieves **60.1% joint accuracy** vs. 11% for the best frontier model — with 100% precision (zero false positives).
 
 ## Install
 
@@ -71,6 +71,20 @@ Works in Cursor, Claude Desktop, Windsurf — no API key needed:
 | `overflow` | Context window exhaustion |
 | `cost` | Token budget overrun |
 | `repetition` | Tool dominance, low diversity |
+| `routing` | Input sent to wrong specialist/route |
+| `propagation` | Silent error propagation across steps |
+| `critic_quality` | Rubber-stamping critics in reflection loops |
+| `escalation_loop` | Escalation loops without resolution |
+| `citation` | Fabricated citations |
+| `parallel_consistency` | Contradictory parallel results |
+| `memory_staleness` | Outdated memory retrieval |
+| `approval_bypass` | High-risk actions without approval |
+| `model_selection` | Wrong model for task complexity |
+| `mcp_protocol` | MCP tool/schema/auth failures |
+| `reasoning_consistency` | Contradictory reasoning, abandoned CoT |
+| `entity_confusion` | Entity mix-ups from context |
+| `task_starvation` | Planned tasks never executed |
+| `exploration_safety` | Risky actions in trial-and-error |
 
 ## Benchmark Results
 

@@ -1,4 +1,4 @@
-"""Built-in detectors for PISAMA.
+"""Built-in detectors for Pisama.
 
 This module auto-registers all built-in detectors with the global registry.
 """
@@ -24,6 +24,20 @@ from pisama_core.detection.detectors.workflow import WorkflowDetector
 from pisama_core.detection.detectors.withholding import WithholdingDetector
 from pisama_core.detection.detectors.completion import CompletionDetector
 from pisama_core.detection.detectors.convergence import ConvergenceDetector
+from pisama_core.detection.detectors.parallel_consistency import ParallelConsistencyDetector
+from pisama_core.detection.detectors.memory_staleness import MemoryStalenessDetector
+from pisama_core.detection.detectors.approval import ApprovalBypassDetector
+from pisama_core.detection.detectors.model_selection import ModelSelectionDetector
+from pisama_core.detection.detectors.mcp_protocol import MCPProtocolDetector
+from pisama_core.detection.detectors.routing import RoutingDetector
+from pisama_core.detection.detectors.propagation import ErrorPropagationDetector
+from pisama_core.detection.detectors.critic import CriticQualityDetector
+from pisama_core.detection.detectors.escalation import EscalationLoopDetector
+from pisama_core.detection.detectors.citation import CitationDetector
+from pisama_core.detection.detectors.reasoning import ReasoningConsistencyDetector
+from pisama_core.detection.detectors.entity_confusion import EntityConfusionDetector
+from pisama_core.detection.detectors.starvation import TaskStarvationDetector
+from pisama_core.detection.detectors.exploration_safety import ExplorationSafetyDetector
 
 # Register all built-in detectors
 _BUILTIN_DETECTORS = [
@@ -45,6 +59,20 @@ _BUILTIN_DETECTORS = [
     WithholdingDetector(),
     CompletionDetector(),
     ConvergenceDetector(),
+    ParallelConsistencyDetector(),
+    MemoryStalenessDetector(),
+    ApprovalBypassDetector(),
+    ModelSelectionDetector(),
+    MCPProtocolDetector(),
+    RoutingDetector(),
+    ErrorPropagationDetector(),
+    CriticQualityDetector(),
+    EscalationLoopDetector(),
+    CitationDetector(),
+    ReasoningConsistencyDetector(),
+    EntityConfusionDetector(),
+    TaskStarvationDetector(),
+    ExplorationSafetyDetector(),
 ]
 
 for detector in _BUILTIN_DETECTORS:
@@ -69,4 +97,18 @@ __all__ = [
     "WithholdingDetector",
     "CompletionDetector",
     "ConvergenceDetector",
+    "ParallelConsistencyDetector",
+    "MemoryStalenessDetector",
+    "ApprovalBypassDetector",
+    "ModelSelectionDetector",
+    "MCPProtocolDetector",
+    "RoutingDetector",
+    "ErrorPropagationDetector",
+    "CriticQualityDetector",
+    "EscalationLoopDetector",
+    "CitationDetector",
+    "ReasoningConsistencyDetector",
+    "EntityConfusionDetector",
+    "TaskStarvationDetector",
+    "ExplorationSafetyDetector",
 ]
