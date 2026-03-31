@@ -1,10 +1,13 @@
-"""CLI interface for MAST benchmarks.
+"""CLI interface for Pisama benchmarks (MAST, TRAIL, Who&When).
 
 Usage:
     python -m app.benchmark.cli run data.jsonl -o report.md
     python -m app.benchmark.cli stats data.jsonl
-    python -m app.benchmark.cli train-model data.jsonl -o model.pkl
-    python -m app.benchmark.cli train-multirun data.jsonl --num-runs 5
+    python -m app.benchmark.cli trail download
+    python -m app.benchmark.cli trail run -o trail_report.md
+    python -m app.benchmark.cli whowhen download
+    python -m app.benchmark.cli whowhen run -o whowhen_report.md
+    python -m app.benchmark.cli whowhen stats
 """
 
 import logging
@@ -34,7 +37,7 @@ def setup_logging(verbose: bool) -> None:
 
 @click.group()
 def cli():
-    """Benchmark CLI - Evaluate detection accuracy against MAST and TRAIL datasets."""
+    """Benchmark CLI - Evaluate detection accuracy against MAST, TRAIL, and Who&When datasets."""
     pass
 
 
@@ -948,6 +951,256 @@ def trail_stats(cache_dir: Optional[str], verbose: bool):
         click.echo("-" * 35)
         for impact, cnt in stats["by_impact"].items():
             click.echo(f"  {impact:<20} {cnt:>8,}")
+        click.echo("")
+
+
+# ---------------------------------------------------------------------------
+# Who&When Benchmark Commands
+# ---------------------------------------------------------------------------
+
+@cli.group()
+def whowhen():
+    """Who&When Benchmark - Multi-agent failure attribution (ICML 2025)."""
+    pass
+
+
+@whowhen.command("download")
+@click.option(
+    "--cache-dir",
+    default=None,
+    type=click.Path(),
+    help="Directory to cache downloaded data (default: data/whowhen)",
+)
+@click.option("--verbose", "-v", is_flag=True, help="Verbose output")
+def whowhen_download(cache_dir: Optional[str], verbose: bool):
+    """Download the Who&When benchmark dataset from GitHub.
+
+    Examples:
+        python -m app.benchmark.cli whowhen download
+        python -m app.benchmark.cli whowhen download --cache-dir /tmp/whowhen
+    """
+    from pathlib import Path as _Path
+    from app.benchmark.whowhen_loader import WhoWhenDataLoader
+
+    setup_logging(verbose)
+
+    loader = WhoWhenDataLoader(
+        cache_dir=_Path(cache_dir) if cache_dir else None
+    )
+    click.echo(f"Downloading Who&When dataset to {loader.cache_dir}...")
+
+    try:
+        data_path = loader.download()
+        click.echo(f"Download complete: {data_path}")
+
+        # Quick validation
+        count = loader.load(data_path)
+        click.echo(f"Validated: {count:,} cases loaded successfully")
+    except Exception as e:
+        click.echo(f"Download failed: {e}", err=True)
+        sys.exit(1)
+
+
+@whowhen.command("run")
+@click.option(
+    "--cache-dir",
+    default=None,
+    type=click.Path(),
+    help="Directory with downloaded Who&When data (default: data/whowhen)",
+)
+@click.option(
+    "--output", "-o",
+    default="whowhen_report.md",
+    help="Output file path",
+)
+@click.option(
+    "--format", "-f",
+    type=click.Choice(["markdown", "json"]),
+    default="markdown",
+    help="Output format",
+)
+@click.option(
+    "--source",
+    type=click.Choice(["all", "hand-crafted", "algorithm-generated"]),
+    default="all",
+    help="Filter to specific source subset",
+)
+@click.option("--verbose", "-v", is_flag=True, help="Verbose output")
+def whowhen_run(
+    cache_dir: Optional[str],
+    output: str,
+    format: str,
+    source: str,
+    verbose: bool,
+):
+    """Run Pisama detectors against the Who&When benchmark.
+
+    Examples:
+        python -m app.benchmark.cli whowhen run
+        python -m app.benchmark.cli whowhen run -o report.md
+        python -m app.benchmark.cli whowhen run --source hand-crafted --format json -o hc.json
+    """
+    from pathlib import Path as _Path
+    from app.benchmark.whowhen_loader import WhoWhenDataLoader
+    from app.benchmark.whowhen_adapter import WhoWhenAdapter
+    from app.benchmark.whowhen_runner import WhoWhenBenchmarkRunner
+    from app.benchmark.whowhen_report import generate_report
+
+    setup_logging(verbose)
+
+    loader = WhoWhenDataLoader(
+        cache_dir=_Path(cache_dir) if cache_dir else None
+    )
+
+    click.echo(f"Loading Who&When data from {loader.cache_dir}...")
+    try:
+        count = loader.load()
+    except FileNotFoundError:
+        click.echo(
+            "Who&When data not found. Run 'whowhen download' first.",
+            err=True,
+        )
+        sys.exit(1)
+
+    click.echo(f"Loaded {count:,} cases")
+
+    # Filter by source if specified
+    if source != "all":
+        filtered = loader.filter_by_source(source)
+        click.echo(
+            f"Filtered to {len(filtered):,} cases for source: {source}"
+        )
+        loader._cases = filtered
+
+    # Run benchmark
+    adapter = WhoWhenAdapter()
+    click.echo(f"Available detectors: {', '.join(adapter.available_detectors)}")
+
+    runner = WhoWhenBenchmarkRunner(loader=loader, adapter=adapter)
+
+    click.echo("Running benchmark...")
+
+    def progress_callback(processed: int, total: int):
+        if total > 0:
+            pct = processed / total * 100
+            click.echo(
+                f"\rProgress: {processed:,}/{total:,} ({pct:.1f}%)",
+                nl=False,
+            )
+
+    result = runner.run(progress_callback=progress_callback)
+    click.echo()  # Newline after progress
+
+    click.echo(
+        f"Processed {result.processed_cases:,} cases, "
+        f"{len(result.predicted_cases):,} predictions made"
+    )
+
+    # Generate report
+    click.echo("Generating report...")
+    report = generate_report(result, format=format)
+
+    if output == "-":
+        click.echo(report)
+    else:
+        with open(output, "w") as f:
+            f.write(report)
+        click.echo(f"Report saved to {output}")
+
+    # Summary
+    click.echo("")
+    click.echo("=" * 60)
+    click.echo("WHO&WHEN BENCHMARK SUMMARY")
+    click.echo("=" * 60)
+    click.echo(
+        f"Agent Accuracy:  {result.agent_accuracy:.1%}  "
+        f"(o1 baseline: 53.5%)"
+    )
+    click.echo(
+        f"Step Accuracy:   {result.step_accuracy:.1%}  "
+        f"(o1 baseline: 14.2%)"
+    )
+    click.echo(f"Cases:           {result.processed_cases:,}")
+    if result.errors:
+        click.echo(f"Errors:          {len(result.errors)}")
+    click.echo("=" * 60)
+
+
+@whowhen.command("stats")
+@click.option(
+    "--cache-dir",
+    default=None,
+    type=click.Path(),
+    help="Directory with downloaded Who&When data (default: data/whowhen)",
+)
+@click.option("--verbose", "-v", is_flag=True, help="Verbose output")
+def whowhen_stats(cache_dir: Optional[str], verbose: bool):
+    """Show Who&When dataset statistics.
+
+    Examples:
+        python -m app.benchmark.cli whowhen stats
+    """
+    from pathlib import Path as _Path
+    from app.benchmark.whowhen_loader import WhoWhenDataLoader
+
+    setup_logging(verbose)
+
+    loader = WhoWhenDataLoader(
+        cache_dir=_Path(cache_dir) if cache_dir else None
+    )
+
+    click.echo(f"Loading Who&When data from {loader.cache_dir}...")
+    try:
+        count = loader.load()
+    except FileNotFoundError:
+        click.echo(
+            "Who&When data not found. Run 'whowhen download' first.",
+            err=True,
+        )
+        sys.exit(1)
+
+    stats = loader.get_statistics()
+
+    click.echo("")
+    click.echo("=" * 55)
+    click.echo("WHO&WHEN DATASET STATISTICS")
+    click.echo("=" * 55)
+    click.echo("")
+    click.echo(f"Total Cases:        {stats['total_cases']:,}")
+    click.echo(
+        f"Corrected:          {stats['corrected_count']:,}"
+    )
+    click.echo(
+        f"Avg History Length:  {stats['avg_history_length']:.1f} messages"
+    )
+    click.echo(
+        f"Avg Mistake Step:   {stats['avg_mistake_step']:.1f}"
+    )
+    click.echo("")
+
+    if stats.get("by_source"):
+        click.echo("BY SOURCE:")
+        click.echo("-" * 35)
+        for src, cnt in stats["by_source"].items():
+            click.echo(f"  {src:<25} {cnt:>6,}")
+        click.echo("")
+
+    if stats.get("mistake_agents"):
+        click.echo("MISTAKE AGENTS (ground truth):")
+        click.echo("-" * 35)
+        for agent, cnt in stats["mistake_agents"].items():
+            click.echo(f"  {agent:<25} {cnt:>6,}")
+        click.echo("")
+
+    if stats.get("agent_roles"):
+        click.echo("AGENT ROLES (all messages):")
+        click.echo("-" * 35)
+        for role, cnt in list(stats["agent_roles"].items())[:15]:
+            click.echo(f"  {role:<25} {cnt:>6,}")
+        if len(stats["agent_roles"]) > 15:
+            click.echo(
+                f"  ... and {len(stats['agent_roles']) - 15} more"
+            )
         click.echo("")
 
 
