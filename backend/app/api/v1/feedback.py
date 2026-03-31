@@ -140,6 +140,25 @@ async def submit_feedback(
     detection.validated = True
     detection.false_positive = not feedback.is_correct
 
+    # --- Episodic memory: record feedback for adaptive thresholds ---
+    try:
+        from app.detection_enterprise.episodic_memory import EpisodicMemoryService
+        episodic = EpisodicMemoryService(session=db, tenant_id=UUID(tenant_id))
+        await episodic.record_feedback(
+            detection_id=detection.id,
+            feedback_type=feedback_type,
+            detection_type=detection.detection_type,
+            confidence=detection.confidence / 100.0,  # stored as 0-100 int
+            framework=framework,
+            input_data=detection.details if isinstance(detection.details, dict) else None,
+        )
+    except Exception:
+        # Episodic memory is best-effort; don't fail the feedback endpoint
+        import logging
+        logging.getLogger(__name__).debug(
+            "Episodic memory feedback recording failed", exc_info=True,
+        )
+
     await db.commit()
     await db.refresh(fb)
 

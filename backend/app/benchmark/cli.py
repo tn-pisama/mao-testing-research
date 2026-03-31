@@ -34,7 +34,7 @@ def setup_logging(verbose: bool) -> None:
 
 @click.group()
 def cli():
-    """MAST Benchmark CLI - Evaluate detection accuracy against MAST dataset."""
+    """Benchmark CLI - Evaluate detection accuracy against MAST and TRAIL datasets."""
     pass
 
 
@@ -693,6 +693,262 @@ def analyze(report_path: str, mode: Optional[str]):
                 click.echo(f"    FP: {cm.get('fp', 0):5}  TN: {cm.get('tn', 0):5}")
         else:
             click.echo(f"Mode {mode.upper()} not found in report")
+
+
+# ---------------------------------------------------------------------------
+# TRAIL Benchmark Commands
+# ---------------------------------------------------------------------------
+
+@cli.group()
+def trail():
+    """TRAIL Benchmark - Evaluate against Patronus AI TRAIL dataset."""
+    pass
+
+
+@trail.command("download")
+@click.option(
+    "--cache-dir",
+    default=None,
+    type=click.Path(),
+    help="Directory to cache downloaded data (default: data/trail)",
+)
+@click.option(
+    "--token",
+    envvar="HF_TOKEN",
+    default=None,
+    help="HuggingFace token for gated datasets",
+)
+@click.option("--verbose", "-v", is_flag=True, help="Verbose output")
+def trail_download(cache_dir: Optional[str], token: Optional[str], verbose: bool):
+    """Download the TRAIL benchmark dataset from HuggingFace.
+
+    Examples:
+        python -m app.benchmark.cli trail download
+        python -m app.benchmark.cli trail download --token hf_xxx
+        python -m app.benchmark.cli trail download --cache-dir /tmp/trail
+    """
+    from pathlib import Path as _Path
+    from app.benchmark.trail_loader import TRAILDataLoader
+
+    setup_logging(verbose)
+
+    loader = TRAILDataLoader(cache_dir=_Path(cache_dir) if cache_dir else None)
+    click.echo(f"Downloading TRAIL dataset to {loader.cache_dir}...")
+
+    try:
+        data_path = loader.download(token=token)
+        click.echo(f"Download complete: {data_path}")
+
+        # Quick validation
+        count = loader.load(data_path)
+        click.echo(f"Validated: {count:,} traces loaded successfully")
+    except Exception as e:
+        click.echo(f"Download failed: {e}", err=True)
+        if "gated" in str(e).lower() or "401" in str(e) or "403" in str(e):
+            click.echo(
+                "Hint: The TRAIL dataset may be gated. "
+                "Set HF_TOKEN environment variable or use --token.",
+                err=True,
+            )
+        sys.exit(1)
+
+
+@trail.command("run")
+@click.option(
+    "--cache-dir",
+    default=None,
+    type=click.Path(),
+    help="Directory with downloaded TRAIL data (default: data/trail)",
+)
+@click.option(
+    "--output", "-o",
+    default="trail_report.md",
+    help="Output file path",
+)
+@click.option(
+    "--format", "-f",
+    type=click.Choice(["markdown", "json"]),
+    default="markdown",
+    help="Output format",
+)
+@click.option(
+    "--source",
+    type=click.Choice(["all", "gaia", "swe-bench"]),
+    default="all",
+    help="Filter to specific source benchmark",
+)
+@click.option("--verbose", "-v", is_flag=True, help="Verbose output")
+def trail_run(
+    cache_dir: Optional[str],
+    output: str,
+    format: str,
+    source: str,
+    verbose: bool,
+):
+    """Run Pisama detectors against the TRAIL benchmark.
+
+    Examples:
+        python -m app.benchmark.cli trail run
+        python -m app.benchmark.cli trail run -o report.md
+        python -m app.benchmark.cli trail run --source gaia --format json -o gaia.json
+    """
+    from pathlib import Path as _Path
+    from app.benchmark.trail_loader import TRAILDataLoader
+    from app.benchmark.trail_adapter import TRAILSpanAdapter
+    from app.benchmark.trail_runner import TRAILBenchmarkRunner
+    from app.benchmark.trail_report import generate_report
+
+    setup_logging(verbose)
+
+    loader = TRAILDataLoader(cache_dir=_Path(cache_dir) if cache_dir else None)
+
+    click.echo(f"Loading TRAIL data from {loader.cache_dir}...")
+    try:
+        count = loader.load()
+    except FileNotFoundError:
+        click.echo(
+            "TRAIL data not found. Run 'trail download' first.",
+            err=True,
+        )
+        sys.exit(1)
+
+    click.echo(f"Loaded {count:,} traces")
+
+    # Filter by source if specified
+    if source != "all":
+        filtered = loader.filter_by_source(source)
+        click.echo(f"Filtered to {len(filtered):,} traces for source: {source}")
+        loader._traces = filtered
+
+    # Filter to traces with Pisama mappings
+    mappable = loader.filter_has_pisama_mappings()
+    click.echo(f"Traces with Pisama-mappable annotations: {len(mappable):,}")
+
+    # Run benchmark
+    adapter = TRAILSpanAdapter()
+    runner = TRAILBenchmarkRunner(loader=loader, adapter=adapter)
+
+    click.echo("Running benchmark...")
+
+    def progress_callback(processed: int, total: int):
+        if total > 0:
+            pct = processed / total * 100
+            click.echo(
+                f"\rProgress: {processed:,}/{total:,} ({pct:.1f}%)", nl=False
+            )
+
+    result = runner.run(progress_callback=progress_callback)
+    click.echo()  # Newline after progress
+
+    click.echo(
+        f"Processed {result.processed_traces:,} traces, "
+        f"{len(result.positive_predictions):,} positive detections"
+    )
+
+    # Generate report
+    click.echo("Generating report...")
+    report = generate_report(result, format=format)
+
+    if output == "-":
+        click.echo(report)
+    else:
+        with open(output, "w") as f:
+            f.write(report)
+        click.echo(f"Report saved to {output}")
+
+    # Summary
+    click.echo("")
+    click.echo("=" * 55)
+    click.echo("TRAIL BENCHMARK SUMMARY")
+    click.echo("=" * 55)
+    click.echo(f"Joint Accuracy:  {result.joint_accuracy:.1%}  (baseline: 11%)")
+    click.echo(f"Macro F1:        {result.macro_f1:.3f}")
+    click.echo(f"Micro F1:        {result.micro_f1:.3f}")
+    click.echo(
+        f"Coverage:        {result.mapped_annotations}/{result.total_annotations} "
+        f"annotations mapped"
+    )
+    if result.errors:
+        click.echo(f"Errors:          {len(result.errors)}")
+    click.echo("=" * 55)
+
+
+@trail.command("stats")
+@click.option(
+    "--cache-dir",
+    default=None,
+    type=click.Path(),
+    help="Directory with downloaded TRAIL data (default: data/trail)",
+)
+@click.option("--verbose", "-v", is_flag=True, help="Verbose output")
+def trail_stats(cache_dir: Optional[str], verbose: bool):
+    """Show TRAIL dataset statistics.
+
+    Examples:
+        python -m app.benchmark.cli trail stats
+    """
+    from pathlib import Path as _Path
+    from app.benchmark.trail_loader import TRAILDataLoader, TRAIL_TO_PISAMA as _TRAIL_MAP
+
+    setup_logging(verbose)
+
+    loader = TRAILDataLoader(cache_dir=_Path(cache_dir) if cache_dir else None)
+
+    click.echo(f"Loading TRAIL data from {loader.cache_dir}...")
+    try:
+        count = loader.load()
+    except FileNotFoundError:
+        click.echo(
+            "TRAIL data not found. Run 'trail download' first.",
+            err=True,
+        )
+        sys.exit(1)
+
+    stats = loader.get_statistics()
+
+    click.echo("")
+    click.echo("=" * 55)
+    click.echo("TRAIL DATASET STATISTICS")
+    click.echo("=" * 55)
+    click.echo("")
+    click.echo(f"Total Traces:       {stats['total_traces']:,}")
+    click.echo(f"With Failures:      {stats['with_failures']:,}")
+    click.echo(f"Healthy:            {stats['healthy']:,}")
+    click.echo(f"Total Annotations:  {stats['total_annotations']:,}")
+    click.echo(f"Mapped (Pisama):    {stats['mapped_annotations']:,}")
+    click.echo(f"Unmapped:           {stats['unmapped_annotations']:,}")
+    click.echo(f"Total Spans:        {stats['total_spans']:,}")
+    click.echo(f"Coverage:           {stats['coverage']}")
+    click.echo("")
+
+    if stats.get("by_source"):
+        click.echo("BY SOURCE:")
+        click.echo("-" * 35)
+        for source, cnt in stats["by_source"].items():
+            click.echo(f"  {source:<20} {cnt:>8,}")
+        click.echo("")
+
+    if stats.get("by_category"):
+        click.echo("BY TRAIL CATEGORY:")
+        click.echo("-" * 50)
+        for cat, cnt in stats["by_category"].items():
+            pisama = f" -> {_TRAIL_MAP[cat]}" if cat in _TRAIL_MAP else " (unmapped)"
+            click.echo(f"  {cat:<35} {cnt:>5,}{pisama}")
+        click.echo("")
+
+    if stats.get("by_pisama_type"):
+        click.echo("BY PISAMA DETECTOR:")
+        click.echo("-" * 35)
+        for det, cnt in stats["by_pisama_type"].items():
+            click.echo(f"  {det:<20} {cnt:>8,}")
+        click.echo("")
+
+    if stats.get("by_impact"):
+        click.echo("BY IMPACT:")
+        click.echo("-" * 35)
+        for impact, cnt in stats["by_impact"].items():
+            click.echo(f"  {impact:<20} {cnt:>8,}")
+        click.echo("")
 
 
 def main():

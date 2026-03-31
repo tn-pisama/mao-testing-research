@@ -289,10 +289,12 @@ class DetectionOrchestrator:
         enable_llm_explanation: bool = True,
         max_parallel_detectors: int = 5,
         timeout_seconds: float = 30.0,
+        episodic_service=None,
     ):
         self.enable_llm_explanation = enable_llm_explanation
         self.max_parallel_detectors = max_parallel_detectors
         self.timeout_seconds = timeout_seconds
+        self.episodic_service = episodic_service  # Optional EpisodicMemoryService
 
         # Initialize detectors (lazy loaded when needed)
         self._loop_detector: Optional[MultiLevelLoopDetector] = None
@@ -737,6 +739,82 @@ class DetectionOrchestrator:
         # Calculate detection time
         end_time = datetime.utcnow()
         result.detection_time_ms = int((end_time - start_time).total_seconds() * 1000)
+
+        return result
+
+    async def apply_episodic_adjustments(
+        self, result: DiagnosisResult, source_format: Optional[str] = None,
+    ) -> DiagnosisResult:
+        """Apply episodic memory adjustments to a completed diagnosis.
+
+        Must be called from an async context after ``analyze_trace()``.
+        For each detection: adjust confidence, record the event, and
+        suppress known FP patterns. Safe to skip when episodic_service
+        is None.
+
+        Args:
+            result: DiagnosisResult from analyze_trace().
+            source_format: Framework string (e.g. "n8n", "langgraph").
+
+        Returns:
+            The same DiagnosisResult with adjusted detections in-place.
+        """
+        if self.episodic_service is None:
+            return result
+
+        svc = self.episodic_service
+        framework = (source_format or "").lower() or None
+        kept: List[DetectionResult] = []
+
+        for det in result.all_detections:
+            det_type = det.category.value
+            try:
+                # Adjust confidence from tenant history
+                det.confidence = await svc.adjust_confidence(
+                    det_type, det.confidence, framework,
+                )
+
+                # Record this detection event
+                await svc.record_detection(
+                    det_type, det.confidence, det.detected, framework,
+                )
+
+                # Check FP suppression using evidence as input proxy
+                input_proxy = {}
+                if det.evidence:
+                    first = det.evidence[0]
+                    if isinstance(first, dict):
+                        input_proxy = first
+                if input_proxy:
+                    suppress, reason = await svc.should_suppress(
+                        det_type, input_proxy, framework,
+                    )
+                    if suppress:
+                        logger.info(
+                            "Episodic memory suppressed %s detection: %s",
+                            det_type, reason,
+                        )
+                        continue
+
+                kept.append(det)
+            except Exception:
+                logger.debug(
+                    "Episodic memory step failed for %s, keeping detection",
+                    det_type, exc_info=True,
+                )
+                kept.append(det)
+
+        result.all_detections = kept
+        result.failure_count = len(kept)
+        result.has_failures = len(kept) > 0
+        if kept:
+            result.primary_failure = kept[0]
+        elif result.primary_failure is not None:
+            # All detections were suppressed
+            result.primary_failure = None
+            result.root_cause_explanation = None
+            result.self_healing_available = False
+            result.auto_fix_preview = None
 
         return result
 

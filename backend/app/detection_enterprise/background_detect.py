@@ -203,13 +203,43 @@ async def run_background_detection(
             from app.storage.models import Detection
 
             trace = build_universal_trace(trace_id, framework, states, metadata)
-            orchestrator = DetectionOrchestrator(enable_llm_explanation=False)
+
+            # Initialise episodic memory (best-effort, None if unavailable)
+            episodic_service = None
+            _episodic_session = None
+            try:
+                from app.detection_enterprise.episodic_memory import EpisodicMemoryService
+                _episodic_session = async_session_maker()
+                episodic_service = EpisodicMemoryService(
+                    session=_episodic_session, tenant_id=UUID(tenant_id),
+                )
+            except Exception:
+                _episodic_session = None
+                logger.debug("Episodic memory init skipped", exc_info=True)
+
+            orchestrator = DetectionOrchestrator(
+                enable_llm_explanation=False,
+                episodic_service=episodic_service,
+            )
 
             # Mark pipeline as running
             async with async_session_maker() as session:
                 await _update_trace_detection_status(session, trace_id, "running")
 
             result = orchestrator.analyze_trace(trace)
+
+            # Apply episodic memory adjustments (async-safe)
+            if episodic_service is not None:
+                try:
+                    result = await orchestrator.apply_episodic_adjustments(
+                        result, source_format=framework,
+                    )
+                    await _episodic_session.commit()
+                except Exception:
+                    logger.debug("Episodic memory adjustment failed", exc_info=True)
+                finally:
+                    await _episodic_session.close()
+                    _episodic_session = None
 
             if not result.all_detections:
                 async with async_session_maker() as session:

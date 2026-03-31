@@ -1554,3 +1554,87 @@ class ShadowEvalResult(Base):
         Index("idx_shadow_eval_created", "created_at"),
         Index("idx_shadow_eval_match", "detector_type", "match"),
     )
+
+
+# ---------------------------------------------------------------------------
+# Episodic Memory (per-tenant adaptive detection)
+# ---------------------------------------------------------------------------
+
+class TenantDetectorStats(Base):
+    """Per-tenant, per-detector statistics for adaptive threshold learning.
+
+    Tracks detection accuracy from user feedback and adjusts thresholds
+    automatically so each tenant gets detection tuned to their workload.
+    """
+    __tablename__ = "tenant_detector_stats"
+
+    id = Column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
+    tenant_id = Column(UUID(as_uuid=True), ForeignKey("tenants.id"), nullable=False)
+    detection_type = Column(String(64), nullable=False)
+    framework = Column(String(32), nullable=True)  # NULL = all frameworks
+
+    # Detection counts (rolling window)
+    total_detections = Column(Integer, default=0)
+    true_positives = Column(Integer, default=0)
+    false_positives = Column(Integer, default=0)
+    false_negatives = Column(Integer, default=0)
+    true_negatives = Column(Integer, default=0)
+
+    # Computed rates
+    precision = Column(Float, default=0.5)
+    recall = Column(Float, default=0.5)
+    f1 = Column(Float, default=0.5)
+
+    # Threshold adjustments
+    base_threshold = Column(Float, default=0.5)
+    adjusted_threshold = Column(Float, default=0.5)
+    threshold_adjustment_reason = Column(Text, nullable=True)
+
+    # Frequency tracking
+    detection_frequency_24h = Column(Integer, default=0)
+    detection_frequency_7d = Column(Integer, default=0)
+    last_detection_at = Column(DateTime(timezone=True), nullable=True)
+    last_feedback_at = Column(DateTime(timezone=True), nullable=True)
+
+    # FP suppression
+    suppressed_patterns = Column(JSONB, default=list)
+
+    # Config
+    learning_enabled = Column(Boolean, default=True)
+    created_at = Column(DateTime(timezone=True), server_default=func.now())
+    updated_at = Column(DateTime(timezone=True), server_default=func.now(), onupdate=func.now())
+
+    __table_args__ = (
+        UniqueConstraint("tenant_id", "detection_type", "framework", name="uq_tenant_detector_stats"),
+        Index("idx_tds_tenant", "tenant_id"),
+        Index("idx_tds_tenant_type", "tenant_id", "detection_type"),
+    )
+
+
+class TenantPatternCache(Base):
+    """Cached patterns learned from tenant feedback.
+
+    Stores FP pattern hashes and recurring failure signatures so the
+    detection pipeline can suppress known false positives or flag
+    known failure patterns with higher confidence.
+    """
+    __tablename__ = "tenant_pattern_cache"
+
+    id = Column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
+    tenant_id = Column(UUID(as_uuid=True), ForeignKey("tenants.id"), nullable=False)
+    detection_type = Column(String(64), nullable=False)
+    framework = Column(String(32), nullable=True)
+    pattern_hash = Column(String(64), nullable=False)
+    pattern_summary = Column(Text, nullable=False)
+    pattern_type = Column(String(32), nullable=False)  # false_positive, recurring_failure
+    confidence = Column(Float, default=0.5)
+    occurrence_count = Column(Integer, default=1)
+    source_detection_id = Column(UUID(as_uuid=True), nullable=True)
+    expires_at = Column(DateTime(timezone=True), nullable=True)
+    is_active = Column(Boolean, default=True)
+    created_at = Column(DateTime(timezone=True), server_default=func.now())
+
+    __table_args__ = (
+        Index("idx_tpc_tenant_type", "tenant_id", "detection_type"),
+        Index("idx_tpc_pattern_hash", "tenant_id", "pattern_hash"),
+    )

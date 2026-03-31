@@ -63,7 +63,7 @@ class CoordinationDetector(BaseDetector):
             issues.append(f"Excessive handoffs ({len(handoffs)}) - possible coordination loop")
 
         # OpenClaw-specific: detect session spawn storms
-        if trace.platform == Platform.OPENCLAW:
+        if trace.metadata.platform == Platform.OPENCLAW:
             spawn_spans = [s for s in handoffs if "spawn" in s.name.lower()]
             if len(spawn_spans) > 5:
                 severity += 35
