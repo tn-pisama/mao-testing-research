@@ -1058,6 +1058,8 @@ def calibrate_all(
         DetectionType.N8N_TIMEOUT,
         # Delegation quality detector
         DetectionType.DELEGATION,
+        # Context compaction quality detector
+        DetectionType.COMPACTION_QUALITY,
     ]
 
     # Optional: wrap in a Phoenix parent span
