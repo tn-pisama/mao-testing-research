@@ -38,10 +38,23 @@ class CaseDetectionResult:
 
     @property
     def best_evidence(self) -> Optional[AgentEvidence]:
-        """Return the highest-confidence evidence, or None."""
+        """Return the best evidence for attribution.
+
+        Strategy: among high-confidence evidence (>= 0.7), prefer the
+        earliest step (root cause). Among equal steps, prefer highest
+        confidence. This favors root cause over downstream effects.
+        """
         if not self.evidence:
             return None
-        return max(self.evidence, key=lambda e: e.confidence)
+
+        # Filter to high-confidence evidence
+        high_conf = [e for e in self.evidence if e.confidence >= 0.7]
+        if not high_conf:
+            high_conf = self.evidence
+
+        # Sort by step (ascending) then confidence (descending)
+        high_conf.sort(key=lambda e: (e.step_index, -e.confidence))
+        return high_conf[0]
 
 
 class WhoWhenAdapter:
