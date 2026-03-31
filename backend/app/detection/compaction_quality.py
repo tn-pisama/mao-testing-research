@@ -60,22 +60,33 @@ class CompactionQualityResult:
 
 
 # Regex patterns for extracting critical entities
-_NUMBER_PATTERN = re.compile(r'\b\d+(?:\.\d+)?(?:%|px|ms|MB|GB|KB|k|K|M)?\b')
+# Numbers must be 2+ digits or have a unit suffix to filter noise like "1", "0"
+_NUMBER_PATTERN = re.compile(r'\b\d{2,}(?:\.\d+)?(?:%|px|ms|MB|GB|KB|TB|k|K|M)?\b')
+_UNIT_NUMBER_PATTERN = re.compile(r'\b\d+(?:\.\d+)?(?:%|px|ms|MB|GB|KB|TB|k|K|M)\b')
+_DOLLAR_PATTERN = re.compile(r'\$\d+(?:\.\d+)?(?:K|M|B|/\w+)?')
 _FILE_PATH_PATTERN = re.compile(r'(?:^|[\s(])[/~][\w./\-]+\.\w{1,10}\b')
 _URL_PATTERN = re.compile(r'https?://\S+')
 _QUOTED_PATTERN = re.compile(r'["\']([^"\']{3,50})["\']')
 _CODE_PATTERN = re.compile(r'`([^`]{2,60})`')
+_CODE_BLOCK_PATTERN = re.compile(r'```\w*\n(.+?)```', re.DOTALL)
 _ERROR_PATTERN = re.compile(r'\b(?:Error|Exception|Failed|CRITICAL|WARNING):\s*\S+', re.IGNORECASE)
-
-# Names that should survive compaction (capitalized words that aren't sentence starters)
-_PROPER_NAME_PATTERN = re.compile(r'\b[A-Z][a-z]+(?:\s+[A-Z][a-z]+)*\b')
 
 
 def _extract_entities(text: str) -> set[str]:
     """Extract critical entities that should survive compaction."""
     entities: set[str] = set()
 
-    for pattern in [_NUMBER_PATTERN, _FILE_PATH_PATTERN, _URL_PATTERN,
+    # Check for code blocks — if original has a code block and compacted doesn't,
+    # that's entity loss (the code itself is the entity)
+    orig_blocks = _CODE_BLOCK_PATTERN.findall(text)
+    for block in orig_blocks:
+        # Use first line of code block as entity fingerprint
+        first_line = block.strip().split('\n')[0].strip()
+        if len(first_line) >= 5:
+            entities.add(first_line.lower())
+
+    for pattern in [_NUMBER_PATTERN, _UNIT_NUMBER_PATTERN, _DOLLAR_PATTERN,
+                    _FILE_PATH_PATTERN, _URL_PATTERN,
                     _QUOTED_PATTERN, _CODE_PATTERN, _ERROR_PATTERN]:
         for match in pattern.finditer(text):
             val = match.group(1) if match.lastindex else match.group(0)
@@ -134,11 +145,16 @@ class CompactionQualityDetector:
         # --- Signal 1: Entity preservation ---
         original_entities = _extract_entities(original)
         compacted_entities = _extract_entities(compacted)
+        compacted_lower = compacted.lower()
 
         if original_entities:
-            preserved = original_entities & compacted_entities
+            # Exact set match + fuzzy substring match (catches "23min" for "23")
+            preserved = set()
+            for ent in original_entities:
+                if ent in compacted_entities or ent in compacted_lower:
+                    preserved.add(ent)
             entity_ratio = len(preserved) / len(original_entities)
-            lost = original_entities - compacted_entities
+            lost = original_entities - preserved
         else:
             entity_ratio = 1.0
             lost = set()
@@ -175,11 +191,14 @@ class CompactionQualityDetector:
             ))
 
         # --- Signal 3: Semantic overlap ---
+        # Only flag semantic drift when entities are also poorly preserved.
+        # Good entity preservation + low phrase overlap = legitimate rewording
+        # (e.g., acronym compression, shorthand notation).
         original_phrases = _extract_key_phrases(original)
         compacted_phrases = _extract_key_phrases(compacted)
 
         semantic_score = 0.0
-        if original_phrases:
+        if original_phrases and entity_ratio < 0.80:
             overlap = original_phrases & compacted_phrases
             semantic_ratio = len(overlap) / len(original_phrases)
             if semantic_ratio < 0.10:
