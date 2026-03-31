@@ -5,6 +5,9 @@ on:
     branches: [main]
   workflow_dispatch:
 
+permissions:
+  contents: read
+
 jobs:
   test:
     runs-on: ubuntu-latest
@@ -25,10 +28,14 @@ jobs:
           - 5432:5432
 
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@34e114876b0b11c390a56381ad16ebd13914f8d5 # v4.3.1
+
+      - name: Generate CI JWT secret
+        id: gen-jwt
+        run: echo "jwt_secret=$(openssl rand -base64 48 | tr -d '/+=' | head -c 48)" >> $GITHUB_OUTPUT
 
       - name: Set up Python
-        uses: actions/setup-python@v5
+        uses: actions/setup-python@a26af69be951a213d495a4c3e4e4022e16d87065 # v5.6.0
         with:
           python-version: '3.11'
           cache: 'pip'
@@ -41,14 +48,14 @@ jobs:
       - name: Run backend tests
         env:
           DATABASE_URL: postgresql+asyncpg://mao:mao@localhost:5432/mao
-          JWT_SECRET: xK9mPqL2vN7wR4tY8uJ3hB6gF5dC0aZS
+          JWT_SECRET: ${{ steps.gen-jwt.outputs.jwt_secret }}
           TESTING: "1"
         run: |
           cd backend
           pytest tests/ -v --tb=short
 
       - name: Set up Node.js
-        uses: actions/setup-node@v4
+        uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020 # v4.4.0
         with:
           node-version: '20'
           cache: 'npm'
@@ -74,10 +81,10 @@ jobs:
     runs-on: ubuntu-latest
     if: github.ref == 'refs/heads/main'
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@34e114876b0b11c390a56381ad16ebd13914f8d5 # v4.3.1
 
       - name: Set up Fly.io CLI
-        uses: superfly/flyctl-actions/setup-flyctl@master
+        uses: superfly/flyctl-actions/setup-flyctl@fc53c09e1bc3be6f54706524e3b82c4f462f77be # 1.5
 
       - name: Deploy backend to Fly.io
         run: cd backend && flyctl deploy --remote-only
