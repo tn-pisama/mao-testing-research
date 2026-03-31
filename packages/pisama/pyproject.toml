@@ -4,13 +4,13 @@ build-backend = "hatchling.build"
 
 [project]
 name = "pisama"
-version = "0.1.0"
+version = "0.2.0"
 description = "Multi-agent failure detection for production AI systems"
 readme = "README.md"
 license = "MIT"
 requires-python = ">=3.10"
 authors = [
-    { name = "Pisama Team", email = "team@pisama.dev" }
+    { name = "Pisama Team", email = "team@pisama.ai" }
 ]
 keywords = [
     "ai",
@@ -45,8 +45,8 @@ auto = ["pisama-auto>=0.1.0", "opentelemetry-api>=1.20.0", "opentelemetry-sdk>=1
 pisama = "pisama.cli.main:main"
 
 [project.urls]
-Homepage = "https://pisama.dev"
-Documentation = "https://pisama.dev/docs"
+Homepage = "https://pisama.ai"
+Documentation = "https://docs.pisama.ai"
 Repository = "https://github.com/tn-pisama/pisama"
 
 [tool.hatch.build.targets.wheel]
