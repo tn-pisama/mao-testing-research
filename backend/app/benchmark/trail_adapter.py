@@ -92,18 +92,70 @@ class TRAILSpanAdapter:
         return ""
 
     def _get_output(self, span: TRAILSpan) -> str:
-        """Extract output text from a span."""
-        return self._get_attr(
-            span, "output.value", "gen_ai.output", "llm.output",
-            "output.message", "gen_ai.completion",
+        """Extract output text from a span.
+
+        Prefers llm.output_messages (clean text) over output.value (JSON).
+        """
+        # Try clean LLM output first
+        llm_out = self._get_attr(span, "llm.output_messages.0.message.content")
+        if llm_out:
+            return llm_out
+        # Fall back to output.value which may be JSON-encoded
+        raw = self._get_attr(
+            span, "output.value", "gen_ai.output", "gen_ai.completion",
         )
+        if raw:
+            return self._try_extract_content(raw)
+        return ""
 
     def _get_input(self, span: TRAILSpan) -> str:
-        """Extract input text from a span."""
-        return self._get_attr(
-            span, "input.value", "gen_ai.input", "llm.input",
-            "input.message", "gen_ai.prompt",
+        """Extract input text from a span.
+
+        Prefers the user message from llm.input_messages over raw input.value.
+        """
+        # Try to find the user message in LLM input messages
+        for i in range(20):  # check up to 20 messages
+            role = span.attributes.get(f"llm.input_messages.{i}.message.role", "")
+            content = span.attributes.get(f"llm.input_messages.{i}.message.content", "")
+            if role == "user" and content:
+                return str(content)
+        # Fall back to input.value
+        raw = self._get_attr(
+            span, "input.value", "gen_ai.input", "gen_ai.prompt",
         )
+        if raw:
+            return self._try_extract_content(raw)
+        return ""
+
+    def _get_system_prompt(self, span: TRAILSpan) -> str:
+        """Extract the system prompt from LLM input messages."""
+        return str(span.attributes.get("llm.input_messages.0.message.content", ""))
+
+    def _get_full_conversation(self, span: TRAILSpan) -> str:
+        """Extract the full conversation history from LLM input messages."""
+        parts = []
+        for i in range(50):
+            role = span.attributes.get(f"llm.input_messages.{i}.message.role", "")
+            content = span.attributes.get(f"llm.input_messages.{i}.message.content", "")
+            if not role and not content:
+                break
+            if content:
+                parts.append(f"[{role}] {str(content)[:2000]}")
+        return "\n\n".join(parts)
+
+    def _try_extract_content(self, raw: str) -> str:
+        """Try to extract 'content' from a JSON string, or return as-is."""
+        import json as _json
+        if raw.startswith("{") or raw.startswith("["):
+            try:
+                parsed = _json.loads(raw)
+                if isinstance(parsed, dict):
+                    return str(parsed.get("content", raw))
+                if isinstance(parsed, list) and parsed:
+                    return str(parsed[0].get("content", raw) if isinstance(parsed[0], dict) else raw)
+            except (ValueError, _json.JSONDecodeError):
+                pass
+        return raw
 
     def _collect_context_text(self, trace: TRAILTrace, exclude_span_id: str) -> str:
         """Collect contextual text from other spans in the trace.
@@ -178,9 +230,29 @@ class TRAILSpanAdapter:
         """Extract for hallucination detector.
 
         Expected keys: output, sources
+        Uses the full conversation context as sources -- the LLM's input
+        messages contain the factual grounding (tool results, documents).
         """
         output = self._get_output(span)
-        sources = self._collect_source_documents(span, trace)
+        sources = []
+
+        # Extract tool responses and prior context from the conversation
+        for i in range(50):
+            role = span.attributes.get(f"llm.input_messages.{i}.message.role", "")
+            content = span.attributes.get(f"llm.input_messages.{i}.message.content", "")
+            if not role and not content:
+                break
+            # Tool responses and observations are the "ground truth"
+            if role in ("tool-response", "tool", "tool-call", "function"):
+                if content:
+                    sources.append(str(content)[:4000])
+            # Prior assistant outputs may contain retrieved facts
+            elif role == "assistant" and content:
+                sources.append(str(content)[:4000])
+
+        # Also collect from child/sibling tool outputs
+        if not sources:
+            sources = self._collect_source_documents(span, trace)
 
         return {
             "output": output,
@@ -240,23 +312,29 @@ class TRAILSpanAdapter:
         """Extract for specification detector.
 
         Expected keys: task_specification, user_intent
+        The user_intent is the original task. The task_specification is
+        what the agent actually produced (its output).
         """
-        # The task specification is typically the initial input
-        user_intent = self._get_input(span)
-
-        # Look for the original task in root spans
-        root_input = ""
+        # Find the original user task from root spans or conversation
+        user_intent = ""
+        # Try the agent's root span input first
         for root in trace.spans:
-            inp = self._get_input(root)
-            if inp:
-                root_input = inp
+            for child in root.child_spans:
+                inp = self._get_input(child)
+                if inp and len(inp) > 20:
+                    user_intent = inp
+                    break
+            if user_intent:
                 break
+        if not user_intent:
+            user_intent = self._get_input(span)
 
-        task_spec = root_input if root_input else user_intent
+        # The specification is what the LLM actually output
+        task_spec = self._get_output(span)
 
         return {
-            "task_specification": self._get_output(span),
-            "user_intent": task_spec,
+            "task_specification": task_spec,
+            "user_intent": user_intent,
         }
 
     def _extract_context(
@@ -265,14 +343,20 @@ class TRAILSpanAdapter:
         """Extract for context detector.
 
         Expected keys: context, output
+        Uses the full conversation history as context -- the LLM had access
+        to all previous messages, tool results, and system instructions.
         """
         output = self._get_output(span)
-        context = self._collect_context_text(trace, span.span_id)
 
-        # Also include the input as part of context
-        input_text = self._get_input(span)
-        if input_text:
-            context = input_text + "\n---\n" + context if context else input_text
+        # The "context" is everything the LLM was given as input
+        # Use the full conversation for richest context
+        context = self._get_full_conversation(span)
+        if not context:
+            # Fallback: use input.value
+            context = self._get_input(span)
+        if not context:
+            # Last resort: collect from other spans
+            context = self._collect_context_text(trace, span.span_id)
 
         return {
             "context": context,
@@ -321,16 +405,34 @@ class TRAILSpanAdapter:
         """Extract for derailment detector.
 
         Expected keys: output, task
+        The task is the original user request. The output is what the LLM
+        produced at this step (which may have deviated from the task).
         """
         output = self._get_output(span)
 
-        # Find the original task from root spans
+        # Find the original task: look for user messages in the conversation
         task = ""
-        for root in trace.spans:
-            inp = self._get_input(root)
-            if inp:
-                task = inp
+        # First try: user message in this span's conversation
+        for i in range(50):
+            role = span.attributes.get(f"llm.input_messages.{i}.message.role", "")
+            content = span.attributes.get(f"llm.input_messages.{i}.message.content", "")
+            if role == "user" and content and len(str(content)) > 20:
+                task = str(content)[:4000]
                 break
+
+        # Fallback: root span's agent input
+        if not task:
+            for root in trace.spans:
+                for child in root.child_spans:
+                    inp = self._get_input(child)
+                    if inp and len(inp) > 20:
+                        task = inp[:4000]
+                        break
+                if task:
+                    break
+
+        if not task:
+            task = self._get_input(span)
 
         return {
             "output": output,
@@ -343,14 +445,31 @@ class TRAILSpanAdapter:
         """Extract for coordination detector.
 
         Expected keys: agent_ids, messages
+        TRAIL traces often use smolagents with managed sub-agents.
+        Agent IDs come from span names and smolagents metadata.
         """
         agent_ids: List[str] = []
         messages: List[Dict[str, str]] = []
 
         for flat_span in trace.flatten_spans():
+            # Try multiple agent ID sources
             agent_id = self._get_attr(
                 flat_span, "gen_ai.agent.id", "agent.id", "agent_id"
             )
+            # TRAIL smolagents traces use span names as agent identifiers
+            if not agent_id:
+                name = flat_span.span_name
+                if "Agent" in name or "agent" in name:
+                    agent_id = name
+                elif name.startswith("Step"):
+                    agent_id = "main_agent"
+            # Also check for managed_agents in attributes
+            if not agent_id:
+                for k, v in flat_span.attributes.items():
+                    if "managed_agents" in k and "description" in k:
+                        agent_id = str(v)[:50]
+                        break
+
             if agent_id and agent_id not in agent_ids:
                 agent_ids.append(agent_id)
 
@@ -358,18 +477,23 @@ class TRAILSpanAdapter:
             out = self._get_output(flat_span)
             sender = agent_id or flat_span.span_name
 
-            if inp:
-                messages.append({
-                    "sender": sender,
-                    "content": inp,
-                    "type": "input",
-                })
             if out:
                 messages.append({
                     "sender": sender,
-                    "content": out,
+                    "content": str(out)[:2000],
                     "type": "output",
                 })
+
+        # If only one agent found, try to infer from conversation roles
+        if len(agent_ids) <= 1:
+            for i in range(50):
+                role = span.attributes.get(f"llm.input_messages.{i}.message.role", "")
+                if role == "tool-call":
+                    if "tool_agent" not in agent_ids:
+                        agent_ids.append("tool_agent")
+                elif role == "tool-response":
+                    if "tool_executor" not in agent_ids:
+                        agent_ids.append("tool_executor")
 
         return {
             "agent_ids": agent_ids,
@@ -382,23 +506,37 @@ class TRAILSpanAdapter:
         """Extract for completion detector.
 
         Expected keys: agent_output, subtasks, success_criteria, task
+        For TRAIL's "Formatting Errors", this captures the agent's output
+        and the task requirements to check if completion claims are valid.
         """
         agent_output = self._get_output(span)
 
-        # Find task from root
+        # Find the original task from conversation or root spans
         task = ""
-        for root in trace.spans:
-            inp = self._get_input(root)
-            if inp:
-                task = inp
+        for i in range(50):
+            role = span.attributes.get(f"llm.input_messages.{i}.message.role", "")
+            content = span.attributes.get(f"llm.input_messages.{i}.message.content", "")
+            if role == "user" and content and len(str(content)) > 20:
+                task = str(content)[:4000]
                 break
+        if not task:
+            for root in trace.spans:
+                for child in root.child_spans:
+                    inp = self._get_input(child)
+                    if inp and len(inp) > 20:
+                        task = inp[:4000]
+                        break
+                if task:
+                    break
 
-        # Collect subtask outputs
+        # Collect subtask outputs from child spans and sibling steps
         subtasks: List[str] = []
-        for child in span.child_spans:
-            out = self._get_output(child)
-            if out:
-                subtasks.append(out)
+        parent = trace.get_parent_span(span)
+        if parent:
+            for sibling in parent.child_spans:
+                out = self._get_output(sibling)
+                if out and sibling.span_id != span.span_id:
+                    subtasks.append(out[:2000])
 
         return {
             "agent_output": agent_output,

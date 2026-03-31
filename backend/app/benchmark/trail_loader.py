@@ -55,6 +55,67 @@ TRAIL_ALL_CATEGORIES = list(TRAIL_TO_PISAMA.keys()) + list(TRAIL_UNMAPPED_CATEGO
 TRAIL_COVERED_PISAMA_TYPES = sorted(set(TRAIL_TO_PISAMA.values()))
 
 
+def _normalize_category(raw_cat: str) -> str:
+    """Normalize TRAIL category strings to canonical form.
+
+    The TRAIL dataset has inconsistencies: typos, case variations,
+    singular/plural, trailing spaces, missing suffixes.
+    """
+    import re as _re
+    c = raw_cat.strip()
+    # Canonical lowered form for matching
+    low = c.lower()
+    # Map known variants to canonical names
+    _VARIANTS = {
+        "language-only": "Language-only hallucinations",
+        "tool-related": "Tool-related hallucinations",
+        "poor information retrieval": "Poor Information Retrieval",
+        "poor information retrieval": "Poor Information Retrieval",
+        "tool output misinterpretation": "Tool Output Misinterpretation",
+        "incorrect problem identification": "Incorrect Problem Identification",
+        "context handling failure": "Context Handling Failures",
+        "context handling failures": "Context Handling Failures",
+        "incorrect memory usage": "Incorrect Memory Usage",
+        "resource abuse": "Resource Abuse",
+        "goal deviation": "Goal Deviation",
+        "instruction non-compliance": "Instruction Non-compliance",
+        "instruction non complience": "Instruction Non-compliance",
+        "instruction non-complience": "Instruction Non-compliance",
+        "task orchestration": "Task Orchestration",
+        "task orchestration error": "Task Orchestration",
+        "task orchestration errors": "Task Orchestration",
+        "formatting error": "Formatting Errors",
+        "formatting errors": "Formatting Errors",
+        "tool selection": "Tool Selection Errors",
+        "tool selection errors": "Tool Selection Errors",
+        "resource exhaustion": "Resource Exhaustion",
+        "resource not found": "Resource Not Found",
+        "authentication errors": "Authentication Errors",
+        "service errors": "Service Errors",
+        "timeout issues": "Timeout Issues",
+        "tool definition issues": "Tool Definition Issues",
+        "environment setup errors": "Environment Setup Errors",
+        "rate limiting": "Rate Limiting",
+        "language-only hallucinations": "Language-only hallucinations",
+        "tool-related hallucinations": "Tool-related hallucinations",
+    }
+    canonical = _VARIANTS.get(low)
+    if canonical:
+        return canonical
+    # Fallback: return stripped original
+    return c
+
+
+def _json_loads_lenient(s: str) -> Any:
+    """Parse JSON with tolerance for trailing commas."""
+    import re as _re
+    try:
+        return json.loads(s)
+    except json.JSONDecodeError:
+        cleaned = _re.sub(r",\s*([}\]])", r"\1", s)
+        return json.loads(cleaned)
+
+
 # ---------------------------------------------------------------------------
 # Data classes
 # ---------------------------------------------------------------------------
@@ -383,6 +444,8 @@ class TRAILDataLoader:
 
     def _load_jsonl(self, path: Path) -> None:
         """Load traces from a JSONL file, one line at a time."""
+        # Infer source from filename (gaia.jsonl -> gaia, swe_bench.jsonl -> swe-bench)
+        source = path.stem.lower().replace("_", "-")
         with open(path) as f:
             for line_num, line in enumerate(f, 1):
                 line = line.strip()
@@ -390,6 +453,7 @@ class TRAILDataLoader:
                     continue
                 try:
                     raw = json.loads(line)
+                    raw.setdefault("source", source)
                     trace = self._parse_trace(raw)
                     if trace:
                         self._traces.append(trace)
@@ -449,13 +513,40 @@ class TRAILDataLoader:
     def _parse_trace(self, raw: Dict[str, Any]) -> Optional[TRAILTrace]:
         """Parse a raw JSON record into a TRAILTrace.
 
-        Handles multiple potential data layouts from the TRAIL dataset:
-        - Top-level spans + annotations
-        - Nested under trace/otel keys
-        - String-encoded JSON fields
+        Handles the actual TRAIL HuggingFace format:
+        - {trace: JSON_STRING, labels: JSON_STRING}
+        where trace contains {trace_id, spans} and labels contains
+        {trace_id, errors, scores}.
+        Also handles pre-parsed dict formats.
         """
+        # --- Handle the actual HF format: {trace: str, labels: str} ---
+        raw_trace_field = raw.get("trace")
+        raw_labels_field = raw.get("labels")
+
+        trace_data: Dict[str, Any] = {}
+        labels_data: Dict[str, Any] = {}
+
+        if isinstance(raw_trace_field, str):
+            try:
+                trace_data = _json_loads_lenient(raw_trace_field)
+            except (json.JSONDecodeError, ValueError):
+                trace_data = {}
+        elif isinstance(raw_trace_field, dict):
+            trace_data = raw_trace_field
+
+        if isinstance(raw_labels_field, str):
+            try:
+                labels_data = _json_loads_lenient(raw_labels_field)
+            except (json.JSONDecodeError, ValueError):
+                labels_data = {}
+        elif isinstance(raw_labels_field, dict):
+            labels_data = raw_labels_field
+
+        # Extract trace_id
         trace_id = str(
-            raw.get("trace_id")
+            trace_data.get("trace_id")
+            or labels_data.get("trace_id")
+            or raw.get("trace_id")
             or raw.get("id")
             or raw.get("instance_id")
             or ""
@@ -463,39 +554,46 @@ class TRAILDataLoader:
         if not trace_id:
             return None
 
-        # Determine source (gaia vs swe-bench)
+        # Determine source (gaia vs swe-bench) from file context
         source = str(raw.get("source", raw.get("benchmark", "unknown"))).lower()
 
-        # Parse scores
+        # Parse scores from labels
         scores: Dict[str, float] = {}
-        raw_scores = raw.get("scores", raw.get("reliability_score"))
-        if isinstance(raw_scores, dict):
+        raw_scores = labels_data.get("scores", raw.get("scores"))
+        if isinstance(raw_scores, list) and raw_scores:
+            # TRAIL format: scores is a list with one dict
+            scores = {
+                k: float(v)
+                for k, v in raw_scores[0].items()
+                if isinstance(v, (int, float))
+            }
+        elif isinstance(raw_scores, dict):
             scores = {k: float(v) for k, v in raw_scores.items() if v is not None}
-        elif isinstance(raw_scores, (int, float)):
-            scores = {"reliability_score": float(raw_scores)}
 
-        # Parse spans — could be under multiple keys
-        raw_spans = raw.get("spans")
-        if not raw_spans and isinstance(raw.get("trace"), dict):
-            raw_spans = raw["trace"].get("spans", [])
+        # Parse spans from trace_data or raw
+        raw_spans = trace_data.get("spans", [])
+        if not raw_spans:
+            raw_spans = raw.get("spans", [])
         if not raw_spans:
             raw_spans = raw.get("otel_spans", [])
         if isinstance(raw_spans, str):
             try:
-                raw_spans = json.loads(raw_spans)
-            except json.JSONDecodeError:
+                raw_spans = _json_loads_lenient(raw_spans)
+            except (json.JSONDecodeError, ValueError):
                 raw_spans = []
         if not isinstance(raw_spans, list):
             raw_spans = []
 
         spans = self._build_span_tree(raw_spans)
 
-        # Parse annotations
-        raw_annotations = raw.get("annotations", raw.get("failure_annotations", []))
+        # Parse annotations from labels.errors or raw.annotations
+        raw_annotations = labels_data.get("errors", [])
+        if not raw_annotations:
+            raw_annotations = raw.get("annotations", raw.get("failure_annotations", []))
         if isinstance(raw_annotations, str):
             try:
-                raw_annotations = json.loads(raw_annotations)
-            except json.JSONDecodeError:
+                raw_annotations = _json_loads_lenient(raw_annotations)
+            except (json.JSONDecodeError, ValueError):
                 raw_annotations = []
         if not isinstance(raw_annotations, list):
             raw_annotations = []
@@ -504,8 +602,10 @@ class TRAILDataLoader:
         for ann in raw_annotations:
             if not isinstance(ann, dict):
                 continue
+            raw_cat = str(ann.get("category", ann.get("failure_type", "")))
+            normalized_cat = _normalize_category(raw_cat)
             annotation = TRAILAnnotation(
-                category=str(ann.get("category", ann.get("failure_type", ""))),
+                category=normalized_cat,
                 location=str(ann.get("location", ann.get("span_id", ""))),
                 evidence=str(ann.get("evidence", "")),
                 description=str(ann.get("description", "")),
@@ -554,7 +654,7 @@ class TRAILDataLoader:
     def _parse_flat_span(self, raw: Dict[str, Any]) -> TRAILSpan:
         """Parse a single flat span dict."""
         attributes = self._normalize_attributes(
-            raw.get("attributes", raw.get("attrs", {}))
+            raw.get("span_attributes", raw.get("attributes", raw.get("attrs", {})))
         )
 
         events = raw.get("events", [])
