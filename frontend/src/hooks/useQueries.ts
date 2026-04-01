@@ -26,17 +26,11 @@ import type {
   OpenClawInstance,
   OpenClawAgent,
 } from '@/lib/api'
-import { demoDataStore } from '@/lib/demo-state'
-import {
-  generateDemoLoopAnalytics,
-  generateDemoCostAnalytics,
-  generateDemoDifyInstances,
-  generateDemoDifyApps,
-  generateDemoOpenClawInstances,
-  generateDemoOpenClawAgents,
-  generateDemoLangGraphDeployments,
-  generateDemoLangGraphAssistants,
-} from '@/lib/demo-data'
+// demo-state and demo-data are dynamically imported only when needed (lazy-load)
+async function getDemoStore() {
+  const { demoDataStore } = await import('@/lib/demo-state')
+  return demoDataStore
+}
 
 // ---------------------------------------------------------------------------
 // Helpers
@@ -90,7 +84,7 @@ function useQueryWithFallback<T>({
 }: {
   queryKey: readonly unknown[]
   queryFn: (api: ApiClient) => Promise<T>
-  fallbackFn: () => T
+  fallbackFn: () => T | Promise<T>
   enabled?: boolean
   refetchInterval?: number | false
   initialData?: T | null
@@ -106,7 +100,7 @@ function useQueryWithFallback<T>({
         return { data, isDemoMode: false }
       } catch (error) {
         if (isDemoModeEnabled()) {
-          return { data: fallbackFn(), isDemoMode: true }
+          return { data: await fallbackFn(), isDemoMode: true }
         }
         throw error
       }
@@ -242,8 +236,9 @@ export function useTracesQuery(params?: {
   const result = useQueryWithFallback<{ traces: Trace[]; total: number }>({
     queryKey: queryKeys.traces(params as Record<string, unknown>),
     queryFn: (api) => api.getTraces(params ?? {}),
-    fallbackFn: () => {
-      const allTraces = demoDataStore.getTraces()
+    fallbackFn: async () => {
+      const store = await getDemoStore()
+      const allTraces = store.getTraces()
       return {
         traces: allTraces.slice(0, params?.perPage || 20),
         total: allTraces.length,
@@ -265,7 +260,7 @@ export function useTraceQuery(traceId: string) {
   return useQueryWithFallback<Trace | null>({
     queryKey: queryKeys.trace(traceId),
     queryFn: (api) => api.getTrace(traceId),
-    fallbackFn: () => demoDataStore.getTrace(traceId) ?? null,
+    fallbackFn: async () => (await getDemoStore()).getTrace(traceId) ?? null,
     enabled: !!traceId,
   })
 }
@@ -274,7 +269,7 @@ export function useTraceStatesQuery(traceId: string) {
   return useQueryWithFallback<unknown[]>({
     queryKey: queryKeys.traceStates(traceId),
     queryFn: (api) => api.getTraceStates(traceId),
-    fallbackFn: () => demoDataStore.getStatesForTrace(traceId),
+    fallbackFn: async () => (await getDemoStore()).getStatesForTrace(traceId),
     enabled: !!traceId,
   })
 }
@@ -297,8 +292,9 @@ export function useDetectionsQuery(params?: {
   }>({
     queryKey: queryKeys.detections(params as Record<string, unknown>),
     queryFn: (api) => api.getDetections(params ?? {}),
-    fallbackFn: () => {
-      const all = demoDataStore.getDetections()
+    fallbackFn: async () => {
+      const store = await getDemoStore()
+      const all = store.getDetections()
       const perPage = params?.perPage || 20
       return {
         items: all.slice(0, perPage),
@@ -323,7 +319,7 @@ export function useDetectionQuery(detectionId: string) {
   return useQueryWithFallback<Detection | null>({
     queryKey: queryKeys.detection(detectionId),
     queryFn: (api) => api.getDetection(detectionId),
-    fallbackFn: () => demoDataStore.getDetection(detectionId) ?? null,
+    fallbackFn: async () => (await getDemoStore()).getDetection(detectionId) ?? null,
     enabled: !!detectionId,
   })
 }
@@ -343,8 +339,9 @@ export function useHealingRecordsQuery(params?: {
       const res = await api.listHealingRecords(params)
       return { items: res.items, total: res.total || res.items.length }
     },
-    fallbackFn: () => {
-      const allRecords = demoDataStore.getHealingRecords()
+    fallbackFn: async () => {
+      const store = await getDemoStore()
+      const allRecords = store.getHealingRecords()
       let filtered = allRecords
       if (params?.status) filtered = allRecords.filter((r) => r.status === params.status)
       return { items: filtered.slice(0, params?.perPage || 20), total: filtered.length }
@@ -367,7 +364,7 @@ export function useN8nConnectionsQuery() {
       const res = await api.listN8nConnections()
       return res.items
     },
-    fallbackFn: () => demoDataStore.getN8nConnections(),
+    fallbackFn: async () => (await getDemoStore()).getN8nConnections(),
   })
 
   return {
@@ -437,7 +434,10 @@ export function useLoopAnalyticsQuery(days: number = 30) {
   return useQueryWithFallback<LoopAnalytics | null>({
     queryKey: queryKeys.loopAnalytics(days),
     queryFn: (api) => api.getLoopAnalytics(days),
-    fallbackFn: () => generateDemoLoopAnalytics(),
+    fallbackFn: async () => {
+      const { generateDemoLoopAnalytics } = await import('@/lib/demo-data')
+      return generateDemoLoopAnalytics()
+    },
   })
 }
 
@@ -445,7 +445,10 @@ export function useCostAnalyticsQuery(days: number = 30) {
   return useQueryWithFallback<CostAnalytics | null>({
     queryKey: queryKeys.costAnalytics(days),
     queryFn: (api) => api.getCostAnalytics(days),
-    fallbackFn: () => generateDemoCostAnalytics(),
+    fallbackFn: async () => {
+      const { generateDemoCostAnalytics } = await import('@/lib/demo-data')
+      return generateDemoCostAnalytics()
+    },
   })
 }
 
@@ -461,8 +464,9 @@ export function useQualityAssessmentsQuery(params?: {
       const res = await api.listQualityAssessments(params)
       return { assessments: res.assessments, total: res.total || res.assessments.length }
     },
-    fallbackFn: () => {
-      const all = demoDataStore.getQualityAssessments()
+    fallbackFn: async () => {
+      const store = await getDemoStore()
+      const all = store.getQualityAssessments()
       return { assessments: all.slice(0, params?.pageSize || 20), total: all.length }
     },
   })
@@ -480,7 +484,7 @@ export function useFeedbackStatsQuery() {
   return useQueryWithFallback<FeedbackStats>({
     queryKey: queryKeys.feedbackStats(),
     queryFn: (api) => api.getFeedbackStats(),
-    fallbackFn: () => demoDataStore.getFeedbackStats() as unknown as FeedbackStats,
+    fallbackFn: async () => (await getDemoStore()).getFeedbackStats() as unknown as FeedbackStats,
   })
 }
 
@@ -488,7 +492,7 @@ export function useThresholdRecommendationsQuery() {
   return useQueryWithFallback<ThresholdRecommendation[]>({
     queryKey: queryKeys.thresholdRecommendations(),
     queryFn: (api) => api.getThresholdRecommendations(),
-    fallbackFn: () => demoDataStore.getThresholdRecommendations() as unknown as ThresholdRecommendation[],
+    fallbackFn: async () => (await getDemoStore()).getThresholdRecommendations() as unknown as ThresholdRecommendation[],
   })
 }
 
@@ -496,7 +500,7 @@ export function useN8nWorkflowsQuery() {
   const result = useQueryWithFallback<N8nWorkflow[]>({
     queryKey: queryKeys.n8nWorkflows(),
     queryFn: (api) => api.listN8nWorkflows(),
-    fallbackFn: () => demoDataStore.getN8nWorkflows() as unknown as N8nWorkflow[],
+    fallbackFn: async () => (await getDemoStore()).getN8nWorkflows() as unknown as N8nWorkflow[],
   })
 
   return {
@@ -511,7 +515,10 @@ export function useDifyInstancesQuery() {
   const result = useQueryWithFallback<DifyInstance[]>({
     queryKey: queryKeys.difyInstances(),
     queryFn: (api) => api.listDifyInstances(),
-    fallbackFn: () => generateDemoDifyInstances(),
+    fallbackFn: async () => {
+      const { generateDemoDifyInstances } = await import('@/lib/demo-data')
+      return generateDemoDifyInstances()
+    },
   })
 
   return {
@@ -526,7 +533,10 @@ export function useDifyAppsQuery(instanceId?: string) {
   const result = useQueryWithFallback<DifyApp[]>({
     queryKey: queryKeys.difyApps(instanceId),
     queryFn: (api) => api.listDifyApps(instanceId),
-    fallbackFn: () => generateDemoDifyApps(),
+    fallbackFn: async () => {
+      const { generateDemoDifyApps } = await import('@/lib/demo-data')
+      return generateDemoDifyApps()
+    },
   })
 
   return {
@@ -541,7 +551,10 @@ export function useLangGraphDeploymentsQuery() {
   const result = useQueryWithFallback<LangGraphDeployment[]>({
     queryKey: queryKeys.langGraphDeployments(),
     queryFn: (api) => api.listLangGraphDeployments(),
-    fallbackFn: () => generateDemoLangGraphDeployments(),
+    fallbackFn: async () => {
+      const { generateDemoLangGraphDeployments } = await import('@/lib/demo-data')
+      return generateDemoLangGraphDeployments()
+    },
   })
 
   return {
@@ -556,7 +569,10 @@ export function useLangGraphAssistantsQuery(deploymentId?: string) {
   const result = useQueryWithFallback<LangGraphAssistant[]>({
     queryKey: queryKeys.langGraphAssistants(deploymentId),
     queryFn: (api) => api.listLangGraphAssistants(deploymentId),
-    fallbackFn: () => generateDemoLangGraphAssistants(),
+    fallbackFn: async () => {
+      const { generateDemoLangGraphAssistants } = await import('@/lib/demo-data')
+      return generateDemoLangGraphAssistants()
+    },
   })
 
   return {
@@ -571,7 +587,10 @@ export function useOpenClawInstancesQuery() {
   const result = useQueryWithFallback<OpenClawInstance[]>({
     queryKey: queryKeys.openClawInstances(),
     queryFn: (api) => api.listOpenClawInstances(),
-    fallbackFn: () => generateDemoOpenClawInstances(),
+    fallbackFn: async () => {
+      const { generateDemoOpenClawInstances } = await import('@/lib/demo-data')
+      return generateDemoOpenClawInstances()
+    },
   })
 
   return {
@@ -586,7 +605,10 @@ export function useOpenClawAgentsQuery(instanceId?: string) {
   const result = useQueryWithFallback<OpenClawAgent[]>({
     queryKey: queryKeys.openClawAgents(instanceId),
     queryFn: (api) => api.listOpenClawAgents(instanceId),
-    fallbackFn: () => generateDemoOpenClawAgents(),
+    fallbackFn: async () => {
+      const { generateDemoOpenClawAgents } = await import('@/lib/demo-data')
+      return generateDemoOpenClawAgents()
+    },
   })
 
   return {
@@ -760,8 +782,9 @@ export function useQualityAssessmentDetailQuery(assessmentId: string) {
   const result = useQueryWithFallback<QualityAssessment | null>({
     queryKey: queryKeys.qualityAssessment(assessmentId),
     queryFn: (api) => api.getQualityAssessment(assessmentId),
-    fallbackFn: () => {
-      const all = demoDataStore.getQualityAssessments()
+    fallbackFn: async () => {
+      const store = await getDemoStore()
+      const all = store.getQualityAssessments()
       return all.find(a => a.id === assessmentId) ?? all[0] ?? null
     },
     enabled: !!assessmentId,

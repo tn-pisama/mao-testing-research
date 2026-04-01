@@ -1,0 +1,9 @@
+node_modules/
+.next/
+tests/
+test-results/
+playwright-report/
+*.md
+.vscode/
+.git/
+design-screenshots/

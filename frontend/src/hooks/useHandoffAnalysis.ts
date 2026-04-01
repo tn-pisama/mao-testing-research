@@ -4,7 +4,7 @@ import { useTenant } from '@/hooks/useTenant'
 import type { QualityAssessment } from '@/lib/api'
 import type { HandoffMetrics } from '@/lib/workflow-layout'
 import { createApiClient } from '@/lib/api'
-import { generateDemoHandoffAnalysis, generateHandoffMetrics } from '@/lib/demo-data'
+// demo-data is dynamically imported only when needed (lazy-load)
 
 export interface HandoffAnalysis {
   handoff_graph: Record<string, string[]>
@@ -54,6 +54,7 @@ export function useHandoffAnalysis(workflow?: QualityAssessment): UseHandoffAnal
         })
 
         // Generate metrics from analysis
+        const { generateHandoffMetrics } = await import('@/lib/demo-data')
         const metrics = generateHandoffMetrics(
           analysis.handoff_graph,
           workflow!.agent_scores || []
@@ -63,8 +64,9 @@ export function useHandoffAnalysis(workflow?: QualityAssessment): UseHandoffAnal
         setHandoffMetrics(metrics)
         setIsDemoMode(false)
       } catch (err) {
-        // Graceful fallback to demo data
+        // Graceful fallback to demo data (lazy-loaded)
         console.warn('API failed, using demo data:', (err as Error)?.message || err)
+        const { generateDemoHandoffAnalysis, generateHandoffMetrics } = await import('@/lib/demo-data')
         const demoAnalysis = generateDemoHandoffAnalysis(workflow!)
         const demoMetrics = generateHandoffMetrics(
           demoAnalysis.handoff_graph,

@@ -1,27 +1,39 @@
 'use client'
 
 import { useState, useEffect, useCallback, useRef } from 'react'
-import {
-  generateDemoAgents,
-  generateDemoMessages,
-  generateDemoActivityEvents,
-  generateDemoTraces,
-  generateDemoDetections,
-  generateDemoLoopAnalytics,
-  generateDemoCostAnalytics,
-  generateDemoAgentMetrics,
-} from '@/lib/demo-data'
+// demo-data is dynamically imported only when needed (lazy-load)
 import { AgentInfo, ActivityEvent } from '@/components/agents'
 
 interface DemoState {
   agents: AgentInfo[]
-  messages: ReturnType<typeof generateDemoMessages>
+  messages: unknown[]
   activityEvents: ActivityEvent[]
-  traces: ReturnType<typeof generateDemoTraces>
-  detections: ReturnType<typeof generateDemoDetections>
-  loopAnalytics: ReturnType<typeof generateDemoLoopAnalytics>
-  costAnalytics: ReturnType<typeof generateDemoCostAnalytics>
-  agentMetrics: ReturnType<typeof generateDemoAgentMetrics>
+  traces: unknown[]
+  detections: unknown[]
+  loopAnalytics: {
+    total_loops_detected: number
+    loops_by_method: Record<string, number>
+    avg_loop_length: number
+    top_agents_in_loops: Array<{ agent_id: string; count: number }>
+    time_series: Array<{ date: string; count: number }>
+  }
+  costAnalytics: {
+    total_cost_cents: number
+    total_tokens: number
+    cost_by_framework: Record<string, number>
+    cost_by_day: Array<{ date: string; cost_cents: number }>
+    top_expensive_traces: Array<{ trace_id: string; session_id: string; cost_cents: number; tokens: number }>
+  }
+  agentMetrics: {
+    totalAgents: number
+    activeAgents: number
+    totalTokens: number
+    avgLatencyMs: number
+    totalCostCents: number
+    errorRate: number
+    loopsDetected: number
+    avgStepsPerTrace: number
+  }
 }
 
 interface UseDemoModeOptions {
@@ -61,7 +73,17 @@ const emptyState: DemoState = {
   },
 }
 
-function createInitialState(): DemoState {
+async function createInitialState(): Promise<DemoState> {
+  const {
+    generateDemoAgents,
+    generateDemoMessages,
+    generateDemoActivityEvents,
+    generateDemoTraces,
+    generateDemoDetections,
+    generateDemoLoopAnalytics,
+    generateDemoCostAnalytics,
+    generateDemoAgentMetrics,
+  } = await import('@/lib/demo-data')
   const agents = generateDemoAgents(6)
   return {
     agents,
@@ -86,26 +108,34 @@ export function useDemoMode(options: UseDemoModeOptions = {}) {
 
   useEffect(() => {
     // eslint-disable-next-line react-hooks/set-state-in-effect -- one-time initialization
-    setDemoState(createInitialState())
-    setIsLoaded(true)
+    createInitialState().then((state) => {
+      setDemoState(state)
+      setIsLoaded(true)
+    })
   }, [])
 
   const refreshData = useCallback(() => {
-    setDemoState(createInitialState())
+    createInitialState().then(setDemoState)
   }, [])
 
   const refreshDataWithAgents = useCallback((agents: AgentInfo[]) => {
-    setDemoState(prev => ({
-      ...prev,
-      agents,
-      messages: generateDemoMessages(agents, 8),
-      activityEvents: generateDemoActivityEvents(agents, 15),
-      agentMetrics: {
-        ...generateDemoAgentMetrics(),
-        totalAgents: agents.length,
-        activeAgents: agents.filter(a => a.status === 'running').length,
-      },
-    }))
+    import('@/lib/demo-data').then(({
+      generateDemoMessages,
+      generateDemoActivityEvents,
+      generateDemoAgentMetrics,
+    }) => {
+      setDemoState(prev => ({
+        ...prev,
+        agents,
+        messages: generateDemoMessages(agents, 8),
+        activityEvents: generateDemoActivityEvents(agents, 15),
+        agentMetrics: {
+          ...generateDemoAgentMetrics(),
+          totalAgents: agents.length,
+          activeAgents: agents.filter(a => a.status === 'running').length,
+        },
+      }))
+    })
   }, [])
 
   const simulateActivity = useCallback(() => {

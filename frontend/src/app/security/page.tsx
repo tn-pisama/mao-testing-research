@@ -11,12 +11,7 @@ import {
 import { Layout } from '@/components/common/Layout'
 import { Button } from '@/components/ui/Button'
 import { createApiClient, InjectionCheckResult, HallucinationCheckResult, OverflowCheckResult, CostCalculation } from '@/lib/api'
-import {
-  generateDemoInjectionCheck,
-  generateDemoHallucinationCheck,
-  generateDemoOverflowCheck,
-  generateDemoCostCalculation,
-} from '@/lib/demo-data'
+// demo-data is dynamically imported only when needed (lazy-load)
 import { InjectionCheckForm, InjectionCheckResult as InjectionResult } from '@/components/security/InjectionCheck'
 import { HallucinationCheckForm, HallucinationCheckResult as HallucinationResult } from '@/components/security/HallucinationCheck'
 import { OverflowCheckForm, OverflowCheckResult as OverflowResult } from '@/components/security/OverflowCheck'
@@ -112,7 +107,14 @@ export default function SecurityPage() {
     } catch (err) {
       console.error('Check failed, falling back to demo mode:', err)
 
-      // Fall back to demo data
+      // Fall back to demo data (lazy-loaded)
+      const {
+        generateDemoInjectionCheck,
+        generateDemoHallucinationCheck,
+        generateDemoOverflowCheck,
+        generateDemoCostCalculation,
+      } = await import('@/lib/demo-data')
+
       switch (selectedCheck) {
         case 'injection':
           if (!injectionText.trim()) {

@@ -627,8 +627,8 @@ class BenchmarkRunner:
             from app.detection.turn_aware.context_neglect import TurnAwareContextNeglectDetector
             from app.detection.turn_aware.withholding import TurnAwareInformationWithholdingDetector
             from app.detection.turn_aware.role_usurpation import TurnAwareRoleUsurpationDetector
-            from app.detection.turn_aware.hybrid import HybridOutputValidationDetector
-            from app.detection.turn_aware.hybrid import HybridCommunicationBreakdownDetector
+            from app.detection.turn_aware.hybrid_output_validation import HybridOutputValidationDetector
+            from app.detection.turn_aware.hybrid_communication import HybridCommunicationBreakdownDetector
             from app.detection.turn_aware.quality_gate import TurnAwareQualityGateBypassDetector
         except ImportError as e:
             logger.warning(f"Turn-aware detector import failed: {e}")

@@ -47,20 +47,6 @@ body {
   -moz-osx-font-smoothing: grayscale;
 }
 
-.scrollbar-thin::-webkit-scrollbar {
-  width: 4px;
-  height: 4px;
-}
-
-.scrollbar-thin::-webkit-scrollbar-track {
-  background: var(--bg-base);
-}
-
-.scrollbar-thin::-webkit-scrollbar-thumb {
-  background-color: #52525b;
-  border-radius: 2px;
-}
-
 .react-flow__node {
   transition: none;
 }

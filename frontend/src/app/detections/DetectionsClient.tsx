@@ -15,10 +15,10 @@ import {
 import { useUserPreferences } from '@/lib/user-preferences'
 import { useDetectionsQuery, useSubmitFeedbackMutation } from '@/hooks/useQueries'
 
-import { DetectionFilters } from '@/components/detections/DetectionFilters'
-import { DetectionListItem } from '@/components/detections/DetectionListItem'
-import { StatCard } from '@/components/detections/StatCard'
-import type { DetectionType, Severity } from '@/components/detections/DetectionTypeConfig'
+import { DetectionFilters } from '@/components/detection/DetectionFilters'
+import { DetectionListItem } from '@/components/detection/DetectionListItem'
+import { StatCard } from '@/components/detection/StatCard'
+import type { DetectionType, Severity } from '@/components/detection/DetectionTypeConfig'
 import type { Detection } from '@/lib/api'
 
 interface DetectionsClientProps {
