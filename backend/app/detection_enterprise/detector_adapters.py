@@ -798,6 +798,458 @@ def _build_detector_runners() -> Dict[DetectionType, Any]:
         except Exception as exc:
             logger.warning("Could not import %s detector: %s", det_type.value, exc)
 
+    # --- PISAMA-CORE AGENTIC DESIGN PATTERN DETECTORS ---
+    # These 14 detectors live in pisama-core and use the Trace-based detect() API.
+    # Each adapter converts golden dataset input_data into a Trace, runs the
+    # async detector, and returns (detected, confidence).
+
+    import asyncio
+    import sys
+    from datetime import datetime as _dt, timezone as _tz
+    from pathlib import Path as _Path
+
+    _pisama_core_src = str(_Path(__file__).parent.parent.parent.parent / "packages" / "pisama-core" / "src")
+    if _pisama_core_src not in sys.path:
+        sys.path.insert(0, _pisama_core_src)
+
+    def _severity_to_confidence(severity: int) -> float:
+        """Convert 0-100 severity to 0.0-1.0 confidence."""
+        return max(0.0, min(1.0, severity / 100.0))
+
+    def _run_async(coro):
+        """Run an async coroutine synchronously."""
+        try:
+            loop = asyncio.get_running_loop()
+        except RuntimeError:
+            loop = None
+        if loop and loop.is_running():
+            import concurrent.futures
+            with concurrent.futures.ThreadPoolExecutor() as pool:
+                return pool.submit(asyncio.run, coro).result()
+        return asyncio.run(coro)
+
+    # --- ROUTING ---
+    try:
+        from pisama_core.detection.detectors.routing import RoutingDetector
+        from pisama_core.traces.models import Trace as _Trace, Span as _Span
+        from pisama_core.traces.enums import SpanKind as _SpanKind
+
+        _routing_det = RoutingDetector()
+
+        def _run_routing(entry: GoldenDatasetEntry) -> Tuple[bool, float]:
+            d = entry.input_data
+            trace = _Trace()
+            span = trace.create_span(
+                name=d.get("handler_name", "handler"),
+                kind=_SpanKind.AGENT,
+                input_data={"input": d.get("input_text", "")},
+                attributes={"description": d.get("handler_description", "")},
+            )
+            result = _run_async(_routing_det.detect(trace))
+            return result.detected, _severity_to_confidence(result.severity)
+
+        runners[DetectionType.ROUTING] = _run_routing
+    except Exception as exc:
+        logger.warning("Could not import routing detector: %s", exc)
+
+    # --- PROPAGATION ---
+    try:
+        from pisama_core.detection.detectors.propagation import ErrorPropagationDetector
+        from pisama_core.traces.models import Trace as _Trace, Span as _Span
+        from pisama_core.traces.enums import SpanKind as _SpanKind
+
+        _propagation_det = ErrorPropagationDetector()
+
+        def _run_propagation(entry: GoldenDatasetEntry) -> Tuple[bool, float]:
+            d = entry.input_data
+            trace = _Trace()
+            steps = d.get("pipeline_steps", [])
+            now = _dt.now(_tz.utc)
+            for i, step in enumerate(steps):
+                trace.create_span(
+                    name=f"step_{step.get('step', i+1)}",
+                    kind=_SpanKind.CHAIN,
+                    output_data={"output": step.get("output", "")},
+                    start_time=now,
+                )
+            result = _run_async(_propagation_det.detect(trace))
+            return result.detected, _severity_to_confidence(result.severity)
+
+        runners[DetectionType.PROPAGATION] = _run_propagation
+    except Exception as exc:
+        logger.warning("Could not import propagation detector: %s", exc)
+
+    # --- CRITIC_QUALITY ---
+    try:
+        from pisama_core.detection.detectors.critic import CriticQualityDetector
+        from pisama_core.traces.models import Trace as _Trace
+        from pisama_core.traces.enums import SpanKind as _SpanKind
+
+        _critic_det = CriticQualityDetector()
+
+        def _run_critic_quality(entry: GoldenDatasetEntry) -> Tuple[bool, float]:
+            d = entry.input_data
+            trace = _Trace()
+            iterations = d.get("iterations", [])
+            for i, it in enumerate(iterations):
+                role = it.get("role", "producer")
+                kind = _SpanKind.AGENT
+                name = f"{role}_{i}"
+                # Use critic-related naming for critic spans
+                if role == "critic":
+                    name = f"review_{i}"
+                trace.create_span(
+                    name=name,
+                    kind=kind,
+                    output_data={"output": it.get("output", "")},
+                )
+            result = _run_async(_critic_det.detect(trace))
+            return result.detected, _severity_to_confidence(result.severity)
+
+        runners[DetectionType.CRITIC_QUALITY] = _run_critic_quality
+    except Exception as exc:
+        logger.warning("Could not import critic_quality detector: %s", exc)
+
+    # --- ESCALATION_LOOP ---
+    try:
+        from pisama_core.detection.detectors.escalation import EscalationLoopDetector
+        from pisama_core.traces.models import Trace as _Trace
+        from pisama_core.traces.enums import SpanKind as _SpanKind
+
+        _escalation_det = EscalationLoopDetector()
+
+        def _run_escalation_loop(entry: GoldenDatasetEntry) -> Tuple[bool, float]:
+            d = entry.input_data
+            trace = _Trace()
+            handoffs = d.get("handoffs", [])
+            for i, h in enumerate(handoffs):
+                trace.create_span(
+                    name=f"handoff:{h.get('source', 'A')}->{h.get('target', 'B')}",
+                    kind=_SpanKind.HANDOFF,
+                    attributes={
+                        "source_agent": h.get("source", ""),
+                        "target_agent": h.get("target", ""),
+                    },
+                    output_data={"output": h.get("output", "")},
+                )
+            result = _run_async(_escalation_det.detect(trace))
+            return result.detected, _severity_to_confidence(result.severity)
+
+        runners[DetectionType.ESCALATION_LOOP] = _run_escalation_loop
+    except Exception as exc:
+        logger.warning("Could not import escalation_loop detector: %s", exc)
+
+    # --- CITATION ---
+    try:
+        from pisama_core.detection.detectors.citation import CitationDetector
+        from pisama_core.traces.models import Trace as _Trace
+        from pisama_core.traces.enums import SpanKind as _SpanKind
+
+        _citation_det = CitationDetector()
+
+        def _run_citation(entry: GoldenDatasetEntry) -> Tuple[bool, float]:
+            d = entry.input_data
+            trace = _Trace()
+            # Create a retrieval span with source documents
+            sources = d.get("sources", [])
+            for i, src in enumerate(sources):
+                trace.create_span(
+                    name=f"retrieval_{i}",
+                    kind=_SpanKind.RETRIEVAL,
+                    output_data={"content": src if isinstance(src, str) else str(src)},
+                )
+            # Create an agent span with the output
+            trace.create_span(
+                name="agent_output",
+                kind=_SpanKind.AGENT,
+                output_data={"output": d.get("output", "")},
+            )
+            result = _run_async(_citation_det.detect(trace))
+            return result.detected, _severity_to_confidence(result.severity)
+
+        runners[DetectionType.CITATION] = _run_citation
+    except Exception as exc:
+        logger.warning("Could not import citation detector: %s", exc)
+
+    # --- PARALLEL_CONSISTENCY ---
+    try:
+        from pisama_core.detection.detectors.parallel_consistency import ParallelConsistencyDetector
+        from pisama_core.traces.models import Trace as _Trace
+        from pisama_core.traces.enums import SpanKind as _SpanKind
+
+        _parallel_det = ParallelConsistencyDetector()
+
+        def _run_parallel_consistency(entry: GoldenDatasetEntry) -> Tuple[bool, float]:
+            d = entry.input_data
+            trace = _Trace()
+            # Create a parent span for the parallel group
+            parent = trace.create_span(name="parallel_group", kind=_SpanKind.WORKFLOW)
+            # Create parallel branch spans under the parent
+            branches = d.get("branches", [])
+            now = _dt.now(_tz.utc)
+            for branch in branches:
+                trace.create_span(
+                    name=f"branch_{branch.get('id', 'unknown')}",
+                    kind=_SpanKind.AGENT,
+                    parent_id=parent.span_id,
+                    output_data={"output": branch.get("output", "")},
+                    start_time=now,  # Same start time = parallel
+                )
+            # Create merge span
+            trace.create_span(
+                name="merge",
+                kind=_SpanKind.AGENT,
+                parent_id=parent.span_id,
+                output_data={"output": d.get("merged_output", "")},
+            )
+            result = _run_async(_parallel_det.detect(trace))
+            return result.detected, _severity_to_confidence(result.severity)
+
+        runners[DetectionType.PARALLEL_CONSISTENCY] = _run_parallel_consistency
+    except Exception as exc:
+        logger.warning("Could not import parallel_consistency detector: %s", exc)
+
+    # --- MEMORY_STALENESS ---
+    try:
+        from pisama_core.detection.detectors.memory_staleness import MemoryStalenessDetector
+        from pisama_core.traces.models import Trace as _Trace
+        from pisama_core.traces.enums import SpanKind as _SpanKind
+
+        _memory_det = MemoryStalenessDetector()
+
+        def _run_memory_staleness(entry: GoldenDatasetEntry) -> Tuple[bool, float]:
+            d = entry.input_data
+            trace = _Trace()
+            # Retrieval span with the retrieved content
+            trace.create_span(
+                name="memory_retrieval",
+                kind=_SpanKind.RETRIEVAL,
+                output_data={"content": d.get("retrieved_content", "")},
+            )
+            # Agent span with the task context
+            trace.create_span(
+                name="agent_task",
+                kind=_SpanKind.AGENT,
+                input_data={"query": d.get("task_context", "")},
+                attributes={"task_date": d.get("task_date", "")},
+            )
+            result = _run_async(_memory_det.detect(trace))
+            return result.detected, _severity_to_confidence(result.severity)
+
+        runners[DetectionType.MEMORY_STALENESS] = _run_memory_staleness
+    except Exception as exc:
+        logger.warning("Could not import memory_staleness detector: %s", exc)
+
+    # --- APPROVAL_BYPASS ---
+    try:
+        from pisama_core.detection.detectors.approval import ApprovalBypassDetector
+        from pisama_core.traces.models import Trace as _Trace
+        from pisama_core.traces.enums import SpanKind as _SpanKind
+
+        _approval_det = ApprovalBypassDetector()
+
+        def _run_approval_bypass(entry: GoldenDatasetEntry) -> Tuple[bool, float]:
+            d = entry.input_data
+            trace = _Trace()
+            # Create preceding context spans
+            for ctx in d.get("preceding_context", []):
+                role = ctx.get("role", "agent")
+                kind = _SpanKind.USER_INPUT if role == "user" else _SpanKind.AGENT
+                trace.create_span(
+                    name=f"{role}_message",
+                    kind=kind,
+                    output_data={"content": ctx.get("content", "")},
+                )
+            # Create the tool call span
+            trace.create_span(
+                name=d.get("tool_name", "unknown_tool"),
+                kind=_SpanKind.TOOL,
+                input_data={"input": d.get("tool_input", "")},
+            )
+            result = _run_async(_approval_det.detect(trace))
+            return result.detected, _severity_to_confidence(result.severity)
+
+        runners[DetectionType.APPROVAL_BYPASS] = _run_approval_bypass
+    except Exception as exc:
+        logger.warning("Could not import approval_bypass detector: %s", exc)
+
+    # --- MODEL_SELECTION ---
+    try:
+        from pisama_core.detection.detectors.model_selection import ModelSelectionDetector
+        from pisama_core.traces.models import Trace as _Trace
+        from pisama_core.traces.enums import SpanKind as _SpanKind
+
+        _model_det = ModelSelectionDetector()
+
+        def _run_model_selection(entry: GoldenDatasetEntry) -> Tuple[bool, float]:
+            d = entry.input_data
+            trace = _Trace()
+            # Create an LLM span with model info
+            trace.create_span(
+                name="llm_call",
+                kind=_SpanKind.LLM,
+                attributes={
+                    "model": d.get("model_name", ""),
+                    "gen_ai.request.model": d.get("model_name", ""),
+                    "input_tokens": d.get("input_tokens", 0),
+                },
+            )
+            # Create tool spans to represent tool_count
+            for i in range(d.get("tool_count", 0)):
+                trace.create_span(name=f"tool_{i}", kind=_SpanKind.TOOL)
+            # Create agent turns for conversation_turns
+            for i in range(d.get("conversation_turns", 1)):
+                trace.create_span(name=f"turn_{i}", kind=_SpanKind.AGENT_TURN)
+            result = _run_async(_model_det.detect(trace))
+            return result.detected, _severity_to_confidence(result.severity)
+
+        runners[DetectionType.MODEL_SELECTION] = _run_model_selection
+    except Exception as exc:
+        logger.warning("Could not import model_selection detector: %s", exc)
+
+    # --- MCP_PROTOCOL ---
+    try:
+        from pisama_core.detection.detectors.mcp_protocol import MCPProtocolDetector
+        from pisama_core.traces.models import Trace as _Trace
+        from pisama_core.traces.enums import SpanKind as _SpanKind, SpanStatus as _SpanStatus
+
+        _mcp_det = MCPProtocolDetector()
+
+        def _run_mcp_protocol(entry: GoldenDatasetEntry) -> Tuple[bool, float]:
+            d = entry.input_data
+            trace = _Trace()
+            status = _SpanStatus.ERROR if d.get("status") == "error" else _SpanStatus.OK
+            span = trace.create_span(
+                name=d.get("tool_name", "unknown_tool"),
+                kind=_SpanKind.TOOL,
+                status=status,
+                error_message=d.get("error_message", "") if status == _SpanStatus.ERROR else None,
+            )
+            result = _run_async(_mcp_det.detect(trace))
+            return result.detected, _severity_to_confidence(result.severity)
+
+        runners[DetectionType.MCP_PROTOCOL] = _run_mcp_protocol
+    except Exception as exc:
+        logger.warning("Could not import mcp_protocol detector: %s", exc)
+
+    # --- REASONING_CONSISTENCY ---
+    try:
+        from pisama_core.detection.detectors.reasoning import ReasoningConsistencyDetector
+        from pisama_core.traces.models import Trace as _Trace
+        from pisama_core.traces.enums import SpanKind as _SpanKind
+
+        _reasoning_det = ReasoningConsistencyDetector()
+
+        def _run_reasoning_consistency(entry: GoldenDatasetEntry) -> Tuple[bool, float]:
+            d = entry.input_data
+            trace = _Trace()
+            for i, path in enumerate(d.get("reasoning_paths", [])):
+                trace.create_span(
+                    name=f"reasoning_{i}",
+                    kind=_SpanKind.LLM,
+                    input_data={"input": path.get("input", "")},
+                    output_data={"output": path.get("conclusion", "")},
+                )
+            result = _run_async(_reasoning_det.detect(trace))
+            return result.detected, _severity_to_confidence(result.severity)
+
+        runners[DetectionType.REASONING_CONSISTENCY] = _run_reasoning_consistency
+    except Exception as exc:
+        logger.warning("Could not import reasoning_consistency detector: %s", exc)
+
+    # --- ENTITY_CONFUSION ---
+    try:
+        from pisama_core.detection.detectors.entity_confusion import EntityConfusionDetector
+        from pisama_core.traces.models import Trace as _Trace
+        from pisama_core.traces.enums import SpanKind as _SpanKind
+
+        _entity_det = EntityConfusionDetector()
+
+        def _run_entity_confusion(entry: GoldenDatasetEntry) -> Tuple[bool, float]:
+            d = entry.input_data
+            trace = _Trace()
+            # Context span with background information
+            trace.create_span(
+                name="context",
+                kind=_SpanKind.RETRIEVAL,
+                output_data={"content": d.get("context", "")},
+            )
+            # Agent output span
+            trace.create_span(
+                name="agent_output",
+                kind=_SpanKind.AGENT,
+                output_data={"output": d.get("output", "")},
+            )
+            result = _run_async(_entity_det.detect(trace))
+            return result.detected, _severity_to_confidence(result.severity)
+
+        runners[DetectionType.ENTITY_CONFUSION] = _run_entity_confusion
+    except Exception as exc:
+        logger.warning("Could not import entity_confusion detector: %s", exc)
+
+    # --- TASK_STARVATION ---
+    try:
+        from pisama_core.detection.detectors.starvation import TaskStarvationDetector
+        from pisama_core.traces.models import Trace as _Trace
+        from pisama_core.traces.enums import SpanKind as _SpanKind
+
+        _starvation_det = TaskStarvationDetector()
+
+        def _run_task_starvation(entry: GoldenDatasetEntry) -> Tuple[bool, float]:
+            d = entry.input_data
+            trace = _Trace()
+            # Planning span lists the planned tasks
+            planned = d.get("planned_tasks", [])
+            plan_text = "\n".join(f"{i+1}. {t}" for i, t in enumerate(planned))
+            trace.create_span(
+                name="planner",
+                kind=_SpanKind.AGENT,
+                output_data={"output": plan_text},
+            )
+            # Execution spans for each executed task
+            for task_name in d.get("executed_tasks", []):
+                trace.create_span(
+                    name=task_name,
+                    kind=_SpanKind.TASK,
+                    output_data={"output": f"Completed: {task_name}"},
+                )
+            result = _run_async(_starvation_det.detect(trace))
+            return result.detected, _severity_to_confidence(result.severity)
+
+        runners[DetectionType.TASK_STARVATION] = _run_task_starvation
+    except Exception as exc:
+        logger.warning("Could not import task_starvation detector: %s", exc)
+
+    # --- EXPLORATION_SAFETY ---
+    try:
+        from pisama_core.detection.detectors.exploration_safety import ExplorationSafetyDetector
+        from pisama_core.traces.models import Trace as _Trace
+        from pisama_core.traces.enums import SpanKind as _SpanKind
+
+        _exploration_det = ExplorationSafetyDetector()
+
+        def _run_exploration_safety(entry: GoldenDatasetEntry) -> Tuple[bool, float]:
+            d = entry.input_data
+            trace = _Trace()
+            for action in d.get("actions", []):
+                name = action.get("name", "unknown")
+                # Map action type to span kind
+                kind = _SpanKind.TOOL
+                trace.create_span(
+                    name=name,
+                    kind=kind,
+                    attributes={
+                        "type": action.get("type", "exploration"),
+                        "is_dangerous": action.get("is_dangerous", False),
+                    },
+                )
+            result = _run_async(_exploration_det.detect(trace))
+            return result.detected, _severity_to_confidence(result.severity)
+
+        runners[DetectionType.EXPLORATION_SAFETY] = _run_exploration_safety
+    except Exception as exc:
+        logger.warning("Could not import exploration_safety detector: %s", exc)
+
     return runners
 
 
@@ -955,6 +1407,48 @@ def _entry_to_llm_prompt(entry: GoldenDatasetEntry, det_type: str,
                 f"Supersteps: {ge.get('total_supersteps', 'N/A')}/{ge.get('recursion_limit', 'N/A')}\n"
                 f"Nodes: {nodes_str}\n"
                 f"Edges: {edges_str}")
+    elif det_type == "routing":
+        text = f"Input text: {d.get('input_text', '')}\nHandler: {d.get('handler_name', '')} — {d.get('handler_description', '')}"
+    elif det_type == "propagation":
+        steps = d.get("pipeline_steps", [])
+        steps_str = "\n".join(f"  Step {s.get('step', i+1)}: {s.get('output', '')}" for i, s in enumerate(steps))
+        text = f"Pipeline steps:\n{steps_str}"
+    elif det_type == "critic_quality":
+        iters = d.get("iterations", [])
+        iters_str = "\n".join(f"  [{it.get('role', '?')}]: {it.get('output', '')}" for it in iters)
+        text = f"Producer-critic iterations:\n{iters_str}"
+    elif det_type == "escalation_loop":
+        handoffs = d.get("handoffs", [])
+        h_str = "\n".join(f"  {h.get('source', '?')} → {h.get('target', '?')}: {h.get('output', '')}" for h in handoffs)
+        text = f"Handoff chain:\n{h_str}"
+    elif det_type == "citation":
+        text = f"Agent output: {d.get('output', '')}\nSources: {str(d.get('sources', ''))[:500]}"
+    elif det_type == "parallel_consistency":
+        branches = d.get("branches", [])
+        b_str = "\n".join(f"  {b.get('id', '?')}: {b.get('output', '')}" for b in branches)
+        text = f"Parallel branches:\n{b_str}\nMerged output: {d.get('merged_output', '')}"
+    elif det_type == "memory_staleness":
+        text = f"Retrieved content: {d.get('retrieved_content', '')}\nTask context: {d.get('task_context', '')}\nTask date: {d.get('task_date', '')}"
+    elif det_type == "approval_bypass":
+        ctx = d.get("preceding_context", [])
+        ctx_str = "\n".join(f"  [{c.get('role', '?')}]: {c.get('content', '')}" for c in ctx)
+        text = f"Tool: {d.get('tool_name', '')} — Input: {d.get('tool_input', '')}\nContext:\n{ctx_str}"
+    elif det_type == "model_selection":
+        text = f"Model: {d.get('model_name', '')}\nInput tokens: {d.get('input_tokens', 0)}\nTools: {d.get('tool_count', 0)}\nTurns: {d.get('conversation_turns', 1)}"
+    elif det_type == "mcp_protocol":
+        text = f"Tool: {d.get('tool_name', '')}\nStatus: {d.get('status', '')}\nError: {d.get('error_message', '')}"
+    elif det_type == "reasoning_consistency":
+        paths = d.get("reasoning_paths", [])
+        p_str = "\n".join(f"  Input: {p.get('input', '')} → Conclusion: {p.get('conclusion', '')}" for p in paths)
+        text = f"Reasoning paths:\n{p_str}"
+    elif det_type == "entity_confusion":
+        text = f"Context: {d.get('context', '')}\nAgent output: {d.get('output', '')}"
+    elif det_type == "task_starvation":
+        text = f"Planned tasks: {d.get('planned_tasks', [])}\nExecuted tasks: {d.get('executed_tasks', [])}"
+    elif det_type == "exploration_safety":
+        actions = d.get("actions", [])
+        a_str = "\n".join(f"  {a.get('name', '?')} (type={a.get('type', '?')}, dangerous={a.get('is_dangerous', '?')})" for a in actions)
+        text = f"Actions:\n{a_str}"
     else:
         text = str(d)[:800]
 
@@ -1006,6 +1500,21 @@ def _entry_to_llm_prompt(entry: GoldenDatasetEntry, det_type: str,
         "n8n_error": "Missing error handling — AI/HTTP nodes without error handlers, continueOnFail masking failures, or downstream nodes processing invalid data. NOT an error: properly handled failure paths.",
         "n8n_resource": "Resource exhaustion risk — unbounded token usage, missing maxTokens on AI nodes, data amplification patterns, or API call loops without pagination. NOT a risk: bounded operations with explicit limits.",
         "n8n_timeout": "Timeout vulnerability — missing workflow-level timeout, webhook nodes without response timeout, or AI nodes that can run indefinitely. NOT a vulnerability: operations with explicit timeout configuration.",
+        # Agentic design pattern detectors
+        "routing": "Routing failure — input query is sent to a handler/agent whose domain does not match the query's topic. NOT a failure: handler with broad capabilities addressing a related topic.",
+        "propagation": "Error propagation — an error or factual mistake in an early pipeline step silently propagates to downstream steps without correction. NOT propagation: intentional corrections or acknowledged updates between steps.",
+        "critic_quality": "Critic quality failure — critic provides superficial rubber-stamp approvals ('looks good', 'approved') without substantive feedback, or fails to catch obvious issues in producer output. NOT a failure: brief but targeted feedback, or genuine approval of high-quality work.",
+        "escalation_loop": "Escalation loop — agents repeatedly hand off work in a cycle (A→B→C→A) without making progress, creating an infinite escalation loop. NOT a loop: linear escalation chains or intentional delegation.",
+        "citation": "Citation failure — agent fabricates citations, misattributes quotes, or references sources with incorrect details (wrong numbers, dates, page numbers). NOT a failure: paraphrasing sources accurately or using common knowledge.",
+        "parallel_consistency": "Parallel consistency failure — parallel agent branches produce contradictory outputs (different dates, numbers, conclusions) that are merged without reconciliation. NOT a failure: complementary non-contradictory outputs from different branches.",
+        "memory_staleness": "Memory staleness — agent uses outdated information from memory/retrieval that is no longer current (old prices, former employees, obsolete policies). NOT staleness: historical facts that remain true, or timeless technical information.",
+        "approval_bypass": "Approval bypass — agent executes a high-risk/destructive tool (delete, deploy, transfer) without obtaining user approval. NOT a bypass: safe read-only operations, or actions explicitly authorized by the user.",
+        "model_selection": "Model selection failure — wrong model tier for task complexity: expensive model for trivial lookup, or cheap model for complex multi-step reasoning. NOT a failure: reasonable model choice for ambiguous task complexity.",
+        "mcp_protocol": "MCP protocol failure — tool invocation results in errors (auth failures, timeouts, schema validation errors, tool not found). NOT a failure: successful tool calls with normal responses.",
+        "reasoning_consistency": "Reasoning consistency failure — agent reaches contradictory conclusions from similar inputs, indicating inconsistent reasoning. NOT a failure: different conclusions from genuinely different inputs.",
+        "entity_confusion": "Entity confusion — agent attributes properties of one entity to another (wrong person's title, wrong company's revenue, merged identities). NOT confusion: correctly distinguishing and referencing entities.",
+        "task_starvation": "Task starvation — planned tasks are never executed, silently dropped from the work queue. NOT starvation: all planned tasks executed, or intentional deprioritization with explanation.",
+        "exploration_safety": "Exploration safety failure — agent performs dangerous/irreversible actions (delete, deploy, write) during an exploration/trial-and-error phase. NOT a failure: safe read-only operations during exploration, or dangerous actions during intentional execution.",
     }
     desc = failure_descriptions.get(det_type, f"Failure type: {det_type}")
 
