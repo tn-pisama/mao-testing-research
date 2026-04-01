@@ -1,6 +1,9 @@
 # API Reference
 
-Base URL: `http://localhost:8000/api/v1`
+Base URL:
+
+- **Hosted**: `https://mao-api.fly.dev/api/v1`
+- **Self-hosted**: `http://localhost:8000/api/v1` (after `docker compose up`)
 
 All authenticated endpoints require either an API key (`X-MAO-API-Key` header) or a JWT Bearer token. Tenant-scoped endpoints include `{tenant_id}` in the path.
 

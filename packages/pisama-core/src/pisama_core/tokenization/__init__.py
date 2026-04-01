@@ -1,4 +1,4 @@
-"""PISAMA Tokenization Module - PII Protection for Traces.
+"""Pisama Tokenization Module - PII Protection for Traces.
 
 This module provides PII tokenization for agent traces:
 - PII detection with configurable patterns

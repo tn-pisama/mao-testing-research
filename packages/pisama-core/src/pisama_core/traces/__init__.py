@@ -1,4 +1,4 @@
-"""Trace models and utilities for PISAMA.
+"""Trace models and utilities for Pisama.
 
 Provides a universal trace format that works across all supported platforms.
 """

@@ -1,4 +1,4 @@
-"""Configuration models for PISAMA."""
+"""Configuration models for Pisama."""
 
 from dataclasses import dataclass, field
 from typing import Any
@@ -56,7 +56,7 @@ class InjectionConfig:
 
 @dataclass
 class PisamaConfig:
-    """Complete PISAMA configuration."""
+    """Complete Pisama configuration."""
 
     detection: DetectionConfig = field(default_factory=DetectionConfig)
     healing: HealingConfig = field(default_factory=HealingConfig)

@@ -1,4 +1,4 @@
-"""Fix injection protocol for PISAMA."""
+"""Fix injection protocol for Pisama."""
 
 from pisama_core.injection.protocol import FixInjectionProtocol
 from pisama_core.injection.enforcement import EnforcementLevel, EnforcementEngine

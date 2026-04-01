@@ -8,7 +8,7 @@ hide:
 
 ## Multi-agent failure detection & self-healing platform
 
-Pisama detects **22 failure modes** in LLM agent systems, from infinite loops and hallucinations to coordination breakdowns and prompt injection. Built on the [MAST taxonomy](https://arxiv.org/abs/2503.13657), Pisama provides production-grade observability for any multi-agent framework.
+Pisama detects **25 failure modes** in LLM agent systems, from infinite loops and hallucinations to coordination breakdowns and prompt injection. Built on the [MAST taxonomy](https://arxiv.org/abs/2503.13657), Pisama provides production-grade observability for any multi-agent framework.
 
 <div class="grid cards" markdown>
 
@@ -32,7 +32,7 @@ Pisama detects **22 failure modes** in LLM agent systems, from infinite loops an
 
     ---
 
-    Detailed documentation for all 22 failure mode detectors with accuracy benchmarks.
+    Detailed documentation for all 25 failure mode detectors with accuracy benchmarks.
 
     [:octicons-arrow-right-24: Detectors](detection/overview.md)
 
@@ -52,12 +52,12 @@ Pisama provides purpose-built failure detection for AI agent systems:
 
 | Capability | Description |
 |---|---|
-| **22 failure detectors** | Covering planning, execution, verification, and cross-cutting concerns |
+| **25 failure detectors** | Covering planning, execution, verification, and cross-cutting concerns |
 | **Tiered detection** | Cost-aware escalation from hash-based ($0.00) to LLM judge ($0.05) |
 | **Framework agnostic** | Works with LangGraph, CrewAI, AutoGen, n8n, Dify, OpenClaw, Claude Code |
 | **Self-healing** | Automated fix generation, approval workflows, and rollback capabilities |
 | **OTEL native** | Built on OpenTelemetry with `gen_ai.*` semantic conventions |
-| **Production accuracy** | 29 detectors at F1 >= 0.80, with continuous calibration |
+| **Production accuracy** | 8 detectors at F1 >= 0.80, with continuous calibration |
 
 ### Supported frameworks
 
@@ -79,7 +79,7 @@ Trace Sources                   Pisama Platform                    Outputs
 
  LangGraph  ----+
  n8n        ----+---> Ingestion ---> Detection Engine ---> Dashboard
- Dify       ----+     Pipeline       (22 detectors)        Alerts
+ Dify       ----+     Pipeline       (25 detectors)        Alerts
  CrewAI     ----+     (OTEL/         Tiered escalation     Fix suggestions
  Claude Code ---+      webhook)      LLM Judge             Self-healing
                                                             API / webhooks

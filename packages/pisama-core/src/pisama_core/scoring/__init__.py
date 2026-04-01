@@ -1,4 +1,4 @@
-"""Scoring engine for PISAMA."""
+"""Scoring engine for Pisama."""
 
 from pisama_core.scoring.engine import ScoringEngine
 from pisama_core.scoring.thresholds import Thresholds, SeverityLevel

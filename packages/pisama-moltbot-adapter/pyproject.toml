@@ -5,12 +5,12 @@ build-backend = "hatchling.build"
 [project]
 name = "pisama-moltbot-adapter"
 version = "0.1.0"
-description = "Moltbot integration adapter for PISAMA - observability bridge for Moltbot agent deployments"
+description = "Moltbot integration adapter for Pisama - observability bridge for Moltbot agent deployments"
 readme = "README.md"
 license = "MIT"
 requires-python = ">=3.10"
 authors = [
-    { name = "PISAMA Team", email = "team@pisama.dev" }
+    { name = "Pisama Team", email = "team@pisama.ai" }
 ]
 keywords = [
     "ai",
@@ -46,7 +46,7 @@ dev = [
 ]
 
 [project.urls]
-Homepage = "https://pisama.dev"
+Homepage = "https://pisama.ai"
 Repository = "https://github.com/tn-pisama/pisama-moltbot-adapter"
 
 [tool.hatch.build.targets.wheel]

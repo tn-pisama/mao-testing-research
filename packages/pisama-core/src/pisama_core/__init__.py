@@ -1,6 +1,6 @@
-"""PISAMA Core - Detection, Scoring, and Healing Engine for Agent Forensics.
+"""Pisama Core - Detection, Scoring, and Healing Engine for Agent Forensics.
 
-This package provides the shared core functionality for the PISAMA platform,
+This package provides the shared core functionality for the Pisama platform,
 supporting multiple agent frameworks including Claude Code, LangGraph, AutoGen,
 CrewAI, and n8n.
 

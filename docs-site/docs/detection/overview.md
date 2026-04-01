@@ -1,6 +1,6 @@
 # Detection Overview
 
-Pisama detects **43 failure modes** across general-purpose and platform-specific detectors, organized by the [MAST taxonomy](https://arxiv.org/abs/2503.13657) with extensions for enterprise use cases. **29 detectors** are production-grade (F1 >= 0.80).
+Pisama detects failure modes across 25 general-purpose and 24 platform-specific detectors, organized by the [MAST taxonomy](https://arxiv.org/abs/2503.13657) with extensions for enterprise use cases. **8 detectors** are production-grade (F1 >= 0.80).
 
 ## Failure Mode Summary
 

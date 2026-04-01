@@ -1,4 +1,4 @@
-"""Detection engine for PISAMA.
+"""Detection engine for Pisama.
 
 Provides 20+ detectors for identifying agent failure patterns.
 """

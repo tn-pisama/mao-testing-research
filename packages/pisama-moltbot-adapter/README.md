@@ -1,20 +1,20 @@
-# PISAMA Moltbot Adapter
+# Pisama Moltbot Adapter
 
-Observability bridge that connects Moltbot agent deployments to PISAMA for real-time failure detection and monitoring.
+Observability bridge that connects Moltbot agent deployments to Pisama for real-time failure detection and monitoring.
 
 ## Overview
 
-The Moltbot Adapter taps into the Moltbot WebSocket gateway, converts agent events to PISAMA trace format (OTEL), and streams them to the PISAMA backend for analysis.
+The Moltbot Adapter taps into the Moltbot WebSocket gateway, converts agent events to Pisama trace format (OTEL), and streams them to the Pisama backend for analysis.
 
 ```
-Moltbot Gateway → Adapter → PISAMA Backend → Detection Engine
+Moltbot Gateway → Adapter → Pisama Backend → Detection Engine
 ```
 
 ## Features
 
 - **Non-invasive monitoring**: WebSocket tap requires no changes to Moltbot
 - **Real-time conversion**: Transforms Moltbot events to OTEL traces
-- **Automatic export**: Periodically sends traces to PISAMA API
+- **Automatic export**: Periodically sends traces to Pisama API
 - **Graceful shutdown**: Ensures all traces are exported before exit
 
 ## Installation
@@ -49,7 +49,7 @@ export PISAMA_API_KEY=your-api-key
 # Optional (defaults shown)
 export MOLTBOT_GATEWAY_URL=ws://127.0.0.1:18789
 export PISAMA_API_URL=http://localhost:8000/api/v1
-export PISAMA_TENANT_ID=  # For multi-tenant PISAMA
+export PISAMA_TENANT_ID=  # For multi-tenant Pisama
 export LOG_LEVEL=INFO
 ```
 
@@ -82,7 +82,7 @@ asyncio.run(adapter.run())
 
 ## Event Mapping
 
-| Moltbot Event | PISAMA Span Kind |
+| Moltbot Event | Pisama Span Kind |
 |---------------|------------------|
 | `session.created` | Trace metadata |
 | `message.received` | `USER_INPUT` |
@@ -102,12 +102,12 @@ asyncio.run(adapter.run())
    - Event subscription and streaming
 
 2. **MoltbotTraceConverter** (`converter.py`)
-   - Converts Moltbot events to PISAMA traces
+   - Converts Moltbot events to Pisama traces
    - Maintains session-to-trace mapping
    - Handles span lifecycle
 
 3. **PISAMAExporter** (`exporter.py`)
-   - Sends traces to PISAMA API
+   - Sends traces to Pisama API
    - Handles authentication and retries
    - Batches export for efficiency
 
@@ -143,10 +143,10 @@ ruff check src/
 - Check gateway URL configuration
 - Review Moltbot logs for connection issues
 
-### Traces not appearing in PISAMA
+### Traces not appearing in Pisama
 - Verify PISAMA_API_KEY is valid
 - Check adapter logs for export errors
-- Ensure PISAMA backend is accessible
+- Ensure Pisama backend is accessible
 - Test API manually: `curl -H "Authorization: Bearer $PISAMA_API_KEY" $PISAMA_API_URL/health`
 
 ### High memory usage

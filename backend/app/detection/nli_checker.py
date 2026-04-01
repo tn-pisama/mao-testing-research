@@ -38,6 +38,18 @@ def get_nli_model():
     return _nli_model, _nli_tokenizer
 
 
+def unload_nli_model():
+    """Free the NLI model from memory (called after calibration of NLI-dependent detectors)."""
+    global _nli_model, _nli_tokenizer
+    if _nli_model is not None:
+        del _nli_model, _nli_tokenizer
+        _nli_model = None
+        _nli_tokenizer = None
+        import gc
+        gc.collect()
+        logger.info("NLI model unloaded to free memory")
+
+
 def check_entailment(premise: str, hypothesis: str) -> Tuple[str, float]:
     """Check if premise entails hypothesis.
 

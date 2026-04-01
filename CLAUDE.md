@@ -1,4 +1,4 @@
-# PISAMA
+# Pisama
 
 Multi-Agent Orchestration Testing Platform - Failure detection for LLM agent systems.
 
@@ -6,7 +6,7 @@ Multi-Agent Orchestration Testing Platform - Failure detection for LLM agent sys
 
 ```
 ┌─────────────────────────────────────────────────────────────────────────────┐
-│                              PISAMA Platform                                  │
+│                              Pisama Platform                                  │
 ├─────────────────────────────────────────────────────────────────────────────┤
 │                                                                              │
 │  ┌──────────────┐  ┌──────────────┐  ┌──────────────┐  ┌──────────────┐    │
@@ -53,7 +53,7 @@ Multi-Agent Orchestration Testing Platform - Failure detection for LLM agent sys
 | `backend/app/healing/` | Self-healing orchestration |
 | `backend/app/benchmark/` | MAST benchmark tooling |
 | `backend/app/core/` | Auth, security, rate limiting |
-| `backend/tests/` | pytest tests (87 files) |
+| `backend/tests/` | pytest tests (117 files) |
 | `frontend/src/app/` | Next.js pages and components |
 | `packages/` | Python packages (pisama-core, agent-sdk) |
 | `cli/` | CLI with MCP server support |
@@ -96,11 +96,11 @@ Multi-Agent Orchestration Testing Platform - Failure detection for LLM agent sys
 
 ## Testing
 
-- Test files: `test_*.py` in `backend/tests/` (104 files)
+- Test files: `test_*.py` in `backend/tests/` (117 files)
 - Golden datasets: `backend/tests/fixtures/golden/` + `backend/data/golden_dataset_expanded.json`
 - Run tests: `pytest backend/tests/`
 - Test organization: unit, integration, e2e, detection_enterprise
-- Calibration: 42 detectors, 31 production (F1 ≥ 0.70), 11 beta
+- Calibration: 25 general-purpose detectors, 8 production (F1 ≥ 0.80), 9 beta, 3 emerging, 5 dev
 - E2E strategy: See `docs/E2E_TESTING_STRATEGY.md`
 
 ## Architecture Principles
@@ -116,7 +116,7 @@ Multi-Agent Orchestration Testing Platform - Failure detection for LLM agent sys
 ### Production Topology
 - **Backend**: Fly.io (`mao-api.fly.dev`), 2 machines, auto-scale, config in `backend/fly.toml`
 - **Frontend**: Vercel (auto-deploy on push to main), config in root `vercel.json`
-- **Docs**: Vercel (`docs.pisama.com`), MkDocs Material, auto-deploy on push
+- **Docs**: Vercel (`docs.pisama.ai`), MkDocs Material, auto-deploy on push
 - **Database**: Fly Postgres (connected via `DATABASE_URL` secret)
 - **Redis**: Fly Redis (connected via `REDIS_URL` secret)
 

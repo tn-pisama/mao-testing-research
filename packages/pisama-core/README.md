@@ -2,7 +2,7 @@
 
 Detection, scoring, and healing engine for AI agent systems. Detect failure modes like infinite loops, hallucinations, cost overruns, and coordination breakdowns in your LLM agents -- entirely offline, no API keys required.
 
-Part of the [Pisama](https://pisama.dev) platform for multi-agent failure detection.
+Part of the [Pisama](https://pisama.ai) platform for multi-agent failure detection.
 
 ## Install
 
@@ -127,7 +127,7 @@ Works with Claude Agent SDK, LangGraph, AutoGen, CrewAI, n8n, Dify, and custom a
 
 ## Pisama Platform
 
-For production monitoring with 42+ calibrated detectors, ML-based detection, LLM-as-judge verification, and a dashboard, see [pisama.dev](https://pisama.dev).
+For production monitoring with 25+ calibrated detectors, ML-based detection, LLM-as-judge verification, and a dashboard, see [pisama.ai](https://pisama.ai).
 
 ## License
 

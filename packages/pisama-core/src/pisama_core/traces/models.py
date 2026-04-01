@@ -1,4 +1,4 @@
-"""Core trace models for PISAMA.
+"""Core trace models for Pisama.
 
 These models provide a universal format for representing agent execution
 traces across all supported platforms (Claude Code, LangGraph, AutoGen,

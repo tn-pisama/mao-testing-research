@@ -1,4 +1,4 @@
-"""Audit logger for PISAMA."""
+"""Audit logger for Pisama."""
 
 from pathlib import Path
 from typing import Any, Optional

@@ -1,4 +1,4 @@
-"""Healing engine for PISAMA."""
+"""Healing engine for Pisama."""
 
 from pisama_core.healing.models import FixContext, FixResult, HealingPlan, RollbackResult
 from pisama_core.healing.base import BaseFix

@@ -1,6 +1,6 @@
 # Failure Modes
 
-Pisama detects **22 failure modes** in multi-agent LLM systems, organized into 4 categories based on the [MAST: Multi-Agent System Failure Taxonomy](https://arxiv.org/abs/2503.13657).
+Pisama detects **25 failure modes** in multi-agent LLM systems, organized into 4 categories based on the [MAST: Multi-Agent System Failure Taxonomy](https://arxiv.org/abs/2503.13657).
 
 ## Overview
 
@@ -9,14 +9,14 @@ Pisama detects **22 failure modes** in multi-agent LLM systems, organized into 4
 | Planning Failures | FC1 | F1-F5 | Problems in task specification, decomposition, and workflow design |
 | Execution Failures | FC2 | F6-F11 | Problems during agent execution including derailment, withholding, and coordination |
 | Verification Failures | FC3 | F12-F14 | Problems in output validation, quality gates, and completion judgment |
-| Extended Detectors | -- | 9 modes | Cross-cutting concerns: loops, injection, hallucination, corruption, etc. |
+| Extended Detectors | -- | 11 modes | Cross-cutting concerns: loops, injection, hallucination, corruption, convergence, etc. |
 
 ## Tier Classification
 
-- **ICP (Always Available)**: 16 detectors included in all plans
-- **Enterprise (Feature Flags Required)**: 5 detectors requiring `ml_detection` or `advanced_evals` feature flags
+- **ICP (Always Available)**: 18 detectors included in all plans
+- **Enterprise (Feature Flags Required)**: 7 detectors requiring `ml_detection` or `advanced_evals` feature flags
 
-## All 21 Failure Modes
+## All 25 Failure Modes
 
 | MAST ID | Name | Detector Key | Category | Tier |
 |---|---|---|---|---|
@@ -42,41 +42,52 @@ Pisama detects **22 failure modes** in multi-agent LLM systems, organized into 4
 | -- | Retrieval Quality | `retrieval_quality` | Extended | Enterprise |
 | -- | Persona Drift | `persona_drift` | Extended | ICP |
 | -- | State Corruption | `corruption` | Extended | ICP |
+| -- | Convergence | `convergence` | Extended | ICP |
+| -- | Delegation | `delegation` | Extended | ICP |
 | -- | Cost Tracking | `cost` | Extended | ICP |
 
 ## Accuracy Summary
+
+F1 scores from the [Detection Overview](../detection/overview.md) (canonical source).
 
 ### Production Detectors (F1 >= 0.80)
 
 | Detector | F1 | Precision | Recall | Tier |
 |---|---|---|---|---|
-| Prompt Injection | 0.944 | 0.983 | 0.908 | ICP |
-| Persona Drift | 0.932 | 0.899 | 0.969 | ICP |
-| State Corruption | 0.906 | 0.955 | 0.863 | ICP |
-| Info Withholding | 0.874 | 0.805 | 0.957 | ICP |
-| Context Neglect | 0.868 | 0.805 | 0.943 | ICP |
-| Loop Detection | 0.846 | 0.829 | 0.863 | ICP |
-| Retrieval Quality | 0.824 | 0.718 | 0.968 | Enterprise |
-| Context Overflow | 0.823 | 1.000 | 0.699 | ICP |
-| Task Derailment | 0.820 | 0.702 | 0.985 | ICP |
-| Communication Breakdown | 0.818 | 0.724 | 0.940 | ICP |
+| Coordination Failure | 0.912 | 0.842 | 1.000 | ICP |
+| Context Overflow | 0.878 | 1.000 | 0.699 | ICP |
+| Convergence | 0.855 | -- | -- | ICP |
+| Delegation | 0.841 | -- | -- | ICP |
+| State Corruption | 0.832 | 0.870 | 0.952 | ICP |
+| Communication Breakdown | 0.821 | 0.724 | 0.940 | ICP |
+| Task Derailment | 0.800 | 0.702 | 0.985 | ICP |
+| Cost Tracking | N/A | N/A | N/A | ICP |
 
 ### Beta Detectors (F1 0.70-0.79)
 
 | Detector | F1 | Precision | Recall | Tier |
 |---|---|---|---|---|
-| Coordination Failure | 0.797 | 0.836 | 0.761 | ICP |
-| Flawed Workflow | 0.797 | 0.851 | 0.750 | ICP |
-| Hallucination | 0.772 | 0.718 | 0.836 | ICP |
-| Completion Misjudgment | 0.745 | 0.687 | 0.814 | ICP |
-| Poor Decomposition | 0.727 | 0.727 | 0.727 | ICP |
-| Specification Mismatch | 0.703 | 0.592 | 0.866 | ICP |
+| Info Withholding | 0.796 | 0.805 | 0.957 | ICP |
+| Loop Detection | 0.780 | 0.829 | 0.863 | ICP |
+| Persona Drift | 0.774 | -- | -- | ICP |
+| Hallucination | 0.755 | 0.718 | 0.836 | ICP |
+| Specification Mismatch | 0.747 | 0.592 | 0.866 | ICP |
+| Decomposition | 0.746 | 0.727 | 0.727 | ICP |
+| Prompt Injection | 0.745 | -- | -- | ICP |
+| Context Neglect | 0.731 | 0.805 | 0.943 | ICP |
+| Completion Misjudgment | 0.718 | 0.687 | 0.814 | ICP |
 
 ### Emerging (F1 < 0.70)
 
 | Detector | F1 | Precision | Recall | Tier |
 |---|---|---|---|---|
-| Grounding Failure | 0.671 | 0.636 | 0.710 | ICP |
+| Flawed Workflow | 0.692 | -- | -- | ICP |
+| Grounding Failure | 0.599 | 0.636 | 0.710 | ICP |
+| Retrieval Quality | 0.551 | -- | -- | Enterprise |
+
+### Dev (Not Yet Calibrated)
+
+Resource Misallocation, Tool Provision, Role Usurpation, Output Validation, Quality Gate -- Enterprise-only, benchmarking in progress.
 
 For detailed descriptions of each failure mode including real-world examples, detection methods, and sub-types, see the [Detection Reference](../detection/overview.md).
 

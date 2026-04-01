@@ -1,4 +1,4 @@
-"""Platform adapters for PISAMA.
+"""Platform adapters for Pisama.
 
 Adapters provide the interface between pisama-core and specific
 agent platforms (Claude Code, LangGraph, etc.).

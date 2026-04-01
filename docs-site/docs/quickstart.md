@@ -24,8 +24,6 @@ Expected response:
 {"status": "healthy", "database": "ok", "redis": "ok"}
 ```
 
-Open [http://localhost:3000](http://localhost:3000) to see the Pisama dashboard.
-
 ## 3. Create a tenant and get an API key
 
 ```bash
@@ -89,9 +87,19 @@ curl -X POST http://localhost:8000/api/v1/tenants/YOUR_TENANT_ID/traces/abc123/a
 
 The response includes all detected failures with confidence scores, severity levels, and suggested fixes.
 
-## 7. View results in the dashboard
+## 7. Explore the results
 
-Open [http://localhost:3000](http://localhost:3000) and navigate to the Traces page to see your trace and any detected failures visualized.
+Open [http://localhost:3000](http://localhost:3000) and sign in. The sidebar navigation gives you three views into your results:
+
+- **Dashboard** -- Overview with detection counts, cost analytics, and recent issues. This is your main hub.
+- **Runs** -- Lists all ingested traces. Click any run to see a waterfall timeline of its execution, a flow graph of the agent steps, and the detections found in that run.
+- **Detections** -- Lists every detected failure across all traces. Click a detection to see what happened, the business impact, a suggested fix, and an option to trigger auto-healing.
+
+From the Detection detail page, you can:
+
+- **Trigger Healing** to generate an auto-fix (with approval workflow for high-risk changes)
+- **View the trace** to see the exact execution steps that led to the failure
+- **Mark as valid or false positive** to improve detection accuracy over time
 
 ---
 

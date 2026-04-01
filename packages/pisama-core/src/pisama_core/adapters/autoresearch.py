@@ -1,7 +1,7 @@
 """Adapter for Karpathy's autoresearch framework.
 
-Converts autoresearch experiment cycles into PISAMA-compatible traces,
-enabling convergence detection and all other PISAMA detectors to monitor
+Converts autoresearch experiment cycles into Pisama-compatible traces,
+enabling convergence detection and all other Pisama detectors to monitor
 autonomous research runs.
 
 Trace structure per experiment:
@@ -32,7 +32,7 @@ from pisama_core.traces.models import Span
 class AutoresearchAdapter(PlatformAdapter):
     """Adapter for Karpathy's autoresearch framework.
 
-    Wraps experiment cycles and emits PISAMA-compatible spans for
+    Wraps experiment cycles and emits Pisama-compatible spans for
     convergence detection, loop detection, and other analysis.
     """
 
