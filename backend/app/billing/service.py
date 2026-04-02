@@ -14,7 +14,7 @@ from sqlalchemy import select, update, func
 from app.storage.models import Tenant, User, State
 from app.config import get_settings
 from app.core.rate_limit import rate_limiter
-from .constants import PlanTier, get_project_limit, get_daily_run_limit, get_stripe_price_id, PLANS
+from .constants import PlanTier, get_plan_config, get_project_limit, get_daily_run_limit, get_stripe_price_id, PLANS
 from .schemas import CheckoutResponse, PortalResponse, BillingStatus, UsageInfo
 
 logger = logging.getLogger(__name__)
@@ -193,11 +193,11 @@ class StripeService:
         if not tenant:
             raise ValueError(f"Tenant not found: {tenant_id}")
 
-        # Count projects for this tenant
-        from app.storage.models import Project
+        # Count projects (workflow groups) for this tenant
+        from app.storage.models import WorkflowGroup
         project_result = await db.execute(
-            select(func.count(Project.id))
-            .where(Project.tenant_id == tenant_id)
+            select(func.count(WorkflowGroup.id))
+            .where(WorkflowGroup.tenant_id == tenant_id)
         )
         project_count = project_result.scalar() or 0
 
@@ -223,16 +223,20 @@ class StripeService:
             except Exception:
                 pass
 
+        plan_config = get_plan_config(tenant.plan)
+
         return BillingStatus(
             plan=tenant.plan,
+            plan_id=tenant.plan,
+            plan_name=plan_config.get("display_name", tenant.plan.capitalize()),
             status=tenant.subscription_status or "free",
             current_period_end=tenant.current_period_end,
             cancel_at_period_end=cancel_at_period_end,
             usage=UsageInfo(
-                project_count=project_count,
-                project_limit=project_limit,
-                daily_runs=daily_runs,
-                daily_run_limit=daily_run_limit,
+                projects_used=project_count,
+                projects_limit=project_limit,
+                daily_runs_used=daily_runs,
+                daily_runs_limit=daily_run_limit,
             ),
         )
 

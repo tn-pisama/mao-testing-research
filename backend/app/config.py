@@ -320,6 +320,7 @@ class Settings(BaseSettings):
     
     otel_service_name: str = "mao-platform"
     cors_origins: str = "http://localhost:3000,https://dashboard.mao-testing.com"
+    frontend_url: str = "http://localhost:3000"
 
     # Sentry
     sentry_dsn: str = ""

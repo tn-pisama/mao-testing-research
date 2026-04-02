@@ -18,6 +18,7 @@ import {
   LogOut,
   BookOpen,
   ClipboardCheck,
+  CreditCard,
 } from 'lucide-react'
 import { signOut } from 'next-auth/react'
 import { clearAllCaches } from '@/hooks/useSafeAuth'
@@ -49,6 +50,7 @@ const configureItems: NavItem[] = [
 ]
 
 const settingsItems: NavItem[] = [
+  { label: 'Billing', href: '/billing', icon: CreditCard },
   { label: 'Account', href: '/account', icon: User },
   { label: 'Settings', href: '/settings', icon: Settings },
   { label: 'Docs', href: '/docs/', icon: BookOpen },

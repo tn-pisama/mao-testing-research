@@ -5,30 +5,31 @@ import { useSafeAuth as useAuth } from '@/hooks/useSafeAuth'
 import { useTenant } from '@/hooks/useTenant'
 
 // ---------------------------------------------------------------------------
-// Types
+// Types — aligned with backend billing schemas
 // ---------------------------------------------------------------------------
 
 export interface BillingPlan {
-  id: string
-  name: string
-  slug: string
-  price_cents: number
-  interval: 'month' | 'year'
+  name: string           // PlanTier enum: "free", "pro", "team", "enterprise"
+  slug: string           // Same as name value
+  display_name: string
+  price_monthly: number | null
+  price_annual_monthly: number | null
+  project_limit: number | null
+  retention_days: number | null
+  team_limit: number | null
+  daily_run_limit: number | null
+  alerts_per_day: number | null
   features: string[]
-  limits: {
-    projects: number
-    daily_runs: number
-    detectors: number
-    retention_days: number
-  }
-  stripe_price_id: string | null
+  stripe_price_id_monthly: string | null
+  stripe_price_id_annual: string | null
 }
 
 export interface BillingStatus {
+  plan: string
   plan_id: string
   plan_name: string
-  status: 'active' | 'past_due' | 'canceled' | 'trialing' | 'incomplete'
-  current_period_end: string
+  status: string
+  current_period_end: string | null
   cancel_at_period_end: boolean
   usage: {
     projects_used: number
@@ -140,15 +141,15 @@ export function useBillingStatus() {
 export function useCreateCheckout() {
   const { getHeaders } = useApiHeaders()
 
-  return useMutation<CheckoutResponse, Error, { price_id: string }>({
-    mutationFn: async ({ price_id }) => {
+  return useMutation<CheckoutResponse, Error, { plan: string; annual?: boolean }>({
+    mutationFn: async ({ plan, annual = false }) => {
       const headers = await getHeaders()
       const { default: API_BASE } = await import('@/lib/api-url')
       const res = await fetch(`${API_BASE}/billing/checkout`, {
         method: 'POST',
         headers,
         credentials: 'include',
-        body: JSON.stringify({ price_id }),
+        body: JSON.stringify({ plan, annual }),
       })
       if (!res.ok) throw new Error(`Checkout API error: ${res.status}`)
       return res.json()

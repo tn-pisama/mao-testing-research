@@ -4,6 +4,7 @@ import { getToken } from 'next-auth/jwt'
 
 const protectedRoutes = [
   '/dashboard',
+  '/billing',
   '/agents',
   '/traces',
   '/detections',

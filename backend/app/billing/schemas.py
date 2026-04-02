@@ -14,14 +14,18 @@ from .constants import PlanTier, SubscriptionStatus
 class PlanInfo(BaseModel):
     """Information about a pricing plan."""
     name: PlanTier
+    slug: str  # Same as name value, for frontend convenience
     display_name: str
     price_monthly: Optional[int]  # None for Enterprise
+    price_annual_monthly: Optional[int] = None  # Monthly equivalent when billed annually
     project_limit: Optional[int]  # None for unlimited
     retention_days: Optional[int]
     team_limit: Optional[int]
     daily_run_limit: Optional[int]
     alerts_per_day: Optional[int]
     features: List[str]
+    stripe_price_id_monthly: Optional[str] = None
+    stripe_price_id_annual: Optional[str] = None
 
 
 class CheckoutRequest(BaseModel):
@@ -55,16 +59,18 @@ class PortalResponse(BaseModel):
 
 class UsageInfo(BaseModel):
     """Current usage statistics."""
-    project_count: int = Field(..., description="Projects used")
-    project_limit: int = Field(..., description="Project limit for current plan")
-    daily_runs: int = Field(..., description="Agent runs today")
-    daily_run_limit: int = Field(..., description="Daily run limit for current plan")
+    projects_used: int = Field(..., description="Projects used")
+    projects_limit: int = Field(..., description="Project limit for current plan")
+    daily_runs_used: int = Field(..., description="Agent runs today")
+    daily_runs_limit: int = Field(..., description="Daily run limit for current plan")
 
 
 class BillingStatus(BaseModel):
     """Complete billing status for a tenant."""
     plan: PlanTier
-    status: SubscriptionStatus = Field(..., description="Subscription status")
+    plan_id: str = Field(..., description="Plan slug (same as plan value)")
+    plan_name: str = Field(..., description="Display name of the plan")
+    status: str = Field(..., description="Subscription status or 'free'")
     current_period_end: Optional[datetime] = Field(None, description="When current billing period ends")
     cancel_at_period_end: bool = Field(False, description="Whether subscription will cancel at period end")
     usage: UsageInfo
@@ -73,14 +79,16 @@ class BillingStatus(BaseModel):
         json_schema_extra = {
             "example": {
                 "plan": "pro",
+                "plan_id": "pro",
+                "plan_name": "Pro",
                 "status": "active",
                 "current_period_end": "2026-04-01T00:00:00Z",
                 "cancel_at_period_end": False,
                 "usage": {
-                    "project_count": 2,
-                    "project_limit": 3,
-                    "daily_runs": 120,
-                    "daily_run_limit": 500
+                    "projects_used": 2,
+                    "projects_limit": 10,
+                    "daily_runs_used": 120,
+                    "daily_runs_limit": 5000
                 }
             }
         }

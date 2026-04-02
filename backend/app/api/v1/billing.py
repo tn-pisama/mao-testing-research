@@ -21,6 +21,7 @@ from app.billing import (
     BillingStatus,
     PLANS,
 )
+from app.billing.constants import PlanTier
 from app.billing.service import stripe_service
 from app.billing.webhooks import process_webhook_event
 
@@ -37,19 +38,36 @@ async def list_plans():
     Returns:
         List of PlanInfo objects with pricing details
     """
+    settings = get_settings()
+    price_id_map = {
+        PlanTier.PRO: {
+            "monthly": settings.stripe_price_id_pro_monthly or None,
+            "annual": settings.stripe_price_id_pro_annual or None,
+        },
+        PlanTier.TEAM: {
+            "monthly": settings.stripe_price_id_team_monthly or None,
+            "annual": settings.stripe_price_id_team_annual or None,
+        },
+    }
+
     plans = []
     for plan_name, config in PLANS.items():
+        price_ids = price_id_map.get(plan_name, {})
         plans.append(
             PlanInfo(
                 name=plan_name,
+                slug=plan_name.value if hasattr(plan_name, 'value') else plan_name,
                 display_name=config["display_name"],
                 price_monthly=config["price_monthly"],
+                price_annual_monthly=config.get("price_annual_monthly"),
                 project_limit=config["project_limit"],
                 retention_days=config["retention_days"],
                 team_limit=config["team_limit"],
                 daily_run_limit=config.get("daily_run_limit"),
                 alerts_per_day=config.get("alerts_per_day"),
                 features=config["features"],
+                stripe_price_id_monthly=price_ids.get("monthly"),
+                stripe_price_id_annual=price_ids.get("annual"),
             )
         )
     return plans
@@ -81,6 +99,7 @@ async def create_checkout(
             db=db,
             tenant_id=tenant_id,
             plan=request.plan,
+            annual=request.annual,
             success_url=request.success_url,
             cancel_url=request.cancel_url,
         )
