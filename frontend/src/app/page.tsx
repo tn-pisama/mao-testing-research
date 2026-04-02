@@ -7,6 +7,7 @@ import {
   FeatureCards,
   ComparisonTable,
   WaitlistModal,
+  Footer,
 } from '@/components/landing'
 
 export default function Home() {
@@ -32,6 +33,7 @@ export default function Home() {
       <HeroSection />
       <FeatureCards />
       <ComparisonTable />
+      <Footer />
       <WaitlistModal isOpen={showWaitlist} onClose={() => setShowWaitlist(false)} />
     </main>
   )
