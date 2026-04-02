@@ -69,6 +69,9 @@ export function Footer() {
             &copy; {new Date().getFullYear()} Pisama. All rights reserved.
           </p>
           <div className="flex items-center gap-4">
+            <a href="https://dofollow.tools" target="_blank">
+              <img src="https://dofollow.tools/badge/badge_dark.svg" alt="Featured on Dofollow.Tools" width={200} height={54} />
+            </a>
             <Link href="/terms" className="text-xs text-zinc-600 hover:text-zinc-400 transition-colors">
               Terms
             </Link>
