@@ -21,7 +21,7 @@ logger = logging.getLogger(__name__)
 
 # Initialize Stripe
 settings = get_settings()
-stripe.api_key = settings.STRIPE_SECRET_KEY if hasattr(settings, 'STRIPE_SECRET_KEY') else None
+stripe.api_key = settings.stripe_secret_key or None
 
 
 class StripeService:
@@ -68,13 +68,14 @@ class StripeService:
         if not tenant:
             raise ValueError(f"Tenant not found: {tenant_id}")
 
-        # Get Stripe price ID from environment
-        suffix = "_ANNUAL" if annual else "_MONTHLY"
-        env_vars = {
-            f"STRIPE_PRICE_ID_PRO{suffix}": getattr(settings, f'STRIPE_PRICE_ID_PRO{suffix}', ''),
-            f"STRIPE_PRICE_ID_TEAM{suffix}": getattr(settings, f'STRIPE_PRICE_ID_TEAM{suffix}', ''),
+        # Get Stripe price ID from settings
+        price_map = {
+            (PlanTier.PRO, False): settings.stripe_price_id_pro_monthly,
+            (PlanTier.PRO, True): settings.stripe_price_id_pro_annual,
+            (PlanTier.TEAM, False): settings.stripe_price_id_team_monthly,
+            (PlanTier.TEAM, True): settings.stripe_price_id_team_annual,
         }
-        price_id = get_stripe_price_id(plan, env_vars, annual=annual)
+        price_id = price_map.get((plan, annual), "")
         if not price_id:
             raise ValueError(f"Stripe price ID not configured for plan: {plan}")
 
@@ -213,11 +214,20 @@ class StripeService:
         project_limit = get_project_limit(tenant.plan)
         daily_run_limit = get_daily_run_limit(tenant.plan)
 
+        # Fetch cancel_at_period_end from Stripe if tenant has active subscription
+        cancel_at_period_end = False
+        if tenant.stripe_subscription_id and tenant.subscription_status == "active":
+            try:
+                sub = stripe.Subscription.retrieve(tenant.stripe_subscription_id)
+                cancel_at_period_end = sub.get('cancel_at_period_end', False)
+            except Exception:
+                pass
+
         return BillingStatus(
             plan=tenant.plan,
             status=tenant.subscription_status or "free",
             current_period_end=tenant.current_period_end,
-            cancel_at_period_end=False,  # TODO: Get from Stripe subscription
+            cancel_at_period_end=cancel_at_period_end,
             usage=UsageInfo(
                 project_count=project_count,
                 project_limit=project_limit,

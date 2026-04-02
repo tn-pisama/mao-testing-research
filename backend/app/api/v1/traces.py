@@ -11,6 +11,7 @@ import time
 from app.storage.database import get_db, set_tenant_context, async_session_maker
 from app.storage.models import Trace, State, Detection, WorkflowQualityAssessment
 from app.core.auth import get_current_tenant
+from app.billing.usage import enforce_daily_usage
 from app.core.rate_limit import check_rate_limit
 from app.api.v1.dashboard import invalidate_dashboard_cache
 
@@ -112,6 +113,7 @@ async def ingest_traces(
     background_tasks: "BackgroundTasks",
     tenant_id: str = Depends(get_current_tenant),
     db: AsyncSession = Depends(get_db),
+    _usage: None = Depends(enforce_daily_usage),
 ):
     if not backpressure.should_accept():
         raise HTTPException(

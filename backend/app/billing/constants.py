@@ -176,3 +176,20 @@ def get_stripe_price_id(plan: str, env_vars: Dict[str, str], annual: bool = Fals
         return env_vars.get(f"STRIPE_PRICE_ID_TEAM{suffix}", "")
     else:
         raise ValueError(f"No Stripe price ID configured for plan: {plan}")
+
+
+def get_plan_from_price_id(price_id: str) -> str:
+    """Reverse-map a Stripe price ID to a plan name.
+
+    Returns empty string if price ID is not recognized.
+    """
+    from app.config import get_settings
+    settings = get_settings()
+    mapping = {
+        settings.stripe_price_id_pro_monthly: PlanTier.PRO,
+        settings.stripe_price_id_pro_annual: PlanTier.PRO,
+        settings.stripe_price_id_team_monthly: PlanTier.TEAM,
+        settings.stripe_price_id_team_annual: PlanTier.TEAM,
+    }
+    # Filter out empty string keys (unconfigured price IDs)
+    return mapping.get(price_id, "") if price_id else ""

@@ -15,7 +15,7 @@ from app.notifications.email import EmailNotifier
 from app.config import get_settings
 from app.core.rate_limit import rate_limiter
 from .service import stripe_service
-from .constants import SubscriptionStatus
+from .constants import SubscriptionStatus, get_plan_from_price_id
 
 logger = logging.getLogger(__name__)
 
@@ -95,9 +95,13 @@ async def handle_subscription_updated(
         logger.warning(f"Tenant not found for subscription {subscription_id}")
         return
 
-    # Determine plan from subscription items
-    # TODO: Map Stripe price ID back to plan name
-    plan = tenant.plan  # Keep current plan for now
+    # Determine plan from subscription's current price
+    items = subscription.get('items', {}).get('data', [])
+    if items:
+        price_id = items[0].get('price', {}).get('id', '')
+        plan = get_plan_from_price_id(price_id) or tenant.plan
+    else:
+        plan = tenant.plan
 
     await stripe_service.update_tenant_subscription(
         db=db,
@@ -217,12 +221,158 @@ If you have questions, reply to this email.
             logger.error(f"Failed to send payment notification: {e}")
 
 
+async def handle_trial_will_end(
+    db: AsyncSession,
+    event_data: dict,
+) -> None:
+    """Handle customer.subscription.trial_will_end event.
+
+    Sends email notification ~3 days before trial expires.
+    """
+    subscription = event_data['object']
+    subscription_id = subscription['id']
+
+    result = await db.execute(
+        select(Tenant).where(Tenant.stripe_subscription_id == subscription_id)
+    )
+    tenant = result.scalar_one_or_none()
+    if not tenant:
+        logger.warning(f"Tenant not found for subscription {subscription_id}")
+        return
+
+    owner_result = await db.execute(
+        select(User).where(User.tenant_id == tenant.id, User.role == "owner")
+    )
+    owner = owner_result.scalar_one_or_none()
+    if owner and owner.email:
+        settings = get_settings()
+        notifier = EmailNotifier()
+        try:
+            await notifier.send(
+                to=owner.email,
+                subject="Pisama: Your trial ends soon",
+                body=f"""Your Pisama {tenant.plan} trial is ending in 3 days.
+
+Add a payment method to continue using {tenant.plan} features without interruption.
+
+Manage subscription: {settings.FRONTEND_URL}/billing
+
+If you have questions, reply to this email.
+""",
+            )
+        except Exception as e:
+            logger.error(f"Failed to send trial ending notification: {e}")
+
+    logger.info(f"Trial ending soon for tenant {tenant.id}")
+
+
+async def handle_payment_action_required(
+    db: AsyncSession,
+    event_data: dict,
+) -> None:
+    """Handle invoice.payment_action_required event.
+
+    Notifies user when payment needs additional authentication (e.g., 3D Secure).
+    """
+    invoice = event_data['object']
+    subscription_id = invoice.get('subscription')
+    if not subscription_id:
+        return
+
+    result = await db.execute(
+        select(Tenant).where(Tenant.stripe_subscription_id == subscription_id)
+    )
+    tenant = result.scalar_one_or_none()
+    if not tenant:
+        return
+
+    hosted_invoice_url = invoice.get('hosted_invoice_url', '')
+
+    owner_result = await db.execute(
+        select(User).where(User.tenant_id == tenant.id, User.role == "owner")
+    )
+    owner = owner_result.scalar_one_or_none()
+    if owner and owner.email:
+        notifier = EmailNotifier()
+        try:
+            await notifier.send(
+                to=owner.email,
+                subject="Pisama: Payment action required",
+                body=f"""Your payment for Pisama {tenant.plan} requires additional authentication.
+
+Complete payment: {hosted_invoice_url}
+
+Your subscription will remain active while you complete this step.
+""",
+            )
+        except Exception as e:
+            logger.error(f"Failed to send payment action notification: {e}")
+
+    logger.info(f"Payment action required for tenant {tenant.id}")
+
+
+async def handle_dispute_created(
+    db: AsyncSession,
+    event_data: dict,
+) -> None:
+    """Handle charge.dispute.created event.
+
+    Logs the dispute and notifies the tenant owner.
+    """
+    dispute = event_data['object']
+    charge_id = dispute.get('charge', '')
+    amount = dispute.get('amount', 0)
+    reason = dispute.get('reason', 'unknown')
+
+    # Try to find tenant via the charge's customer
+    customer_id = dispute.get('customer', '') or (
+        dispute.get('charge_object', {}).get('customer', '')
+    )
+
+    tenant = None
+    if customer_id:
+        result = await db.execute(
+            select(Tenant).where(Tenant.stripe_customer_id == customer_id)
+        )
+        tenant = result.scalar_one_or_none()
+
+    logger.warning(
+        f"Dispute created: charge={charge_id}, amount={amount}, reason={reason}, "
+        f"tenant={tenant.id if tenant else 'unknown'}"
+    )
+
+    if tenant:
+        owner_result = await db.execute(
+            select(User).where(User.tenant_id == tenant.id, User.role == "owner")
+        )
+        owner = owner_result.scalar_one_or_none()
+        if owner and owner.email:
+            notifier = EmailNotifier()
+            try:
+                await notifier.send(
+                    to=owner.email,
+                    subject="Pisama: Payment dispute received",
+                    body=f"""A payment dispute has been filed for your Pisama account.
+
+Reason: {reason}
+Amount: ${amount / 100:.2f}
+
+Please contact support if you believe this is an error.
+""",
+                )
+            except Exception as e:
+                logger.error(f"Failed to send dispute notification: {e}")
+
+
 # Event handler mapping
 WEBHOOK_HANDLERS = {
     'checkout.session.completed': handle_checkout_completed,
     'customer.subscription.updated': handle_subscription_updated,
     'customer.subscription.deleted': handle_subscription_deleted,
+    'customer.subscription.trial_will_end': handle_trial_will_end,
     'invoice.payment_failed': handle_payment_failed,
+    'invoice.payment_action_required': handle_payment_action_required,
+    'charge.dispute.created': handle_dispute_created,
 }
 
 
@@ -230,18 +380,31 @@ async def process_webhook_event(
     db: AsyncSession,
     event_type: str,
     event_data: dict,
+    event_id: str = "",
 ) -> None:
     """
-    Process a Stripe webhook event.
+    Process a Stripe webhook event with idempotency.
 
     Args:
         db: Database session
         event_type: Event type (e.g., 'checkout.session.completed')
         event_data: Event data from Stripe
-
-    Raises:
-        ValueError: If event type is not supported
+        event_id: Stripe event ID for deduplication
     """
+    # Idempotency: skip if this event was already processed
+    if event_id:
+        try:
+            redis = rate_limiter.redis
+            key = f"stripe_webhook:{event_id}"
+            if await redis.get(key):
+                logger.info(f"Skipping duplicate webhook event: {event_id}")
+                return
+            # Mark as processed with 72h TTL (matches Stripe retry window)
+            await redis.setex(key, 259200, "1")
+        except Exception as e:
+            # If Redis is down, process anyway (better to double-process than miss)
+            logger.warning(f"Redis idempotency check failed, processing anyway: {e}")
+
     handler = WEBHOOK_HANDLERS.get(event_type)
 
     if not handler:

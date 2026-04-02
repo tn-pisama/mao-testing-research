@@ -191,7 +191,7 @@ async def stripe_webhook(
 
     # Verify webhook signature
     settings = get_settings()
-    webhook_secret = getattr(settings, 'STRIPE_WEBHOOK_SECRET', None)
+    webhook_secret = settings.stripe_webhook_secret
     if not webhook_secret:
         logger.error("STRIPE_WEBHOOK_SECRET not configured")
         raise HTTPException(status_code=500, detail="Webhook secret not configured")
@@ -211,6 +211,7 @@ async def stripe_webhook(
             db=db,
             event_type=event['type'],
             event_data=event['data'],
+            event_id=event.get('id', ''),
         )
         return {"status": "success"}
     except Exception as e:

@@ -324,6 +324,14 @@ class Settings(BaseSettings):
     # Sentry
     sentry_dsn: str = ""
 
+    # Stripe
+    stripe_secret_key: str = ""
+    stripe_webhook_secret: str = ""
+    stripe_price_id_pro_monthly: str = ""
+    stripe_price_id_team_monthly: str = ""
+    stripe_price_id_pro_annual: str = ""
+    stripe_price_id_team_annual: str = ""
+
     # AWS Marketplace
     aws_marketplace_enabled: bool = Field(default=False, description="Enable AWS Marketplace SaaS integration")
     aws_marketplace_product_code: str = Field(default="", description="AWS Marketplace product code")

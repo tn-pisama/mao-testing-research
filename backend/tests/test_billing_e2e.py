@@ -1,12 +1,11 @@
 """
-E2E Test: Free → Pro Billing Upgrade Flow (Fully Mocked)
+E2E Tests for Billing: upgrade flow, webhooks, usage enforcement.
 
-Tests the complete billing upgrade flow from free plan to pro plan,
-using mocks for all external dependencies including database.
+Tests the complete billing lifecycle using mocks for external dependencies.
 """
 
 import pytest
-from datetime import datetime, timedelta
+from datetime import datetime, timedelta, timezone
 from unittest.mock import patch, MagicMock, AsyncMock
 from uuid import uuid4
 
@@ -14,6 +13,7 @@ from app.storage.models import Tenant
 from app.billing import PlanTier, SubscriptionStatus
 from app.billing.service import stripe_service
 from app.billing.webhooks import process_webhook_event
+from app.billing.constants import get_plan_from_price_id
 
 
 class TestBillingUpgradeFlowMocked:
@@ -217,3 +217,190 @@ class TestBillingUpgradeFlowMocked:
         # Verify database operations were called
         assert mock_db.execute.called
         assert mock_db.commit.called
+
+    @pytest.mark.asyncio
+    async def test_subscription_updated_resolves_plan_from_price_id(self):
+        """
+        E2E-BILLING-004: subscription.updated webhook resolves plan from price ID.
+
+        When a subscription is updated (e.g., Pro → Team upgrade via portal),
+        the webhook must map the new price ID back to a plan name.
+        """
+        test_tenant = Tenant(
+            id=uuid4(),
+            name="test@example.com",
+            plan=PlanTier.PRO,
+            project_limit=3,
+            subscription_status=SubscriptionStatus.ACTIVE,
+            stripe_customer_id="cus_test789",
+            stripe_subscription_id="sub_test789",
+            current_period_end=datetime.now() + timedelta(days=20),
+        )
+
+        mock_db = AsyncMock()
+        mock_result = MagicMock()
+        mock_result.scalar_one_or_none.return_value = test_tenant
+        mock_db.execute = AsyncMock(return_value=mock_result)
+        mock_db.commit = AsyncMock()
+
+        # Simulate subscription.updated with Team price ID
+        period_end = datetime.now() + timedelta(days=30)
+        event_data = {
+            "object": {
+                "id": "sub_test789",
+                "status": "active",
+                "current_period_end": int(period_end.timestamp()),
+                "items": {
+                    "data": [
+                        {"price": {"id": "price_team_monthly_test"}}
+                    ]
+                },
+            }
+        }
+
+        with patch(
+            "app.billing.webhooks.get_plan_from_price_id",
+            return_value=PlanTier.TEAM,
+        ):
+            await process_webhook_event(
+                db=mock_db,
+                event_type="customer.subscription.updated",
+                event_data=event_data,
+            )
+
+        assert mock_db.commit.called
+
+    @pytest.mark.asyncio
+    async def test_payment_failed_marks_past_due(self):
+        """
+        E2E-BILLING-005: invoice.payment_failed marks tenant as past_due.
+        """
+        test_tenant = Tenant(
+            id=uuid4(),
+            name="test@example.com",
+            plan=PlanTier.PRO,
+            project_limit=3,
+            subscription_status=SubscriptionStatus.ACTIVE,
+            stripe_subscription_id="sub_fail123",
+            current_period_end=datetime.now() + timedelta(days=5),
+        )
+
+        mock_db = AsyncMock()
+        # First call: find tenant by subscription_id
+        tenant_result = MagicMock()
+        tenant_result.scalar_one_or_none.return_value = test_tenant
+        # Second call: find owner (no owner found)
+        owner_result = MagicMock()
+        owner_result.scalar_one_or_none.return_value = None
+        # Third call: update subscription
+        update_result = MagicMock()
+
+        mock_db.execute = AsyncMock(
+            side_effect=[tenant_result, update_result, owner_result]
+        )
+        mock_db.commit = AsyncMock()
+
+        event_data = {
+            "object": {
+                "subscription": "sub_fail123",
+            }
+        }
+
+        await process_webhook_event(
+            db=mock_db,
+            event_type="invoice.payment_failed",
+            event_data=event_data,
+        )
+
+        assert mock_db.commit.called
+
+    @pytest.mark.asyncio
+    async def test_webhook_idempotency_skips_duplicate(self):
+        """
+        E2E-BILLING-006: Duplicate webhook events are skipped via Redis.
+        """
+        mock_db = AsyncMock()
+
+        mock_redis = AsyncMock()
+        # First call: get returns truthy (event already processed)
+        mock_redis.get = AsyncMock(return_value=b"1")
+
+        with patch("app.billing.webhooks.rate_limiter") as mock_rl:
+            mock_rl.redis = mock_redis
+
+            event_data = {
+                "object": {
+                    "id": "cs_duplicate",
+                    "subscription": "sub_dup",
+                    "metadata": {"tenant_id": str(uuid4()), "plan": "pro"},
+                }
+            }
+
+            await process_webhook_event(
+                db=mock_db,
+                event_type="checkout.session.completed",
+                event_data=event_data,
+                event_id="evt_duplicate123",
+            )
+
+        # DB should NOT have been touched since event was deduplicated
+        mock_db.execute.assert_not_called()
+
+    @pytest.mark.asyncio
+    async def test_usage_enforcement_blocks_over_limit(self):
+        """
+        E2E-BILLING-007: Usage enforcement returns 429 when daily limit exceeded.
+        """
+        from fastapi import HTTPException
+        from app.billing.usage import enforce_daily_usage_check
+
+        mock_db = AsyncMock()
+        # Return count that exceeds free tier limit (50)
+        count_result = MagicMock()
+        count_result.scalar.return_value = 51
+        mock_db.execute = AsyncMock(return_value=count_result)
+
+        with pytest.raises(HTTPException) as exc_info:
+            await enforce_daily_usage_check(
+                tenant_id=str(uuid4()),
+                plan=PlanTier.FREE,
+                db=mock_db,
+            )
+
+        assert exc_info.value.status_code == 429
+        assert "Daily run limit" in exc_info.value.detail
+
+    @pytest.mark.asyncio
+    async def test_usage_enforcement_allows_under_limit(self):
+        """
+        E2E-BILLING-008: Usage enforcement passes when under daily limit.
+        """
+        from app.billing.usage import enforce_daily_usage_check
+
+        mock_db = AsyncMock()
+        count_result = MagicMock()
+        count_result.scalar.return_value = 10  # Well under 50 free limit
+        mock_db.execute = AsyncMock(return_value=count_result)
+
+        # Should not raise
+        await enforce_daily_usage_check(
+            tenant_id=str(uuid4()),
+            plan=PlanTier.FREE,
+            db=mock_db,
+        )
+
+    def test_price_to_plan_reverse_mapping(self):
+        """
+        E2E-BILLING-009: Price ID reverse mapping returns correct plan.
+        """
+        with patch("app.config.get_settings") as mock_settings:
+            mock_settings.return_value = MagicMock(
+                stripe_price_id_pro_monthly="price_pro_m",
+                stripe_price_id_pro_annual="price_pro_a",
+                stripe_price_id_team_monthly="price_team_m",
+                stripe_price_id_team_annual="price_team_a",
+            )
+            assert get_plan_from_price_id("price_pro_m") == PlanTier.PRO
+            assert get_plan_from_price_id("price_team_a") == PlanTier.TEAM
+            assert get_plan_from_price_id("price_unknown") == ""
+            assert get_plan_from_price_id("") == ""

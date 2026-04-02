@@ -149,6 +149,10 @@ async def receive_n8n_webhook(
     tenant = await verify_api_key_and_get_tenant(x_mao_api_key, db)
     tenant_id = str(tenant.id)
 
+    # Enforce daily usage limits
+    from app.billing.usage import enforce_daily_usage_check
+    await enforce_daily_usage_check(tenant_id, tenant.plan, db)
+
     workflow_result = await db.execute(
         select(N8nWorkflow).where(
             N8nWorkflow.tenant_id == tenant.id,
