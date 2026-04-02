@@ -374,7 +374,7 @@ Agent: Still revising summary 45 minutes later
 ## How to Defend Against These Failures
 
 ### 1. Test Before Production
-Use specialized testing frameworks (like PISAMA) that simulate multi-agent interactions and catch these failure modes in CI/CD.
+Use specialized testing frameworks (like Pisama) that simulate multi-agent interactions and catch these failure modes in CI/CD.
 
 ### 2. Implement Guardrails
 - **Loop detection**: Track execution paths, limit iterations
@@ -438,7 +438,7 @@ You need specialized testing that:
 
 ## Take Action Today
 
-1. **Audit your agent system** for these 17 failure modes
+1. **Audit your agent system** for these 44 failure modes
 2. **Add loop detection** (the most expensive failure)
 3. **Implement cost limits** (the easiest win)
 4. **Log everything** (debugging is impossible without traces)
@@ -448,6 +448,6 @@ Multi-agent systems are powerful. They're also fragile in ways single-agent syst
 
 ---
 
-**About PISAMA**: We built PISAMA after seeing these failures repeatedly in production. It's an open-source multi-agent testing platform that detects all 17 failure modes before they hit production. Learn more at [pisama.ai](https://pisama.ai).
+**About Pisama**: We built Pisama after seeing these failures repeatedly in production. It's an open-source agent forensics platform that detects 20 failure modes before they hit production. Learn more at [pisama.ai](https://pisama.ai).
 
 **Want to go deeper?** Read our tutorial on [How to Detect Infinite Loops in LangGraph](/blog/loop-detection-guide).

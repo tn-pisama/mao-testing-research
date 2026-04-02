@@ -48,6 +48,7 @@ pisama = "pisama.cli.main:main"
 Homepage = "https://pisama.ai"
 Documentation = "https://docs.pisama.ai"
 Repository = "https://github.com/tn-pisama/pisama"
+Changelog = "https://github.com/tn-pisama/pisama/blob/main/CHANGELOG.md"
 
 [tool.hatch.build.targets.wheel]
 packages = ["src/pisama"]

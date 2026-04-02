@@ -44,5 +44,6 @@ export default function robots(): MetadataRoute.Robots {
       },
     ],
     sitemap: 'https://pisama.ai/sitemap.xml',
+    host: 'https://pisama.ai',
   }
 }
