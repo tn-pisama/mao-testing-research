@@ -69,6 +69,9 @@ export function Footer() {
             &copy; {new Date().getFullYear()} Pisama. All rights reserved.
           </p>
           <div className="flex items-center gap-4">
+            <a href="https://openhunts.com" target="_blank" title="OpenHunts Club">
+              <img alt="OpenHunts Club Member" height={105} src="https://cdn.openhunts.com/badges/club.webp" style={{ width: '195px', height: 'auto' }} width={486} />
+            </a>
             <Link href="/terms" className="text-xs text-zinc-600 hover:text-zinc-400 transition-colors">
               Terms
             </Link>
