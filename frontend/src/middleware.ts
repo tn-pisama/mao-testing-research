@@ -33,9 +33,13 @@ const protectedRoutes = [
   '/detector-status',
   '/conversation-evaluations',
   '/docs',
+  '/terms',
+  '/case-studies',
+  '/onboarding',
+  '/demo',
 ]
 
-const publicRoutes = ['/', '/sign-in', '/sign-up', '/login', '/terms', '/case-studies', '/onboarding', '/demo']
+const publicRoutes = ['/', '/sign-in', '/sign-up', '/login']
 
 function isProtectedRoute(pathname: string): boolean {
   return protectedRoutes.some(route => pathname.startsWith(route))
