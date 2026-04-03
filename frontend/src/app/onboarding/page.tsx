@@ -11,6 +11,7 @@ import { StepFirstDetection } from '@/components/onboarding/StepFirstDetection'
 import { useSafeAuth } from '@/hooks/useSafeAuth'
 import { useTenant } from '@/hooks/useTenant'
 import { createApiClient } from '@/lib/api'
+import { RequireAuth } from '@/components/common/RequireAuth'
 
 export default function OnboardingPage() {
   const router = useRouter()
@@ -48,7 +49,7 @@ export default function OnboardingPage() {
   }
 
   return (
-    <div className="min-h-screen bg-zinc-950 flex flex-col">
+    <RequireAuth><div className="min-h-screen bg-zinc-950 flex flex-col">
       {/* Header */}
       <header className="border-b border-zinc-800 p-4">
         <div className="max-w-3xl mx-auto flex items-center justify-between">
@@ -101,6 +102,6 @@ export default function OnboardingPage() {
           </span>
         </div>
       </footer>
-    </div>
+    </div></RequireAuth>
   )
 }

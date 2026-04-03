@@ -5,7 +5,7 @@ import {
   CheckCircle, Zap, BarChart3, Quote,
   Terminal, ExternalLink, ArrowRight
 } from 'lucide-react'
-import { Layout } from '@/components/common/Layout'
+import { Layout, RequireAuth } from '@/components/common'
 import Link from 'next/link'
 
 interface CaseStudy {
@@ -181,7 +181,7 @@ function CaseStudyCard({ study }: { study: CaseStudy }) {
 
 export default function CaseStudiesPage() {
   return (
-    <Layout>
+    <RequireAuth><Layout>
       <div className="p-6 max-w-6xl mx-auto">
         {/* Header */}
         <div className="mb-8">
@@ -290,6 +290,6 @@ export default function CaseStudiesPage() {
           Have a success story? <a href="mailto:hello@pisama.dev" className="text-indigo-400 hover:underline">Share it with us</a>
         </div>
       </div>
-    </Layout>
+    </Layout></RequireAuth>
   )
 }

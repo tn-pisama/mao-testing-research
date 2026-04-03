@@ -1,10 +1,10 @@
 'use client'
 
-import { Layout } from '@/components/common/Layout'
+import { Layout, RequireAuth } from '@/components/common'
 
 export default function TermsPage() {
   return (
-    <Layout>
+    <RequireAuth><Layout>
       <div className="p-6 max-w-4xl mx-auto">
         <div className="prose prose-invert prose-slate max-w-none">
           <h1 className="text-3xl font-bold text-white mb-2">Terms of Service</h1>
@@ -256,6 +256,6 @@ export default function TermsPage() {
           </div>
         </div>
       </div>
-    </Layout>
+    </Layout></RequireAuth>
   )
 }

@@ -15,6 +15,7 @@ import { allDemoScenarios, getDemoScenario } from '@/lib/demo-fixtures'
 import type { DemoScenario } from '@/lib/demo-fixtures'
 import { useDemoMode } from '@/hooks/useDemoMode'
 import { Button } from '@/components/ui/Button'
+import { RequireAuth } from '@/components/common/RequireAuth'
 import { Play, RotateCcw, Sparkles, AlertTriangle, Link } from 'lucide-react'
 
 export default function DemoPage() {
@@ -68,7 +69,7 @@ export default function DemoPage() {
 
   if (!demo.isLoaded) {
     return (
-      <Layout>
+      <RequireAuth><Layout>
         <div className="p-6">
           <div className="animate-pulse space-y-6">
             <div className="h-10 w-64 bg-zinc-700 rounded" />
@@ -79,12 +80,12 @@ export default function DemoPage() {
             </div>
           </div>
         </div>
-      </Layout>
+      </Layout></RequireAuth>
     )
   }
 
   return (
-    <Layout>
+    <RequireAuth><Layout>
       {showWalkthrough && (
         <GuidedWalkthrough
           onComplete={handleWalkthroughComplete}
@@ -234,6 +235,6 @@ export default function DemoPage() {
           </div>
         )}
       </div>
-    </Layout>
+    </Layout></RequireAuth>
   )
 }
