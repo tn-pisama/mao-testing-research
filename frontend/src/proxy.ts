@@ -8,7 +8,7 @@ function isPublicRoute(pathname: string): boolean {
   return publicRoutes.some(route => pathname === route || pathname.startsWith(route + '/'))
 }
 
-export async function middleware(req: NextRequest) {
+export async function proxy(req: NextRequest) {
   const { pathname } = req.nextUrl
 
   // Redirect /docs to /docs/ so MkDocs relative asset paths resolve correctly
