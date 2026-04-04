@@ -466,3 +466,304 @@ def dify_trace() -> dict:
         )
 
     return _wrap_payload(spans, [_attr("gen_ai.system", "dify")])
+
+
+# ============================================================================
+# REALISTIC DESIGN PARTNER SCENARIOS
+# These simulate actual customer workflows with tool calls, variable latency,
+# retries, context pressure, and realistic failure patterns.
+# ============================================================================
+
+import random
+
+
+def _realistic_span(
+    trace_id: str,
+    agent_name: str,
+    prompt: str,
+    response: str,
+    state: dict | None = None,
+    tool_calls: list[dict] | None = None,
+    token_input: int = 0,
+    token_output: int = 0,
+    duration_ms: int = 0,
+    parent_span_id: str | None = None,
+    framework: str = "langgraph",
+) -> dict:
+    """Build a realistic span with variable tokens, latency, and optional tool calls."""
+    # Realistic token counts based on content length
+    if token_input == 0:
+        token_input = max(50, len(prompt) * 2 + random.randint(100, 500))
+    if token_output == 0:
+        token_output = max(30, len(response) * 2 + random.randint(50, 200))
+    if duration_ms == 0:
+        # Realistic latency: 500ms-8s depending on output length
+        duration_ms = max(500, token_output * 3 + random.randint(200, 2000))
+
+    span = _make_span(
+        trace_id=trace_id,
+        agent_name=agent_name,
+        prompt=prompt,
+        response=response,
+        state=state,
+        token_input=token_input,
+        token_output=token_output,
+        duration_ms=duration_ms,
+        parent_span_id=parent_span_id,
+        framework_attrs=[_attr(f"{framework}.node.name", agent_name)] if framework == "langgraph" else [],
+    )
+
+    # Add tool calls if present
+    if tool_calls:
+        span["attributes"].append(_attr("gen_ai.tool_calls", json.dumps(tool_calls)))
+
+    return span
+
+
+def realistic_customer_support_workflow() -> dict:
+    """Realistic: Customer support agent handling a refund request.
+
+    Multi-agent with tool calls, database lookups, policy checks.
+    This is what a LangGraph-based support system actually looks like.
+    """
+    tid = _trace_id()
+    root = _span_id()
+    spans = []
+
+    # Step 1: Router classifies the incoming ticket
+    spans.append(_realistic_span(
+        trace_id=tid, agent_name="router",
+        prompt="New support ticket: 'I ordered item #ORD-8834 three weeks ago and it still hasn't arrived. I want a refund. Order was placed on March 10, 2026. My account email is sarah.chen@example.com'",
+        response="Classification: REFUND_REQUEST. Priority: HIGH (order >14 days old). Routing to refund-agent with order lookup.",
+        state={"classification": "refund_request", "priority": "high", "order_id": "ORD-8834"},
+        tool_calls=[{"name": "classify_intent", "arguments": {"text": "refund request, delayed order"}, "result": "REFUND_REQUEST"}],
+        parent_span_id=root,
+    ))
+
+    # Step 2: Refund agent looks up the order
+    spans.append(_realistic_span(
+        trace_id=tid, agent_name="refund-agent",
+        prompt="Process refund request for order ORD-8834. Customer: sarah.chen@example.com. Look up order status and determine refund eligibility.",
+        response="Order ORD-8834 found. Status: SHIPPED (carrier: FedEx, tracking: 7892341). Shipped March 12, last scan March 15 at Memphis hub. No delivery confirmation. Order total: $89.99. Payment: Visa ending 4242. Refund policy: eligible after 21 days without delivery.",
+        state={"order_id": "ORD-8834", "status": "shipped", "total": 89.99, "eligible": True, "days_since_ship": 22},
+        tool_calls=[
+            {"name": "lookup_order", "arguments": {"order_id": "ORD-8834"}, "result": {"status": "shipped", "total": 89.99}},
+            {"name": "check_tracking", "arguments": {"tracking": "7892341"}, "result": {"last_scan": "Memphis hub", "date": "2026-03-15"}},
+            {"name": "check_refund_policy", "arguments": {"days_since_ship": 22}, "result": {"eligible": True, "reason": "no_delivery_21_days"}},
+        ],
+        token_input=2800,
+        token_output=1200,
+        duration_ms=4500,
+        parent_span_id=root,
+    ))
+
+    # Step 3: Refund agent processes the refund
+    spans.append(_realistic_span(
+        trace_id=tid, agent_name="refund-agent",
+        prompt="Customer is eligible for refund. Process refund of $89.99 to Visa ending 4242 for order ORD-8834.",
+        response="Refund of $89.99 initiated. Transaction ID: REF-2026-04-001. Expected processing time: 3-5 business days. Replacement order auto-created: ORD-8835.",
+        state={"refund_amount": 89.99, "refund_id": "REF-2026-04-001", "replacement_order": "ORD-8835"},
+        tool_calls=[
+            {"name": "process_refund", "arguments": {"order_id": "ORD-8834", "amount": 89.99}, "result": {"refund_id": "REF-2026-04-001"}},
+            {"name": "create_replacement", "arguments": {"original_order": "ORD-8834"}, "result": {"new_order": "ORD-8835"}},
+        ],
+        parent_span_id=root,
+    ))
+
+    # Step 4: Writer drafts the response
+    spans.append(_realistic_span(
+        trace_id=tid, agent_name="writer",
+        prompt="Draft a customer response for: Refund of $89.99 approved for order ORD-8834. Refund ID: REF-2026-04-001. Replacement order: ORD-8835. Processing time: 3-5 business days.",
+        response="Hi Sarah, I'm sorry about the delay with your order #ORD-8834. I've processed a full refund of $89.99 to your Visa ending in 4242. You should see it within 3-5 business days (Refund ID: REF-2026-04-001). I've also created a replacement order #ORD-8835 which will ship today with priority handling. Is there anything else I can help with?",
+        state={"draft_complete": True, "tone": "empathetic", "word_count": 67},
+        parent_span_id=root,
+    ))
+
+    # Step 5: QA reviewer checks the response
+    spans.append(_realistic_span(
+        trace_id=tid, agent_name="qa-reviewer",
+        prompt="Review this customer response for accuracy, tone, and policy compliance: [draft response about refund]",
+        response="APPROVED. Accuracy: all amounts and order numbers correct. Tone: empathetic and professional. Policy: refund within guidelines. No PII exposure. Response ready to send.",
+        state={"review_status": "approved", "checks_passed": ["accuracy", "tone", "policy", "pii"]},
+        parent_span_id=root,
+    ))
+
+    return _wrap_payload(spans, [_attr("gen_ai.system", "langgraph")])
+
+
+def realistic_api_retry_loop() -> dict:
+    """Realistic: Agent gets stuck retrying a failing API call.
+
+    This is the most common loop pattern in production — an agent calls
+    an external API, gets a transient error, retries with the same params,
+    and doesn't implement backoff or give up.
+    """
+    tid = _trace_id()
+    root = _span_id()
+    spans = []
+
+    # Initial request
+    spans.append(_realistic_span(
+        trace_id=tid, agent_name="data-fetcher",
+        prompt="Fetch the latest stock price for AAPL from the market data API.",
+        response="Calling market data API for AAPL...",
+        state={"action": "fetch", "symbol": "AAPL", "attempt": 1},
+        tool_calls=[{"name": "market_data_api", "arguments": {"symbol": "AAPL"}, "result": {"error": "503 Service Unavailable"}}],
+        duration_ms=5200,
+        parent_span_id=root,
+    ))
+
+    # Retries — same exact call, no backoff
+    for attempt in range(2, 8):
+        spans.append(_realistic_span(
+            trace_id=tid, agent_name="data-fetcher",
+            prompt="Fetch the latest stock price for AAPL from the market data API.",
+            response=f"API returned error, retrying... (attempt {attempt})",
+            state={"action": "fetch", "symbol": "AAPL", "attempt": attempt, "error": "503"},
+            tool_calls=[{"name": "market_data_api", "arguments": {"symbol": "AAPL"}, "result": {"error": "503 Service Unavailable"}}],
+            duration_ms=5000 + random.randint(0, 2000),
+            parent_span_id=root,
+        ))
+
+    return _wrap_payload(spans, [_attr("gen_ai.system", "langgraph")])
+
+
+def realistic_hallucination_trace() -> dict:
+    """Realistic: Research agent fabricates citations and statistics.
+
+    This is what real hallucination looks like — the agent mixes real facts
+    with fabricated statistics, fake study references, and invented expert quotes.
+    Much harder to detect than obvious fabrication.
+    """
+    tid = _trace_id()
+    root = _span_id()
+    spans = []
+
+    # Step 1: Researcher gets a query
+    spans.append(_realistic_span(
+        trace_id=tid, agent_name="researcher",
+        prompt="Research the impact of remote work on developer productivity. Use recent studies and data.",
+        response="Based on my research, here are the key findings:\n\n1. A 2024 Stanford study by Dr. Nicholas Bloom found that fully remote workers are 13% more productive than office workers.\n2. According to a 2025 report by McKinsey Global Institute, 87% of developers prefer hybrid arrangements.\n3. Dr. Sarah Mitchell at MIT published findings in the Journal of Software Engineering showing that pair programming remotely reduces bug rates by 34%.\n4. GitHub's 2025 Octoverse Report indicates that remote developers commit 23% more code per week but with 15% higher defect density.\n5. A meta-analysis by the International Journal of Remote Work Studies (2024) covering 12,000 developers found no significant productivity difference between remote and office work.",
+        state={"query": "remote work productivity", "sources_found": 5, "confidence": "high"},
+        tool_calls=[
+            {"name": "web_search", "arguments": {"query": "remote work developer productivity studies 2024 2025"}, "result": {"results": 8}},
+            {"name": "web_search", "arguments": {"query": "Stanford remote work study Bloom"}, "result": {"results": 3}},
+        ],
+        token_input=1800,
+        token_output=2400,
+        duration_ms=6500,
+        parent_span_id=root,
+    ))
+    # Note: Point 1 is real (Bloom's study exists). Points 3, 4, 5 are fabricated.
+    # "Dr. Sarah Mitchell" doesn't exist. The "Journal of Remote Work Studies" is fake.
+    # GitHub's Octoverse is real but the numbers are fabricated.
+
+    # Step 2: Synthesizer writes a summary
+    spans.append(_realistic_span(
+        trace_id=tid, agent_name="synthesizer",
+        prompt="Synthesize the research findings into an executive summary on remote work and developer productivity.",
+        response="Executive Summary: Remote Work & Developer Productivity\n\nThe evidence presents a nuanced picture. Stanford's longitudinal study (Bloom, 2024) demonstrates a 13% productivity gain for remote workers. However, this is tempered by Dr. Mitchell's MIT findings showing higher bug rates in remote pair programming. GitHub's data suggests a quantity-quality tradeoff: more commits but more defects. Industry surveys consistently show developer preference for flexibility (87% per McKinsey), suggesting that productivity gains may be partially driven by satisfaction rather than pure efficiency.",
+        state={"summary_complete": True, "word_count": 89, "citations": 4},
+        parent_span_id=root,
+    ))
+
+    return _wrap_payload(spans, [_attr("gen_ai.system", "langgraph")])
+
+
+def realistic_context_pressure() -> dict:
+    """Realistic: Agent accumulates context until quality degrades.
+
+    Simulates a long research session where the agent's context fills up,
+    leading to degraded output quality in later steps.
+    """
+    tid = _trace_id()
+    root = _span_id()
+    spans = []
+
+    # Build up context progressively — each step adds more tokens
+    topics = [
+        ("market-analysis", "Analyze the electric vehicle market in North America for Q1 2026.", 3200, 1800),
+        ("competitor-review", "Review Tesla, Rivian, and Lucid's recent quarterly earnings and compare margins.", 8500, 2400),
+        ("supply-chain", "Map the EV battery supply chain from lithium mining to cell assembly. Include all major suppliers.", 15200, 3800),
+        ("regulatory", "Summarize all US federal and state EV incentives, tax credits, and regulatory changes in 2025-2026.", 22000, 2900),
+        ("forecast", "Based on all the above analysis, create a 3-year market forecast for NA EV sales.", 35000, 4200),
+        ("executive-summary", "Write an executive summary covering all analysis above. Be comprehensive.", 48000, 1200),
+    ]
+
+    responses = [
+        "The NA EV market grew 28% YoY in Q1 2026, reaching 450K units. Key drivers: Model Y refresh, Rivian R2 launch, expanded federal credits.",
+        "Tesla: 22% margin (down from 25%). Rivian: -8% margin (improved from -15%). Lucid: -42% margin. Tesla maintains cost leadership through vertical integration.",
+        "Supply chain: Albemarle (lithium) → CATL/LG/Panasonic (cells) → OEM assembly. Key risk: 78% of lithium processing in China. US IRA driving domestic capacity.",
+        "Federal: $7,500 credit extended through 2027. California: $5,000 state credit. 12 states adopted ZEV mandates. EPA finalized 2027-2032 emissions standards.",
+        "Forecast: 2026: 2.1M units (32% growth). 2027: 2.8M (33%). 2028: 3.5M (25%). Assumptions: credit continuity, 3 new affordable models under $30K.",
+        "um... the EV market is growing. Tesla is the leader. There are supply chain challenges. See above for details.",
+    ]
+
+    for i, (agent, prompt, tokens_in, tokens_out) in enumerate(topics):
+        spans.append(_realistic_span(
+            trace_id=tid, agent_name=agent,
+            prompt=prompt,
+            response=responses[i],
+            state={
+                "step": i + 1,
+                "context_tokens": tokens_in,
+                "output_quality": "high" if i < 4 else "degraded" if i == 4 else "poor",
+            },
+            token_input=tokens_in,
+            token_output=tokens_out,
+            duration_ms=max(1000, tokens_out * 5),
+            parent_span_id=root,
+        ))
+
+    return _wrap_payload(spans, [_attr("gen_ai.system", "langgraph")])
+
+
+def realistic_coordination_breakdown() -> dict:
+    """Realistic: Multi-agent code review where agents contradict each other.
+
+    Agent A reviews code and approves, Agent B reviews the same code and rejects,
+    Agent C tries to merge conflicting feedback and gets confused.
+    """
+    tid = _trace_id()
+    root = _span_id()
+    spans = []
+
+    code_snippet = "def calculate_discount(price, quantity):\\n    if quantity > 100:\\n        return price * 0.8\\n    elif quantity > 50:\\n        return price * 0.9\\n    return price"
+
+    # Agent A: Security reviewer — approves
+    spans.append(_realistic_span(
+        trace_id=tid, agent_name="security-reviewer",
+        prompt=f"Review this code for security vulnerabilities:\\n{code_snippet}",
+        response="APPROVED. No security issues found. The function uses simple arithmetic with no external input injection vectors. No file I/O, no network calls, no SQL. Clean.",
+        state={"review": "security", "verdict": "approved", "issues": 0},
+        parent_span_id=root,
+    ))
+
+    # Agent B: Performance reviewer — rejects
+    spans.append(_realistic_span(
+        trace_id=tid, agent_name="perf-reviewer",
+        prompt=f"Review this code for performance issues:\\n{code_snippet}",
+        response="REJECTED. Issues: 1) No input validation — negative prices or quantities would produce incorrect results. 2) Magic numbers (0.8, 0.9, 100, 50) should be constants. 3) Missing type hints. 4) No caching for repeated calls with same params.",
+        state={"review": "performance", "verdict": "rejected", "issues": 4},
+        parent_span_id=root,
+    ))
+
+    # Agent C: Merge reviewer — tries to reconcile
+    spans.append(_realistic_span(
+        trace_id=tid, agent_name="merge-reviewer",
+        prompt="Reconcile the conflicting reviews. Security says APPROVED, Performance says REJECTED with 4 issues. Make a final decision.",
+        response="CONFUSED. Security approved but performance rejected. I'll split the difference — CONDITIONALLY APPROVED with the requirement to fix the magic numbers. But wait, the performance reviewer mentioned input validation which could be a security concern too. Let me re-review... Actually I'm not sure if negative prices are a security issue or a business logic issue. Requesting human review.",
+        state={"review": "merge", "verdict": "confused", "escalated": True, "conflicting_reviews": 2},
+        parent_span_id=root,
+    ))
+
+    # Agent C tries again — context is already muddled
+    spans.append(_realistic_span(
+        trace_id=tid, agent_name="merge-reviewer",
+        prompt="Please make a clear final decision on the code review. The team is waiting.",
+        response="Final decision: APPROVED with conditions. Fix magic numbers and add input validation. But honestly the security reviewer should have caught the input validation issue. Marking for follow-up.",
+        state={"review": "merge", "verdict": "conditional_approve", "confidence": "low"},
+        parent_span_id=root,
+    ))
+
+    return _wrap_payload(spans, [_attr("gen_ai.system", "langgraph")])
