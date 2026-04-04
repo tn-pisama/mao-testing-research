@@ -17,6 +17,12 @@ let cachedTenantId: string | null = null
 if (typeof window !== 'undefined') {
   try {
     sessionStorage.removeItem(TOKEN_STORAGE_KEY)
+    // Hydrate cached token from override (tenant switcher) if present
+    const override = localStorage.getItem('pisama_override_token')
+    if (override) {
+      cachedBackendToken = override
+      backendTokenExpiresAt = Date.now() + 23 * 60 * 60 * 1000
+    }
   } catch {}
 }
 

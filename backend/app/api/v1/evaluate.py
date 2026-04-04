@@ -225,9 +225,15 @@ def _run_single_detector(
             # is natural language (not code). Code outputs have many tokens that
             # legitimately don't appear in the spec.
             has_code = any(p in output_text for p in ["```", "def ", "import ", "print(", "return ", "function ", "class "])
-            # Only use spec as source when it's substantial enough to ground against
-            # and the output isn't code (code has many tokens not in the spec by nature)
-            if not has_code and len(spec_text) > 50:
+            # Only use spec as source when:
+            # 1. Output isn't code (code tokens legitimately differ from spec)
+            # 2. Spec is substantial (>100 chars — short specs are poor sources)
+            # 3. Output doesn't heavily overlap with spec (>40% overlap = grounded)
+            import re as _re
+            spec_words = set(w.lower() for w in _re.findall(r'[a-zA-Z]{3,}', spec_text))
+            out_words = set(w.lower() for w in _re.findall(r'[a-zA-Z]{3,}', output_text))
+            word_overlap = len(spec_words & out_words) / max(len(spec_words), 1)
+            if not has_code and len(spec_text) > 100 and word_overlap < 0.4:
                 sources = [SourceDocument(content=spec_text)]
         result = detector.detect_hallucination(
             output=output_text,

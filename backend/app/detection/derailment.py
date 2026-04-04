@@ -552,6 +552,25 @@ class TaskDerailmentDetector:
                 task_coverage=1.0,
             )
 
+        # v1.6: Short outputs with high keyword overlap are likely on-task
+        # (e.g., "print('Hello, World!')" for "write a hello world program")
+        if len(output) < 100:
+            import re as _re
+            task_words = set(w.lower() for w in _re.findall(r'[a-zA-Z]{3,}', task))
+            output_words = set(w.lower() for w in _re.findall(r'[a-zA-Z]{3,}', output))
+            if task_words and output_words:
+                overlap = len(task_words & output_words) / len(task_words)
+                if overlap >= 0.25:
+                    return DerailmentResult(
+                        detected=False,
+                        severity=DerailmentSeverity.NONE,
+                        confidence=0.0,
+                        task_output_similarity=1.0,
+                        topic_drift_score=0.0,
+                        explanation="Short output with sufficient task keyword overlap",
+                        task_coverage=1.0,
+                    )
+
         similarity = self._compute_similarity(task, output)
         drift_score, task_coverage = self._compute_topic_drift(task, output, context)
 

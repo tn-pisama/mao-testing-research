@@ -151,6 +151,80 @@ jobs:
           cd backend
           pytest tests/test_calibration_regression.py -m slow -v
 
+  synth-agents:
+    needs: backend-test
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+
+    services:
+      postgres:
+        image: pgvector/pgvector:pg16
+        env:
+          POSTGRES_USER: mao
+          POSTGRES_PASSWORD: mao
+          POSTGRES_DB: mao
+        options: >-
+          --health-cmd pg_isready
+          --health-interval 10s
+          --health-timeout 5s
+          --health-retries 5
+        ports:
+          - 5432:5432
+
+      redis:
+        image: redis:7-alpine
+        options: >-
+          --health-cmd "redis-cli ping"
+          --health-interval 10s
+          --health-timeout 5s
+          --health-retries 5
+        ports:
+          - 6379:6379
+
+    steps:
+      - uses: actions/checkout@34e114876b0b11c390a56381ad16ebd13914f8d5 # v4.3.1
+
+      - name: Generate CI JWT secret
+        id: gen-jwt
+        run: echo "jwt_secret=$(openssl rand -base64 48 | tr -d '/+=' | head -c 48)" >> $GITHUB_OUTPUT
+
+      - name: Set up Python
+        uses: actions/setup-python@a26af69be951a213d495a4c3e4e4022e16d87065 # v5.6.0
+        with:
+          python-version: '3.11'
+          cache: 'pip'
+
+      - name: Install backend + synth agents
+        run: |
+          cd backend && pip install -r requirements-ci.txt && cd ..
+          cd packages/pisama-synth-agents && pip install -e .
+
+      - name: Run migrations
+        env:
+          DATABASE_URL: postgresql+asyncpg://mao:mao@localhost:5432/mao
+        run: |
+          cd backend
+          python -m alembic upgrade head
+
+      - name: Start backend
+        env:
+          DATABASE_URL: postgresql+asyncpg://mao:mao@localhost:5432/mao
+          REDIS_URL: redis://localhost:6379
+          JWT_SECRET: ${{ steps.gen-jwt.outputs.jwt_secret }}
+        run: |
+          cd backend
+          uvicorn app.main:app --host 0.0.0.0 --port 8000 &
+          sleep 5
+          curl -s http://localhost:8000/api/v1/health
+
+      - name: Run synth agents (core suite)
+        run: |
+          pisama-synth run --target http://localhost:8000 --agents ava,bram,diego,fiona
+
+      - name: Run synth agents (full suite)
+        run: |
+          pisama-synth run --target http://localhost:8000 --agents clara,elin,gustav
+
   frontend-build:
     runs-on: ubuntu-latest
 
