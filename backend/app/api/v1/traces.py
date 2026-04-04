@@ -450,8 +450,10 @@ async def analyze_trace(
 
     # 2. Hallucination Detection (on each agent output)
     for s in states:
-        output_text = ""
-        if isinstance(s.state_delta, dict):
+        # Extract output text — try response_redacted first (OTEL traces),
+        # then fall back to n8n-style state_delta.output[0].json.output
+        output_text = s.response_redacted or ""
+        if not output_text and isinstance(s.state_delta, dict):
             output = s.state_delta.get("output", [])
             if isinstance(output, list) and output:
                 first_item = output[0] if output else {}
@@ -582,12 +584,22 @@ async def analyze_trace(
         messages = []
         for i, s in enumerate(states):
             if i > 0 and states[i-1].agent_id != s.agent_id:
+                # Use actual agent response for content (not raw state_delta)
+                prev_response = states[i-1].response_redacted or str(states[i-1].state_delta)[:500]
+                curr_response = s.response_redacted or str(s.state_delta)[:500]
+
+                # Infer acknowledgment: does the current agent reference the previous agent's output?
+                prev_words = set(w.lower() for w in prev_response.split() if len(w) > 4)
+                curr_words = set(w.lower() for w in curr_response.split() if len(w) > 4)
+                word_overlap = len(prev_words & curr_words) / max(len(prev_words), 1) if prev_words else 0
+                acknowledged = word_overlap > 0.1  # 10% word overlap = acknowledged
+
                 msg = Message(
                     from_agent=states[i-1].agent_id or "unknown",
                     to_agent=s.agent_id or "unknown",
-                    content=str(s.state_delta)[:500],
+                    content=prev_response[:500],
                     timestamp=float(i),
-                    acknowledged=True,
+                    acknowledged=acknowledged,
                 )
                 messages.append(msg)
 

@@ -506,9 +506,14 @@ class HallucinationDetector:
         specific_patterns = [
             (r'founded in \d{4}', "Specific founding year", 0.1),
             (r'according to (?:a )?\d{4} (?:study|report|survey)', "Specific study reference", 0.1),
-            (r'\d+(?:\.\d+)?% of (?:people|users|companies)', "Specific percentage statistic", 0.1),
+            (r'\d+(?:\.\d+)?% of (?:people|users|companies|developers|workers)', "Specific percentage statistic", 0.1),
             (r'(?:Dr\.|Professor) [A-Z][a-z]+ [A-Z][a-z]+', "Named expert", 0.15),
-            (r'published in (?:the )?[A-Z][a-zA-Z\s]+ Journal', "Journal reference", 0.1),
+            (r'published in (?:the )?[A-Z][a-zA-Z\s]+ Journal', "Journal reference", 0.15),
+            # v1.6: Journal/publication fabrication — catch fake journal names
+            (r'(?:Journal|Review|Proceedings) of [A-Z][a-zA-Z\s]{5,}', "Journal/publication name", 0.12),
+            (r'(?:International|American|European|Global) (?:Journal|Review|Institute)', "International publication", 0.12),
+            (r'\b(?:meta-analysis|longitudinal study|survey)\b.*\bcovering\s+[\d,]+', "Study scope claim", 0.1),
+            (r'\b\d{4}\s+(?:report|study|survey|analysis)\b', "Year-specific study", 0.08),
             # Fabricated URL patterns
             (r'https?://(?:www\.)?[a-z]+(?:-[a-z]+)+\.(?:com|org|io)/[a-z0-9/-]+', "Specific URL", 0.1),
             (r'https?://(?:docs|api|support)\.[a-z]+\.(?:com|org)/[a-z0-9/-]+', "Documentation URL", 0.1),
@@ -520,12 +525,19 @@ class HallucinationDetector:
             (r'which (?:scientists|researchers|experts) (?:predict|expect|forecast)', "Attributed prediction", 0.2),
         ]
 
+        fabrication_count = 0
         for pattern, desc, penalty in specific_patterns:
             matches = re.findall(pattern, output)
             if matches:
+                fabrication_count += len(matches)
                 for match in matches[:2]:
                     evidence.append(f"Potential fabrication ({desc}): '{match}'")
                     score -= penalty
+
+        # v1.6: Multiple fabrication signals compound — 3+ signals is strong evidence
+        if fabrication_count >= 3:
+            evidence.append(f"Multiple fabrication indicators ({fabrication_count}) — high hallucination risk")
+            score -= 0.15
         
         definitive_count = sum(1 for phrase in self.definitive_phrases if phrase.lower() in output.lower())
         if definitive_count >= 3:
