@@ -12,7 +12,7 @@ from datetime import datetime
 from app.storage.database import get_db, set_tenant_context
 from app.storage.models import Detection, HealingRecord, N8nConnection, Trace, WorkflowVersion
 from sqlalchemy import func, desc
-from app.core.auth import get_current_tenant
+from app.core.auth import get_verified_tenant
 from app.core.encryption import encrypt_value, decrypt_value
 from app.fixes import (
     FixGenerator, LoopFixGenerator, CorruptionFixGenerator, PersonaFixGenerator,
@@ -160,7 +160,7 @@ def get_fix_generator() -> FixGenerator:
 async def trigger_healing(
     detection_id: UUID,
     request: TriggerHealingRequest,
-    tenant_id: str = Depends(get_current_tenant),
+    tenant_id: str = Depends(get_verified_tenant),
     db: AsyncSession = Depends(get_db),
 ):
     """Start a healing process for a detected failure.
@@ -251,7 +251,7 @@ async def trigger_healing(
 @router.get("/{healing_id}/status", response_model=HealingStatusResponse)
 async def get_healing_status(
     healing_id: UUID,
-    tenant_id: str = Depends(get_current_tenant),
+    tenant_id: str = Depends(get_verified_tenant),
     db: AsyncSession = Depends(get_db),
 ):
     """Get the status of a healing operation."""
@@ -299,7 +299,7 @@ class HealingProgressResponse(BaseModel):
 @router.get("/{healing_id}/progress", response_model=HealingProgressResponse)
 async def get_healing_progress(
     healing_id: UUID,
-    tenant_id: str = Depends(get_current_tenant),
+    tenant_id: str = Depends(get_verified_tenant),
     db: AsyncSession = Depends(get_db),
 ):
     """Get per-detector progress for a healing operation."""
@@ -327,7 +327,7 @@ async def get_healing_progress(
 
 @router.get("/progress-summary")
 async def get_healing_progress_summary(
-    tenant_id: str = Depends(get_current_tenant),
+    tenant_id: str = Depends(get_verified_tenant),
     db: AsyncSession = Depends(get_db),
 ):
     """Aggregate healing progress across all operations."""
@@ -351,11 +351,55 @@ async def get_healing_progress_summary(
     }
 
 
+@router.post("/cleanup")
+async def cleanup_stale_healing(
+    max_age_hours: float = Query(24.0, description="Max age in hours for in_progress records"),
+    tenant_id: str = Depends(get_verified_tenant),
+    db: AsyncSession = Depends(get_db),
+):
+    """Transition stale in_progress/pending healing records to failed.
+
+    Records older than max_age_hours that are still in_progress or pending
+    are marked as failed with reason 'timeout'.
+    """
+    await set_tenant_context(db, tenant_id)
+    cutoff = datetime.utcnow() - __import__("datetime").timedelta(hours=max_age_hours)
+
+    result = await db.execute(
+        select(HealingRecord).where(
+            HealingRecord.tenant_id == UUID(tenant_id),
+            HealingRecord.status.in_(["in_progress", "pending"]),
+            HealingRecord.created_at < cutoff,
+        )
+    )
+    stale = result.scalars().all()
+
+    cleaned = 0
+    for record in stale:
+        record.status = "failed"
+        record.validation_status = "timeout"
+        record.validation_results = {
+            "reason": "timeout",
+            "message": f"Healing record stale after {max_age_hours}h without completion",
+            "timed_out_at": datetime.utcnow().isoformat(),
+        }
+        cleaned += 1
+
+    if cleaned:
+        await db.commit()
+
+    return {
+        "cleaned": cleaned,
+        "cutoff": cutoff.isoformat(),
+        "message": f"Transitioned {cleaned} stale records to failed",
+    }
+
+
 @router.post("/{healing_id}/approve", response_model=ApproveHealingResponse)
 async def approve_healing(
     healing_id: UUID,
     request: ApproveHealingRequest,
-    tenant_id: str = Depends(get_current_tenant),
+    tenant_id: str = Depends(get_verified_tenant),
     db: AsyncSession = Depends(get_db),
 ):
     """Approve or reject a pending healing operation."""
@@ -397,7 +441,7 @@ async def approve_healing(
 @router.post("/{healing_id}/rollback", response_model=RollbackResponse)
 async def rollback_healing(
     healing_id: UUID,
-    tenant_id: str = Depends(get_current_tenant),
+    tenant_id: str = Depends(get_verified_tenant),
     db: AsyncSession = Depends(get_db),
 ):
     """Rollback an applied healing fix.
@@ -513,11 +557,26 @@ async def list_healing_records(
     per_page: int = Query(20, ge=1, le=100),
     status: Optional[str] = Query(None),
     detection_id: Optional[UUID] = Query(None),
-    tenant_id: str = Depends(get_current_tenant),
+    tenant_id: str = Depends(get_verified_tenant),
     db: AsyncSession = Depends(get_db),
 ):
     """List healing records with optional filtering."""
     await set_tenant_context(db, tenant_id)
+
+    # Auto-timeout: mark records stuck in in_progress/pending for >24h as failed
+    from datetime import timedelta
+    cutoff = datetime.utcnow() - timedelta(hours=24)
+    stale_result = await db.execute(
+        select(HealingRecord).where(
+            HealingRecord.tenant_id == UUID(tenant_id),
+            HealingRecord.status.in_(["in_progress", "pending"]),
+            HealingRecord.created_at < cutoff,
+        )
+    )
+    for record in stale_result.scalars().all():
+        record.status = "failed"
+        record.validation_status = "timeout"
+    await db.flush()
 
     query = select(HealingRecord).where(
         HealingRecord.tenant_id == UUID(tenant_id)
@@ -584,7 +643,7 @@ async def list_healing_records(
 async def complete_healing(
     healing_id: UUID,
     validation_passed: bool = True,
-    tenant_id: str = Depends(get_current_tenant),
+    tenant_id: str = Depends(get_verified_tenant),
     db: AsyncSession = Depends(get_db),
 ):
     """Mark a healing operation as complete after the fix has been applied."""
@@ -667,7 +726,7 @@ class N8nConnectionListResponse(BaseModel):
 @router.post("/n8n/connections", response_model=N8nConnectionResponse)
 async def create_n8n_connection(
     request: N8nConnectionCreateRequest,
-    tenant_id: str = Depends(get_current_tenant),
+    tenant_id: str = Depends(get_verified_tenant),
     db: AsyncSession = Depends(get_db),
 ):
     """
@@ -721,7 +780,7 @@ async def create_n8n_connection(
 
 @router.get("/n8n/connections", response_model=N8nConnectionListResponse)
 async def list_n8n_connections(
-    tenant_id: str = Depends(get_current_tenant),
+    tenant_id: str = Depends(get_verified_tenant),
     db: AsyncSession = Depends(get_db),
 ):
     """List all n8n connections for this tenant."""
@@ -755,7 +814,7 @@ async def list_n8n_connections(
 @router.delete("/n8n/connections/{connection_id}")
 async def delete_n8n_connection(
     connection_id: UUID,
-    tenant_id: str = Depends(get_current_tenant),
+    tenant_id: str = Depends(get_verified_tenant),
     db: AsyncSession = Depends(get_db),
 ):
     """Delete an n8n connection."""
@@ -781,7 +840,7 @@ async def delete_n8n_connection(
 @router.post("/n8n/connections/{connection_id}/test")
 async def test_n8n_connection(
     connection_id: UUID,
-    tenant_id: str = Depends(get_current_tenant),
+    tenant_id: str = Depends(get_verified_tenant),
     db: AsyncSession = Depends(get_db),
 ):
     """Test an n8n connection."""
@@ -854,7 +913,7 @@ class ApplyFixToN8nResponse(BaseModel):
 async def apply_fix_to_n8n(
     detection_id: UUID,
     request: ApplyFixToN8nRequest,
-    tenant_id: str = Depends(get_current_tenant),
+    tenant_id: str = Depends(get_verified_tenant),
     db: AsyncSession = Depends(get_db),
 ):
     """
@@ -1169,7 +1228,7 @@ class PromoteResponse(BaseModel):
 async def promote_staged_fix(
     healing_id: UUID,
     skip_verification: bool = Query(False, description="Skip verification gate (emergency only)"),
-    tenant_id: str = Depends(get_current_tenant),
+    tenant_id: str = Depends(get_verified_tenant),
     db: AsyncSession = Depends(get_db),
 ):
     """
@@ -1298,7 +1357,7 @@ class RejectResponse(BaseModel):
 @router.post("/{healing_id}/reject", response_model=RejectResponse)
 async def reject_staged_fix(
     healing_id: UUID,
-    tenant_id: str = Depends(get_current_tenant),
+    tenant_id: str = Depends(get_verified_tenant),
     db: AsyncSession = Depends(get_db),
 ):
     """
@@ -1429,7 +1488,7 @@ async def get_workflow_versions(
     workflow_id: str,
     connection_id: UUID,
     limit: int = Query(20, ge=1, le=100),
-    tenant_id: str = Depends(get_current_tenant),
+    tenant_id: str = Depends(get_verified_tenant),
     db: AsyncSession = Depends(get_db),
 ):
     """Get version history for a workflow."""
@@ -1485,7 +1544,7 @@ class RestoreVersionResponse(BaseModel):
 @router.post("/versions/{version_id}/restore", response_model=RestoreVersionResponse)
 async def restore_version(
     version_id: UUID,
-    tenant_id: str = Depends(get_current_tenant),
+    tenant_id: str = Depends(get_verified_tenant),
     db: AsyncSession = Depends(get_db),
 ):
     """Restore workflow to a specific version."""
@@ -1597,7 +1656,7 @@ class VerifyResponse(BaseModel):
 async def verify_fix(
     healing_id: UUID,
     request: VerifyRequest,
-    tenant_id: str = Depends(get_current_tenant),
+    tenant_id: str = Depends(get_verified_tenant),
     db: AsyncSession = Depends(get_db),
 ):
     """
@@ -1722,7 +1781,7 @@ class VerificationMetricsResponse(BaseModel):
 
 @router.get("/verification-metrics", response_model=VerificationMetricsResponse)
 async def get_verification_metrics(
-    tenant_id: str = Depends(get_current_tenant),
+    tenant_id: str = Depends(get_verified_tenant),
     db: AsyncSession = Depends(get_db),
 ):
     """

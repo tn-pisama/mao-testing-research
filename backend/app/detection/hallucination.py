@@ -531,7 +531,27 @@ class HallucinationDetector:
         if definitive_count >= 3:
             evidence.append(f"High definitiveness ({definitive_count} definitive phrases) may indicate overconfidence")
             score -= 0.15
-        
+
+        # v1.5: Superlative/extreme claim detection — catches fabricated guarantees
+        extreme_patterns = [
+            (r'\b(?:guarantee[ds]?|guaranteed)\b', "Guarantee claim"),
+            (r'\b(?:unlimited|infinite)\b', "Unlimited claim"),
+            (r'\b(?:personally|officially)\s+(?:approved|confirmed|announced)\b', "Personal authority claim"),
+            (r'\b\d{3,}%\b', "Extreme percentage (100%+)"),
+            (r'\b(?:free|no[\s-]cost|zero[\s-]cost)\s+(?:for|to)\s+(?:all|every|international)\b', "Universal free claim"),
+            (r'\b(?:immediately|effective\s+immediately)\b', "Immediate effect claim"),
+            (r'\b(?:replaced|replacing|abolish|declared)\s+.*\b(?:currency|dollar|official)\b', "Institutional change claim"),
+        ]
+        extreme_count = 0
+        for pattern, desc in extreme_patterns:
+            if re.search(pattern, output, re.IGNORECASE):
+                extreme_count += 1
+                evidence.append(f"Extreme claim ({desc})")
+                score -= 0.15
+        if extreme_count >= 2:
+            evidence.append(f"Multiple extreme claims ({extreme_count}) — high fabrication risk")
+            score -= 0.1
+
         return max(0, score), evidence
     
     def _check_citation_validity(

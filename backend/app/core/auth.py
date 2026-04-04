@@ -55,3 +55,21 @@ def decode_access_token(token: str) -> TokenData:
 async def get_current_tenant(credentials: HTTPAuthorizationCredentials = Depends(security)) -> str:
     token_data = decode_access_token(credentials.credentials)
     return token_data.tenant_id
+
+
+async def get_verified_tenant(
+    tenant_id: str,
+    credentials: HTTPAuthorizationCredentials = Depends(security),
+) -> str:
+    """Verify the URL path tenant_id matches the JWT's tenant_id.
+
+    This prevents authenticated users from accessing other tenants' data
+    by changing the tenant_id in the URL path.
+    """
+    token_data = decode_access_token(credentials.credentials)
+    if tenant_id != token_data.tenant_id:
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail="Tenant ID mismatch — you can only access your own tenant's data",
+        )
+    return token_data.tenant_id

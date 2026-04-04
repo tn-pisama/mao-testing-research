@@ -17,7 +17,7 @@ import logging
 from uuid import UUID
 from app.storage.database import get_db, set_tenant_context
 from app.storage.models import Trace, Detection
-from app.core.auth import get_current_tenant
+from app.core.auth import get_verified_tenant
 
 logger = logging.getLogger(__name__)
 
@@ -57,7 +57,7 @@ class RunDetectionRequest(BaseModel):
 
 @router.get("/status", response_model=OnboardingStatus)
 async def get_onboarding_status(
-    tenant_id: str = Depends(get_current_tenant),
+    tenant_id: str = Depends(get_verified_tenant),
     db: AsyncSession = Depends(get_db),
 ):
     """Check if the tenant has received any traces (Step 2 polling)."""
@@ -101,7 +101,7 @@ async def get_onboarding_status(
 @router.post("/run-detection", response_model=OnboardingDetectionResult)
 async def run_onboarding_detection(
     request: RunDetectionRequest,
-    tenant_id: str = Depends(get_current_tenant),
+    tenant_id: str = Depends(get_verified_tenant),
     db: AsyncSession = Depends(get_db),
 ):
     """Run ICP-tier detectors on a specific trace (Step 3)."""
@@ -149,7 +149,7 @@ async def run_onboarding_detection(
 
 @router.post("/onboarding/complete")
 async def complete_onboarding(
-    tenant_id: str = Depends(get_current_tenant),
+    tenant_id: str = Depends(get_verified_tenant),
     db: AsyncSession = Depends(get_db),
 ):
     """Mark onboarding as completed for this tenant (server-side enforcement)."""

@@ -12,7 +12,7 @@ from pydantic import BaseModel, Field
 
 from app.storage.database import get_db, set_tenant_context
 from app.storage.models import Tenant
-from app.core.auth import get_current_tenant
+from app.core.auth import get_verified_tenant
 from app.config import (
     FRAMEWORK_THRESHOLDS,
     FrameworkThresholds,
@@ -76,7 +76,7 @@ class DetectionThresholdsResponse(BaseModel):
 
 @router.get("/thresholds", response_model=DetectionThresholdsResponse)
 async def get_detection_thresholds(
-    tenant_id: str = Depends(get_current_tenant),
+    tenant_id: str = Depends(get_verified_tenant),
     db: AsyncSession = Depends(get_db),
 ):
     """Get current detection threshold settings.
@@ -134,7 +134,7 @@ async def get_detection_thresholds(
 @router.put("/thresholds", response_model=DetectionThresholdsResponse)
 async def update_detection_thresholds(
     request: DetectionThresholdsRequest,
-    tenant_id: str = Depends(get_current_tenant),
+    tenant_id: str = Depends(get_verified_tenant),
     db: AsyncSession = Depends(get_db),
 ):
     """Update detection threshold settings.
@@ -207,7 +207,7 @@ async def update_detection_thresholds(
 @router.delete("/thresholds")
 async def reset_detection_thresholds(
     framework: Optional[str] = None,
-    tenant_id: str = Depends(get_current_tenant),
+    tenant_id: str = Depends(get_verified_tenant),
     db: AsyncSession = Depends(get_db),
 ):
     """Reset detection thresholds to defaults.
@@ -285,7 +285,7 @@ async def preview_effective_thresholds(
     loop_detection_window: Optional[int] = None,
     min_matches_for_loop: Optional[int] = None,
     confidence_scaling: Optional[float] = None,
-    tenant_id: str = Depends(get_current_tenant),
+    tenant_id: str = Depends(get_verified_tenant),
     db: AsyncSession = Depends(get_db),
 ):
     """Preview effective thresholds with proposed changes.

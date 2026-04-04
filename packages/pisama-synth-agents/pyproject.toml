@@ -1,0 +1,33 @@
+[build-system]
+requires = ["hatchling"]
+build-backend = "hatchling.build"
+
+[project]
+name = "pisama-synth-agents"
+version = "0.1.0"
+description = "Synthetic customer agents that exercise the Pisama platform end-to-end"
+readme = "README.md"
+requires-python = ">=3.10"
+license = {text = "MIT"}
+authors = [{ name = "Pisama Team" }]
+
+dependencies = [
+    "httpx>=0.24",
+    "click>=8.0",
+    "rich>=13.0",
+]
+
+[project.optional-dependencies]
+sdk = [
+    "pisama-agent-sdk[evaluator]>=0.1.0",
+]
+dev = [
+    "pytest>=7.0",
+    "pytest-asyncio>=0.21",
+]
+
+[project.scripts]
+pisama-synth = "pisama_synth_agents.runner:cli"
+
+[tool.hatch.build.targets.wheel]
+packages = ["src/pisama_synth_agents"]

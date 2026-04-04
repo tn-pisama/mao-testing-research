@@ -22,6 +22,7 @@ import {
 } from 'lucide-react'
 import { signOut } from 'next-auth/react'
 import { clearAllCaches } from '@/hooks/useSafeAuth'
+import { TenantSwitcher } from './TenantSwitcher'
 
 interface NavItem {
   label: string
@@ -153,6 +154,9 @@ export function Sidebar({ isCollapsed = false, onToggle: _onToggle }: SidebarPro
           )}
         </Link>
       </div>
+
+      {/* Synth Agent Tenant Switcher */}
+      <TenantSwitcher isCollapsed={isCollapsed} />
 
       {/* Navigation */}
       <nav aria-label="Main navigation" className="flex-1 overflow-y-auto p-3 space-y-5 relative [mask-image:linear-gradient(to_bottom,black_calc(100%-2rem),transparent)]">

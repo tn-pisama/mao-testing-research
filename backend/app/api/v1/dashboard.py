@@ -14,7 +14,7 @@ from datetime import datetime, timedelta
 from sqlalchemy.sql.expression import literal_column
 from app.storage.database import get_db, set_tenant_context
 from app.storage.models import Detection, Trace, State, WorkflowQualityAssessment
-from app.core.auth import get_current_tenant
+from app.core.auth import get_verified_tenant
 from app.core.rate_limit import rate_limiter
 from app.api.v1.detections import detection_to_response
 
@@ -289,7 +289,7 @@ async def invalidate_dashboard_cache(tenant_id: str) -> None:
 @router.get("", response_model=DashboardResponse)
 async def get_dashboard(
     days: int = Query(30, ge=1, le=365),
-    tenant_id: str = Depends(get_current_tenant),
+    tenant_id: str = Depends(get_verified_tenant),
     db: AsyncSession = Depends(get_db),
 ):
     """Return all dashboard data in a single request. Cached in Redis for 5 minutes."""
@@ -342,7 +342,7 @@ async def get_dashboard(
 async def list_quality_assessments_lightweight(
     page: int = Query(1, ge=1),
     page_size: int = Query(20, ge=1, le=100),
-    tenant_id: str = Depends(get_current_tenant),
+    tenant_id: str = Depends(get_verified_tenant),
     db: AsyncSession = Depends(get_db),
 ):
     """Lightweight quality assessments list — no heavy enterprise imports."""
@@ -392,7 +392,7 @@ async def list_quality_assessments_lightweight(
 
 @router.get("/agent-quality")
 async def get_agent_quality(
-    tenant_id: str = Depends(get_current_tenant),
+    tenant_id: str = Depends(get_verified_tenant),
     db: AsyncSession = Depends(get_db),
 ):
     """Aggregate agent quality scores across all assessments."""
@@ -495,7 +495,7 @@ def _infer_role(agent_id: str) -> str:
 @router.get("/agent-quality/{agent_id}")
 async def get_agent_detail(
     agent_id: str,
-    tenant_id: str = Depends(get_current_tenant),
+    tenant_id: str = Depends(get_verified_tenant),
     db: AsyncSession = Depends(get_db),
 ):
     """Per-run quality details for a specific agent with role summary and failure breakdown."""

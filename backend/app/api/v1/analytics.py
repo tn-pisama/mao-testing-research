@@ -7,7 +7,7 @@ from datetime import datetime, timedelta
 
 from app.storage.database import get_db, set_tenant_context
 from app.storage.models import Detection, Trace, State, WorkflowQualityAssessment
-from app.core.auth import get_current_tenant
+from app.core.auth import get_verified_tenant
 from app.api.v1.schemas import (
     AnalyticsLoopResponse,
     AnalyticsCostResponse,
@@ -22,7 +22,7 @@ router = APIRouter(prefix="/analytics", tags=["analytics"])
 @router.get("/loops", response_model=AnalyticsLoopResponse)
 async def get_loop_analytics(
     days: int = Query(30, ge=1, le=365),
-    tenant_id: str = Depends(get_current_tenant),
+    tenant_id: str = Depends(get_verified_tenant),
     db: AsyncSession = Depends(get_db),
 ):
     await set_tenant_context(db, tenant_id)
@@ -109,7 +109,7 @@ async def get_loop_analytics(
 @router.get("/cost", response_model=AnalyticsCostResponse)
 async def get_cost_analytics(
     days: int = Query(30, ge=1, le=365),
-    tenant_id: str = Depends(get_current_tenant),
+    tenant_id: str = Depends(get_verified_tenant),
     db: AsyncSession = Depends(get_db),
 ):
     await set_tenant_context(db, tenant_id)
@@ -191,7 +191,7 @@ async def get_cost_analytics(
 async def get_quality_analytics(
     page: int = Query(1, ge=1),
     page_size: int = Query(100, ge=1, le=500),
-    tenant_id: str = Depends(get_current_tenant),
+    tenant_id: str = Depends(get_verified_tenant),
     db: AsyncSession = Depends(get_db),
 ):
     """

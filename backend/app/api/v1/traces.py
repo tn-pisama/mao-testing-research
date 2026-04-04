@@ -7,10 +7,11 @@ from uuid import UUID
 
 import logging
 import time
+from datetime import datetime
 
 from app.storage.database import get_db, set_tenant_context, async_session_maker
 from app.storage.models import Trace, State, Detection, WorkflowQualityAssessment
-from app.core.auth import get_current_tenant
+from app.core.auth import get_verified_tenant
 from app.billing.usage import enforce_daily_usage
 from app.core.rate_limit import check_rate_limit
 from app.api.v1.dashboard import invalidate_dashboard_cache
@@ -111,7 +112,7 @@ async def _auto_assess_trace(tenant_id: str, trace_id: str, session_id: str, age
 async def ingest_traces(
     request: TraceIngestRequest,
     background_tasks: "BackgroundTasks",
-    tenant_id: str = Depends(get_current_tenant),
+    tenant_id: str = Depends(get_verified_tenant),
     db: AsyncSession = Depends(get_db),
     _usage: None = Depends(enforce_daily_usage),
 ):
@@ -198,6 +199,16 @@ async def ingest_traces(
         
         trace.total_tokens += parsed.token_count
     
+    # Mark traces as completed
+    for trace_session_id in traces_created:
+        trace_result = await db.execute(
+            select(Trace).where(Trace.session_id == trace_session_id, Trace.tenant_id == UUID(tenant_id))
+        )
+        t = trace_result.scalar_one_or_none()
+        if t:
+            t.status = "completed"
+            t.completed_at = datetime.utcnow()
+
     await db.commit()
     backpressure.record_processed(len(parsed_states))
 
@@ -230,7 +241,7 @@ async def list_traces(
     page: int = Query(1, ge=1),
     per_page: int = Query(20, ge=1, le=100),
     status_filter: str = Query(None),
-    tenant_id: str = Depends(get_current_tenant),
+    tenant_id: str = Depends(get_verified_tenant),
     db: AsyncSession = Depends(get_db),
 ):
     await set_tenant_context(db, tenant_id)
@@ -299,7 +310,7 @@ async def list_traces(
 @router.get("/{trace_id}", response_model=TraceResponse)
 async def get_trace(
     trace_id: UUID,
-    tenant_id: str = Depends(get_current_tenant),
+    tenant_id: str = Depends(get_verified_tenant),
     db: AsyncSession = Depends(get_db),
 ):
     await set_tenant_context(db, tenant_id)
@@ -342,7 +353,7 @@ async def get_trace(
 async def get_trace_states(
     trace_id: UUID,
     full_state: bool = Query(False, description="Include full state_delta (can be large)"),
-    tenant_id: str = Depends(get_current_tenant),
+    tenant_id: str = Depends(get_verified_tenant),
     db: AsyncSession = Depends(get_db),
 ):
     await set_tenant_context(db, tenant_id)
@@ -386,7 +397,7 @@ async def get_trace_states(
 @router.post("/{trace_id}/analyze")
 async def analyze_trace(
     trace_id: UUID,
-    tenant_id: str = Depends(get_current_tenant),
+    tenant_id: str = Depends(get_verified_tenant),
     db: AsyncSession = Depends(get_db),
 ):
     """Run all detection algorithms on a trace and store results."""
@@ -495,7 +506,7 @@ async def analyze_trace(
         corruption_result = corruption_detector.detect_corruption_with_confidence(
             prev_snapshot, curr_snapshot
         )
-        if corruption_result.detected and corruption_result.confidence > 0.5:
+        if corruption_result.detected and corruption_result.confidence > 0.3:
             detection = Detection(
                 tenant_id=UUID(tenant_id),
                 trace_id=trace_id,
@@ -608,6 +619,13 @@ async def analyze_trace(
                     "issue_count": coord_result.issue_count,
                 })
 
+    # Mark trace as analyzed
+    trace_result = await db.execute(
+        select(Trace).where(Trace.id == trace_id, Trace.tenant_id == UUID(tenant_id))
+    )
+    trace_obj = trace_result.scalar_one_or_none()
+    if trace_obj:
+        trace_obj.detection_status = "analyzed"
     await db.commit()
 
     # Add confidence_tier to each detection dict
@@ -632,7 +650,7 @@ async def analyze_trace(
 @router.get("/{trace_id}/orchestration-quality")
 async def get_orchestration_quality(
     trace_id: UUID,
-    tenant_id: str = Depends(get_current_tenant),
+    tenant_id: str = Depends(get_verified_tenant),
     db: AsyncSession = Depends(get_db),
 ):
     """Score orchestration quality for a multi-agent trace.
@@ -692,7 +710,7 @@ async def get_orchestration_quality(
 @router.get("/{trace_id}/chain-analysis")
 async def get_chain_analysis(
     trace_id: UUID,
-    tenant_id: str = Depends(get_current_tenant),
+    tenant_id: str = Depends(get_verified_tenant),
     db: AsyncSession = Depends(get_db),
 ):
     """Analyze cross-chain interactions for a trace and its linked traces.

@@ -30,6 +30,14 @@ export function clearCachedTenantId(): void {
   cachedTenantId = null
 }
 
+/** Override the cached token (used by TenantSwitcher to inject impersonation tokens). */
+export function overrideCachedToken(token: string): void {
+  cachedBackendToken = token
+  backendTokenExpiresAt = Date.now() + 23 * 60 * 60 * 1000
+  exchangePromise = null
+  refreshPromise = null
+}
+
 /** Clear ALL client-side caches. Must be called from every sign-out path. */
 export function clearAllCaches(): void {
   cachedBackendToken = null
@@ -41,6 +49,7 @@ export function clearAllCaches(): void {
     try {
       sessionStorage.removeItem(TOKEN_STORAGE_KEY)
       localStorage.removeItem('pisama_last_tenant')
+      localStorage.removeItem('pisama_override_token')
       localStorage.removeItem('pisama_query_cache')
       const keys = Object.keys(localStorage)
       for (const key of keys) {
@@ -134,6 +143,14 @@ export function useSafeAuth() {
   // useTenant() fetches from /auth/tenant-by-email instead.
 
   const getToken = useCallback(async () => {
+    // Check for synth agent impersonation token (persisted across page loads)
+    if (typeof window !== 'undefined') {
+      try {
+        const override = localStorage.getItem('pisama_override_token')
+        if (override) return override
+      } catch {}
+    }
+
     // Development mode: use API key
     if (process.env.NODE_ENV === 'development' && process.env.NEXT_PUBLIC_DEV_API_KEY) {
       const now = Date.now()

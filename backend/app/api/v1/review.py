@@ -21,7 +21,7 @@ from pydantic import BaseModel
 from sqlalchemy import select, func, case
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from app.core.auth import get_current_tenant
+from app.core.auth import get_verified_tenant
 from app.storage.database import get_db, set_tenant_context
 from app.storage.models import Detection, Trace, State
 
@@ -229,7 +229,7 @@ async def get_review_queue(
     confidence_min: Optional[int] = Query(None, ge=0, le=100),
     confidence_max: Optional[int] = Query(None, ge=0, le=100),
     sort: str = Query("confidence_asc", description="confidence_asc|confidence_desc|newest|oldest"),
-    tenant_id: str = Depends(get_current_tenant),
+    tenant_id: str = Depends(get_verified_tenant),
     db: AsyncSession = Depends(get_db),
 ):
     """List detections for hand-review. Default: unreviewed, sorted by confidence ascending (most ambiguous first)."""
@@ -335,7 +335,7 @@ async def get_review_queue(
 @router.post("/batch", response_model=BatchReviewResponse)
 async def submit_batch_review(
     request: BatchReviewRequest,
-    tenant_id: str = Depends(get_current_tenant),
+    tenant_id: str = Depends(get_verified_tenant),
     db: AsyncSession = Depends(get_db),
 ):
     """Submit hand-review verdicts for multiple detections at once."""
@@ -399,7 +399,7 @@ async def submit_batch_review(
 @router.post("/promote/{detection_id}", response_model=PromoteResponse)
 async def promote_to_golden(
     detection_id: UUID,
-    tenant_id: str = Depends(get_current_tenant),
+    tenant_id: str = Depends(get_verified_tenant),
     db: AsyncSession = Depends(get_db),
 ):
     """Promote a reviewed detection to the golden dataset for recalibration."""
@@ -430,7 +430,7 @@ async def promote_to_golden(
 
 @router.get("/stats", response_model=ReviewStatsResponse)
 async def get_review_stats(
-    tenant_id: str = Depends(get_current_tenant),
+    tenant_id: str = Depends(get_verified_tenant),
     db: AsyncSession = Depends(get_db),
 ):
     """Get review progress metrics."""

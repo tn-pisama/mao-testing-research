@@ -8,7 +8,7 @@ from pydantic import BaseModel
 from sqlalchemy import select, func, text
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from app.core.auth import get_current_tenant
+from app.core.auth import get_verified_tenant
 from app.storage.database import get_db, set_tenant_context
 from app.storage.models import State
 
@@ -34,7 +34,7 @@ class AgentListResponse(BaseModel):
 
 @router.get("", response_model=AgentListResponse)
 async def list_agents(
-    tenant_id: str = Depends(get_current_tenant),
+    tenant_id: str = Depends(get_verified_tenant),
     db: AsyncSession = Depends(get_db),
 ):
     """List agents derived from trace state data."""

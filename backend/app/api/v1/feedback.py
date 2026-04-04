@@ -13,7 +13,7 @@ from pydantic import BaseModel, Field
 
 from app.storage.database import get_db, set_tenant_context
 from app.storage.models import Detection, DetectionFeedback, Trace
-from app.core.auth import get_current_tenant
+from app.core.auth import get_verified_tenant
 
 router = APIRouter(prefix="/feedback", tags=["feedback"])
 
@@ -70,7 +70,7 @@ class ThresholdRecommendation(BaseModel):
 @router.post("", response_model=FeedbackResponse, status_code=status.HTTP_201_CREATED)
 async def submit_feedback(
     feedback: FeedbackSubmission,
-    tenant_id: str = Depends(get_current_tenant),
+    tenant_id: str = Depends(get_verified_tenant),
     db: AsyncSession = Depends(get_db),
 ):
     """Submit feedback on a detection.
@@ -180,7 +180,7 @@ async def submit_feedback(
 async def get_feedback_stats(
     days: int = Query(30, ge=1, le=365, description="Number of days to analyze"),
     framework: Optional[str] = Query(None, description="Filter by framework"),
-    tenant_id: str = Depends(get_current_tenant),
+    tenant_id: str = Depends(get_verified_tenant),
     db: AsyncSession = Depends(get_db),
 ):
     """Get aggregated feedback statistics.
@@ -271,7 +271,7 @@ async def get_feedback_stats(
 @router.get("/recommendations", response_model=List[ThresholdRecommendation])
 async def get_threshold_recommendations(
     min_samples: int = Query(10, ge=5, description="Minimum feedback samples required"),
-    tenant_id: str = Depends(get_current_tenant),
+    tenant_id: str = Depends(get_verified_tenant),
     db: AsyncSession = Depends(get_db),
 ):
     """Get recommended threshold adjustments based on feedback.
@@ -361,7 +361,7 @@ async def list_feedback(
     per_page: int = Query(20, ge=1, le=100),
     feedback_type: Optional[str] = Query(None),
     framework: Optional[str] = Query(None),
-    tenant_id: str = Depends(get_current_tenant),
+    tenant_id: str = Depends(get_verified_tenant),
     db: AsyncSession = Depends(get_db),
 ):
     """List feedback submissions."""

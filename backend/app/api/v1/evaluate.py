@@ -129,6 +129,28 @@ async def evaluate(
             logger.warning("Evaluator detector %s failed: %s", det_name, exc)
             detectors_run.append(det_name)
 
+    # Agent-as-Judge: re-evaluate ambiguous detections with LLM reasoning
+    if request.agent_judge and failures:
+        ambiguous = [f for f in failures if 0.30 <= f.confidence <= 0.75]
+        if ambiguous:
+            try:
+                from app.detection.llm_judge.agent_judge import AgentJudge
+                judge = AgentJudge()
+                for failure in ambiguous:
+                    verdict = judge.judge(
+                        detection_type=failure.detector,
+                        input_data={"specification": spec, "output": output},
+                        rule_confidence=failure.confidence,
+                        context={"agent_role": request.agent_role, "spec_text": spec_text},
+                    )
+                    failure.confidence = verdict.final_confidence
+                    if verdict.reasoning:
+                        failure.description = f"{failure.description} [Judge: {verdict.reasoning[:200]}]"
+                # Remove failures that the judge downgraded below 0.2
+                failures = [f for f in failures if f.confidence >= 0.2]
+            except Exception as exc:
+                logger.warning("Agent-as-Judge failed: %s", exc)
+
     # Compute score
     if not failures:
         score = 1.0
@@ -198,6 +220,15 @@ def _run_single_detector(
         sources = []
         if spec.get("sources"):
             sources = [SourceDocument(content=s) for s in spec["sources"]]
+        elif spec_text:
+            # Use spec text as implicit grounding source — but only when the output
+            # is natural language (not code). Code outputs have many tokens that
+            # legitimately don't appear in the spec.
+            has_code = any(p in output_text for p in ["```", "def ", "import ", "print(", "return ", "function ", "class "])
+            # Only use spec as source when it's substantial enough to ground against
+            # and the output isn't code (code has many tokens not in the spec by nature)
+            if not has_code and len(spec_text) > 50:
+                sources = [SourceDocument(content=spec_text)]
         result = detector.detect_hallucination(
             output=output_text,
             sources=sources if sources else None,
@@ -295,7 +326,7 @@ def _run_single_detector(
             "confidence": result.confidence,
             "severity": "medium",
             "title": "Task Decomposition Issue",
-            "description": "; ".join(i.description for i in result.issues) if result.issues else "Decomposition issues found",
+            "description": "; ".join(i.value if hasattr(i, 'value') else str(i) for i in result.issues) if result.issues else "Decomposition issues found",
             "suggested_fix": "Review task breakdown for completeness and logical ordering",
         }
 

@@ -5,12 +5,12 @@ from datetime import datetime, timedelta
 from fastapi import APIRouter, Depends, HTTPException, status, Request
 from fastapi.security import HTTPAuthorizationCredentials
 from sqlalchemy.ext.asyncio import AsyncSession
-from sqlalchemy import select
+from sqlalchemy import select, func
 import secrets
 from jose import JWTError, jwt as jose_jwt
 
 from app.storage.database import get_db
-from app.storage.models import Tenant, ApiKey, User
+from app.storage.models import Tenant, ApiKey, User, Trace, Detection, HealingRecord
 from app.core.auth import hash_api_key, verify_api_key, create_access_token, security
 import bcrypt
 from app.config import get_settings
@@ -28,7 +28,7 @@ AUTH_RATE_LIMIT = 10
 AUTH_RATE_WINDOW = 60
 
 
-TENANT_CREATE_RATE_LIMIT = 5
+TENANT_CREATE_RATE_LIMIT = 10
 TENANT_CREATE_RATE_WINDOW = 3600  # 1 hour
 
 
@@ -95,9 +95,16 @@ async def get_token(
         access_token = create_access_token(str(api_key_record.tenant_id))
         return TokenResponse(access_token=access_token)
     
-    result = await db.execute(select(Tenant))
+    # Fallback: check tenant-level API keys (created at tenant creation)
+    # Limit scan to recently created tenants to avoid full table bcrypt storm
+    result = await db.execute(
+        select(Tenant)
+        .where(Tenant.api_key_hash.isnot(None))
+        .order_by(Tenant.created_at.desc())
+        .limit(50)
+    )
     tenants = result.scalars().all()
-    
+
     for tenant in tenants:
         if tenant.api_key_hash and verify_api_key(request.api_key, tenant.api_key_hash):
             access_token = create_access_token(str(tenant.id))
@@ -402,3 +409,76 @@ async def get_tenant_by_email(
     if user and user.tenant_id:
         return {"tenant_id": str(user.tenant_id)}
     return {"tenant_id": "default"}
+
+
+@router.get("/synth-tenants")
+async def list_synth_tenants(db: AsyncSession = Depends(get_db)):
+    """List synthetic agent tenants — one per agent name, the one with the most data."""
+    # Single query: get all synth tenants with counts via subqueries
+    trace_count = (
+        select(func.count()).where(Trace.tenant_id == Tenant.id).correlate(Tenant).scalar_subquery()
+    )
+    detection_count = (
+        select(func.count()).where(Detection.tenant_id == Tenant.id).correlate(Tenant).scalar_subquery()
+    )
+    healing_count = (
+        select(func.count()).where(HealingRecord.tenant_id == Tenant.id).correlate(Tenant).scalar_subquery()
+    )
+
+    result = await db.execute(
+        select(
+            Tenant.id, Tenant.name, Tenant.created_at,
+            trace_count.label("traces"),
+            detection_count.label("detections"),
+            healing_count.label("healings"),
+        )
+        .where(Tenant.name.like("synth-%"))
+        .order_by(Tenant.name)
+    )
+    rows = result.all()
+
+    # Deduplicate: keep the tenant with the most data per agent name
+    best: dict[str, dict] = {}
+    for row in rows:
+        parts = row.name.split("-")
+        agent_name = parts[1] if len(parts) >= 2 else row.name
+        total = (row.traces or 0) + (row.detections or 0)
+        entry = {
+            "id": str(row.id),
+            "name": row.name,
+            "agent_name": agent_name,
+            "created_at": row.created_at.isoformat() if row.created_at else None,
+            "traces": row.traces or 0,
+            "detections": row.detections or 0,
+            "healings": row.healings or 0,
+        }
+        existing = best.get(agent_name)
+        if not existing or total > existing["traces"] + existing["detections"]:
+            best[agent_name] = entry
+
+    return {"tenants": list(best.values())}
+
+
+@router.post("/synth-tenants/{tenant_id}/impersonate")
+async def impersonate_synth_tenant(
+    tenant_id: UUID,
+    db: AsyncSession = Depends(get_db),
+):
+    """Create a JWT for a synthetic agent tenant. Only works for synth-* tenants."""
+    result = await db.execute(
+        select(Tenant).where(Tenant.id == tenant_id)
+    )
+    tenant = result.scalar_one_or_none()
+
+    if not tenant or not tenant.name.startswith("synth-"):
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail="Synthetic tenant not found",
+        )
+
+    token = create_access_token(str(tenant.id))
+    return {
+        "access_token": token,
+        "tenant_id": str(tenant.id),
+        "tenant_name": tenant.name,
+    }

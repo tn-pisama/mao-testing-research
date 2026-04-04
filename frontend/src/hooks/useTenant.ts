@@ -10,15 +10,18 @@ const API_BASE = API_URL
 
 /** Read the last-used tenant synchronously for instant cache key matching. */
 function getInitialTenant(): string {
+  // localStorage always wins if set — allows TenantSwitcher to override
+  if (typeof window !== 'undefined') {
+    try {
+      const stored = localStorage.getItem('pisama_last_tenant')
+      if (stored && stored !== 'default') return stored
+    } catch {}
+  }
   if (process.env.NODE_ENV === 'development' && process.env.NEXT_PUBLIC_DEV_TENANT_ID) {
     return process.env.NEXT_PUBLIC_DEV_TENANT_ID
   }
   if (typeof window === 'undefined') return 'default'
-  try {
-    return localStorage.getItem('pisama_last_tenant') || 'default'
-  } catch {
-    return 'default'
-  }
+  return 'default'
 }
 
 /** Persist tenant to both the quick-access key and per-email key. */

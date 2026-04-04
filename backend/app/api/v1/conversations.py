@@ -13,7 +13,7 @@ import json
 
 from app.storage.database import get_db, set_tenant_context
 from app.storage.models import Trace, ConversationTurn, TurnState, State, Detection
-from app.core.auth import get_current_tenant
+from app.core.auth import get_verified_tenant
 from app.ingestion.importers import MASTImporter, ConversationImporter
 from app.ingestion.conversation_trace import ConversationTrace as ConversationTraceData
 from app.detection.turn_aware import (
@@ -38,7 +38,7 @@ router = APIRouter(prefix="/conversations", tags=["conversations"])
 @router.post("/ingest", response_model=ConversationResponse, status_code=status.HTTP_201_CREATED)
 async def ingest_conversation(
     request: ConversationIngestRequest,
-    tenant_id: str = Depends(get_current_tenant),
+    tenant_id: str = Depends(get_verified_tenant),
     db: AsyncSession = Depends(get_db),
 ):
     """Ingest a conversation trace.
@@ -133,7 +133,7 @@ async def list_conversations(
     page: int = Query(1, ge=1),
     per_page: int = Query(20, ge=1, le=100),
     framework: str = Query(None, description="Filter by framework"),
-    tenant_id: str = Depends(get_current_tenant),
+    tenant_id: str = Depends(get_verified_tenant),
     db: AsyncSession = Depends(get_db),
 ):
     """List all conversation traces."""
@@ -196,7 +196,7 @@ async def list_conversations(
 @router.get("/{trace_id}", response_model=ConversationDetailResponse)
 async def get_conversation(
     trace_id: UUID,
-    tenant_id: str = Depends(get_current_tenant),
+    tenant_id: str = Depends(get_verified_tenant),
     db: AsyncSession = Depends(get_db),
 ):
     """Get a conversation with all its turns."""
@@ -259,7 +259,7 @@ async def get_conversation(
 @router.get("/{trace_id}/turns", response_model=List[ConversationTurnResponse])
 async def get_conversation_turns(
     trace_id: UUID,
-    tenant_id: str = Depends(get_current_tenant),
+    tenant_id: str = Depends(get_verified_tenant),
     db: AsyncSession = Depends(get_db),
 ):
     """Get all turns in a conversation."""
@@ -295,7 +295,7 @@ async def get_conversation_turns(
 async def get_conversation_turn(
     trace_id: UUID,
     turn_number: int,
-    tenant_id: str = Depends(get_current_tenant),
+    tenant_id: str = Depends(get_verified_tenant),
     db: AsyncSession = Depends(get_db),
 ):
     """Get a specific turn in a conversation."""
@@ -329,7 +329,7 @@ async def get_conversation_turn(
 async def get_accumulated_context(
     trace_id: UUID,
     turn_number: int,
-    tenant_id: str = Depends(get_current_tenant),
+    tenant_id: str = Depends(get_verified_tenant),
     db: AsyncSession = Depends(get_db),
 ):
     """Get accumulated context up to a specific turn.
@@ -362,7 +362,7 @@ async def get_accumulated_context(
 @router.post("/{trace_id}/analyze", response_model=ConversationAnalyzeResponse)
 async def analyze_conversation(
     trace_id: UUID,
-    tenant_id: str = Depends(get_current_tenant),
+    tenant_id: str = Depends(get_verified_tenant),
     db: AsyncSession = Depends(get_db),
 ):
     """Analyze a conversation for failures.
@@ -481,7 +481,7 @@ async def analyze_conversation(
 @router.delete("/{trace_id}", status_code=status.HTTP_204_NO_CONTENT)
 async def delete_conversation(
     trace_id: UUID,
-    tenant_id: str = Depends(get_current_tenant),
+    tenant_id: str = Depends(get_verified_tenant),
     db: AsyncSession = Depends(get_db),
 ):
     """Delete a conversation and all its turns."""

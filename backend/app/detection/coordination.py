@@ -35,7 +35,7 @@ class CoordinationAnalysisResult:
 class CoordinationAnalyzer:
     def __init__(self, confidence_scaling: float = 1.0):
         self.message_timeout_seconds = 30.0
-        self.max_back_forth_count = 5  # v1.3: raised from 3 (normal ack protocols need 4+)
+        self.max_back_forth_count = 8  # v1.5: raised from 5 (pipeline agents naturally exchange more)
         self.confidence_scaling = confidence_scaling
     
     def analyze_coordination(
@@ -68,15 +68,38 @@ class CoordinationAnalyzer:
             metrics=metrics,
         )
     
+    def _is_pipeline_topology(self, messages: List[Message], agent_ids: List[str]) -> bool:
+        """v1.5: Detect if agents communicate in a linear chain (A→B→C→...).
+        Pipeline topologies should not be penalized for limited communication breadth
+        or indirect delegation patterns."""
+        if len(agent_ids) < 3:
+            return False
+        # Build adjacency: who sends to whom
+        senders_per_agent: Dict[str, Set[str]] = defaultdict(set)
+        recipients_per_agent: Dict[str, Set[str]] = defaultdict(set)
+        for msg in messages:
+            senders_per_agent[msg.to_agent].add(msg.from_agent)
+            recipients_per_agent[msg.from_agent].add(msg.to_agent)
+        # Pipeline: most agents have ≤2 unique communication partners (1 sender + 1 recipient)
+        pipeline_agents = 0
+        for agent in agent_ids:
+            partners = senders_per_agent.get(agent, set()) | recipients_per_agent.get(agent, set())
+            if len(partners) <= 2:
+                pipeline_agents += 1
+        return pipeline_agents >= len(agent_ids) * 0.6
+
     def analyze_coordination_with_confidence(
         self,
         messages: List[Message],
         agent_ids: List[str],
     ) -> CoordinationAnalysisResult:
         issues = []
+        is_pipeline = self._is_pipeline_topology(messages, agent_ids)
 
         issues.extend(self._detect_ignored_messages(messages))
-        issues.extend(self._detect_information_withholding(messages, agent_ids))
+        # v1.5: Suppress withholding and indirect delegation in pipeline topologies
+        if not is_pipeline:
+            issues.extend(self._detect_information_withholding(messages, agent_ids))
         issues.extend(self._detect_excessive_back_forth(messages))
         issues.extend(self._detect_circular_delegation(messages))
         # v1.4: New detection methods
@@ -88,7 +111,8 @@ class CoordinationAnalyzer:
         issues.extend(self._detect_resource_contention(messages))
         issues.extend(self._detect_rapid_instruction_change(messages))
         issues.extend(self._detect_response_delay(messages))
-        issues.extend(self._detect_indirect_delegation(messages))
+        if not is_pipeline:
+            issues.extend(self._detect_indirect_delegation(messages))
 
         metrics = self._compute_metrics(messages, agent_ids)
         
@@ -190,8 +214,8 @@ class CoordinationAnalyzer:
             issue_factor +
             health_factor
         )
-        # v1.1: Floor by severity — clear failures should never have very low confidence
-        severity_floor = {"low": 0.25, "medium": 0.35, "high": 0.55, "critical": 0.70}
+        # v1.5: Adjusted floors — high was 0.55 which inflated weak detections
+        severity_floor = {"low": 0.20, "medium": 0.30, "high": 0.45, "critical": 0.65}
         base_confidence = max(base_confidence, severity_floor.get(max_severity, 0.25))
         
         calibrated = min(0.99, base_confidence * self.confidence_scaling)

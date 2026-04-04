@@ -64,6 +64,7 @@ FRAMEWORK_MARKERS = {
     "openai": "openai",
     "anthropic": "anthropic",
     "azure.openai": "azure_openai",
+    "dify": "dify",
 }
 
 # Attribute prefix → framework (fallback detection)

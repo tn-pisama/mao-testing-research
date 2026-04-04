@@ -14,7 +14,7 @@ from app.storage.models import (
     WorkflowGroupAssignment,
     WorkflowQualityAssessment,
 )
-from app.core.auth import get_current_tenant
+from app.core.auth import get_verified_tenant
 from app.core.dependencies import AuthContext, get_current_user_or_tenant
 
 router = APIRouter(prefix="/workflow-groups", tags=["workflow-groups"])
@@ -83,7 +83,7 @@ class AutoDetectResponse(BaseModel):
 
 @router.get("/", response_model=List[WorkflowGroupResponse])
 async def list_groups(
-    tenant_id: str = Depends(get_current_tenant),
+    tenant_id: str = Depends(get_verified_tenant),
     db: AsyncSession = Depends(get_db),
     auth: AuthContext = Depends(get_current_user_or_tenant),
 ):
@@ -150,7 +150,7 @@ async def list_groups(
 @router.post("/", response_model=WorkflowGroupResponse)
 async def create_group(
     data: CreateGroupRequest,
-    tenant_id: str = Depends(get_current_tenant),
+    tenant_id: str = Depends(get_verified_tenant),
     db: AsyncSession = Depends(get_db),
     auth: AuthContext = Depends(get_current_user_or_tenant),
 ):
@@ -200,7 +200,7 @@ async def create_group(
 async def update_group(
     group_id: str,
     data: UpdateGroupRequest,
-    tenant_id: str = Depends(get_current_tenant),
+    tenant_id: str = Depends(get_verified_tenant),
     db: AsyncSession = Depends(get_db),
 ):
     """Update a workflow group."""
@@ -269,7 +269,7 @@ async def update_group(
 @router.delete("/{group_id}")
 async def delete_group(
     group_id: str,
-    tenant_id: str = Depends(get_current_tenant),
+    tenant_id: str = Depends(get_verified_tenant),
     db: AsyncSession = Depends(get_db),
 ):
     """Delete a workflow group (cascades to assignments and preferences)."""
@@ -297,7 +297,7 @@ async def delete_group(
 async def assign_workflows(
     group_id: str,
     data: AssignWorkflowsRequest,
-    tenant_id: str = Depends(get_current_tenant),
+    tenant_id: str = Depends(get_verified_tenant),
     db: AsyncSession = Depends(get_db),
     auth: AuthContext = Depends(get_current_user_or_tenant),
 ):
@@ -346,7 +346,7 @@ async def assign_workflows(
 @router.post("/{group_id}/auto-detect", response_model=AutoDetectResponse)
 async def run_auto_detection(
     group_id: str,
-    tenant_id: str = Depends(get_current_tenant),
+    tenant_id: str = Depends(get_verified_tenant),
     db: AsyncSession = Depends(get_db),
 ):
     """Run auto-detection for a group based on its rules."""
@@ -438,7 +438,7 @@ async def run_auto_detection(
 @router.get("/{group_id}/workflows")
 async def get_group_workflows(
     group_id: str,
-    tenant_id: str = Depends(get_current_tenant),
+    tenant_id: str = Depends(get_verified_tenant),
     db: AsyncSession = Depends(get_db),
 ):
     """Get all workflows assigned to a group."""

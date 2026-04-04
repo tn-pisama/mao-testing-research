@@ -7,7 +7,7 @@ from datetime import datetime
 
 from app.storage.database import get_db, set_tenant_context
 from app.storage.models import Detection
-from app.core.auth import get_current_tenant
+from app.core.auth import get_verified_tenant
 from app.api.v1.schemas import DetectionResponse, PaginatedDetectionResponse, DetectionValidateRequest, FixSuggestionsListResponse, ApplyFixResponse
 from app.fixes import FixGenerator, LoopFixGenerator, CorruptionFixGenerator, PersonaFixGenerator, DeadlockFixGenerator
 from app.detection.explainer import explain_detection
@@ -102,7 +102,7 @@ async def list_detections(
     trace_id: Optional[UUID] = Query(None),
     date_from: Optional[datetime] = Query(None),
     date_to: Optional[datetime] = Query(None),
-    tenant_id: str = Depends(get_current_tenant),
+    tenant_id: str = Depends(get_verified_tenant),
     db: AsyncSession = Depends(get_db),
 ):
     await set_tenant_context(db, tenant_id)
@@ -146,7 +146,7 @@ async def list_detections(
 @router.get("/{detection_id}", response_model=DetectionResponse)
 async def get_detection(
     detection_id: UUID,
-    tenant_id: str = Depends(get_current_tenant),
+    tenant_id: str = Depends(get_verified_tenant),
     db: AsyncSession = Depends(get_db),
 ):
     await set_tenant_context(db, tenant_id)
@@ -169,7 +169,7 @@ async def get_detection(
 async def validate_detection(
     detection_id: UUID,
     request: DetectionValidateRequest,
-    tenant_id: str = Depends(get_current_tenant),
+    tenant_id: str = Depends(get_verified_tenant),
     db: AsyncSession = Depends(get_db),
 ):
     await set_tenant_context(db, tenant_id)
@@ -241,7 +241,7 @@ def get_fix_generator() -> FixGenerator:
 @router.get("/{detection_id}/fixes", response_model=FixSuggestionsListResponse)
 async def get_fix_suggestions(
     detection_id: UUID,
-    tenant_id: str = Depends(get_current_tenant),
+    tenant_id: str = Depends(get_verified_tenant),
     db: AsyncSession = Depends(get_db),
 ):
     await set_tenant_context(db, tenant_id)
@@ -278,7 +278,7 @@ async def get_fix_suggestions(
 async def apply_fix(
     detection_id: UUID,
     fix_id: str,
-    tenant_id: str = Depends(get_current_tenant),
+    tenant_id: str = Depends(get_verified_tenant),
     db: AsyncSession = Depends(get_db),
 ):
     """Apply a suggested fix to address a detected failure.

@@ -21,6 +21,11 @@ export async function proxy(req: NextRequest) {
     return NextResponse.next()
   }
 
+  // Dev mode: skip auth when DEV_API_KEY is configured (synth agent testing)
+  if (process.env.NODE_ENV === 'development' && process.env.NEXT_PUBLIC_DEV_API_KEY) {
+    return NextResponse.next()
+  }
+
   // Everything else requires authentication
   try {
     const token = await getToken({
