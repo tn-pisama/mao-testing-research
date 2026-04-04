@@ -14,6 +14,7 @@ class Tenant(Base):
     id = Column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
     name = Column(String(255), nullable=False)
     api_key_hash = Column(String(255), nullable=False)
+    api_key_prefix = Column(String(12), nullable=True, index=True)
     clerk_org_id = Column(String(255), nullable=True, unique=True)
     settings = Column(JSONB, default=dict)
     created_at = Column(DateTime(timezone=True), server_default=func.now())

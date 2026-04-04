@@ -53,6 +53,7 @@ async def create_tenant(
     tenant = Tenant(
         name=request.name,
         api_key_hash=api_key_hash,
+        api_key_prefix=api_key[:12],
     )
     
     db.add(tenant)
@@ -96,27 +97,35 @@ async def get_token(
         return TokenResponse(access_token=access_token)
     
     # Fallback: check tenant-level API keys (created at tenant creation)
-    # Use prefix matching first to avoid bcrypt scan
+    # O(1) prefix lookup — no bcrypt scan needed
     tenant_prefix = request.api_key[:12] if len(request.api_key) >= 12 else ""
     if tenant_prefix:
-        # Try exact prefix match first (O(1) if prefix is indexed)
+        result = await db.execute(
+            select(Tenant).where(Tenant.api_key_prefix == tenant_prefix)
+        )
+        tenant = result.scalar_one_or_none()
+        if tenant and tenant.api_key_hash and verify_api_key(request.api_key, tenant.api_key_hash):
+            access_token = create_access_token(str(tenant.id))
+            return TokenResponse(access_token=access_token)
+
+        # Fallback for tenants created before prefix column existed
         result = await db.execute(
             select(Tenant).where(
+                Tenant.api_key_prefix.is_(None),
                 Tenant.api_key_hash.isnot(None),
-            ).order_by(Tenant.created_at.desc()).limit(30)
+            ).order_by(Tenant.created_at.desc()).limit(10)
         )
-        tenants = result.scalars().all()
-
         import asyncio
-        for tenant in tenants:
-            if tenant.api_key_hash:
-                # Run bcrypt in threadpool to avoid blocking async event loop
-                match = await asyncio.get_event_loop().run_in_executor(
-                    None, verify_api_key, request.api_key, tenant.api_key_hash
-                )
-                if match:
-                    access_token = create_access_token(str(tenant.id))
-                    return TokenResponse(access_token=access_token)
+        for t in result.scalars().all():
+            match = await asyncio.get_event_loop().run_in_executor(
+                None, verify_api_key, request.api_key, t.api_key_hash
+            )
+            if match:
+                # Backfill the prefix for future lookups
+                t.api_key_prefix = tenant_prefix
+                await db.commit()
+                access_token = create_access_token(str(t.id))
+                return TokenResponse(access_token=access_token)
     
     raise HTTPException(
         status_code=status.HTTP_401_UNAUTHORIZED,

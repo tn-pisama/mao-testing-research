@@ -144,14 +144,23 @@ class HallucinationDetector:
             evidence.extend(tool_evidence)
             details["tool_result_score"] = tool_score
 
+        # v1.7: Instructional/educational text gets a fabrication pass —
+        # how-to guides, tutorials, and explanations legitimately introduce
+        # new terms/concepts that aren't in the source.
+        import re as _re2
+        instructional_patterns = [
+            r'\b(?:here\'?s how|to do this|the steps are|you can|first,?\s+\w+,?\s+then)\b',
+            r'\b(?:for example|such as|in this case|this means)\b',
+            r'\b(?:install|import|configure|set up|create a|run the)\b',
+        ]
+        is_instructional = sum(1 for p in instructional_patterns if _re2.search(p, output, _re2.IGNORECASE)) >= 2
+        fabrication_boost = 0.15 if is_instructional else 0.0
+
         fabrication_score, fabrication_evidence = self._detect_fabricated_facts(output)
+        fabrication_score = min(1.0, fabrication_score + fabrication_boost)
         if fabrication_score < 0.95:
             evidence.extend(fabrication_evidence)
             details["fabrication_indicators"] = fabrication_evidence
-            # Only let fabrication drag down grounding when multiple patterns
-            # matched (score < 0.7).  A single pattern match (score ~0.8-0.9)
-            # is too noisy — legitimate text often contains one founding year
-            # or percentage statistic.
             if fabrication_score < 0.7:
                 grounding_score = min(grounding_score, fabrication_score)
 

@@ -625,6 +625,18 @@ class TaskDerailmentDetector:
             # Task not addressed - use standard thresholds
             detected = similarity < self.similarity_threshold or drift_score > self.drift_threshold
 
+            # v1.7: Topic sentence check — if the first sentence of the output
+            # doesn't mention any key entity from the task, boost detection.
+            # This catches outputs that start on a tangent and never return.
+            if not detected and len(output) > 100:
+                import re as _re
+                first_sentence = _re.split(r'[.!?\n]', output)[0]
+                task_entities = set(w.lower() for w in _re.findall(r'[A-Za-z]{4,}', task))
+                first_entities = set(w.lower() for w in _re.findall(r'[A-Za-z]{4,}', first_sentence))
+                entity_overlap = len(task_entities & first_entities) / max(len(task_entities), 1)
+                if entity_overlap < 0.1 and drift_score > 0.35:
+                    detected = True
+
         raw_score = drift_score
         evidence = {
             "similarity": round(similarity, 4),
