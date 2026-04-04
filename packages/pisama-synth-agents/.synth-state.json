@@ -1,0 +1,70 @@
+{
+  "accounts": {
+    "ava": {
+      "name": "synth-ava-1775290443",
+      "tenant_id": "601e49af-31ca-4d9f-a2f8-ea86065c1d4b",
+      "api_key": "mao_9ZN2Ys2s-nFbnjJvnt3gdO8LkliYg6z0ZKsaT4YSlgE",
+      "created_at": 1775290444.240833
+    },
+    "bram": {
+      "name": "synth-bram-1775290446",
+      "tenant_id": "775890af-9f7e-4952-b89a-50b2e37fe488",
+      "api_key": "mao_blAeb2EOzdMN7IGH1VU1Nlc_eZK-uw3KyH7GotfiD0M",
+      "created_at": 1775290446.4592052
+    },
+    "clara": {
+      "name": "synth-clara-1775290448",
+      "tenant_id": "93a260a3-46fb-4042-ac47-427221ec3d8a",
+      "api_key": "mao_vvBZ1VFfhV22gLC9iG8QsT6ouZOCcYGvjjmS00Ckklk",
+      "created_at": 1775290448.6735349
+    },
+    "diego": {
+      "name": "synth-diego-1775290450",
+      "tenant_id": "1657fa98-fa15-44c5-9432-3d62c3137a69",
+      "api_key": "mao_xh9nY3GEyK66d2n_oYwhg61oAv3iZpMpEsYSV_g9raY",
+      "created_at": 1775290450.912139
+    },
+    "elin": {
+      "name": "synth-elin-1775290452",
+      "tenant_id": "ceabdbb8-c08c-4860-9f1e-c664bb3a85cf",
+      "api_key": "mao_ZlXhPgeON4I9PlBY5kg3Gdh4TLiaXUMEjFoC3KF_dqY",
+      "created_at": 1775290453.098057
+    },
+    "fiona": {
+      "name": "synth-fiona-1775290455",
+      "tenant_id": "ef9af77b-738a-4d4c-9cde-ce3a277f2be8",
+      "api_key": "mao_9w2TBnfAQQnS-W0Vaup1wTah-6UZEQdUJpGqewTtlfc",
+      "created_at": 1775290455.305424
+    },
+    "gustav": {
+      "name": "synth-gustav-1775290457",
+      "tenant_id": "8d70a3a8-9f39-4e61-9272-bcc0ac0d6312",
+      "api_key": "mao_w1CNavZc12tmQdxevgbjf7oYMch4dHbQjoInWmoDIrE",
+      "created_at": 1775290457.517826
+    },
+    "helena": {
+      "name": "synth-helena-1775290459",
+      "tenant_id": "e0cc0ad5-05ef-477e-8093-9c50f604b0d6",
+      "api_key": "mao_pUcCkgACQgHY85fP693rsNrPdPIse3nzFoFikTzPepE",
+      "created_at": 1775290459.7122471
+    },
+    "iris": {
+      "name": "synth-iris-1775290461",
+      "tenant_id": "376861af-2569-4626-bc0c-0ed5d5c3814f",
+      "api_key": "mao_PFXafqJyD1VE-P0lL6N2z_lO7qws-I8FeyMxkEVp8OU",
+      "created_at": 1775290461.91678
+    },
+    "jasper": {
+      "name": "synth-jasper-1775290463",
+      "tenant_id": "eec981df-e8fa-4fa0-b694-5c2465ce735f",
+      "api_key": "mao_ET0d64Cbx_xoF-hyEVred1p-JFKZJGl8njxLpGFkSbs",
+      "created_at": 1775290464.123067
+    },
+    "kara": {
+      "name": "synth-kara-1775290466",
+      "tenant_id": "e3d953c1-d2dd-4868-bcdd-4437548d8895",
+      "api_key": "mao_UGc4iucA9eMxWk99K3jP01tVTncXKybxrBFeE7eOuEQ",
+      "created_at": 1775290466.330988
+    }
+  }
+}

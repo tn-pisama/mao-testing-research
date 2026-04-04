@@ -66,7 +66,7 @@ class SyntheticCustomer:
             self._client = httpx.AsyncClient(
                 base_url=self.base_url,
                 headers=headers,
-                timeout=30.0,
+                timeout=120.0,
             )
         return self._client
 

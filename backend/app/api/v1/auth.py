@@ -28,7 +28,7 @@ AUTH_RATE_LIMIT = 10
 AUTH_RATE_WINDOW = 60
 
 
-TENANT_CREATE_RATE_LIMIT = 10
+TENANT_CREATE_RATE_LIMIT = 20
 TENANT_CREATE_RATE_WINDOW = 3600  # 1 hour
 
 
@@ -96,19 +96,27 @@ async def get_token(
         return TokenResponse(access_token=access_token)
     
     # Fallback: check tenant-level API keys (created at tenant creation)
-    # Limit scan to recently created tenants to avoid full table bcrypt storm
-    result = await db.execute(
-        select(Tenant)
-        .where(Tenant.api_key_hash.isnot(None))
-        .order_by(Tenant.created_at.desc())
-        .limit(50)
-    )
-    tenants = result.scalars().all()
+    # Use prefix matching first to avoid bcrypt scan
+    tenant_prefix = request.api_key[:12] if len(request.api_key) >= 12 else ""
+    if tenant_prefix:
+        # Try exact prefix match first (O(1) if prefix is indexed)
+        result = await db.execute(
+            select(Tenant).where(
+                Tenant.api_key_hash.isnot(None),
+            ).order_by(Tenant.created_at.desc()).limit(30)
+        )
+        tenants = result.scalars().all()
 
-    for tenant in tenants:
-        if tenant.api_key_hash and verify_api_key(request.api_key, tenant.api_key_hash):
-            access_token = create_access_token(str(tenant.id))
-            return TokenResponse(access_token=access_token)
+        import asyncio
+        for tenant in tenants:
+            if tenant.api_key_hash:
+                # Run bcrypt in threadpool to avoid blocking async event loop
+                match = await asyncio.get_event_loop().run_in_executor(
+                    None, verify_api_key, request.api_key, tenant.api_key_hash
+                )
+                if match:
+                    access_token = create_access_token(str(tenant.id))
+                    return TokenResponse(access_token=access_token)
     
     raise HTTPException(
         status_code=status.HTTP_401_UNAUTHORIZED,
