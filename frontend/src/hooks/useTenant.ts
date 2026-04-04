@@ -54,6 +54,21 @@ export function useTenant() {
   })
 
   useEffect(() => {
+    // Check for tenant switcher override — takes priority over dev env var
+    if (typeof window !== 'undefined') {
+      try {
+        const hasOverride = !!localStorage.getItem('pisama_override_token')
+        if (hasOverride) {
+          const overrideTenant = localStorage.getItem('pisama_last_tenant')
+          if (overrideTenant && overrideTenant !== 'default') {
+            setTenantId(overrideTenant)
+            setIsLoading(false)
+            return
+          }
+        }
+      } catch {}
+    }
+
     // Dev tenant override — skip fetch
     if (process.env.NODE_ENV === 'development' && process.env.NEXT_PUBLIC_DEV_TENANT_ID) {
       setIsLoading(false)
