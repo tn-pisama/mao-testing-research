@@ -129,27 +129,26 @@ async def evaluate(
             logger.warning("Evaluator detector %s failed: %s", det_name, exc)
             detectors_run.append(det_name)
 
-    # Agent-as-Judge: re-evaluate ambiguous detections with LLM reasoning
+    # Agent-as-Judge: re-evaluate ambiguous detections with tiered LLM
     if request.agent_judge and failures:
         ambiguous = [f for f in failures if 0.30 <= f.confidence <= 0.75]
         if ambiguous:
             try:
-                from app.detection.llm_judge.agent_judge import AgentJudge
-                judge = AgentJudge()
+                from app.detection.llm_judge.lightweight_judge import tiered_judge
                 for failure in ambiguous:
-                    verdict = judge.judge(
+                    verdict = tiered_judge(
                         detection_type=failure.detector,
                         input_data={"specification": spec, "output": output},
                         rule_confidence=failure.confidence,
-                        context={"agent_role": request.agent_role, "spec_text": spec_text},
+                        max_tier="sonnet",  # Cap at Sonnet for evaluate API (cost control)
                     )
-                    failure.confidence = verdict.final_confidence
+                    failure.confidence = verdict.confidence
                     if verdict.reasoning:
-                        failure.description = f"{failure.description} [Judge: {verdict.reasoning[:200]}]"
+                        failure.description = f"{failure.description} [{verdict.tier_used}: {verdict.reasoning[:150]}]"
                 # Remove failures that the judge downgraded below 0.2
                 failures = [f for f in failures if f.confidence >= 0.2]
             except Exception as exc:
-                logger.warning("Agent-as-Judge failed: %s", exc)
+                logger.warning("Tiered judge failed: %s", exc)
 
     # Compute score
     if not failures:
